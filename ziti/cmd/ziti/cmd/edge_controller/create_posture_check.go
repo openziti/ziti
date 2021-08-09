@@ -54,6 +54,14 @@ type createPostureCheckOptions struct {
 	roleAttributes []string
 }
 
+type createPostureCheckMfaOptions struct {
+	createPostureCheckOptions
+	timeoutSeconds        int
+	promptOnWake          bool
+	promptOnUnlock        bool
+	ignoreLegacyEndpoints bool
+}
+
 type createPostureCheckMacOptions struct {
 	createPostureCheckOptions
 	addresses []string
@@ -468,7 +476,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 }
 
 func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOptions) error {
-	managementClient, err := util.DefaultEdgeManagementClient()
+	managementClient, err := util.NewEdgeManagementClient(options)
 
 	if err != nil {
 		return err
@@ -499,13 +507,16 @@ func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOp
 		Processes: processes,
 		Semantic:  &semantic,
 	}
-	params.PostureCheck.SetRoleAttributes(options.roleAttributes)
+
+	attributes := rest_model.Attributes(options.roleAttributes)
+
+	params.PostureCheck.SetRoleAttributes(&attributes)
 	params.PostureCheck.SetName(&options.name)
 
 	resp, err := managementClient.PostureChecks.CreatePostureCheck(params, nil)
 
 	if err != nil {
-		panic(err)
+		return util.WrapIfApiError(err)
 	}
 
 	checkId := resp.GetPayload().Data.ID
@@ -731,15 +742,21 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 }
 
 func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := createPostureCheckOptions{
-		edgeOptions: edgeOptions{
-			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+	options := createPostureCheckMfaOptions{
+		createPostureCheckOptions: createPostureCheckOptions{
+			edgeOptions: edgeOptions{
+				CommonOptions: common.CommonOptions{
+					Factory: f,
+					Out:     out,
+					Err:     errOut,
+				},
 			},
+			tags: make(map[string]string),
 		},
-		tags: make(map[string]string),
+		timeoutSeconds:        0,
+		promptOnWake:          false,
+		promptOnUnlock:        false,
+		ignoreLegacyEndpoints: false,
 	}
 
 	cmd := &cobra.Command{
@@ -765,13 +782,22 @@ func newCreatePostureCheckMfaCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
+	cmd.Flags().IntVarP(&options.timeoutSeconds, "seconds", "s", -1, "Seconds an MFA posture check allows before an additional MFA code must be submitted")
+	cmd.Flags().BoolVarP(&options.promptOnWake, "wake", "w", false, "Prompt for MFA code on endpoint wake")
+	cmd.Flags().BoolVarP(&options.promptOnUnlock, "unlock", "u", false, "Prompt for MFA code on endpoint unlock")
+	cmd.Flags().BoolVarP(&options.ignoreLegacyEndpoints, "ignore-legacy", "i", false, "Ignore prompts and timeout for endpoints that do not support MFA timeout/prompts")
 	options.addPostureFlags(cmd)
 
 	return cmd
 }
-func runCreatePostureCheckMfa(o *createPostureCheckOptions) error {
+func runCreatePostureCheckMfa(o *createPostureCheckMfaOptions) error {
 	entityData := gabs.New()
-	setPostureCheckEntityValues(entityData, o, PostureCheckTypeMFA)
+	_, _ = entityData.Set(o.promptOnUnlock, "promptOnUnlock")
+	_, _ = entityData.Set(o.promptOnWake, "promptOnWake")
+	_, _ = entityData.Set(o.timeoutSeconds, "timeoutSeconds")
+	_, _ = entityData.Set(o.ignoreLegacyEndpoints, "ignoreLegacyEndpoints")
+
+	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeMFA)
 
 	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
 

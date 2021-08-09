@@ -1,7 +1,9 @@
 # Runtime Operations Agent
-The ziti controller and ziti router can both be introspected at runtime using the ziti command line tool. 
+
+The ziti controller and ziti router can both be introspected at runtime using the ziti command line tool.
 
 ## Available Operations
+
 1. Get the stack traces of all go-routines the running process
    1. `ziti ps stack`
 1. Force garbage collection
@@ -9,6 +11,7 @@ The ziti controller and ziti router can both be introspected at runtime using th
 1. View memory statistics
    1. `ziti ps memstats`
    1. Example:
+
       ```
       $ ziti ps memstats
       alloc: 22.89MB (24005552 bytes)
@@ -39,6 +42,7 @@ The ziti controller and ziti router can both be introspected at runtime using th
       enable-gc: true
       debug-gc: false
       ```
+
 1. Get the go version used to build the executable
     1. `ziti ps goversion`
 1. Gets snapshot of the heap 
@@ -47,33 +51,39 @@ The ziti controller and ziti router can both be introspected at runtime using th
     1. `ziti ps pprof-cpu`
 1. Get Go runtime statistics such as number of goroutines, GOMAXPROCS, and NumCPU
     1. `ziti ps stats`
-    1. Example:     
-    ```
+    1. Example:
+
+    ```bash
     $ ziti ps stats
     goroutines: 50
     OS threads: 19
     GOMAXPROCS: 12
     num CPU: 12
     ```
+
 1. Run tracing for 5 seconds and return the result
     1. `ziti ps trace`
 1. Set the GC target percentage
     1. `ziti ps setgc <percentage>`
-    
+
 ## Disabling the Agent
-The agent is enabled by default. It can be disabled using `--cliagent false`. 
+
+The agent is enabled by default. It can be disabled using `--cliagent false`.
 
 ## Configuring Agent
+
 By default, the agent will listen on a Unix socket at `/tmp/gops-agent.<pid>.sock`. You can change this to a custom unix socket or use a network socket instead.
 
 Examples:
+
 1. `ziti-controller --cli-agent-addr unix:/tmp/my-special-agent-file.sock`
 2. `ziti-controller --cli-agent-addr tcp:127.0.0.1:10001`
 
-The agent uses unix sockets to limit security risk. Only the user on the machine who started the application, or the root user should be able to access the socket. 
+The agent uses unix sockets to limit security risk. Only the user on the machine who started the application, or the root user should be able to access the socket.
 
 ## Selecting Agent
-When running `ziti ps`, the target agent may be specified in a few different ways. 
+
+When running `ziti ps`, the target agent may be specified in a few different ways.
 
 1. If no target is provided it will scan in `/tmp` for valid sockets. If only one is found, that one will be used. If multiple are found and error will be reported along with the different running processes.
 1. The target can be listed by name. So if you have a ziti-controller and a ziti-router running, you can do `ziti ps goversion ziti-router` it will find the ziti-router and talk with that. If you have multiple ziti-routers running, this will fail.

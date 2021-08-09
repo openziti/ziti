@@ -31,6 +31,7 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/rest_management_api_client"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -694,20 +695,141 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 	return jsonParsed, nil
 }
 
-func NewEdgeManagementClient(session *Session) (*rest_management_api_client.ZitiEdgeManagement, error) {
-	httpClientTransport := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   10 * time.Second,
-			KeepAlive: 10 * time.Second,
+var _ http.RoundTripper = &edgeTransport{}
 
-		}).DialContext,
-		ForceAttemptHTTP2:     true,
-		MaxIdleConns:          10,
-		IdleConnTimeout:       10 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
+type edgeTransport struct {
+	*http.Transport
+	RequestFunc  func(*http.Request)
+	ResponseFunc func(*http.Response, error)
+}
 
+func (edgeTransport *edgeTransport) RoundTrip(r *http.Request) (*http.Response, error) {
+	if edgeTransport.RequestFunc != nil {
+		edgeTransport.RequestFunc(r)
+	}
+
+	resp, err := edgeTransport.Transport.RoundTrip(r)
+
+	if edgeTransport.ResponseFunc != nil {
+		edgeTransport.ResponseFunc(resp, err)
+	}
+
+	return resp, err
+}
+
+type ApiErrorPayload interface {
+	GetPayload() *rest_model.APIErrorEnvelope
+}
+
+type RestApiError struct {
+	ApiErrorPayload
+}
+
+func formatApiError(error *rest_model.APIError) string {
+	cause := ""
+	if error.Cause != nil {
+		if error.Cause.APIError.Code != "" {
+			cause = formatApiError(&error.Cause.APIError)
+		} else if error.Cause.APIFieldError.Field != "" {
+			cause = fmt.Sprintf("INVALID_FIELD - %s [%s] %s", error.Cause.APIFieldError.Field, error.Cause.APIFieldError.Value, error.Cause.APIFieldError.Reason)
+		}
+	}
+
+	if cause != "" {
+		cause = ": " + cause
+	}
+	return fmt.Sprintf("%s - %s%s", error.Code, error.Message, cause)
+}
+
+func (a RestApiError) Error() string {
+	if payload := a.ApiErrorPayload.GetPayload(); payload != nil {
+
+		if payload.Error == nil {
+			return fmt.Sprintf("could not read API error, payload.error was nil: %v", a.Error())
+		}
+		return formatApiError(payload.Error)
+	}
+
+	return fmt.Sprintf("could not read API error, payload was nil: %v", a.Error())
+}
+
+func WrapIfApiError(err error) error {
+	if apiErrorPayload, ok := err.(ApiErrorPayload); ok {
+		return &RestApiError{apiErrorPayload}
+	}
+
+	return err
+}
+
+type EdgeManagementClientOpts interface {
+	OutputRequestJson() bool
+	OutputResponseJson() bool
+	OutputWriter() io.Writer
+	ErrOutputWriter() io.Writer
+}
+
+func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
+	session := &Session{}
+
+	if err := session.Load(); err != nil {
+		return nil, err
+	}
+
+	respFunc := func(resp *http.Response, err error) {
+		if clientOpts.OutputResponseJson() {
+			if resp == nil || resp.Body == nil {
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty response body>\n")
+				return
+			}
+
+			resp.Body = ioutil.NopCloser(resp.Body)
+			bodyContent, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not read response body: %v", err)
+				return
+			}
+			bodyStr := string(bodyContent)
+			_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
+		}
+	}
+
+	reqFunc := func(request *http.Request) {
+		if clientOpts.OutputRequestJson() {
+			if request == nil || request.Body == nil {
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty request body>\n")
+				return
+			}
+
+			body, err := request.GetBody()
+			if err == nil {
+				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not copy request body: %v", err)
+				return
+			}
+			bodyContent, err := ioutil.ReadAll(body)
+			if err != nil {
+				bodyStr := string(bodyContent)
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
+				return
+			}
+		}
+	}
+
+	httpClientTransport := &edgeTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   10 * time.Second,
+				KeepAlive: 10 * time.Second,
+			}).DialContext,
+
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       10 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ResponseFunc: respFunc,
+		RequestFunc:  reqFunc,
 	}
 
 	rootCaPool := x509.NewCertPool()
@@ -732,31 +854,13 @@ func NewEdgeManagementClient(session *Session) (*rest_management_api_client.Ziti
 		return nil, err
 	}
 
-	transport := httptransport.NewWithClient(parsedHost.Host, rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
+	clientRuntime := httptransport.NewWithClient(parsedHost.Host, rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
 
-	transport.DefaultAuthentication = &EdgeManagementAuth{
+	clientRuntime.DefaultAuthentication = &EdgeManagementAuth{
 		Token: session.Token,
 	}
-	return rest_management_api_client.New(transport, nil), nil
-}
 
-var defaultEdgeManagementClient *rest_management_api_client.ZitiEdgeManagement
-
-func DefaultEdgeManagementClient() (*rest_management_api_client.ZitiEdgeManagement, error) {
-	if defaultEdgeManagementClient == nil {
-		session := &Session{}
-		if err := session.Load(); err != nil {
-			return nil, err
-		}
-
-		if client, err := NewEdgeManagementClient(session); err != nil {
-			return nil, err
-		} else {
-			defaultEdgeManagementClient = client
-		}
-	}
-
-	return defaultEdgeManagementClient, nil
+	return rest_management_api_client.New(clientRuntime, nil), nil
 }
 
 type EdgeManagementAuth struct {

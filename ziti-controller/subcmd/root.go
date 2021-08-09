@@ -44,11 +44,11 @@ var root = &cobra.Command{
 
 		switch logFormatter {
 		case "pfxlog":
-			logrus.SetFormatter(pfxlog.NewFormatterStartingToday())
+			pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
 		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
+			pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
 		case "text":
-			logrus.SetFormatter(&logrus.TextFormatter{})
+			pfxlog.SetFormatter(&logrus.TextFormatter{})
 		default:
 			// let logrus do its own thing
 		}

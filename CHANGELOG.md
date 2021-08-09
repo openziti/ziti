@@ -1,3 +1,60 @@
+# Release 0.21.0
+
+## Semantic now Required for policies (BREAKING CHANGE)
+Previouxly semantic was optional when creating or updating policies (POST or PUT), defaulting to `AllOf` when not specified. It is now required.
+
+## What's New
+
+* Bug fix: Using PUT for policies without including the semantic would cause them to be evaluated using the AllOf semantic
+* Bug fix: Additional concurrency fix in posture data
+* Feature: Ziti CLI now supports a comprehensive set of `ca` and `cas` options
+* Feature: `ziti ps` now supports `set-channel-log-level` and `clear-channel-log-level` operations
+* Change: Previouxly semantic was optional when creating or updating policies (POST or PUT), defaulting to `AllOf` when not specified. It is now required.
+
+
+# Release 0.20.14
+
+## What's New
+
+* Bug fix: Posture timeouts (i.e. MFA timeouts) would not apply to the first session of an API session
+* Bug fix: Fix panic during API Session deletion
+* Bug fix: DNS entries in embedded DNS server in go tunneler apps were not being cleaned up
+* Feature: Ziti CLI now supports attribute updates on MFA posture checks
+* Feature: Posture queries now support `timeout` and `timeoutRemaining`
+
+# Release 0.20.13
+
+## What's New
+
+* Bug fix: [edge#712](https://github.com/openziti/edge/issues/712) 
+  * NF-INTERCEPT chain was getting deleted when any intercept was stopped, not when all intercepts were stopped
+  * IP address could get re-used across DNS entries. Added DNS cache flush on startup to avoid this
+  * IP address cleanup was broken as all services would see last assigned IP
+* Bug fix: Introduce delay when closing xgress peer after receiving unroute if end of session not yet received
+* Feature: Can now search relevant entities by role attributes
+  * Services, edge routers and identities can be search by role attribute. Ex: `ziti edge list services 'anyOf(roleAttributes) = "one"'`
+  * Polices can be searched by roles. Ex: `ziti edge list service-policies 'anyOf(identityRoles) = "#all"'`
+
+# Release 0.20.12
+
+## What's New
+
+* Bug fix: [edge#641](https://github.com/openziti/edge/issues/641)Management and Client API nested resources now support `limit` and `offset` outside of `filter` as query params
+* Feature: MFA Timeout Options
+
+## MFA Timeout Options
+
+The MFA posture check now supports three options:
+
+* `timeoutSeconds` - the number of seconds before an MFA TOTP will need to be provided before the posture check begins to fail (optional)
+* `promptOnWake` - reduces the current timeout to 5m (if not less than already) when an endpoint reports a "wake" event (optional)
+* `promptOnUnlock` - reduces the current timeout to 5m (if not less than already) when an endpoint reports an "unlock" event (optional)
+* `ignoreLegacyEndpoints` - forces all other options to be ignored for legacy clients that do not support event state (optional)
+
+Event states, `promptOnWake` and `promptOnUnlock` are only supported in Ziti C SDK v0.20.0 and later. Individual ZDE/ZME clients
+may take time to update. If older endpoint are used with the new MFA options `ignoreLegacyEndpoints` allows administrators to decide
+how those clients should be treated. If `ignoreLegacyEndpoints` is `true`, they will not be subject to timeout or wake events.
+
 # Release 0.20.11
 
 * Bug fix: CLI Admin create/update/delete for UPDB authenticators now function properly
