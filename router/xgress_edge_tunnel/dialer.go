@@ -33,7 +33,7 @@ func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
 	return found
 }
 
-func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "edge").
 		WithField("destination", destination)
@@ -44,7 +44,7 @@ func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, addr
 	}
 	terminator := val.(*tunnelTerminator)
 
-	options, err := tunnel.AppDataToMap(sessionId.Data[edge.AppDataHeader])
+	options, err := tunnel.AppDataToMap(circuitId.Data[edge.AppDataHeader])
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, addr
 
 	xgConn := xgress_common.NewXgressConn(conn, halfClose)
 	peerData := make(xt.PeerData, 1)
-	if peerKey, ok := sessionId.Data[edge.PublicKeyHeader]; ok {
+	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {
 			return nil, err
 		} else {
@@ -66,7 +66,7 @@ func (self *tunneler) Dial(destination string, sessionId *identity.TokenId, addr
 		}
 	}
 
-	x := xgress.NewXgress(sessionId, address, xgConn, xgress.Terminator, self.dialOptions.Options)
+	x := xgress.NewXgress(circuitId, address, xgConn, xgress.Terminator, self.dialOptions.Options)
 	bindHandler.HandleXgressBind(x)
 	x.Start()
 

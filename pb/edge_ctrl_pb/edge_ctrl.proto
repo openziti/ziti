@@ -137,7 +137,7 @@ message CreateCircuitRequest {
 }
 
 message CreateCircuitResponse {
-  string sessionId = 1;
+  string circuitId = 1;
   string address = 2;
   map<uint32, bytes> peerData = 3;
 }
