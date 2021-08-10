@@ -46,7 +46,7 @@ func newPostureCache(env Env) *PostureCache {
 	pc := &PostureCache{
 		identityToPostureData:    cmap.New(),
 		apiSessionIdToIdentityId: cmap.New(),
-		ticker:                   time.NewTicker(10 * time.Second),
+		ticker:                   time.NewTicker(5 * time.Second),
 		EventEmmiter:             events.New(),
 		env:                      env,
 	}

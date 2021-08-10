@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+	"time"
 )
 
 func Test_PostureChecks_MFA(t *testing.T) {
@@ -545,6 +546,210 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				resp, err = newSession.createNewSession(service.Id)
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+			})
+		})
+	})
+
+	t.Run("can create an MFA posture check with an extremely low timeout", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		identityRole := eid.New()
+		serviceRole := eid.New()
+		postureCheckRole := eid.New()
+
+		_, enrolledIdentityAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, identityRole)
+		enrolledIdentitySession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+
+		ctx.Req.NoError(err)
+
+		service := ctx.AdminManagementSession.requireNewService(s(serviceRole), nil)
+
+		ctx.AdminManagementSession.requireNewServicePolicyWithSemantic("Dial", "AllOf", s("#"+serviceRole), s("#"+identityRole), s("#"+postureCheckRole))
+
+		ctx.AdminManagementSession.requireNewEdgeRouterPolicy(s("#all"), s("#"+identityRole))
+
+		ctx.AdminManagementSession.requireNewServiceEdgeRouterPolicy(s("#all"), s("#"+serviceRole))
+
+		const (
+			lowMfaTimeout      = 5
+			mfaTimeoutInterval = 5
+		)
+
+		origTimeout := int64(lowMfaTimeout)
+
+		postureCheck := rest_model.PostureCheckMfaCreate{
+			PostureCheckMfaProperties: rest_model.PostureCheckMfaProperties{
+				PromptOnUnlock: true,
+				PromptOnWake:   true,
+				TimeoutSeconds: origTimeout,
+			},
+		}
+
+		origName := uuid.New().String()
+		postureCheck.SetName(&origName)
+		postureCheck.SetTypeID(rest_model.PostureCheckTypeMFA)
+
+		origAttributes := rest_model.Attributes(s(postureCheckRole))
+		postureCheck.SetRoleAttributes(&origAttributes)
+
+		postureCheckBody, err := postureCheck.MarshalJSON()
+		ctx.Req.NoError(err)
+
+		resp := ctx.AdminManagementSession.createEntityOfType("posture-checks", postureCheckBody)
+
+		standardJsonResponseTests(resp, http.StatusCreated, t)
+		postureCheckId := ctx.getEntityId(resp.Body())
+		ctx.Req.NotEmpty(postureCheckId)
+
+		t.Run("cannot create session with failing queries", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			resp, err := enrolledIdentitySession.createNewSession(service.Id)
+			ctx.Req.NoError(err)
+
+			ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+		})
+
+		t.Run("providing posture data", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			mfaSecret := ""
+
+			t.Run("by starting enrollment in MFA", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err := enrolledIdentitySession.newAuthenticatedRequest().Post("/current-identity/mfa")
+
+				ctx.Req.NoError(err)
+				standardJsonResponseTests(resp, http.StatusCreated, t)
+
+				t.Run("does not allow service session creation", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := enrolledIdentitySession.createNewSession(service.Id)
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+				})
+			})
+
+			t.Run("by finishing enrollment in MFA", func(t *testing.T) {
+				resp, err := enrolledIdentitySession.newAuthenticatedRequest().Get("/current-identity/mfa")
+				ctx.Req.NoError(err)
+
+				standardJsonResponseTests(resp, http.StatusOK, t)
+
+				mfa, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				rawUrl := mfa.Path("data.provisioningUrl").Data().(string)
+				ctx.Req.NotEmpty(rawUrl)
+
+				parsedUrl, err := url.Parse(rawUrl)
+				ctx.Req.NoError(err)
+
+				queryParams, err := url.ParseQuery(parsedUrl.RawQuery)
+				ctx.Req.NoError(err)
+				secrets := queryParams["secret"]
+				ctx.Req.NotNil(secrets)
+				ctx.Req.NotEmpty(secrets)
+
+				mfaSecret = secrets[0]
+
+				ctx.testContextChanged(t)
+
+				code := computeMFACode(mfaSecret)
+
+				resp, err = enrolledIdentitySession.newAuthenticatedRequest().
+					SetBody(newMfaCodeBody(code)).
+					Post("/current-identity/mfa/verify")
+
+				ctx.Req.NoError(err)
+				standardJsonResponseTests(resp, http.StatusOK, t)
+
+				t.Run("allows service session creation", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					resp, err := enrolledIdentitySession.createNewSession(service.Id)
+					ctx.Req.NoError(err)
+
+					ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+				})
+
+				t.Run("service has the posture check in its queries", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					code, body := enrolledIdentitySession.query("/services/" + service.Id)
+					ctx.Req.Equal(http.StatusOK, code)
+					entityService, err := gabs.ParseJSON(body)
+					ctx.Req.NoError(err)
+
+					querySet, err := entityService.Path("data.postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(querySet, 1)
+
+					postureQueries, err := querySet[0].Path("postureQueries").Children()
+					ctx.Req.NoError(err)
+					ctx.Req.Len(postureQueries, 1)
+
+					ctx.Req.Equal(postureCheckId, postureQueries[0].Path("id").Data().(string))
+					ctx.Req.Equal(string(postureCheck.TypeID()), postureQueries[0].Path("queryType").Data().(string))
+
+					t.Run("query is currently passing", func(t *testing.T) {
+						ctx.testContextChanged(t)
+						ctx.Req.True(querySet[0].Path("isPassing").Data().(bool))
+						ctx.Req.True(postureQueries[0].Path("isPassing").Data().(bool))
+						ctx.Req.Greater(int(postureQueries[0].Path("timeout").Data().(float64)), 0)
+					})
+				})
+			})
+
+			t.Run("a new api session with a low timeout MFA check can create a session", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				newSession, err := enrolledIdentityAuthenticator.AuthenticateClientApi(ctx)
+				ctx.Req.NoError(err)
+
+				resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Post("/authenticate/mfa")
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				timeoutAt := time.Now().Add((mfaTimeoutInterval + lowMfaTimeout + 1) * time.Second)
+
+				resp, err = newSession.createNewSession(service.Id)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+				sessionContainer, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				ctx.Req.True(sessionContainer.ExistsP("data.id"))
+				sessionId, ok := sessionContainer.Path("data.id").Data().(string)
+				ctx.Req.True(ok)
+				ctx.Req.NotEmpty(sessionId)
+
+				resp, err = ctx.AdminManagementSession.NewRequest().Get("/sessions/" + sessionId)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				t.Run("after the MFA posture check timeout", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					durationTillTimeout := timeoutAt.Sub(time.Now())
+					if durationTillTimeout > 0 {
+						time.Sleep(durationTillTimeout)
+					}
+
+					t.Run("the existing session was removed", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						resp, err := ctx.AdminManagementSession.NewRequest().Get("/sessions/" + sessionId)
+						ctx.Req.NoError(err)
+						ctx.Req.Equal(http.StatusNotFound, resp.StatusCode())
+					})
+
+					t.Run("a new session cannot be created", func(t *testing.T) {
+						resp, err = newSession.createNewSession(service.Id)
+						ctx.Req.NoError(err)
+						ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+					})
+				})
 			})
 		})
 	})
