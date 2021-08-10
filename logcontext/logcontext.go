@@ -63,15 +63,19 @@ type contextImpl struct {
 }
 
 func (self *contextImpl) WireEntry(entry *logrus.Entry) *logrus.Entry {
-	entry = entry.WithFields(self.fields)
-	if self.channels != 0 && entry.Level < logrus.DebugLevel {
-		if val, found := entry.Data["channels"]; found {
-			if channels, ok := val.([]string); ok {
-				for _, channel := range channels {
-					s := channelMap[channel]
-					if s&self.channels != 0 {
-						entry.Logger = getDebugLogger()
-						break
+	if self != nil {
+		if len(self.fields) > 0 {
+			entry = entry.WithFields(self.fields)
+		}
+		if self.channels != 0 && entry.Level < logrus.DebugLevel {
+			if val, found := entry.Data["channels"]; found {
+				if channels, ok := val.([]string); ok {
+					for _, channel := range channels {
+						s := channelMap[channel]
+						if s&self.channels != 0 {
+							entry.Logger = getDebugLogger()
+							break
+						}
 					}
 				}
 			}
