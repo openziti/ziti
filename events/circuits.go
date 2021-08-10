@@ -111,7 +111,7 @@ type CircuitEvent struct {
 	Timestamp time.Time `json:"timestamp"`
 	ClientId  string    `json:"client_id"`
 	ServiceId string    `json:"service_id"`
-	Path      string    `json:"circuit"`
+	Path      string    `json:"path"`
 }
 
 func (event *CircuitEvent) String() string {
