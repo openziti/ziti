@@ -60,7 +60,7 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "edge").
 		WithField("destination", destination)
@@ -84,19 +84,19 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 	log = log.WithField("bindConnId", listenConn.Id())
 
 	callerId := ""
-	if sessionId.Data != nil {
-		if callerIdBytes, found := sessionId.Data[edge.CallerIdHeader]; found {
+	if circuitId.Data != nil {
+		if callerIdBytes, found := circuitId.Data[edge.CallerIdHeader]; found {
 			callerId = string(callerIdBytes)
 		}
 	}
 
 	log.Debug("dialing sdk client hosting service")
 	dialRequest := edge.NewDialMsg(listenConn.Id(), token, callerId)
-	if pk, ok := sessionId.Data[edge.PublicKeyHeader]; ok {
+	if pk, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		dialRequest.Headers[edge.PublicKeyHeader] = pk
 	}
 
-	appData, hasAppData := sessionId.Data[edge.AppDataHeader]
+	appData, hasAppData := circuitId.Data[edge.AppDataHeader]
 	if hasAppData {
 		dialRequest.Headers[edge.AppDataHeader] = appData
 	}
@@ -114,7 +114,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 
 		// On the terminator, which this is, this only starts the txer, which pulls data from the link
 		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
-		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
 		bindHandler.HandleXgressBind(x)
 		x.Start()
 
@@ -170,7 +170,7 @@ func (dialer *dialer) Dial(destination string, sessionId *identity.TokenId, addr
 			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
 		}
 
-		x := xgress.NewXgress(sessionId, address, conn, xgress.Terminator, &dialer.options.Options)
+		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
 		bindHandler.HandleXgressBind(x)
 		x.Start()
 

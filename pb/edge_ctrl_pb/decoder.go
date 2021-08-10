@@ -99,7 +99,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 		request := &CreateCircuitResponse{}
 		if err := proto.Unmarshal(msg.Body, request); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Create Circuit Response")
-			meta["sessionId"] = request.SessionId
+			meta["circuitId"] = request.CircuitId
 			meta["address"] = request.Address
 			return meta.MarshalResult()
 		} else {

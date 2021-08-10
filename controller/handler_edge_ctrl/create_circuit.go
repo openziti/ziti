@@ -96,7 +96,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.SessionToken)
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{
-		SessionId: circuitInfo.Id,
+		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
 		PeerData:  peerData,
 	}

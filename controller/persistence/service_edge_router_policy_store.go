@@ -53,20 +53,14 @@ func (entity *ServiceEdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 		ctx.Bucket.SetError(err)
 	}
 
-	if !isSemanticValid(entity.Semantic) {
+	if ctx.ProceedWithSet(FieldSemantic) && !isSemanticValid(entity.Semantic) {
 		ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
 		return
 	}
 
 	entity.SetBaseValues(ctx)
 	ctx.SetRequiredString(FieldName, entity.Name)
-	if ctx.ProceedWithSet(FieldSemantic) {
-		if !isSemanticValid(entity.Semantic) {
-			ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
-			return
-		}
-		ctx.SetRequiredString(FieldSemantic, entity.Semantic)
-	}
+	ctx.SetRequiredString(FieldSemantic, entity.Semantic)
 
 	serviceEdgeRouterPolicyStore := ctx.Store.(*serviceEdgeRouterPolicyStoreImpl)
 
