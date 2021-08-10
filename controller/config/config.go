@@ -25,7 +25,9 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"io/ioutil"
+	"net"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -173,6 +175,14 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			if c.Api.Address, ok = val.(string); !ok {
 				return errors.Errorf("invalid type %t for [edge.api.address], must be string", val)
 			}
+
+			if c.Api.Address == "" {
+				return errors.Errorf("invalid type %t for [edge.api.address], must not be an empty string", val)
+			}
+
+			if err := validateHostPortString(c.Api.Address); err != nil {
+				return errors.Errorf("invalid value %s for [edge.api.address]: %v", c.Api.Address, err)
+			}
 		} else {
 			return errors.New("required value [edge.api.address] is required")
 		}
@@ -222,6 +232,36 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 	} else {
 		return errors.New("required configuration section [edge.api] missing")
 	}
+}
+
+func validateHostPortString(address string) error {
+	address = strings.TrimSpace(address)
+
+	if address == "" {
+		return errors.New("must not be an empty string or unspecified")
+	}
+
+	host, port, err := net.SplitHostPort(address)
+
+	if err != nil {
+		return errors.Errorf("could not split host and port: %v", err)
+	}
+
+	if host == "" {
+		return errors.New("host must be specified")
+	}
+
+	if port == "" {
+		return errors.New("port must be specified")
+	}
+
+	if port, err := strconv.ParseInt(port, 10, 32); err != nil {
+		return errors.New("invalid port, must be a integer")
+	} else if port < 1 || port > 65535 {
+		return errors.New("invalid port, must 1-65535")
+	}
+
+	return nil
 }
 
 func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}) error {
