@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -73,37 +74,32 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 		log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 			WithField("context", ch.Label()).
 			WithField("circuitId", route.CircuitId).
-			WithField("binding", route.Egress.Binding).
-			WithField("destination", route.Egress.Destination).
 			WithField("attempt", route.Attempt)
+
+		if route.Egress != nil {
+			log = log.WithField("binding", route.Egress.Binding).WithField("destination", route.Egress.Destination)
+		}
 
 		log.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.CircuitId)
 
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				log.Warnf("destination exists for [%s]", route.Egress.Address)
-				rh.success(msg, int(route.Attempt), ch, route, nil, ctx)
+				rh.success(msg, int(route.Attempt), route, nil, log)
 				return
 			} else {
 				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx)
 				return
 			}
 		} else {
-			rh.success(msg, int(route.Attempt), ch, route, nil, ctx)
+			rh.success(msg, int(route.Attempt), route, nil, log)
 		}
 	} else {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshaling")
 	}
 }
 
-func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, peerData xt.PeerData, ctx logcontext.Context) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
-		WithField("context", ch.Label()).
-		WithField("circuitId", route.CircuitId).
-		WithField("binding", route.Egress.Binding).
-		WithField("destination", route.Egress.Destination).
-		WithField("attempt", route.Attempt)
-
+func (rh *routeHandler) success(msg *channel2.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
 	rh.forwarder.Route(route)
 	log.Debug("forwarder updated with route")
 
@@ -122,14 +118,7 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, ch channel2.
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, err error, ctx logcontext.Context) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
-		WithField("context", ch.Label()).
-		WithField("circuitId", route.CircuitId).
-		WithField("binding", route.Egress.Binding).
-		WithField("destination", route.Egress.Destination).
-		WithField("attempt", route.Attempt)
-
+func (rh *routeHandler) fail(msg *channel2.Message, attempt int, route *ctrl_pb.Route, err error, log *logrus.Entry) {
 	log.WithError(err).Error("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
@@ -152,7 +141,7 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 	rh.pool.Queue(func() {
 		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-				sessionId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
+				circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
 
 				bindHandler := handler_xgress.NewBindHandler(
 					handler_xgress.NewReceiveHandler(rh.forwarder),
@@ -164,16 +153,16 @@ func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch cha
 					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 				}
 
-				if peerData, err := dialer.Dial(route.Egress.Destination, sessionId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
-					rh.success(msg, attempt, ch, route, peerData, ctx)
+				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
+					rh.success(msg, attempt, route, peerData, log)
 				} else {
-					rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), ctx)
+					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
 				}
 			} else {
-				rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), ctx)
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), log)
 			}
 		} else {
-			rh.fail(msg, attempt, ch, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), ctx)
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
 		}
 	})
 }
