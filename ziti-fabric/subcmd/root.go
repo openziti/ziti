@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 func init() {
@@ -80,6 +81,7 @@ var updateCmd = &cobra.Command{
 
 func Execute() {
 	if err := Root.Execute(); err != nil {
-		fmt.Printf("error: %s", err)
+		fmt.Printf("error: %s\n", err)
+		os.Exit(1)
 	}
 }

@@ -1,7 +1,17 @@
 # Release 0.22.0
 
+# What's New
+
+* Refactor: Fabric Sessions renamed to Circuits (breaking change)
+* Feature: Links will now wait for a timeout for retrying 
+* Bug fix: Sessions created on the controller when circuit creation fails are now cleaned up
+* Feature: Enhanced `ziti` CLI login functionality (has breaking changes to CLI options)
+* Feature: new `ziti edge list summary` command, which shows database entity counts
+* Bug fix: ziti-fabric didn't always report an error to the OS when it had an error
+* Refactor: All protobuf packages have been prefixed with `ziti.` to help prevent namespace clashes. Should not be a breaking change.
+
 ## Breaking Changes
-Fabric sessions renamed to circuits. See below for details.
+Fabric sessions renamed to circuits. External integrators may be impacted by changes to events. See below for details.
 
 Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. 
 Any command line argumet which previously had a `-i` short version now only has a long version.
@@ -25,14 +35,6 @@ The `ziti edge` commands now store session credentials in a new location and new
 The `ziti edge controller` command was previously deprecated and has now been removed. All commands that were previously available 
 under `ziti edge controller` are available under `ziti edge`.
 
-# What's New
-
-* Refactor: Fabric Sessions renamed to Circuits
-* Feature: Links will now wait for a timeout for retrying 
-* Bug fix: Sessions created on the controller when circuit creation fails are now cleaned up
-* Feature: Enhanced `ziti` CLI login functionality
-* Feature: new `ziti edge list summary` command, which shows database entity counts
-
 ## Fabric Sessions renamed to Circuits
 Previously we had three separate entities named session: fabric sessions, edge sessions and edge API sessions. In order to reduce confusion, fabric sessions
 have been renamed to circuits. This has the following impacts:
@@ -48,6 +50,25 @@ have been renamed to circuits. This has the following impacts:
     * In the router, under `forwarder`, `idleSessionTimeout` is now `idleCircuitTimeout`
 
 In the context of the fabric there was an existing construct call `Circuit` which has now been renamed to `Path`. This may be visible in a few `ziti-fabric` CLI outputs
+
+### Event changes
+Previously the fabric had session events. It now has circuit events instead. These events have the `fabric.circuits` namespace. The `circuitUpdated` event type 
+is now the `pathUpdated` event.
+
+```
+type CircuitEvent struct {
+	Namespace string    `json:"namespace"`
+	EventType string    `json:"event_type"`
+	CircuitId string    `json:"circuit_id"`
+	Timestamp time.Time `json:"timestamp"`
+	ClientId  string    `json:"client_id"`
+	ServiceId string    `json:"service_id"`
+	Path      string    `json:"circuit"`
+}
+```
+
+Additionally the Usage events now have `circuit_id` instead of `session_id`. The usage events also have a new `version` field, which is set to 2.
+
 
 # Pending Link Timeout
 Previously whenever a router connected we'd look for new links possiblities and create new links between routers where any were missing. 
