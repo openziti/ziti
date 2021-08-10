@@ -77,6 +77,7 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newVerifyCmd(f, out, errOut))
 	cmd.AddCommand(newDbCmd(f, out, errOut))
 	cmd.AddCommand(enrollment.NewEnrollCommand())
+	cmd.AddCommand(newTraceCmd(f, out, errOut))
 	return cmd
 }
 

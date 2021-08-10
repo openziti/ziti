@@ -565,7 +565,7 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), resp.String())
+		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -578,6 +578,15 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	return jsonParsed, nil
+}
+
+func prettyPrintResponse(resp *resty.Response) string {
+	out := resp.String()
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, []byte(out), "", "    "); err == nil {
+		return prettyJSON.String()
+	}
+	return out
 }
 
 func outputJson(out io.Writer, data []byte) {
@@ -621,7 +630,7 @@ func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out i
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), resp.String())
+			queryUrl, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -679,7 +688,7 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), resp.String())
+			queryUrl, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -903,7 +912,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 
 	if resp.StatusCode() != http.StatusCreated {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), resp.String())
+			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -948,7 +957,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, restClientIdentity.GetBaseUrl(), resp.Status(), resp.String())
+			entityPath, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -997,7 +1006,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 
 	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), resp.String())
+			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logResponseJSON {
@@ -1044,7 +1053,7 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error verifying %v instance (%v) in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, id, restClientIdentity.GetBaseUrl(), resp.Status(), resp.String())
+			entityType, id, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -1081,7 +1090,7 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			request.Method, entityType, restClientIdentity.GetBaseUrl(), resp.Status(), resp.String())
+			request.Method, entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {

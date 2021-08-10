@@ -476,7 +476,7 @@ func outputTerminators(o *edgeOptions, children []*gabs.Container, pagingInfo *p
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		service := entity.Path("service.name").Data().(string)
-		router := entity.Path("router.id").Data().(string)
+		router := entity.Path("router.name").Data().(string)
 		binding := entity.Path("binding").Data().(string)
 		address := entity.Path("address").Data().(string)
 		identity := entity.Path("identity").Data().(string)
