@@ -5,6 +5,56 @@
 * Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
 * Bug fix: Ziti CLI will no longer truncate paths on logins with explicit URLs
 * Bug fix: Ziti CLI will now correctly check the proper lengths of sha512 hashes in hex format
+* Feature: Ziti CLI improvements
+    * New interactive tutorial covering creating your first service. Run using: `ziti edge tutorial first-service`
+    * You can now delete multiple entities at once, by providing multiple ids. Ex: `ziti edge delete services one two` or `ziti edge delete service one two` will both work.
+    * You can now delete multiple entities at once, by providing a filter. Ex: `ziti edge delete services where 'name contains "foo"`
+    * Create and delete output now has additional context.
+* Feature: Terminators can now be filtered by service and router name: Ex: `ziti edge list terminators 'service.name = "echo"'`
+* Feature: New event type `edge.entityCounts`
+
+## Entity Count Events
+The Ziti Controller can now generate events with a summary of how many of each entity type are currently in the data store. It can be configured with an interval for how often the event will be generated. The default interval is five minutes.
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: edge.entityCounts
+        interval: 5m
+```
+
+Here is an example of the JSON output of the event:
+
+```
+{
+  "namespace": "edge.entityCounts",
+  "timestamp": "2021-08-19T13:39:54.056181406-04:00",
+  "counts": {
+    "apiSessionCertificates": 0,
+    "apiSessions": 9,
+    "authenticators": 4,
+    "cas": 0,
+    "configTypes": 5,
+    "configs": 2,
+    "edgeRouterPolicies": 4,
+    "enrollments": 0,
+    "eventLogs": 0,
+    "geoRegions": 17,
+    "identities": 6,
+    "identityTypes": 4,
+    "mfas": 0,
+    "postureCheckTypes": 5,
+    "postureChecks": 0,
+    "routers": 2,
+    "serviceEdgeRouterPolicies": 2,
+    "servicePolicies": 5,
+    "services": 3,
+    "sessions": 0
+  },
+  "error": ""
+}
+```
 
 # Release 0.22.0
 

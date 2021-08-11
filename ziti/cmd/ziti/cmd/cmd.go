@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge_controller"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -126,11 +126,10 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	initCommands := NewCmdInit(f, out, err)
 	createCommands := NewCmdCreate(f, out, err)
 	updateCommands := NewCmdUpdate(f, out, err)
-	deleteCommands := NewCmdDelete(f, out, err)
 	executeCommands := NewCmdExecute(f, out, err)
 	psCommands := NewCmdPs(f, out, err)
 	pkiCommands := NewCmdPKI(f, out, err)
-	edgeCommand := edge_controller.NewCmdEdge(f, out, err)
+	edgeCommand := edge.NewCmdEdge(f, out, err)
 	logFilter := NewCmdLogFormat(f, out, err)
 	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(f, out, err)
 
@@ -151,7 +150,6 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 				initCommands,
 				createCommands,
 				updateCommands,
-				deleteCommands,
 			},
 		},
 		{

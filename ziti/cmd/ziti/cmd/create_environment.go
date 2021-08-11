@@ -28,7 +28,7 @@ import (
 
 // CreateEnvironmentOptions the options for the create spring command
 type CreateEnvironmentOptions struct {
-	CreateOptions
+	CommonOptions
 
 	EnvName string
 }
@@ -36,12 +36,10 @@ type CreateEnvironmentOptions struct {
 // NewCmdCreateEnvironment creates a command object for the "create" command
 func NewCmdCreateEnvironment(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &CreateEnvironmentOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
+		CommonOptions: CommonOptions{
+			Factory: f,
+			Out:     out,
+			Err:     errOut,
 		},
 	}
 
@@ -65,12 +63,10 @@ func NewCmdCreateEnvironment(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 func (o *CreateEnvironmentOptions) addFlags(cmd *cobra.Command, defaultNamespace string, defaultOptionRelease string) {
 	cmd.Flags().StringVarP(&o.EnvName, "name", "", "", "Name of new 'environment'")
 	cmd.MarkFlagRequired("name")
-
 }
 
 // Run implements this command
 func (o *CreateEnvironmentOptions) Run() error {
-
 	deps := make([]string, 0)
 	deps = append(deps, "ansible")
 	err := o.installMissingDependencies(deps)

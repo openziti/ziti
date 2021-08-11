@@ -17,14 +17,16 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
-	"io"
-
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	_ "embed"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
+	"os"
+	"path/filepath"
+	"text/template"
 )
 
 const (
@@ -46,24 +48,23 @@ var (
 	`)
 )
 
+//go:embed config_templates/controller.yml
+var controllerConfigTemplate string
+
 // CreateConfigControllerOptions the options for the create spring command
 type CreateConfigControllerOptions struct {
 	CreateConfigOptions
 
+	OutputFile   string
+	DatabaseFile string
 	CtrlListener string
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreateConfigController(p common.OptionsProvider) *cobra.Command {
 	options := &CreateConfigControllerOptions{
 		CreateConfigOptions: CreateConfigOptions{
-			CreateOptions: CreateOptions{
-				CommonOptions: CommonOptions{
-					Factory: f,
-					Out:     out,
-					Err:     errOut,
-				},
-			},
+			CommonOptions: p(),
 		},
 	}
 
@@ -81,7 +82,6 @@ func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Wr
 		},
 	}
 
-	options.addCommonFlags(cmd)
 	options.addFlags(cmd, "", defaultCtrlListener)
 
 	return cmd
@@ -93,5 +93,27 @@ func (o *CreateConfigControllerOptions) Run() error {
 		return util.MissingOption(optionCtrlListener)
 	}
 
-	return fmt.Errorf("UNIMPLEMENTED: '%s'", "create config controller")
+	tmpl, err := template.New("controller-config").Parse(controllerConfigTemplate)
+	if err != nil {
+		return err
+	}
+
+	baseDir := filepath.Base(o.OutputFile)
+	if baseDir != "." {
+		if err := os.MkdirAll(baseDir, 0700); err != nil {
+			return errors.Wrapf(err, "unable to create directory to house config file: %v", o.OutputFile)
+		}
+	}
+
+	f, err := os.Create(o.OutputFile)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create config file: %v", o.OutputFile)
+	}
+	defer func() { _ = f.Close() }()
+
+	if err := tmpl.Execute(f, o); err != nil {
+		return errors.Wrap(err, "unable to execute template")
+	}
+
+	return nil
 }

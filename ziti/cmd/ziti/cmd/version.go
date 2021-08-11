@@ -229,81 +229,63 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 
 func (o *VersionOptions) upgradeZiti() error {
 	options := &UpgradeZitiOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiController() error {
 	options := &UpgradeZitiControllerOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiFabric() error {
 	options := &UpgradeZitiFabricOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiFabricTest() error {
 	options := &UpgradeZitiFabricTestOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiMgmtGw() error {
 	options := &UpgradeZitiMgmtGwOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiProxC() error {
 	options := &UpgradeZitiProxCOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiRouter() error {
 	options := &UpgradeZitiRouterOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiTunnel() error {
 	options := &UpgradeZitiTunnelOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
 
 func (o *VersionOptions) upgradeZitiEdgeTunnel() error {
 	options := &UpgradeZitiEdgeTunnelOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: o.CommonOptions,
-		},
+		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
 }
