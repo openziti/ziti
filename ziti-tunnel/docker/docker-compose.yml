@@ -1,49 +1,53 @@
-version: "3.3"
+version: "3.9"
+
+x-base-service: &base-service
+    image: netfoundry/ziti-tunnel:latest # https://hub.docker.com/r/netfoundry/ziti-tunnel/tags?page=1&ordering=last_updated
+    volumes:
+    - .:/netfoundry          # mount current dir (relative to Compose file) with identity config file
+    environment:
+    - NF_REG_NAME            # inherit when run like this: NF_REG_NAME=AcmeIdentity docker-compose up ziti-tproxy
+    - PFXLOG_NO_JSON=true    # suppress JSON logging
+    network_mode: host       # use the Docker host's network, not the Docker bridge
+
+x-iptables-capabilities: &iptables-capabilities
+    cap_add:
+    - NET_ADMIN              # iptables filter
+    - NET_RAW                # iptables mangle
+
 services:
-    ziti-test:
-        image: netfoundry/ziti-tunnel:latest
-        network_mode: host
-        cap_add:
-        - NET_ADMIN
-        entrypoint: ["sh", "-c", "while true; do sleep 11; done"]
-    ziti-tproxy:
-        image: netfoundry/ziti-tunnel:latest
-        network_mode: host
-        cap_add:
-        - NET_ADMIN
-        volumes:
-        - .:/netfoundry
-        environment:
-        - NF_REG_NAME
-        - PFXLOG_NO_JSON=true
-        command: tproxy
-#        command: tproxy --resolver udp://127.0.0.123:53
-    ziti-iproxy:
-        image: netfoundry/ziti-tunnel:latest
-        volumes:
-        - .:/netfoundry
-        network_mode: host
-        cap_add:
-        - NET_ADMIN
-        environment:
-        - NF_REG_NAME
-        - PFXLOG_NO_JSON=true
-        command: tproxy --resolver none
-    ziti-proxy:
-        image: netfoundry/ziti-tunnel:latest
-        volumes:
-        - .:/netfoundry
-        environment:
-        - NF_REG_NAME
-        - PFXLOG_NO_JSON=true
-        ports:
-        - "8888:8888"
-        - "9999:9999"
-        command: proxy "my example service":8888 "my other example service":9999
-    ziti-host:
-        image: netfoundry/ziti-tunnel:latest
-        volumes:
-        - .:/netfoundry
-        environment:
-        - NF_REG_NAME
+    ziti-tproxy:             # iptables transparent interceptor with DNS
+        <<: *base-service
+        <<: *iptables-capabilities
+        dns:                 # optionally, override DNS inherited from Docker host
+        - 127.0.0.1          # this first NS must match the built-in nameserver's bind address,
+        - 1.1.1.1            #   and a recursive NS is also needed e.g. 8.8.8.8
+        command: 
+        - tproxy
+        #- --resolver=udp://127.1.2.3:53     # override nameserver bind address (always 53/udp); default is 127.0.0.1
+        #- --dnsSvcIpRange=100.64.64.0/18    # override the IP range used for DNS intercepts; default is 100.64/10
+    ziti-tproxy-ip:          # iptables transparent interceptor without DNS
+        <<: *base-service
+        <<: *iptables-capabilities
+        command: 
+        - tproxy
+        - --resolver none
+        #- --dnsSvcIpRange=100.64.64.0/18    # override the IP range used for DNS intercepts; default is 100.64/10
+    ziti-test:               # docker-compose exec ziti-test bash
+        <<: *base-service
+        <<: *iptables-capabilities
+        entrypoint: ["sh", "-c", "while true; do sleep infinity; done"]
+    ziti-host:               # terminate a service for a server that's reachable by the host network
+        <<: *base-service
         command: host 
+    ziti-bridge:             # terminate a service for a server that's reachable by this Docker network (default mode is "bridge")
+        <<: *base-service
+        network_mode: bridge
+        command: host 
+    ziti-proxy:              # bind a named service to a container TCP port, optionally forward host TCP port to container
+        <<: *base-service
+        ports:
+        - "8888:8888"        # optionally forward host ports to container ports listening as TCP proxy
+        network_mode: bridge
+        command: 
+        - proxy
+        - '"my example service":8888' # example named service and container port to bind as TCP proxy
