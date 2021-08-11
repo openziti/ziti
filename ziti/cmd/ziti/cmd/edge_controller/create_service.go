@@ -98,13 +98,13 @@ func runCreateService(o *createServiceOptions) (err error) {
 	result, err := createEntityOfType("services", entityData.String(), &o.edgeOptions)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	serviceId := result.S("data", "id").Data()
 
 	if _, err = fmt.Fprintf(o.Out, "%v\n", serviceId); err != nil {
-		panic(err)
+		return err
 	}
 
 	return err

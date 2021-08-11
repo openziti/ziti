@@ -12,6 +12,8 @@ go 1.16
 
 //replace github.com/openziti/edge => ../edge
 
+//replace github.com/michaelquigley/pfxlog => ../pfxlog
+
 replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
@@ -19,8 +21,9 @@ require (
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/fatih/color v1.7.0
+	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
-	github.com/go-openapi/runtime v0.19.29
+	github.com/go-openapi/runtime v0.19.30
 	github.com/go-openapi/strfmt v0.20.1
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
@@ -28,11 +31,11 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
-	github.com/michaelquigley/pfxlog v0.6.0
-	github.com/openziti/edge v0.20.2
-	github.com/openziti/fabric v0.16.82
-	github.com/openziti/foundation v0.15.65
-	github.com/openziti/sdk-golang v0.15.72
+	github.com/michaelquigley/pfxlog v0.6.1
+	github.com/openziti/edge v0.20.20
+	github.com/openziti/fabric v0.16.92
+	github.com/openziti/foundation v0.15.69
+	github.com/openziti/sdk-golang v0.15.80
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0

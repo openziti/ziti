@@ -42,9 +42,9 @@ func newUpdateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Comma
 		edgeOptions: options,
 	}
 	cmd := &cobra.Command{
-		Use:   idType + " (-i <identityIdOrName> -p <newPassword>) | (-c <currentPassword> -n <newPassword>)",
+		Use:   idType + " (--identity <identityIdOrName> -p <newPassword>) | (-c <currentPassword> -n <newPassword>)",
 		Short: "allows an admin to set the updb authenticator of an identity or an authenticated session to update its authenticator ",
-		Long:  "The -i and -p flags are used in conjunction to set the password of an already existing updb authenticator. The -o and -n flags are used to update the current authenticated sessions updb authenticator",
+		Long:  "The --identity and -p flags are used in conjunction to set the password of an already existing updb authenticator. The -o and -n flags are used to update the current authenticated sessions updb authenticator",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -58,7 +58,7 @@ func newUpdateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Comma
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 
-	cmd.Flags().StringVarP(&updbOptions.identity, "identity", "i", "", "The id or name of the identity to update a password for, may be used with --password (requires admin)")
+	cmd.Flags().StringVar(&updbOptions.identity, "identity", "", "The id or name of the identity to update a password for, may be used with --password (requires admin)")
 	cmd.Flags().StringVarP(&updbOptions.identityPassword, "password", "p", "", "The password to set for an identity, may be used with --identity (requires admin), if not supplied a valued will be prompted for")
 
 	cmd.Flags().BoolVarP(&updbOptions.self, "self", "s", false, "Specify updating a password for the currently active identity can use --old and --new to supply passwords")
@@ -144,7 +144,7 @@ func setIdentityPassword(identity, password string, options edgeOptions) error {
 	filter := fmt.Sprintf(`identity="%s" and method="updb"`, id)
 
 	result, err := client.Authenticator.ListAuthenticators(&authenticator.ListAuthenticatorsParams{
-		Filter: &filter,
+		Filter:  &filter,
 		Context: context.Background(),
 	}, nil)
 

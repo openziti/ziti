@@ -16,7 +16,7 @@
 
 package subcmd
 
-type circuit struct {
+type path struct {
 	Path  []string `json:"path"`
 	Links []string `json:"links"`
 }
@@ -50,9 +50,9 @@ type service struct {
 	Egress          string `json:"egress"`
 }
 
-type session struct {
-	Id        string   `json:"id"`
-	ClientId  string   `json:"clientId"`
-	ServiceId string   `json:"serviceId"`
-	Circuit   *circuit `json:"circuit"`
+type circuit struct {
+	Id        string `json:"id"`
+	ClientId  string `json:"clientId"`
+	ServiceId string `json:"serviceId"`
+	Circuit   *path  `json:"circuit"`
 }

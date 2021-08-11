@@ -61,8 +61,8 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the service policy")
-	cmd.Flags().StringSliceVarP(&options.serviceRoles, "service-roles", "s", nil, "Service roles of the service policy")
-	cmd.Flags().StringSliceVarP(&options.identityRoles, "identity-roles", "i", nil, "Identity roles of the service policy")
+	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Service roles of the service policy")
+	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the service policy")
 	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture Check roles of the service policy")
 	options.AddCommonFlags(cmd)
 

@@ -17,41 +17,42 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
 
 func init() {
-	removeSessionClient = NewMgmtClient(removeSessionCmd)
-	removeSessionCmd.Flags().BoolVar(&removeSessionNow, "now", false, "Remove session now")
-	removeCmd.AddCommand(removeSessionCmd)
+	removeCircuitClient = NewMgmtClient(removeCircuitCmd)
+	removeCircuitCmd.Flags().BoolVar(&removeCircuitNow, "now", false, "Remove circuit now")
+	removeCmd.AddCommand(removeCircuitCmd)
 }
 
-var removeSessionCmd = &cobra.Command{
-	Use:   "session <sessionId>",
-	Short: "Remove a session from the fabric",
+var removeCircuitCmd = &cobra.Command{
+	Use:   "circuit <circuitId>",
+	Short: "Remove a circuit from the fabric",
 	Args:  cobra.ExactArgs(1),
-	Run:   removeSession,
+	Run:   removeCircuit,
 }
-var removeSessionNow bool
-var removeSessionClient *mgmtClient
 
-func removeSession(cmd *cobra.Command, args []string) {
-	if ch, err := removeSessionClient.Connect(); err == nil {
-		request := &mgmt_pb.RemoveSessionRequest{
-			SessionId: args[0],
-			Now:       removeSessionNow,
+var removeCircuitNow bool
+var removeCircuitClient *mgmtClient
+
+func removeCircuit(cmd *cobra.Command, args []string) {
+	if ch, err := removeCircuitClient.Connect(); err == nil {
+		request := &mgmt_pb.RemoveCircuitRequest{
+			CircuitId: args[0],
+			Now:       removeCircuitNow,
 		}
 		body, err := proto.Marshal(request)
 		if err != nil {
 			panic(err)
 		}
-		requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveSessionRequestType), body)
+		requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_RemoveCircuitRequestType), body)
 		waitCh, err := ch.SendAndWait(requestMsg)
 		if err != nil {
 			panic(err)

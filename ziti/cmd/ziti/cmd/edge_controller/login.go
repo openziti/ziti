@@ -30,6 +30,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // loginOptions are the flags for login commands
@@ -37,7 +38,10 @@ type loginOptions struct {
 	edgeOptions
 	Username string
 	Password string
+	Token    string
 	Cert     string
+	ReadOnly bool
+	Yes      bool
 }
 
 // newLoginCmd creates the command
@@ -66,12 +70,11 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 	cmd.Flags().SetInterspersed(true)
 
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
-	if err := cmd.MarkFlagRequired("username"); err != nil {
-		panic(err)
-	}
-
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
+	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
 	cmd.Flags().StringVarP(&options.Cert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
+	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
+	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -80,55 +83,73 @@ func newLoginCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comm
 // Run implements this command
 func (o *loginOptions) Run() error {
 	host := o.Args[0]
-
 	if !strings.HasPrefix(host, "http") {
 		host = "https://" + host
+	}
+
+	ctrlUrl, err := url.Parse(host)
+	if err != nil {
+		return errors.Wrap(err, "invalid controller URL")
+	}
+
+	host = ctrlUrl.Scheme + "://" + ctrlUrl.Host
+
+	if err = o.ConfigureCerts(host, ctrlUrl); err != nil {
+		return err
 	}
 
 	if certAbs, err := filepath.Abs(o.Cert); err == nil {
 		o.Cert = certAbs
 	}
 
-	hostUrl, err := url.Parse(host)
-
-	if err != nil {
-		return errors.Errorf("could not parse host, invalid: %v", err)
-	}
-
-	if hostUrl.Path == "" {
+	if ctrlUrl.Path == "" {
 		host = util.EdgeControllerGetManagementApiBasePath(host, o.Cert)
 	}
 
-	if o.Username != "" && o.Password == "" {
-		var err error
-		if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
+	if o.Token != "" && !o.Cmd.Flag("read-only").Changed {
+		o.ReadOnly = true
+		o.Println("NOTE: When using --token the saved identity will be marked as read-only unless --read-only=false is provided")
+	}
+
+	if o.Token == "" {
+		for o.Username == "" {
+			if o.Username, err = term.Prompt("Enter username: "); err != nil {
+				return err
+			}
+		}
+
+		if o.Username != "" && o.Password == "" {
+			if o.Password, err = term.PromptPassword("Enter password: ", false); err != nil {
+				return err
+			}
+		}
+
+		container := gabs.New()
+		_, _ = container.SetP(o.Username, "username")
+		_, _ = container.SetP(o.Password, "password")
+
+		body := container.String()
+
+		jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+
+		if err != nil {
 			return err
 		}
-	}
-	container := gabs.New()
-	_, _ = container.SetP(o.Username, "username")
-	_, _ = container.SetP(o.Password, "password")
 
-	body := container.String()
+		if !jsonParsed.ExistsP("data.token") {
+			return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
+		}
 
-	jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+		var ok bool
+		o.Token, ok = jsonParsed.Path("data.token").Data().(string)
 
-	if err != nil {
-		return err
-	}
+		if !ok {
+			return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
+		}
 
-	if !jsonParsed.ExistsP("data.token") {
-		return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
-	}
-
-	token, ok := jsonParsed.Path("data.token").Data().(string)
-
-	if !ok {
-		return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
-	}
-
-	if !o.OutputJSONResponse {
-		fmt.Printf("Token: %v\n", token)
+		if !o.OutputJSONResponse {
+			o.Printf("Token: %v\n", o.Token)
+		}
 	}
 
 	absCertPath, err := filepath.Abs(o.Cert)
@@ -136,14 +157,138 @@ func (o *loginOptions) Run() error {
 		o.Cert = absCertPath
 	}
 
-	session := &util.Session{
-		Host:  host,
-		Token: token,
-		Cert:  o.Cert,
+	loginIdentity := &util.RestClientIdentity{
+		Url:       host,
+		Token:     o.Token,
+		LoginTime: time.Now().Format(time.RFC3339),
+		Cert:      o.Cert,
+		ReadOnly:  o.ReadOnly,
 	}
 
-	err = session.Persist()
+	config, configFile, err := util.LoadRestClientConfig()
+	if err != nil {
+		return err
+	}
+
+	id := config.GetIdentity()
+	o.Printf("Saving identity '%v' to %v\n", id, configFile)
+	config.Identities[id] = loginIdentity
+
+	err = util.PersistRestClientConfig(config)
 
 	return err
 }
 
+func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
+	isServerTrusted, err := util.IsServerTrusted(host)
+	if err != nil {
+		return err
+	}
+
+	if !isServerTrusted && o.Cert == "" {
+		wellKnownCerts, certs, err := util.GetWellKnownCerts(host)
+		if err != nil {
+			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
+		}
+
+		certsTrusted, err := util.AreCertsTrusted(host, wellKnownCerts)
+		if err != nil {
+			return err
+		}
+		if !certsTrusted {
+			return errors.New("server supplied certs not trusted by server, unable to continue")
+		}
+
+		savedCerts, certFile, err := util.ReadCert(ctrlUrl.Hostname())
+		if err != nil {
+			return err
+		}
+
+		if savedCerts != nil {
+			o.Cert = certFile
+			if !util.AreCertsSame(o, wellKnownCerts, savedCerts) {
+				o.Printf("WARNING: server supplied certificate authority doesn't match cached certs at %v\n", certFile)
+				replace := o.Yes
+				if !replace {
+					if replace, err = o.askYesNo("Replace cached certs [Y/N]: "); err != nil {
+						return err
+					}
+				}
+				if replace {
+					_, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		} else {
+			o.Printf("Untrusted certificate authority retrieved from server\n")
+			o.Println("Verified that server supplied certificates are trusted by server")
+			o.Printf("Server supplied %v certificates\n", len(certs))
+			importCerts := o.Yes
+			if !importCerts {
+				if importCerts, err = o.askYesNo("Trust server provided certificate authority [Y/N]: "); err != nil {
+					return err
+				}
+			}
+			if importCerts {
+				o.Cert, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+				if err != nil {
+					return err
+				}
+			} else {
+				o.Println("WARNING: no certificate authority provided for server, continuing but login will likely fail")
+			}
+		}
+	} else if isServerTrusted && o.Cert != "" {
+		override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
+		if err != nil {
+			return err
+		}
+		if !override {
+			o.Cert = ""
+		}
+	}
+
+	return nil
+}
+
+func (o *loginOptions) askYesNo(prompt string) (bool, error) {
+	filter := &yesNoFilter{}
+	if _, err := o.ask(prompt, filter.Accept); err != nil {
+		return false, err
+	}
+	return filter.result, nil
+}
+
+func (o *loginOptions) ask(prompt string, f func(string) bool) (string, error) {
+	for {
+		val, err := term.Prompt(prompt)
+		if err != nil {
+			return "", err
+		}
+		val = strings.TrimSpace(val)
+		if f(val) {
+			return val, nil
+		}
+		o.Printf("Invalid input: %v\n", val)
+	}
+}
+
+type yesNoFilter struct {
+	result bool
+}
+
+func (self *yesNoFilter) Accept(s string) bool {
+	if strings.EqualFold("y", s) || strings.EqualFold("yes", s) {
+		self.result = true
+		return true
+	}
+
+	if strings.EqualFold("n", s) || strings.EqualFold("no", s) {
+		self.result = false
+		return true
+	}
+
+	return false
+}

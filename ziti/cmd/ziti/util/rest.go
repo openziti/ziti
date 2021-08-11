@@ -565,7 +565,7 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), resp.String())
+		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -578,6 +578,15 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 	}
 
 	return jsonParsed, nil
+}
+
+func prettyPrintResponse(resp *resty.Response) string {
+	out := resp.String()
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, []byte(out), "", "    "); err == nil {
+		return prettyJSON.String()
+	}
+	return out
 }
 
 func outputJson(out io.Writer, data []byte) {
@@ -594,34 +603,34 @@ func outputJson(out io.Writer, data []byte) {
 }
 
 func EdgeControllerDetailEntity(entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.GetCert() != "" {
-		client.SetRootCertificate(session.GetCert())
+	if restClientIdentity.GetCert() != "" {
+		client.SetRootCertificate(restClientIdentity.GetCert())
 	}
 
-	queryUrl := session.GetBaseUrl() + "/" + path.Join(entityType, entityId)
+	queryUrl := restClientIdentity.GetBaseUrl() + "/" + path.Join(entityType, entityId)
 
 	resp, err := client.
 		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.GetToken()).
+		SetHeader(constants.ZitiSession, restClientIdentity.GetToken()).
 		Get(queryUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, session.GetBaseUrl(), err)
+		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, restClientIdentity.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), resp.String())
+			queryUrl, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -648,18 +657,18 @@ func EdgeControllerListSubEntities(entityType, subType, entityId string, filter 
 
 // EdgeControllerList will list entities of the given type in the given Edge Controller
 func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.GetCert() != "" {
-		client.SetRootCertificate(session.GetCert())
+	if restClientIdentity.GetCert() != "" {
+		client.SetRootCertificate(restClientIdentity.GetCert())
 	}
 
-	queryUrl := session.GetBaseUrl() + "/" + path
+	queryUrl := restClientIdentity.GetBaseUrl() + "/" + path
 
 	if len(params) > 0 {
 		queryUrl += "?" + params.Encode()
@@ -670,16 +679,16 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.GetToken()).
+		SetHeader(constants.ZitiSession, restClientIdentity.GetToken()).
 		Get(queryUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, session.GetBaseUrl(), err)
+		return nil, fmt.Errorf("unable to list entities at %v in Ziti Edge Controller at %v. Error: %v", queryUrl, restClientIdentity.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), resp.String())
+			queryUrl, resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -699,13 +708,15 @@ var _ http.RoundTripper = &edgeTransport{}
 
 type edgeTransport struct {
 	*http.Transport
-	RequestFunc  func(*http.Request)
+	RequestFunc  func(*http.Request) error
 	ResponseFunc func(*http.Response, error)
 }
 
 func (edgeTransport *edgeTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 	if edgeTransport.RequestFunc != nil {
-		edgeTransport.RequestFunc(r)
+		if err := edgeTransport.RequestFunc(r); err != nil {
+			return nil, err
+		}
 	}
 
 	resp, err := edgeTransport.Transport.RoundTrip(r)
@@ -769,9 +780,8 @@ type EdgeManagementClientOpts interface {
 }
 
 func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
-	session := &Session{}
-
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedIdentity()
+	if err != nil {
 		return nil, err
 	}
 
@@ -793,25 +803,29 @@ func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_managem
 		}
 	}
 
-	reqFunc := func(request *http.Request) {
+	reqFunc := func(request *http.Request) error {
+		if restClientIdentity.ReadOnly && !strings.EqualFold(request.Method, "get") {
+			return errors.New("this login is marked read-only, only GET operations are allowed")
+		}
 		if clientOpts.OutputRequestJson() {
 			if request == nil || request.Body == nil {
 				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty request body>\n")
-				return
+				return nil
 			}
 
 			body, err := request.GetBody()
 			if err == nil {
 				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not copy request body: %v", err)
-				return
+				return nil
 			}
 			bodyContent, err := ioutil.ReadAll(body)
 			if err != nil {
 				bodyStr := string(bodyContent)
 				_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
-				return
+				return nil
 			}
 		}
+		return nil
 	}
 
 	httpClientTransport := &edgeTransport{
@@ -834,9 +848,9 @@ func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_managem
 
 	rootCaPool := x509.NewCertPool()
 
-	rootPemData, err := ioutil.ReadFile(session.Cert)
+	rootPemData, err := ioutil.ReadFile(restClientIdentity.Cert)
 	if err != nil {
-		return nil, errors.Errorf("could not read session certificates [%s]: %v", session.Cert, err)
+		return nil, errors.Errorf("could not read session certificates [%s]: %v", restClientIdentity.Cert, err)
 	}
 
 	rootCaPool.AppendCertsFromPEM(rootPemData)
@@ -849,7 +863,7 @@ func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_managem
 		Transport: httpClientTransport,
 		Timeout:   10 * time.Second,
 	}
-	parsedHost, err := url.Parse(session.Host)
+	parsedHost, err := url.Parse(restClientIdentity.Url)
 	if err != nil {
 		return nil, err
 	}
@@ -857,7 +871,7 @@ func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_managem
 	clientRuntime := httptransport.NewWithClient(parsedHost.Host, rest_management_api_client.DefaultBasePath, rest_management_api_client.DefaultSchemes, httpClient)
 
 	clientRuntime.DefaultAuthentication = &EdgeManagementAuth{
-		Token: session.Token,
+		Token: restClientIdentity.Token,
 	}
 
 	return rest_management_api_client.New(clientRuntime, nil), nil
@@ -873,32 +887,32 @@ func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientReq
 
 // EdgeControllerCreate will create entities of the given type in the given Edge Controller
 func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedRWIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.Cert != "" {
-		client.SetRootCertificate(session.Cert)
+	if restClientIdentity.Cert != "" {
+		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.Token).
+		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		SetBody(body).
-		Post(session.Host + "/" + entityType)
+		Post(restClientIdentity.GetBaseUrl() + "/" + entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to create %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
+		return nil, fmt.Errorf("unable to create %v instance in Ziti Edge Controller at %v. Error: %v", entityType, restClientIdentity.Url, err)
 	}
 
 	if resp.StatusCode() != http.StatusCreated {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, session.Host, resp.Status(), resp.String())
+			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -908,7 +922,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", restClientIdentity.GetBaseUrl(), resp.String())
 	}
 
 	return jsonParsed, nil
@@ -916,34 +930,34 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 
 // EdgeControllerDelete will delete entities of the given type in the given Edge Controller
 func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedRWIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.Cert != "" {
-		client.SetRootCertificate(session.Cert)
+	if restClientIdentity.Cert != "" {
+		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 	entityPath := entityType + "/" + id
-	fullUrl := session.Host + "/" + entityPath
+	fullUrl := restClientIdentity.GetBaseUrl() + "/" + entityPath
 
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.Token).
+		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		Delete(fullUrl)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, session.Host, err)
+		return nil, fmt.Errorf("unable to delete %v instance in Ziti Edge Controller at %v. Error: %v", entityPath, restClientIdentity.Url, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, session.Host, resp.Status(), resp.String())
+			entityPath, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -953,7 +967,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", restClientIdentity.GetBaseUrl(), resp.String())
 	}
 
 	return jsonParsed, nil
@@ -961,15 +975,15 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 
 // EdgeControllerUpdate will update entities of the given type in the given Edge Controller
 func EdgeControllerUpdate(entityType string, body string, out io.Writer, method string, logRequestJson, logResponseJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedRWIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.Cert != "" {
-		client.SetRootCertificate(session.Cert)
+	if restClientIdentity.Cert != "" {
+		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 
 	if logRequestJson {
@@ -982,17 +996,17 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.Token).
+		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		SetBody(body).
-		Execute(method, session.Host+"/"+entityType)
+		Execute(method, restClientIdentity.GetBaseUrl()+"/"+entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, session.Host, err)
+		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, restClientIdentity.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, session.Host, resp.Status(), resp.String())
+			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logResponseJSON {
@@ -1006,7 +1020,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", restClientIdentity.GetBaseUrl(), resp.String())
 	}
 
 	return jsonParsed, nil
@@ -1014,32 +1028,32 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 
 // EdgeControllerVerify will create entities of the given type in the given Edge Controller
 func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bool, timeout int, verbose bool) error {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedRWIdentity()
+	if err != nil {
 		return err
 	}
 
 	client := newClient()
 
-	if session.Cert != "" {
-		client.SetRootCertificate(session.Cert)
+	if restClientIdentity.Cert != "" {
+		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "text/plain").
-		SetHeader(constants.ZitiSession, session.Token).
+		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		SetBody(body).
-		Post(session.Host + "/" + entityType + "/" + id + "/verify")
+		Post(restClientIdentity.GetBaseUrl() + "/" + entityType + "/" + id + "/verify")
 
 	if err != nil {
-		return fmt.Errorf("unable to verify %v instance [%s] in Ziti Edge Controller at %v. Error: %v", entityType, id, session.Host, err)
+		return fmt.Errorf("unable to verify %v instance [%s] in Ziti Edge Controller at %v. Error: %v", entityType, id, restClientIdentity.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error verifying %v instance (%v) in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, id, session.Host, resp.Status(), resp.String())
+			entityType, id, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -1050,15 +1064,15 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 }
 
 func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeout int, verbose bool, doRequest func(*resty.Request, string) (*resty.Response, error)) (*gabs.Container, error) {
-	session := &Session{}
-	if err := session.Load(); err != nil {
+	restClientIdentity, err := LoadSelectedRWIdentity()
+	if err != nil {
 		return nil, err
 	}
 
 	client := newClient()
 
-	if session.Cert != "" {
-		client.SetRootCertificate(session.Cert)
+	if restClientIdentity.Cert != "" {
+		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 
 	request := client.
@@ -1066,17 +1080,17 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader(constants.ZitiSession, session.Token)
+		SetHeader(constants.ZitiSession, restClientIdentity.Token)
 
-	resp, err := doRequest(request, session.Host+"/"+entityType)
+	resp, err := doRequest(request, restClientIdentity.GetBaseUrl()+"/"+entityType)
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to [%s] %v instance in Ziti Edge Controller at %v. Error: %v", request.Method, entityType, session.Host, err)
+		return nil, fmt.Errorf("unable to [%s] %v instance in Ziti Edge Controller at %v. Error: %v", request.Method, entityType, restClientIdentity.GetBaseUrl(), err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			request.Method, entityType, session.Host, resp.Status(), resp.String())
+			request.Method, entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
 	if logJSON {
@@ -1090,7 +1104,7 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", session.Host, resp.String())
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", restClientIdentity.GetBaseUrl(), resp.String())
 	}
 
 	return jsonParsed, nil

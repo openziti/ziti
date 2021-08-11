@@ -30,7 +30,6 @@ import (
 // NewCmdEdge creates a command object for the "controller" command
 func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
-	cmd.AddCommand(newCmdEdgeController(f, out, errOut))
 	populateEdgeCommands(f, out, errOut, cmd)
 	return cmd
 }
@@ -58,24 +57,19 @@ func (options *edgeOptions) ErrOutputWriter() io.Writer {
 	return options.CommonOptions.Err
 }
 func (options *edgeOptions) AddCommonFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVarP(&common.CliIdentity, "cli-identity", "i", "", "Specify the saved identity you want the CLI to use when connect to the controller with")
 	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
 	cmd.Flags().IntVarP(&options.Timeout, "timeout", "", 5, "Timeout for REST operations (specified in seconds)")
 	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
 }
 
-// newCmdEdgeController creates a command object for the "edge controller" command
-func newCmdEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	cmd := util.NewEmptyParentCmd("controller", "Interact with a Ziti Edge Controller")
-	populateEdgeCommands(f, out, errOut, cmd)
-	return cmd
-}
-
 func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
-
 	cmd.AddCommand(newCreateCmd(f, out, errOut))
 	cmd.AddCommand(newDeleteCmd(f, out, errOut))
 	cmd.AddCommand(newLoginCmd(f, out, errOut))
+	cmd.AddCommand(newLogoutCmd(f, out, errOut))
+	cmd.AddCommand(newUseCmd(f, out, errOut))
 	cmd.AddCommand(newListCmd(f, out, errOut))
 	cmd.AddCommand(newUpdateCmd(f, out, errOut))
 	cmd.AddCommand(newVersionCmd(f, out, errOut))
@@ -83,6 +77,7 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newVerifyCmd(f, out, errOut))
 	cmd.AddCommand(newDbCmd(f, out, errOut))
 	cmd.AddCommand(enrollment.NewEnrollCommand())
+	cmd.AddCommand(newTraceCmd(f, out, errOut))
 	return cmd
 }
 
