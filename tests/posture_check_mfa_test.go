@@ -448,6 +448,17 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 					standardJsonResponseTests(resp, http.StatusCreated, t)
+					
+					t.Run("woke posture response should include service timeout change event", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						responseEnvelope := &rest_model.PostureResponseEnvelope{}
+
+						err := responseEnvelope.UnmarshalBinary(resp.Body())
+						ctx.Req.NoError(err)
+
+						ctx.Req.Len(responseEnvelope.Data.Services, 1)
+					})
 
 					t.Run("service has the posture check in its queries", func(t *testing.T) {
 						ctx.testContextChanged(t)
@@ -728,6 +739,19 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				ctx.Req.NoError(err)
 				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
+				resp, err = newSession.NewRequest().Get("/current-api-session/service-updates")
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+				serviceUpdateContainer, err := gabs.ParseJSON(resp.Body())
+				ctx.Req.NoError(err)
+
+				ctx.Req.True(serviceUpdateContainer.ExistsP("data.lastChangeAt"))
+
+				lastChangeAt, ok := serviceUpdateContainer.Path("data.lastChangeAt").Data().(string)
+				ctx.Req.True(ok)
+				ctx.Req.NotEmpty(lastChangeAt)
+
 				t.Run("after the MFA posture check timeout", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
@@ -735,6 +759,25 @@ func Test_PostureChecks_MFA(t *testing.T) {
 					if durationTillTimeout > 0 {
 						time.Sleep(durationTillTimeout)
 					}
+
+					t.Run("the last updated at serviced endpoint has changed", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						resp, err = newSession.NewRequest().Get("/current-api-session/service-updates")
+						ctx.Req.NoError(err)
+						ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+						serviceUpdateContainer, err := gabs.ParseJSON(resp.Body())
+						ctx.Req.NoError(err)
+
+						ctx.Req.True(serviceUpdateContainer.ExistsP("data.lastChangeAt"))
+
+						newLastChangeAt, ok := serviceUpdateContainer.Path("data.lastChangeAt").Data().(string)
+						ctx.Req.True(ok)
+						ctx.Req.NotEmpty(newLastChangeAt)
+
+						ctx.Req.NotEqual(newLastChangeAt, lastChangeAt)
+					})
 
 					t.Run("the existing session was removed", func(t *testing.T) {
 						ctx.testContextChanged(t)

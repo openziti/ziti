@@ -628,7 +628,7 @@ func (m *Migrations) addPostureCheckTypes(step *boltz.MigrationStep) {
 		iOS,
 	}
 
-	types := []*PostureCheckType{
+	types := []*PostureCheckOs{
 		{
 			BaseExtEntity: boltz.BaseExtEntity{
 				Id:        "OS",

@@ -31,6 +31,7 @@ import (
 type Session struct {
 	models.BaseEntity
 	Token           string
+	IdentityId      string
 	ApiSessionId    string
 	ServiceId       string
 	Type            string
@@ -58,6 +59,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,
 		ApiSessionId:    entity.ApiSessionId,
+		IdentityId:      entity.IdentityId,
 		ServiceId:       entity.ServiceId,
 		Type:            entity.Type,
 		ApiSession:      apiSession,
@@ -103,6 +105,7 @@ func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, 
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,
 		ApiSessionId:    entity.ApiSessionId,
+		IdentityId:      entity.IdentityId,
 		ServiceId:       entity.ServiceId,
 		Type:            entity.Type,
 		ServicePolicies: entity.ServicePolicies,
@@ -121,6 +124,7 @@ func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity)
 	entity.FillCommon(boltSession)
 	entity.Token = boltSession.Token
 	entity.ApiSessionId = boltSession.ApiSessionId
+	entity.IdentityId = boltSession.IdentityId
 	entity.ServiceId = boltSession.ServiceId
 	entity.Type = boltSession.Type
 	entity.ServicePolicies = boltSession.ServicePolicies

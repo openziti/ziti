@@ -30,6 +30,7 @@ const (
 	FieldSessionToken           = "token"
 	FieldSessionApiSession      = "apiSession"
 	FieldSessionService         = "service"
+	FieldSessionIdentity        = "identity"
 	FieldSessionType            = "type"
 	FieldSessionServicePolicies = "servicePolicies"
 
@@ -47,6 +48,7 @@ var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 type Session struct {
 	boltz.BaseExtEntity
 	Token           string
+	IdentityId      string
 	ApiSessionId    string
 	ServiceId       string
 	Type            string
@@ -60,6 +62,7 @@ func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) 
 	entity.Token = bucket.GetStringOrError(FieldSessionToken)
 	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
 	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
+	entity.IdentityId = bucket.GetStringOrError(FieldSessionIdentity)
 	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
 	entity.ServicePolicies = bucket.GetStringList(FieldSessionServicePolicies)
 }
@@ -78,6 +81,7 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldSessionToken, entity.Token)
 	ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
 	ctx.SetString(FieldSessionService, entity.ServiceId)
+	ctx.SetString(FieldSessionIdentity, entity.IdentityId)
 	ctx.SetString(FieldSessionType, entity.Type)
 	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
 

@@ -17,11 +17,14 @@
 package model
 
 import (
+	"bytes"
 	"github.com/jinzhu/copier"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/concurrenz"
 	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"
 	"regexp"
@@ -30,14 +33,14 @@ import (
 )
 
 const (
-	EventIdentityPostureDataAltered   = "EventIdentityPostureDataAltered"
-	EventApiSessionPostureDataAltered = "EventApiSessionPostureDataAltered"
+	EventIdentityPostureDataAltered = "EventIdentityPostureDataAltered"
 )
 
 type PostureCache struct {
 	identityToPostureData    cmap.ConcurrentMap //identityId -> PostureData
 	apiSessionIdToIdentityId cmap.ConcurrentMap //apiSessionId -> identityId
 	ticker                   *time.Ticker
+	isRunning                concurrenz.AtomicBoolean
 	events.EventEmmiter
 	env Env
 }
@@ -49,15 +52,17 @@ func newPostureCache(env Env) *PostureCache {
 		ticker:                   time.NewTicker(5 * time.Second),
 		EventEmmiter:             events.New(),
 		env:                      env,
+		isRunning:                concurrenz.AtomicBoolean(0),
 	}
 
 	pc.run(env.GetHostController().GetCloseNotifyChannel())
 
-	env.GetStores().Session.AddListener(boltz.EventCreate, pc.SessionCreated)
-	env.GetStores().Session.AddListener(boltz.EventDelete, pc.SessionDeleted)
 	env.GetStores().ApiSession.AddListener(boltz.EventCreate, pc.ApiSessionCreated)
 	env.GetStores().ApiSession.AddListener(boltz.EventDelete, pc.ApiSessionDeleted)
 	env.GetStores().Identity.AddListener(boltz.EventDelete, pc.IdentityDeleted)
+
+	env.GetStores().PostureCheckType.AddListener(boltz.EventCreate, pc.PostureCheckChanged)
+	env.GetStores().PostureCheckType.AddListener(boltz.EventUpdate, pc.PostureCheckChanged)
 
 	return pc
 }
@@ -67,33 +72,101 @@ func (pc *PostureCache) run(closeNotify <-chan struct{}) {
 		for {
 			select {
 			case <-pc.ticker.C:
-				changedIdentityIds := map[string]struct{}{}
-
-				for _, identityId := range pc.identityToPostureData.Keys() {
-					pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
-						var postureData *PostureData
-						if exist {
-							postureData = valueInMap.(*PostureData)
-						} else {
-							postureData = newPostureData()
-						}
-
-						if changed := postureData.CheckTimeouts(); changed {
-							changedIdentityIds[identityId] = struct{}{}
-						}
-
-						return postureData
-					})
-				}
-				for identityId := range changedIdentityIds {
-					pc.Emit(EventIdentityPostureDataAltered, identityId)
-				}
+				go pc.evaluate()
 			case <-closeNotify:
 				pc.ticker.Stop()
 				return
 			}
 		}
 	}()
+}
+
+func (pc *PostureCache) evaluate() {
+	if !pc.isRunning.CompareAndSwap(false, true) {
+		return
+	}
+
+	log := pfxlog.Logger()
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("error during posture timeout enforcement: %v", r)
+		}
+
+		pc.isRunning.Set(false)
+	}()
+
+	var lastId []byte
+	const maxToDeletePerTx = 1000
+	var toDeleteSessionIds []string
+
+	newIdentityServiceUpdates := map[string]struct{}{}       //tracks the current loops identityIds that have had updates
+	completedIdentityServiceUpdates := map[string]struct{}{} //tracks overall identityIds that have been notified of an update
+
+	done := false
+
+	// Chunk data in maxToDelete bunches to limit how many sessions we are deleting in a transaction.
+	// Requires tracking of which session was last evaluated, kept in lastId.
+	for !done {
+		_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+			cursor := pc.env.GetStores().Session.IterateIds(tx, ast.BoolNodeTrue)
+
+			if len(lastId) != 0 {
+				cursor.Seek(lastId)
+
+				if cursor.IsValid() {
+					if bytes.Compare(cursor.Current(), lastId) == 0 {
+						cursor.Next()
+					}
+				}
+			}
+
+			done = !cursor.IsValid()
+
+			for cursor.IsValid() && len(toDeleteSessionIds) < maxToDeletePerTx {
+				lastId = cursor.Current()
+				session, err := pc.env.GetStores().Session.LoadOneById(tx, string(cursor.Current()))
+
+				if err == nil && session != nil {
+					result := pc.env.GetHandlers().Session.EvaluatePostureForService(session.IdentityId, session.ApiSessionId, session.Type, session.ServiceId, "")
+
+					if !result.Passed {
+						log.WithFields(map[string]interface{}{
+							"apiSessionId": session.ApiSessionId,
+							"identityId":   session.IdentityId,
+							"sessionId":    session.Id,
+						}).Tracef("session [%s] failed posture checks, removing", session.Id)
+
+						toDeleteSessionIds = append(toDeleteSessionIds, session.Id)
+						newIdentityServiceUpdates[session.IdentityId] = struct{}{}
+					}
+				}
+
+				cursor.Next()
+			}
+
+			return nil
+		})
+
+		//delete sessions that failed pc checks, clear list
+		for _, sessionId := range toDeleteSessionIds {
+			err := pc.env.GetHandlers().Session.Delete(sessionId)
+			if err != nil {
+				log.WithError(err).Errorf("error removing session [%s] due to posture check failure, delete error: %v", sessionId, err)
+			}
+		}
+		toDeleteSessionIds = []string{}
+
+		//notify endpoints that they may have new service posture queries
+		for identityId, _ := range newIdentityServiceUpdates {
+			if _, ok := completedIdentityServiceUpdates[identityId]; !ok {
+				completedIdentityServiceUpdates[identityId] = struct{}{}
+				pc.env.HandleServiceUpdatedEventForIdentityId(identityId)
+			}
+		}
+
+		newIdentityServiceUpdates = map[string]struct{}{}
+	}
 }
 
 func (pc *PostureCache) Add(identityId string, postureResponses []*PostureResponse) {
@@ -187,114 +260,13 @@ func (pc *PostureCache) PostureData(identityId string) *PostureData {
 	return result
 }
 
-func (pc *PostureCache) SessionCreated(args ...interface{}) {
-	var session *persistence.Session
-	if len(args) == 1 {
-		session, _ = args[0].(*persistence.Session)
-	}
-
-	if session == nil {
-		pfxlog.Logger().Error("session created event trigger with args[0] not convertible to *persistence.Session")
-		return
-	}
-
-	mfaTimeout := int64(0)
-
-	postureCheckLinks := pc.env.GetStores().ServicePolicy.GetLinkCollection(persistence.EntityTypePostureChecks)
-
-	for _, policyId := range session.ServicePolicies {
-		pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-			cursor := postureCheckLinks.IterateLinks(tx, []byte(policyId))
-
-			for cursor.IsValid() {
-				checkId := string(cursor.Current())
-				if check, err := pc.env.GetStores().PostureCheck.LoadOneById(tx, checkId); err == nil {
-					if check.TypeId == PostureCheckTypeMFA {
-						if mfaCheck, ok := check.SubType.(*persistence.PostureCheckMfa); ok {
-							if mfaCheck.TimeoutSeconds == PostureCheckNoTimeout {
-								mfaTimeout = PostureCheckNoTimeout
-							} else if mfaTimeout != PostureCheckNoTimeout {
-								if mfaCheck.TimeoutSeconds > mfaTimeout {
-									mfaTimeout = mfaCheck.TimeoutSeconds
-								}
-							}
-						}
-					}
-				}
-				cursor.Next()
-			}
-			return nil
-		})
-	}
-
-	if identityIdVal, ok := pc.apiSessionIdToIdentityId.Get(session.ApiSessionId); ok {
-		identityId := identityIdVal.(string)
-		pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
-			var pd *PostureData
-
-			if exist {
-				pd = valueInMap.(*PostureData)
-			} else {
-				pd = newValue.(*PostureData)
-			}
-
-			if pd.ApiSessions == nil {
-				pd.ApiSessions = map[string]*ApiSessionPostureData{}
-			}
-
-			if _, ok := pd.ApiSessions[session.ApiSessionId]; !ok {
-				pd.ApiSessions[session.ApiSessionId] = &ApiSessionPostureData{}
-			}
-
-			if pd.ApiSessions[session.ApiSessionId].Sessions == nil {
-				pd.ApiSessions[session.ApiSessionId].Sessions = map[string]*PostureSessionData{}
-			}
-
-			pd.ApiSessions[session.ApiSessionId].Sessions[session.Id] = &PostureSessionData{
-				MfaTimeout: mfaTimeout,
-			}
-
-			return pd
-		})
-	}
-}
-
-func (pc *PostureCache) SessionDeleted(args ...interface{}) {
-	var session *persistence.Session
-	if len(args) == 1 {
-		session, _ = args[0].(*persistence.Session)
-	}
-
-	if session == nil {
-		pfxlog.Logger().Error("session deleted event trigger with args[0] not convertible to *persistence.Session")
-		return
-	}
-
-	if identityIdVal, ok := pc.apiSessionIdToIdentityId.Get(session.ApiSessionId); ok {
-		identityId := identityIdVal.(string)
-		pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
-			var postureData *PostureData
-			if exist {
-				postureData = valueInMap.(*PostureData)
-			} else {
-				postureData = newValue.(*PostureData)
-			}
-
-			if apiSessionData, ok := postureData.ApiSessions[session.ApiSessionId]; ok {
-				if apiSessionData.Sessions != nil {
-					delete(apiSessionData.Sessions, session.Id)
-				}
-			}
-
-			return postureData
-		})
-	}
-}
-
 func (pc *PostureCache) ApiSessionCreated(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {
 		apiSession, _ = args[0].(*persistence.ApiSession)
+	} else {
+		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
+		return
 	}
 
 	if apiSession == nil {
@@ -309,6 +281,9 @@ func (pc *PostureCache) ApiSessionDeleted(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {
 		apiSession, _ = args[0].(*persistence.ApiSession)
+	} else {
+		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
+		return
 	}
 
 	if apiSession == nil {
@@ -337,6 +312,9 @@ func (pc *PostureCache) IdentityDeleted(args ...interface{}) {
 	var identity *persistence.Identity
 	if len(args) == 1 {
 		identity, _ = args[0].(*persistence.Identity)
+	} else {
+		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
+		return
 	}
 
 	if identity == nil {
@@ -347,6 +325,59 @@ func (pc *PostureCache) IdentityDeleted(args ...interface{}) {
 	pc.identityToPostureData.Remove(identity.Id)
 }
 
+//PostureCheckChanged notifies all associated identities that posture configuration has changed
+//and that endpoints may need to reevaluate posture queries.
+func (pc *PostureCache) PostureCheckChanged(args ...interface{}) {
+	var entity boltz.Entity
+	if len(args) == 1 {
+		var ok bool
+		entity, ok = args[0].(boltz.Entity)
+
+		if !ok {
+			pfxlog.Logger().Errorf("unexpected type [%T] expected boltz.Entity: %v", args[0], args[0])
+		}
+	} else {
+		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
+		return
+	}
+
+	servicePolicyLinks := pc.env.GetStores().PostureCheck.GetLinkCollection(persistence.EntityTypeServicePolicies)
+
+	if servicePolicyLinks == nil {
+		pfxlog.Logger().Error("posture checks had no links to service policies")
+		return
+	}
+
+	identitiesToNotify := map[string]struct{}{}
+
+	_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		servicePolicyCursor := servicePolicyLinks.IterateLinks(tx, []byte(entity.GetId()))
+
+		for servicePolicyCursor.IsValid() {
+			identityLink := pc.env.GetStores().ServicePolicy.GetLinkCollection(persistence.EntityTypeIdentities)
+
+			if identityLink == nil {
+				pfxlog.Logger().Error("service policies had no link to identities")
+				return nil
+			}
+
+			identityCursor := identityLink.IterateLinks(tx, servicePolicyCursor.Current())
+
+			for identityCursor.IsValid() {
+				identitiesToNotify[string(identityCursor.Current())] = struct{}{}
+			}
+
+			servicePolicyCursor.Next()
+		}
+
+		return nil
+	})
+
+	for identityId, _ := range identitiesToNotify {
+		pc.env.HandleServiceUpdatedEventForIdentityId(identityId)
+	}
+}
+
 type PostureSessionData struct {
 	MfaTimeout int64
 }
@@ -354,7 +385,6 @@ type PostureSessionData struct {
 type ApiSessionPostureData struct {
 	Mfa           *PostureResponseMfa           `json:"mfa"`
 	EndpointState *PostureResponseEndpointState `json:"endpointState"`
-	Sessions      map[string]*PostureSessionData
 	SdkInfo       *SdkInfo
 }
 
@@ -413,21 +443,6 @@ func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) (bo
 	}
 
 	return len(failures) == 0, failures
-}
-
-func (pd *PostureData) CheckTimeouts() bool {
-	for _, apiSessionData := range pd.ApiSessions {
-		for _, sessionData := range apiSessionData.Sessions {
-			if sessionData.MfaTimeout != PostureCheckNoTimeout && apiSessionData.Mfa != nil && apiSessionData.Mfa.PassedMfaAt != nil {
-				expiresAt := apiSessionData.Mfa.PassedMfaAt.Add(time.Duration(sessionData.MfaTimeout) * time.Second)
-				if expiresAt.Before(time.Now()) {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
 }
 
 func (pd *PostureData) Copy() *PostureData {

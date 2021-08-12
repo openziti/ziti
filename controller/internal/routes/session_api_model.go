@@ -48,7 +48,7 @@ func (factory *SessionLinkFactoryImpl) Links(entity models.Entity) rest_model.Li
 	return links
 }
 
-func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCreate) *model.Session {
+func MapCreateSessionToModel(identityId, apiSessionId string, session *rest_model.SessionCreate) *model.Session {
 	ret := &model.Session{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(session.Tags),
@@ -56,6 +56,7 @@ func MapCreateSessionToModel(apiSessionId string, session *rest_model.SessionCre
 		Token:           uuid.New().String(),
 		ApiSessionId:    apiSessionId,
 		ServiceId:       session.ServiceID,
+		IdentityId:      identityId,
 		Type:            string(session.Type),
 		SessionCerts:    nil,
 		ServicePolicies: nil,
@@ -126,6 +127,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 			APISessionID: &apiSession.Id,
 			Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
 			ServiceID:    &service.Id,
+			IdentityID:   &sessionModel.IdentityId,
 			EdgeRouters:  edgeRouters,
 			Type:         &dialBindType,
 			Token:        &sessionModel.Token,

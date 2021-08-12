@@ -149,6 +149,8 @@ func (store *postureCheckStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex 
 func (store *postureCheckStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
+	store.AddSymbol(FieldPostureCheckMfaPromptOnUnlock, ast.NodeTypeBool, "MFA")
+	store.AddSymbol(FieldPostureCheckMfaPromptOnWake, ast.NodeTypeBool, "MFA")
 
 	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)

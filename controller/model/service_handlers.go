@@ -261,6 +261,7 @@ func (handler *EdgeServiceHandler) mergeConfigs(tx *bbolt.Tx, configTypes map[st
 type PolicyPostureChecks struct {
 	PostureChecks []*PostureCheck
 	PolicyType    persistence.PolicyType
+	PolicyName    string
 }
 
 func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
@@ -293,6 +294,7 @@ func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId 
 			policyIdToChecks[policyIdStr] = &PolicyPostureChecks{
 				PostureChecks: []*PostureCheck{},
 				PolicyType:    policy.PolicyType,
+				PolicyName:    policy.Name,
 			}
 
 			cursor := postureCheckLinks.IterateLinks(tx, policyIdBytes)

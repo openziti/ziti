@@ -13995,6 +13995,7 @@ definitions:
       - service
       - token
       - edgeRouters
+      - identityId
       properties:
         apiSession:
           $ref: '#/definitions/entityRef'
@@ -14004,6 +14005,8 @@ definitions:
           type: array
           items:
             $ref: '#/definitions/sessionEdgeRouter'
+        identityId:
+          type: string
         service:
           $ref: '#/definitions/entityRef'
         serviceId:

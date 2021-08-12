@@ -50,6 +50,7 @@ definitions:
           - service
           - token
           - edgeRouters
+          - identityId
         properties:
           type:
             $ref: 'base-entity.yml#/definitions/dialBind'
@@ -67,6 +68,8 @@ definitions:
             type: array
             items:
               $ref: '#/definitions/sessionEdgeRouter'
+          identityId:
+            type: string
   sessionEdgeRouter:
     allOf:
       - $ref: "edge-routers.yml#/definitions/commonEdgeRouterProperties"

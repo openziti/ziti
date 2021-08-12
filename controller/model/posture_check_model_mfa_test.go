@@ -28,6 +28,45 @@ const (
 )
 
 func TestPostureCheckModelMfa(t *testing.T) {
+	t.Run("evaluateAt", func(t *testing.T) {
+		mfaCheck, postureData := newMfaCheckAndPostureData()
+
+		mfaCheck.TimeoutSeconds = 40
+
+		t.Run("passes at 3/4 timeout", func(t *testing.T) {
+			threeFourthsTimeout := 10
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt.Add(time.Duration(threeFourthsTimeout) * time.Second)
+
+			result := mfaCheck.evaluateAt(mfaTestApiSessionId, postureData, now)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("passes at 1/2 timeout", func(t *testing.T) {
+			halfTimeout := 20
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt.Add(time.Duration(halfTimeout) * time.Second)
+
+			result := mfaCheck.evaluateAt(mfaTestApiSessionId, postureData, now)
+
+			req := require.New(t)
+			req.True(result)
+		})
+
+		t.Run("passes at 1/4 timeout", func(t *testing.T) {
+			quarterTimeout := 30
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt.Add(time.Duration(quarterTimeout) * time.Second)
+
+			result := mfaCheck.evaluateAt(mfaTestApiSessionId, postureData, now)
+
+			req := require.New(t)
+			req.True(result)
+		})
+	})
+
 	t.Run("Evaluate", func(t *testing.T) {
 		t.Run("returns true for valid MFA check", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
@@ -212,7 +251,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 		t.Run("returns true with default case", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 
-			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId])
+			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId], time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -223,7 +262,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			mfaCheck.PromptOnWake = false
 
-			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId])
+			result := mfaCheck.PassedOnWake(postureData.ApiSessions[mfaTestApiSessionId], time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -232,7 +271,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 		t.Run("returns false when PromptOnWake is true and ApiSessionData is nil", func(t *testing.T) {
 			mfaCheck, _ := newMfaCheckAndPostureData()
 
-			result := mfaCheck.PassedOnWake(nil)
+			result := mfaCheck.PassedOnWake(nil, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -244,7 +283,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.Mfa = nil
 
-			result := mfaCheck.PassedOnWake(apiSessionData)
+			result := mfaCheck.PassedOnWake(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -256,7 +295,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.Mfa.PassedMfaAt = nil
 
-			result := mfaCheck.PassedOnWake(apiSessionData)
+			result := mfaCheck.PassedOnWake(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -268,7 +307,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.EndpointState = nil
 
-			result := mfaCheck.PassedOnWake(apiSessionData)
+			result := mfaCheck.PassedOnWake(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -280,7 +319,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.EndpointState.WokenAt = nil
 
-			result := mfaCheck.PassedOnWake(apiSessionData)
+			result := mfaCheck.PassedOnWake(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -292,7 +331,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 		t.Run("returns true with default case", func(t *testing.T) {
 			mfaCheck, postureData := newMfaCheckAndPostureData()
 
-			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId])
+			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId], time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -303,7 +342,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			mfaCheck.PromptOnUnlock = false
 
-			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId])
+			result := mfaCheck.PassedOnUnlock(postureData.ApiSessions[mfaTestApiSessionId], time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -312,7 +351,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 		t.Run("returns false when PromptOnUnlock is true and ApiSessionData is nil", func(t *testing.T) {
 			mfaCheck, _ := newMfaCheckAndPostureData()
 
-			result := mfaCheck.PassedOnUnlock(nil)
+			result := mfaCheck.PassedOnUnlock(nil, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -324,7 +363,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.Mfa = nil
 
-			result := mfaCheck.PassedOnUnlock(apiSessionData)
+			result := mfaCheck.PassedOnUnlock(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -336,7 +375,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.Mfa.PassedMfaAt = nil
 
-			result := mfaCheck.PassedOnUnlock(apiSessionData)
+			result := mfaCheck.PassedOnUnlock(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.False(result)
@@ -348,7 +387,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.EndpointState = nil
 
-			result := mfaCheck.PassedOnUnlock(apiSessionData)
+			result := mfaCheck.PassedOnUnlock(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -360,7 +399,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 
 			apiSessionData.EndpointState.UnlockedAt = nil
 
-			result := mfaCheck.PassedOnUnlock(apiSessionData)
+			result := mfaCheck.PassedOnUnlock(apiSessionData, time.Now().UTC())
 
 			req := require.New(t)
 			req.True(result)
@@ -552,9 +591,9 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.GreaterOrEqual(mfaCheck.GetTimeoutRemainingSeconds(mfaTestApiSessionId, postureData), mfaCheck.TimeoutSeconds-5)
 		})
 	})
-	
+
 	t.Run("calculateTimeout", func(t *testing.T) {
-		
+
 		t.Run("eventAt == now, results in 5m", func(t *testing.T) {
 			req := require.New(t)
 
@@ -564,7 +603,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:30:00Z")
 			req.NoError(err)
 
-			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+			result := calculateTimeout(now, eventAt, -1*MfaPromptGracePeriod)
 
 			req.Equal(int64(300), result)
 		})
@@ -578,7 +617,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:27:00Z")
 			req.NoError(err)
 
-			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+			result := calculateTimeout(now, eventAt, -1*MfaPromptGracePeriod)
 
 			req.Equal(int64(120), result)
 		})
@@ -592,7 +631,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:25:00Z")
 			req.NoError(err)
 
-			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+			result := calculateTimeout(now, eventAt, -1*MfaPromptGracePeriod)
 
 			req.Equal(int64(0), result)
 		})
@@ -606,7 +645,7 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			eventAt, err := time.Parse(time.RFC3339, "2020-01-01T11:20:00Z")
 			req.NoError(err)
 
-			result := calculateTimeout(now, eventAt, -1 * MfaPromptGracePeriod)
+			result := calculateTimeout(now, eventAt, -1*MfaPromptGracePeriod)
 
 			req.Equal(int64(0), result)
 		})

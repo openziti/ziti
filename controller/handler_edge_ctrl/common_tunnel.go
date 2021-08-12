@@ -180,6 +180,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			Token:        uuid.NewString(),
 			ApiSessionId: self.apiSession.Id,
 			ServiceId:    self.service.Id,
+			IdentityId: self.identity.Id,
 			Type:         sessionType,
 		}
 

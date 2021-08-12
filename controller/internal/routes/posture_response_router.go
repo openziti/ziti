@@ -53,19 +53,66 @@ func (r *PostureResponseRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *PostureResponseRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseParams) {
-	Create(rc, rc, PostureResponseLinkFactory, func() (string, error) {
-		apiPostureResponse := params.PostureResponse
-		r.handlePostureResponse(ae, rc, apiPostureResponse)
-		return "", nil
-	})
+	bulkParams := posture_checks.CreatePostureResponseBulkParams{
+		HTTPRequest:     params.HTTPRequest,
+		PostureResponse: []rest_model.PostureResponseCreate{params.PostureResponse},
+	}
+	r.CreateBulk(ae, rc, bulkParams)
 }
 
 func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureResponseBulkParams) {
+	responder := &PostureResponseResponder{
+		Responder: rc,
+		ae:        ae,
+		services:  []*rest_model.PostureResponseService{},
+	}
+
+	onWake := false
+	onUnlock := false
+
 	for _, apiPostureResponse := range params.PostureResponse {
+		if state, ok := apiPostureResponse.(*rest_model.PostureResponseEndpointStateCreate); ok {
+			if state.Woken {
+				onWake = true
+			}
+
+			if state.Unlocked {
+				onUnlock = true
+			}
+		}
 		r.handlePostureResponse(ae, rc, apiPostureResponse)
 	}
 
-	Create(rc, rc, PostureResponseLinkFactory, func() (string, error) {
+	if onWake || onUnlock {
+		mfaType := string(rest_model.PostureCheckTypeMFA)
+		gracePeriod := model.MfaPromptGracePeriod * -1
+		gracePeriodSeconds := int64(gracePeriod.Seconds())
+
+		postureData := ae.Handlers.PostureResponse.PostureData(rc.Identity.Id)
+
+		if postureData != nil && postureData.ApiSessions != nil {
+			if apiPostureData, ok := postureData.ApiSessions[rc.ApiSession.Id]; ok && apiPostureData.Mfa.PassedMfaAt != nil {
+				//if the last time Mfa was passed at is outside of the grace period, send timeout update
+				durationSinceLastMfa := time.Now().Sub(*apiPostureData.Mfa.PassedMfaAt)
+
+				modelServicesWithTimeouts := ae.Handlers.PostureResponse.GetEndpointStateChangeAffectedServices(durationSinceLastMfa, gracePeriod, onWake, onUnlock)
+
+				for _, modelServiceWithTimeout := range modelServicesWithTimeouts {
+
+					responder.services = append(responder.services, &rest_model.PostureResponseService{
+						ID:               &modelServiceWithTimeout.Service.Id,
+						Name:             &modelServiceWithTimeout.Service.Name,
+						PostureQueryType: &mfaType,
+						TimeoutRemaining: &gracePeriodSeconds,
+						Timeout:          &modelServiceWithTimeout.Timeout,
+					})
+				}
+
+			}
+		}
+	}
+
+	CreateWithResponder(rc, responder, PostureResponseLinkFactory, func() (string, error) {
 		return "", nil
 	})
 }
