@@ -224,6 +224,9 @@ func (store *terminatorStoreImpl) initializeLocal() {
 func (store *terminatorStoreImpl) initializeLinked() {
 	store.AddFkIndex(store.serviceSymbol, store.stores.service.terminatorsSymbol)
 	store.AddFkIndex(store.routerSymbol, store.stores.router.terminatorsSymbol)
+
+	store.MakeSymbolPublic("service.name")
+	store.MakeSymbolPublic("router.name")
 }
 
 func (store *terminatorStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Terminator, error) {
