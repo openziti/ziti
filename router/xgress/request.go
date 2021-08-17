@@ -137,6 +137,10 @@ type CircuitInfo struct {
 var circuitError = errors.New("error connecting circuit")
 
 func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
+	if ctrl == nil || ctrl.Channel() == channel2.Channel(nil) {
+		return nil, errors.New("ctrl not ready")
+	}
+
 	log := pfxlog.Logger()
 	circuitRequest := &ctrl_pb.CircuitRequest{
 		IngressId: ingressId,
