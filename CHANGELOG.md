@@ -1,6 +1,12 @@
+# Release 0.22.1
+
+## What's New
+
+* Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
+
 # Release 0.22.0
 
-# What's New
+## What's New
 
 * Refactor: Fabric Sessions renamed to Circuits (breaking change)
 * Feature: Links will now wait for a timeout for retrying 
