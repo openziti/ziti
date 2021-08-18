@@ -3,13 +3,14 @@
 ## What's New
 
 * Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
+* Bug fix: `ziti edge login` will no longer truncate paths on controller URLs
 
 # Release 0.22.0
 
 ## What's New
 
 * Refactor: Fabric Sessions renamed to Circuits (breaking change)
-* Feature: Links will now wait for a timeout for retrying 
+* Feature: Links will now wait for a timeout for retrying
 * Bug fix: Sessions created on the controller when circuit creation fails are now cleaned up
 * Feature: Enhanced `ziti` CLI login functionality (has breaking changes to CLI options)
 * Feature: new `ziti edge list summary` command, which shows database entity counts
@@ -24,7 +25,7 @@
 Fabric sessions renamed to circuits. External integrators may be impacted by changes to events. See below for details.
 
 ### Ziti CLI
-Commands under `ziti edge` now reserve the `-i` flag for specifying client identity. 
+Commands under `ziti edge` now reserve the `-i` flag for specifying client identity.
 Any command line argumet which previously had a `-i` short version now only has a long version.
 
 For consistency, policy roles parameters must all be specified in long form
@@ -38,12 +39,12 @@ This includes the following flags:
 * ziti edge update service-edge-router-policy --service-roles --edge-router-roles
 * ziti edge create posture-check mfa --ignore-legacy
 * ziti edge update posture-check mfa --ignore-legacy
-* ziti edge update authenticator updb --identity 
+* ziti edge update authenticator updb --identity
 * ziti egde update ca --identity-atributes (now -a)
 
 The `ziti edge` commands now store session credentials in a new location and new format. Existing sessions will be ignored.
 
-The `ziti edge controller` command was previously deprecated and has now been removed. All commands that were previously available 
+The `ziti edge controller` command was previously deprecated and has now been removed. All commands that were previously available
 under `ziti edge controller` are available under `ziti edge`.
 
 ## Fabric Sessions renamed to Circuits
@@ -63,7 +64,7 @@ have been renamed to circuits. This has the following impacts:
 In the context of the fabric there was an existing construct call `Circuit` which has now been renamed to `Path`. This may be visible in a few `ziti-fabric` CLI outputs
 
 ### Event changes
-Previously the fabric had session events. It now has circuit events instead. These events have the `fabric.circuits` namespace. The `circuitUpdated` event type 
+Previously the fabric had session events. It now has circuit events instead. These events have the `fabric.circuits` namespace. The `circuitUpdated` event type
 is now the `pathUpdated` event.
 
 ```
@@ -91,8 +92,8 @@ The new config property is `pendingLinkTimeoutSeconds` in the controller config 
 ## Enhanced CLI Login Functionality
 ### Server Trust
 #### Untrusted Servers
-If you don't provide a certificates file when logging in, the server's well known certificates will now be pulled from the server and you will be prompted if you want to use them. 
-If certs for the host have previously been retrieved they will be used. Certs stored locally will be checked against the certs on the server when logging in. 
+If you don't provide a certificates file when logging in, the server's well known certificates will now be pulled from the server and you will be prompted if you want to use them.
+If certs for the host have previously been retrieved they will be used. Certs stored locally will be checked against the certs on the server when logging in.
 If a difference is found, the user will be notified and asked if they want to update the local certificate cache.
 
 If you provide certificates during login, the server's certificates will not be checked or downloaded. Locally cached certificates for that host will not be used.
@@ -101,7 +102,7 @@ If you provide certificates during login, the server's certificates will not be 
 If working with a server which is using certs that your OS already recognizes, nothing will change. No cert needs to be provided and the server's well known certs will not be downloaded.
 
 ### Identities
-The Ziti CLI now suports multiple identities. An identity can be specified using `--cli-identity` or `-i`. 
+The Ziti CLI now suports multiple identities. An identity can be specified using `--cli-identity` or `-i`.
 
 Example commands:
 ```
@@ -158,7 +159,7 @@ Removing identity 'cust1' from ~/.config/ziti/ziti-cli.json
 
 #### Read-Only Mode
 When logging in one can mark the identity as read-only. This is a client side enforced flag which will attempt to make sure only
-read operations are performed by this session. 
+read operations are performed by this session.
 
 ```
 $ ziti edge login --read-only localhost:1280
@@ -182,7 +183,7 @@ is accidentally used. Caution should always be exercised when working with sensi
 If you already have an API session token, you can use that to create a client identity using the new `--token` flag.
 When using `--token` the saved identity will be marked as read-only unless `--read-only=false` is specified. This
 is because if you only have a token and not full credentials, it's more likely that you're inspecting a system to
-which you have limited privileges. 
+which you have limited privileges.
 
 ```
 $ ziti edge login localhost:1280 --token c9f37575-f660-409b-b731-5a256d74a931
@@ -221,7 +222,7 @@ Previouxly semantic was optional when creating or updating policies (POST or PUT
 
 ## What's New
 
-* Bug fix: [edge#712](https://github.com/openziti/edge/issues/712) 
+* Bug fix: [edge#712](https://github.com/openziti/edge/issues/712)
   * NF-INTERCEPT chain was getting deleted when any intercept was stopped, not when all intercepts were stopped
   * IP address could get re-used across DNS entries. Added DNS cache flush on startup to avoid this
   * IP address cleanup was broken as all services would see last assigned IP
@@ -270,7 +271,7 @@ how those clients should be treated. If `ignoreLegacyEndpoints` is `true`, they 
 
 ## Router Health Checks
 
-Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section. 
+Routers can now enable an HTTP health check endpoint. The health check is configured in the router config file with the new `healthChecks` section.
 
 ```
 healthChecks:

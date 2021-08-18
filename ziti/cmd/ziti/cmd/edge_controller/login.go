@@ -104,6 +104,8 @@ func (o *loginOptions) Run() error {
 
 	if ctrlUrl.Path == "" {
 		host = util.EdgeControllerGetManagementApiBasePath(host, o.Cert)
+	} else {
+		host = host + ctrlUrl.Path
 	}
 
 	if o.Token != "" && !o.Cmd.Flag("read-only").Changed {
