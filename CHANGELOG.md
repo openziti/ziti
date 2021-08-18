@@ -4,6 +4,7 @@
 
 * Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
 * Bug fix: `ziti edge login` will no longer truncate paths on controller URLs
+* Bug ifx: Ziti CLI will now longer check the proper lengths of sha512 hashes in hex format
 
 # Release 0.22.0
 

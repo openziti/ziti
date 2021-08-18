@@ -373,6 +373,7 @@ func cleanHexString(in string) string {
 }
 
 func cleanSha512s(in []string) ([]string, error) {
+	const sha512HexLength = 128
 
 	hashMap := map[string]struct{}{}
 	for _, hash := range in {
@@ -383,8 +384,8 @@ func cleanSha512s(in []string) ([]string, error) {
 		}
 		cleanHash := cleanHexString(hash)
 
-		if len(cleanHash) != 64 {
-			return nil, fmt.Errorf("sha512 hash must be 64 hex characters, given [%s], cleaned [%s] with a length of %d", hash, cleanHash, len(cleanHash))
+		if len(cleanHash) != sha512HexLength {
+			return nil, fmt.Errorf("sha512 hash must be %d hex characters, given [%s], cleaned [%s] with a length of %d", sha512HexLength, hash, cleanHash, len(cleanHash))
 		}
 
 		hashMap[cleanHash] = struct{}{}
