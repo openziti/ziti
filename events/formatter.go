@@ -51,13 +51,28 @@ type EdgeJsonFormatter struct {
 	events.JsonFormatter
 }
 
-func (formatter *EdgeJsonFormatter) AcceptEdgeSessionEvent(event *EdgeSessionEvent) {
-	formatter.AcceptLoggingEvent((*JsonEdgeSessionEvent)(event))
+func (formatter *EdgeJsonFormatter) AcceptSessionEvent(event *SessionEvent) {
+	formatter.AcceptLoggingEvent((*JsonSessionEvent)(event))
 }
 
-type JsonEdgeSessionEvent EdgeSessionEvent
+func (formatter *EdgeJsonFormatter) AcceptEntityCountEvent(event *EntityCountEvent) {
+	formatter.AcceptLoggingEvent((*JsonEntityCountEvent)(event))
+}
 
-func (event *JsonEdgeSessionEvent) WriteTo(output io.WriteCloser) error {
+type JsonSessionEvent SessionEvent
+
+func (event *JsonSessionEvent) WriteTo(output io.WriteCloser) error {
+	buf, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(buf)
+	return err
+}
+
+type JsonEntityCountEvent EntityCountEvent
+
+func (event *JsonEntityCountEvent) WriteTo(output io.WriteCloser) error {
 	buf, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -70,13 +85,24 @@ type EdgePlainTextFormatter struct {
 	events.PlainTextFormatter
 }
 
-func (formatter *EdgePlainTextFormatter) AcceptEdgeSessionEvent(event *EdgeSessionEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextEdgeSessionEvent)(event))
+func (formatter *EdgePlainTextFormatter) AcceptSessionEvent(event *SessionEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextSessionEvent)(event))
 }
 
-type PlainTextEdgeSessionEvent EdgeSessionEvent
+func (formatter *EdgePlainTextFormatter) AcceptEntityCountEvent(event *EntityCountEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextEntityCountEvent)(event))
+}
 
-func (event *PlainTextEdgeSessionEvent) WriteTo(output io.WriteCloser) error {
-	_, err := output.Write([]byte((*EdgeSessionEvent)(event).String() + "\n"))
+type PlainTextSessionEvent SessionEvent
+
+func (event *PlainTextSessionEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*SessionEvent)(event).String() + "\n"))
+	return err
+}
+
+type PlainTextEntityCountEvent EntityCountEvent
+
+func (event *PlainTextEntityCountEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*EntityCountEvent)(event).String() + "\n"))
 	return err
 }

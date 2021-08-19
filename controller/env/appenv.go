@@ -374,7 +374,7 @@ func (ae *AppEnv) InitPersistence() error {
 	}
 
 	ae.Handlers = model.InitHandlers(ae)
-	events.Init(ae.BoltStores.Session)
+	events.Init(ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	ae.BoltStores.Identity.AddListener(boltz.EventDelete, func(i ...interface{}) {

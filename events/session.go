@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/cowslice"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -14,8 +13,9 @@ import (
 
 const SessionEventTypeCreated = "created"
 const SessionEventTypeDeleted = "deleted"
+const SessionEventNS = "edge.sessions"
 
-type EdgeSessionEvent struct {
+type SessionEvent struct {
 	Namespace    string    `json:"namespace"`
 	EventType    string    `json:"event_type"`
 	Id           string    `json:"id"`
@@ -25,24 +25,19 @@ type EdgeSessionEvent struct {
 	IdentityId   string    `json:"identity_id"`
 }
 
-func (event *EdgeSessionEvent) String() string {
+func (event *SessionEvent) String() string {
 	return fmt.Sprintf("%v.%v id=%v timestamp=%v token=%v apiSessionId=%v identityId=%v",
 		event.Namespace, event.EventType, event.Id, event.Timestamp, event.Token, event.ApiSessionId, event.IdentityId)
 }
 
-type EdgeSessionEventHandler interface {
-	AcceptEdgeSessionEvent(event *EdgeSessionEvent)
+type SessionEventHandler interface {
+	AcceptSessionEvent(event *SessionEvent)
 }
 
-var sessionEventHandlerRegistry = cowslice.NewCowSlice(make([]EdgeSessionEventHandler, 0))
+var sessionEventHandlerRegistry = cowslice.NewCowSlice(make([]SessionEventHandler, 0))
 
-func getSessionEventHandlers() []EdgeSessionEventHandler {
-	return sessionEventHandlerRegistry.Value().([]EdgeSessionEventHandler)
-}
-
-func Init(sessionStore persistence.SessionStore) {
-	sessionStore.AddListener(boltz.EventCreate, sessionCreated)
-	sessionStore.AddListener(boltz.EventDelete, sessionDeleted)
+func getSessionEventHandlers() []SessionEventHandler {
+	return sessionEventHandlerRegistry.Value().([]SessionEventHandler)
 }
 
 func sessionCreated(args ...interface{}) {
@@ -57,9 +52,9 @@ func sessionCreated(args ...interface{}) {
 		return
 	}
 
-	event := &EdgeSessionEvent{
-		Namespace:    "edge.sessions",
-		EventType:    "created",
+	event := &SessionEvent{
+		Namespace:    SessionEventNS,
+		EventType:    SessionEventTypeCreated,
 		Id:           session.Id,
 		Timestamp:    time.Now(),
 		Token:        session.Token,
@@ -68,7 +63,7 @@ func sessionCreated(args ...interface{}) {
 	}
 
 	for _, handler := range getSessionEventHandlers() {
-		go handler.AcceptEdgeSessionEvent(event)
+		go handler.AcceptSessionEvent(event)
 	}
 }
 
@@ -84,24 +79,24 @@ func sessionDeleted(args ...interface{}) {
 		return
 	}
 
-	event := &EdgeSessionEvent{
-		Namespace: "edge.session",
-		EventType: "deleted",
+	event := &SessionEvent{
+		Namespace: SessionEventNS,
+		EventType: SessionEventTypeDeleted,
 		Id:        session.Id,
 		Timestamp: time.Now(),
 		Token:     session.Token,
 	}
 
 	for _, handler := range getSessionEventHandlers() {
-		go handler.AcceptEdgeSessionEvent(event)
+		go handler.AcceptSessionEvent(event)
 	}
 }
 
 func registerSessionEventHandler(val interface{}, config map[interface{}]interface{}) error {
-	handler, ok := val.(EdgeSessionEventHandler)
+	handler, ok := val.(SessionEventHandler)
 
 	if !ok {
-		return errors.Errorf("type %v doesn't implement github.com/openziti/edge/events/EdgeSessionEventHandler interface.", reflect.TypeOf(val))
+		return errors.Errorf("type %v doesn't implement github.com/openziti/edge/events/SessionEventHandler interface.", reflect.TypeOf(val))
 	}
 
 	var includeList []string
@@ -126,7 +121,7 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 			}
 		}
 
-		AddSessionEventHandler(&edgeSessionEventAdapter{
+		AddSessionEventHandler(&sessionEventAdapter{
 			wrapped:     handler,
 			includeList: includeList,
 		})
@@ -135,13 +130,13 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 	return nil
 }
 
-type edgeSessionEventAdapter struct {
-	wrapped     EdgeSessionEventHandler
+type sessionEventAdapter struct {
+	wrapped     SessionEventHandler
 	includeList []string
 }
 
-func (adapter *edgeSessionEventAdapter) AcceptEdgeSessionEvent(event *EdgeSessionEvent) {
+func (adapter *sessionEventAdapter) AcceptSessionEvent(event *SessionEvent) {
 	if stringz.Contains(adapter.includeList, event.EventType) {
-		adapter.wrapped.AcceptEdgeSessionEvent(event)
+		adapter.wrapped.AcceptSessionEvent(event)
 	}
 }

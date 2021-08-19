@@ -20,13 +20,10 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
 	"go.etcd.io/bbolt"
-
-	"reflect"
 )
 
 func init() {
@@ -54,26 +51,13 @@ func (r *SummaryRouter) Register(ae *env.AppEnv) {
 func (r *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	data := rest_model.ListSummaryCounts{}
 
-	v := reflect.ValueOf(ae.BoltStores).Elem()
-
 	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		for i := 0; i < v.NumField(); i++ {
-
-			field := v.Field(i)
-
-			if !field.CanInterface() {
-				continue
+		for _, store := range ae.BoltStores.GetStoreList() {
+			_, count, err := store.QueryIds(tx, "true limit 1")
+			if err != nil {
+				return err
 			}
-
-			is := field.Interface()
-
-			if store, ok := is.(persistence.Store); ok {
-				_, count, err := store.QueryIds(tx, "true limit 1")
-				if err != nil {
-					return err
-				}
-				data[store.GetEntityType()] = count
-			}
+			data[store.GetEntityType()] = count
 		}
 		return nil
 	})
