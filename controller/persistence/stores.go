@@ -73,7 +73,7 @@ func (stores *Stores) buildStoreMap() {
 	}
 }
 
-func (stores *Stores) getStoreList() []Store {
+func (stores *Stores) GetStoreList() []Store {
 	var result []Store
 	for _, crudStore := range stores.storeMap {
 		if store, ok := crudStore.(Store); ok {
@@ -219,7 +219,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
 
 	externalStores.buildStoreMap()
-	storeList := externalStores.getStoreList()
+	storeList := externalStores.GetStoreList()
 
 	err := dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
 		for _, store := range storeList {

@@ -63,7 +63,7 @@ func (self *eventsCollector) AcceptUsageEvent(event *events.UsageEvent) {
 	}
 }
 
-func (self *eventsCollector) AcceptEdgeSessionEvent(event *events2.EdgeSessionEvent) {
+func (self *eventsCollector) AcceptSessionEvent(event *events2.SessionEvent) {
 	self.acceptEvent(event)
 }
 
@@ -139,14 +139,14 @@ func Test_EventsTest(t *testing.T) {
 	}
 
 	event := ec.PopNextEvent(ctx)
-	edgeSession, ok := event.(*events2.EdgeSessionEvent)
+	edgeSession, ok := event.(*events2.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
 
 	event = ec.PopNextEvent(ctx)
-	edgeSession, ok = event.(*events2.EdgeSessionEvent)
+	edgeSession, ok = event.(*events2.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
