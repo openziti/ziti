@@ -18,13 +18,11 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
-	"io"
-
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -54,16 +52,10 @@ type CreateConfigRouterOptions struct {
 }
 
 // NewCmdCreateConfigRouter creates a command object for the "create" command
-func NewCmdCreateConfigRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreateConfigRouter(p common.OptionsProvider) *cobra.Command {
 	options := &CreateConfigRouterOptions{
 		CreateConfigOptions: CreateConfigOptions{
-			CreateOptions: CreateOptions{
-				CommonOptions: CommonOptions{
-					Factory: f,
-					Out:     out,
-					Err:     errOut,
-				},
-			},
+			CommonOptions: p(),
 		},
 	}
 
@@ -81,7 +73,6 @@ func NewCmdCreateConfigRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer
 		},
 	}
 
-	options.addCommonFlags(cmd)
 	options.addFlags(cmd, "", defaultCtrlListener)
 
 	return cmd

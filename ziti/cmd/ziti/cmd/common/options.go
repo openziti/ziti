@@ -34,6 +34,17 @@ type Factory interface {
 	CreateTable(out io.Writer) table.Table
 }
 
+type OptionsProvider func() CommonOptions
+
+func NewOptionsProvider(out, err io.Writer) OptionsProvider {
+	return func() CommonOptions {
+		return CommonOptions{
+			Out: out,
+			Err: err,
+		}
+	}
+}
+
 // CommonOptions contains common options and helper methods
 type CommonOptions struct {
 	Factory        Factory
