@@ -5,6 +5,7 @@
 * Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
 * Bug fix: Ziti CLI will no longer truncate paths on logins with explicit URLs
 * Bug fix: Ziti CLI will now correctly check the proper lengths of sha512 hashes in hex format
+* Feature: Ziti CLI `unwrap` command for identity json files will now default the output file names
 * Feature: Ziti CLI improvements
     * New interactive tutorial covering creating your first service. Run using: `ziti edge tutorial first-service`
     * You can now delete multiple entities at once, by providing multiple ids. Ex: `ziti edge delete services one two` or `ziti edge delete service one two` will both work.
