@@ -46,7 +46,7 @@ func newPostureCheckMfa() PostureCheckSubType {
 func (entity *PostureCheckMfa) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.TimeoutSeconds = bucket.GetInt64WithDefault(FieldPostureCheckMfaTimeoutSeconds, -1)
 
-	if entity.TimeoutSeconds == 0 {
+	if entity.TimeoutSeconds <= 0 {
 		entity.TimeoutSeconds = -1
 	}
 
@@ -56,7 +56,7 @@ func (entity *PostureCheckMfa) LoadValues(_ boltz.CrudStore, bucket *boltz.Typed
 }
 
 func (entity *PostureCheckMfa) SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket) {
-	if entity.TimeoutSeconds == 0 {
+	if entity.TimeoutSeconds <= 0 {
 		entity.TimeoutSeconds = -1
 	}
 
