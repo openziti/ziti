@@ -51,7 +51,7 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
   postureResponse:
-    description: A list of terminators
+    description: Contains a list of services that have had their timers altered
     schema:
       $ref: '#/definitions/postureResponseEnvelope'
 

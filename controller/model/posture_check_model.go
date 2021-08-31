@@ -131,8 +131,6 @@ func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, 
 
 func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool, *PostureCheckFailure) {
 	if !entity.SubType.Evaluate(apiSessionId, pd) {
-
-
 		return false, &PostureCheckFailure{
 			PostureCheckId:            entity.Id,
 			PostureCheckName:          entity.Name,

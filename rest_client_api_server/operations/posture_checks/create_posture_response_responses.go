@@ -40,7 +40,7 @@ import (
 // CreatePostureResponseCreatedCode is the HTTP code returned for type CreatePostureResponseCreated
 const CreatePostureResponseCreatedCode int = 201
 
-/*CreatePostureResponseCreated A list of terminators
+/*CreatePostureResponseCreated Contains a list of services that have had their timers altered
 
 swagger:response createPostureResponseCreated
 */

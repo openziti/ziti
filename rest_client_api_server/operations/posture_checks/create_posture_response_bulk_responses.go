@@ -40,7 +40,7 @@ import (
 // CreatePostureResponseBulkOKCode is the HTTP code returned for type CreatePostureResponseBulkOK
 const CreatePostureResponseBulkOKCode int = 200
 
-/*CreatePostureResponseBulkOK A list of terminators
+/*CreatePostureResponseBulkOK Contains a list of services that have had their timers altered
 
 swagger:response createPostureResponseBulkOK
 */

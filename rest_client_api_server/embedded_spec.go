@@ -2238,7 +2238,7 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "A list of terminators",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
               "$ref": "#/definitions/postureResponseEnvelope"
             }
@@ -2336,7 +2336,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "A list of terminators",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
               "$ref": "#/definitions/postureResponseEnvelope"
             }
@@ -7772,7 +7772,7 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "A list of terminators",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
               "$ref": "#/definitions/postureResponseEnvelope"
             }
@@ -7870,7 +7870,7 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "A list of terminators",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
               "$ref": "#/definitions/postureResponseEnvelope"
             }

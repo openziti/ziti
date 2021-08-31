@@ -53,19 +53,23 @@ func NewAuthRouter() *AuthRouter {
 func (ro *AuthRouter) Register(ae *env.AppEnv) {
 	ro.createTimer = ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer("api-session.create")
 	ae.ClientApi.AuthenticationAuthenticateHandler = clientApiAuthentication.AuthenticateHandlerFunc(func(params clientApiAuthentication.AuthenticateParams) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth) }, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ClientApi.AuthenticationAuthenticateMfaHandler = clientApiAuthentication.AuthenticateMfaHandlerFunc(func(params clientApiAuthentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 
 	ae.ManagementApi.AuthenticationAuthenticateHandler = managementApiAuthentication.AuthenticateHandlerFunc(func(params managementApiAuthentication.AuthenticateParams) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth) }, params.HTTPRequest, "", "", permissions.Always())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.authHandler(ae, rc, params.HTTPRequest, params.Method, params.Auth)
+		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
 	ae.ManagementApi.AuthenticationAuthenticateMfaHandler = managementApiAuthentication.AuthenticateMfaHandlerFunc(func(params managementApiAuthentication.AuthenticateMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.IsPartiallyAuthenticated())
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { ro.authMfa(ae, rc, params.MfaAuth) }, params.HTTPRequest, "", "", permissions.HasOneOf(permissions.IsAuthenticated(), permissions.IsPartiallyAuthenticated()))
 	})
 }
 

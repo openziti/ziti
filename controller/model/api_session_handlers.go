@@ -52,7 +52,13 @@ func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
 
 func (handler *ApiSessionHandler) Create(entity *ApiSession) (string, error) {
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
-	return handler.createEntity(entity)
+	id, err := handler.createEntity(entity)
+
+	if err != nil {
+		handler.MarkActivityById(id)
+	}
+
+	return id, err
 }
 
 func (handler *ApiSessionHandler) Read(id string) (*ApiSession, error) {

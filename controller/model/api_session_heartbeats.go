@@ -26,12 +26,12 @@ import (
 )
 
 type HeartbeatCollector struct {
-	apiSessionLastUpdate cmap.ConcurrentMap //map[apiSessionId string] => *HeartbeatStatus
-	updateInterval       time.Duration
-	closeNotify          chan struct{}
-	isFlushing           concurrenz.AtomicBoolean
-	flushAction          func(beats []*Heartbeat)
-	batchSize            int
+	apiSessionLastAccessedAtMap cmap.ConcurrentMap //map[apiSessionId string] => *HeartbeatStatus
+	updateInterval              time.Duration
+	closeNotify                 chan struct{}
+	isFlushing                  concurrenz.AtomicBoolean
+	flushAction                 func(beats []*Heartbeat)
+	batchSize                   int
 }
 
 type Heartbeat struct {
@@ -39,17 +39,17 @@ type Heartbeat struct {
 	LastActivityAt time.Time
 }
 
-// Creates a new HeartbeatCollector which is used to manage situations where an SDK is connecting to multiiple
-// Edge Routers and making API calls that all update their last updated at and trigger a write. The heartbeat
-// collector aggregates all of those calls into a single write and acts as an in memory buffer for last update
-// times.
+// NewHeartbeatCollector creates a HeartbeatCollector which is used to manage situations where an SDK is
+// connecting to multiple Edge Routers and making API calls that all update their last updated at and trigger
+// writes. The heartbeat collector aggregates all of those calls into a single write and acts as an in memory
+// buffer for last update times.
 func NewHeartbeatCollector(env Env, batchSize int, updateInterval time.Duration, action func([]*Heartbeat)) *HeartbeatCollector {
 	collector := &HeartbeatCollector{
-		apiSessionLastUpdate: cmap.New(),
-		updateInterval:       updateInterval,
-		batchSize:            batchSize,
-		flushAction:          action,
-		closeNotify:          make(chan struct{}, 0),
+		apiSessionLastAccessedAtMap: cmap.New(),
+		updateInterval:              updateInterval,
+		batchSize:                   batchSize,
+		flushAction:                 action,
+		closeNotify:                 make(chan struct{}, 0),
 	}
 
 	env.GetStores().ApiSession.AddListener(boltz.EventDelete, collector.onApiSessionDelete)
@@ -69,17 +69,21 @@ func (self *HeartbeatCollector) Mark(apiSessionId string) {
 		lastAccessedAt: time.Now().UTC(),
 		flushed:        false,
 	}
-	self.apiSessionLastUpdate.Set(apiSessionId, newStatus)
+	self.apiSessionLastAccessedAtMap.Set(apiSessionId, newStatus)
 }
 
-func (self *HeartbeatCollector) LastAccessedAt(apiSessionId string) (time.Time, bool) {
-	if val, ok := self.apiSessionLastUpdate.Get(apiSessionId); ok {
+// LastAccessedAt will return the last time an API Sessions was either connected to an Edge Router
+// or made a REST API call and true. If no such action has happened or the API Session no longer exists
+// nil and false will be returned.
+func (self *HeartbeatCollector) LastAccessedAt(apiSessionId string) (*time.Time, bool) {
+	if val, ok := self.apiSessionLastAccessedAtMap.Get(apiSessionId); ok {
 		if status, ok := val.(*HeartbeatStatus); ok {
-			return status.lastAccessedAt, true
+			lastAccessedAt := status.lastAccessedAt
+			return &lastAccessedAt, true
 		}
 	}
 
-	return time.Time{}, false
+	return nil, false
 }
 
 func (self *HeartbeatCollector) Start() {
@@ -105,11 +109,12 @@ func (self *HeartbeatCollector) Stop() {
 
 func (self *HeartbeatCollector) flush() {
 	if self.isFlushing.CompareAndSwap(false, true) {
+		defer self.isFlushing.CompareAndSwap(true, false)
 		pfxlog.Logger().Trace("flushing heartbeat collector")
 
 		var beats []*Heartbeat
 
-		self.apiSessionLastUpdate.IterCb(func(key string, v interface{}) {
+		self.apiSessionLastAccessedAtMap.IterCb(func(key string, v interface{}) {
 			if len(beats) >= self.batchSize {
 				self.flushAction(beats)
 				beats = nil
@@ -130,8 +135,6 @@ func (self *HeartbeatCollector) flush() {
 			self.flushAction(beats)
 		}
 
-		self.isFlushing.CompareAndSwap(true, false)
-
 	} else {
 		pfxlog.Logger().Warn("attempting to flush heartbeats from collector, a flush is already in progress, skipping")
 	}
@@ -147,5 +150,5 @@ func (self *HeartbeatCollector) onApiSessionDelete(i ...interface{}) {
 }
 
 func (self *HeartbeatCollector) Remove(id string) {
-	self.apiSessionLastUpdate.Remove(id)
+	self.apiSessionLastAccessedAtMap.Remove(id)
 }

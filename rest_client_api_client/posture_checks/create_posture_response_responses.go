@@ -77,7 +77,7 @@ func NewCreatePostureResponseCreated() *CreatePostureResponseCreated {
 
 /* CreatePostureResponseCreated describes a response with status code 201, with default header values.
 
-A list of terminators
+Contains a list of services that have had their timers altered
 */
 type CreatePostureResponseCreated struct {
 	Payload *rest_model.PostureResponseEnvelope

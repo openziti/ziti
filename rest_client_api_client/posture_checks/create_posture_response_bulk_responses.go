@@ -77,7 +77,7 @@ func NewCreatePostureResponseBulkOK() *CreatePostureResponseBulkOK {
 
 /* CreatePostureResponseBulkOK describes a response with status code 200, with default header values.
 
-A list of terminators
+Contains a list of services that have had their timers altered
 */
 type CreatePostureResponseBulkOK struct {
 	Payload *rest_model.PostureResponseEnvelope
