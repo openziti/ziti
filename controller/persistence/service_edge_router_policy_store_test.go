@@ -23,7 +23,7 @@ func Test_ServiceEdgeRouterPolicyStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	policy := newServiceEdgeRouterPolicy(eid.New())
 	ctx.RequireCreate(policy)
@@ -44,7 +44,7 @@ func (ctx *TestContext) testCreateServiceEdgeRouterPolicy(_ *testing.T) {
 }
 
 func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test service roles
 	policy := newServiceEdgeRouterPolicy(eid.New())
@@ -101,7 +101,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyInvalidValues(_ *testing.T) {
 }
 
 func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test service roles
 	policy := newServiceEdgeRouterPolicy(eid.New())
@@ -162,7 +162,7 @@ func (ctx *TestContext) testServiceEdgeRouterPolicyUpdateDeleteRefs(_ *testing.T
 }
 
 func (ctx *TestContext) testServiceEdgeRouterPolicyRoleEvaluation(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// create some services, edge routers for reference by id
 	// create initial policies, check state

@@ -33,7 +33,7 @@ func Test_ConfigTypeStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	configType := newConfigType("")
 	err := ctx.Create(configType)

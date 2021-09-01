@@ -81,9 +81,9 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 }
 
 func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
-	identity := ctx.requireNewIdentity("test-user", false)
+	identity := ctx.RequireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
 
@@ -110,7 +110,7 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 }
 
 func (ctx *TestContext) testCreateServices(_ *testing.T) {
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	edgeService := &EdgeService{
 		Service: db.Service{
@@ -133,7 +133,7 @@ type serviceTestEntities struct {
 }
 
 func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
-	identity1 := ctx.requireNewIdentity("admin1", true)
+	identity1 := ctx.RequireNewIdentity("admin1", true)
 
 	apiSession1 := NewApiSession(identity1.Id)
 
@@ -151,7 +151,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 	}
 
 	ctx.RequireCreate(service1)
-	service2 := ctx.requireNewService(eid.New())
+	service2 := ctx.RequireNewService(eid.New())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
 	ctx.RequireCreate(session1)
@@ -171,7 +171,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 }
 
 func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createServiceTestEntities()
 
@@ -197,7 +197,7 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 }
 
 func (ctx *TestContext) testUpdateServices(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
@@ -234,7 +234,7 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 }
 
 func (ctx *TestContext) testDeleteServices(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
 	ctx.RequireDelete(entities.service1)
 	ctx.RequireDelete(entities.service2)

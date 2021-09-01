@@ -18,8 +18,8 @@ func Test_IdentityStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
-	service := ctx.requireNewService(eid.New())
-	identity := ctx.requireNewIdentity(eid.New(), false)
+	service := ctx.RequireNewService(eid.New())
+	identity := ctx.RequireNewIdentity(eid.New(), false)
 
 	clientConfigTypeId := ""
 	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {

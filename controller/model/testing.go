@@ -119,7 +119,7 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 	return nil
 }
 
-func newTestContext(t *testing.T) *TestContext {
+func NewTestContext(t *testing.T) *TestContext {
 	context := &TestContext{
 		TestContext:     persistence.NewTestContext(t),
 		metricsRegistry: metrics.NewRegistry("test", nil),

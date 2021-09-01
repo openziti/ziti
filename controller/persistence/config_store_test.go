@@ -35,7 +35,7 @@ func Test_ConfigStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testConfigCrud(*testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	configType := newConfigType(eid.New())
 	ctx.RequireCreate(configType)
@@ -138,7 +138,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 }
 
 func (ctx *TestContext) testConfigQuery(*testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	configType := newConfigType(eid.New())
 	ctx.RequireCreate(configType)

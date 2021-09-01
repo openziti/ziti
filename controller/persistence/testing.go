@@ -123,7 +123,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType PolicyType, identityR
 	return entity
 }
 
-func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity {
+func (ctx *TestContext) RequireNewIdentity(name string, isAdmin bool) *Identity {
 	identity := &Identity{
 		BaseExtEntity: *boltz.NewExtEntity(eid.New(), nil),
 		Name:          name,
@@ -133,7 +133,7 @@ func (ctx *TestContext) requireNewIdentity(name string, isAdmin bool) *Identity 
 	return identity
 }
 
-func (ctx *TestContext) requireNewService(name string) *EdgeService {
+func (ctx *TestContext) RequireNewService(name string) *EdgeService {
 	edgeService := &EdgeService{
 		Service: db.Service{
 			BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
@@ -158,7 +158,7 @@ func (ctx *TestContext) getRelatedIds(entity boltz.Entity, field string) []strin
 	return result
 }
 
-func (ctx *TestContext) cleanupAll() {
+func (ctx *TestContext) CleanupAll() {
 	stores := []boltz.CrudStore{
 		ctx.stores.Session,
 		ctx.stores.ApiSession,

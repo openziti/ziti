@@ -28,7 +28,7 @@ func Test_EdgeRouterPolicyStore(t *testing.T) {
 
 func (ctx *TestContext) testCreateEdgeRouterPolicy(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	policy := newEdgeRouterPolicy(eid.New())
 	ctx.RequireCreate(policy)
@@ -50,7 +50,7 @@ func (ctx *TestContext) testCreateEdgeRouterPolicy(t *testing.T) {
 
 func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test identity roles
 	policy := newEdgeRouterPolicy(eid.New())
@@ -109,7 +109,7 @@ func (ctx *TestContext) testEdgeRouterPolicyInvalidValues(t *testing.T) {
 
 func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test identity roles
 	policy := newEdgeRouterPolicy(eid.New())
@@ -172,7 +172,7 @@ func (ctx *TestContext) testEdgeRouterPolicyUpdateDeleteRefs(t *testing.T) {
 
 func (ctx *TestContext) testRouterIdentityDeleteTest(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	policy := newEdgeRouterPolicy(eid.New())
 	policy.IdentityRoles = []string{"#all"}
@@ -254,7 +254,7 @@ func (ctx *TestContext) testRouterIdentityDeleteTest(t *testing.T) {
 
 func (ctx *TestContext) testEdgeRouterPolicyRoleEvaluation(t *testing.T) {
 	ctx.NextTest(t)
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// create some identities, edge routers for reference by id
 	// create initial policies, check state

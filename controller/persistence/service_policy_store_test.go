@@ -23,7 +23,7 @@ func Test_ServicePolicyStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	policy := newServicePolicy(eid.New())
 	ctx.RequireCreate(policy)
@@ -44,7 +44,7 @@ func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {
 }
 
 func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test identity roles
 	policy := newServicePolicy(eid.New())
@@ -102,7 +102,7 @@ func (ctx *TestContext) testServicePolicyInvalidValues(_ *testing.T) {
 }
 
 func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// test identity roles
 	policy := newServicePolicy(eid.New())
@@ -164,7 +164,7 @@ func (ctx *TestContext) testServicePolicyUpdateDeleteRefs(_ *testing.T) {
 }
 
 func (ctx *TestContext) testServicePolicyRoleEvaluation(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	// create some identities, edge routers for reference by id
 	// create initial policies, check state
