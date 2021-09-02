@@ -256,6 +256,25 @@ type ServiceWithTimeout struct {
 	Timeout int64
 }
 
+func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, timeSinceLastMfa, gracePeriod time.Duration, onWake, onUnlock bool) bool {
+	if mfaCheck == nil {
+		return false
+	}
+
+	if (mfaCheck.PromptOnUnlock && onUnlock) || (mfaCheck.PromptOnWake && onWake) {
+		//no time out the remaining time was bigger than the grace period
+		timeSinceLastMfaSeconds := int64(timeSinceLastMfa.Seconds())
+		gracePeriodSeconds := int64(gracePeriod.Seconds())
+
+		timeoutShouldBeAltered := mfaCheck.TimeoutSeconds == -1 || (mfaCheck.TimeoutSeconds-timeSinceLastMfaSeconds > gracePeriodSeconds)
+
+		return timeoutShouldBeAltered
+	}
+
+
+	return false
+}
+
 func (handler *PostureResponseHandler) GetEndpointStateChangeAffectedServices(timeSinceLastMfa, gracePeriod time.Duration, onWake bool, onUnlock bool) []*ServiceWithTimeout {
 	affectedChecks := map[string]int64{} //check id -> timeout
 	if onWake || onUnlock {
@@ -270,14 +289,8 @@ func (handler *PostureResponseHandler) GetEndpointStateChangeAffectedServices(ti
 				for cursor.IsValid() {
 					if check, err := handler.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
 						if mfaCheck, ok := check.SubType.(*persistence.PostureCheckMfa); ok {
-							if (mfaCheck.PromptOnUnlock && onUnlock) || (mfaCheck.PromptOnWake && onWake) {
-								//no time out the remaining time was bigger than the grace period
-								timeSinceLastMfaSeconds := int64(timeSinceLastMfa.Seconds())
-								gracePeriodSeconds := int64(gracePeriod.Seconds())
-
-								if mfaCheck.TimeoutSeconds == -1 || (mfaCheck.TimeoutSeconds-timeSinceLastMfaSeconds > gracePeriodSeconds) {
-									affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
-								}
+							if shouldPostureCheckTimeoutBeAltered(mfaCheck, timeSinceLastMfa, gracePeriod, onWake, onUnlock) {
+								affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
 							}
 						}
 					} else {
