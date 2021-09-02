@@ -7,7 +7,7 @@ import (
 )
 
 func TestEdgeRouterHandler(t *testing.T) {
-	ctx := newTestContext(t)
+	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
 

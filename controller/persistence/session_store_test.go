@@ -34,6 +34,7 @@ func Test_SessionStore(t *testing.T) {
 	ctx.Init()
 
 	t.Run("test create invalid sessions", ctx.testCreateInvalidSessions)
+	t.Run("test update invalid sessions", ctx.testUpdateInvalidSessions)
 	t.Run("test create sessions", ctx.testCreateSessions)
 	t.Run("test create session certs", ctx.testCreateSessionsCerts)
 	t.Run("test load/query sessions", ctx.testLoadQuerySessions)
@@ -42,13 +43,13 @@ func Test_SessionStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
-	identity := ctx.requireNewIdentity("test-user", false)
+	identity := ctx.RequireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
 
-	service := ctx.requireNewService("test-service")
+	service := ctx.RequireNewService("test-service")
 
 	session := NewSession("", service.Id)
 	err := ctx.Create(session)
@@ -74,15 +75,47 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 	ctx.EqualError(err, fmt.Sprintf("an entity of type session already exists with id %v", session.Id))
 }
 
+func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
+	defer ctx.CleanupAll()
+
+	identity := ctx.RequireNewIdentity("test-user", false)
+	apiSession := NewApiSession(identity.Id)
+	ctx.RequireCreate(apiSession)
+
+	service := ctx.RequireNewService("test-service")
+
+	session := NewSession(apiSession.Id, service.Id)
+	ctx.RequireCreate(session)
+
+	session.ApiSessionId = "invalid-id"
+	err := ctx.Update(session)
+	ctx.EqualError(err, fmt.Sprintf("apiSession with id %v not found", session.ApiSessionId))
+
+	session.ApiSessionId = apiSession.Id
+	session.ServiceId = ""
+	err = ctx.Update(session)
+	ctx.EqualError(err, "fk constraint on sessions.service does not allow null or empty values")
+
+	session.ServiceId = "invalid-id"
+	err = ctx.Update(session)
+	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", session.ServiceId))
+
+	ctx.RequireDelete(session)
+	ctx.ValidateDeleted(session.Id)
+
+	err = ctx.Update(session)
+	ctx.EqualError(err, fmt.Sprintf("session with id %v not found", session.Id))
+}
+
 func (ctx *TestContext) testCreateSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	compareOpts := cmpopts.IgnoreFields(Session{}, "ApiSession")
 
-	identity := ctx.requireNewIdentity("Jojo", false)
+	identity := ctx.RequireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
-	service := ctx.requireNewService("test-service")
+	service := ctx.RequireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
 	ctx.RequireCreate(session)
 	ctx.ValidateBaseline(session, compareOpts)
@@ -91,7 +124,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.RequireCreate(session2)
 	ctx.ValidateBaseline(session2, compareOpts)
 
-	service2 := ctx.requireNewService("test-service-2")
+	service2 := ctx.RequireNewService("test-service-2")
 	session3 := NewSession(apiSession.Id, service2.Id)
 	session3.Tags = ctx.CreateTags()
 	ctx.RequireCreate(session3)
@@ -109,7 +142,7 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	sessionCert1 := &SessionCert{
 		Id:          "a" + eid.New()[1:],
@@ -127,10 +160,10 @@ func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
 		ValidTo:     time.Now().Add(5 * time.Hour),
 	}
 
-	identity := ctx.requireNewIdentity("Jojo", false)
+	identity := ctx.RequireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
-	service := ctx.requireNewService("test-service")
+	service := ctx.RequireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
 	session.Certs = []*SessionCert{sessionCert1, sessionCert2}
 	ctx.RequireCreate(session)
@@ -159,7 +192,7 @@ type sessionTestEntities struct {
 }
 
 func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
-	identity1 := ctx.requireNewIdentity("admin1", true)
+	identity1 := ctx.RequireNewIdentity("admin1", true)
 
 	apiSession1 := NewApiSession(identity1.Id)
 	ctx.RequireCreate(apiSession1)
@@ -167,8 +200,8 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 	apiSession2 := NewApiSession(identity1.Id)
 	ctx.RequireCreate(apiSession2)
 
-	service1 := ctx.requireNewService(eid.New())
-	service2 := ctx.requireNewService(eid.New())
+	service1 := ctx.RequireNewService(eid.New())
+	service2 := ctx.RequireNewService(eid.New())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
 	ctx.RequireCreate(session1)
@@ -192,7 +225,7 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 }
 
 func (ctx *TestContext) testLoadQuerySessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createSessionTestEntities()
 
@@ -215,7 +248,7 @@ func (ctx *TestContext) testLoadQuerySessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createSessionTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
@@ -254,7 +287,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testDeleteSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createSessionTestEntities()
 	ctx.RequireDelete(entities.session1)
 	ctx.RequireDelete(entities.session2)

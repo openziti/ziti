@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -31,7 +32,7 @@ const (
 )
 
 type ApiSessionEnforcer struct {
-	appEnv         *env.AppEnv
+	appEnv         model.Env
 	sessionTimeout time.Duration
 	*runner.BaseOperation
 }

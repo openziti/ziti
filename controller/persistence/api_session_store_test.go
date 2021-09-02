@@ -40,7 +40,7 @@ func Test_ApiSessionStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
-	defer ctx.cleanupAll()
+	defer ctx.CleanupAll()
 
 	apiSession := NewApiSession(eid.New())
 	err := ctx.Create(apiSession)
@@ -50,7 +50,7 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 	err = ctx.Create(apiSession)
 	ctx.EqualError(err, "fk constraint on apiSessions.identity does not allow null or empty values")
 
-	identity := ctx.requireNewIdentity("user1", false)
+	identity := ctx.RequireNewIdentity("user1", false)
 	apiSession.Token = ""
 	apiSession.IdentityId = identity.Id
 
@@ -65,9 +65,9 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
-	identity := ctx.requireNewIdentity("Jojo", false)
+	identity := ctx.RequireNewIdentity("Jojo", false)
 
 	apiSession := NewApiSession(identity.Id)
 	ctx.RequireCreate(apiSession)
@@ -98,8 +98,8 @@ type apiSessionTestEntities struct {
 }
 
 func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
-	identity1 := ctx.requireNewIdentity("admin1", true)
-	identity2 := ctx.requireNewIdentity("user1", false)
+	identity1 := ctx.RequireNewIdentity("admin1", true)
+	identity2 := ctx.RequireNewIdentity("user1", false)
 
 	apiSession1 := NewApiSession(identity1.Id)
 	ctx.RequireCreate(apiSession1)
@@ -110,7 +110,7 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 	apiSession3 := NewApiSession(identity2.Id)
 	ctx.RequireCreate(apiSession3)
 
-	service := ctx.requireNewService("test-service")
+	service := ctx.RequireNewService("test-service")
 	session := &Session{
 		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
 		Token:         eid.New(),
@@ -131,7 +131,7 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 }
 
 func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 
 	entities := ctx.createApiSessionTestEntities()
 
@@ -160,7 +160,7 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createApiSessionTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
@@ -198,7 +198,7 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 }
 
 func (ctx *TestContext) testDeleteApiSessions(_ *testing.T) {
-	ctx.cleanupAll()
+	ctx.CleanupAll()
 	entities := ctx.createApiSessionTestEntities()
 	ctx.RequireDelete(entities.apiSession1)
 	ctx.RequireDelete(entities.apiSession2)
