@@ -40,7 +40,7 @@ import (
 // CreatePostureResponseCreatedCode is the HTTP code returned for type CreatePostureResponseCreated
 const CreatePostureResponseCreatedCode int = 201
 
-/*CreatePostureResponseCreated The create request was successful and the resource has been added at the following location
+/*CreatePostureResponseCreated Contains a list of services that have had their timers altered
 
 swagger:response createPostureResponseCreated
 */
@@ -49,7 +49,7 @@ type CreatePostureResponseCreated struct {
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
+	Payload *rest_model.PostureResponseEnvelope `json:"body,omitempty"`
 }
 
 // NewCreatePostureResponseCreated creates CreatePostureResponseCreated with default headers values
@@ -59,13 +59,13 @@ func NewCreatePostureResponseCreated() *CreatePostureResponseCreated {
 }
 
 // WithPayload adds the payload to the create posture response created response
-func (o *CreatePostureResponseCreated) WithPayload(payload *rest_model.CreateEnvelope) *CreatePostureResponseCreated {
+func (o *CreatePostureResponseCreated) WithPayload(payload *rest_model.PostureResponseEnvelope) *CreatePostureResponseCreated {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the create posture response created response
-func (o *CreatePostureResponseCreated) SetPayload(payload *rest_model.CreateEnvelope) {
+func (o *CreatePostureResponseCreated) SetPayload(payload *rest_model.PostureResponseEnvelope) {
 	o.Payload = payload
 }
 

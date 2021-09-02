@@ -41,7 +41,7 @@ func (entity *PostureCheckType) toBoltEntity() (boltz.Entity, error) {
 		})
 	}
 
-	return &persistence.PostureCheckType{
+	return &persistence.PostureCheckOs{
 		Name:             entity.Name,
 		OperatingSystems: operatingSystems,
 		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -61,9 +61,9 @@ func (entity *PostureCheckType) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.F
 }
 
 func (entity *PostureCheckType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltPostureCheckType, ok := boltEntity.(*persistence.PostureCheckType)
+	boltPostureCheckType, ok := boltEntity.(*persistence.PostureCheckOs)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model PostureCheckType", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model PostureCheckOs", reflect.TypeOf(boltEntity))
 	}
 
 	var operatingSystems []OperatingSystem

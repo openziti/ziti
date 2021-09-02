@@ -32,13 +32,22 @@ const (
 	FieldPostureCheckDialServices = "dialServices"
 )
 
+const (
+	PostureCheckTypeOs           = "OS"
+	PostureCheckTypeDomain       = "DOMAIN"
+	PostureCheckTypeProcess      = "PROCESS"
+	PostureCheckTypeProcessMulti = "PROCESS_MULTI"
+	PostureCheckTypeMAC          = "MAC"
+	PostureCheckTypeMFA          = "MFA"
+)
+
 var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
-	"OS":            newPostureCheckOperatingSystem,
-	"DOMAIN":        newPostureCheckWindowsDomain,
-	"PROCESS":       newPostureCheckProcess,
-	"PROCESS_MULTI": newPostureCheckProcessMulti,
-	"MAC":           newPostureCheckMacAddresses,
-	"MFA":           newPostureCheckMfa,
+	PostureCheckTypeOs:           newPostureCheckOperatingSystem,
+	PostureCheckTypeDomain:       newPostureCheckWindowsDomain,
+	PostureCheckTypeProcess:      newPostureCheckProcess,
+	PostureCheckTypeProcessMulti: newPostureCheckProcessMulti,
+	PostureCheckTypeMAC:          newPostureCheckMacAddresses,
+	PostureCheckTypeMFA:          newPostureCheckMfa,
 }
 
 type newPostureCheckSubType func() PostureCheckSubType
@@ -149,6 +158,8 @@ func (store *postureCheckStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex 
 func (store *postureCheckStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
+	store.AddSymbol(FieldPostureCheckMfaPromptOnUnlock, ast.NodeTypeBool, PostureCheckTypeMFA)
+	store.AddSymbol(FieldPostureCheckMfaPromptOnWake, ast.NodeTypeBool, PostureCheckTypeMFA)
 
 	store.symbolRoleAttributes = store.AddSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
 	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)

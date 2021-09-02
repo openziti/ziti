@@ -21,7 +21,7 @@ func (m *Migrations) addProcessMultiPostureCheck(step *boltz.MigrationStep) {
 		OsVersions: []string{},
 	}
 
-	processCheckType := &PostureCheckType{
+	processCheckType := &PostureCheckOs{
 		BaseExtEntity: boltz.BaseExtEntity{
 			Id:        "PROCESS_MULTI",
 			CreatedAt: time.Now(),

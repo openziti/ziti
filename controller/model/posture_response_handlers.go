@@ -19,6 +19,9 @@ package model
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/storage/ast"
 	"go.etcd.io/bbolt"
 	"runtime/debug"
 	"time"
@@ -246,4 +249,101 @@ func (handler *PostureResponseHandler) SetSdkInfo(identityId, apiSessionId strin
 
 		return postureData
 	})
+}
+
+type ServiceWithTimeout struct {
+	Service *Service
+	Timeout int64
+}
+
+func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, timeSinceLastMfa, gracePeriod time.Duration, onWake, onUnlock bool) bool {
+	if mfaCheck == nil {
+		return false
+	}
+
+	if (mfaCheck.PromptOnUnlock && onUnlock) || (mfaCheck.PromptOnWake && onWake) {
+		//no time out the remaining time was bigger than the grace period
+		timeSinceLastMfaSeconds := int64(timeSinceLastMfa.Seconds())
+		gracePeriodSeconds := int64(gracePeriod.Seconds())
+
+		timeoutShouldBeAltered := mfaCheck.TimeoutSeconds == -1 || (mfaCheck.TimeoutSeconds-timeSinceLastMfaSeconds > gracePeriodSeconds)
+
+		return timeoutShouldBeAltered
+	}
+
+
+	return false
+}
+
+func (handler *PostureResponseHandler) GetEndpointStateChangeAffectedServices(timeSinceLastMfa, gracePeriod time.Duration, onWake bool, onUnlock bool) []*ServiceWithTimeout {
+	affectedChecks := map[string]int64{} //check id -> timeout
+	if onWake || onUnlock {
+		queryStr := fmt.Sprintf("%s=true or %s=true", persistence.FieldPostureCheckMfaPromptOnUnlock, persistence.FieldPostureCheckMfaPromptOnWake)
+		query, err := ast.Parse(handler.env.GetStores().PostureCheck, queryStr)
+		if err != nil {
+			pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks: %v", err)
+		} else {
+			handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+				cursor := handler.env.GetStores().PostureCheck.IterateIds(tx, query)
+
+				for cursor.IsValid() {
+					if check, err := handler.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
+						if mfaCheck, ok := check.SubType.(*persistence.PostureCheckMfa); ok {
+							if shouldPostureCheckTimeoutBeAltered(mfaCheck, timeSinceLastMfa, gracePeriod, onWake, onUnlock) {
+								affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
+							}
+						}
+					} else {
+						pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks by id: %v", err)
+					}
+
+					cursor.Next()
+				}
+				return nil
+			})
+		}
+	}
+
+	services := map[string]*ServiceWithTimeout{}
+
+	if len(affectedChecks) > 0 {
+		_ = handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+			for checkId, timeout := range affectedChecks {
+				policyCursor := handler.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, persistence.EntityTypeServicePolicies, true)
+
+				for policyCursor.IsValid() {
+					serviceCursor := handler.env.GetStores().ServicePolicy.GetRelatedEntitiesCursor(tx, string(policyCursor.Current()), db.EntityTypeServices, true)
+
+					for serviceCursor.IsValid() {
+						if _, ok := services[string(serviceCursor.Current())]; !ok {
+							service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, string(serviceCursor.Current()))
+							if err == nil {
+								modelService := &Service{}
+								if err := modelService.fillFrom(handler.env.GetHandlers().EdgeService, tx, service); err == nil {
+									//use the lowest configured timeout (which is some timeout or no timeout)
+									if existingService, ok := services[service.Id]; !ok || timeout < existingService.Timeout {
+										services[service.Id] = &ServiceWithTimeout{
+											Service: modelService,
+											Timeout: timeout,
+										}
+									}
+								}
+							}
+						}
+						serviceCursor.Next()
+					}
+
+					policyCursor.Next()
+				}
+			}
+
+			return nil
+		})
+	}
+
+	var serviceSlice []*ServiceWithTimeout
+	for _, service := range services {
+		serviceSlice = append(serviceSlice, service)
+	}
+	return serviceSlice
 }

@@ -102,7 +102,7 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 	}
 
 	if val, ok := ae.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
-		cachedActivityAt := strfmt.DateTime(val)
+		cachedActivityAt := strfmt.DateTime(*val)
 		ret.CachedLastActivityAt = cachedActivityAt
 	} else {
 		ret.CachedLastActivityAt = lastActivityAt

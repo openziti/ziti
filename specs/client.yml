@@ -1685,10 +1685,9 @@ paths:
           $ref: '#/definitions/postureResponseCreate'
       responses:
         "201":
-          description: The create request was successful and the resource has been
-            added at the following location
+          description: Contains a list of services that have had their timers altered
           schema:
-            $ref: '#/definitions/createEnvelope'
+            $ref: '#/definitions/postureResponseEnvelope'
         "400":
           description: The supplied request contains invalid fields or could not be
             parsed (json and non-json bodies). The error's code, message, and cause
@@ -1757,9 +1756,9 @@ paths:
             $ref: '#/definitions/postureResponseCreate'
       responses:
         "200":
-          description: Base empty response
+          description: Contains a list of services that have had their timers altered
           schema:
-            $ref: '#/definitions/empty'
+            $ref: '#/definitions/postureResponseEnvelope'
         "400":
           description: The supplied request contains invalid fields or could not be
             parsed (json and non-json bodies). The error's code, message, and cause
@@ -3566,6 +3565,15 @@ definitions:
         $ref: '#/definitions/osType'
       path:
         type: string
+  postureResponse:
+    type: object
+    required:
+    - services
+    properties:
+      services:
+        type: array
+        items:
+          $ref: '#/definitions/postureResponseService'
   postureResponseCreate:
     type: object
     required:
@@ -3597,6 +3605,16 @@ definitions:
         woken:
           type: boolean
     x-class: ENDPOINT_STATE
+  postureResponseEnvelope:
+    type: object
+    required:
+    - meta
+    - data
+    properties:
+      data:
+        $ref: '#/definitions/postureResponse'
+      meta:
+        $ref: '#/definitions/meta'
   postureResponseMacAddressCreate:
     allOf:
     - $ref: '#/definitions/postureResponseCreate'
@@ -3642,6 +3660,25 @@ definitions:
           items:
             type: string
     x-class: PROCESS
+  postureResponseService:
+    type: object
+    required:
+    - id
+    - name
+    - postureQueryType
+    - timeout
+    - timeoutRemaining
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      postureQueryType:
+        type: string
+      timeout:
+        type: integer
+      timeoutRemaining:
+        type: integer
   protocol:
     type: object
     required:
@@ -3789,6 +3826,7 @@ definitions:
       - service
       - token
       - edgeRouters
+      - identityId
       properties:
         apiSession:
           $ref: '#/definitions/entityRef'
@@ -3798,6 +3836,8 @@ definitions:
           type: array
           items:
             $ref: '#/definitions/sessionEdgeRouter'
+        identityId:
+          type: string
         service:
           $ref: '#/definitions/entityRef'
         serviceId:

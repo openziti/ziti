@@ -19745,7 +19745,8 @@ func init() {
             "serviceId",
             "service",
             "token",
-            "edgeRouters"
+            "edgeRouters",
+            "identityId"
           ],
           "properties": {
             "apiSession": {
@@ -19759,6 +19760,9 @@ func init() {
               "items": {
                 "$ref": "#/definitions/sessionEdgeRouter"
               }
+            },
+            "identityId": {
+              "type": "string"
             },
             "service": {
               "$ref": "#/definitions/entityRef"
@@ -39979,7 +39983,8 @@ func init() {
             "serviceId",
             "service",
             "token",
-            "edgeRouters"
+            "edgeRouters",
+            "identityId"
           ],
           "properties": {
             "apiSession": {
@@ -39993,6 +39998,9 @@ func init() {
               "items": {
                 "$ref": "#/definitions/sessionEdgeRouter"
               }
+            },
+            "identityId": {
+              "type": "string"
             },
             "service": {
               "$ref": "#/definitions/entityRef"

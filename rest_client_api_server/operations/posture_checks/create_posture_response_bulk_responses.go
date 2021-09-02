@@ -40,7 +40,7 @@ import (
 // CreatePostureResponseBulkOKCode is the HTTP code returned for type CreatePostureResponseBulkOK
 const CreatePostureResponseBulkOKCode int = 200
 
-/*CreatePostureResponseBulkOK Base empty response
+/*CreatePostureResponseBulkOK Contains a list of services that have had their timers altered
 
 swagger:response createPostureResponseBulkOK
 */
@@ -49,7 +49,7 @@ type CreatePostureResponseBulkOK struct {
 	/*
 	  In: Body
 	*/
-	Payload *rest_model.Empty `json:"body,omitempty"`
+	Payload *rest_model.PostureResponseEnvelope `json:"body,omitempty"`
 }
 
 // NewCreatePostureResponseBulkOK creates CreatePostureResponseBulkOK with default headers values
@@ -59,13 +59,13 @@ func NewCreatePostureResponseBulkOK() *CreatePostureResponseBulkOK {
 }
 
 // WithPayload adds the payload to the create posture response bulk o k response
-func (o *CreatePostureResponseBulkOK) WithPayload(payload *rest_model.Empty) *CreatePostureResponseBulkOK {
+func (o *CreatePostureResponseBulkOK) WithPayload(payload *rest_model.PostureResponseEnvelope) *CreatePostureResponseBulkOK {
 	o.Payload = payload
 	return o
 }
 
 // SetPayload sets the payload to the create posture response bulk o k response
-func (o *CreatePostureResponseBulkOK) SetPayload(payload *rest_model.Empty) {
+func (o *CreatePostureResponseBulkOK) SetPayload(payload *rest_model.PostureResponseEnvelope) {
 	o.Payload = payload
 }
 

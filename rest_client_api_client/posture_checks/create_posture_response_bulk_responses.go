@@ -77,22 +77,22 @@ func NewCreatePostureResponseBulkOK() *CreatePostureResponseBulkOK {
 
 /* CreatePostureResponseBulkOK describes a response with status code 200, with default header values.
 
-Base empty response
+Contains a list of services that have had their timers altered
 */
 type CreatePostureResponseBulkOK struct {
-	Payload *rest_model.Empty
+	Payload *rest_model.PostureResponseEnvelope
 }
 
 func (o *CreatePostureResponseBulkOK) Error() string {
 	return fmt.Sprintf("[POST /posture-response-bulk][%d] createPostureResponseBulkOK  %+v", 200, o.Payload)
 }
-func (o *CreatePostureResponseBulkOK) GetPayload() *rest_model.Empty {
+func (o *CreatePostureResponseBulkOK) GetPayload() *rest_model.PostureResponseEnvelope {
 	return o.Payload
 }
 
 func (o *CreatePostureResponseBulkOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.Empty)
+	o.Payload = new(rest_model.PostureResponseEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

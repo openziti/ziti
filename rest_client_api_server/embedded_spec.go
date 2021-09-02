@@ -2238,9 +2238,9 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "The create request was successful and the resource has been added at the following location",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
-              "$ref": "#/definitions/createEnvelope"
+              "$ref": "#/definitions/postureResponseEnvelope"
             }
           },
           "400": {
@@ -2336,9 +2336,9 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base empty response",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
-              "$ref": "#/definitions/empty"
+              "$ref": "#/definitions/postureResponseEnvelope"
             }
           },
           "400": {
@@ -4952,6 +4952,20 @@ func init() {
         }
       }
     },
+    "postureResponse": {
+      "type": "object",
+      "required": [
+        "services"
+      ],
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/postureResponseService"
+          }
+        }
+      }
+    },
     "postureResponseCreate": {
       "type": "object",
       "required": [
@@ -5005,6 +5019,21 @@ func init() {
         }
       ],
       "x-class": "ENDPOINT_STATE"
+    },
+    "postureResponseEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/postureResponse"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
     },
     "postureResponseMacAddressCreate": {
       "allOf": [
@@ -5084,6 +5113,33 @@ func init() {
         }
       ],
       "x-class": "PROCESS"
+    },
+    "postureResponseService": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "postureQueryType",
+        "timeout",
+        "timeoutRemaining"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "postureQueryType": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer"
+        },
+        "timeoutRemaining": {
+          "type": "integer"
+        }
+      }
     },
     "protocol": {
       "type": "object",
@@ -5302,7 +5358,8 @@ func init() {
             "serviceId",
             "service",
             "token",
-            "edgeRouters"
+            "edgeRouters",
+            "identityId"
           ],
           "properties": {
             "apiSession": {
@@ -5316,6 +5373,9 @@ func init() {
               "items": {
                 "$ref": "#/definitions/sessionEdgeRouter"
               }
+            },
+            "identityId": {
+              "type": "string"
             },
             "service": {
               "$ref": "#/definitions/entityRef"
@@ -7712,9 +7772,9 @@ func init() {
         ],
         "responses": {
           "201": {
-            "description": "The create request was successful and the resource has been added at the following location",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
-              "$ref": "#/definitions/createEnvelope"
+              "$ref": "#/definitions/postureResponseEnvelope"
             }
           },
           "400": {
@@ -7810,9 +7870,9 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "Base empty response",
+            "description": "Contains a list of services that have had their timers altered",
             "schema": {
-              "$ref": "#/definitions/empty"
+              "$ref": "#/definitions/postureResponseEnvelope"
             }
           },
           "400": {
@@ -10502,6 +10562,20 @@ func init() {
         }
       }
     },
+    "postureResponse": {
+      "type": "object",
+      "required": [
+        "services"
+      ],
+      "properties": {
+        "services": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/postureResponseService"
+          }
+        }
+      }
+    },
     "postureResponseCreate": {
       "type": "object",
       "required": [
@@ -10555,6 +10629,21 @@ func init() {
         }
       ],
       "x-class": "ENDPOINT_STATE"
+    },
+    "postureResponseEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/postureResponse"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
     },
     "postureResponseMacAddressCreate": {
       "allOf": [
@@ -10634,6 +10723,33 @@ func init() {
         }
       ],
       "x-class": "PROCESS"
+    },
+    "postureResponseService": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "postureQueryType",
+        "timeout",
+        "timeoutRemaining"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "postureQueryType": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "integer"
+        },
+        "timeoutRemaining": {
+          "type": "integer"
+        }
+      }
     },
     "protocol": {
       "type": "object",
@@ -10852,7 +10968,8 @@ func init() {
             "serviceId",
             "service",
             "token",
-            "edgeRouters"
+            "edgeRouters",
+            "identityId"
           ],
           "properties": {
             "apiSession": {
@@ -10866,6 +10983,9 @@ func init() {
               "items": {
                 "$ref": "#/definitions/sessionEdgeRouter"
               }
+            },
+            "identityId": {
+              "type": "string"
             },
             "service": {
               "$ref": "#/definitions/entityRef"

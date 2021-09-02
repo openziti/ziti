@@ -77,22 +77,22 @@ func NewCreatePostureResponseCreated() *CreatePostureResponseCreated {
 
 /* CreatePostureResponseCreated describes a response with status code 201, with default header values.
 
-The create request was successful and the resource has been added at the following location
+Contains a list of services that have had their timers altered
 */
 type CreatePostureResponseCreated struct {
-	Payload *rest_model.CreateEnvelope
+	Payload *rest_model.PostureResponseEnvelope
 }
 
 func (o *CreatePostureResponseCreated) Error() string {
 	return fmt.Sprintf("[POST /posture-response][%d] createPostureResponseCreated  %+v", 201, o.Payload)
 }
-func (o *CreatePostureResponseCreated) GetPayload() *rest_model.CreateEnvelope {
+func (o *CreatePostureResponseCreated) GetPayload() *rest_model.PostureResponseEnvelope {
 	return o.Payload
 }
 
 func (o *CreatePostureResponseCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
-	o.Payload = new(rest_model.CreateEnvelope)
+	o.Payload = new(rest_model.PostureResponseEnvelope)
 
 	// response payload
 	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {

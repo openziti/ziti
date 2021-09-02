@@ -18,7 +18,7 @@ paths:
             $ref: '#/definitions/postureResponseCreate'
       responses:
         '201':
-          $ref: '../shared/standard-responses.yml#/responses/createResponse'
+          $ref: '#/responses/postureResponse'
         '400':
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
         '401':
@@ -44,14 +44,56 @@ paths:
               $ref: "#/definitions/postureResponseCreate"
       responses:
         '200':
-          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+          $ref: '#/responses/postureResponse'
         '400':
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
+  postureResponse:
+    description: Contains a list of services that have had their timers altered
+    schema:
+      $ref: '#/definitions/postureResponseEnvelope'
 
 definitions:
+  postureResponseEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '../shared/standard-responses.yml#/definitions/meta'
+      data:
+        $ref: '#/definitions/postureResponse'
+  postureResponseService:
+    type: object
+    required:
+      - id
+      - name
+      - postureQueryType
+      - timeout
+      - timeoutRemaining
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      postureQueryType:
+        type: string
+      timeout:
+        type: integer
+      timeoutRemaining:
+        type: integer
+  postureResponse:
+    type: object
+    required:
+      - services
+    properties:
+      services:
+        type: array
+        items:
+          $ref: '#/definitions/postureResponseService'
   postureResponseCreate:
     type: object
     discriminator: typeId
