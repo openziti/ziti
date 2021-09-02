@@ -5,6 +5,12 @@
 * Bug fix: Fabric v0.16.93 fixes `xgress.GetCircuit` to provide a `ctrl not ready` error response when requests arrive before the router is fully online.
 * Bug fix: Ziti CLI will no longer truncate paths on logins with explicit URLs
 * Bug fix: Ziti CLI will now correctly check the proper lengths of sha512 hashes in hex format
+* Bug fix: MFA Posture Check timeout will no longer be half their set value
+* Bug fix: MFA Posture Checks w/ a timeout configured to 0 will be treated as having no timeout (-1) instead of always being timed out
+* Bug fix: MFA Posture Checks will no longer cause an usually high frequency of session updates
+* Bug fix: MFA Posture Checks during subsequent MFA submissions will no longer 401
+* Bug fix: Listing sessions via `GET /sessions` will no longer report an error in certain data states
+* Feature: Posture responses now report services affected with timeout/state changes
 * Feature: Ziti CLI `unwrap` command for identity json files will now default the output file names
 * Feature: Ziti CLI improvements
     * New interactive tutorial covering creating your first service. Run using: `ziti edge tutorial first-service`
