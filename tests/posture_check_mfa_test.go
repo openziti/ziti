@@ -448,7 +448,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 					ctx.Req.NoError(err)
 					standardJsonResponseTests(resp, http.StatusCreated, t)
-					
+
 					t.Run("woke posture response should include service timeout change event", func(t *testing.T) {
 						ctx.testContextChanged(t)
 
@@ -458,6 +458,12 @@ func Test_PostureChecks_MFA(t *testing.T) {
 						ctx.Req.NoError(err)
 
 						ctx.Req.Len(responseEnvelope.Data.Services, 1)
+						ctx.Req.Equal(origTimeout, *responseEnvelope.Data.Services[0].Timeout)
+						ctx.Req.Equal(service.Name, *responseEnvelope.Data.Services[0].Name)
+						ctx.Req.Equal(service.Id, *responseEnvelope.Data.Services[0].ID)
+						ctx.Req.Equal("MFA", *responseEnvelope.Data.Services[0].PostureQueryType)
+						ctx.Req.Greater(*responseEnvelope.Data.Services[0].TimeoutRemaining, int64(1))
+						ctx.Req.LessOrEqual(*responseEnvelope.Data.Services[0].TimeoutRemaining, int64(300))
 					})
 
 					t.Run("service has the posture check in its queries", func(t *testing.T) {

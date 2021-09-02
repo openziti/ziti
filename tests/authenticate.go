@@ -578,7 +578,8 @@ func (request *authenticatedRequests) requireNewPostureCheckProcessMulti(semanti
 
 func (request *authenticatedRequests) requireNewService(roleAttributes, configs []string) *service {
 	service := request.testContext.newService(roleAttributes, configs)
-	request.requireCreateEntity(service)
+	id := request.requireCreateEntity(service)
+	service.Id = id
 	return service
 }
 
