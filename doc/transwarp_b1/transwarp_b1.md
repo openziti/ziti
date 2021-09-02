@@ -80,7 +80,7 @@ The `westworld3` protocol includes support for _profiles_, which allow the behav
 	tx_portal_min_sz                16384
 	tx_portal_max_sz                4194304
 	tx_portal_increase_thresh       224
-	tx_portal_increase_scale        0.05
+	tx_portal_increase_scale        1.0
 	tx_portal_dupack_thresh         64
 	tx_portal_dupack_capacity_scale 0.9
 	tx_portal_dupack_success_scale  0.75
@@ -476,7 +476,7 @@ Here's the relevant logging output from the `ziti-router` process:
 	tx_portal_min_sz                16384
 	tx_portal_max_sz                4194304
 	tx_portal_increase_thresh       224
-	tx_portal_increase_scale        0.05
+	tx_portal_increase_scale        1.0
 	tx_portal_dupack_thresh         64
 	tx_portal_dupack_capacity_scale 0.9
 	tx_portal_dupack_success_scale  0.75
