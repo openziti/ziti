@@ -89,17 +89,27 @@ func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models
 func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionManagementDetail, error) {
 	service, err := ae.Handlers.EdgeService.Read(sessionModel.ServiceId)
 	if err != nil {
-		return nil, err
+		pfxlog.Logger().Errorf("could not render service [%s] for Session [%s] - should not be possible", sessionModel.ServiceId, sessionModel.Id)
+	}
+
+	var serviceRef *rest_model.EntityRef
+	if service != nil {
+		serviceRef = ToEntityRef(service.Name, service, ServiceLinkFactory)
 	}
 
 	edgeRouters, err := getSessionEdgeRouters(ae, sessionModel)
 	if err != nil {
-		return nil, err
+		pfxlog.Logger().Errorf("could not render edge routers for Session [%s]: %v", sessionModel.Id, err)
 	}
 
 	apiSession, err := ae.Handlers.ApiSession.Read(sessionModel.ApiSessionId)
 	if err != nil {
-		return nil, err
+		pfxlog.Logger().Errorf("could not render API Session [%s] for Session [%s], orphaned session - should not be possible", sessionModel.ApiSessionId, sessionModel.Id)
+	}
+
+	var apiSessionRef *rest_model.EntityRef
+	if apiSession != nil {
+		apiSessionRef = ToEntityRef("", apiSession, ApiSessionLinkFactory)
 	}
 
 	dialBindType := rest_model.DialBind(sessionModel.Type)
@@ -123,10 +133,10 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 	ret := &rest_model.SessionManagementDetail{
 		SessionDetail: rest_model.SessionDetail{
 			BaseEntity:   BaseEntityToRestModel(sessionModel, SessionLinkFactory),
-			APISession:   ToEntityRef("", apiSession, ApiSessionLinkFactory),
-			APISessionID: &apiSession.Id,
-			Service:      ToEntityRef(service.Name, service, ServiceLinkFactory),
-			ServiceID:    &service.Id,
+			APISession:   apiSessionRef,
+			APISessionID: &sessionModel.ApiSessionId,
+			Service:      serviceRef,
+			ServiceID:    &sessionModel.ServiceId,
 			IdentityID:   &sessionModel.IdentityId,
 			EdgeRouters:  edgeRouters,
 			Type:         &dialBindType,
