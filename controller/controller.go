@@ -69,7 +69,7 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 	c.registerXts()
 	c.loadEventHandlers()
 
-	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
+	if n, err := network.NewNetwork(cfg.Id.Token, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
 		c.network = n
 	} else {
 		return nil, err

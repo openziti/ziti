@@ -51,7 +51,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newTraceHandler(traceDispatchWrapper))
 	ch.AddReceiveHandler(newInspectHandler(self.network))
 	ch.AddReceiveHandler(newPingHandler())
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId().Token, ch, self.network.GetTraceController(), traceDispatchWrapper))
+	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), ch, self.network.GetTraceController(), traceDispatchWrapper))
 	ch.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
 	if self.router.VersionInfo.HasMinimumVersion("0.18.7") {

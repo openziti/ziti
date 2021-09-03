@@ -61,7 +61,7 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 
 	verbosity := trace.GetVerbosity(request.Verbosity)
 
-	if checkMatch(handler.network.GetAppId().Token, matchers, verbosity, result) {
+	if checkMatch(handler.network.GetAppId(), matchers, verbosity, result) {
 		if request.Enable {
 			handler.network.GetTraceController().EnableTracing(trace.SourceTypePipe, matchers.PipeMatcher, resultChan)
 		} else {
