@@ -42,10 +42,11 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service-edge-router-policy <name>",
-		Short: "creates a service-edge-router-policy managed by the Ziti Edge Controller",
-		Long:  "creates a service-edge-router-policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(1),
+		Use:     "service-edge-router-policy <name>",
+		Aliases: []string{"serp"},
+		Short:   "creates a service-edge-router-policy managed by the Ziti Edge Controller",
+		Long:    "creates a service-edge-router-policy managed by the Ziti Edge Controller",
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

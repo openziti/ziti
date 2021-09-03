@@ -56,12 +56,12 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newDeleteCmdForEntityType("ca", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("config", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("config-type", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", newOptions(), "er", "ers"))
+	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", newOptions(), "erp", "erps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("identity", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("service", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("service-edge-router-policy", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("service-edge-router-policy", newOptions(), "serp", "serps"))
+	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", newOptions(), "sp", "sps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("session", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("posture-check", newOptions()))
@@ -70,12 +70,12 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type
-func newDeleteCmdForEntityType(entityType string, options *edgeOptions) *cobra.Command {
+func newDeleteCmdForEntityType(entityType string, options *edgeOptions, aliases ...string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     entityType + " <id>",
 		Short:   "deletes " + getPlural(entityType) + " managed by the Ziti Edge Controller",
 		Args:    cobra.MinimumNArgs(1),
-		Aliases: []string{getPlural(entityType)},
+		Aliases: append(aliases, getPlural(entityType)),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

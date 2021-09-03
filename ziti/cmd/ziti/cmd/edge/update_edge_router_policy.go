@@ -44,10 +44,11 @@ func newUpdateEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Wr
 	}
 
 	cmd := &cobra.Command{
-		Use:   "edge-router-policy <idOrName>",
-		Short: "updates an edge router policy managed by the Ziti Edge Controller",
-		Long:  "updates an edge router policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(1),
+		Use:     "edge-router-policy <idOrName>",
+		Aliases: []string{"erp"},
+		Short:   "updates an edge router policy managed by the Ziti Edge Controller",
+		Long:    "updates an edge router policy managed by the Ziti Edge Controller",
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
