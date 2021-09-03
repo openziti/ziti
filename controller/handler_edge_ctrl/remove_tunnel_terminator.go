@@ -61,11 +61,13 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 		return
 	}
 
-	ctx.verifyTerminator(ctx.terminatorId, edge_common.TunnelBinding)
+	t := ctx.verifyTerminator(ctx.terminatorId, edge_common.TunnelBinding)
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
 		return
 	}
+
+	logger = logger.WithField("serviceId", t.Service)
 
 	err := self.getNetwork().Terminators.Delete(ctx.terminatorId)
 	if err != nil {

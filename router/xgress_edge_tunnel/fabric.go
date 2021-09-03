@@ -18,7 +18,9 @@ package xgress_edge_tunnel
 
 import (
 	"encoding/json"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/secretstream/kx"
 	"github.com/openziti/edge/build"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -223,47 +225,79 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorIden
 }
 
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
-	logger := logrus.WithField("service", hostCtx.ServiceName())
+	terminator := &tunnelTerminator{
+		provider: self,
+		context:  hostCtx,
+		address:  uuid.NewString(),
+	}
+
+	go self.establishTerminatorWithRetry(terminator)
+
+	return terminator, nil
+}
+
+func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTerminator) {
+	logger := logrus.WithField("service", terminator.context.ServiceName())
+
+	if terminator.closed.Get() {
+		logger.Info("not attempting to establish terminator, service not hostable")
+		return
+	}
+
+	operation := func() error {
+		logger.Info("attempting to establish terminator")
+		err := self.establishTerminator(terminator)
+		if err != nil && terminator.closed.Get() {
+			return backoff.Permanent(err)
+		}
+		return err
+	}
+
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.MaxInterval = 1 * time.Minute
+
+	if err := backoff.Retry(operation, expBackoff); err != nil {
+		logger.WithError(err).Error("stopping attempts to establish terminator, service not hostable")
+	}
+}
+
+func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) error {
+	logger := pfxlog.Logger().WithField("service", terminator.context.ServiceName()).
+		WithField("address", terminator.address)
 
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	hostData := make(map[uint32][]byte)
 	hostData[edge.PublicKeyHeader] = keyPair.Public()
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if hostCtx.ListenOptions().Precedence == edge.PrecedenceRequired {
+	if terminator.context.ListenOptions().Precedence == edge.PrecedenceRequired {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-	} else if hostCtx.ListenOptions().Precedence == edge.PrecedenceFailed {
+	} else if terminator.context.ListenOptions().Precedence == edge.PrecedenceFailed {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 	}
 
-	terminator := &tunnelTerminator{
-		provider: self,
-		context:  hostCtx,
-	}
+	self.tunneler.terminators.Set(terminator.address, terminator)
 
-	terminatorAddress := uuid.NewString()
-	self.tunneler.terminators.Set(terminatorAddress, terminator)
-
-	sessionId := self.getBindSession(hostCtx.ServiceName())
+	sessionId := self.getBindSession(terminator.context.ServiceName())
 	request := &edge_ctrl_pb.CreateTunnelTerminatorRequest{
-		ServiceName: hostCtx.ServiceName(),
+		ServiceName: terminator.context.ServiceName(),
 		SessionId:   sessionId,
-		Address:     terminatorAddress,
+		Address:     terminator.address,
 		PeerData:    hostData,
-		Cost:        uint32(hostCtx.ListenOptions().Cost),
+		Cost:        uint32(terminator.context.ListenOptions().Cost),
 		Precedence:  precedence,
-		Identity:    hostCtx.ListenOptions().Identity,
+		Identity:    terminator.context.ListenOptions().Identity,
 	}
 
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{}
 	responseMsg, err := self.ctrlCh.Channel().SendForReply(request, self.ctrlCh.DefaultRequestTimeout())
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
 		logger.WithError(err).Error("error creating terminator")
-		return nil, err
+		return err
 	}
 
 	if response.ApiSession != nil {
@@ -271,23 +305,24 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
-		self.bindSessions.Set(hostCtx.ServiceName(), response.Session.SessionId)
+		self.bindSessions.Set(terminator.context.ServiceName(), response.Session.SessionId)
 	}
 
 	terminator.closeCallback = self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
-		if err = terminator.Close(); err != nil {
-			logrus.WithError(err).WithField("service", hostCtx.ServiceName()).Error("failed to cleanup terminator when session closed")
+		if err := self.removeTerminator(terminator); err != nil {
+			logger.WithError(err).Error("failed to remove terminator after edge session was removed")
 		}
+		go self.establishTerminatorWithRetry(terminator)
 	})
 
-	logger.WithField("address", request.Address).Info("created terminator")
+	logger.WithField("terminatorId", response.TerminatorId).Info("created terminator")
 
 	terminator.terminatorId = response.TerminatorId
-	return terminator, nil
+	return nil
 }
 
-func (self *fabricProvider) removeTerminator(terminatorId string) error {
-	msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorRequestType), []byte(terminatorId))
+func (self *fabricProvider) removeTerminator(terminator *tunnelTerminator) error {
+	msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorRequestType), []byte(terminator.terminatorId))
 	responseMsg, err := self.ctrlCh.Channel().SendAndWaitWithTimeout(msg, self.ctrlCh.DefaultRequestTimeout())
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType)
 }
@@ -358,6 +393,7 @@ func (self *fabricProvider) requestServiceList(lastUpdateToken []byte) {
 type tunnelTerminator struct {
 	provider      *fabricProvider
 	context       tunnel.HostingContext
+	address       string
 	terminatorId  string
 	closeCallback func()
 	closed        concurrenz.AtomicBoolean
@@ -370,12 +406,15 @@ func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 func (self *tunnelTerminator) Close() error {
 	if self.closed.CompareAndSwap(false, true) {
 		log := logrus.WithField("service", self.context.ServiceName()).WithField("terminator", self.terminatorId)
+
 		log.Debug("closing tunnel terminator context")
 		self.context.OnClose()
+
 		log.Debug("unregistering session listener for tunnel terminator")
 		self.closeCallback()
+
 		log.Debug("removing tunnel terminator")
-		return self.provider.removeTerminator(self.terminatorId)
+		return self.provider.removeTerminator(self)
 	}
 	return nil
 }

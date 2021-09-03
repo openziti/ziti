@@ -28,6 +28,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"net"
+	"time"
 )
 
 type tunneler struct {
@@ -87,8 +88,38 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	self.interceptor.Start(self.fabricProvider)
 
 	go self.servicePoller.pollServices(self.listenOptions.svcPollRate, notifyClose)
+	go self.removeStaleConnections(notifyClose)
 
 	return nil
+}
+
+func (self *tunneler) removeStaleConnections(notifyClose <-chan struct{}) {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			var toRemove []string
+			self.terminators.IterCb(func(key string, v interface{}) {
+				if t, ok := v.(*tunnelTerminator); ok {
+					if t.closed.Get() {
+						toRemove = append(toRemove, key)
+					}
+				}
+			})
+
+			for _, key := range toRemove {
+				if v, found := self.terminators.Get(key); found {
+					t := v.(*tunnelTerminator)
+					self.terminators.Remove(key)
+					pfxlog.Logger().Debugf("removed closed tunnel terminator %v for service %v", key, t.context.ServiceName())
+				}
+			}
+		case <-notifyClose:
+			return
+		}
+	}
 }
 
 func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
