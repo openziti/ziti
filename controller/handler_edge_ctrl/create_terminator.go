@@ -84,7 +84,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		return
 	}
 
-	log = log.WithField("service", ctx.service.Name)
+	log = log.WithField("serviceId", ctx.service.Id).WithField("service", ctx.service.Name)
 
 	if ctx.req.Cost > math.MaxUint16 {
 		self.returnError(ctx, invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)))
