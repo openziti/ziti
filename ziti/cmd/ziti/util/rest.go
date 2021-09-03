@@ -675,7 +675,7 @@ func EdgeControllerList(path string, params url.Values, logJSON bool, out io.Wri
 	}
 
 	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
 		R().
 		SetHeader("Content-Type", "application/json").
@@ -886,7 +886,7 @@ func (e EdgeManagementAuth) AuthenticateRequest(request openApiRuntime.ClientReq
 }
 
 // EdgeControllerCreate will create entities of the given type in the given Edge Controller
-func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
+func EdgeControllerCreate(entityType string, body string, out io.Writer, logRequestJson, logResponseJson bool, timeout int, verbose bool) (*gabs.Container, error) {
 	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
 		return nil, err
@@ -897,6 +897,14 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 	if restClientIdentity.Cert != "" {
 		client.SetRootCertificate(restClientIdentity.Cert)
 	}
+
+	url := restClientIdentity.GetBaseUrl() + "/" + entityType
+	if logRequestJson {
+		fmt.Printf("%v to %v\n", "POST", url)
+		outputJson(out, []byte(body))
+		fmt.Println()
+	}
+
 	resp, err := client.
 		SetTimeout(time.Duration(timeout)*time.Second).
 		SetDebug(verbose).
@@ -904,7 +912,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		SetBody(body).
-		Post(restClientIdentity.GetBaseUrl() + "/" + entityType)
+		Post(url)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to create %v instance in Ziti Edge Controller at %v. Error: %v", entityType, restClientIdentity.Url, err)
@@ -915,7 +923,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 			entityType, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
-	if logJSON {
+	if logResponseJson {
 		outputJson(out, resp.Body())
 	}
 
@@ -929,7 +937,7 @@ func EdgeControllerCreate(entityType string, body string, out io.Writer, logJSON
 }
 
 // EdgeControllerDelete will delete entities of the given type in the given Edge Controller
-func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
+func EdgeControllerDelete(entityType string, id string, out io.Writer, logResponseJson bool, timeout int, verbose bool) (*gabs.Container, error) {
 	restClientIdentity, err := LoadSelectedRWIdentity()
 	if err != nil {
 		return nil, err
@@ -960,7 +968,7 @@ func EdgeControllerDelete(entityType string, id string, out io.Writer, logJSON b
 			entityPath, restClientIdentity.GetBaseUrl(), resp.Status(), prettyPrintResponse(resp))
 	}
 
-	if logJSON {
+	if logResponseJson {
 		outputJson(out, resp.Body())
 	}
 
@@ -986,7 +994,10 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		client.SetRootCertificate(restClientIdentity.Cert)
 	}
 
+	url := restClientIdentity.GetBaseUrl() + "/" + entityType
+
 	if logRequestJson {
+		fmt.Printf("%v to %v\n", method, url)
 		outputJson(out, []byte(body))
 		fmt.Println()
 	}
@@ -998,7 +1009,7 @@ func EdgeControllerUpdate(entityType string, body string, out io.Writer, method 
 		SetHeader("Content-Type", "application/json").
 		SetHeader(constants.ZitiSession, restClientIdentity.Token).
 		SetBody(body).
-		Execute(method, restClientIdentity.GetBaseUrl()+"/"+entityType)
+		Execute(method, url)
 
 	if err != nil {
 		return nil, fmt.Errorf("unable to update %v instance in Ziti Edge Controller at %v. Error: %v", entityType, restClientIdentity.GetBaseUrl(), err)

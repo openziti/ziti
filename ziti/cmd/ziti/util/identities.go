@@ -26,6 +26,7 @@ func (self *RestClientConfig) GetIdentity() string {
 
 type RestClientIdentity struct {
 	Url       string `json:"url"`
+	Username  string `json:"username"`
 	Token     string `json:"token"`
 	LoginTime string `json:"loginTime"`
 	Cert      string `json:"cert,omitempty"`

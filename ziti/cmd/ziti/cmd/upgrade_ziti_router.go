@@ -19,11 +19,11 @@ package cmd
 import (
 	"io"
 
+	"github.com/openziti/ziti/common/version"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
-	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +40,7 @@ var (
 
 // UpgradeZitiRouterOptions the options for the upgrade ziti-router command
 type UpgradeZitiRouterOptions struct {
-	CreateOptions
+	CommonOptions
 
 	Version string
 }
@@ -48,12 +48,10 @@ type UpgradeZitiRouterOptions struct {
 // NewCmdUpgradeZitiRouter defines the command
 func NewCmdUpgradeZitiRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpgradeZitiRouterOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
+		CommonOptions: CommonOptions{
+			Factory: f,
+			Out:     out,
+			Err:     errOut,
 		},
 	}
 

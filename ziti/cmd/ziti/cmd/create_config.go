@@ -17,17 +17,14 @@
 package cmd
 
 import (
-	"io"
-
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 // CreateConfigOptions the options for the create spring command
 type CreateConfigOptions struct {
-	CreateOptions
-
+	common.CommonOptions
 	Namespace   string
 	Version     string
 	ReleaseName string
@@ -35,15 +32,9 @@ type CreateConfigOptions struct {
 }
 
 // NewCmdCreateConfig creates a command object for the "create" command
-func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreateConfig(p common.OptionsProvider) *cobra.Command {
 	options := &CreateConfigOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
-		},
+		CommonOptions: p(),
 	}
 
 	cmd := &cobra.Command{
@@ -58,10 +49,8 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigController(f, out, errOut))
-	cmd.AddCommand(NewCmdCreateConfigRouter(f, out, errOut))
-	cmd.AddCommand(NewCmdCreateConfigMgmt(f, out, errOut))
-	cmd.AddCommand(NewCmdCreateConfigGw(f, out, errOut))
+	cmd.AddCommand(NewCmdCreateConfigController(p))
+	cmd.AddCommand(NewCmdCreateConfigRouter(p))
 
 	options.addFlags(cmd, "", "")
 	return cmd

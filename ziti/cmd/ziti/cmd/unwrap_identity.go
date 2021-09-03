@@ -18,15 +18,30 @@ type IdentityConfigFile struct {
 }
 
 func NewUnwrapIdentityFileCommand(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	return &cobra.Command{
-		Use:   "unwrap <identity_file> <out_cert> <out_private_key> <out_ca>",
+	outCertFile := ""
+	outKeyFile := ""
+	outCaFile := ""
+
+	cmd := &cobra.Command{
+		Use:   "unwrap <identity_file>",
 		Short: "unwrap a Ziti Identity file into its separate pieces (supports PEM only)",
-		Args:  cobra.ExactArgs(4),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			identityFile := args[0]
-			outCertFile := args[1]
-			outKeyFile := args[2]
-			outCaFile := args[3]
+
+			rootFileName := strings.TrimSuffix(identityFile, ".json")
+
+			if outCertFile == "" {
+				outCertFile = rootFileName + ".cert"
+			}
+
+			if outKeyFile == "" {
+				outKeyFile = rootFileName + ".key"
+			}
+
+			if outCaFile == "" {
+				outCaFile = rootFileName + ".ca"
+			}
 
 			identityJson, err := ioutil.ReadFile(identityFile)
 
@@ -72,4 +87,10 @@ func NewUnwrapIdentityFileCommand(f cmdutil.Factory, out io.Writer, errOut io.Wr
 			}
 		},
 	}
+
+	cmd.Flags().StringVarP(&outCertFile, "cert", "", "", "output certificate file, defaults to ./<root>.cert")
+	cmd.Flags().StringVarP(&outKeyFile, "key", "", "", "output private key file, defaults to ./<root>.key")
+	cmd.Flags().StringVarP(&outCaFile, "ca", "", "", "output ca bundle file, defaults to ./<root>.ca")
+
+	return cmd
 }

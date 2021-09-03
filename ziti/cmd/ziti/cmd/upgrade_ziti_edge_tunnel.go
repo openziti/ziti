@@ -40,7 +40,7 @@ var (
 
 // UpgradeZitiEdgeTunnelOptions the options for the upgrade ziti-edge-tunnel command
 type UpgradeZitiEdgeTunnelOptions struct {
-	CreateOptions
+	CommonOptions
 
 	Version string
 }
@@ -48,12 +48,10 @@ type UpgradeZitiEdgeTunnelOptions struct {
 // NewCmdUpgradeZitiEdgeTunnel defines the command
 func NewCmdUpgradeZitiEdgeTunnel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpgradeZitiEdgeTunnelOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
+		CommonOptions: CommonOptions{
+			Factory: f,
+			Out:     out,
+			Err:     errOut,
 		},
 	}
 

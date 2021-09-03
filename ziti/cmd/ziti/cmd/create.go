@@ -17,22 +17,14 @@
 package cmd
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/spf13/cobra"
 	"io"
 
-	"github.com/spf13/cobra"
-
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 )
-
-// CreateOptions contains the command line options
-type CreateOptions struct {
-	CommonOptions
-
-	DisableImport bool
-	OutDir        string
-}
 
 var (
 	createLong = templates.LongDesc(`
@@ -43,28 +35,16 @@ var (
 
 // NewCmdCreate creates a command object for the "create" command
 func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &CreateOptions{
-		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
-		},
-	}
-
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new resource",
 		Long:  createLong,
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			cmdhelper.CheckErr(cmd.Help())
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfig(f, out, errOut))
-	// cmd.AddCommand(NewCmdCreateStateStore(f, out, errOut))
+	cmd.AddCommand(NewCmdCreateConfig(common.NewOptionsProvider(out, errOut)))
 	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
 
 	cmd.AddCommand(NewCmdPKICreateCA(f, out, errOut))
@@ -74,9 +54,4 @@ func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	cmd.AddCommand(NewCmdPKICreateCSR(f, out, errOut))
 
 	return cmd
-}
-
-// Run implements this command
-func (o *CreateOptions) Run() error {
-	return o.Cmd.Help()
 }
