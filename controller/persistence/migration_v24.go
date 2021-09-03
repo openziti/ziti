@@ -41,16 +41,4 @@ func (m *Migrations) addIdentityIdToSessions(step *boltz.MigrationStep) {
 
 		cursor.Next()
 	}
-
-	cursor = m.stores.Session.IterateIds(step.Ctx.Tx(), ast.BoolNodeTrue)
-
-	for cursor.IsValid() {
-		sessionId := string(cursor.Current())
-		session, _ := m.stores.Session.LoadOneById(step.Ctx.Tx(), sessionId)
-
-		fmt.Printf("%+v\n", session)
-
-		cursor.Next()
-	}
-
 }
