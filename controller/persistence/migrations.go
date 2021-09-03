@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 23
+	CurrentDbVersion = 24
 	FieldVersion     = "version"
 )
 
@@ -99,6 +99,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
     if step.CurrentVersion < 23 {
 		m.addProcessMultiPostureCheck(step)
     }
+
+	if step.CurrentVersion < 24 {
+		m.addIdentityIdToSessions(step)
+	}
 
 	// current version
 	if step.CurrentVersion <= CurrentDbVersion {

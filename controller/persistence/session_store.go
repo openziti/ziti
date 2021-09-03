@@ -62,7 +62,7 @@ func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) 
 	entity.Token = bucket.GetStringOrError(FieldSessionToken)
 	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
 	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
-	entity.IdentityId = bucket.GetStringOrError(FieldSessionIdentity)
+	entity.IdentityId = bucket.GetStringWithDefault(FieldSessionIdentity, "")
 	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
 	entity.ServicePolicies = bucket.GetStringList(FieldSessionServicePolicies)
 }
