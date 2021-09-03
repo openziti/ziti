@@ -54,12 +54,12 @@ func (handler *inspectHandler) HandleReceive(msg *channel2.Message, ch channel2.
 
 	var err error
 	if err = proto.Unmarshal(msg.Body, context.request); err != nil {
-		context.appendError(handler.network.GetAppId().Token, err.Error())
+		context.appendError(handler.network.GetAppId(), err.Error())
 	}
 
 	context.regex, err = regexp.Compile(context.request.AppRegex)
 	if err != nil {
-		context.appendError(handler.network.GetAppId().Token, err.Error())
+		context.appendError(handler.network.GetAppId(), err.Error())
 	}
 
 	if !context.response.Success {
@@ -82,10 +82,10 @@ type inspectRequestContext struct {
 }
 
 func (context *inspectRequestContext) processLocal() {
-	if context.regex.MatchString(context.handler.network.GetAppId().Token) {
+	if context.regex.MatchString(context.handler.network.GetAppId()) {
 		for _, requested := range context.request.RequestedValues {
 			if strings.ToLower(requested) == "stackdump" {
-				context.appendValue(context.handler.network.GetAppId().Token, requested, debugz.GenerateStack())
+				context.appendValue(context.handler.network.GetAppId(), requested, debugz.GenerateStack())
 			}
 		}
 	}
@@ -95,7 +95,7 @@ func (context *inspectRequestContext) processRemote() {
 	routerRequest := &ctrl_pb.InspectRequest{RequestedValues: context.request.RequestedValues}
 	body, err := proto.Marshal(routerRequest)
 	if err != nil {
-		context.appendError(context.handler.network.GetAppId().Token, err.Error())
+		context.appendError(context.handler.network.GetAppId(), err.Error())
 		return
 	}
 

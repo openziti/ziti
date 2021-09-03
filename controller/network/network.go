@@ -49,7 +49,7 @@ const SmartRerouteAttempt = 99969996
 
 type Network struct {
 	*Controllers
-	nodeId                 *identity.TokenId
+	nodeId                 string
 	options                *Options
 	routerChanged          chan *Router
 	linkController         *linkController
@@ -76,7 +76,7 @@ type Network struct {
 	serviceDialOtherErrorCounter metrics.IntervalCounter
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
+func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
 	stores, err := db.InitStores(database)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 
 	controllers := NewControllers(database, stores)
 
-	serviceEventMetrics := metrics.NewUsageRegistry(nodeId.Token, nil, closeNotify)
+	serviceEventMetrics := metrics.NewUsageRegistry(nodeId, nil, closeNotify)
 
 	network := &Network{
 		Controllers:           controllers,
@@ -102,7 +102,7 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		closeNotify:           closeNotify,
 		strategyRegistry:      xt.GlobalRegistry(),
 		lastSnapshot:          time.Now().Add(-time.Hour),
-		metricsRegistry:       metrics.NewRegistry(nodeId.Token, nil),
+		metricsRegistry:       metrics.NewRegistry(nodeId, nil),
 		VersionProvider:       versionProvider,
 
 		serviceEventMetrics:          serviceEventMetrics,
@@ -147,7 +147,7 @@ func (network *Network) InitServiceCounterDispatch(handler metrics.Handler) {
 	network.serviceEventMetrics.StartReporting(handler, time.Minute, 10)
 }
 
-func (network *Network) GetAppId() *identity.TokenId {
+func (network *Network) GetAppId() string {
 	return network.nodeId
 }
 
@@ -807,7 +807,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 }
 
 func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
-	if metrics.SourceId == network.nodeId.Token {
+	if metrics.SourceId == network.nodeId {
 		return // ignore metrics coming from the controller itself
 	}
 

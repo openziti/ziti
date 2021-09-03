@@ -37,8 +37,7 @@ func TestSimplePath2(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
 
-	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -102,8 +101,7 @@ func TestTransitPath2(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
 
-	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -239,8 +237,7 @@ func TestShortestPath(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
 
-	nodeId := &identity.TokenId{Token: "test"}
-	network, err := NewNetwork(nodeId, nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"

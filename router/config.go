@@ -166,7 +166,7 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		submap := value.(map[interface{}]interface{})
 		if value, found := submap["path"]; found {
-			handler, err := channel2.NewTraceHandler(value.(string), cfg.Id)
+			handler, err := channel2.NewTraceHandler(value.(string), cfg.Id.Token)
 			if err != nil {
 				return nil, err
 			}
