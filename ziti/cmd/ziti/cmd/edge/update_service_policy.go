@@ -45,10 +45,11 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service-policy <idOrName>",
-		Short: "updates a service-policy managed by the Ziti Edge Controller",
-		Long:  "updates a service-policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(1),
+		Use:     "service-policy <idOrName>",
+		Aliases: []string{"sp"},
+		Short:   "updates a service-policy managed by the Ziti Edge Controller",
+		Long:    "updates a service-policy managed by the Ziti Edge Controller",
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

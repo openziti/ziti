@@ -57,12 +57,12 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions()))
-	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("service-edge-router-policies", runListServiceEdgeRouterPolices, newOptions(), "serps"))
+	cmd.AddCommand(newListCmdForEntityType("service-policies", runListServicePolices, newOptions(), "sps"))
 	cmd.AddCommand(newListCmdForEntityType("sessions", runListSessions, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("transit-routers", runListTransitRouters, newOptions()))
 
@@ -76,13 +76,13 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	configTypeListRootCmd := newEntityListRootCmd("config-type")
 	configTypeListRootCmd.AddCommand(newSubListCmdForEntityType("config-type", "configs", outputConfigs, newOptions()))
 
-	edgeRouterListRootCmd := newEntityListRootCmd("edge-router")
+	edgeRouterListRootCmd := newEntityListRootCmd("edge-router", "er")
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "edge-router-policies", outputEdgeRouterPolicies, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "service-edge-router-policies", outputServiceEdgeRouterPolicies, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "identities", outputIdentities, newOptions()))
 	edgeRouterListRootCmd.AddCommand(newSubListCmdForEntityType("edge-routers", "services", outputServices, newOptions()))
 
-	edgeRouterPolicyListRootCmd := newEntityListRootCmd("edge-router-policy")
+	edgeRouterPolicyListRootCmd := newEntityListRootCmd("edge-router-policy", "erp")
 	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
 	edgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("edge-router-policies", "identities", outputIdentities, newOptions()))
 
@@ -101,11 +101,11 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "identities", outputIdentities, newOptions()))
 	serviceListRootCmd.AddCommand(newSubListCmdForEntityType("services", "edge-routers", outputEdgeRouters, newOptions()))
 
-	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy")
+	serviceEdgeRouterPolicyListRootCmd := newEntityListRootCmd("service-edge-router-policy", "serp")
 	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "services", outputServices, newOptions()))
 	serviceEdgeRouterPolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-edge-router-policies", "edge-routers", outputEdgeRouters, newOptions()))
 
-	servicePolicyListRootCmd := newEntityListRootCmd("service-policy")
+	servicePolicyListRootCmd := newEntityListRootCmd("service-policy", "sp")
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "services", outputServices, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "identities", outputIdentities, newOptions()))
 	servicePolicyListRootCmd.AddCommand(newSubListCmdForEntityType("service-policies", "posture-checks", outputPostureChecks, newOptions()))
@@ -164,12 +164,13 @@ type listCommandRunner func(*edgeOptions) error
 
 type outputFunction func(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error
 
-func newEntityListRootCmd(entityType string) *cobra.Command {
+func newEntityListRootCmd(entityType string, aliases ...string) *cobra.Command {
 	desc := fmt.Sprintf("list entities related to a %v instance managed by the Ziti Edge Controller", entityType)
 	return &cobra.Command{
-		Use:   entityType,
-		Short: desc,
-		Long:  desc,
+		Use:     entityType,
+		Aliases: aliases,
+		Short:   desc,
+		Long:    desc,
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
@@ -178,12 +179,13 @@ func newEntityListRootCmd(entityType string) *cobra.Command {
 }
 
 // newListCmdForEntityType creates the list command for the given entity type
-func newListCmdForEntityType(entityType string, command listCommandRunner, options *edgeOptions) *cobra.Command {
+func newListCmdForEntityType(entityType string, command listCommandRunner, options *edgeOptions, aliases ...string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   entityType + " <filter>?",
-		Short: "lists " + entityType + " managed by the Ziti Edge Controller",
-		Long:  "lists " + entityType + " managed by the Ziti Edge Controller",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     entityType + " <filter>?",
+		Short:   "lists " + entityType + " managed by the Ziti Edge Controller",
+		Long:    "lists " + entityType + " managed by the Ziti Edge Controller",
+		Args:    cobra.MaximumNArgs(1),
+		Aliases: aliases,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -238,10 +240,11 @@ func newListEdgeRoutersCmd(options *edgeOptions) *cobra.Command {
 	var roleSemantic string
 
 	cmd := &cobra.Command{
-		Use:   "edge-routers <filter>?",
-		Short: "lists edge routers managed by the Ziti Edge Controller",
-		Long:  "lists edge routers managed by the Ziti Edge Controller",
-		Args:  cobra.MaximumNArgs(1),
+		Use:     "edge-routers <filter>?",
+		Short:   "lists edge routers managed by the Ziti Edge Controller",
+		Long:    "lists edge routers managed by the Ziti Edge Controller",
+		Args:    cobra.MaximumNArgs(1),
+		Aliases: []string{"ers"},
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

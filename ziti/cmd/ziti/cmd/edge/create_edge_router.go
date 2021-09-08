@@ -46,7 +46,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 	cmd := &cobra.Command{
 		Use:     "edge-router <name>",
-		Aliases: []string{"gateway"},
+		Aliases: []string{"gateway", "er"},
 		Short:   "creates an edge router managed by the Ziti Edge Controller",
 		Long:    "creates an edge router managed by the Ziti Edge Controller",
 		Args:    cobra.ExactArgs(1),
