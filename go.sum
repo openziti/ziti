@@ -592,8 +592,8 @@ github.com/openziti/fabric v0.16.98 h1:Aybn3nhlZNkcyeUbaXewavwT0Usvc6LoGOjtU/rH2
 github.com/openziti/fabric v0.16.98/go.mod h1:gqbGQLg1+eUqOKQr2FvIXhcS9TNqzdolj1q2XDrp7FY=
 github.com/openziti/foundation v0.15.72 h1:2QKzS5dbAZdeawEtr0R4Rd27cqP8DIHqVNpYPhvX0c4=
 github.com/openziti/foundation v0.15.72/go.mod h1:Njk4vQbg6ILR/RQiU5DQOk35oMulQRPGHLn386+RSew=
-github.com/openziti/sdk-golang v0.15.89 h1:9M3Gg5mz3bKV8SZEylnDf4KP6Z28nJHra+Dnk01v2aM=
-github.com/openziti/sdk-golang v0.15.89/go.mod h1:315ao/EdOOQQkN5f5yZhf5HkXxA/gWQ5NqW+ozIY+B0=
+github.com/openziti/sdk-golang v0.15.90 h1:Li3US66NOBVVRINOt6EyKKP5l9beZZnQuo0F+RVFmsc=
+github.com/openziti/sdk-golang v0.15.90/go.mod h1:315ao/EdOOQQkN5f5yZhf5HkXxA/gWQ5NqW+ozIY+B0=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
