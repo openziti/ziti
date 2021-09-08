@@ -3,6 +3,14 @@
 ## What's New
 
 * Bug fix: Upgrading a controller from 0.22.0 or earlier to 0.22.2 will no longer leave old sessions w/o identityId properties. Workaround for previous versions is to use `ziti-controller delete-sessions`
+* Bug fix: If a router/tunneler loses connectivity with the controller long enough for the api session to time out, the router will now restablish any terminators for hosted services
+* Enhancement: Add some short aliases for the CLI
+    * edge-router -> er
+    * service-policy -> sp
+    * edge-router-policy -> erp
+    * service-edge-router-policy -> serp
+* Feature: Add GetServiceTerminators to Golang SDK ziti.Context
+* Feature: Add GetSourceIdentifier to Golang SDK edge.ServiceConn
 
 # Release 0.22.1
 

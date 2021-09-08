@@ -45,10 +45,11 @@ func newCreateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "service-policy <name> <type>",
-		Short: "creates a service-policy managed by the Ziti Edge Controller",
-		Long:  "creates a service-policy managed by the Ziti Edge Controller",
-		Args:  cobra.ExactArgs(2),
+		Use:     "service-policy <name> <type>",
+		Aliases: []string{"sp"},
+		Short:   "creates a service-policy managed by the Ziti Edge Controller",
+		Long:    "creates a service-policy managed by the Ziti Edge Controller",
+		Args:    cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
