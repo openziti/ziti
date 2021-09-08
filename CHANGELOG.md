@@ -1,3 +1,9 @@
+# Release 0.22.2
+
+## What's New
+
+* Bug fix: Upgrading a controller from 0.22.0 or earlier to 0.22.2 will no longer leave old sessions w/o identityId properties. Workaround for previous versions is to use `ziti-controller delete-sessions`
+
 # Release 0.22.1
 
 ## What's New
