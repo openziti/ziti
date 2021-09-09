@@ -91,9 +91,10 @@ func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestC
 		postureData := ae.Handlers.PostureResponse.PostureData(rc.Identity.Id)
 
 		if postureData != nil && postureData.ApiSessions != nil {
-			if apiPostureData, ok := postureData.ApiSessions[rc.ApiSession.Id]; ok && apiPostureData.Mfa.PassedMfaAt != nil {
+			apiPostureData := postureData.ApiSessions[rc.ApiSession.Id]
+			if passedMfaAt := apiPostureData.GetPassedMfaAt(); passedMfaAt != nil {
 				//if the last time Mfa was passed at is outside of the grace period, send timeout update
-				durationSinceLastMfa := time.Now().Sub(*apiPostureData.Mfa.PassedMfaAt)
+				durationSinceLastMfa := time.Now().Sub(*passedMfaAt)
 
 				modelServicesWithTimeouts := ae.Handlers.PostureResponse.GetEndpointStateChangeAffectedServices(durationSinceLastMfa, gracePeriod, onWake, onUnlock)
 
