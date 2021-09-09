@@ -1,3 +1,11 @@
+# Release 0.22.3
+
+## What's New
+
+* Bug fix: Fix panic in listener close if the socket hadn't been initalized yet
+* Bug fix: Fix panic in posture bulk create if mfa wasn't set
+* Bug fix: Fix panic in circuit creation on race condition when circuits are add/removed concurrently
+
 # Release 0.22.2
 
 ## What's New
