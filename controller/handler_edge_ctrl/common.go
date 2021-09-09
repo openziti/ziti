@@ -299,28 +299,6 @@ func (self *baseSessionRequestContext) loadService() {
 	}
 }
 
-func (self *baseSessionRequestContext) loadServiceForName(name string) {
-	if self.err == nil {
-		var err error
-		self.service, err = self.handler.getAppEnv().Handlers.EdgeService.ReadByName(name)
-
-		if err != nil {
-			if boltz.IsErrNotFoundErr(err) {
-				err = InvalidServiceError{}
-			} else {
-				err = internalError(err)
-			}
-
-			logrus.
-				WithField("sessionId", self.session.Id).
-				WithField("operation", self.handler.Label()).
-				WithField("serviceId", self.session.ServiceId).
-				WithError(self.err).
-				Error("service not found")
-		}
-	}
-}
-
 func (self *baseSessionRequestContext) validateTerminatorIdentity(tx *bbolt.Tx, terminator terminator) error {
 	session, err := self.getTerminatorSession(tx, terminator, "")
 	if err != nil {

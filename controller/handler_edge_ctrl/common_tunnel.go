@@ -150,6 +150,29 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 	return false
 }
 
+func (self *baseTunnelRequestContext) loadServiceForName(name string) {
+	if self.err == nil {
+		var err error
+		self.service, err = self.handler.getAppEnv().Handlers.EdgeService.ReadByName(name)
+
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				err = InvalidServiceError{}
+			} else {
+				err = internalError(err)
+			}
+
+			logrus.
+				WithField("apiSessionId", self.apiSession.Id).
+				WithField("operation", self.handler.Label()).
+				WithField("router", self.sourceRouter.Name).
+				WithField("serviceName", name).
+				WithError(self.err).
+				Error("service not found")
+		}
+	}
+}
+
 func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, sessionType string) {
 	if self.err == nil {
 		logger := logrus.
