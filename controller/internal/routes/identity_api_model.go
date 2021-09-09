@@ -57,6 +57,7 @@ func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.L
 	links[EntityNameServicePolicy] = factory.NewNestedLink(entity, EntityNameServicePolicy)
 	links[EntityNamePostureData] = factory.NewNestedLink(entity, EntityNamePostureData)
 	links[EntityNameFailedServiceRequest] = factory.NewNestedLink(entity, EntityNameFailedServiceRequest)
+	links[EntityNameAuthenticator] = factory.NewNestedLink(entity, EntityNameAuthenticator)
 
 	return links
 }

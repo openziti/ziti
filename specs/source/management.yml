@@ -120,6 +120,8 @@ paths:
     $ref: 'management/identities.yml#/paths/identities'
   '/identities/{id}':
     $ref: 'management/identities.yml#/paths/identities-id'
+  '/identities/{id}/authenticators':
+    $ref: "management/identities.yml#/paths/identities-id-authenticators"
   '/identities/{id}/edge-router-policies':
     $ref: 'management/identities.yml#/paths/identities-id-edge-router-policies'
   '/identities/{id}/service-configs':
