@@ -42,26 +42,17 @@ func (self *Circuit) latency() int64 {
 }
 
 type circuitController struct {
-	circuits          cmap.ConcurrentMap // map[string]*Circuit
-	circuitsByService cmap.ConcurrentMap // map[string]*Circuits
+	circuits cmap.ConcurrentMap // map[string]*Circuit
 }
 
 func newCircuitController() *circuitController {
 	return &circuitController{
-		circuits:          cmap.New(),
-		circuitsByService: cmap.New(),
+		circuits: cmap.New(),
 	}
 }
 
 func (c *circuitController) add(sn *Circuit) {
 	c.circuits.Set(sn.Id, sn)
-
-	if !c.circuitsByService.Has(sn.Service.Id) {
-		c.circuitsByService.Set(sn.Service.Id, cmap.New())
-	}
-	t, _ := c.circuitsByService.Get(sn.Service.Id)
-	circuitsForService := t.(cmap.ConcurrentMap)
-	circuitsForService.Set(sn.Id, sn)
 }
 
 func (c *circuitController) get(id string) (*Circuit, bool) {
@@ -81,12 +72,4 @@ func (c *circuitController) all() []*Circuit {
 
 func (c *circuitController) remove(sn *Circuit) {
 	c.circuits.Remove(sn.Id)
-
-	if t, found := c.circuitsByService.Get(sn.Service.Id); found {
-		circuitsForService := t.(cmap.ConcurrentMap)
-		circuitsForService.Remove(sn.Id)
-		if circuitsForService.Count() < 1 {
-			c.circuitsByService.Remove(sn.Service.Id)
-		}
-	}
 }
