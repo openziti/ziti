@@ -388,6 +388,13 @@ type ApiSessionPostureData struct {
 	SdkInfo       *SdkInfo
 }
 
+func (self *ApiSessionPostureData) GetPassedMfaAt() *time.Time {
+	if self == nil || self.Mfa == nil {
+		return nil
+	}
+	return self.Mfa.PassedMfaAt
+}
+
 type PostureCheckFailureSubType interface {
 	Value() interface{}
 	Expected() interface{}
