@@ -556,7 +556,7 @@ function createRouterPki {
 function createPrivateRouterConfig {
   router_name="${1-}"
   if [[ "${router_name}" == "" ]]; then
-    echo -e "  * ERROR: $(RED "createFabricRouterConfig requires a parameter to be supplied") "
+    echo -e "  * ERROR: $(RED "createPrivateRouterConfig requires a parameter to be supplied") "
     return 1
   fi
 
