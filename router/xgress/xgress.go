@@ -261,6 +261,7 @@ func (self *Xgress) Unrouted() {
 	// When we're unrouted, if end of circuit hasn't already arrived, give incoming/queued data
 	// a chance to outflow before closing
 	if !self.flags.IsSet(closedFlag) {
+		self.payloadBuffer.Close()
 		time.AfterFunc(self.Options.MaxCloseWait, self.Close)
 	}
 }
