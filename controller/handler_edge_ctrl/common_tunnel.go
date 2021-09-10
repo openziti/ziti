@@ -9,7 +9,6 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/sdk-golang/ziti"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"sync/atomic"
@@ -203,7 +202,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			Token:        uuid.NewString(),
 			ApiSessionId: self.apiSession.Id,
 			ServiceId:    self.service.Id,
-			IdentityId: self.identity.Id,
+			IdentityId:   self.identity.Id,
 			Type:         sessionType,
 		}
 
@@ -226,16 +225,19 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 }
 
 func (self *baseTunnelRequestContext) getCreateApiSessionResponse() (*edge_ctrl_pb.CreateApiSessionResponse, error) {
-	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if self.identity.DefaultHostingPrecedence == ziti.PrecedenceRequired {
-		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-	} else if self.identity.DefaultHostingPrecedence == ziti.PrecedenceFailed {
-		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
-	}
-
 	appDataJson, err := mapToJson(self.identity.AppData)
 	if err != nil {
 		return nil, err
+	}
+
+	servicePrecedences := map[string]edge_ctrl_pb.TerminatorPrecedence{}
+	for k, v := range self.identity.ServiceHostingPrecedences {
+		servicePrecedences[k] = edge_ctrl_pb.GetPrecedence(v)
+	}
+
+	serviceCosts := map[string]uint32{}
+	for k, v := range self.identity.ServiceHostingCosts {
+		serviceCosts[k] = uint32(v)
 	}
 
 	return &edge_ctrl_pb.CreateApiSessionResponse{
@@ -244,9 +246,11 @@ func (self *baseTunnelRequestContext) getCreateApiSessionResponse() (*edge_ctrl_
 		RefreshIntervalSeconds:   uint32((self.apiSession.ExpirationDuration - (10 * time.Second)).Seconds()),
 		IdentityId:               self.identity.Id,
 		IdentityName:             self.identity.Name,
-		DefaultHostingPrecedence: precedence,
+		DefaultHostingPrecedence: edge_ctrl_pb.GetPrecedence(self.identity.DefaultHostingPrecedence),
 		DefaultHostingCost:       uint32(self.identity.DefaultHostingCost),
 		AppDataJson:              appDataJson,
+		ServicePrecedences:       servicePrecedences,
+		ServiceCosts:             serviceCosts,
 	}, nil
 }
 
