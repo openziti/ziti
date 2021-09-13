@@ -63,7 +63,7 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	}
 
 	broker.ae.GetStores().Session.AddListener(boltz.EventDelete, broker.sessionDeleted)
-	broker.ae.GetStores().ApiSession.AddListener(boltz.EventCreate, broker.apiSessionCreated)
+	broker.ae.GetStores().ApiSession.AddListener(persistence.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
 	broker.ae.GetStores().ApiSession.AddListener(boltz.EventDelete, broker.apiSessionDeleted)
 	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventCreate, broker.apiSessionCertificateCreated)
 	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventDelete, broker.apiSessionCertificateDeleted)
@@ -115,14 +115,14 @@ func (broker *Broker) RouterDisconnected(r *network.Router) {
 	}
 }
 
-func (broker *Broker) apiSessionCreated(args ...interface{}) {
+func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {
 		apiSession, _ = args[0].(*persistence.ApiSession)
 	}
 
 	if apiSession == nil {
-		pfxlog.Logger().Error("during broker apiSessionCreated could not cast arg[0] to *persistence.ApiSession")
+		pfxlog.Logger().Error("during broker apiSessionFullyAuthenticated could not cast arg[0] to *persistence.ApiSession")
 		return
 	}
 	broker.routerSyncStrategy.ApiSessionAdded(apiSession)
