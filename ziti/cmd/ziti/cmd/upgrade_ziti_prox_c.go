@@ -40,7 +40,7 @@ var (
 
 // UpgradeZitiProxCOptions the options for the upgrade ziti-prox-c command
 type UpgradeZitiProxCOptions struct {
-	CreateOptions
+	CommonOptions
 
 	Version string
 }
@@ -48,12 +48,10 @@ type UpgradeZitiProxCOptions struct {
 // NewCmdUpgradeZitiProxC defines the command
 func NewCmdUpgradeZitiProxC(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpgradeZitiProxCOptions{
-		CreateOptions: CreateOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
+		CommonOptions: CommonOptions{
+			Factory: f,
+			Out:     out,
+			Err:     errOut,
 		},
 	}
 

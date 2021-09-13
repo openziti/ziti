@@ -3,10 +3,13 @@
 set -euo pipefail
 
 function alldone() {
-    # send SIGINT to ziti-tunnel to trigger a cleanup of iptables mangle rules
-    kill -INT $ZITI_TUNNEL_PID
-    # let entrypoint script exit after ziti-tunnel PID
-    wait $ZITI_TUNNEL_PID
+    # if successfully sent to background then send SIGINT to trigger a cleanup
+    # of iptables mangle rules and loopback assignments
+    [[ "${ZITI_TUNNEL_PID:-}" =~ ^[0-9]+$ ]] && {
+        kill -INT "$ZITI_TUNNEL_PID"
+        # let entrypoint script exit after ziti-tunnel PID
+        wait "$ZITI_TUNNEL_PID"
+    }
 }
 trap alldone exit
 
@@ -65,7 +68,7 @@ if iptables -t mangle -S --wait 2>&1 | grep -q "iptables-legacy tables present";
     for LEGACY in {ip{,6},eb,arp}tables; do
         if which ${LEGACY}-legacy &>/dev/null; then
             echo "INFO: updating $LEGACY alternative to ${LEGACY}-legacy"
-            update-alternatives --set $LEGACY $(which ${LEGACY}-legacy)
+            update-alternatives --set $LEGACY "$(which ${LEGACY}-legacy)"
         else
             echo "WARN: not updating $LEGACY alternative to ${LEGACY}-legacy" >&2
         fi

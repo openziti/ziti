@@ -18,15 +18,36 @@ package common
 
 import (
 	"context"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"github.com/spf13/cobra"
 	"io"
 	"time"
 )
 
+type Printer interface {
+	Printf(format string, args ...interface{})
+	Println(val interface{})
+}
+
+type Factory interface {
+	CreateTable(out io.Writer) table.Table
+}
+
+type OptionsProvider func() CommonOptions
+
+func NewOptionsProvider(out, err io.Writer) OptionsProvider {
+	return func() CommonOptions {
+		return CommonOptions{
+			Out: out,
+			Err: err,
+		}
+	}
+}
+
 // CommonOptions contains common options and helper methods
 type CommonOptions struct {
-	Factory        util.Factory
+	Factory        Factory
 	Out            io.Writer
 	Err            io.Writer
 	Cmd            *cobra.Command
@@ -36,6 +57,7 @@ type CommonOptions struct {
 	Staging        bool
 	ConfigIdentity string
 	Timeout        int
+	Identity       string
 }
 
 func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelFunc) {
@@ -43,3 +65,17 @@ func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelF
 
 	return context.WithTimeout(context.Background(), timeout)
 }
+
+func (options *CommonOptions) Printf(format string, args ...interface{}) {
+	if _, err := fmt.Fprintf(options.Out, format, args...); err != nil {
+		panic(err)
+	}
+}
+
+func (options *CommonOptions) Println(s interface{}) {
+	if _, err := fmt.Fprintln(options.Out, s); err != nil {
+		panic(err)
+	}
+}
+
+var CliIdentity string

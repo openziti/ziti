@@ -17,7 +17,6 @@
 package table
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"fmt"
 	"io"
 )
@@ -66,10 +65,10 @@ func (t *Table) Render() {
 			}
 			l := t.ColumnWidths[ci]
 			align := t.GetColumnAlign(ci)
-			if ci >= lastColumn && align != util.ALIGN_CENTER && align != util.ALIGN_RIGHT {
+			if ci >= lastColumn && align != ALIGN_CENTER && align != ALIGN_RIGHT {
 				fmt.Fprint(out, col)
 			} else {
-				fmt.Fprint(out, util.Pad(col, " ", l, align))
+				fmt.Fprint(out, Pad(col, " ", l, align))
 			}
 		}
 		fmt.Fprint(out, "\n")
