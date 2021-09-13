@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/fabric/controller/xctrl_example"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/controller/xt_ha"
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
@@ -224,7 +223,6 @@ func (c *Controller) loadEventHandlers() {
 
 func (c *Controller) registerXts() {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
 	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
 	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 }
