@@ -20,10 +20,11 @@ package tests
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/xt_ha"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -33,11 +34,12 @@ func Test_ManualStart(t *testing.T) {
 	defer ctx.Teardown()
 	ctx.StartServer()
 
+	xt.GlobalRegistry().RegisterFactory(&testFailoverStrategyFactory{})
 	t.Run("creating service and edge router", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.RequireAdminManagementApiLogin()
 
-		service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_ha.NewFactory().GetStrategyName())
+		service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("test-failover")
 
 		ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -161,4 +163,42 @@ func Test_ManualStart(t *testing.T) {
 		})
 
 	})
+}
+
+type testFailoverStrategyFactory struct{}
+
+func (self *testFailoverStrategyFactory) GetStrategyName() string {
+	return "test-failover"
+}
+
+func (self *testFailoverStrategyFactory) NewStrategy() xt.Strategy {
+	return &testFailoverStrategy{}
+}
+
+type testFailoverStrategy struct {
+	xt.DefaultEventVisitor
+	failCount int32
+}
+
+func (self *testFailoverStrategy) VisitDialFailed(event xt.TerminatorEvent) {
+	failCount := atomic.AddInt32(&self.failCount, 1)
+	if failCount >= 3 {
+		xt.GlobalCosts().SetPrecedence(event.GetTerminator().GetId(), xt.Precedences.Failed)
+	}
+}
+
+func (self *testFailoverStrategy) VisitDialSucceeded(xt.TerminatorEvent) {
+	atomic.StoreInt32(&self.failCount, 0)
+}
+
+func (self *testFailoverStrategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+	return terminators[0], nil
+}
+
+func (self *testFailoverStrategy) NotifyEvent(event xt.TerminatorEvent) {
+	event.Accept(self)
+}
+
+func (self *testFailoverStrategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
+	return nil
 }
