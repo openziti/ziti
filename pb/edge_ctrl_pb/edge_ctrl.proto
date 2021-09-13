@@ -216,6 +216,8 @@ message CreateApiSessionResponse {
   TerminatorPrecedence defaultHostingPrecedence = 6;
   uint32 defaultHostingCost = 7;
   string appDataJson = 8;
+  map<string, TerminatorPrecedence> servicePrecedences = 9;
+  map<string, uint32> serviceCosts = 10;
 }
 
 message CreateCircuitForServiceRequest {

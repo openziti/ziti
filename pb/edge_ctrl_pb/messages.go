@@ -1,6 +1,9 @@
 package edge_ctrl_pb
 
-import "github.com/openziti/fabric/controller/xt"
+import (
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/sdk-golang/ziti"
+)
 
 func (m *CreateCircuitRequest) GetContentType() int32 {
 	return int32(ContentType_CreateCircuitRequestType)
@@ -80,4 +83,30 @@ func (request *CreateTunnelTerminatorResponse) GetContentType() int32 {
 
 func (request *UpdateTunnelTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_UpdateTunnelTerminatorRequestType)
+}
+
+func GetPrecedence(p ziti.Precedence) TerminatorPrecedence {
+	if p == ziti.PrecedenceRequired {
+		return TerminatorPrecedence_Required
+	}
+	if p == ziti.PrecedenceFailed {
+		return TerminatorPrecedence_Failed
+	}
+	return TerminatorPrecedence_Default
+}
+
+func (self TerminatorPrecedence) GetZitiLabel() string {
+	if self == TerminatorPrecedence_Default {
+		return ziti.PrecedenceDefaultLabel
+	}
+
+	if self == TerminatorPrecedence_Required {
+		return ziti.PrecedenceRequiredLabel
+	}
+
+	if self == TerminatorPrecedence_Failed {
+		return ziti.PrecedenceFailedLabel
+	}
+
+	return ziti.PrecedenceDefaultLabel
 }
