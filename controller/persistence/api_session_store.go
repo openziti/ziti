@@ -127,7 +127,7 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity boltz.E
 
 	if err == nil {
 		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
-			if checker.IsUpdated(FieldApiSessionMfaComplete) && apiSession.MfaComplete == true {
+			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete == true {
 				store.Emit(EventFullyAuthenticated, apiSession)
 			}
 		}
