@@ -160,7 +160,8 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 	}
 
 	tc := &tls.Config{
-		RootCAs: caCertPool,
+		RootCAs:    caCertPool,
+		MinVersion: tls.VersionTLS12,
 	}
 
 	client.SetTLSClientConfig(tc)
