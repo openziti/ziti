@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/kataras/go-events"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -32,6 +33,8 @@ const (
 	FieldApiSessionMfaComplete    = "mfaComplete"
 	FieldApiSessionMfaRequired    = "mfaRequired"
 	FieldApiSessionLastActivityAt = "lastActivityAt"
+
+	EventFullyAuthenticated events.EventName = "FULLY_AUTHENTICATED"
 )
 
 type ApiSession struct {
@@ -104,6 +107,33 @@ type apiSessionStoreImpl struct {
 
 	indexToken     boltz.ReadIndex
 	symbolIdentity boltz.EntitySymbol
+}
+
+func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity boltz.Entity) error {
+	err := store.baseStore.Create(ctx, entity)
+
+	if err == nil {
+		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
+			if apiSession.MfaRequired == false || apiSession.MfaComplete == true {
+				store.Emit(EventFullyAuthenticated, apiSession)
+			}
+		}
+	}
+
+	return err
+}
+func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+	err := store.baseStore.Update(ctx, entity, checker)
+
+	if err == nil {
+		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
+			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete == true {
+				store.Emit(EventFullyAuthenticated, apiSession)
+			}
+		}
+	}
+
+	return err
 }
 
 func (store *apiSessionStoreImpl) NewStoreEntity() boltz.Entity {
