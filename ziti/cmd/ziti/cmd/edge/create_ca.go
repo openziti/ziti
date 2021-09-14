@@ -29,14 +29,15 @@ import (
 
 type createCaOptions struct {
 	edgeOptions
-	tags             map[string]string
-	name             string
-	caPath           string
-	caPemBytes       []byte
-	autoCaEnrollment bool
-	ottCaEnrollment  bool
-	authEnabled      bool
-	identityRoles    []string
+	tags               map[string]string
+	name               string
+	caPath             string
+	caPemBytes         []byte
+	autoCaEnrollment   bool
+	ottCaEnrollment    bool
+	authEnabled        bool
+	identityRoles      []string
+	identityNameFormat string
 }
 
 // newCreateCaCmd creates the 'edge controller create ca local' command for the given entity type
@@ -90,6 +91,7 @@ func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 	cmd.Flags().BoolVarP(&options.ottCaEnrollment, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
 	cmd.Flags().StringSliceVarP(&options.identityRoles, "role-attributes", "a", []string{}, "A csv string of role attributes enrolling identities receive")
+	cmd.Flags().StringVarP(&options.identityNameFormat, "identity-name-format", "f", "", "The naming format to use for identities enrolling via the CA")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -103,6 +105,10 @@ func runCreateCa(options *createCaOptions) (err error) {
 	setJSONValue(data, options.authEnabled, "isAuthEnabled")
 	setJSONValue(data, string(options.caPemBytes), "certPem")
 	setJSONValue(data, options.identityRoles, "identityRoles")
+
+	if options.Cmd.Flag("identity-name-format").Changed {
+		setJSONValue(data, options.identityNameFormat, "identityNameFormat")
+	}
 
 	result, err := createEntityOfType("cas", data.String(), &options.edgeOptions)
 	return options.logCreateResult("ca", result, err)

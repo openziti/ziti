@@ -1,3 +1,9 @@
+# Release 0.22.4
+
+## What's New
+
+* Bug fix: Ziti CLI creating a CA now has the missing `--identity-name-format` / `-f` option
+
 # Release 0.22.3
 
 ## What's New
