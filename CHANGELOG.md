@@ -3,6 +3,8 @@
 ## What's New
 
 * Bug fix: Ziti CLI creating a CA now has the missing `--identity-name-format` / `-f` option
+* Bug fix: Edge router/tunneler wasn't getting per-service precedence/cost defined on identity
+* Cleanup: The HA terminator strategy has been removed. The implementation was incomplete on its own. Use health checks instead of active/passive setups
 
 # Release 0.22.3
 
