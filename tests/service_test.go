@@ -169,7 +169,7 @@ func Test_Services(t *testing.T) {
 
 		time.Sleep(time.Millisecond * 100)
 		now = time.Now()
-		service.terminatorStrategy = "ha"
+		service.terminatorStrategy = "weighted"
 		ctx.AdminManagementSession.requireUpdateEntity(service)
 
 		result := ctx.AdminManagementSession.requireQuery("services/" + service.Id)
