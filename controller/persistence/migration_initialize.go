@@ -276,6 +276,10 @@ var tunnelDefinitions = map[string]interface{}{
 		"format": "hostname",
 		"not":    map[string]interface{}{"$ref": "#/definitions/ipAddressFormat"},
 	},
+	"wildcardDomain": map[string]interface{}{
+		"type":    "string",
+		"pattern": "^\\*\\.(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$",
+	},
 	"cidr": map[string]interface{}{
 		"type": "string",
 		"oneOf": []interface{}{
@@ -297,6 +301,7 @@ var tunnelDefinitions = map[string]interface{}{
 		"oneOf": []interface{}{
 			map[string]interface{}{"$ref": "#/definitions/ipAddress"},
 			map[string]interface{}{"$ref": "#/definitions/hostname"},
+			map[string]interface{}{"$ref": "#/definitions/wildcardDomain"},
 			map[string]interface{}{"$ref": "#/definitions/cidr"},
 		},
 	},
