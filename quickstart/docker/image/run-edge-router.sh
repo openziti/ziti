@@ -20,19 +20,19 @@ echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
-  createEdgeRouterConfig
+  createEdgeRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
 fi
 if [[ "$1" == "wss" ]]; then
   echo "CREATING EDGE ROUTER WSS CONFIG"
-  createEdgeRouterWssConfig
+  createEdgeRouterWssConfig ${ZITI_EDGE_ROUTER_RAWNAME}
 fi
 if [[ "$1" == "fabric" ]]; then
   echo "CREATING FABRIC ROUTER CONFIG"
-  createFabricRouterConfig
+  createFabricRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
 fi
 if [[ "$1" == "private" ]]; then
   echo "CREATING PRIVATE ROUTER CONFIG"
-  createPrivateRouterConfig
+  createPrivateRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
@@ -42,6 +42,6 @@ sleep 1
 echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
 "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
 echo ""
-#sleep 100000
-"${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
+
+"${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
 
