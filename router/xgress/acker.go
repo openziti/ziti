@@ -5,7 +5,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/metrics"
 	"sync/atomic"
-	"time"
 )
 
 var acker *Acker
@@ -17,7 +16,6 @@ func InitAcker(forwarder PayloadBufferForwarder, metrics metrics.Registry, close
 type ackEntry struct {
 	Address
 	*Acknowledgement
-	receiveTime time.Time
 }
 
 type Acker struct {
@@ -52,7 +50,6 @@ func (acker *Acker) ack(ack *Acknowledgement, address Address) {
 	acker.ackIngest <- &ackEntry{
 		Acknowledgement: ack,
 		Address:         address,
-		receiveTime:     time.Now(),
 	}
 }
 
@@ -88,14 +85,9 @@ func (acker *Acker) ackIngester() {
 
 func (acker *Acker) ackSender() {
 	logger := pfxlog.Logger()
-	minDelay := 100 * time.Millisecond
 	for {
 		select {
 		case nextAck := <-acker.ackSend:
-			delta := nextAck.receiveTime.Sub(time.Now())
-			if delta < minDelay {
-				time.Sleep(minDelay - delta)
-			}
 			if err := acker.forwarder.ForwardAcknowledgement(nextAck.Address, nextAck.Acknowledgement); err != nil {
 				logger.WithError(err).Debugf("unexpected error while sending ack from %v", nextAck.Address)
 				ackFailures.Mark(1)
