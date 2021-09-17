@@ -477,7 +477,6 @@ github.com/labstack/echo/v4 v4.1.11/go.mod h1:i541M3Fj6f76NZtHSj7TXnyM8n2gaodfvf
 github.com/labstack/echo/v4 v4.2.1/go.mod h1:AA49e0DZ8kk5jTOOCKNuPR6oTnBS0dYiM4FW1e6jwpg=
 github.com/labstack/gommon v0.3.0/go.mod h1:MULnywXg0yavhxWKc+lOruYdAhDwPK9wf0OL7NoOu+k=
 github.com/lucas-clemente/quic-go v0.18.0/go.mod h1:yXttHsSNxQi8AWijC/vLP+OJczXqzHSOcJrM5ITUlCg=
-github.com/lucas-clemente/quic-go v0.18.1/go.mod h1:yXttHsSNxQi8AWijC/vLP+OJczXqzHSOcJrM5ITUlCg=
 github.com/lucas-clemente/quic-go v0.23.0 h1:5vFnKtZ6nHDFsc/F3uuiF4T3y/AXaQdxjUqiVw26GZE=
 github.com/lucas-clemente/quic-go v0.23.0/go.mod h1:paZuzjXCE5mj6sikVLMvqXk8lJV2AsqtJ6bDhjEfxx0=
 github.com/lucsky/cuid v1.2.1 h1:MtJrL2OFhvYufUIn48d35QGXyeTC8tn0upumW9WwTHg=
@@ -601,9 +600,8 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.16.105 h1:7meDkJR9E2c0CAMbYo7i+8KtET+KWAKT/bMxw3sI0Lk=
-github.com/openziti/fabric v0.16.105/go.mod h1:vmq9eEAzwUpQDyENybVJJBsEFf+0k5v+o4961CSwBvs=
-github.com/openziti/foundation v0.15.75/go.mod h1:dO2dC8B2M4qtHP18Bsiq1GOR5X62MS3f8VQ7RUObvOI=
+github.com/openziti/fabric v0.16.106 h1:ELmgnaPpB9h3/qFDn1fiRSxkLXS94R9Zez3In+SlzSs=
+github.com/openziti/fabric v0.16.106/go.mod h1:D9ZIoI6NU3qQZhK5uOiHZ9YB5WYY0M0H3OQkJxACa68=
 github.com/openziti/foundation v0.15.76 h1:VV4GHtX4QztOxJEGeiQGlDy6GfqNI+Arkqh31Cafn3g=
 github.com/openziti/foundation v0.15.76/go.mod h1:h2aechYvtzmcjgpdFHH22JqCUIOciDJcYMkoqhu91iE=
 github.com/openziti/sdk-golang v0.15.96 h1:jecrKLrTrz6Pv6y1/PnSfJvKHji49ah1WxIvHXmF3RY=
