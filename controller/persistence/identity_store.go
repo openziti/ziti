@@ -160,6 +160,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 			ctx.Bucket.SetError(errors.New("cannot change type of router identity"))
 		}
 	}
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))

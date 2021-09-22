@@ -67,6 +67,7 @@ func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
 
 	store := ctx.Store.(*edgeServiceStoreImpl)
 	ctx.SetString(FieldName, entity.Name)
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
 	ctx.SetBool(FieldServiceEncryptionRequired, entity.EncryptionRequired)

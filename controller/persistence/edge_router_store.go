@@ -85,6 +85,7 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
 	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
 	ctx.Bucket.PutMap(FieldEdgeRouterAppData, entity.AppData, ctx.FieldChecker, false)

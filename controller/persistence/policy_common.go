@@ -79,6 +79,19 @@ func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, servic
 	self.addServiceEvent(self.tx, identityId, serviceId, eventType)
 }
 
+func (store *baseStore) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
+	for _, attr := range attributes {
+		if strings.HasPrefix(attr, "#") {
+			holder.SetError(errorz.NewFieldError("role attributes may not be prefixed with #", "roleAttributes", attr))
+			return
+		}
+		if strings.HasPrefix(attr, "@") {
+			holder.SetError(errorz.NewFieldError("role attributes may not be prefixed with @", "roleAttributes", attr))
+			return
+		}
+	}
+}
+
 func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
 	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx, ast.BoolNodeTrue)
 
