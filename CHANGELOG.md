@@ -1,3 +1,9 @@
+# Release 0.22.5
+
+## What's New
+
+* Update from Go 1.16 to Go 1.17
+
 # Release 0.22.4
 
 ## What's New
