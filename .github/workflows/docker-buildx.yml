@@ -1,11 +1,17 @@
 ---
 name: 'build images'
 
-on: push
-# on:
-#   push:
-#     branches:
-#       - master
+on:
+  # push:
+  #   branches:
+  #     - main
+  #     - release-v*
+  release:
+    types:
+      - released # trigger for stable release event on semver tag
+
+env:
+  ZITI_VERSION: ${{ null }}
 
 jobs:
   docker:
@@ -32,6 +38,7 @@ jobs:
           # tag it 'latest'.
           if [[ $VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
             TAGS="$TAGS,${DOCKER_IMAGE}:latest"
+            ZITI_VERSION="${VERSION}"
           fi
 
           # Set output parameters.
@@ -47,6 +54,8 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@master
 
+      # TODO: uncomment after acceptance in Ziti
+      #       upstream because secrets are never available in forks
       # - name: Login to Docker Hub
       #   uses: docker/login-action@v1
       #   with:
@@ -59,8 +68,8 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./ziti-tunnel/docker
           build-args: |
-            ZITI_VERSION=0.22.5
+            ZITI_VERSION=${ZITI_VERSION}
           platforms: linux/amd64,linux/arm/v7,linux/arm64
-          # push: true
+          # push: true     # TODO: uncomment when Docker login is available
           push: false
           tags: ${{ steps.prep.outputs.tags }}
