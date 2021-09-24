@@ -31,10 +31,15 @@ esac
 
 host_os=$(uname -s)
 case "${host_os}" in
-"Linux") artifact_os="linux";;
-"Darwin") artifact_os="darwin";;
-"Windows") artifact_os="windows";;
-*) echo "ERROR: ziti binaries do not exist for os ${host_os}"; exit 1;;
+    "Linux") artifact_os="linux"
+    ;;
+    "Darwin") artifact_os="darwin"
+    ;;
+    "Windows") artifact_os="windows"
+    ;;
+    *)  echo "ERROR: ziti binaries do not exist for os ${host_os}"; 
+        exit 1
+    ;;
 esac
 
 for exe in "${@}"; do
