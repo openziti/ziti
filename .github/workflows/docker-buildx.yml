@@ -58,6 +58,8 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./ziti-tunnel/docker
+          build-args: |
+            ZITI_VERSION=0.22.5
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           # push: true
           push: false
