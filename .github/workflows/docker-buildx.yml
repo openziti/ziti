@@ -62,7 +62,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./ziti-tunnel/docker
           build-args: |
-            ZITI_VERSION=${ZITI_VERSION}
+            ZITI_VERSION="$ZITI_VERSION"
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           # push: true     # TODO: uncomment when Docker login is available
           push: false
