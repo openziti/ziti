@@ -7,14 +7,19 @@ set -euo pipefail
     exit 1
 }
 
-: ${ARTIFACTORY_BASE_URL:="https://netfoundry.jfrog.io/netfoundry"}
-: ${ARTIFACTORY_REPO:="ziti-release"}
+: "${ARTIFACTORY_BASE_URL:="https://netfoundry.jfrog.io/netfoundry"}"
+: "${ARTIFACTORY_REPO:="ziti-release"}"
 for var in ARTIFACTORY_BASE_URL ARTIFACTORY_REPO ZITI_VERSION; do
     if [ -z "${!var:-}" ]; then
         echo "ERROR: ${var} must be set when fetching binaries from Artifactory." >&2
         exit 1
     fi
 done
+
+[[ "$ZITI_VERSION" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || {
+    echo "ERROR: '$ZITI_VERSION' is not a semantic version like 2.0.0" >&2
+    exit 1
+}
 
 echo "Fetching from Artifactory."
 
@@ -31,10 +36,15 @@ esac
 
 host_os=$(uname -s)
 case "${host_os}" in
-"Linux") artifact_os="linux";;
-"Darwin") artifact_os="darwin";;
-"Windows") artifact_os="windows";;
-*) echo "ERROR: ziti binaries do not exist for os ${host_os}"; exit 1;;
+    "Linux") artifact_os="linux"
+    ;;
+    "Darwin") artifact_os="darwin"
+    ;;
+    "Windows") artifact_os="windows"
+    ;;
+    *)  echo "ERROR: ziti binaries do not exist for os ${host_os}"; 
+        exit 1
+    ;;
 esac
 
 for exe in "${@}"; do
