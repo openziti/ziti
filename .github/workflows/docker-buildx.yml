@@ -12,8 +12,8 @@ on:
 env:
   DOCKER_IMAGE: netfoundry/ziti-tunnel
 
-  jobs:
-  docker_buildx:
+jobs:
+  docker-buildx:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
