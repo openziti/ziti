@@ -1,3 +1,9 @@
+# Release 0.22.6
+
+# What's New
+
+* Don't let identity/service/edge router role attributes start with a hashtag or at-symbol to prevent confusion.
+
 # Release 0.22.5
 
 ## What's New
