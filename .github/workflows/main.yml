@@ -20,7 +20,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: '~1.16.0'
+          go-version: '~1.17.0'
 
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
