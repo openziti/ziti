@@ -101,7 +101,7 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 	pfxlog.Logger().WithField("udpConnId", srcAddr.String()).Debug("created new virtual UDP connection")
 
 	sourceAddr := service.GetSourceAddr(srcAddr, targetAddr)
-	appInfo := tunnel.GetAppInfo("udp", targetAddr.IP.String(), strconv.Itoa(targetAddr.Port), sourceAddr)
+	appInfo := tunnel.GetAppInfo("udp", "", targetAddr.IP.String(), strconv.Itoa(targetAddr.Port), sourceAddr)
 	identity := service.GetDialIdentity(srcAddr, targetAddr)
 	go tunnel.DialAndRun(manager.provider, service, identity, conn, appInfo, false)
 	return conn, nil
