@@ -23,10 +23,10 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"fmt"
-	jwt2 "github.com/dgrijalva/jwt-go"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/runtime"
 	openApiMiddleware "github.com/go-openapi/runtime/middleware"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
@@ -387,25 +387,25 @@ func (ae *AppEnv) InitPersistence() error {
 	return err
 }
 
-func getJwtSigningMethod(cert *tls.Certificate) jwt2.SigningMethod {
+func getJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
 
-	var sm jwt2.SigningMethod = jwt2.SigningMethodNone
+	var sm jwt.SigningMethod = jwt.SigningMethodNone
 
 	switch cert.Leaf.PublicKey.(type) {
 	case *ecdsa.PublicKey:
 		key := cert.Leaf.PublicKey.(*ecdsa.PublicKey)
 		switch key.Params().BitSize {
-		case jwt2.SigningMethodES256.CurveBits:
-			sm = jwt2.SigningMethodES256
-		case jwt2.SigningMethodES384.CurveBits:
-			sm = jwt2.SigningMethodES384
-		case jwt2.SigningMethodES512.CurveBits:
-			sm = jwt2.SigningMethodES512
+		case jwt.SigningMethodES256.CurveBits:
+			sm = jwt.SigningMethodES256
+		case jwt.SigningMethodES384.CurveBits:
+			sm = jwt.SigningMethodES384
+		case jwt.SigningMethodES512.CurveBits:
+			sm = jwt.SigningMethodES512
 		default:
 			pfxlog.Logger().Panic("unsupported EC key size: ", key.Params().BitSize)
 		}
 	case *rsa.PublicKey:
-		sm = jwt2.SigningMethodRS256
+		sm = jwt.SigningMethodRS256
 	default:
 		pfxlog.Logger().Panic("unknown certificate type, unable to determine signing method")
 	}
