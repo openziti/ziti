@@ -32,9 +32,12 @@ import (
 var log = logrus.StandardLogger()
 
 type resolver struct {
-	server   *dns.Server
-	names    map[string]net.IP
-	namesMtx sync.Mutex
+	server     *dns.Server
+	names      map[string]net.IP
+	ips        map[string]string
+	namesMtx   sync.Mutex
+	domains    map[string]*domainEntry
+	domainsMtx sync.Mutex
 }
 
 func flushDnsCaches() {
@@ -98,7 +101,14 @@ func NewDnsServer(addr string) Resolver {
 	}
 
 	names := make(map[string]net.IP)
-	r := &resolver{server: s, names: names, namesMtx: sync.Mutex{}}
+	r := &resolver{
+		server:     s,
+		names:      names,
+		ips:        make(map[string]string),
+		namesMtx:   sync.Mutex{},
+		domains:    make(map[string]*domainEntry),
+		domainsMtx: sync.Mutex{},
+	}
 	s.Handler = r
 
 	const resolverConfigHelp = "ziti-tunnel runs an internal DNS server which must be first in the host's\n" +
@@ -140,6 +150,38 @@ func (r *resolver) testSystemResolver() error {
 	return nil
 }
 
+func (r *resolver) getAddress(name string) (net.IP, error) {
+	canonical := strings.ToLower(name)
+	a, ok := r.names[canonical]
+	if ok {
+		return a, nil
+	}
+
+	r.domainsMtx.Lock()
+	defer r.domainsMtx.Unlock()
+	for {
+		idx := strings.IndexByte(canonical[1:], '.')
+		if idx < 0 {
+			break
+		}
+		canonical = canonical[idx+1:]
+
+		de, ok := r.domains[canonical]
+
+		if ok {
+			ip, err := de.getIP(name)
+			if err != nil {
+				return nil, err
+			}
+			log.Debugf("assigned %v => %v", name, ip)
+			r.AddHostname(name[:len(name)-1], ip)
+			return ip, err
+		}
+	}
+
+	return nil, errors.New("not found")
+}
+
 func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	log.Tracef("received:\n%s\n", query.String())
 	msg := dns.Msg{}
@@ -150,8 +192,8 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	switch q.Qtype {
 	case dns.TypeA:
 		name := q.Name
-		address, ok := r.names[strings.ToLower(name)]
-		if ok {
+		address, err := r.getAddress(name)
+		if err == nil {
 			msg.Authoritative = true
 			msg.Rcode = dns.RcodeSuccess
 			answer := &dns.A{
@@ -171,21 +213,65 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 
 }
 
+func (r *resolver) AddDomain(name string, ipCB func(string) (net.IP, error)) error {
+	if name[0] != '*' {
+		return fmt.Errorf("invalid wildcard domain")
+	}
+	domainSfx := name[1:] + "."
+	entry := &domainEntry{
+		name:  name,
+		getIP: ipCB,
+	}
+
+	r.domainsMtx.Lock()
+	defer r.domainsMtx.Unlock()
+	if _, found := r.domains[domainSfx]; found {
+		log.Warnf("domain[%v] is already registered", name)
+	} else {
+		r.domains[domainSfx] = entry
+	}
+
+	return nil
+}
+
 func (r *resolver) AddHostname(hostname string, ip net.IP) error {
 	r.namesMtx.Lock()
-	log.Infof("adding %s = %s to resolver", hostname, ip.String())
-	r.names[strings.ToLower(hostname)+"."] = ip
-	r.namesMtx.Unlock()
+	defer r.namesMtx.Unlock()
+
+	canonical := strings.ToLower(hostname) + "."
+	if _, found := r.names[canonical]; !found {
+		log.Infof("adding %s = %s to resolver", hostname, ip.String())
+		r.names[canonical] = ip
+		r.ips[ip.String()] = canonical[0 : len(canonical)-1] // drop the dot
+	}
+
 	return nil
+}
+
+func (r *resolver) Lookup(ip net.IP) (string, error) {
+	if ip == nil {
+		return "", errors.New("illegal argument")
+	}
+	key := ip.String()
+	name, found := r.ips[key]
+	if found {
+		return name, nil
+	}
+
+	return "", errors.New("not found")
 }
 
 func (r *resolver) RemoveHostname(hostname string) error {
 	r.namesMtx.Lock()
-	if _, ok := r.names[strings.ToLower(hostname)+"."]; ok {
+	defer r.namesMtx.Unlock()
+
+	key := strings.ToLower(hostname) + "."
+	if ip, ok := r.names[key]; ok {
 		log.Infof("removing %s from resolver", hostname)
+		delete(r.ips, ip.String())
+		delete(r.names, key)
 	}
-	delete(r.names, strings.ToLower(hostname)+".")
-	r.namesMtx.Unlock()
+
 	return nil
 }
 

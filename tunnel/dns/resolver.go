@@ -20,6 +20,13 @@ import "net"
 
 type Resolver interface {
 	AddHostname(string, net.IP) error
+	AddDomain(string, func(string) (net.IP, error)) error
+	Lookup(net.IP) (string, error)
 	RemoveHostname(string) error
 	Cleanup() error
+}
+
+type domainEntry struct {
+	name  string
+	getIP func(string) (net.IP, error)
 }
