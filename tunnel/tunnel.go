@@ -66,9 +66,12 @@ func GetIpAndPort(addr net.Addr) (string, string) {
 	return "", ""
 }
 
-func GetAppInfo(protocol, dstIp, dstPort, sourceAddr string) map[string]string {
+func GetAppInfo(protocol, dstHostname, dstIp, dstPort, sourceAddr string) map[string]string {
 	result := map[string]string{}
 	result[DestinationProtocolKey] = protocol
+	if dstHostname != "" {
+		result[DestinationHostname] = dstHostname
+	}
 	result[DestinationIpKey] = dstIp
 	result[DestinationPortKey] = dstPort
 	if sourceAddr != "" {
