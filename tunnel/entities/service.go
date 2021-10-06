@@ -11,6 +11,7 @@ import (
 	"net"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -136,6 +137,54 @@ type HostV2ListenOptions struct {
 	MaxConnections        int
 }
 
+type allowedAddress interface {
+	Allows(addr interface{}) bool
+}
+
+type cidrAddress struct {
+	cidr net.IPNet
+}
+func (self *cidrAddress) Allows(addr interface{}) bool {
+	if ip, ok := addr.(net.IP); ok {
+		return self.cidr.Contains(ip)
+	}
+	return false
+}
+
+type hostnameAddress struct {
+	hostname string
+}
+func (self *hostnameAddress) Allows(addr interface{}) bool {
+	host, ok := addr.(string)
+	return ok && strings.ToLower(host) == self.hostname
+}
+type domainAddress struct {
+	domain string
+}
+func (self *domainAddress) Allows(addr interface{}) bool {
+	host, ok := addr.(string)
+	return ok && strings.HasSuffix(strings.ToLower(host), self.domain[1:])
+}
+
+func makeAllowedAddress(addr string) allowedAddress {
+	if addr[0] == '*' {
+		return &domainAddress{
+			domain: strings.ToLower(addr),
+		}
+	}
+
+	if _, cidr, err := utils.GetDialIP(addr); err == nil {
+		return &cidrAddress{
+			cidr: *cidr,
+		}
+	}
+
+	return &hostnameAddress{
+		hostname: strings.ToLower(addr),
+	}
+}
+
+
 type HostV2Terminator struct {
 	Protocol               string
 	ForwardProtocol        bool
@@ -152,6 +201,8 @@ type HostV2Terminator struct {
 	HttpChecks []*health.HttpCheckDefinition
 
 	ListenOptions *HostV2ListenOptions
+
+	allowedAddrs           []allowedAddress
 }
 
 func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.Duration {
@@ -159,6 +210,18 @@ func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.
 		return *self.ListenOptions.ConnectTimeout
 	}
 	return defaultTimeout
+}
+
+func (self *HostV2Terminator) GetAllowedAddresses() []allowedAddress {
+	if self.allowedAddrs != nil {
+		return self.allowedAddrs
+	}
+
+	for _, addrStr := range self.AllowedAddresses {
+		self.allowedAddrs = append(self.allowedAddrs, makeAllowedAddress(addrStr))
+	}
+
+	return self.allowedAddrs
 }
 
 func (self *HostV2Terminator) GetPortChecks() []*health.PortCheckDefinition {
@@ -197,18 +260,25 @@ func (self *HostV2Terminator) GetProtocol(options map[string]interface{}) (strin
 
 func (self *HostV2Terminator) GetAddress(options map[string]interface{}) (string, error) {
 	if self.ForwardAddress {
-		address, err := self.getValue(options, tunnel.DestinationIpKey)
-		if err != nil {
-			return address, err
-		}
-		ip := net.ParseIP(address)
-		for _, allowed := range self.AllowedAddresses {
-			_, route, err := utils.GetDialIP(allowed)
-			if err != nil {
-				return "", errors.Errorf("failed to parse allowed address '%s': %v", allowed, err)
+		allowedAddresses := self.GetAllowedAddresses()
+
+		address, err := self.getValue(options, tunnel.DestinationHostname)
+		if err == nil {
+			for _, addr := range allowedAddresses {
+				if addr.Allows(address) {
+					return address, nil
+				}
 			}
-			if route.Contains(ip) {
-				return address, nil
+		} else {
+			address, err = self.getValue(options, tunnel.DestinationIpKey)
+			if err != nil {
+				return address, err
+			}
+			ip := net.ParseIP(address)
+			for _, addr := range allowedAddresses {
+				if addr.Allows(ip) {
+					return address, nil
+				}
 			}
 		}
 		return "", errors.Errorf("address '%s' is not in allowed addresses", address)
