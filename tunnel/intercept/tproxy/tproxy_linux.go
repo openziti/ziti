@@ -146,6 +146,8 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	t := &tProxy{
 		interceptor: self,
 		service:     service,
+		tracker:     tracker,
+		resolver:    resolver,
 	}
 
 	config := service.InterceptV1Config
@@ -237,6 +239,8 @@ type tProxy struct {
 	addresses   []*intercept.InterceptAddress
 	tcpLn       net.Listener
 	udpLn       *net.UDPConn
+	tracker     intercept.AddressTracker
+	resolver    dns.Resolver
 }
 
 const (
@@ -258,8 +262,9 @@ func (self *tProxy) acceptTCP(provider tunnel.FabricProvider) {
 		}
 		log.Infof("received connection: %s --> %s", client.LocalAddr().String(), client.RemoteAddr().String())
 		dstIp, dstPort := tunnel.GetIpAndPort(client.LocalAddr())
+		dstHostname, _ := self.resolver.Lookup(client.LocalAddr().(*net.TCPAddr).IP)
 		sourceAddr := self.service.GetSourceAddr(client.RemoteAddr(), client.LocalAddr())
-		appInfo := tunnel.GetAppInfo("tcp", dstIp, dstPort, sourceAddr)
+		appInfo := tunnel.GetAppInfo("tcp", dstHostname, dstIp, dstPort, sourceAddr)
 		identity := self.service.GetDialIdentity(client.RemoteAddr(), client.LocalAddr())
 		go tunnel.DialAndRun(provider, self.service, identity, client, appInfo, true)
 	}
@@ -385,6 +390,9 @@ func (self *tProxy) Stop(tracker intercept.AddressTracker) {
 		log.WithError(err).Error("failed to clean up intercept configuration")
 	}
 }
+func (self *tProxy) port() IPPortAddr {
+	return (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr))
+}
 
 func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker) error {
 	service := self.service
@@ -394,36 +402,39 @@ func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTr
 
 	config := service.InterceptV1Config
 	logrus.Debugf("service %v using intercept.v1", service.Name)
-	if stringz.Contains(config.Protocols, "tcp") {
-		logrus.Debugf("service %v intercepting tcp", service.Name)
-		if err := self.intercept(service, resolver, (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr)), tracker); err != nil {
-			return err
+	var ports []IPPortAddr
+	for _, p := range config.Protocols {
+		if p == "tcp" {
+			logrus.Debugf("service %v intercepting tcp", service.Name)
+			ports = append(ports, self.port())
+		} else if p == "udp" {
+			logrus.Debugf("service %v intercepting udp", service.Name)
+			ports = append(ports, (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr)))
 		}
 	}
 
-	if stringz.ContainsAny(config.Protocols, "udp") {
-		logrus.Debugf("service %v intercepting udp", service.Name)
-		return self.intercept(service, resolver, (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr)), tracker)
-	}
-
-	return nil
+	return self.intercept(service, resolver, ports, tracker)
 }
 
-func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, port IPPortAddr, tracker intercept.AddressTracker) error {
-	addresses, err := intercept.GetInterceptAddresses(service, port.GetProtocol(), resolver)
-	if err != nil {
-		return err
+func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
+	logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
+	if err := self.addInterceptAddr(addr, self.service, self.port(), self.tracker); err != nil {
+		logrus.Debugf("failed for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
+
+		// do we undo the previous succesful ones?
+		// only fail at end and return all that failed?
+	}
+}
+
+func (self *tProxy) intercept(service *entities.Service, resolver dns.Resolver, ports []IPPortAddr, tracker intercept.AddressTracker) error {
+	var protocols []string
+	for _, p := range ports {
+		protocols = append(protocols, p.GetProtocol())
 	}
 
-	logrus.Debugf("service %v intercepting %v addresses", service.Name, len(addresses))
-
-	for _, addr := range addresses {
-		logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", service.Name, addr.Proto(), addr.IpNet().String(), addr.LowPort(), addr.HighPort())
-		if err := self.addInterceptAddr(addr, service, port, tracker); err != nil {
-			// do we undo the previous succesful ones?
-			// only fail at end and return all that failed?
-			return err
-		}
+	err := intercept.GetInterceptAddresses(service, protocols, resolver, self)
+	if err != nil {
+		return err
 	}
 
 	return nil

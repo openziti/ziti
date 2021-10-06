@@ -166,7 +166,7 @@ func (p *interceptor) handleTCP(service *Service) {
 			return
 		}
 		sourceAddr := service.TunnelService.GetSourceAddr(conn.RemoteAddr(), conn.LocalAddr())
-		appInfo := tunnel.GetAppInfo("tcp", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
+		appInfo := tunnel.GetAppInfo("tcp", "", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
 		identity := service.TunnelService.GetDialIdentity(conn.RemoteAddr(), conn.LocalAddr())
 		go tunnel.DialAndRun(p.provider, service.TunnelService, identity, conn, appInfo, true)
 	}

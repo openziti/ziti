@@ -52,52 +52,50 @@ func SetDnsInterceptIpRange(cidr string) error {
 	return nil
 }
 
-func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver) (net.IP, *net.IPNet, error) {
-	log := pfxlog.Logger()
+func cleanUpFunc(hostname string, resolver dns.Resolver) func() {
+	f := func() {
+		if err := resolver.RemoveHostname(hostname); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
+		}
+	}
+	return f
+}
+
+func getInterceptIP(svc *entities.Service, hostname string, resolver dns.Resolver, addrCB func(net.IP, *net.IPNet)) error {
+	logger := pfxlog.Logger()
+
+	if hostname[0] == '*' {
+		err := resolver.AddDomain(hostname, func(host string) (net.IP, error) {
+			var ip net.IP
+			var err error
+			ip, err = utils.NextIP(dnsIpLow, dnsIpHigh)
+
+			if err == nil {
+				addrCB(ip, utils.Ip2IPnet(ip))
+				svc.AddCleanupAction(cleanUpFunc(host, resolver))
+			}
+			return ip, err
+		})
+		return err
+	}
 
 	ip, ipNet, err := utils.GetDialIP(hostname)
 	if err == nil {
-		return ip, ipNet, err
-	}
-
-	// - apparently not an IP address, assume hostname and attempt lookup:
-	// - use first result if any
-	// - pin first IP to hostname in resolver
-	addrs, err := net.LookupIP(hostname)
-	if err == nil {
-		if len(addrs) > 0 {
-			ip := addrs[0].To4()
-			if err = resolver.AddHostname(hostname, ip); err != nil {
-				log.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
-			}
-			svc.AddCleanupAction(func() {
-				if err = resolver.RemoveHostname(hostname); err != nil {
-					log.WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
-				}
-			})
-			prefixLen := utils.AddrBits(ip)
-			ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
-			return addrs[0], ipNet, nil
-		}
-	} else {
-		log.Debugf("net.LookupIp(%s) failed: %s", hostname, err)
+		addrCB(ip, ipNet)
+		return err
 	}
 
 	ip, _ = utils.NextIP(dnsIpLow, dnsIpHigh)
 	if ip == nil {
-		return nil, nil, fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
+		return fmt.Errorf("invalid IP address or unresolvable hostname: %s", hostname)
 	}
 	if err = resolver.AddHostname(hostname, ip); err != nil {
-		log.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
+		logger.WithError(err).Errorf("failed to add host/ip mapping to resolver: %v -> %v", hostname, ip)
 	}
 
-	svc.AddCleanupAction(func() {
-		if err = resolver.RemoveHostname(hostname); err != nil {
-			log.WithError(err).Errorf("failed to remove host mapping from resolver: %v ", hostname)
-		}
-	})
+	svc.AddCleanupAction(cleanUpFunc(hostname, resolver))
 
-	prefixLen := utils.AddrBits(ip)
-	ipNet = &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
-	return ip, ipNet, nil
+	ipNet = utils.Ip2IPnet(ip)
+	addrCB(ip, ipNet)
+	return nil
 }

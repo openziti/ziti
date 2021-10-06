@@ -17,6 +17,14 @@ type RefCountingResolver struct {
 	wrapped Resolver
 }
 
+func (self *RefCountingResolver) Lookup(ip net.IP) (string, error) {
+	return self.wrapped.Lookup(ip)
+}
+
+func (self *RefCountingResolver) AddDomain(name string, cb func(string) (net.IP, error)) error {
+	return self.wrapped.AddDomain(name, cb)
+}
+
 func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
 	err := self.wrapped.AddHostname(s, ip)
 	if err != nil {

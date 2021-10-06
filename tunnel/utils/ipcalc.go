@@ -80,11 +80,16 @@ func AddrBits(ip net.IP) int {
 	return 0
 }
 
+func Ip2IPnet(ip net.IP) *net.IPNet {
+	prefixLen := AddrBits(ip)
+	ipNet := &net.IPNet{IP: ip, Mask: net.CIDRMask(prefixLen, prefixLen)}
+	return ipNet
+}
+
 func GetDialIP(addr string) (net.IP, *net.IPNet, error) {
 	// hostname is an ip address, return it
 	if parsedIP := net.ParseIP(addr); parsedIP != nil {
-		prefixLen := AddrBits(parsedIP)
-		ipNet := &net.IPNet{IP: parsedIP, Mask: net.CIDRMask(prefixLen, prefixLen)}
+		ipNet := Ip2IPnet(parsedIP)
 		return parsedIP, ipNet, nil
 	}
 

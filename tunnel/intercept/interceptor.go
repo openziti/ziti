@@ -78,21 +78,27 @@ func (addr *InterceptAddress) String() string {
 		addr.cidr, addr.cidr, addr.lowPort, addr.highPort, addr.protocol, addr.TproxySpec, addr.AcceptSpec)
 }
 
-func GetInterceptAddresses(service *entities.Service, protocol string, resolver dns.Resolver) ([]*InterceptAddress, error) {
-	var result []*InterceptAddress
-	for _, addr := range service.InterceptV1Config.Addresses {
-		_, cidr, err := getInterceptIP(service, addr, resolver)
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get intercept IP address for %v", addr)
-		}
+type InterceptAddrCB interface {
+	Apply(*InterceptAddress)
+}
 
-		for _, portRange := range service.InterceptV1Config.PortRanges {
-			result = append(result, &InterceptAddress{
-				cidr:     cidr,
-				lowPort:  portRange.Low,
-				highPort: portRange.High,
-				protocol: protocol})
+func GetInterceptAddresses(service *entities.Service, protocols []string, resolver dns.Resolver, addressCB InterceptAddrCB) error {
+	for _, addr := range service.InterceptV1Config.Addresses {
+		err := getInterceptIP(service, addr, resolver, func(ip net.IP, ipNet *net.IPNet) {
+			for _, protocol := range protocols {
+				for _, portRange := range service.InterceptV1Config.PortRanges {
+					addr := &InterceptAddress{
+						cidr:     ipNet,
+						lowPort:  portRange.Low,
+						highPort: portRange.High,
+						protocol: protocol}
+					addressCB.Apply(addr)
+				}
+			}
+		})
+		if err != nil {
+			return errors.Wrapf(err, "failed to get intercept IP address for %v", addr)
 		}
 	}
-	return result, nil
+	return nil
 }

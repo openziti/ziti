@@ -28,8 +28,9 @@ import (
 const hostFormat = "%s\t%s\t# NetFoundry"
 
 type hostFile struct {
-	path  string
-	mutex sync.Mutex
+	path    string
+	mutex   sync.Mutex
+	domains map[string]*domainEntry
 }
 
 func NewHostFile(path string) Resolver {
@@ -48,6 +49,14 @@ func isHostPresent(hostname string, ip net.IP, f *os.File) bool {
 		}
 	}
 	return false
+}
+
+func (h *hostFile) AddDomain(name string, _ func(string) (net.IP, error)) error {
+	return fmt.Errorf("cannot add wildcard domain[%s] to hostfile resolver", name)
+}
+
+func (h *hostFile) Lookup(_ net.IP) (string, error) {
+	return "", fmt.Errorf("not implemented")
 }
 
 func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
@@ -73,9 +82,7 @@ func (h *hostFile) AddHostname(hostname string, ip net.IP) error {
 	return nil
 }
 
-func (h *hostFile) RemoveHostname(s string) error {
-	h.mutex.Lock()
-	defer h.mutex.Unlock()
+func (h *hostFile) RemoveHostname(_ string) error {
 	return nil
 }
 
