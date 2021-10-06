@@ -104,7 +104,7 @@ attendance:
 					if status.r == tr {
 						peerData = status.peerData
 						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
-						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId())
+						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
 					}
 				} else {
 					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
@@ -116,7 +116,7 @@ attendance:
 
 					if status.r == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-						self.serviceCounters.ServiceDialFail(terminator.GetServiceId())
+						self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
 					}
 					cleanups = self.cleanups(path)
 
@@ -128,7 +128,7 @@ attendance:
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)
-			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId())
+			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
 			return nil, cleanups, &routeTimeoutError{circuitId: self.circuitId}
 		}
 

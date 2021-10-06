@@ -6,6 +6,7 @@ import (
 	"github.com/openziti/foundation/util/cowslice"
 	"github.com/pkg/errors"
 	"reflect"
+	"strings"
 )
 
 func registerServiceEventHandler(val interface{}, _ map[interface{}]interface{}) error {
@@ -29,11 +30,19 @@ type serviceEventAdapter struct{}
 func (self serviceEventAdapter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 	for name, interval := range message.IntervalCounters {
 		for _, bucket := range interval.Buckets {
-			for serviceId, count := range bucket.Values {
+			for combinedId, count := range bucket.Values {
+				ids := strings.Split(combinedId, ":")
+				serviceId := ids[0]
+				terminatorId := ""
+				if len(ids) > 1 {
+					terminatorId = ids[1]
+				}
 				event := &ServiceEvent{
 					Namespace:        "service.events",
+					Version:          2,
 					EventType:        name,
 					ServiceId:        serviceId,
+					TerminatorId:     terminatorId,
 					Count:            count,
 					IntervalStartUTC: bucket.IntervalStartUTC,
 					IntervalLength:   interval.IntervalLength,
@@ -52,16 +61,18 @@ func (self serviceEventAdapter) dispatchEvent(event *ServiceEvent) {
 
 type ServiceEvent struct {
 	Namespace        string `json:"namespace"`
+	Version          uint32 `json:"version"`
 	EventType        string `json:"event_type"`
 	ServiceId        string `json:"service_id"`
+	TerminatorId     string `json:"terminator_id"`
 	Count            uint64 `json:"count"`
 	IntervalStartUTC int64  `json:"interval_start_utc"`
 	IntervalLength   uint64 `json:"interval_length"`
 }
 
 func (event *ServiceEvent) String() string {
-	return fmt.Sprintf("%v service=%v count=%v intervalStart=%v intervalLength=%v",
-		event.EventType, event.ServiceId, event.Count, event.IntervalStartUTC, event.IntervalLength)
+	return fmt.Sprintf("%v service=%v terminator=%v count=%v intervalStart=%v intervalLength=%v",
+		event.EventType, event.ServiceId, event.TerminatorId, event.Count, event.IntervalStartUTC, event.IntervalLength)
 }
 
 type ServiceEventHandler interface {
