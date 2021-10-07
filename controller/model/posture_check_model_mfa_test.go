@@ -650,6 +650,303 @@ func TestPostureCheckModelMfa(t *testing.T) {
 			req.Equal(int64(0), result)
 		})
 	})
+	
+	
+	t.Run("getTimeoutRemainingAtSeconds", func(t *testing.T) {
+		t.Run("with a timeout of 600s, passedAt 0s ago, wake = NIL, unlock = NIL will result in 600s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			passedAt := *postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, passedAt)
+
+			req.Equal(int64(600), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 600s ago, wake = NIL, unlock = NIL will result in 0s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-600 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(0), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 601s ago, wake = NIL, unlock = NIL will result in 0s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-601 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(0), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 30s ago, wake = NIL, unlock = NIL will result in 570s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(570), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 0s ago, wake 10s ago, unlock = NIL will result in 600s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			wokenAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(600), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 0s ago, wake = nil, unlock 10s ago will result in 600s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			unlockedAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(600), timeoutRemaining)
+		})
+
+
+		t.Run("with a timeout of 600s, passedAt 0s ago, wake 10s ago, unlock 10s ago will result in 600s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			wokenAt := now.Add(-10 * time.Second)
+			unlockedAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(600), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 30s ago, wake 20s ago, unlock 10s ago will result in 280s grace timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			wokenAt := now.Add(-20 * time.Second)
+			unlockedAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(280), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 30s ago, wake 20s ago, unlock = NIL will result in 280s grace timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			wokenAt := now.Add(-20 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(280), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 30s ago, wake 10s ago, unlock 20s ago will result in 280s grace timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			wokenAt := now.Add(-10 * time.Second)
+			unlockedAt := now.Add(-20 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(280), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 600s, passedAt 30s ago, wake = NIL, unlock 20s ago will result in 280s grace timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			unlockedAt := now.Add(-20 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 600
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(280), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 0s ago, wake 10s ago, unlock 10s ago will return a 100s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			wokenAt := now.Add(-10 * time.Second)
+			unlockedAt := now.Add(-20 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(100), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 0s ago, wake = NIL, unlock 10s ago will return a 100s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			unlockedAt := now.Add(-20 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(100), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 0s ago, wake 10s ago, unlock = NIL will return a 100s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			wokenAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(100), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 30s ago, wake 10s ago, unlock 10s ago will ignore grace periods and result in 70s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			wokenAt := now.Add(-10 * time.Second)
+			unlockedAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(70), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 30s ago, wake = NIL, unlock 10s ago will ignore grace periods and result in 70s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			unlockedAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = &unlockedAt
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(70), timeoutRemaining)
+		})
+
+		t.Run("with a timeout of 100s, passedAt 30s ago, wake 10s ago, unlock = NIL will ignore grace periods and result in 70s timeout", func(t *testing.T) {
+			req := require.New(t)
+			mfaCheck, postureData := newMfaCheckAndPostureData()
+
+			now := postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt
+			passedAt := now.Add(-30 * time.Second)
+			wokenAt := now.Add(-10 * time.Second)
+
+			mfaCheck.TimeoutSeconds = 100
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.WokenAt = &wokenAt
+			postureData.ApiSessions[mfaTestApiSessionId].EndpointState.UnlockedAt = nil
+			postureData.ApiSessions[mfaTestApiSessionId].Mfa.PassedMfaAt = &passedAt
+
+			timeoutRemaining := mfaCheck.getTimeoutRemainingAtSeconds(mfaTestApiSessionId, postureData, *now)
+
+			req.Equal(int64(70), timeoutRemaining)
+		})
+	})
 }
 
 // newMfaCheckAndPostureData returns a MFA posture check and posture data that will
@@ -657,16 +954,15 @@ func TestPostureCheckModelMfa(t *testing.T) {
 // with events occurring 10 seconds in the past.
 func newMfaCheckAndPostureData() (*PostureCheckMfa, *PostureData) {
 	passedMfaAt := time.Now().UTC()
-	lastUpdatedAt := passedMfaAt
 
-	wokenAt := time.Now().Add(-10 * time.Second)
-	unlockedAt := time.Now().Add(-10 * time.Second)
+	wokenAt := passedMfaAt.Add(-10 * time.Second)
+	unlockedAt := passedMfaAt.Add(-10 * time.Second)
 
 	postureResponse := &PostureResponse{
 		PostureCheckId: mfaTestPostureCheckId,
 		TypeId:         PostureCheckTypeMFA,
 		TimedOut:       false,
-		LastUpdatedAt:  lastUpdatedAt,
+		LastUpdatedAt:  passedMfaAt,
 	}
 
 	postureResponseMfa := &PostureResponseMfa{

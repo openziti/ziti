@@ -94,18 +94,22 @@ func (p *PostureCheckMfa) getTimeoutRemainingAtSeconds(apiSessionId string, pd *
 	}
 
 	if p.PromptOnWake && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.WokenAt != nil {
-		onWakeTimeOut := calculateTimeout(now, *apiSessionData.EndpointState.WokenAt, -1*MfaPromptGracePeriod)
+		if apiSessionData.Mfa.PassedMfaAt == nil || apiSessionData.EndpointState.WokenAt.After(*apiSessionData.Mfa.PassedMfaAt) {
+			onWakeTimeOut := calculateTimeout(now, *apiSessionData.EndpointState.WokenAt, -1*MfaPromptGracePeriod)
 
-		if onWakeTimeOut < timeoutRemaining {
-			timeoutRemaining = onWakeTimeOut
+			if onWakeTimeOut < timeoutRemaining {
+				timeoutRemaining = onWakeTimeOut
+			}
 		}
 	}
 
 	if p.PromptOnUnlock && apiSessionData.EndpointState != nil && apiSessionData.EndpointState.UnlockedAt != nil {
-		onUnlockTimeout := calculateTimeout(now, *apiSessionData.EndpointState.UnlockedAt, -1*MfaPromptGracePeriod)
+		if apiSessionData.Mfa.PassedMfaAt == nil || apiSessionData.EndpointState.UnlockedAt.After(*apiSessionData.Mfa.PassedMfaAt) {
+			onUnlockTimeout := calculateTimeout(now, *apiSessionData.EndpointState.UnlockedAt, -1*MfaPromptGracePeriod)
 
-		if onUnlockTimeout < timeoutRemaining {
-			timeoutRemaining = onUnlockTimeout
+			if onUnlockTimeout < timeoutRemaining {
+				timeoutRemaining = onUnlockTimeout
+			}
 		}
 	}
 
