@@ -31,6 +31,10 @@ func (self *splitImpl) SendPayload(payload *xgress.Payload) error {
 	return self.payloadCh.Send(payload.Marshall())
 }
 
+func (self *splitImpl) SendControl(control *xgress.Control) error {
+	return self.payloadCh.Send(control.Marshall())
+}
+
 func (self *splitImpl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
 	return self.ackCh.Send(acknowledgement.Marshall())
 }

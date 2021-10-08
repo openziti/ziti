@@ -27,9 +27,10 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	ch.SetUserData(xlink.Id().Token)
 	ch.AddCloseHandler(newCloseHandler(xlink, self.ctrl, self.forwarder, closeNotify))
 	ch.AddErrorHandler(newErrorHandler(xlink, self.ctrl))
-	ch.AddReceiveHandler(newPayloadHandler(xlink, self.ctrl, self.forwarder))
-	ch.AddReceiveHandler(newQueuingAckHandler(xlink, self.ctrl, self.forwarder, closeNotify))
+	ch.AddReceiveHandler(newPayloadHandler(xlink, self.forwarder))
+	ch.AddReceiveHandler(newQueuingAckHandler(xlink, self.forwarder, closeNotify))
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
+	ch.AddReceiveHandler(newControlHandler(xlink, ch, self.forwarder, closeNotify))
 	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
 	ch.AddPeekHandler(trace.NewChannelPeekHandler(xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 

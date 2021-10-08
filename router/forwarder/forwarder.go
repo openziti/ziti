@@ -43,6 +43,7 @@ type Forwarder struct {
 type Destination interface {
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
+	SendControl(control *xgress.Control) error
 }
 
 type XgressDestination interface {
@@ -185,6 +186,39 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 
 	} else {
 		return errors.Errorf("cannot acknowledge, no forward table for circuit=%v src=%v", circuitId, srcAddr)
+	}
+}
+
+func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgress.Control) error {
+	log := pfxlog.ContextLogger(string(srcAddr))
+
+	circuitId := control.CircuitId
+	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId); found {
+		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
+			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
+				if control.IsTypeTraceRoute() {
+					hops := control.DecrementAndGetHop()
+					if hops == 0 {
+						resp := control.CreateTraceResponse("forwarder", forwarder.metricsRegistry.SourceId())
+						return forwarder.ForwardControl(dstAddr, resp)
+					}
+				}
+				if err := dst.SendControl(control); err != nil {
+					return err
+				}
+				log.Debugf("=> %s", string(dstAddr))
+				return nil
+
+			} else {
+				return errors.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
+			}
+
+		} else {
+			return errors.Errorf("cannot forward control, no destination address for circuit=%v src=%v", circuitId, srcAddr)
+		}
+
+	} else {
+		return errors.Errorf("cannot forward control, no forward table for circuit=%v src=%v", circuitId, srcAddr)
 	}
 }
 

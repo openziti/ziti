@@ -45,6 +45,7 @@ type Xlink interface {
 	Id() *identity.TokenId
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
+	SendControl(control *xgress.Control) error
 	Close() error
 	DestinationId() string
 }
@@ -52,4 +53,5 @@ type Xlink interface {
 type Forwarder interface {
 	ForwardPayload(srcAddr xgress.Address, payload *xgress.Payload) error
 	ForwardAcknowledgement(srcAddr xgress.Address, acknowledgement *xgress.Acknowledgement) error
+	ForwardControl(srcAddr xgress.Address, control *xgress.Control) error
 }

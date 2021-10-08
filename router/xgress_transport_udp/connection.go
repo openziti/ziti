@@ -18,7 +18,9 @@ package xgress_transport_udp
 
 import (
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/info"
+	"github.com/pkg/errors"
 	"net"
 )
 
@@ -37,6 +39,14 @@ func (p *packetConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 
 func (p *packetConn) WritePayload(data []byte, headers map[uint8][]byte) (n int, err error) {
 	return p.Write(data)
+}
+
+func (self *packetConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+	if controlType == xgress.ControlTypeTraceRoute {
+		xgress.RespondToTraceRequest(headers, "xgress", "transport_udp", responder)
+		return nil
+	}
+	return errors.Errorf("unhandled control type: %v", controlType)
 }
 
 func newPacketConn(conn net.Conn) xgress.Connection {

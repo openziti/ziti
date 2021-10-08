@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/uuidz"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math"
 )
@@ -38,11 +39,13 @@ const (
 
 	ContentTypePayloadType         = 1100
 	ContentTypeAcknowledgementType = 1101
+	ContentTypeControlType         = 1102
 )
 
 var ContentTypeValue = map[string]int32{
 	"PayloadType":         ContentTypePayloadType,
 	"AcknowledgementType": ContentTypeAcknowledgementType,
+	"ControlType":         ContentTypeControlType,
 }
 
 type Originator int32
@@ -279,4 +282,88 @@ func (payload *Payload) GetLoggerFields() logrus.Fields {
 		"origin":    payload.GetOriginator(),
 		"uuid":      uuidz.ToString(payload.Headers[HeaderKeyUUID]),
 	}
+}
+
+type ControlType byte
+
+const (
+	ControlTypeTraceRoute         ControlType = 1
+	ControlTypeTraceRouteResponse             = 2
+)
+
+const (
+	ControlHopCount  = 1
+	ControlHopType   = 2
+	ControlHopId     = 3
+	ControlTimestamp = 4
+	ControlCustom1   = 5
+	ControlCustom2   = 6
+)
+
+type Control struct {
+	Type      ControlType
+	CircuitId string
+	Headers   channel2.Headers
+}
+
+func (self *Control) Marshall() *channel2.Message {
+	msg := channel2.NewMessage(ContentTypeControlType, append([]byte{byte(self.Type)}, self.CircuitId...))
+	msg.Headers = self.Headers
+	return msg
+}
+
+func UnmarshallControl(msg *channel2.Message) (*Control, error) {
+	if len(msg.Body) < 2 {
+		return nil, errors.New("control message body too short")
+	}
+	return &Control{
+		Type:      ControlType(msg.Body[0]),
+		CircuitId: string(msg.Body[1:]),
+		Headers:   msg.Headers,
+	}, nil
+}
+
+func (self *Control) IsTypeTraceRoute() bool {
+	return self.Type == ControlTypeTraceRoute
+}
+
+func (self *Control) IsTypeTraceRouteResponse() bool {
+	return self.Type == ControlTypeTraceRouteResponse
+}
+
+func (self *Control) DecrementAndGetHop() uint32 {
+	hop, _ := self.Headers.GetUint32Header(ControlHopCount)
+	if hop == 0 {
+		return 0
+	}
+	hop--
+	self.Headers.PutUint32Header(ControlHopCount, hop)
+	return hop
+}
+
+func (self *Control) CreateTraceResponse(hopType, hopId string) *Control {
+	resp := &Control{
+		Type:      ControlTypeTraceRouteResponse,
+		CircuitId: self.CircuitId,
+		Headers:   self.Headers,
+	}
+	resp.Headers.PutStringHeader(ControlHopType, hopType)
+	resp.Headers.PutStringHeader(ControlHopId, hopId)
+	return resp
+}
+
+func (self *Control) GetLoggerFields() logrus.Fields {
+	return logrus.Fields{
+		"circuitId": self.CircuitId,
+		"type":      self.Type,
+		"uuid":      uuidz.ToString(self.Headers[HeaderKeyUUID]),
+	}
+}
+
+func RespondToTraceRequest(headers channel2.Headers, hopType, hopId string, response ControlReceiver) {
+	resp := &Control{Headers: headers}
+	resp.DecrementAndGetHop()
+	resp.Headers.PutStringHeader(ControlHopType, hopType)
+	resp.Headers.PutStringHeader(ControlHopId, hopId)
+	response.HandleControlReceive(ControlTypeTraceRouteResponse, headers)
 }

@@ -24,34 +24,52 @@ import (
 	"github.com/openziti/foundation/channel2"
 )
 
-type payloadHandler struct {
+type controlHandler struct {
 	link      xlink.Xlink
 	forwarder *forwarder.Forwarder
+	ctrls     chan *xgress.Control
 }
 
-func newPayloadHandler(link xlink.Xlink, forwarder *forwarder.Forwarder) *payloadHandler {
-	return &payloadHandler{
+func newControlHandler(link xlink.Xlink, ch channel2.Channel, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *controlHandler {
+	result := &controlHandler{
 		link:      link,
 		forwarder: forwarder,
+		ctrls:     make(chan *xgress.Control, 4),
 	}
+	go result.run(ch.Label(), closeNotify)
+	return result
 }
 
-func (self *payloadHandler) ContentType() int32 {
-	return xgress.ContentTypePayloadType
+func (self *controlHandler) ContentType() int32 {
+	return xgress.ContentTypeControlType
 }
 
-func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *controlHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	payload, err := xgress.UnmarshallPayload(msg)
+	control, err := xgress.UnmarshallControl(msg)
 	if err == nil {
-		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
+		if err := self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
 			log.WithError(err).Debug("unable to forward")
-		}
-		if payload.IsCircuitEndFlagSet() {
-			self.forwarder.EndCircuit(payload.GetCircuitId())
 		}
 	} else {
 		log.Errorf("unexpected error (%v)", err)
+	}
+}
+
+func (self *controlHandler) run(label string, closeNotify <-chan struct{}) {
+	log := pfxlog.ContextLogger(label)
+	log.Info("starting")
+	defer log.Info("exiting")
+
+	for {
+		select {
+		case control := <-self.ctrls:
+			if err := self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
+				log.WithError(err).Debug("unable to forward")
+			}
+		case <-closeNotify:
+			return
+		}
 	}
 }

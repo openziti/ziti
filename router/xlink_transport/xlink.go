@@ -34,6 +34,10 @@ func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) e
 	return self.ch.Send(acknowledgement.Marshall())
 }
 
+func (self *impl) SendControl(control *xgress.Control) error {
+	return self.ch.Send(control.Marshall())
+}
+
 func (self *impl) Close() error {
 	return self.ch.Close()
 }

@@ -17,6 +17,7 @@
 package xgress_udp
 
 import (
+	"github.com/openziti/fabric/router/xgress"
 	"io"
 	"net"
 )
@@ -31,15 +32,12 @@ type Listener interface {
 }
 
 type Session interface {
+	xgress.Connection
 	State() SessionState
 	SetState(state SessionState)
 	Address() net.Addr
-	ReadPayload() ([]byte, map[uint8][]byte, error)
 	Write(data []byte) (n int, err error)
-	WritePayload(data []byte, headers map[uint8][]byte) (n int, err error)
 	QueueRead(data []byte)
-	Close() error
-	LogContext() string
 	TimeoutNanos() int64
 	MarkActivity()
 	SessionId() string

@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
@@ -67,6 +68,10 @@ type BindHandler interface {
 	HandleXgressBind(x *Xgress)
 }
 
+type ControlReceiver interface {
+	HandleControlReceive(controlType ControlType, headers channel2.Headers)
+}
+
 // ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
 // is implemented to connect the xgress to a data plane data transmission system.
 //
@@ -74,6 +79,7 @@ type ReceiveHandler interface {
 	// HandleXgressReceive is invoked when data is received from the connected xgress peer.
 	//
 	HandleXgressReceive(payload *Payload, x *Xgress)
+	HandleControlReceive(control *Control, x *Xgress)
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
@@ -103,6 +109,7 @@ type Connection interface {
 	LogContext() string
 	ReadPayload() ([]byte, map[uint8][]byte, error)
 	WritePayload([]byte, map[uint8][]byte) (int, error)
+	HandleControlMsg(controlType ControlType, headers channel2.Headers, responder ControlReceiver) error
 }
 
 type Xgress struct {
@@ -325,6 +332,19 @@ func (self *Xgress) SendAcknowledgement(acknowledgement *Acknowledgement) error 
 	ackRxMeter.Mark(1)
 	self.payloadBuffer.ReceiveAcknowledgement(acknowledgement)
 	return nil
+}
+
+func (self *Xgress) SendControl(control *Control) error {
+	return self.peer.HandleControlMsg(control.Type, control.Headers, self)
+}
+
+func (self *Xgress) HandleControlReceive(controlType ControlType, headers channel2.Headers) {
+	control := &Control{
+		Type:      controlType,
+		CircuitId: self.circuitId,
+		Headers:   headers,
+	}
+	self.receiveHandler.HandleControlReceive(control, self)
 }
 
 func (self *Xgress) payloadIngester(payload *Payload) {

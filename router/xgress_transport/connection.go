@@ -17,7 +17,10 @@
 package xgress_transport
 
 import (
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 )
 
 type transportXgressConn struct {
@@ -43,4 +46,12 @@ func (c *transportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 
 func (c *transportXgressConn) WritePayload(p []byte, _ map[uint8][]byte) (n int, err error) {
 	return c.Writer().Write(p)
+}
+
+func (self *transportXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+	if controlType == xgress.ControlTypeTraceRoute {
+		xgress.RespondToTraceRequest(headers, "xgress", "transport", responder)
+		return nil
+	}
+	return errors.Errorf("unhandled control type: %v", controlType)
 }

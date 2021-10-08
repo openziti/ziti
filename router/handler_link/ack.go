@@ -26,14 +26,12 @@ import (
 
 type ackHandler struct {
 	link      xlink.Xlink
-	ctrl      xgress.CtrlChannel
 	forwarder *forwarder.Forwarder
 }
 
-func newAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *ackHandler {
+func newAckHandler(link xlink.Xlink, forwarder *forwarder.Forwarder) *ackHandler {
 	return &ackHandler{
 		link:      link,
-		ctrl:      ctrl,
 		forwarder: forwarder,
 	}
 }

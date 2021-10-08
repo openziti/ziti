@@ -2,6 +2,7 @@ package xgress
 
 import (
 	"encoding/binary"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
@@ -40,6 +41,10 @@ func (conn *testConn) WritePayload(bytes []byte, _ map[uint8][]byte) (int, error
 	return len(bytes), nil
 }
 
+func (conn *testConn) HandleControlMsg(ControlType, channel2.Headers, ControlReceiver) error {
+	return nil
+}
+
 type noopForwarder struct{}
 
 func (n noopForwarder) ForwardPayload(srcAddr Address, payload *Payload) error {
@@ -52,8 +57,9 @@ func (n noopForwarder) ForwardAcknowledgement(srcAddr Address, acknowledgement *
 
 type noopReceiveHandler struct{}
 
-func (n noopReceiveHandler) HandleXgressReceive(payload *Payload, x *Xgress) {
-}
+func (n noopReceiveHandler) HandleXgressReceive(payload *Payload, x *Xgress) {}
+
+func (n noopReceiveHandler) HandleControlReceive(*Control, *Xgress) {}
 
 func Test_Ordering(t *testing.T) {
 	closeNotify := make(chan struct{})

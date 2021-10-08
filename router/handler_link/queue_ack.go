@@ -28,7 +28,6 @@ import (
 
 type queuingAckHandler struct {
 	link          xlink.Xlink
-	ctrl          xgress.CtrlChannel
 	forwarder     *forwarder.Forwarder
 	acks          *deque.Deque
 	ackIngest     chan *xgress.Acknowledgement
@@ -37,10 +36,9 @@ type queuingAckHandler struct {
 	closeNotify   <-chan struct{}
 }
 
-func newQueuingAckHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *queuingAckHandler {
+func newQueuingAckHandler(link xlink.Xlink, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *queuingAckHandler {
 	result := &queuingAckHandler{
 		link:        link,
-		ctrl:        ctrl,
 		forwarder:   forwarder,
 		acks:        deque.New(),
 		ackIngest:   make(chan *xgress.Acknowledgement, 16),

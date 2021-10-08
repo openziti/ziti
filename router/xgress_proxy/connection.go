@@ -16,7 +16,12 @@
 
 package xgress_proxy
 
-import "github.com/openziti/foundation/transport"
+import (
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
+)
 
 type proxyXgressConnection struct {
 	transport.Connection
@@ -38,4 +43,12 @@ func (c *proxyXgressConnection) Write(p []byte) (n int, err error) {
 
 func (c *proxyXgressConnection) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
 	return c.Writer().Write(p)
+}
+
+func (self *proxyXgressConnection) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+	if controlType == xgress.ControlTypeTraceRoute {
+		xgress.RespondToTraceRequest(headers, "xgress", "proxy", responder)
+		return nil
+	}
+	return errors.Errorf("unhandled control type: %v", controlType)
 }

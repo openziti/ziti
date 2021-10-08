@@ -32,6 +32,12 @@ func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
 
 func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {
 	if err := xrh.forwarder.ForwardPayload(x.Address(), payload); err != nil {
-		pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).Errorf("unable to forward (%s)", err)
+		pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
+	}
+}
+
+func (xrh *receiveHandler) HandleControlReceive(control *xgress.Control, x *xgress.Xgress) {
+	if err := xrh.forwarder.ForwardControl(x.Address(), control); err != nil {
+		pfxlog.ContextLogger(x.Label()).WithFields(control.GetLoggerFields()).WithError(err).Error("unable to forward control")
 	}
 }
