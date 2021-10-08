@@ -18,6 +18,11 @@ package subcmd
 
 import (
 	"fmt"
+	"io"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/router/debugops"
@@ -25,6 +30,7 @@ import (
 	"github.com/openziti/edge/router/xgress_edge"
 	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/edge/router/xgress_edge_tunnel"
+	"github.com/openziti/edge/router/xgress_geneve"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/agent"
@@ -33,10 +39,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var forceEnrollmentExtension *bool
@@ -86,6 +88,8 @@ func run(cmd *cobra.Command, args []string) {
 		if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
 			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
 		}
+
+		xgress.GlobalRegistry().Register("geneve", xgress_geneve.Factory{})
 
 		if cliAgentEnabled {
 			options := agent.Options{Addr: cliAgentAddr}
