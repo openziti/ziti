@@ -56,7 +56,7 @@ func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, addr
 
 	log.Infof("successful connection %v->%v for destination %v", conn.LocalAddr(), conn.RemoteAddr(), destination)
 
-	xgConn := xgress_common.NewXgressConn(conn, halfClose)
+	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
 	peerData := make(xt.PeerData, 1)
 	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {

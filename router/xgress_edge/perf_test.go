@@ -70,6 +70,10 @@ func (link *mirrorLink) SendAcknowledgement(*xgress.Acknowledgement) error {
 	return nil
 }
 
+func (link *mirrorLink) SendControl(*xgress.Control) error {
+	return nil
+}
+
 func (link *mirrorLink) Close() error {
 	panic("implement me")
 }
@@ -166,6 +170,10 @@ func (conn *simpleTestXgConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 
 func (conn *simpleTestXgConn) WritePayload([]byte, map[uint8][]byte) (int, error) {
 	panic("implement me")
+}
+
+func (conn *simpleTestXgConn) HandleControlMsg(xgress.ControlType, channel2.Headers, xgress.ControlReceiver) error {
+	return nil
 }
 
 func Benchmark_BaselinePerf(b *testing.B) {

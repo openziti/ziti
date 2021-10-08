@@ -165,7 +165,7 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 
 	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options)
 	self.listener.bindHandler.HandleXgressBind(x)
-
+	conn.ctrlRx = x
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
 	self.sendStateConnectedReply(req, response.PeerData)
 	x.Start()
@@ -361,6 +361,33 @@ func (self *edgeClientConn) processHealthEvent(req *channel2.Message, ch channel
 
 	if err := protobufs.Send(self.listener.factory.Channel(), request); err != nil {
 		log.WithError(err).Error("send failed")
+	}
+}
+
+func (self *edgeClientConn) processTraceRoute(msg *channel2.Message, ch channel2.Channel) {
+	log := pfxlog.ContextLogger(ch.Label()).WithFields(edge.GetLoggerFields(msg))
+
+	hops, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
+	if hops > 0 {
+		hops--
+		msg.PutUint32Header(edge.TraceHopCountHeader, hops)
+	}
+
+	log.WithField("hops", hops).Debug("traceroute received")
+	if hops > 0 {
+		self.msgMux.HandleReceive(msg, ch)
+	} else {
+		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
+		connId, _ := msg.GetUint32Header(edge.ConnIdHeader)
+		resp := edge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress", "edge")
+		resp.ReplyTo(msg)
+		if msgUUID := msg.Headers[edge.UUIDHeader]; msgUUID != nil {
+			resp.Headers[edge.UUIDHeader] = msgUUID
+		}
+
+		if err := ch.Send(resp); err != nil {
+			log.WithError(err).Error("failed to send hop response")
+		}
 	}
 }
 
