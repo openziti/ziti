@@ -68,7 +68,7 @@ func (s *PacketSession) WritePayload(p []byte, _ map[uint8][]byte) (n int, err e
 
 func (s *PacketSession) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
-		xgress.RespondToTraceRequest(headers, "xgress", "udp", responder)
+		xgress.RespondToTraceRequest(headers, "xgress/udp", "", responder)
 		return nil
 	}
 	return errors.Errorf("unhandled control type: %v", controlType)

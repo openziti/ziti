@@ -47,7 +47,7 @@ func (c *proxyXgressConnection) WritePayload(p []byte, headers map[uint8][]byte)
 
 func (self *proxyXgressConnection) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
-		xgress.RespondToTraceRequest(headers, "xgress", "proxy", responder)
+		xgress.RespondToTraceRequest(headers, "xgress/proxy", "", responder)
 		return nil
 	}
 	return errors.Errorf("unhandled control type: %v", controlType)
