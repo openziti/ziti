@@ -379,7 +379,7 @@ func (self *edgeClientConn) processTraceRoute(msg *channel2.Message, ch channel2
 	} else {
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
 		connId, _ := msg.GetUint32Header(edge.ConnIdHeader)
-		resp := edge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress", "edge")
+		resp := edge.NewTraceRouteResponseMsg(connId, hops, ts, "xgress/edge", "")
 		resp.ReplyTo(msg)
 		if msgUUID := msg.Headers[edge.UUIDHeader]; msgUUID != nil {
 			resp.Headers[edge.UUIDHeader] = msgUUID
