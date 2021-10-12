@@ -255,11 +255,12 @@ func (self *XgressConn) Close() error {
 
 func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
-		hopId := "edge_transport"
+		hopType := "xgress/edge_transport"
 		if !self.flags.IsSet(xgressTypeFlag) {
-			hopId = "tunnel"
+			hopType = "xgress/tunnel"
 		}
-		xgress.RespondToTraceRequest(headers, "xgress", hopId, responder)
+		// TODO: find a way to get terminator id for hopId
+		xgress.RespondToTraceRequest(headers, hopType, "", responder)
 		return nil
 	}
 	return errors.Errorf("unhandled control type: %v", controlType)

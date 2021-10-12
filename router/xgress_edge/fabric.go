@@ -125,7 +125,8 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 	if controlType == xgress.ControlTypeTraceRoute {
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
 		if hop == 1 {
-			xgress.RespondToTraceRequest(headers, "xgress", "edge", responder)
+			// TODO: find a way to get terminator id for hopId
+			xgress.RespondToTraceRequest(headers, "xgress/edge", "", responder)
 			return nil
 		}
 
