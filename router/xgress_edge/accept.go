@@ -80,6 +80,16 @@ func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
 		Handler: proxy.msgMux.HandleReceive,
 	})
 
+	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
+		Type:    edge.ContentTypeTraceRoute,
+		Handler: proxy.processTraceRoute,
+	})
+
+	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
+		Type:    edge.ContentTypeTraceRouteResponse,
+		Handler: proxy.msgMux.HandleReceive,
+	})
+
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
 
 	// Since data is most common type, it gets to dispatch directly

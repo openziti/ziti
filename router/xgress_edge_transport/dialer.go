@@ -63,7 +63,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	log.Infof("successful connection to %v from %v (s/%v)", destination, peer.Conn().LocalAddr(), circuitId.Token)
 
-	xgConn := xgress_common.NewXgressConn(peer.Conn(), true)
+	xgConn := xgress_common.NewXgressConn(peer.Conn(), true, true)
 	peerData := make(xt.PeerData, 1)
 	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {

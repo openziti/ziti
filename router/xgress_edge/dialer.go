@@ -116,6 +116,7 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
 		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
 		bindHandler.HandleXgressBind(x)
+		conn.ctrlRx = x
 		x.Start()
 
 		log.Debug("xgress start, sending dial to SDK")
@@ -172,6 +173,7 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 
 		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
 		bindHandler.HandleXgressBind(x)
+		conn.ctrlRx = x
 		x.Start()
 
 		start := edge.NewStateConnectedMsg(result.ConnId)

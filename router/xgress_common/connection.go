@@ -20,6 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/secretstream"
 	"github.com/netfoundry/secretstream/kx"
+	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/impl"
@@ -36,6 +38,7 @@ const (
 	outOfBandTxFlag = 3
 	halfCloseFlag   = 4
 	writeClosedFlag = 5
+	xgressTypeFlag  = 6
 )
 
 type outOfBand struct {
@@ -55,13 +58,14 @@ type XgressConn struct {
 	flags     concurrenz.AtomicBitSet
 }
 
-func NewXgressConn(conn net.Conn, halfClose bool) *XgressConn {
+func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn {
 	result := &XgressConn{
 		Conn:        conn,
 		outOfBandTx: make(chan *outOfBand, 1),
 		writeDone:   make(chan struct{}),
 	}
 	result.flags.Set(halfCloseFlag, halfClose)
+	result.flags.Set(xgressTypeFlag, isTransport)
 	return result
 }
 
@@ -247,4 +251,17 @@ func (self *XgressConn) Close() error {
 		return self.Conn.Close()
 	}
 	return nil
+}
+
+func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+	if controlType == xgress.ControlTypeTraceRoute {
+		hopType := "xgress/edge_transport"
+		if !self.flags.IsSet(xgressTypeFlag) {
+			hopType = "xgress/tunnel"
+		}
+		// TODO: find a way to get terminator id for hopId
+		xgress.RespondToTraceRequest(headers, hopType, "", responder)
+		return nil
+	}
+	return errors.Errorf("unhandled control type: %v", controlType)
 }
