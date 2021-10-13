@@ -5,6 +5,7 @@
 * Enhancement: Add terminator_id and version to service events. If a service event relates to a terminator, the terminator_id will now be included. Service events now also have a version field, which is set to 2.
 * Enhancement: Don't let identity/service/edge router role attributes start with a hashtag or at-symbol to prevent confusion.
 * Bug fix: Timeout remaining for onWake/onUnlock will properly report as non-zero after MFA submission
+* Feature: Add Geneve Proxy Interface to enable Edge Router Ingress HA in AWS using Gateway Load Balancer
 * Enhancement: traceroute support
 
 ## Traceroute
