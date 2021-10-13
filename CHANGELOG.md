@@ -4,7 +4,48 @@
 
 * Enhancement: Add terminator_id and version to service events. If a service event relates to a terminator, the terminator_id will now be included. Service events now also have a version field, which is set to 2.
 * Enhancement: Don't let identity/service/edge router role attributes start with a hashtag or at-symbol to prevent confusion.
+* Bug fix: Timeout remaining for onWake/onUnlock will properly report as non-zero after MFA submission
 * Feature: Add Geneve Proxy Interface to enable Edge Router Ingress HA in AWS using Gateway Load Balancer
+* Enhancement: traceroute support
+
+## Traceroute
+
+The Ziti cli and Ziti Golang SDK now support traceroute style operations. In order for this to work the SDK and routers must be at version 0.22.6 or greater. This is currently only supported in the Golang SDK.
+
+The SDK can perform a traceroute as follows:
+
+```
+conn, err := ctx.Dial(o.Args[0])
+result, err := conn.TraceRoute(hop, time.Second*5)
+```
+
+The result structure looks like:
+
+```
+type TraceRouteResult struct {
+    Hops    uint32
+    Time    time.Duration
+    HopType string
+    HopId   string
+}
+```
+Increasing numbers of hops can be requested until the hops returned is greater than zero, indicating that additional hops weren't available. This functionality is available in the Ziti CLI.
+
+```
+$ ziti edge traceroute simple -c ./simple-client.json 
+ 1               xgress/edge    1ms 
+ 2     forwarder[n4yChTL3Jy]     0s 
+ 3     forwarder[Yv7BPW0kGR]     0s 
+ 4               xgress/edge    1ms 
+ 5                sdk/golang     0s 
+
+plorenz@carrot:~/work/nf$ ziti edge traceroute simple -c ./simple-client.json 
+ 1               xgress/edge     0s 
+ 2     forwarder[n4yChTL3Jy]     0s 
+ 3     forwarder[Yv7BPW0kGR]    1ms 
+ 4     xgress/edge_transport     0s 
+```
+>>>>>>> 7d34149 (Update deps/changelog. Add traceroute command to ziti edge CLI)
 
 # Release 0.22.5
 
