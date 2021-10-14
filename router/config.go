@@ -96,7 +96,8 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	src map[interface{}]interface{}
+	Plugins []string
+	src     map[interface{}]interface{}
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -372,6 +373,20 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		} else {
 			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
+		}
+	}
+
+	if value, found := cfgmap["plugins"]; found {
+		if list, ok := value.([]interface{}); ok {
+			for _, v := range list {
+				if plugin, ok := v.(string); ok {
+					cfg.Plugins = append(cfg.Plugins, plugin)
+				} else {
+					pfxlog.Logger().Warnf("invalid plugin value: '%v'", plugin)
+				}
+			}
+		} else {
+			pfxlog.Logger().Warn("invalid plugins value")
 		}
 	}
 

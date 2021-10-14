@@ -53,6 +53,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
+	"plugin"
 	"time"
 )
 
@@ -136,6 +137,18 @@ func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
 	return nil
 }
 
+func (self *Router) GetVersionInfo() common.VersionProvider {
+	return self.versionProvider
+}
+
+func (self *Router) GetConfig() *Config {
+	return self.config
+}
+
+func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
+	return self.metricsRegistry
+}
+
 func (self *Router) Start() error {
 	rand.Seed(info.NowInMilliseconds())
 
@@ -153,6 +166,10 @@ func (self *Router) Start() error {
 	}
 
 	if err := self.registerComponents(); err != nil {
+		return err
+	}
+
+	if err := self.registerPlugins(); err != nil {
 		return err
 	}
 
@@ -263,6 +280,27 @@ func (self *Router) registerComponents() error {
 		return err
 	}
 
+	return nil
+}
+
+func (self *Router) registerPlugins() error {
+	for _, pluginPath := range self.config.Plugins {
+		goPlugin, err := plugin.Open(pluginPath)
+		if err != nil {
+			return errors.Wrapf(err, "router unable to load plugin at path %v", pluginPath)
+		}
+		initializeSymbol, err := goPlugin.Lookup("Initialize")
+		if err != nil {
+			return errors.Wrapf(err, "router plugin at %v does not contain Initialize symbol", pluginPath)
+		}
+		initialize, ok := initializeSymbol.(func(*Router) error)
+		if !ok {
+			return errors.Errorf("router plugin at %v exports Initialize symbol, but it is not of type 'func(router *router.Router) error'", pluginPath)
+		}
+		if err := initialize(self); err != nil {
+			return errors.Wrapf(err, "error initializing router plugin at %v", pluginPath)
+		}
+	}
 	return nil
 }
 
