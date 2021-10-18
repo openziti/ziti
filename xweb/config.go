@@ -31,19 +31,21 @@ type Config struct {
 	WebListeners []*WebListener
 	WebSection   string
 
-	DefaultIdentityConfig  *identity.IdentityConfig
 	DefaultIdentity        identity.Identity
 	DefaultIdentitySection string
+
+	//used for loading/validation logic, use DefaultIdentity.Config() for runtime
+	defaultIdentityConfig *identity.Config
 
 	enabled bool
 }
 
-// Parse parses a configuration map, looking for sections that define an identity.IdentityConfig and an array of WebListener's.
+// Parse parses a configuration map, looking for sections that define an identity.Config and an array of WebListener's.
 func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 	config.SourceConfig = configMap
 
-	if config.DefaultIdentitySection == "" {
-		return errors.New("identity section not specified for configuration")
+	if config.DefaultIdentity == nil && config.DefaultIdentitySection == "" {
+		return errors.New("identity section not specified for configuration, must be specified if a default identity is not provided")
 	}
 
 	if config.WebSection == "" {
@@ -51,19 +53,23 @@ func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 	}
 
 	//default identity config is the root identity
-	if identityInterface, ok := configMap[config.DefaultIdentitySection]; ok {
-		if identityMap, ok := identityInterface.(map[interface{}]interface{}); ok {
-			if identityConfig, err := parseIdentityConfig(identityMap); err == nil {
-				config.DefaultIdentityConfig = identityConfig
-			} else {
-				return fmt.Errorf("error parsing root identity section [%s] : %v", config.DefaultIdentitySection, err)
-			}
+	if config.DefaultIdentity == nil {
+		if identityInterface, ok := configMap[config.DefaultIdentitySection]; ok {
+			if identityMap, ok := identityInterface.(map[interface{}]interface{}); ok {
+				if identityConfig, err := parseIdentityConfig(identityMap, config.DefaultIdentitySection); err == nil {
+					config.defaultIdentityConfig = identityConfig
+				} else {
+					return fmt.Errorf("error parsing root identity section [%s] : %v", config.DefaultIdentitySection, err)
+				}
 
+			} else {
+				return fmt.Errorf("root identity section [%s] must be a map", config.DefaultIdentitySection)
+			}
 		} else {
-			return fmt.Errorf("root identity section [%s] must be a map", config.DefaultIdentitySection)
+			return fmt.Errorf("root identity section [%s] must be defined", config.DefaultIdentitySection)
 		}
 	} else {
-		return fmt.Errorf("root identity section [%s] must be defined", config.DefaultIdentitySection)
+		config.defaultIdentityConfig = config.DefaultIdentity.GetConfig()
 	}
 
 	if webInterface, ok := configMap[config.WebSection]; ok {
@@ -72,9 +78,9 @@ func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 			for i, webInterface := range webArrayInterface {
 				if webMap, ok := webInterface.(map[interface{}]interface{}); ok {
 					webListener := &WebListener{
-						DefaultIdentityConfig: config.DefaultIdentityConfig,
+						DefaultIdentity: config.DefaultIdentity,
 					}
-					if err := webListener.Parse(webMap); err != nil {
+					if err := webListener.Parse(webMap, config.WebSection); err != nil {
 						return fmt.Errorf("error parsing web configuration [%s] at index [%d]: %v", config.WebSection, i, err)
 					}
 
@@ -95,16 +101,18 @@ func (config *Config) Parse(configMap map[interface{}]interface{}) error {
 // Config values are also validated.
 func (config *Config) Validate(registry WebHandlerFactoryRegistry) error {
 
-	//validate default identity by loading
-	if defaultIdentity, err := identity.LoadIdentity(*config.DefaultIdentityConfig); err == nil {
-		config.DefaultIdentity = defaultIdentity
-	} else {
-		return fmt.Errorf("could not load root identity: %v", err)
-	}
+	if config.DefaultIdentity == nil {
+		//validate default identity by loading
+		if defaultIdentity, err := identity.LoadIdentity(*config.defaultIdentityConfig); err == nil {
+			config.DefaultIdentity = defaultIdentity
+		} else {
+			return fmt.Errorf("could not load default identity: %v", err)
+		}
 
-	//add default loaded identity to each web
-	for _, webListener := range config.WebListeners {
-		webListener.DefaultIdentity = config.DefaultIdentity
+		//add default loaded identity to each web
+		for _, webListener := range config.WebListeners {
+			webListener.DefaultIdentity = config.DefaultIdentity
+		}
 	}
 
 	presentApis := map[string]WebHandlerFactory{}
@@ -298,47 +306,11 @@ func (tlsVersionOptions *TlsVersionOptions) Validate() error {
 	return nil
 }
 
-func parseIdentityConfig(identityMap map[interface{}]interface{}) (*identity.IdentityConfig, error) {
-	idConfig := &identity.IdentityConfig{}
+func parseIdentityConfig(identityMap map[interface{}]interface{}, pathContext string) (*identity.Config, error) {
+	idConfig, err := identity.NewConfigFromMap(identityMap)
 
-	if certInterface, ok := identityMap["cert"]; ok {
-		if cert, ok := certInterface.(string); ok {
-			idConfig.Cert = cert
-		} else {
-			return nil, errors.New("error parsing identity: cert must be a string")
-		}
-	} else {
-		return nil, errors.New("error parsing identity: cert required")
-	}
-
-	if serverCertInterface, ok := identityMap["server_cert"]; ok {
-		if serverCert, ok := serverCertInterface.(string); ok {
-			idConfig.ServerCert = serverCert
-		} else {
-			return nil, errors.New("error parsing identity: server_cert must be a string")
-		}
-	} else {
-		return nil, errors.New("error parsing identity: server_cert required")
-	}
-
-	if keyInterface, ok := identityMap["key"]; ok {
-		if key, ok := keyInterface.(string); ok {
-			idConfig.Key = key
-		} else {
-			return nil, errors.New("error parsing identity: key must be a string")
-		}
-	} else {
-		return nil, errors.New("error parsing identity: key required")
-	}
-
-	if caInterface, ok := identityMap["ca"]; ok {
-		if ca, ok := caInterface.(string); ok {
-			idConfig.CA = ca
-		} else {
-			return nil, errors.New("error parsing identity: ca must be a string")
-		}
-	} else {
-		return nil, errors.New("error parsing identity: ca required")
+	if err = idConfig.ValidateWithPathContext(pathContext); err != nil {
+		return nil, fmt.Errorf("error parsing identity: %v", err)
 	}
 
 	return idConfig, nil

@@ -238,7 +238,7 @@ func (c *Controller) registerComponents() error {
 	}
 
 	//add default REST XWeb
-	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry)); err != nil {
+	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {
 		return err
 	}
 

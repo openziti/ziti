@@ -123,29 +123,15 @@ func LoadConfig(path string) (*Config, error) {
 		panic("config version mismatch: no configuration version specified")
 	}
 
-	identityConfig := identity.IdentityConfig{}
-	if value, found := cfgmap["identity"]; found {
-		submap := value.(map[interface{}]interface{})
-		if value, found := submap["key"]; found {
-			identityConfig.Key = value.(string)
-		}
-		if value, found := submap["cert"]; found {
-			identityConfig.Cert = value.(string)
-		}
-		if value, found := submap["server_cert"]; found {
-			identityConfig.ServerCert = value.(string)
-		}
-		if value, found := submap["server_key"]; found {
-			identityConfig.ServerKey = value.(string)
-		}
-		if value, found := submap["ca"]; found {
-			identityConfig.CA = value.(string)
-		}
-	}
-
 	cfg := &Config{src: cfgmap}
 
-	if id, err := identity.LoadIdentity(identityConfig); err != nil {
+	identityConfig, err := LoadIdentityConfigFromMap(cfgmap)
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to load identity: %v", err)
+	}
+
+	if id, err := identity.LoadIdentity(*identityConfig); err != nil {
 		return nil, fmt.Errorf("unable to load identity (%w)", err)
 	} else {
 		cfg.Id = identity.NewIdentity(id)
@@ -222,6 +208,7 @@ func LoadConfig(path string) (*Config, error) {
 				}
 			}
 			if value, found := submap["defaultRequestTimeout"]; found {
+				var err error
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
 				}
@@ -322,6 +309,7 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["metrics"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["reportInterval"]; found {
+				var err error
 				if cfg.Metrics.ReportInterval, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for metrics.reportInterval")
 				}
@@ -330,7 +318,7 @@ func LoadConfig(path string) (*Config, error) {
 				if intVal, ok := value.(int); ok {
 					cfg.Metrics.MessageQueueSize = intVal
 				} else {
-					return nil, errors.Wrap(err, "invalid value for metrics.messageQueueSize")
+					return nil, errors.New("invalid value for metrics.messageQueueSize")
 				}
 			}
 		}
@@ -391,6 +379,15 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func LoadIdentityConfigFromMap(cfgmap map[interface{}]interface{}) (*identity.Config, error) {
+	if value, found := cfgmap["identity"]; found {
+		subMap := value.(map[interface{}]interface{})
+		return identity.NewConfigFromMapWithPathContext(subMap, "identity")
+	}
+
+	return nil, fmt.Errorf("identity section not found")
 }
 
 type listenerBinding struct {

@@ -23,22 +23,19 @@ import (
 )
 
 // WebListener is the configuration that will eventually be used to create an xweb.Server (which in turn houses all
-// of the components necessary to run multiple http.Server's).
+// the components necessary to run multiple http.Server's).
 type WebListener struct {
 	Name       string
 	APIs       []*API
 	BindPoints []*BindPoint
 	Options    Options
 
-	IdentityConfig *identity.IdentityConfig
-	Identity       identity.Identity
-
-	DefaultIdentityConfig *identity.IdentityConfig
-	DefaultIdentity       identity.Identity
+	DefaultIdentity identity.Identity
+	Identity        identity.Identity
 }
 
 // Parse parses a configuration map to set all relevant WebListener values.
-func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}) error {
+func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}, pathContext string) error {
 	//parse name, required, string
 	if nameInterface, ok := webConfigMap["name"]; ok {
 		if name, ok := nameInterface.(string); ok {
@@ -97,8 +94,11 @@ func (web *WebListener) Parse(webConfigMap map[interface{}]interface{}) error {
 	//parse identity
 	if identityInterface, ok := webConfigMap["identity"]; ok {
 		if identityMap, ok := identityInterface.(map[interface{}]interface{}); ok {
-			if identityConfig, err := parseIdentityConfig(identityMap); err == nil {
-				web.IdentityConfig = identityConfig
+			if identityConfig, err := parseIdentityConfig(identityMap, pathContext + ".identity"); err == nil {
+				web.Identity, err = identity.LoadIdentity(*identityConfig)
+				if err != nil {
+					return fmt.Errorf("error loading identity: %v", err)
+				}
 			} else {
 				return fmt.Errorf("error parsing identity section: %v", err)
 			}
@@ -155,22 +155,12 @@ func (web *WebListener) Validate(registry WebHandlerFactoryRegistry) error {
 		}
 	}
 
-	//default identity config
-	if web.IdentityConfig == nil {
-		web.IdentityConfig = web.DefaultIdentityConfig
-		web.Identity = web.DefaultIdentity
-	}
-
 	if web.Identity == nil {
-		if web.IdentityConfig == nil {
-			return errors.New("no identity specified")
+		if web.DefaultIdentity == nil {
+			return errors.New("no default identity specified and no identity specified")
 		}
 
-		if id, err := identity.LoadIdentity(*web.IdentityConfig); err == nil {
-			web.Identity = id
-		} else {
-			return fmt.Errorf("failed to load identity: %v", err)
-		}
+		web.Identity = web.DefaultIdentity
 	}
 
 	if err := web.Options.TlsVersionOptions.Validate(); err != nil {

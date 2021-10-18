@@ -50,6 +50,7 @@ package xweb
 import (
 	"context"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/identity/identity"
 	"time"
 )
 
@@ -76,12 +77,13 @@ type XwebImpl struct {
 	DemuxFactory DemuxFactory
 }
 
-func NewXwebImpl(registry WebHandlerFactoryRegistry) *XwebImpl {
+func NewXwebImpl(registry WebHandlerFactoryRegistry, defaultIdentity identity.Identity) *XwebImpl {
 	return &XwebImpl{
 		Registry:     registry,
 		DemuxFactory: &IsHandledDemuxFactory{},
 		Config: &Config{
 			DefaultIdentitySection: DefaultIdentitySection,
+			DefaultIdentity:        defaultIdentity,
 			WebSection:             WebSection,
 		},
 	}
