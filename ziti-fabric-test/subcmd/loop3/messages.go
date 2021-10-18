@@ -271,10 +271,10 @@ func (s SeqBlock) Tx(p *protocol) error {
 }
 
 func (block SeqBlock) Verify(p *protocol) error {
-	for _, b := range block {
+	for idx, b := range block {
 		cmp := byte(p.rxSequence)
 		if cmp != b {
-			err := fmt.Errorf("expected sequence [%d] got sequence [%d]", cmp, b)
+			err := fmt.Errorf("expected sequence [%d] got sequence [%d] at index %v", cmp, b, idx)
 			panic(err)
 		}
 		p.rxSequence++
