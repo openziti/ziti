@@ -6,6 +6,7 @@
 * Enhancement: Don't let identity/service/edge router role attributes start with a hashtag or at-symbol to prevent confusion.
 * Bug fix: Timeout remaining for onWake/onUnlock will properly report as non-zero after MFA submission
 * Enhancement: traceroute support
+* Enhancement: add initial support for UDP links
 
 ## Traceroute
 
@@ -44,7 +45,6 @@ plorenz@carrot:~/work/nf$ ziti edge traceroute simple -c ./simple-client.json
  3     forwarder[Yv7BPW0kGR]    1ms 
  4     xgress/edge_transport     0s 
 ```
->>>>>>> 7d34149 (Update deps/changelog. Add traceroute command to ziti edge CLI)
 
 # Release 0.22.5
 
