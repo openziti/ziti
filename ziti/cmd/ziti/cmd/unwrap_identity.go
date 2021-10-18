@@ -12,9 +12,9 @@ import (
 )
 
 type IdentityConfigFile struct {
-	ZtAPI       string                  `json:"ztAPI"`
-	ID          identity.IdentityConfig `json:"id"`
-	ConfigTypes []string                `json:"configTypes"`
+	ZtAPI       string          `json:"ztAPI"`
+	ID          identity.Config `json:"id"`
+	ConfigTypes []string        `json:"configTypes"`
 }
 
 func NewUnwrapIdentityFileCommand(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {

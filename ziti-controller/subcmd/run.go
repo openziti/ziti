@@ -63,13 +63,12 @@ func run(cmd *cobra.Command, args []string) {
 			panic(err)
 		}
 
-		edgeController, err := server.NewController(config)
+		edgeController, err := server.NewController(config, fabricController)
 
 		if err != nil {
 			panic(err)
 		}
 
-		edgeController.SetHostController(fabricController)
 		edgeController.Initialize()
 		go waitForShutdown(fabricController, edgeController)
 		edgeController.Run()
