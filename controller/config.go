@@ -88,10 +88,10 @@ func LoadConfig(path string) (*Config, error) {
 	config.InjectEnv(cfgmap)
 	if value, found := cfgmap["v"]; found {
 		if value.(int) != 3 {
-			panic("controllerConfig version mismatch: see docs for information on controllerConfig updates")
+			panic("config version mismatch: see docs for information on config updates")
 		}
 	} else {
-		panic("no controllerConfig version: see docs for information on controllerConfig")
+		panic("no config version: see docs for information on config")
 	}
 
 	var identityConfig *identity.Config
