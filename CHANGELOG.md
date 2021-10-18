@@ -44,7 +44,6 @@ plorenz@carrot:~/work/nf$ ziti edge traceroute simple -c ./simple-client.json
  3     forwarder[Yv7BPW0kGR]    1ms 
  4     xgress/edge_transport     0s 
 ```
->>>>>>> 7d34149 (Update deps/changelog. Add traceroute command to ziti edge CLI)
 
 # Release 0.22.5
 
