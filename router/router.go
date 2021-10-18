@@ -276,7 +276,7 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
-	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry)); err != nil {
+	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry, self.config.Id)); err != nil {
 		return err
 	}
 
