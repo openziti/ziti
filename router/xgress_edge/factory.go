@@ -110,26 +110,12 @@ func (factory *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
 	return nil
 }
 
-func (factory *Factory) extendEnrollment() {
-	if factory.edgeRouterConfig.ReEnrollSeconds <= 0 {
-		return
-	}
-
-	select {
-	case <-time.After(time.Duration(factory.edgeRouterConfig.ReEnrollSeconds) * time.Second):
-		pfxlog.Logger().Info("starting enrollment extension")
-		factory.certChecker.ExtendEnrollment()
-	}
-}
-
 func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, closeNotify chan struct{}) error {
 	factory.ctrl = ctrl
 	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, ctrl, closeNotify)
 
 	go factory.certChecker.Run()
-
-	go factory.extendEnrollment()
 
 	return nil
 }

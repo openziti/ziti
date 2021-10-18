@@ -56,7 +56,6 @@ type Config struct {
 	SessionValidateMaxInterval time.Duration
 	Tcfg                       transport.Configuration
 	ExtendEnrollment           bool
-	ReEnrollSeconds            int64
 
 	RouterConfig *router.Config
 }
@@ -114,12 +113,6 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		if flags, ok := val.(map[string]*pflag.Flag); ok {
 			if flag, ok := flags["extend"]; ok {
 				config.ExtendEnrollment = flag.Value.String() == "true"
-			}
-
-			if flag, ok := flags["reenroll-seconds"]; ok {
-				if reEnrollSeconds, err := strconv.ParseInt(flag.Value.String(), 10, 32); err == nil {
-					config.ReEnrollSeconds = reEnrollSeconds
-				}
 			}
 		}
 	}
