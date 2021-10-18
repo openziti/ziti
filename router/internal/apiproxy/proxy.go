@@ -49,20 +49,11 @@ func Start(config *edgerouter.Config) {
 	pfxlog.Logger().Info("API Proxy enabled")
 	log := pfxlog.Logger()
 
-	id, err := config.LoadIdentity()
+	clientTlsConfig := config.RouterConfig.Id.ClientTLSConfig()
 
-	if err != nil {
-		log.Panic("could not load identity")
-	}
-	clientTlsConfig := id.ClientTLSConfig()
-
-	serverTlsConfig := id.ServerTLSConfig()
+	serverTlsConfig := config.RouterConfig.Id.ServerTLSConfig()
 
 	serverTlsConfig.ClientAuth = tls.RequestClientCert
-
-	if err != nil {
-		pfxlog.Logger().WithField("cause", err).Panic("could not parse enrollment apiBaseUrl")
-	}
 
 	upstreamUrl := &url.URL{
 		Scheme: "https",

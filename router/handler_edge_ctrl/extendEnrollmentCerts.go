@@ -56,17 +56,20 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel2.Message, ch c
 				return
 			}
 
-			if err := h.id.Id.SetCert(req.ClientCertPem); err != nil {
+			if err := h.id.SetCert(req.ClientCertPem); err != nil {
 				pfxlog.Logger().Errorf("enrollment certs could not set client pem: %v", err)
 			}
 
-			if err := h.id.Id.SetServerCert(req.ServerCertPem); err != nil {
+			if err := h.id.SetServerCert(req.ServerCertPem); err != nil {
 				pfxlog.Logger().Errorf("enrollment certs could not set server pem: %v", err)
 			}
 
-			h.id.Id.Reload()
-			h.notifyCertUpdate()
-
+			if err := h.id.Reload(); err == nil {
+				h.notifyCertUpdate()
+			} else {
+				pfxlog.Logger().Errorf("could not reload new enrollment certs, please manually restart the router: %v", err)
+			}
+			pfxlog.Logger().Info("enrollment extension done")
 		} else {
 			pfxlog.Logger().Panic("could not convert message as enrollment certs response")
 		}

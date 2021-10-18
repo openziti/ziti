@@ -110,12 +110,26 @@ func (factory *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
 	return nil
 }
 
+func (factory *Factory) extendEnrollment() {
+	if factory.edgeRouterConfig.ReEnrollSeconds <= 0 {
+		return
+	}
+
+	select {
+	case <-time.After(time.Duration(factory.edgeRouterConfig.ReEnrollSeconds) * time.Second):
+		pfxlog.Logger().Info("starting enrollment extension")
+		factory.certChecker.ExtendEnrollment()
+	}
+}
+
 func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, closeNotify chan struct{}) error {
 	factory.ctrl = ctrl
 	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, ctrl, closeNotify)
 
 	go factory.certChecker.Run()
+
+	go factory.extendEnrollment()
 
 	return nil
 }
@@ -128,16 +142,12 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := edgerouter.NewConfig()
+	config := edgerouter.NewConfig(factory.routerConfig)
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
 
-	if id, err := config.LoadIdentity(); err == nil {
-		factory.id = identity.NewIdentity(id)
-	} else {
-		return err
-	}
+	factory.id = config.RouterConfig.Id
 
 	factory.edgeRouterConfig = config
 	go apiproxy.Start(config)

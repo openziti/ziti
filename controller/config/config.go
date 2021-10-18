@@ -43,7 +43,7 @@ const (
 
 type Enrollment struct {
 	SigningCert       identity.Identity
-	SigningCertConfig identity.IdentityConfig
+	SigningCertConfig identity.Config
 	SigningCertCaPem  []byte
 	EdgeIdentity      EnrollmentOption
 	EdgeRouter        EnrollmentOption
@@ -65,7 +65,7 @@ type Api struct {
 }
 
 type Config struct {
-	RootIdentityConfig identity.IdentityConfig
+	RootIdentityConfig identity.Config
 	RootIdentity       identity.Identity
 	RootIdentityCaPem  []byte
 	Enabled            bool
@@ -122,35 +122,14 @@ func (c *Config) loadRootIdentity(fabricConfigMap map[interface{}]interface{}) e
 		return errors.New("required configuration value [identity] missing")
 	}
 
-	if value, found := fabricIdentitySubMap["cert"]; found {
-		c.RootIdentityConfig.Cert = value.(string)
-	} else {
-		return fmt.Errorf("required configuration value [identity.cert] is missing")
+	idConfig, err := identity.NewConfigFromMap(fabricIdentitySubMap)
+
+	if err != nil {
+		return fmt.Errorf("could not read root identity: %v", err)
 	}
 
-	if value, found := fabricIdentitySubMap["server_cert"]; found {
-		c.RootIdentityConfig.ServerCert = value.(string)
-	} else {
-		return fmt.Errorf("required configuration value [identity.server_cert] is missing")
-	}
-
-	if value, found := fabricIdentitySubMap["key"]; found {
-		c.RootIdentityConfig.Key = value.(string)
-	} else {
-		return fmt.Errorf("required configuration value [identity.key] is missing")
-	}
-
-	if value, found := fabricIdentitySubMap["server_key"]; found {
-		c.RootIdentityConfig.ServerKey = value.(string)
-	} //allow "key" to be the default, this isn't an error
-
-	if value, found := fabricIdentitySubMap["ca"]; found {
-		c.RootIdentityConfig.CA = value.(string)
-	}
-
-	var err error
-	if c.RootIdentityCaPem, err = ioutil.ReadFile(c.RootIdentityConfig.CA); err != nil {
-		return fmt.Errorf("could not read file CA file from [identity.ca]")
+	if err = idConfig.ValidateWithPathContext("identity"); err != nil {
+		return fmt.Errorf("error parsing identity: %v", err)
 	}
 
 	_, _ = c.caPems.WriteString("\n")
@@ -273,7 +252,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 
 		if value, found := enrollmentSubMap["signingCert"]; found {
 			signingCertSubMap := value.(map[interface{}]interface{})
-			c.Enrollment.SigningCertConfig = identity.IdentityConfig{}
+			c.Enrollment.SigningCertConfig = identity.Config{}
 
 			if value, found := signingCertSubMap["cert"]; found {
 				c.Enrollment.SigningCertConfig.Cert = value.(string)

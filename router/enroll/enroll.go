@@ -27,6 +27,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/router/internal/edgerouter"
+	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
@@ -56,12 +57,14 @@ func NewRestEnroller() Enroller {
 }
 
 func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*edgerouter.Config, error) {
-	config := edgerouter.NewConfig()
-	if err := config.LoadConfigFromMapForEnrollment(cfgmap); err != nil {
-		return nil, err
+	routerConfig := &router.Config{}
+
+	edgeConfig := edgerouter.NewConfig(routerConfig)
+	if err := edgeConfig.LoadConfigFromMap(cfgmap); err != nil {
+		return nil, fmt.Errorf("could not load edge router config: %v", err)
 	}
 
-	return config, nil
+	return edgeConfig, nil
 }
 
 func (re *RestEnroller) LoadConfig(cfgmap map[interface{}]interface{}) error {
@@ -82,10 +85,8 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return errors.New("no configuration provided")
 	}
 
-	_, err := re.config.LoadIdentity()
-
-	if err == nil {
-		log.Warnf("identity detected, note that any identity information will be overwritten when enrolling [%s]", re.config.IdentityConfig)
+	if re.config.RouterConfig.Id != nil {
+		log.Warnf("identity detected, note that any identity information will be overwritten when enrolling")
 	}
 
 	ec, _, err := enroll.ParseToken(strings.TrimSpace(string(jwtBuf)))
@@ -115,9 +116,9 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 	//writes key if it is file based
 	var key crypto.PrivateKey
 	if keyAlg.EC() {
-		key, err = certtools.GetKey(engUrl, re.config.IdentityConfig.Key, "ec:P-256")
+		key, err = certtools.GetKey(engUrl, re.config.RouterConfig.Id.GetConfig().Key, "ec:P-256")
 	} else if keyAlg.RSA() {
-		key, err = certtools.GetKey(engUrl, re.config.IdentityConfig.Key, "rsa:4096")
+		key, err = certtools.GetKey(engUrl, re.config.RouterConfig.Id.GetConfig().Key, "rsa:4096")
 	} else {
 		panic(fmt.Sprintf("invalid KeyAlg specified: %s", keyAlg.Get()))
 	}
@@ -186,15 +187,15 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return fmt.Errorf("enrollment response did not contain a CA chain")
 	}
 
-	if err = ioutil.WriteFile(re.config.IdentityConfig.Cert, []byte(resp.Cert), 0600); err != nil {
-		return fmt.Errorf("unable to write client cert to [%s]: %s", re.config.IdentityConfig.Cert, err)
+	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().Cert, []byte(resp.Cert), 0600); err != nil {
+		return fmt.Errorf("unable to write client cert to [%s]: %s", re.config.RouterConfig.Id.GetConfig().Cert, err)
 	}
 
-	if err = ioutil.WriteFile(re.config.IdentityConfig.ServerCert, []byte(resp.ServerCert), 0600); err != nil {
-		return fmt.Errorf("unable to write server cert to [%s]: %s", re.config.IdentityConfig.ServerCert, err)
+	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().ServerCert, []byte(resp.ServerCert), 0600); err != nil {
+		return fmt.Errorf("unable to write server cert to [%s]: %s", re.config.RouterConfig.Id.GetConfig().ServerCert, err)
 	}
-	if err = ioutil.WriteFile(re.config.IdentityConfig.CA, []byte(resp.Ca), 0600); err != nil {
-		return fmt.Errorf("unable to write CA certs to [%s]: %s", re.config.IdentityConfig.CA, err)
+	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().CA, []byte(resp.Ca), 0600); err != nil {
+		return fmt.Errorf("unable to write CA certs to [%s]: %s", re.config.RouterConfig.Id.GetConfig().CA, err)
 	}
 
 	log.Info("registration complete")

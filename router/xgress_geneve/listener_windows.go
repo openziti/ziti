@@ -1,3 +1,5 @@
+// +build windows
+
 /*
 	Copyright 2019 NetFoundry, Inc.
 
@@ -17,13 +19,14 @@
 package xgress_geneve
 
 import (
+	"github.com/openziti/fabric/router/xgress"
 	"github.com/pkg/errors"
 )
 
 type listener struct{}
 
 func (self *listener) Listen(string, xgress.BindHandler) error {
-	return nil, errors.New("geneve not supported in windows")
+	return errors.New("geneve not supported in windows")
 }
 
 func (self *listener) Close() error {

@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
@@ -49,13 +50,15 @@ type Config struct {
 	Advertise                  string
 	WSAdvertise                string
 	Csr                        Csr
-	IdentityConfig             identity.IdentityConfig
 	HeartbeatIntervalSeconds   int
 	SessionValidateChunkSize   uint32
 	SessionValidateMinInterval time.Duration
 	SessionValidateMaxInterval time.Duration
 	Tcfg                       transport.Configuration
 	ExtendEnrollment           bool
+	ReEnrollSeconds            int64
+
+	RouterConfig *router.Config
 }
 
 type Csr struct {
@@ -73,11 +76,13 @@ type ApiProxy struct {
 	Upstream string
 }
 
-func NewConfig() *Config {
-	return &Config{}
+func NewConfig(routerConfig *router.Config) *Config {
+	return &Config{
+		RouterConfig: routerConfig,
+	}
 }
 
-func (config *Config) LoadConfigFromMapForEnrollment(configMap map[interface{}]interface{}) error {
+func (config *Config) LoadConfig(configMap map[interface{}]interface{}) error {
 	//enrollment config loading is more lax on where the CSR section lives (i.e. under edge: or at the root level)
 
 	if val, ok := configMap["edge"]; ok && val != nil {
@@ -98,9 +103,7 @@ func (config *Config) LoadConfigFromMapForEnrollment(configMap map[interface{}]i
 		return fmt.Errorf("expected enrollment CSR section")
 	}
 
-	config.loadIdentity(configMap)
-
-	return nil
+	return config.loadIdentityConfig(configMap)
 }
 
 func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
@@ -111,6 +114,12 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		if flags, ok := val.(map[string]*pflag.Flag); ok {
 			if flag, ok := flags["extend"]; ok {
 				config.ExtendEnrollment = flag.Value.String() == "true"
+			}
+
+			if flag, ok := flags["reenroll-seconds"]; ok {
+				if reEnrollSeconds, err := strconv.ParseInt(flag.Value.String(), 10, 32); err == nil {
+					config.ReEnrollSeconds = reEnrollSeconds
+				}
 			}
 		}
 	}
@@ -124,7 +133,9 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		}
 	}
 
-	config.loadIdentity(configMap)
+	if err := config.loadIdentityConfig(configMap); err != nil {
+		return err
+	}
 
 	if val, found := edgeConfigMap["heartbeatIntervalSeconds"]; found {
 		config.HeartbeatIntervalSeconds = val.(int)
@@ -180,7 +191,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 }
 
 func (config *Config) LoadIdentity() (identity.Identity, error) {
-	return identity.LoadIdentity(config.IdentityConfig)
+	return config.LoadIdentity()
 }
 
 func (config *Config) loadApiProxy(edgeConfigMap map[interface{}]interface{}) error {
@@ -393,26 +404,29 @@ func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix 
 	return nil
 }
 
-func (config *Config) loadIdentity(rootConfigMap map[interface{}]interface{}) {
-	config.IdentityConfig = identity.IdentityConfig{}
-	if value, found := rootConfigMap["identity"]; found {
-		submap := value.(map[interface{}]interface{})
-		if value, found := submap["key"]; found {
-			config.IdentityConfig.Key = value.(string)
-		}
-		if value, found := submap["cert"]; found {
-			config.IdentityConfig.Cert = value.(string)
-		}
-		if value, found := submap["server_cert"]; found {
-			config.IdentityConfig.ServerCert = value.(string)
-		}
-		if value, found := submap["server_key"]; found {
-			config.IdentityConfig.ServerKey = value.(string)
-		}
-		if value, found := submap["ca"]; found {
-			config.IdentityConfig.CA = value.(string)
-		}
+func (config *Config) loadIdentityConfig(rootConfigMap map[interface{}]interface{}) error {
+	if config.RouterConfig == nil {
+		config.RouterConfig = &router.Config{}
 	}
+	if config.RouterConfig.Id != nil {
+		return nil
+	}
+
+	idConfig, err := router.LoadIdentityConfigFromMap(rootConfigMap)
+
+	if err != nil {
+		return err
+	}
+
+	id, err := identity.LoadIdentity(*idConfig)
+
+	if err != nil {
+		return err
+	}
+
+	config.RouterConfig.Id = identity.NewIdentity(id)
+
+	return nil
 }
 
 func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interface{}) error {
