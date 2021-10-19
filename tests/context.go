@@ -284,10 +284,8 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 
 	log.Info("creating edge controller")
-	ctx.EdgeController, err = server.NewController(config)
+	ctx.EdgeController, err = server.NewController(config, ctx.fabricController)
 	ctx.Req.NoError(err)
-
-	ctx.EdgeController.SetHostController(ctx.fabricController)
 
 	ctx.EdgeController.Initialize()
 

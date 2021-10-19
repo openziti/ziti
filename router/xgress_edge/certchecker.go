@@ -63,8 +63,8 @@ func (self *CertExpirationChecker) Run() {
 		} else {
 			now := time.Now()
 
-			clientExpirationDuration := self.id.Id.Cert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now)       //1 week before client cert expires
-			serverExpirationDuration := self.id.Id.ServerCert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
+			clientExpirationDuration := self.id.Cert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now)       //1 week before client cert expires
+			serverExpirationDuration := self.id.ServerCert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
 
 			if clientExpirationDuration == 0 {
 				pfxlog.Logger().Panic("client cert has expired, cannot renew via enrollment extension")
@@ -80,27 +80,27 @@ func (self *CertExpirationChecker) Run() {
 		case <-self.certsUpdated:
 			//loop
 		case <-time.After(durationToWait):
-			self.renewCerts()
+			self.ExtendEnrollment()
 		case <-self.closeNotify:
 			return
 		}
 	}
 }
 
-func (self *CertExpirationChecker) renewCerts() {
+func (self *CertExpirationChecker) ExtendEnrollment() {
 	if self.ctrl.IsClosed() {
 		pfxlog.Logger().Error("cannot request updates, control channel has closed")
 		return
 	}
 
-	clientCsrPem, err := enroll.CreateCsr(self.id.Id.Cert().PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
+	clientCsrPem, err := enroll.CreateCsr(self.id.Cert().PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
 
 	if err != nil {
 		pfxlog.Logger().Errorf("could not create client CSR for enrollment extension: %v", err)
 		return
 	}
 
-	serverCsrPem, err := enroll.CreateCsr(self.id.Id.ServerCert().PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
+	serverCsrPem, err := enroll.CreateCsr(self.id.ServerCert().PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
 
 	if err != nil {
 		pfxlog.Logger().Errorf("could not create server CSR for enrollment extension: %v", err)
@@ -121,5 +121,7 @@ func (self *CertExpirationChecker) renewCerts() {
 
 	msg := channel2.NewMessage(env.EnrollmentExtendRouterRequestType, body)
 
-	self.ctrl.Send(msg)
+	if err = self.ctrl.Send(msg); err != nil {
+		pfxlog.Logger().Errorf("could not send enrollment extension request: %v", err)
+	}
 }

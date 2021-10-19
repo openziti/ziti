@@ -48,6 +48,7 @@ import (
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -152,6 +153,7 @@ type HostController interface {
 	GetNetwork() *network.Network
 	GetCloseNotifyChannel() <-chan struct{}
 	Shutdown()
+	Identity() identity.Identity
 }
 
 type Schemes struct {
@@ -285,7 +287,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	return nil
 }
 
-func NewAppEnv(c *edgeConfig.Config) *AppEnv {
+func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 	clientSpec, err := loads.Embedded(clientServer.SwaggerJSON, clientServer.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
@@ -308,6 +310,7 @@ func NewAppEnv(c *edgeConfig.Config) *AppEnv {
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
+		HostController:     host,
 		InstanceId:         cuid.New(),
 		AuthRegistry:       &model.AuthProcessorRegistryImpl{},
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},

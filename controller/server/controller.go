@@ -21,6 +21,7 @@ import (
 	"fmt"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"io/ioutil"
 	"sync"
 	"time"
 
@@ -58,8 +59,9 @@ const (
 	ZitiInstanceId = "ziti-instance-id"
 )
 
-func NewController(cfg config.Configurable) (*Controller, error) {
+func NewController(cfg config.Configurable, host env.HostController) (*Controller, error) {
 	c := &Controller{}
+
 	if err := cfg.Configure(c); err != nil {
 		return nil, fmt.Errorf("failed to load configuration: %s", err)
 	}
@@ -68,9 +70,12 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 		return c, nil
 	}
 
-	ae := env.NewAppEnv(c.config)
+	c.AppEnv = env.NewAppEnv(c.config, host)
 
-	pfxlog.Logger().Infof("edge controller instance id: %s", ae.InstanceId)
+	c.AppEnv.TraceManager = env.NewTraceManager(host.GetCloseNotifyChannel())
+	c.AppEnv.HostController.GetNetwork().AddCapability("ziti.edge")
+
+	pfxlog.Logger().Infof("edge controller instance id: %s", c.AppEnv.InstanceId)
 
 	pe, err := runner.NewRunner(policyMinFreq, policyMaxFreq, func(e error, enforcer runner.Operation) {
 		pfxlog.Logger().
@@ -84,7 +89,6 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 		return nil, fmt.Errorf("failed to create policy runner: %s", err)
 	}
 
-	c.AppEnv = ae
 	c.policyEngine = pe
 
 	c.xmgmt = &submgmt{
@@ -93,6 +97,21 @@ func NewController(cfg config.Configurable) (*Controller, error) {
 
 	c.xctrl = &subctrl{
 		parent: c,
+	}
+
+	// Add the root host controller's identity's CAs to the ca's served by well-known urls
+	if caCerts, err := ioutil.ReadFile(c.AppEnv.HostController.Identity().GetConfig().CA); err == nil {
+		c.config.AddCaPems(caCerts)
+	} else {
+		pfxlog.Logger().Fatalf("could not read controller identity CA file: %s: %v", c.AppEnv.HostController.Identity().GetConfig().CA, err)
+	}
+
+	if err := host.RegisterXctrl(c.xctrl); err != nil {
+		panic(err)
+	}
+
+	if err := host.RegisterXmgmt(c.xmgmt); err != nil {
+		panic(err)
 	}
 
 	return c, nil

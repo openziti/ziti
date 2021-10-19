@@ -45,11 +45,11 @@ func (factory ClientApiFactory) Validate(config *xweb.Config) error {
 	for _, webListener := range config.WebListeners {
 		for _, api := range webListener.APIs {
 
-			if webListener.IdentityConfig != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
-				caBytes, err := ioutil.ReadFile(webListener.IdentityConfig.CA)
+			if webListener.Identity != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
+				caBytes, err := ioutil.ReadFile(webListener.Identity.GetConfig().CA)
 
 				if err != nil {
-					return errors.Errorf("could not read xweb web listener [%s]'s CA file [%s] to retrieve CA PEMs: %v", webListener.Name, webListener.IdentityConfig.CA, err)
+					return errors.Errorf("could not read xweb web listener [%s]'s CA file [%s] to retrieve CA PEMs: %v", webListener.Name, webListener.Identity.GetConfig().CA, err)
 				}
 
 				factory.appEnv.Config.AddCaPems(caBytes)

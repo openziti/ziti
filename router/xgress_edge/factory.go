@@ -128,16 +128,12 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 	}
 
 	var err error
-	config := edgerouter.NewConfig()
+	config := edgerouter.NewConfig(factory.routerConfig)
 	if err = config.LoadConfigFromMap(configMap); err != nil {
 		return err
 	}
 
-	if id, err := config.LoadIdentity(); err == nil {
-		factory.id = identity.NewIdentity(id)
-	} else {
-		return err
-	}
+	factory.id = config.RouterConfig.Id
 
 	factory.edgeRouterConfig = config
 	go apiproxy.Start(config)
