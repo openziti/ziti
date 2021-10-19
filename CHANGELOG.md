@@ -1,3 +1,10 @@
+# Release 0.22.7
+
+# What's New
+* Bug fix: Router automatic certificate enrollments will no longer require a restart of the router
+* Enhancement: foundation Identity implementations now support reloading of tls.Config certificates for CAs
+* Enhancement: foundation Identity library brought more in-line with golang idioms
+
 # Release 0.22.6
 
 # What's New
