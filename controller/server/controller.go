@@ -103,7 +103,7 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 	if caCerts, err := ioutil.ReadFile(c.AppEnv.HostController.Identity().GetConfig().CA); err == nil {
 		c.config.AddCaPems(caCerts)
 	} else {
-		pfxlog.Logger().Fatal("could not read controller identity CA file: %s: %v", c.AppEnv.HostController.Identity().GetConfig().CA, err)
+		pfxlog.Logger().Fatalf("could not read controller identity CA file: %s: %v", c.AppEnv.HostController.Identity().GetConfig().CA, err)
 	}
 
 	if err := host.RegisterXctrl(c.xctrl); err != nil {
