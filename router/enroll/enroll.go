@@ -60,7 +60,7 @@ func (re *RestEnroller) parseCfgMap(cfgmap map[interface{}]interface{}) (*edgero
 	routerConfig := &router.Config{}
 
 	edgeConfig := edgerouter.NewConfig(routerConfig)
-	if err := edgeConfig.LoadConfigFromMap(cfgmap); err != nil {
+	if err := edgeConfig.LoadConfigFromMapForEnrollment(cfgmap); err != nil {
 		return nil, fmt.Errorf("could not load edge router config: %v", err)
 	}
 
@@ -194,6 +194,7 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().ServerCert, []byte(resp.ServerCert), 0600); err != nil {
 		return fmt.Errorf("unable to write server cert to [%s]: %s", re.config.RouterConfig.Id.GetConfig().ServerCert, err)
 	}
+
 	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().CA, []byte(resp.Ca), 0600); err != nil {
 		return fmt.Errorf("unable to write CA certs to [%s]: %s", re.config.RouterConfig.Id.GetConfig().CA, err)
 	}

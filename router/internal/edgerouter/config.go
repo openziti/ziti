@@ -359,6 +359,10 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix string) error {
 	config.Csr = Csr{}
 
+	if configMap == nil {
+		return fmt.Errorf("nil config map")
+	}
+
 	if pathPrefix != "" {
 		pathPrefix = pathPrefix + "."
 	}
@@ -401,6 +405,9 @@ func (config *Config) loadIdentityConfig(rootConfigMap map[interface{}]interface
 	if config.RouterConfig == nil {
 		config.RouterConfig = &router.Config{}
 	}
+
+	//if we already have an Id (loaded by the fabric router) use that as is to avoid
+	//duplicating the identity and causing issues w/ tls.Config cert updates
 	if config.RouterConfig.Id != nil {
 		return nil
 	}
@@ -432,4 +439,32 @@ func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interfac
 	}
 
 	return nil
+}
+
+// LoadConfigFromMapForEnrollment loads a minimal subset of the router configuration to allow for enrollment.
+// This process should be used to load edge enabled routers as well as non-edge routers.
+func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]interface{}) interface{} {
+	if err := config.loadIdentityConfig(cfgmap); err != nil {
+		return err
+	}
+
+	edgeVal := cfgmap["edge"]
+
+	if edgeVal != nil {
+		if err := config.loadCsr(cfgmap["edge"].(map[interface{}]interface{}), "edge"); err != nil {
+			pfxlog.Logger().Warnf("could not load [edge.csr]: %v", err)
+		} else {
+			return nil
+		}
+	}
+
+	//try loading the root csr
+	if rootErr := config.loadCsr(cfgmap, ""); rootErr != nil {
+		pfxlog.Logger().Warnf("could not load [csr]: %v", rootErr)
+
+	} else {
+		return nil
+	}
+
+	return fmt.Errorf("could not load [edge.csr] nor [csr] sections, see warnings")
 }

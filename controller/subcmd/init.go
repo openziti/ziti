@@ -147,21 +147,21 @@ func configureController(configPath string, versionProvider common.VersionProvid
 		pfxlog.Logger().WithError(err).Fatalf("could not read configuration file [%s]", configPath)
 	}
 
-	var c *controller.Controller
-	if c, err = controller.NewController(config, versionProvider); err != nil {
+	var fabricController *controller.Controller
+	if fabricController, err = controller.NewController(config, versionProvider); err != nil {
 		panic(err)
 	}
 
-	ec, err := server.NewController(config)
+	edgeController, err := server.NewController(config, fabricController)
 
 	if err != nil {
 		panic(err)
 	}
 
-	ec.SetHostController(c)
-	ec.Initialize()
+	edgeController.SetHostController(fabricController)
+	edgeController.Initialize()
 
-	return ec
+	return edgeController
 }
 
 func promptUsername() string {

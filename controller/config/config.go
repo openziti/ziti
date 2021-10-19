@@ -65,9 +65,6 @@ type Api struct {
 }
 
 type Config struct {
-	RootIdentityConfig identity.Config
-	RootIdentity       identity.Identity
-	RootIdentityCaPem  []byte
 	Enabled            bool
 	Api                Api
 	Enrollment         Enrollment
@@ -114,31 +111,6 @@ func (c *Config) RefreshCaPems() {
 	c.caPems = CalculateCaPems(c.caPems)
 }
 
-func (c *Config) loadRootIdentity(fabricConfigMap map[interface{}]interface{}) error {
-	var fabricIdentitySubMap map[interface{}]interface{}
-	if value, found := fabricConfigMap["identity"]; found {
-		fabricIdentitySubMap = value.(map[interface{}]interface{})
-	} else {
-		return errors.New("required configuration value [identity] missing")
-	}
-
-	idConfig, err := identity.NewConfigFromMap(fabricIdentitySubMap)
-
-	if err != nil {
-		return fmt.Errorf("could not read root identity: %v", err)
-	}
-
-	if err = idConfig.ValidateWithPathContext("identity"); err != nil {
-		return fmt.Errorf("error parsing identity: %v", err)
-	}
-
-	_, _ = c.caPems.WriteString("\n")
-	_, _ = c.caPems.Write(c.RootIdentityCaPem)
-
-	c.RootIdentity, err = identity.LoadIdentity(c.RootIdentityConfig)
-
-	return err
-}
 
 func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error {
 	c.Api = Api{}
@@ -368,10 +340,6 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	}
 
 	var err error
-
-	if err = edgeConfig.loadRootIdentity(configMap); err != nil {
-		return nil, err
-	}
 
 	if err = edgeConfig.loadApiSection(edgeConfigMap); err != nil {
 		return nil, err
