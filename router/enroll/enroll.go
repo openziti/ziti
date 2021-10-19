@@ -85,7 +85,10 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return errors.New("no configuration provided")
 	}
 
+	identityConfig := re.config.EnrollmentIdentityConfig
+
 	if re.config.RouterConfig.Id != nil {
+		identityConfig = re.config.RouterConfig.Id.GetConfig()
 		log.Warnf("identity detected, note that any identity information will be overwritten when enrolling")
 	}
 
@@ -116,9 +119,9 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 	//writes key if it is file based
 	var key crypto.PrivateKey
 	if keyAlg.EC() {
-		key, err = certtools.GetKey(engUrl, re.config.RouterConfig.Id.GetConfig().Key, "ec:P-256")
+		key, err = certtools.GetKey(engUrl, identityConfig.Key, "ec:P-256")
 	} else if keyAlg.RSA() {
-		key, err = certtools.GetKey(engUrl, re.config.RouterConfig.Id.GetConfig().Key, "rsa:4096")
+		key, err = certtools.GetKey(engUrl, identityConfig.Key, "rsa:4096")
 	} else {
 		panic(fmt.Sprintf("invalid KeyAlg specified: %s", keyAlg.Get()))
 	}
@@ -187,16 +190,16 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return fmt.Errorf("enrollment response did not contain a CA chain")
 	}
 
-	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().Cert, []byte(resp.Cert), 0600); err != nil {
-		return fmt.Errorf("unable to write client cert to [%s]: %s", re.config.RouterConfig.Id.GetConfig().Cert, err)
+	if err = ioutil.WriteFile(identityConfig.Cert, []byte(resp.Cert), 0600); err != nil {
+		return fmt.Errorf("unable to write client cert to [%s]: %s", identityConfig.Cert, err)
 	}
 
-	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().ServerCert, []byte(resp.ServerCert), 0600); err != nil {
-		return fmt.Errorf("unable to write server cert to [%s]: %s", re.config.RouterConfig.Id.GetConfig().ServerCert, err)
+	if err = ioutil.WriteFile(identityConfig.ServerCert, []byte(resp.ServerCert), 0600); err != nil {
+		return fmt.Errorf("unable to write server cert to [%s]: %s", identityConfig.ServerCert, err)
 	}
 
-	if err = ioutil.WriteFile(re.config.RouterConfig.Id.GetConfig().CA, []byte(resp.Ca), 0600); err != nil {
-		return fmt.Errorf("unable to write CA certs to [%s]: %s", re.config.RouterConfig.Id.GetConfig().CA, err)
+	if err = ioutil.WriteFile(identityConfig.CA, []byte(resp.Ca), 0600); err != nil {
+		return fmt.Errorf("unable to write CA certs to [%s]: %s", identityConfig.CA, err)
 	}
 
 	log.Info("registration complete")

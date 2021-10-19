@@ -57,7 +57,8 @@ type Config struct {
 	Tcfg                       transport.Configuration
 	ExtendEnrollment           bool
 
-	RouterConfig *router.Config
+	RouterConfig             *router.Config
+	EnrollmentIdentityConfig *identity.Config
 }
 
 type Csr struct {
@@ -102,7 +103,7 @@ func (config *Config) LoadConfig(configMap map[interface{}]interface{}) error {
 		return fmt.Errorf("expected enrollment CSR section")
 	}
 
-	return config.loadIdentityConfig(configMap)
+	return config.ensureIdentity(configMap)
 }
 
 func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) error {
@@ -126,7 +127,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		}
 	}
 
-	if err := config.loadIdentityConfig(configMap); err != nil {
+	if err := config.ensureIdentity(configMap); err != nil {
 		return err
 	}
 
@@ -401,7 +402,7 @@ func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix 
 	return nil
 }
 
-func (config *Config) loadIdentityConfig(rootConfigMap map[interface{}]interface{}) error {
+func (config *Config) ensureIdentity(rootConfigMap map[interface{}]interface{}) error {
 	if config.RouterConfig == nil {
 		config.RouterConfig = &router.Config{}
 	}
@@ -444,7 +445,10 @@ func (config *Config) loadTransportConfig(rootConfigMap map[interface{}]interfac
 // LoadConfigFromMapForEnrollment loads a minimal subset of the router configuration to allow for enrollment.
 // This process should be used to load edge enabled routers as well as non-edge routers.
 func (config *Config) LoadConfigFromMapForEnrollment(cfgmap map[interface{}]interface{}) interface{} {
-	if err := config.loadIdentityConfig(cfgmap); err != nil {
+	var err error
+	config.EnrollmentIdentityConfig, err = router.LoadIdentityConfigFromMap(cfgmap)
+
+	if err != nil {
 		return err
 	}
 
