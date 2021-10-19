@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/sirupsen/logrus"
@@ -286,4 +287,8 @@ func (c *Controller) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error 
 
 func (c *Controller) GetNetwork() *network.Network {
 	return c.network
+}
+
+func (c *Controller) Identity() identity.Identity {
+	return c.config.Id
 }
