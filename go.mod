@@ -34,10 +34,10 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.2
-	github.com/openziti/edge v0.20.102
+	github.com/openziti/edge v0.20.104
 	github.com/openziti/fabric v0.16.121
 	github.com/openziti/foundation v0.16.1
-	github.com/openziti/sdk-golang v0.15.109
+	github.com/openziti/sdk-golang v0.15.110
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0

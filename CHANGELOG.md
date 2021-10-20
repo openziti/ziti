@@ -5,6 +5,7 @@
 * Enhancement: foundation Identity implementations now support reloading of tls.Config certificates for CAs
 * Enhancement: foundation Identity library brought more in-line with golang idioms
 * Experimental: integration with PARSEC key service
+* Bug fix: Fix controller panic when router/tunnel tries to host invalid service
 
 ## PARSEC integration (experimental)
 Ziti can now use keys backed by PARSEC service for identity.
