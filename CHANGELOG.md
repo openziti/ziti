@@ -4,6 +4,16 @@
 * Bug fix: Router automatic certificate enrollments will no longer require a restart of the router
 * Enhancement: foundation Identity implementations now support reloading of tls.Config certificates for CAs
 * Enhancement: foundation Identity library brought more in-line with golang idioms
+* Experimental: integration with PARSEC key service
+
+## PARSEC integration (experimental)
+Ziti can now use keys backed by PARSEC service for identity.
+see https://parallaxsecond.github.io/parsec-book/index.html
+
+example usage during enrollment (assuming `my-identity-key` exists in PARSEC service):
+```
+$ ziti-tunnel enroll -j my-identity.jwt --key parsec:my-identity-key
+```
 
 # Release 0.22.6
 
