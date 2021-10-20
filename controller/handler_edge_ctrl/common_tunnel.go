@@ -156,9 +156,9 @@ func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
-				err = InvalidServiceError{}
+				self.err = InvalidServiceError{}
 			} else {
-				err = internalError(err)
+				self.err = internalError(err)
 			}
 
 			logrus.
