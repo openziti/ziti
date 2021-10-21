@@ -1,0 +1,39 @@
+name: openziti
+version: 0.22.5
+base: core18
+summary: Netfoundry ziti application suite
+description: |
+  The ziti-tunneler provides access to the NetFoundry network 
+grade: devel
+confinement: strict
+
+parts:
+  ziti:
+    source: .
+    plugin: go
+    go-importpath: bitbucket.org/netfoundry/ziti
+    go-channel: 1.17/stable
+    build-packages:
+      - gcc
+
+  random-scripts:
+    source: etc/ubuntu-snap
+    plugin: dump
+
+apps:
+  ziti:
+    command: bin/ziti
+    plugs:
+      - home
+      - network
+  ziti-tunnel:
+    daemon: simple
+    command: bin/ziti-tunnel run $SNAP_COMMON/ziti.json
+    plugs:
+      - home
+      - network
+      - network-control
+
+#hooks:
+#  configure:
+#    plugs: [network]
