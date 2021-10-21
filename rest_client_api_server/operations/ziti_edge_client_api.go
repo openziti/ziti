@@ -181,6 +181,9 @@ func NewZitiEdgeClientAPI(spec *loads.Document) *ZitiEdgeClientAPI {
 		EnrollErnollUpdbHandler: enroll.ErnollUpdbHandlerFunc(func(params enroll.ErnollUpdbParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ErnollUpdb has not yet been implemented")
 		}),
+		CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler: current_api_session.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
+		}),
 		EnrollExtendRouterEnrollmentHandler: enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ExtendRouterEnrollment has not yet been implemented")
 		}),
@@ -371,6 +374,8 @@ type ZitiEdgeClientAPI struct {
 	EnrollEnrollOttCaHandler enroll.EnrollOttCaHandler
 	// EnrollErnollUpdbHandler sets the operation handler for the ernoll updb operation
 	EnrollErnollUpdbHandler enroll.ErnollUpdbHandler
+	// CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler sets the operation handler for the extend current identity authenticator operation
+	CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler current_api_session.ExtendCurrentIdentityAuthenticatorHandler
 	// EnrollExtendRouterEnrollmentHandler sets the operation handler for the extend router enrollment operation
 	EnrollExtendRouterEnrollmentHandler enroll.ExtendRouterEnrollmentHandler
 	// CurrentAPISessionGetCurrentAPISessionHandler sets the operation handler for the get current API session operation
@@ -599,6 +604,9 @@ func (o *ZitiEdgeClientAPI) Validate() error {
 	}
 	if o.EnrollErnollUpdbHandler == nil {
 		unregistered = append(unregistered, "enroll.ErnollUpdbHandler")
+	}
+	if o.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler == nil {
+		unregistered = append(unregistered, "current_api_session.ExtendCurrentIdentityAuthenticatorHandler")
 	}
 	if o.EnrollExtendRouterEnrollmentHandler == nil {
 		unregistered = append(unregistered, "enroll.ExtendRouterEnrollmentHandler")
@@ -885,6 +893,10 @@ func (o *ZitiEdgeClientAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/enroll/updb"] = enroll.NewErnollUpdb(o.context, o.EnrollErnollUpdbHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/current-identity/authenticators/{id}/extend"] = current_api_session.NewExtendCurrentIdentityAuthenticator(o.context, o.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

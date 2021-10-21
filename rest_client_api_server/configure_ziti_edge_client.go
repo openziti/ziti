@@ -244,6 +244,11 @@ func configureAPI(api *operations.ZitiEdgeClientAPI) http.Handler {
 			return middleware.NotImplemented("operation enroll.ErnollUpdb has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler == nil {
+		api.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler = current_api_session.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
+		})
+	}
 	if api.EnrollExtendRouterEnrollmentHandler == nil {
 		api.EnrollExtendRouterEnrollmentHandler = enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ExtendRouterEnrollment has not yet been implemented")

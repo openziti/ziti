@@ -68,6 +68,8 @@ paths:
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators'
   '/current-identity/authenticators/{id}':
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id'
+  '/current-identity/authenticators/{id}/extend':
+    $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id-extend'
   '/current-identity/mfa':
     $ref: 'shared/current-identity-mfa.yml#/paths/current-identity-mfa'
   '/current-identity/mfa/qr-code':
