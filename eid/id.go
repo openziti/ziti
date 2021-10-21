@@ -1,8 +1,9 @@
 package eid
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"github.com/teris-io/shortid"
-	"math/rand"
 )
 
 const Alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-"
@@ -10,7 +11,10 @@ const Alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ
 var idGenerator *shortid.Shortid
 
 func init() {
-	idGenerator = shortid.MustNew(0, Alphabet, rand.Uint64())
+	buf := make([]byte, 8)
+	_, _ = rand.Read(buf)
+	seed := binary.LittleEndian.Uint64(buf)
+	idGenerator = shortid.MustNew(0, Alphabet, seed)
 }
 
 func New() string {

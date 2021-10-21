@@ -364,6 +364,7 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 		block, blocksToProcess = pem.Decode(blocksToProcess)
 
 		if block != nil {
+			// #nosec
 			hash := sha1.Sum(block.Bytes)
 			fingerprint := toHex(hash[:])
 			newPem := pem.EncodeToMemory(block)

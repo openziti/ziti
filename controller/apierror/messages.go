@@ -158,6 +158,7 @@ const (
 	MfaExistsMessage string = "An MFA record already exists, try removing it"
 	MfaExistsStatus  int    = http.StatusConflict
 
+	/* #nosec */
 	MfaInvalidTokenCode    string = "MFA_INVALID_TOKEN"
 	MfaInvalidTokenMessage string = "An invalid token/code was provided"
 	MfaInvalidTokenStatus  int    = http.StatusBadRequest
