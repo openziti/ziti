@@ -58,7 +58,7 @@ func CreateTestIdentity() (identity.Identity, error) {
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(key)})
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 
-	cfg := identity.IdentityConfig{
+	cfg := identity.Config{
 		Key:        "pem:" + string(keyPEM),
 		Cert:       "pem:" + string(certPEM),
 		ServerCert: "pem:" + string(certPEM),
