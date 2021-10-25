@@ -5,10 +5,13 @@ on:
   push:
     tags:
       - v*
+    branches:
+      - builx-action # TODO: prune this after initial testing
+      - release-next
+      - main
   # release:
   #   types:
   #     - released # trigger for stable release event on semver tag
-
 jobs:
   docker-buildx:
     strategy:
@@ -30,8 +33,8 @@ jobs:
           : ${DOCKER_IMAGE:=${{ secrets.DOCKER_USERNAME }}/${GITHUB_REPOSITORY#*/}}
           SHORTREF=${GITHUB_SHA::8}
 
-          # If this is git tag, use the tag name as a docker tag
-          if [[ $GITHUB_REF == refs/tags/* ]]; then
+          # If this is release tag, use the semver as the Docker tag
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
             ZITI_VERSION=${GITHUB_REF#refs/tags/v}
           fi
           TAGS="${DOCKER_IMAGE}:${ZITI_VERSION},${DOCKER_IMAGE}:${SHORTREF}"
@@ -39,7 +42,7 @@ jobs:
           # If the ZITI_VERSION looks like a version number, assume that
           # this is the most recent version of the image and also
           # tag it 'latest'.
-          if [[ $ZITI_VERSION =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+          if [[ $ZITI_VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             TAGS="${TAGS},${DOCKER_IMAGE}:latest"
           fi
 
