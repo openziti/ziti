@@ -94,6 +94,7 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(enrollment.NewEnrollCommand())
 	cmd.AddCommand(newTraceCmd(out, errOut))
 	cmd.AddCommand(newTutorialCmd(p))
+	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	return cmd
 }
 

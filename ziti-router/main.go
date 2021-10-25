@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/foundation/transport/tls"
 	"github.com/openziti/foundation/transport/transwarp"
 	"github.com/openziti/foundation/transport/transwarptls"
+	"github.com/openziti/foundation/transport/udp"
 	"github.com/openziti/foundation/transport/ws"
 	"github.com/openziti/foundation/transport/wss"
 	"github.com/openziti/ziti/common/version"
@@ -43,6 +44,7 @@ func init() {
 	transport.AddAddressParser(transwarptls.AddressParser{})
 	transport.AddAddressParser(ws.AddressParser{})
 	transport.AddAddressParser(wss.AddressParser{})
+	transport.AddAddressParser(udp.AddressParser{})
 
 	build.InitBuildInfo(version.GetCmdBuildInfo())
 }
