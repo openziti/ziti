@@ -1,5 +1,5 @@
-#FROM debian:stable-slim as fetch-ziti-artifacts
-FROM debian:buster-slim as fetch-ziti-artifacts
+FROM debian:stable-slim as fetch-ziti-artifacts
+
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
@@ -25,7 +25,7 @@ RUN bash ./fetch-ziti-bins.sh ziti-tunnel
 #
 ################
 
-FROM debian:buster-slim
+FROM debian:stable-slim
 
 RUN mkdir -p /usr/local/bin /etc/ssl/certs
 RUN apt-get -q update && apt-get -q install -y --no-install-recommends iptables
