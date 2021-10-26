@@ -31,7 +31,7 @@ EOF
 BASENAME=$(basename "$0") || exit $?
 DIRNAME=$(dirname "$0") || exit $?
 
-while getopts :c:hPr OPT;do
+while getopts :c:hPr: OPT;do
     case $OPT in
         c) 	FLAGS+=$OPT     # don't checkout vZITI_VERSION
             ;;
