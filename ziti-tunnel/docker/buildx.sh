@@ -3,17 +3,19 @@ set -euo pipefail
 
 _usage(){
     cat >&2 <<-EOF
-Usage: VARIABLES ./${BASENAME} [OPTION]...
+Usage: VARIABLES ./${BASENAME} -r REPO [OPTIONS]
 
 Build multi-platform Docker container image on Linux.
 
 VARIABLES
     ZITI_VERSION      e.g. "0.16.1" corresponding to Git tag "v0.16.1"
 
-OPTIONS
-    -r REPO           container image repository e.g. netfoundry/ziti-edge-tunnel
-    -c                don't check out v\${ZITI_VERSION} (use Git working copy)
+REQUIRED
+    -r REPO           required container image repository e.g. netfoundry/ziti-edge-tunnel
 
+OPTIONS
+    -c                don't check out v\${ZITI_VERSION} (use Git working copy)
+    -P                don't push the container image to Hub
 
 EXAMPLES
     ZITI_VERSION=0.16.1 ./${BASENAME} -c
@@ -31,7 +33,7 @@ EOF
 BASENAME=$(basename "$0") || exit $?
 DIRNAME=$(dirname "$0") || exit $?
 
-while getopts :c:hPr OPT;do
+while getopts :c:hPr: OPT;do
     case $OPT in
         c) 	FLAGS+=$OPT     # don't checkout vZITI_VERSION
             ;;
@@ -50,9 +52,8 @@ shift "$((OPTIND-1))"
 # default to latest
 : "${ZITI_VERSION:=$(git fetch --quiet --tags && git tag -l|sort -Vr|head -1|sed -E 's/^v(.*)/\1/')}"
 
-# ifrequire repo to push unless not pushing
-[[ ! ${FLAGS:-} =~ P && -n "${CONTAINER_REPO:-}" ]] || {
-    echo "ERROR: missing -r REPO option to define container image repository name for image push" >&2
+[[ -n "${CONTAINER_REPO:-}" ]] || {
+    echo "ERROR: missing -r REPO option to define container image repository name for tagging the image" >&2
     _usage; exit 1
 }
 
