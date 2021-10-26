@@ -120,6 +120,10 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
+	return NewTestContextWithDb(t, "")
+}
+
+func NewTestContextWithDb(t *testing.T, dbPath string) *TestContext {
 	context := &TestContext{
 		TestContext:     persistence.NewTestContext(t),
 		metricsRegistry: metrics.NewRegistry("test", nil),
@@ -127,12 +131,12 @@ func NewTestContext(t *testing.T) *TestContext {
 			closeNotify: make(chan struct{}),
 		},
 	}
-	context.Init()
+	context.InitWithDbFile(dbPath)
 	return context
 }
 
-func (ctx *TestContext) Init() {
-	ctx.TestContext.Init()
+func (ctx *TestContext) InitWithDbFile(dbPath string) {
+	ctx.TestContext.InitWithDbFile(dbPath)
 	ctx.config = &config.Config{
 		Enrollment: config.Enrollment{
 			EdgeRouter: config.EnrollmentOption{
