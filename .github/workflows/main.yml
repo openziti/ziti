@@ -105,6 +105,8 @@ jobs:
           go get github.com/mitchellh/gox
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          mkdir -p release/arm{,64}/linux
+          cp -RT release/arm{,64}/linux
           aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
 
