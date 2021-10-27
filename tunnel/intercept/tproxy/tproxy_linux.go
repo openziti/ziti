@@ -316,12 +316,10 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 	if writeQueue == nil {
 		log := pfxlog.Logger()
 		origDest, err := getOriginalDest(event.oob)
-		log.Infof("received datagram from %v (original dest %v)", event.srcAddr, origDest)
 		if err != nil {
 			return fmt.Errorf("error while getting original destination packet: %v", err)
 		}
-
-		pfxlog.Logger().Infof("Creating separate UDP socket with list addr: %v", origDest)
+		log.Infof("received datagram from %v (original dest %v). Creating udp listen socket on original dest", event.srcAddr, origDest)
 		packetConn, err := listenConfig.ListenPacket(context.Background(), "udp", origDest.String())
 		if err != nil {
 			return err
@@ -333,7 +331,7 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 		}
 	}
 
-	pfxlog.Logger().Infof("received %v bytes for conn %v -> %v", len(event.buf.Buf), writeQueue.LocalAddr().String(), writeQueue.Service())
+	pfxlog.Logger().Debugf("received %v bytes for conn %v -> %v", len(event.buf.Buf), writeQueue.LocalAddr().String(), writeQueue.Service())
 	writeQueue.Accept(event.buf)
 
 	return nil
