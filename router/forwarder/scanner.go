@@ -76,9 +76,10 @@ func (self *Scanner) scan() {
 
 	var idleCircuitIds []string
 	for circuitId, ft := range circuits {
-		if time.Since(ft.(*forwardTable).last) > self.timeout {
+		idleTime := time.Since(ft.(*forwardTable).last)
+		if idleTime > self.timeout {
 			idleCircuitIds = append(idleCircuitIds, circuitId)
-			logrus.Warnf("[s/%s] idle after [%s]", circuitId, self.timeout)
+			logrus.Warnf("[s/%s] idle for [%v], idle threshold [%v]", circuitId, idleTime, self.timeout)
 		}
 	}
 
