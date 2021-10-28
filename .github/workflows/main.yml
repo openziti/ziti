@@ -99,7 +99,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           python -m pip install --upgrade pip
           pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
@@ -107,6 +107,7 @@ jobs:
           go get github.com/mitchellh/gox
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
           aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
 
