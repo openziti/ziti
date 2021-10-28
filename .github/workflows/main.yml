@@ -37,7 +37,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install awscli
-          go get github.com/mitchellh/gox
+          go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
           aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
@@ -65,7 +65,7 @@ jobs:
           choco install python --version 3.6.8
           python -m pip install --upgrade pip
           pip install awscli
-          go get github.com/mitchellh/gox
+          go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
           aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
@@ -103,7 +103,7 @@ jobs:
           pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          go get github.com/mitchellh/gox
+          go install github.com/mitchellh/gox@latest
           CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
