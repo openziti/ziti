@@ -93,9 +93,17 @@ func (ctx *TestContext) GetDbProvider() DbProvider {
 
 func (ctx *TestContext) Init() {
 	ctx.BaseTestContext.InitDbFile()
+	ctx.InitWithDbFile(ctx.GetDbFile().Name())
+}
+
+func (ctx *TestContext) InitWithDbFile(path string) {
+	if path == "" {
+		ctx.BaseTestContext.InitDbFile()
+		path = ctx.GetDbFile().Name()
+	}
 
 	var err error
-	ctx.db, err = db.Open(ctx.GetDbFile().Name(), false)
+	ctx.db, err = db.Open(path, false)
 	ctx.NoError(err)
 
 	ctx.fabricStores, err = db.InitStores(ctx.GetDb())
