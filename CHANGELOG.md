@@ -1,3 +1,11 @@
+# Release 0.22.8
+
+# What's New
+* Bug fix: Workaround bbolt bug where cursor next sometimes skip when current is deleted. Use skip instead of next. Fixes orphan session issue.
+* Bug fix: If read fails on reconnecting channel, close peer before trying to reconnect
+* Bug fix: Don't log every UDP datagram at info level in tunneler
+* Change: Build with -trimpath to aid in plugin compatibility
+
 # Release 0.22.7
 
 # What's New
