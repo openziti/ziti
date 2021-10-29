@@ -151,23 +151,21 @@ jobs:
           RELEASE_REPO: netfoundry/ziti-tunnel
         id: tagprep
         run: |
-          #
-          ## compose a comma-sep'd list of container image registry org/repo:tag for docker/build-push-action
-          #
-          # substitute a hyphen char for non-alnum chars in branch/ref name and drop any leading non-alnum char
-          REF_TAG="$(sed 's/[^a-zA-Z0-9]/-/g;s/^[^a-zA-Z0-9]//'' <<< "${GITHUB_REF}" | tr '[:upper:]' '[:lower:]')"
-          TAGS="${SNAPSHOT_REPO}:${REF_TAG}"
           # If this is release tag then add the release repo and semver and "latest" to the list of tags
-          if [[ "${GITHUB_REF}" =~ refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # drop the prefix, preserving the semver
-            ZITI_VERSION=${GITHUB_REF#refs/tags/v}
-            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
-              TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
-            done
-          fi
-          # Set output parameters.
-          echo ::set-output name=tags::${TAGS}
-
+          TAGS=""                                                                          
+          if [[ "${GITHUB_REF}" =~ refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then             
+            # drop the prefix, preserving the semver                                       
+            REF_TAG=${GITHUB_REF#refs/tags/v}                                              
+            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do                               
+              TAGS+=",${REPO}:${REF_TAG},${REPO}:latest"                                   
+            done                                                                           
+          else                                                                             
+            REF_TAG="$(sed -E 's/[^a-zA-Z0-9]/-/g;s/(^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$)//g' <<< "${GITHUB_REF}" | tr '[:upper:]' '[:lower:]')"
+            TAGS+="${SNAPSHOT_REPO}:${REF_TAG}"                                            
+          fi                                                                               
+          TAGS=${TAGS#,} # drop leading comma char                                         
+          # Set output parameters.                                                         
+          echo ::set-output name=tags::${TAGS}                                             
       - name: Build & Push Multi-Platform Container Image to Hub
         uses: docker/build-push-action@v2
         with:
