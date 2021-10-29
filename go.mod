@@ -34,14 +34,13 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.2
-	github.com/openziti/edge v0.20.104
-	github.com/openziti/fabric v0.16.121
-	github.com/openziti/foundation v0.16.1
-	github.com/openziti/sdk-golang v0.15.110
+	github.com/openziti/edge v0.20.112
+	github.com/openziti/fabric v0.16.124
+	github.com/openziti/foundation v0.16.3
+	github.com/openziti/sdk-golang v0.15.112
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
-	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rs/cors v1.7.0
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil v2.20.9+incompatible
@@ -137,6 +136,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20210416104105-e2d188152601 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect
