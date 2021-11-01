@@ -152,15 +152,16 @@ jobs:
         id: tagprep
         run: |
           # If this is release tag then add the release repo and semver and "latest" to the list of tags
+          BRANCH_REF="${GITHUB_HEAD_REF:-${GITHUB_REF}}"
           TAGS=""                                                                          
-          if [[ "${GITHUB_REF}" =~ refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then             
+          if [[ "${BRANCH_REF}" =~ refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then             
             # drop the prefix, preserving the semver                                       
-            REF_TAG=${GITHUB_REF#refs/tags/v}                                              
+            REF_TAG=${BRANCH_REF#refs/tags/v}                                              
             for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do                               
               TAGS+=",${REPO}:${REF_TAG},${REPO}:latest"                                   
             done                                                                           
           else                                                                             
-            REF_TAG="$(sed -E 's/[^a-zA-Z0-9]/-/g;s/(^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$)//g' <<< "${GITHUB_REF}" | tr '[:upper:]' '[:lower:]')"
+            REF_TAG="$(sed -E 's/[^a-zA-Z0-9]/-/g;s/(^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$)//g' <<< "${BRANCH_REF}" | tr '[:upper:]' '[:lower:]')"
             TAGS+="${SNAPSHOT_REPO}:${REF_TAG}"                                            
           fi                                                                               
           TAGS=${TAGS#,} # drop leading comma char                                         
