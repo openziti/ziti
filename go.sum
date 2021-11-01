@@ -223,8 +223,8 @@ github.com/go-openapi/loads v0.19.6/go.mod h1:brCsvE6j8mnbmGBh103PT/QLHfbyDxA4hs
 github.com/go-openapi/loads v0.19.7/go.mod h1:brCsvE6j8mnbmGBh103PT/QLHfbyDxA4hsKvYBNEGVc=
 github.com/go-openapi/loads v0.20.0/go.mod h1:2LhKquiE513rN5xC6Aan6lYOSddlL8Mp20AW9kpviM4=
 github.com/go-openapi/loads v0.20.2/go.mod h1:hTVUotJ+UonAMMZsvakEgmWKgtulweO9vYP2bQYKA/o=
-github.com/go-openapi/loads v0.20.3 h1:VnuSSPx0bbSmSLUwltC6ss45tWyWzfvIeAeCk73B6N4=
-github.com/go-openapi/loads v0.20.3/go.mod h1:r3u+N8rngPey6DHjYj9G4Wf61heNZjTQX2UjdIvUbn0=
+github.com/go-openapi/loads v0.21.0 h1:jYtUO4wwP7psAweisP/MDoOpdzsYEESdoPcsWjHDR68=
+github.com/go-openapi/loads v0.21.0/go.mod h1:rHYve9nZrQ4CJhyeIIFJINGCg1tQpx2yJrrNo8sf1ws=
 github.com/go-openapi/runtime v0.0.0-20180920151709-4f900dc2ade9/go.mod h1:6v9a6LTXWQCdL8k1AO3cvqx5OtZY/Y9wKTgaoP6YRfA=
 github.com/go-openapi/runtime v0.19.0/go.mod h1:OwNfisksmmaZse4+gpV3Ne9AyMOlP1lt4sK4FXt0O64=
 github.com/go-openapi/runtime v0.19.4/go.mod h1:X277bwSUBxVlCYR3r7xgZZGKVvBd/29gLDlFGtJ8NL4=
@@ -275,7 +275,6 @@ github.com/go-openapi/validate v0.19.10/go.mod h1:RKEZTUWDkxKQxN2jDT7ZnZi2bhZlbN
 github.com/go-openapi/validate v0.19.12/go.mod h1:Rzou8hA/CBw8donlS6WNEUQupNvUZ0waH08tGe6kAQ4=
 github.com/go-openapi/validate v0.19.15/go.mod h1:tbn/fdOwYHgrhPBzidZfJC2MIVvs9GA7monOmWBbeCI=
 github.com/go-openapi/validate v0.20.1/go.mod h1:b60iJT+xNNLfaQJUqLI7946tYiFEOuE9E4k54HpKcJ0=
-github.com/go-openapi/validate v0.20.2/go.mod h1:e7OJoKNgd0twXZwIn0A43tHbvIcr/rZIVCbJBpTUoY0=
 github.com/go-openapi/validate v0.20.3 h1:GZPPhhKSZrE8HjB4eEkoYAZmoWA4+tCemSgINH1/vKw=
 github.com/go-openapi/validate v0.20.3/go.mod h1:goDdqVGiigM3jChcrYJxD2joalke3ZXeftD16byIjA4=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
