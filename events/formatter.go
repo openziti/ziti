@@ -51,6 +51,10 @@ type EdgeJsonFormatter struct {
 	events.JsonFormatter
 }
 
+func (formatter *EdgeJsonFormatter) AcceptApiSessionEvent(event *ApiSessionEvent) {
+	formatter.AcceptLoggingEvent((*JsonApiSessionEvent)(event))
+}
+
 func (formatter *EdgeJsonFormatter) AcceptSessionEvent(event *SessionEvent) {
 	formatter.AcceptLoggingEvent((*JsonSessionEvent)(event))
 }
@@ -62,6 +66,17 @@ func (formatter *EdgeJsonFormatter) AcceptEntityCountEvent(event *EntityCountEve
 type JsonSessionEvent SessionEvent
 
 func (event *JsonSessionEvent) WriteTo(output io.WriteCloser) error {
+	buf, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(buf)
+	return err
+}
+
+type JsonApiSessionEvent ApiSessionEvent
+
+func (event *JsonApiSessionEvent) WriteTo(output io.WriteCloser) error {
 	buf, err := json.Marshal(event)
 	if err != nil {
 		return err
@@ -85,12 +100,23 @@ type EdgePlainTextFormatter struct {
 	events.PlainTextFormatter
 }
 
+func (formatter *EdgePlainTextFormatter) AcceptApiSessionEvent(event *ApiSessionEvent) {
+	formatter.AcceptLoggingEvent((*PlainTextApiSessionEvent)(event))
+}
+
 func (formatter *EdgePlainTextFormatter) AcceptSessionEvent(event *SessionEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextSessionEvent)(event))
 }
 
 func (formatter *EdgePlainTextFormatter) AcceptEntityCountEvent(event *EntityCountEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextEntityCountEvent)(event))
+}
+
+type PlainTextApiSessionEvent ApiSessionEvent
+
+func (event *PlainTextApiSessionEvent) WriteTo(output io.WriteCloser) error {
+	_, err := output.Write([]byte((*ApiSessionEvent)(event).String() + "\n"))
+	return err
 }
 
 type PlainTextSessionEvent SessionEvent

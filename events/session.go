@@ -108,7 +108,7 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 				includeList = append(includeList, fmt.Sprintf("%v", val))
 			}
 		} else {
-			return errors.Errorf("invalid type %v for edge.sessions include configuration", reflect.TypeOf(includeVar))
+			return errors.Errorf("invalid type %v for %v include configuration", reflect.TypeOf(includeVar), SessionEventNS)
 		}
 	}
 
@@ -117,7 +117,7 @@ func registerSessionEventHandler(val interface{}, config map[interface{}]interfa
 	} else {
 		for _, include := range includeList {
 			if include != SessionEventTypeCreated && include != SessionEventTypeDeleted {
-				return errors.Errorf("invalid include %v for edge.sessions. valid values are ['created', 'deleted']", include)
+				return errors.Errorf("invalid include %v for %v. valid values are ['created', 'deleted']", include, SessionEventNS)
 			}
 		}
 
