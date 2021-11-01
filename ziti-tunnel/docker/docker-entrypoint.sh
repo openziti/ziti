@@ -59,7 +59,7 @@ if [ ! -f "${json}" ]; then
         echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations" >&2
         exit 1
     fi
-    echo "INFO: enrolling ${jwt}"
+    echo "INFO: enrolling with token from file '${jwt}' and value '$(< ${jwt})'"
     ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
 fi
 
