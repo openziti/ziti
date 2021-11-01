@@ -1,3 +1,8 @@
+# Release 0.22.9
+
+# What's New
+* Build: This release adds an arm64 build and improved docker build process
+
 # Release 0.22.8
 
 # What's New
