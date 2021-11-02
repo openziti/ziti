@@ -490,6 +490,7 @@ func (sm *StateManagerImpl) ValidateSessions(ch channel2.Channel, chunkSize uint
 		if len(sessionTokens) > 0 {
 			interval := minInterval
 			if minInterval < maxInterval {
+				/* #nosec */
 				delta := rand.Int63n(int64(maxInterval - minInterval))
 				interval += minInterval + time.Duration(delta)
 			}

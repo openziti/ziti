@@ -119,6 +119,7 @@ func (fpg *defaultFingerprintGenerator) FromCerts(certs []*x509.Certificate) Fin
 }
 
 func (fpg *defaultFingerprintGenerator) FromRaw(raw []byte) string {
+	// #nosec
 	return fmt.Sprintf("%x", sha1.Sum(raw))
 }
 

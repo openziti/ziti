@@ -152,6 +152,7 @@ func (ctx *TestContext) NewTransport() *http.Transport {
 }
 
 func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
+	// #nosec
 	tlsClientConfig := &cryptoTls.Config{
 		InsecureSkipVerify: true,
 	}

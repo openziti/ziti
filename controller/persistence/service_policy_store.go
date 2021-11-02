@@ -41,6 +41,7 @@ const (
 
 func newServicePolicy(name string) *ServicePolicy {
 	policyType := PolicyTypeDial
+	/* #nosec */
 	if rand.Int()%2 == 0 {
 		policyType = PolicyTypeBind
 	}

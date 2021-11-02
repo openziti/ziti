@@ -17,10 +17,10 @@
 package crypto
 
 import (
+	"crypto/rand"
 	"encoding/binary"
+	"github.com/michaelquigley/pfxlog"
 	"golang.org/x/crypto/argon2"
-	"math/rand"
-	"time"
 )
 
 type HashResult struct {
@@ -30,11 +30,13 @@ type HashResult struct {
 
 func salt() []byte {
 	buf := make([]byte, binary.MaxVarintLen64)
-	src := rand.NewSource(time.Now().UnixNano())
-	rnd := rand.New(src)
-	n := binary.PutVarint(buf, rnd.Int63())
-	b := buf[:n]
-	return b
+	_, err := rand.Read(buf)
+
+	if err != nil {
+		pfxlog.Logger().Panic(err)
+	}
+
+	return buf
 }
 
 func Hash(password string) *HashResult {
