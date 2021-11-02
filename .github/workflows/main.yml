@@ -131,43 +131,51 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
 
       - name: Set up QEMU
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/setup-qemu-action@master
         with:
           platforms: amd64,arm64,arm
 
       - name: Set up Docker BuildKit
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         id: buildx
         uses: docker/setup-buildx-action@master
 
       - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Set up Docker image tags
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
         id: tagprep
         run: |
-          # If this is release tag then add the release repo and semver and "latest" to the list of tags
-          BRANCH_REF="${GITHUB_HEAD_REF:-${GITHUB_REF}}"
-          TAGS=""                                                                          
-          if [[ "${BRANCH_REF}" =~ refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then             
-            # drop the prefix, preserving the semver                                       
-            REF_TAG=${BRANCH_REF#refs/tags/v}                                              
-            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do                               
-              TAGS+=",${REPO}:${REF_TAG},${REPO}:latest"                                   
-            done                                                                           
-          else                                                                             
-            REF_TAG="$(sed -E 's/[^a-zA-Z0-9]/-/g;s/(^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$)//g' <<< "${BRANCH_REF}" | tr '[:upper:]' '[:lower:]')"
-            TAGS+="${SNAPSHOT_REPO}:${REF_TAG}"                                            
-          fi                                                                               
-          TAGS=${TAGS#,} # drop leading comma char                                         
-          # Set output parameters.                                                         
-          echo ::set-output name=tags::${TAGS}                                             
+          # the Docker cross-build only runs on branches main or release-v*
+          # where ziti-ci always computes and pushes a new release tag
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leaving "v" char, if any
+          ZITI_VERSION=${ZITI_VERSION#v}
+          DOCKER_TAGS=""
+          if [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
+              DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
+            done
+          else
+            # fail the job because we could not obtain the current version from ziti-ci
+            exit 1
+          fi
+          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char, if exists
+          # Set output parameters.
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo ::set-output name=tags::${DOCKER_TAGS}
+
       - name: Build & Push Multi-Platform Container Image to Hub
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}

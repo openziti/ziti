@@ -33,7 +33,7 @@ EOF
 BASENAME=$(basename "$0") || exit $?
 DIRNAME=$(dirname "$0") || exit $?
 
-while getopts :c:hPr: OPT;do
+while getopts :chPr: OPT;do
     case $OPT in
         c) 	FLAGS+=$OPT     # don't checkout vZITI_VERSION
             ;;
@@ -65,18 +65,25 @@ else
     git checkout "v${ZITI_VERSION}"
 fi
 
-docker run --rm --privileged docker/binfmt:a7996909642ee92942dcd6cff44b9b95f08dad64
+docker run --rm --privileged linuxkit/binfmt:v0.8
 grep -E -q enabled /proc/sys/fs/binfmt_misc/qemu-arm
-docker run --rm arm64v8/alpine uname -a|grep -E -q 'aarch64 Linux'
-docker run --rm arm32v7/alpine uname -a|grep -E -q 'armv7l Linux'
+docker run --rm --platform arm arm32v7/alpine  uname -a|grep -E -q 'armv7l Linux'
+docker run --rm --platform arm64 arm64v8/alpine uname -a|grep -E -q 'aarch64 Linux'
 
 docker buildx create --use --name=ziti-builder 2>/dev/null || docker buildx use --default ziti-builder
 
-docker buildx build "$DIRNAME" \
+# if default then push to Hub
+BUILDX_OUTPUT="--push"
+if [[ ${FLAGS:-} =~ P ]]; then
+    # if no push then load in image cache
+    BUILDX_OUTPUT=""
+fi
+
+eval docker buildx build "$DIRNAME" \
     --platform linux/amd64,linux/arm/v7,linux/arm64 \
     --build-arg "ZITI_VERSION=${ZITI_VERSION}" \
     --tag "${CONTAINER_REPO}:${ZITI_VERSION}" \
     --tag "${CONTAINER_REPO}:latest" \
-    --push
+    "${BUILDX_OUTPUT:-}"
 
 docker buildx stop ziti-builder
