@@ -117,7 +117,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 	servicePolicyRefs := []*rest_model.EntityRef{} //send `[]` not `null`
 
 	for _, servicePolicyId := range sessionModel.ServicePolicies {
-		if policy, err := ae.GetHandlers().ServicePolicy.Read(servicePolicyId); err != nil {
+		if policy, _ := ae.GetHandlers().ServicePolicy.Read(servicePolicyId); policy != nil {
 			ref := &rest_model.EntityRef{
 				Links:  ServicePolicyLinkFactory.Links(policy),
 				Entity: EntityNameServicePolicy,
