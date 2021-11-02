@@ -3836,6 +3836,74 @@ func init() {
         }
       ]
     },
+    "/current-identity/authenticators/{id}/extend": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nAfter completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.\nThis request must be made using the existing, valid, client certificate.",
+        "tags": [
+          "Current API Session",
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Allows the current identity to recieve a new certificate associated with a certificate based authenticator",
+        "operationId": "extendCurrentIdentityAuthenticator",
+        "parameters": [
+          {
+            "name": "extend",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/identityExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A response containg the identity's new certificate",
+            "schema": {
+              "$ref": "#/definitions/identityExtendEnrollmentEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/current-identity/mfa": {
       "get": {
         "security": [
@@ -17245,6 +17313,41 @@ func init() {
         }
       }
     },
+    "identityExtendCerts": {
+      "type": "object",
+      "properties": {
+        "ca": {
+          "description": "A PEM encoded set of CA certificates",
+          "type": "string"
+        },
+        "clientCert": {
+          "description": "A PEM encoded client certificate",
+          "type": "string"
+        }
+      }
+    },
+    "identityExtendEnrollmentEnvelope": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/identityExtendCerts"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "identityExtendEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "clientCertCsr"
+      ],
+      "properties": {
+        "clientCertCsr": {
+          "type": "string"
+        }
+      }
+    },
     "identityList": {
       "description": "A list of identities",
       "type": "array",
@@ -24046,6 +24149,74 @@ func init() {
                   "code": "NOT_FOUND",
                   "message": "The resource requested was not found or is no longer available",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrolmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/current-identity/authenticators/{id}/extend": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nAfter completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.\nThis request must be made using the existing, valid, client certificate.",
+        "tags": [
+          "Current API Session",
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Allows the current identity to recieve a new certificate associated with a certificate based authenticator",
+        "operationId": "extendCurrentIdentityAuthenticator",
+        "parameters": [
+          {
+            "name": "extend",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/identityExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A response containg the identity's new certificate",
+            "schema": {
+              "$ref": "#/definitions/identityExtendEnrollmentEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
                   "apiEnrolmentVersion": "0.0.1",
@@ -37562,6 +37733,41 @@ func init() {
               "type": "string"
             }
           }
+        }
+      }
+    },
+    "identityExtendCerts": {
+      "type": "object",
+      "properties": {
+        "ca": {
+          "description": "A PEM encoded set of CA certificates",
+          "type": "string"
+        },
+        "clientCert": {
+          "description": "A PEM encoded client certificate",
+          "type": "string"
+        }
+      }
+    },
+    "identityExtendEnrollmentEnvelope": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/identityExtendCerts"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "identityExtendEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "clientCertCsr"
+      ],
+      "properties": {
+        "clientCertCsr": {
+          "type": "string"
         }
       }
     },

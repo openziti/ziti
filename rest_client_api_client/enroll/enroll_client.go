@@ -332,10 +332,10 @@ func (a *Client) ErnollUpdb(params *ErnollUpdbParams, opts ...ClientOption) (*Er
 
   Allows a router to extend its certificates' expiration date by
 using its current and valid client certificate to submit a CSR. This CSR may
-be pased in using a new private key, thus allowing private key rotation or swapping.
+be passed in using a new private key, thus allowing private key rotation or swapping.
 
 After completion any new connections must be made with certificates returned from a 200 OK
-response. Previous client certificate is rendered invalid for use with the controller even if it
+response. The previous client certificate is rendered invalid for use with the controller even if it
 has not expired.
 
 This request must be made using the existing, valid, client certificate.

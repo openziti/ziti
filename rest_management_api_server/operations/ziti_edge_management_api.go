@@ -301,6 +301,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		CurrentIdentityEnrollMfaHandler: current_identity.EnrollMfaHandlerFunc(func(params current_identity.EnrollMfaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_identity.EnrollMfa has not yet been implemented")
 		}),
+		CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler: current_api_session.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
+		}),
 		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		}),
@@ -775,6 +778,8 @@ type ZitiEdgeManagementAPI struct {
 	IdentityDisassociateIdentitysServiceConfigsHandler identity.DisassociateIdentitysServiceConfigsHandler
 	// CurrentIdentityEnrollMfaHandler sets the operation handler for the enroll mfa operation
 	CurrentIdentityEnrollMfaHandler current_identity.EnrollMfaHandler
+	// CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler sets the operation handler for the extend current identity authenticator operation
+	CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler current_api_session.ExtendCurrentIdentityAuthenticatorHandler
 	// DatabaseFixDataIntegrityHandler sets the operation handler for the fix data integrity operation
 	DatabaseFixDataIntegrityHandler database.FixDataIntegrityHandler
 	// CertificateAuthorityGetCaJwtHandler sets the operation handler for the get ca jwt operation
@@ -1255,6 +1260,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.CurrentIdentityEnrollMfaHandler == nil {
 		unregistered = append(unregistered, "current_identity.EnrollMfaHandler")
+	}
+	if o.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler == nil {
+		unregistered = append(unregistered, "current_api_session.ExtendCurrentIdentityAuthenticatorHandler")
 	}
 	if o.DatabaseFixDataIntegrityHandler == nil {
 		unregistered = append(unregistered, "database.FixDataIntegrityHandler")
@@ -1909,6 +1917,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/current-identity/mfa"] = current_identity.NewEnrollMfa(o.context, o.CurrentIdentityEnrollMfaHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/current-identity/authenticators/{id}/extend"] = current_api_session.NewExtendCurrentIdentityAuthenticator(o.context, o.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

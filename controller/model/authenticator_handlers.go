@@ -17,17 +17,19 @@
 package model
 
 import (
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
-	cert2 "github.com/openziti/edge/internal/cert"
+	edgeCert "github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	nfpem "github.com/openziti/foundation/util/pem"
 	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
@@ -183,7 +185,7 @@ func (handler AuthenticatorHandler) Update(authenticator *Authenticator) error {
 	}
 
 	if cert := authenticator.ToCert(); cert != nil && cert.Pem != "" {
-		cert.Fingerprint = cert2.NewFingerprintGenerator().FromPem([]byte(cert.Pem))
+		cert.Fingerprint = edgeCert.NewFingerprintGenerator().FromPem([]byte(cert.Pem))
 	}
 
 	return handler.updateEntity(authenticator, handler)
@@ -239,8 +241,8 @@ func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker 
 
 	if authenticator.Method == persistence.MethodAuthenticatorCert {
 		if cert := authenticator.ToCert(); cert != nil {
-			if checker.IsUpdated("certPem") {
-				if cert.Fingerprint = cert2.NewFingerprintGenerator().FromPem([]byte(cert.Pem)); cert.Fingerprint == "" {
+			if checker.IsUpdated(persistence.FieldAuthenticatorCertPem) {
+				if cert.Fingerprint = edgeCert.NewFingerprintGenerator().FromPem([]byte(cert.Pem)); cert.Fingerprint == "" {
 					return apierror.NewCouldNotParsePem()
 				}
 			}
@@ -354,6 +356,98 @@ func (handler AuthenticatorHandler) ReadForIdentity(identityId string, authentic
 	}
 
 	return nil, nil
+}
+
+func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, authenticatorId string, peerCerts []*x509.Certificate, csrPem string) ([]byte, error) {
+	authenticator, _ := handler.Read(authenticatorId)
+
+	if authenticator == nil {
+		return nil, errorz.NewNotFound()
+	}
+
+	if authenticator.Method != persistence.MethodAuthenticatorCert {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	if authenticator.IdentityId != identityId {
+		return nil, errorz.NewUnauthorized()
+	}
+
+	authenticatorCert := authenticator.ToCert()
+
+	if authenticatorCert == nil {
+		return nil, errorz.NewUnhandled(fmt.Errorf("%T is not a %T", authenticator, authenticatorCert))
+	}
+
+	validClientCert := false
+	for _, cert := range peerCerts {
+		fingerprint := handler.env.GetFingerprintGenerator().FromCert(cert)
+		if fingerprint == authenticatorCert.Fingerprint {
+			validClientCert = true
+			break
+		}
+	}
+
+	if !validClientCert {
+		return nil, errorz.NewUnauthorized()
+	}
+
+	csr, err := edgeCert.ParseCsrPem([]byte(csrPem))
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+
+	}
+
+	currentCerts := nfpem.PemToX509(authenticatorCert.Pem)
+
+	if len(currentCerts) != 1 {
+		return nil, errorz.NewUnhandled(errors.New("could not parse current certificates pem"))
+	}
+	currentCert := currentCerts[0]
+
+	opts := &edgeCert.SigningOpts{
+		DNSNames:       currentCert.DNSNames,
+		EmailAddresses: currentCert.EmailAddresses,
+		IPAddresses:    currentCert.IPAddresses,
+		URIs:           currentCert.URIs,
+	}
+
+	newRawCert, err := handler.env.GetApiClientCsrSigner().SignCsr(csr, opts)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	newFingerprint := handler.env.GetFingerprintGenerator().FromRaw(newRawCert)
+	newPemCert, err := edgeCert.RawToPem(newRawCert)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	authenticatorCert.Pem = string(newPemCert)
+	authenticatorCert.Fingerprint = newFingerprint
+
+	err = handler.env.GetHandlers().Authenticator.Patch(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+		"certPem":     struct{}{},
+		"fingerprint": struct{}{},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return newPemCert, nil
 }
 
 type HashedPassword struct {

@@ -64,6 +64,8 @@ type ClientService interface {
 
 	DetailCurrentIdentityAuthenticator(params *DetailCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailCurrentIdentityAuthenticatorOK, error)
 
+	ExtendCurrentIdentityAuthenticator(params *ExtendCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendCurrentIdentityAuthenticatorOK, error)
+
 	GetCurrentAPISession(params *GetCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCurrentAPISessionOK, error)
 
 	ListCurrentAPISessionCertificates(params *ListCurrentAPISessionCertificatesParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListCurrentAPISessionCertificatesOK, error)
@@ -282,6 +284,49 @@ func (a *Client) DetailCurrentIdentityAuthenticator(params *DetailCurrentIdentit
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for detailCurrentIdentityAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ExtendCurrentIdentityAuthenticator allows the current identity to recieve a new certificate associated with a certificate based authenticator
+
+  Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.
+After completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.
+This request must be made using the existing, valid, client certificate.
+*/
+func (a *Client) ExtendCurrentIdentityAuthenticator(params *ExtendCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendCurrentIdentityAuthenticatorOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewExtendCurrentIdentityAuthenticatorParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "extendCurrentIdentityAuthenticator",
+		Method:             "POST",
+		PathPattern:        "/current-identity/authenticators/{id}/extend",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ExtendCurrentIdentityAuthenticatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ExtendCurrentIdentityAuthenticatorOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for extendCurrentIdentityAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

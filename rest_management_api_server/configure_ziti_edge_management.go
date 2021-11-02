@@ -444,6 +444,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation current_identity.EnrollMfa has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler == nil {
+		api.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler = current_api_session.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
+		})
+	}
 	if api.DatabaseFixDataIntegrityHandler == nil {
 		api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")

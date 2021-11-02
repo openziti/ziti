@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"crypto/x509"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -26,6 +27,7 @@ import (
 	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 )
 
 func init() {
@@ -62,6 +64,10 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params.Authenticator) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
+	ae.ClientApi.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler = clientCurrentApiSession.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params clientCurrentApiSession.ExtendCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Extend(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
 	//Management
 
 	ae.ManagementApi.CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.DetailCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.DetailCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
@@ -78,6 +84,10 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.CurrentAPISessionPatchCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.PatchCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.PatchCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params.Authenticator) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.ExtendCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Extend(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 }
 
@@ -139,4 +149,63 @@ func (r *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.
 	Patch(rc, func(id string, fields JsonFields) error {
 		return ae.Handlers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator), fields.FilterMaps("tags"))
 	})
+}
+
+func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response.RequestContext, extend *rest_model.IdentityExtendEnrollmentRequest) {
+	peerCerts := rc.Request.TLS.PeerCertificates
+
+	if len(peerCerts) == 0 {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	var cert *x509.Certificate
+	for _, peerCert := range peerCerts {
+		if !peerCert.IsCA {
+			cert = peerCert
+		}
+	}
+
+	if cert == nil {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	fingerprint := ae.GetFingerprintGenerator().FromCert(cert)
+
+	if fingerprint == "" {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	if extend.ClientCertCsr == nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "client CSR is required",
+			FieldName:  "certCsr",
+			FieldValue: extend.ClientCertCsr,
+		}))
+		return
+	}
+	authId, err := rc.GetEntityId()
+
+	if err != nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "id is required",
+			FieldName:  "id",
+			FieldValue: "",
+		}))
+		return
+	}
+
+	certPem, err := ae.Handlers.Authenticator.ExtendCertForIdentity(rc.Identity.Id, authId, peerCerts, *extend.ClientCertCsr)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithOk(&rest_model.IdentityExtendCerts{
+		Ca:         string(ae.Config.CaPems()),
+		ClientCert: string(certPem),
+	}, &rest_model.Meta{})
 }
