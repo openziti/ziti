@@ -2,6 +2,42 @@
 
 # What's New
 * Build: This release adds an arm64 build and improved docker build process
+* Enhancement: Certificate Authentication Extension provides the ability to extend certificate expiration dates in the Edge Client and Management APIs
+
+
+## Certificate Authentication Extension
+
+The Edge Client and Management APIs have had the following endpoint added:
+
+- `POST /current-identity/authenticators/{id}/extend`
+
+It is documented as:
+
+```
+Allows an identity to extend its certificate's expiration date by
+using its current and valid client certificate to submit a CSR. This CSR may
+be passed in using a new private key, thus allowing private key rotation.
+
+After completion any new connections must be made with certificates returned from a 200 OK
+response. The previous client certificate is rendered invalid for use with the controller even if it
+has not expired.
+
+This request must be made using the existing, valid, client certificate.
+```
+
+An example input is:
+
+```
+{
+    "clientCertCsr": "...<csr>..."
+}
+```
+
+Output responses include:
+
+- `200 OK` w/ empty object payloads: `{}`
+- `401 UNAUTHORIZED` w/ standard error messaging
+- `400 BAD REQUESET` w/ standard error messaging for field errors or CSR processing errors
 
 # Release 0.22.8
 
