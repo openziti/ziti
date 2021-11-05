@@ -38,7 +38,7 @@ require (
 	github.com/lucsky/cuid v1.2.1
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mdlayher/netlink v1.4.1
-	github.com/michaelquigley/pfxlog v0.6.2
+	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/netfoundry/secretstream v0.1.2
