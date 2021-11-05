@@ -22,6 +22,7 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
+	"os"
 )
 
 // PsOptions contains the command line options
@@ -66,6 +67,6 @@ func (o *LogFormatOptions) Run() error {
 	if o.absoluteTime {
 		options.SetAbsoluteTime()
 	}
-	pfxlog.Filter(options)
+	pfxlog.Filter(os.Stdin, options)
 	return nil
 }
