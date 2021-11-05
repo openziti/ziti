@@ -28,6 +28,7 @@ import (
 	nfpem "github.com/openziti/foundation/util/pem"
 	cmap "github.com/orcaman/concurrent-map"
 	"net/http"
+	"time"
 )
 
 const (
@@ -90,11 +91,14 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 				}
 			}
 
+			//ignore client cert expiration windows
+			cert.NotBefore = time.Now().Add(-1 * time.Hour)
+			cert.NotAfter = time.Now().Add(1 * time.Hour)
+
 			opts := x509.VerifyOptions{
 				Roots:         module.getRootPool(),
 				Intermediates: x509.NewCertPool(),
 				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-				CurrentTime:   cert.NotBefore,
 			}
 
 			if _, err := cert.Verify(opts); err == nil {
