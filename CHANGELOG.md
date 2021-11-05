@@ -1,11 +1,8 @@
 # Release 0.22.10
 
-# Bug fix: address client certificate changes altered by library changes
-
-# Release 0.22.9
-
 # What's New
-* Build: This release adds an arm64 build and improved docker build process
+* Bug fix: address client certificate changes altered by library changes
+* Bug fix: fixes a panic on session read in some situations
 * Enhancement: Certificate Authentication Extension provides the ability to extend certificate expiration dates in the Edge Client and Management APIs
 
 
@@ -42,6 +39,11 @@ Output responses include:
 - `200 OK` w/ empty object payloads: `{}`
 - `401 UNAUTHORIZED` w/ standard error messaging
 - `400 BAD REQUESET` w/ standard error messaging for field errors or CSR processing errors
+
+# Release 0.22.9
+
+# What's New
+* Build: This release adds an arm64 build and improved docker build process
 
 # Release 0.22.8
 
