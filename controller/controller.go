@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
@@ -82,6 +83,12 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 		return nil, err
 	}
 
+	c.initWeb()
+
+	return c, nil
+}
+
+func (c *Controller) initWeb() {
 	healthChecker, err := c.initializeHealthChecks()
 	if err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checker")
@@ -91,7 +98,9 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	return c, nil
+	if err := c.RegisterXWebHandlerFactory(api_impl.NewManagementApiFactory(c.config.Id, c.network)); err != nil {
+		logrus.WithError(err).Fatalf("failed to create management api factory")
+	}
 }
 
 func (c *Controller) Run() error {

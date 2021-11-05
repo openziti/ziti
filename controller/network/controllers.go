@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
@@ -154,4 +155,35 @@ func (ctrl *baseController) BasePreparedListAssociated(id string, typeLoader mod
 		return nil, err
 	}
 	return result, nil
+}
+
+type boltEntitySource interface {
+	models.Entity
+	toBolt() boltz.Entity
+}
+
+func (ctrl *baseController) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
+	return ctrl.db.Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		existing := ctrl.GetStore().NewStoreEntity()
+		found, err := ctrl.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
+		if err != nil {
+			return err
+		}
+		if !found {
+			return boltz.NewNotFoundError(ctrl.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
+		}
+
+		boltEntity := modelEntity.toBolt()
+
+		if err := ctrl.ValidateNameOnUpdate(ctx, boltEntity, existing, checker); err != nil {
+			return err
+		}
+
+		if err := ctrl.GetStore().Update(ctx, boltEntity, checker); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not update %v entity", ctrl.GetStore().GetEntityType())
+			return err
+		}
+		return nil
+	})
 }

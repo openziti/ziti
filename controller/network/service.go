@@ -53,7 +53,7 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 	return nil
 }
 
-func (entity *Service) toBolt() *db.Service {
+func (entity *Service) toBolt() boltz.Entity {
 	return &db.Service{
 		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
@@ -126,10 +126,17 @@ func (ctrl *ServiceController) Create(s *Service) error {
 }
 
 func (ctrl *ServiceController) Update(s *Service) error {
-	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
-		return ctrl.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
-	})
-	if err != nil {
+	if err := ctrl.updateGeneral(s, nil); err != nil {
+		return err
+	}
+
+	ctrl.RemoveFromCache(s.Id) // don't cache entity as not all fields may be changed, wait for read to reload
+
+	return nil
+}
+
+func (ctrl *ServiceController) Patch(s *Service, checker boltz.FieldChecker) error {
+	if err := ctrl.updateGeneral(s, checker); err != nil {
 		return err
 	}
 
