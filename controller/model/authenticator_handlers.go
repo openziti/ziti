@@ -21,6 +21,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
@@ -108,6 +109,10 @@ func (handler *AuthenticatorHandler) Read(id string) (*Authenticator, error) {
 }
 
 func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (string, error) {
+	if authenticator.Method != persistence.MethodAuthenticatorUpdb && authenticator.Method != persistence.MethodAuthenticatorCert {
+		return "", errorz.NewFieldError("method must be updb or cert", "method", authenticator.Method)
+	}
+
 	queryString := fmt.Sprintf(`method = "%s"`, authenticator.Method)
 	query, err := ast.Parse(handler.GetStore(), queryString)
 	if err != nil {
@@ -130,7 +135,62 @@ func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (strin
 			updb.Salt = hashResult.Salt
 		}
 	}
+
+	if authenticator.Method == persistence.MethodAuthenticatorCert {
+		certs := nfpem.PemToX509(authenticator.ToCert().Pem)
+
+		if len(certs) != 1 {
+			err := apierror.NewCouldNotParsePem()
+			err.Cause = errors.New("client pem must be exactly one certificate")
+			err.AppendCause = true
+			return "", err
+		}
+
+		cert := certs[0]
+		fingerprint := handler.env.GetFingerprintGenerator().FromCert(cert)
+		authenticator.ToCert().Fingerprint = fingerprint
+
+		opts := x509.VerifyOptions{
+			Roots:         handler.getRootPool(),
+			Intermediates: x509.NewCertPool(),
+			KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+			CurrentTime:   cert.NotBefore,
+		}
+
+		if _, err := cert.Verify(opts); err != nil {
+			return "", fmt.Errorf("error verifying client certificate [%s] did not verify against known CAs", fingerprint)
+		}
+	}
+
 	return handler.createEntity(authenticator)
+}
+
+func (handler AuthenticatorHandler) getRootPool() *x509.CertPool {
+	roots := x509.NewCertPool()
+
+	roots.AppendCertsFromPEM(handler.env.GetConfig().CaPems())
+
+	err := handler.env.GetHandlers().Ca.Stream("isVerified = true", func(ca *Ca, err error) error {
+		if ca == nil && err == nil {
+			return nil
+		}
+
+		if err != nil {
+			//continue on err
+			pfxlog.Logger().Errorf("error streaming cas for authentication: %vs", err)
+			return nil
+		}
+		roots.AppendCertsFromPEM([]byte(ca.CertPem))
+
+
+		return nil
+	})
+
+	if err != nil {
+		return nil
+	}
+
+	return roots
 }
 
 func (handler AuthenticatorHandler) ReadByUsername(username string) (*Authenticator, error) {
