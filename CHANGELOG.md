@@ -1,3 +1,7 @@
+# Release 0.22.10
+
+# Bug fix: address client certificate changes altered by library changes
+
 # Release 0.22.9
 
 # What's New

@@ -25,16 +25,16 @@ require (
 	github.com/fatih/color v1.9.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
-	github.com/go-openapi/runtime v0.20.0
-	github.com/go-openapi/strfmt v0.20.3
+	github.com/go-openapi/runtime v0.21.0
+	github.com/go-openapi/strfmt v0.21.0
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/gorilla/mux v1.8.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
-	github.com/michaelquigley/pfxlog v0.6.2
-	github.com/openziti/edge v0.20.112
+	github.com/michaelquigley/pfxlog v0.6.3
+	github.com/openziti/edge v0.20.120
 	github.com/openziti/fabric v0.16.124
 	github.com/openziti/foundation v0.16.3
 	github.com/openziti/sdk-golang v0.15.112
@@ -88,7 +88,7 @@ require (
 	github.com/go-openapi/errors v0.20.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
-	github.com/go-openapi/loads v0.20.3 // indirect
+	github.com/go-openapi/loads v0.21.0 // indirect
 	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/swag v0.19.15 // indirect
 	github.com/go-openapi/validate v0.20.3 // indirect
@@ -148,7 +148,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	go.mongodb.org/mongo-driver v1.5.1 // indirect
+	go.mongodb.org/mongo-driver v1.7.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
