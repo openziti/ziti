@@ -100,7 +100,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 			if _, err := cert.Verify(opts); err == nil {
 				return authenticator.IdentityId, nil
 			} else {
-				pfxlog.Logger().Trace("error verifying client certificate [%s] did not verify: %s", fingerprint, err)
+				pfxlog.Logger().Tracef("error verifying client certificate [%s] did not verify: %v", fingerprint, err)
 			}
 		}
 	}
