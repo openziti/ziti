@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -19,17 +20,25 @@
 package tests
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/controller/model"
+	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/common/constants"
 	nfPem "github.com/openziti/foundation/util/pem"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"reflect"
 	"testing"
+	"time"
 )
 
 func Test_Authenticate_Cert(t *testing.T) {
@@ -52,6 +61,7 @@ func Test_Authenticate_Cert(t *testing.T) {
 	t.Run("login with valid certificate and invalid JSON client info", tests.testAuthenticateValidCertInvalidJson)
 	t.Run("login with valid certificate and client info with extra properties", tests.testAuthenticateValidCertValidClientInfoWithExtraProperties)
 	t.Run("login with invalid certificate and no client info", tests.testAuthenticateInvalidCert)
+	t.Run("login with valid certificate but expired", tests.testAuthenticateValidCertExpired)
 }
 
 type authCertTests struct {
@@ -415,4 +425,85 @@ rv1CXRECfHglY+vO0CFumQOV5bec2R8=
 	t.Run("returns without a ziti session header", func(t *testing.T) {
 		require.New(t).Equal("", resp.Header().Get(constants.ZitiSession))
 	})
+}
+
+func (test *authCertTests) testAuthenticateValidCertExpired(t *testing.T) {
+	test.ctx.testContextChanged(t)
+
+	name := eid.New()
+	isAdmin := false
+	identityType := rest_model.IdentityTypeUser
+	createIdentity := rest_model.IdentityCreate{
+		IsAdmin: &isAdmin,
+		Name:    &name,
+		Type:    &identityType,
+	}
+
+	resp, err := test.ctx.AdminManagementSession.NewRequest().SetBody(createIdentity).Post("/identities")
+	test.ctx.Req.NoError(err)
+	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected identity create to pass with %s got %s")
+
+	createIdentityEnvelope := &rest_model.CreateEnvelope{}
+
+	err = createIdentityEnvelope.UnmarshalBinary(resp.Body())
+	test.ctx.Req.NoError(err)
+	test.ctx.Req.NotEmpty(createIdentityEnvelope.Data.ID)
+
+	csrTemplate := &x509.CertificateRequest{
+		Subject: pkix.Name{
+			Country:            []string{"USA"},
+			Organization:       []string{"openziti"},
+			OrganizationalUnit: []string{"advdev"},
+			CommonName:         "API Test Client Cert" + eid.New(),
+		},
+	}
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	test.ctx.Req.NoError(err)
+
+	csrBytes, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, privateKey)
+	test.ctx.Req.NoError(err)
+
+	csr, err := x509.ParseCertificateRequest(csrBytes)
+	test.ctx.Req.NoError(err)
+
+	notBefore := time.Now().Add(-5 * time.Hour)
+	notAfter := time.Now().Add(-1 * time.Hour)
+	certBytes, err := test.ctx.EdgeController.AppEnv.ApiClientCsrSigner.SignCsr(csr, &cert.SigningOpts{
+		NotBefore: &notBefore,
+		NotAfter:  &notAfter,
+	})
+	test.ctx.Req.NoError(err)
+
+	certPem := pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certBytes,
+	})
+
+	certMethod := "cert"
+	createAuthenticator := &rest_model.AuthenticatorCreate{
+		IdentityID: &createIdentityEnvelope.Data.ID,
+		Method:     &certMethod,
+		CertPem:    string(certPem),
+	}
+
+	resp, err = test.ctx.AdminManagementSession.NewRequest().SetBody(createAuthenticator).Post("/authenticators")
+	test.ctx.Req.NoError(err)
+	test.ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected authenticator create to pass with %s got %s")
+
+	parsedCert, err := x509.ParseCertificate(certBytes)
+	test.ctx.Req.NoError(err)
+	certAuthenticator := &certAuthenticator{
+		cert:    parsedCert,
+		key:     privateKey,
+		certPem: string(certPem),
+	}
+
+	testClient, _, transport := test.ctx.NewClientComponents(EdgeClientApiPath)
+	transport.TLSClientConfig.Certificates = certAuthenticator.TLSCertificates()
+	resp, err = testClient.NewRequest().
+		SetHeader("content-type", "application/json").
+		Post("/authenticate?method=cert")
+
+	test.ctx.Req.NoError(err)
+	standardJsonResponseTests(resp, http.StatusOK, t)
 }

@@ -190,7 +190,7 @@ func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer
 		SerialNumber: id,
 		Subject: pkix.Name{
 			CommonName:   commonName,
-			Organization: []string{"Ziti CLI Generated Validation Cert"},
+			Organization: []string{"Ziti CLI Generated API Test Cert"},
 		},
 		NotBefore: time.Now(),
 		NotAfter:  time.Now().Add(time.Minute * 10),
@@ -203,13 +203,13 @@ func generateCaSignedClientCert(caCert *x509.Certificate, caSigner crypto.Signer
 	verificationKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not generate private key for verification certificate (%v)", err)
+		return nil, nil, fmt.Errorf("could not generate private key for certificate (%v)", err)
 	}
 
 	signedCertBytes, err := x509.CreateCertificate(rand.Reader, verificationCert, caCert, verificationKey.Public(), caSigner)
 
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not sign verification certificate with CA (%v)", err)
+		return nil, nil, fmt.Errorf("could not sign certificate with CA (%v)", err)
 	}
 
 	verificationCert, _ = x509.ParseCertificate(signedCertBytes)

@@ -94,10 +94,13 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 				Roots:         module.getRootPool(),
 				Intermediates: x509.NewCertPool(),
 				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+				CurrentTime:   cert.NotBefore,
 			}
 
 			if _, err := cert.Verify(opts); err == nil {
 				return authenticator.IdentityId, nil
+			} else {
+				pfxlog.Logger().Trace("error verifying client certificate [%s] did not verify: %s", fingerprint, err)
 			}
 		}
 	}

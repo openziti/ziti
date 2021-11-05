@@ -15421,12 +15421,14 @@ func init() {
       "description": "Creates an authenticator for a specific identity which can be used for API authentication",
       "type": "object",
       "required": [
-        "username",
-        "password",
         "method",
         "identityId"
       ],
       "properties": {
+        "certPem": {
+          "description": "The client certificate the identity will login with. Used only for method='cert'",
+          "type": "string"
+        },
         "identityId": {
           "description": "The id of an existing identity that will be assigned this authenticator",
           "type": "string"
@@ -15436,7 +15438,7 @@ func init() {
           "type": "string"
         },
         "password": {
-          "description": "The password the identity will login with, Used only for method='updb'",
+          "description": "The password the identity will login with. Used only for method='updb'",
           "type": "string"
         },
         "tags": {
@@ -35844,12 +35846,14 @@ func init() {
       "description": "Creates an authenticator for a specific identity which can be used for API authentication",
       "type": "object",
       "required": [
-        "username",
-        "password",
         "method",
         "identityId"
       ],
       "properties": {
+        "certPem": {
+          "description": "The client certificate the identity will login with. Used only for method='cert'",
+          "type": "string"
+        },
         "identityId": {
           "description": "The id of an existing identity that will be assigned this authenticator",
           "type": "string"
@@ -35859,7 +35863,7 @@ func init() {
           "type": "string"
         },
         "password": {
-          "description": "The password the identity will login with, Used only for method='updb'",
+          "description": "The password the identity will login with. Used only for method='updb'",
           "type": "string"
         },
         "tags": {

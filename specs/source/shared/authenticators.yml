@@ -34,17 +34,9 @@ definitions:
     description: Creates an authenticator for a specific identity which can be used for API authentication
     type: object
     required:
-      - username
-      - password
       - method
       - identityId
     properties:
-      username:
-        type: string
-        description: The username that the identity will login with. Used only for method='updb'
-      password:
-        type: string
-        description: The password the identity will login with, Used only for method='updb'
       method:
         type: string
         description: The type of authenticator to create; which will dictate which properties on this object are required.
@@ -53,6 +45,15 @@ definitions:
         description: The id of an existing identity that will be assigned this authenticator
       tags:
         $ref: 'base-entity.yml#/definitions/tags'
+      username:
+        type: string
+        description: The username that the identity will login with. Used only for method='updb'
+      password:
+        type: string
+        description: The password the identity will login with. Used only for method='updb'
+      certPem:
+        description: The client certificate the identity will login with. Used only for method='cert'
+        type: string
   authenticatorList:
     description: An array of authenticator resources
     type: array

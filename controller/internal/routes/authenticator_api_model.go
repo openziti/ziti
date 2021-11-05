@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 )
 
@@ -53,25 +54,46 @@ func (factory *AuthenticatorLinkFactoryImpl) Links(entity models.Entity) rest_mo
 	return links
 }
 
-func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) *model.Authenticator {
-	//create is updb only right now
+func MapCreateToAuthenticatorModel(in *rest_model.AuthenticatorCreate) (*model.Authenticator, error) {
 	result := &model.Authenticator{
 		BaseEntity: models.BaseEntity{},
 		Method:     stringz.OrEmpty(in.Method),
 		IdentityId: stringz.OrEmpty(in.IdentityID),
 		SubType:    nil,
 	}
+	var subType interface{}
 
-	subType := &model.AuthenticatorUpdb{
-		Authenticator: result,
-		Username:      stringz.OrEmpty(in.Username),
-		Password:      stringz.OrEmpty(in.Password),
-		Salt:          "",
+	switch result.Method {
+	case persistence.MethodAuthenticatorCert:
+		if in.CertPem == "" {
+			return nil, errorz.NewFieldError("certPem is required", "certPem", in.CertPem)
+		}
+
+		subType = &model.AuthenticatorCert{
+			Pem: in.CertPem,
+		}
+	case persistence.MethodAuthenticatorUpdb:
+		if in.Username == "" {
+			return nil, errorz.NewFieldError("username is required", "username", in.Username)
+		}
+
+		if in.Password == "" {
+			return nil, errorz.NewFieldError("password is required", "password", in.Password)
+		}
+
+		subType = &model.AuthenticatorUpdb{
+			Authenticator: result,
+			Username:      in.Username,
+			Password:      in.Password,
+			Salt:          "",
+		}
+	default:
+		return nil, errorz.NewFieldError("method must be updb or cert", "method", in.Method)
 	}
 
 	result.SubType = subType
 
-	return result
+	return result, nil
 }
 
 func MapUpdateAuthenticatorToModel(id string, in *rest_model.AuthenticatorUpdate) *model.Authenticator {

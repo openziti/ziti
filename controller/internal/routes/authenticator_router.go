@@ -75,7 +75,13 @@ func (r *AuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params authenticator.CreateAuthenticatorParams) {
 	Create(rc, rc, AuthenticatorLinkFactory, func() (string, error) {
-		return ae.Handlers.Authenticator.Create(MapCreateToAuthenticatorModel(params.Authenticator))
+		authenticator, err := MapCreateToAuthenticatorModel(params.Authenticator)
+
+		if err != nil {
+			return "", err
+		}
+
+		return ae.Handlers.Authenticator.Create(authenticator)
 	})
 }
 
