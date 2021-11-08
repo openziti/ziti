@@ -1,6 +1,6 @@
 # Release 0.22.11
 
-# What's New
+## What's New
 
 * Feature: API Session Events
 
