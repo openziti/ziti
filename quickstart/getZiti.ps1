@@ -31,13 +31,12 @@ if($toDir.Trim() -eq "") {
 
 $zipFile="${toDir}\${name}"
 if($(Test-Path -Path $zipFile -PathType Leaf)) {
-    echo "The file has already been downloading. No need to download again"
+    Write-Output "The file has already been downloading. No need to download again"
 } else {
-    echo "The file does not exist"
     mkdir "${toDir}" -ErrorAction SilentlyContinue
-    echo "Downloading file "
-    echo "    from: ${downloadUrl} "
-    echo "      to: ${zipFile}"
+    Write-Output "Downloading file "
+    Write-Output "    from: ${downloadUrl} "
+    Write-Output "      to: ${zipFile}"
     iwr ${downloadUrl} -OutFile "$zipFile"
 }
 
@@ -46,7 +45,3 @@ Expand-Archive -Path $zipFile -DestinationPath "${toDir}\${version}" -ErrorActio
 if(! $env:Path.Contains("${toDir}\${version}\ziti\")){
     $env:Path+=";${toDir}\${version}\ziti\"
 }
-
-
-
-
