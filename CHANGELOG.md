@@ -1,3 +1,27 @@
+# Release 0.22.11
+
+# What's New
+
+* Feature: API Session Events
+
+## API Session Events
+
+API Session events can now be configured by adding `edge.apiSessions` under event subscriptions. The events may be of type `created` and `deleted`. The event type can be filtered by adding an `include:` block, similar to edge sessions.
+
+The JSON output looks like:
+
+```
+{
+  "namespace": "edge.apiSessions",
+  "event_type": "created",
+  "id": "ckvr2r4fs0001oigd6si4akc8",
+  "timestamp": "2021-11-08T14:45:45.785561479-05:00",
+  "token": "77cffde5-f68e-4ef0-bbb5-731db36145f5",
+  "identity_id": "76BB.shC0",
+  "ip_address": "127.0.0.1"
+}
+```
+
 # Release 0.22.10
 
 # What's New
