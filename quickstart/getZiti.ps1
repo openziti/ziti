@@ -1,10 +1,3 @@
-[CmdletBinding()]
-Param(
-  [Parameter()]
-  [Alias('F')]
-  [string]$Foo
-)
-
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "ziti-windows.*zip"}
@@ -30,14 +23,8 @@ if($(Test-Path -Path $zipFile -PathType Leaf)) {
 
 Expand-Archive -Path $zipFile -DestinationPath "${toDir}\${version}" -ErrorAction SilentlyContinue
 
-#$addToPath=$(Read-Host "Add ziti to your path? [default: y]")
-#if($toDir.Trim() -eq "") {
-#    $addToPath="y"
-#}
 $env:Path+=";${toDir}\${version}\ziti\"
 
-echo "You can now add ziti to your path by running this command:"
-echo "`${env:Path}+=`";${toDir}\${version}\ziti\`""
 
 
 
