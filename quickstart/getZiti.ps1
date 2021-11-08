@@ -23,7 +23,9 @@ if($(Test-Path -Path $zipFile -PathType Leaf)) {
 
 Expand-Archive -Path $zipFile -DestinationPath "${toDir}\${version}" -ErrorAction SilentlyContinue
 
-$env:Path+=";${toDir}\${version}\ziti\"
+if(! $env:Path.Contains("${toDir}\${version}\ziti\")){
+    $env:Path+=";${toDir}\${version}\ziti\"
+}
 
 
 
