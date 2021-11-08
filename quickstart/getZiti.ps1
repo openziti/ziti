@@ -1,3 +1,23 @@
+<#
+.SYNOPSIS
+Gets the latest ziti from github and adds it to your path
+
+.DESCRIPTION
+This script will:
+    - detect the lastest version of ziti
+    - download the latest versio of ziti into the folder of your choice, defaulting to $env:userprofile.ziti\bin)
+    - unzip the downloaded file
+    - optionally add the extracted path to your path if executed with a "dot" as in: . getLatestZiti.ps1
+
+.INPUTS
+None.
+
+.OUTPUTS
+None. If "dot sourced" this script will add the resultant directory to your path
+
+.EXAMPLE
+PS> . .\getLatestZiti.ps1
+#>
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
 $zitidl=($latestFromGitHub).assets | where {$_.browser_download_url -Match "ziti-windows.*zip"}
