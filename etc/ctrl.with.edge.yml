@@ -66,6 +66,7 @@ mgmt:
 #      - type: edge.sessions
 #        include:
 #          - created
+#      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage
