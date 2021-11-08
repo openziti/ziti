@@ -9,6 +9,7 @@ import (
 )
 
 func init() {
+	events.RegisterEventType(ApiSessionEventNS, registerApiSessionEventHandler)
 	events.RegisterEventType(SessionEventNS, registerSessionEventHandler)
 	events.RegisterEventType(EntityCountEventNS, registerEntityCountEventHandler)
 }
@@ -21,7 +22,18 @@ func RemoveSessionEventHandler(handler SessionEventHandler) {
 	cowslice.Delete(sessionEventHandlerRegistry, handler)
 }
 
+func AddApiSessionEventHandler(handler ApiSessionEventHandler) {
+	cowslice.Append(apiSessionEventHandlerRegistry, handler)
+}
+
+func RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {
+	cowslice.Delete(apiSessionEventHandlerRegistry, handler)
+}
+
 func Init(dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) {
+	stores.ApiSession.AddListener(boltz.EventCreate, apiSessionCreated)
+	stores.ApiSession.AddListener(boltz.EventDelete, apiSessionDeleted)
+
 	stores.Session.AddListener(boltz.EventCreate, sessionCreated)
 	stores.Session.AddListener(boltz.EventDelete, sessionDeleted)
 
