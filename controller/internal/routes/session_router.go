@@ -36,7 +36,6 @@ func init() {
 
 type SessionRouter struct {
 	BasePath    string
-	IdType      response.IdType
 	createTimer metrics.Timer
 }
 

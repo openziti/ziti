@@ -26,39 +26,6 @@ import (
 	"strconv"
 )
 
-type CrudRouter interface {
-	List(ae *env.AppEnv, rc *response.RequestContext)
-	Detail(ae *env.AppEnv, rc *response.RequestContext)
-	Create(ae *env.AppEnv, rc *response.RequestContext)
-	Delete(ae *env.AppEnv, rc *response.RequestContext)
-	Update(ae *env.AppEnv, rc *response.RequestContext)
-	Patch(ae *env.AppEnv, rc *response.RequestContext)
-}
-
-type CreateReadDeleteOnlyRouter interface {
-	List(ae *env.AppEnv, rc *response.RequestContext)
-	Detail(ae *env.AppEnv, rc *response.RequestContext)
-	Create(ae *env.AppEnv, rc *response.RequestContext)
-	Delete(ae *env.AppEnv, rc *response.RequestContext)
-}
-
-type ReadDeleteRouter interface {
-	List(ae *env.AppEnv, rc *response.RequestContext)
-	Detail(ae *env.AppEnv, rc *response.RequestContext)
-	Delete(ae *env.AppEnv, rc *response.RequestContext)
-}
-
-type ReadOnlyRouter interface {
-	List(ae *env.AppEnv, rc *response.RequestContext)
-	Detail(ae *env.AppEnv, rc *response.RequestContext)
-}
-
-type ReadUpdateRouter interface {
-	ReadOnlyRouter
-	Update(ae *env.AppEnv, rc *response.RequestContext)
-	Patch(ae *env.AppEnv, rc *response.RequestContext)
-}
-
 type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, models.Entity) (interface{}, error)
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*PublicQueryOptions, error) {
@@ -107,19 +74,6 @@ func GetRequestPaging(r *http.Request) (*Paging, error) {
 	}
 
 	return p, nil
-}
-
-type RouteEventContext struct {
-	AppEnv         *env.AppEnv
-	RequestContext *response.RequestContext
-}
-
-type DeleteEventHandler interface {
-	BeforeStoreDelete(rc *RouteEventContext, id string) error
-}
-
-type CreateEventHandler interface {
-	BeforeStoreCreate(rc *RouteEventContext, modelEntity interface{}) error
 }
 
 type QueryResult struct {
