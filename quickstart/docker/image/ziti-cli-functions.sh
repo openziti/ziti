@@ -339,6 +339,7 @@ function ziti_expressConfiguration {
 
   setupZitiNetwork "${nw}"
   setupZitiHome
+  echo "ZITI HOME SET TO: ${ZITI_HOME}"
 
   if ! getLatestZiti "no"; then
     echo -e "$(RED "getLatestZiti failed")"
@@ -374,7 +375,7 @@ function ziti_expressConfiguration {
 
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
   "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t -a "public"> /dev/null
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
 
