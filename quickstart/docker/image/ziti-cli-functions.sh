@@ -42,7 +42,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 }
 function cleanZitiController {
   ziti_home="${ZITI_HOME-}"
@@ -60,11 +60,22 @@ function initializeController {
 }
 function startZitiController {
   # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
-  echo -e "ziti-controller started. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
+  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
+  pid=$!
+  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
+  return $pid
 }
 function stopZitiController {
   killall ziti-controller
+}
+function startExpressEdgeRouter {
+  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &
+  pid=$!
+  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log")"
+  return $pid
+}
+function stopAllEdgeRouters {
+  killall ziti-router
 }
 function checkHostsFile {
   ctrlexists=$(grep -c "${ZITI_CONTROLLER_HOSTNAME}" /etc/hosts)
@@ -341,39 +352,43 @@ function ziti_expressConfiguration {
 
   createPki
   createControllerConfig
-  createControllerSystemdFile
+  #createControllerSystemdFile
   initializeController
   startZitiController
-  echo "starting the ziti controller to enroll the edge router"
+  echo "waiting for the controller to come online to allow the edge router to enroll"
   waitForController
 
   zitiLogin
 
   echo -e "----------  Creating an edge router policy allowing all identities to connect to routers with a $(GREEN "#public") attribute"
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete edge-router-policy allEdgeRouters)
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' )
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router-policy allEdgeRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' > /dev/null
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters)
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
+  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
 
   createRouterPki
   createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
-  createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
+  #createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
 
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}")
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t)
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t > /dev/null
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
 
-  unused=$("${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log")
+  "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
-  sleep 1
-  # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &)
 
-  echo "Express setup complete!"
+  killall ziti-controller
+  echo "Edge Router enrolled. Controller stopped."
+
+  echo ""
+  echo -e "$(GREEN "Congratulations. Express setup complete!")"
+  echo -e "Start your Ziti Controller by running the function: $(BLUE "startZitiController")"
+  echo -e "Start your Ziti Edge Router by running : $(BLUE 'startExpressEdgeRouter')"
+  echo ""
 }
 
 function decideToUseDefaultZitiHome {
