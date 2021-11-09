@@ -352,7 +352,6 @@ function ziti_expressConfiguration {
   #createControllerSystemdFile
   initializeController
   startZitiController
-  ctrlPid=$?
   echo "waiting for the controller to come online to allow the edge router to enroll"
   waitForController
 
@@ -385,8 +384,8 @@ function ziti_expressConfiguration {
   #routerPid=$!
   #echo -e "ziti-router started as process id: $routerPid. log located at: $(BLUE "${routerLog}")"
 
-  $(kill $ctrlPid) 2&>1 /dev/null
-  echo "Edge Router enrolled. Stopping controller using pid: $ctrlPid"
+  killall ziti-controller
+  echo "Edge Router enrolled. Controller stopped."
 
   echo ""
   echo -e "$(GREEN "Congratulations. Express setup complete!")"
