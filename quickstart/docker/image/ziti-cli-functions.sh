@@ -377,12 +377,6 @@ function ziti_expressConfiguration {
 
   "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
-  #sleep 1
-  #routerLog=""
-  # shellcheck disable=SC2034
-  #"${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &
-  #routerPid=$!
-  #echo -e "ziti-router started as process id: $routerPid. log located at: $(BLUE "${routerLog}")"
 
   killall ziti-controller
   echo "Edge Router enrolled. Controller stopped."
