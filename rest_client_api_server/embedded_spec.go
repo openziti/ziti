@@ -193,7 +193,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -217,7 +217,7 @@ func init() {
                   "requestId": "5952ed10-3091-474f-a691-47ebab6990dc"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -353,7 +353,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -397,7 +397,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -474,7 +474,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -498,7 +498,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -567,7 +567,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -591,7 +591,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -638,7 +638,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -664,7 +664,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -722,7 +722,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -746,7 +746,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -803,7 +803,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -892,7 +892,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -969,7 +969,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -993,7 +993,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1040,7 +1040,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1066,7 +1066,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1135,7 +1135,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1159,7 +1159,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1185,7 +1185,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1254,7 +1254,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1278,7 +1278,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1304,7 +1304,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1372,7 +1372,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1429,7 +1429,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1477,7 +1477,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1503,7 +1503,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1549,7 +1549,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1571,7 +1571,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1632,7 +1632,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1658,7 +1658,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1749,7 +1749,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1775,7 +1775,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1832,7 +1832,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1858,7 +1858,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1917,7 +1917,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1943,7 +1943,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -1997,7 +1997,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2049,7 +2049,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2129,7 +2129,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2182,7 +2182,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2262,7 +2262,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2342,7 +2342,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2366,7 +2366,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2440,7 +2440,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2464,7 +2464,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2573,7 +2573,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2597,7 +2597,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2644,7 +2644,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2670,7 +2670,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2739,7 +2739,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2763,7 +2763,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2789,7 +2789,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2847,7 +2847,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2871,7 +2871,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2896,7 +2896,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2965,7 +2965,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -2989,7 +2989,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3015,7 +3015,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3101,7 +3101,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3125,7 +3125,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3211,7 +3211,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3235,7 +3235,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3304,7 +3304,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3328,7 +3328,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3375,7 +3375,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3401,7 +3401,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3459,7 +3459,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3483,7 +3483,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -3508,7 +3508,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -4881,7 +4881,7 @@ func init() {
     "meta": {
       "type": "object",
       "properties": {
-        "apiEnrolmentVersion": {
+        "apiEnrollmentVersion": {
           "type": "string"
         },
         "apiVersion": {
@@ -5830,7 +5830,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -5854,7 +5854,7 @@ func init() {
                   "requestId": "5952ed10-3091-474f-a691-47ebab6990dc"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -5990,7 +5990,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6034,7 +6034,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6111,7 +6111,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6135,7 +6135,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6204,7 +6204,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6228,7 +6228,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6275,7 +6275,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6301,7 +6301,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6359,7 +6359,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6383,7 +6383,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6440,7 +6440,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6529,7 +6529,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6606,7 +6606,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6630,7 +6630,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6677,7 +6677,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6703,7 +6703,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6772,7 +6772,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6796,7 +6796,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6822,7 +6822,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6891,7 +6891,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6915,7 +6915,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -6941,7 +6941,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7009,7 +7009,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7066,7 +7066,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7114,7 +7114,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7140,7 +7140,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7186,7 +7186,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7208,7 +7208,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7269,7 +7269,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7295,7 +7295,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7386,7 +7386,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7412,7 +7412,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7469,7 +7469,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7495,7 +7495,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7554,7 +7554,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7580,7 +7580,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7634,7 +7634,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7686,7 +7686,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7766,7 +7766,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7819,7 +7819,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7899,7 +7899,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -7979,7 +7979,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8003,7 +8003,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8077,7 +8077,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8101,7 +8101,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8210,7 +8210,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8234,7 +8234,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8281,7 +8281,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8307,7 +8307,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8376,7 +8376,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8400,7 +8400,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8426,7 +8426,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8484,7 +8484,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8508,7 +8508,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8533,7 +8533,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8602,7 +8602,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8626,7 +8626,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8652,7 +8652,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8738,7 +8738,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8762,7 +8762,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8848,7 +8848,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8872,7 +8872,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8941,7 +8941,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -8965,7 +8965,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -9012,7 +9012,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -9038,7 +9038,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -9096,7 +9096,7 @@ func init() {
                   "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -9120,7 +9120,7 @@ func init() {
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -9145,7 +9145,7 @@ func init() {
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
-                  "apiEnrolmentVersion": "0.0.1",
+                  "apiEnrollmentVersion": "0.0.1",
                   "apiVersion": "0.0.1"
                 }
               }
@@ -10594,7 +10594,7 @@ func init() {
     "meta": {
       "type": "object",
       "properties": {
-        "apiEnrolmentVersion": {
+        "apiEnrollmentVersion": {
           "type": "string"
         },
         "apiVersion": {

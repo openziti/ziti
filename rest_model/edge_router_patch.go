@@ -89,6 +89,8 @@ func (m *EdgeRouterPatch) validateAppData(formats strfmt.Registry) error {
 		if err := m.AppData.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("appData")
 			}
 			return err
 		}
@@ -106,6 +108,8 @@ func (m *EdgeRouterPatch) validateRoleAttributes(formats strfmt.Registry) error 
 		if err := m.RoleAttributes.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -123,6 +127,8 @@ func (m *EdgeRouterPatch) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -159,6 +165,8 @@ func (m *EdgeRouterPatch) contextValidateAppData(ctx context.Context, formats st
 		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("appData")
 			}
 			return err
 		}
@@ -173,6 +181,8 @@ func (m *EdgeRouterPatch) contextValidateRoleAttributes(ctx context.Context, for
 		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -187,6 +197,8 @@ func (m *EdgeRouterPatch) contextValidateTags(ctx context.Context, formats strfm
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}

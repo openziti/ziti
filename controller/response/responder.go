@@ -151,8 +151,8 @@ func RespondWithApiError(w http.ResponseWriter, r *http.Request, requestId strin
 	data := &rest_model.APIErrorEnvelope{
 		Error: apierror.ToRestModel(apiError, requestId),
 		Meta: &rest_model.Meta{
-			APIEnrolmentVersion: version.GetApiVersion(),
-			APIVersion:          version.GetApiEnrollmentVersion(),
+			APIEnrollmentVersion: version.GetApiEnrollmentVersion(),
+			APIVersion:           version.GetApiVersion(),
 		},
 	}
 

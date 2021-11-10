@@ -239,6 +239,8 @@ func (m *postureCheckPatch) validateRoleAttributes(formats strfmt.Registry) erro
 		if err := m.RoleAttributes().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -256,6 +258,8 @@ func (m *postureCheckPatch) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -292,6 +296,8 @@ func (m *postureCheckPatch) contextValidateRoleAttributes(ctx context.Context, f
 		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -306,6 +312,8 @@ func (m *postureCheckPatch) contextValidateTags(ctx context.Context, formats str
 		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -319,6 +327,8 @@ func (m *postureCheckPatch) contextValidateTypeID(ctx context.Context, formats s
 	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("typeId")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("typeId")
 		}
 		return err
 	}

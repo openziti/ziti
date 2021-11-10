@@ -40,7 +40,6 @@ func init() {
 
 type ServiceRouter struct {
 	BasePath  string
-	IdType    response.IdType
 	listTimer metrics.Timer
 }
 
@@ -178,7 +177,6 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 			}
 			qmd = &result.QueryMetaData
 		}
-
 
 		return NewQueryResult(apiEntities, qmd), nil
 	})

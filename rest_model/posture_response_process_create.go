@@ -221,6 +221,8 @@ func (m *PostureResponseProcessCreate) contextValidateTypeID(ctx context.Context
 	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("typeId")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("typeId")
 		}
 		return err
 	}

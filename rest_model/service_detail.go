@@ -291,6 +291,8 @@ func (m *ServiceDetail) validatePermissions(formats strfmt.Registry) error {
 	if err := m.Permissions.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("permissions")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("permissions")
 		}
 		return err
 	}
@@ -313,6 +315,8 @@ func (m *ServiceDetail) validatePostureQueries(formats strfmt.Registry) error {
 			if err := m.PostureQueries[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("postureQueries" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("postureQueries" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -333,6 +337,8 @@ func (m *ServiceDetail) validateRoleAttributes(formats strfmt.Registry) error {
 		if err := m.RoleAttributes.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -382,6 +388,8 @@ func (m *ServiceDetail) contextValidatePermissions(ctx context.Context, formats 
 	if err := m.Permissions.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("permissions")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("permissions")
 		}
 		return err
 	}
@@ -397,6 +405,8 @@ func (m *ServiceDetail) contextValidatePostureQueries(ctx context.Context, forma
 			if err := m.PostureQueries[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("postureQueries" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("postureQueries" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -413,6 +423,8 @@ func (m *ServiceDetail) contextValidateRoleAttributes(ctx context.Context, forma
 		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}

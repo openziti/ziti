@@ -94,7 +94,7 @@ definitions:
   enrollmentDetail:
     type: object
     description: |
-      An enrollment object. Enrolments are tied to identities and portentially a CA. Depending on the
+      An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the
       method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
       use the username field, but not vice versa.
     allOf:

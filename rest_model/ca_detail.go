@@ -297,6 +297,8 @@ func (m *CaDetail) validateIdentityRoles(formats strfmt.Registry) error {
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -386,6 +388,8 @@ func (m *CaDetail) contextValidateIdentityRoles(ctx context.Context, formats str
 	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}

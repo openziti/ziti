@@ -148,7 +148,7 @@ func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode 
 			r.NoError(err)
 
 			r.True(data.ExistsP("meta.apiVersion"), "missing 'meta.apiVersion' property for error response")
-			r.True(data.ExistsP("meta.apiEnrolmentVersion"), "missing 'meta.apiEnrolmentVersion' property for error response")
+			r.True(data.ExistsP("meta.apiEnrollmentVersion"), "missing 'meta.apiEnrollmentVersion' property for error response")
 		})
 
 		t.Run("has a valid error section", func(t *testing.T) {

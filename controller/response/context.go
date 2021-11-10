@@ -22,8 +22,6 @@ import (
 	"net/http"
 )
 
-type IdType int
-
 const (
 	IdPropertyName    = "id"
 	SubIdPropertyName = "subId"

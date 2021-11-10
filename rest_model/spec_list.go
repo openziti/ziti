@@ -56,6 +56,8 @@ func (m SpecList) Validate(formats strfmt.Registry) error {
 			if err := m[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName(strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName(strconv.Itoa(i))
 				}
 				return err
 			}
@@ -79,6 +81,8 @@ func (m SpecList) ContextValidate(ctx context.Context, formats strfmt.Registry) 
 			if err := m[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName(strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName(strconv.Itoa(i))
 				}
 				return err
 			}

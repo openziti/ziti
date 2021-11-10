@@ -85,6 +85,8 @@ func (m *APISessionPostureData) validateEndpointState(formats strfmt.Registry) e
 		if err := m.EndpointState.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("endpointState")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("endpointState")
 			}
 			return err
 		}
@@ -103,6 +105,8 @@ func (m *APISessionPostureData) validateMfa(formats strfmt.Registry) error {
 		if err := m.Mfa.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("mfa")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("mfa")
 			}
 			return err
 		}
@@ -120,6 +124,8 @@ func (m *APISessionPostureData) validateSdkInfo(formats strfmt.Registry) error {
 		if err := m.SdkInfo.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("sdkInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("sdkInfo")
 			}
 			return err
 		}
@@ -156,6 +162,8 @@ func (m *APISessionPostureData) contextValidateEndpointState(ctx context.Context
 		if err := m.EndpointState.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("endpointState")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("endpointState")
 			}
 			return err
 		}
@@ -170,6 +178,8 @@ func (m *APISessionPostureData) contextValidateMfa(ctx context.Context, formats 
 		if err := m.Mfa.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("mfa")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("mfa")
 			}
 			return err
 		}
@@ -184,6 +194,8 @@ func (m *APISessionPostureData) contextValidateSdkInfo(ctx context.Context, form
 		if err := m.SdkInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("sdkInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("sdkInfo")
 			}
 			return err
 		}
