@@ -190,8 +190,10 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		if err := self.ctrl.Close(); err != nil {
-			errors = append(errors, err)
+		if self.ctrl != nil {
+			if err := self.ctrl.Close(); err != nil {
+				errors = append(errors, err)
+			}
 		}
 
 		close(self.shutdownC)

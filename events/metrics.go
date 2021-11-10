@@ -3,7 +3,9 @@ package events
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/uuid"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/events"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -12,36 +14,62 @@ import (
 )
 
 func init() {
-	AddMetricsNameMapper(mapLinkIds)
-	AddMetricsNameMapper(mapCtrlIds)
+	AddMetricsMapper(mapLinkMetrics)
+	AddMetricsMapper(mapCtrlIds)
 }
 
-func mapLinkIds(name string) (string, string, bool) {
-	if strings.HasPrefix(name, "link.") {
-		if strings.HasSuffix(name, "latency") {
-			return ExtractId(name, "link.", 1)
+func mapCtrlIds(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
+	if strings.HasPrefix(event.Metric, "ctrl.") {
+		if strings.HasSuffix(event.Metric, "latency") {
+			name, routerId := ExtractId(event.Metric, "ctrl.", 1)
+			event.Metric = name
+			event.SourceEntityId = routerId
+		} else {
+			name, routerId := ExtractId(event.Metric, "ctrl.", 2)
+			event.Metric = name
+			event.SourceEntityId = routerId
 		}
-		return ExtractId(name, "link.", 2)
 	}
-	return "", "", false
 }
 
-func mapCtrlIds(name string) (string, string, bool) {
-	if strings.HasPrefix(name, "ctrl.") {
-		if strings.HasSuffix(name, "latency") {
-			return ExtractId(name, "ctrl.", 1)
+func mapLinkMetrics(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
+	if currentNetwork == nil {
+		return
+	}
+
+	if strings.HasPrefix(event.Metric, "link.") {
+		var name, linkId string
+		if strings.HasSuffix(event.Metric, "latency") {
+			name, linkId = ExtractId(event.Metric, "link.", 1)
+		} else {
+			name, linkId = ExtractId(event.Metric, "link.", 2)
 		}
-		return ExtractId(name, "ctrl.", 2)
+		event.Metric = name
+		event.SourceEntityId = linkId
+
+		if link, _ := currentNetwork.GetLink(&identity.TokenId{Token: linkId}); link != nil {
+			sourceTags := event.Tags
+			event.Tags = map[string]string{}
+			for k, v := range sourceTags {
+				event.Tags[k] = v
+			}
+			event.Tags["sourceRouterId"] = link.Src.Id
+			event.Tags["targetRouterId"] = link.Dst.Id
+		}
 	}
-	return "", "", false
 }
 
-type MetricsNameMapper func(name string) (string, string, bool)
+type MetricsMapper func(msg *metrics_pb.MetricsMessage, event *MetricsEvent)
 
-var metricsNameMappers []MetricsNameMapper
+var metricsMappers []MetricsMapper
+var currentNetwork *network.Network
 
-func AddMetricsNameMapper(mapper MetricsNameMapper) {
-	metricsNameMappers = append(metricsNameMappers, mapper)
+func InitNetwork(n *network.Network) {
+	currentNetwork = n
+}
+
+func AddMetricsMapper(mapper MetricsMapper) {
+	metricsMappers = append(metricsMappers, mapper)
 }
 
 func registerMetricsEventHandler(val interface{}, config map[interface{}]interface{}) error {
@@ -107,12 +135,8 @@ func (adapter *metricsAdapter) newMetricEvent(msg *metrics_pb.MetricsMessage, na
 		SourceEventId: id,
 	}
 
-	for _, mapper := range metricsNameMappers {
-		if mappedName, entityId, mapped := mapper(name); mapped {
-			result.Metric = mappedName
-			result.SourceEntityId = entityId
-			break
-		}
+	for _, mapper := range metricsMappers {
+		mapper(msg, result)
 	}
 
 	return result
@@ -223,10 +247,10 @@ type MetricsEventHandler interface {
 	AcceptMetricsEvent(event *MetricsEvent)
 }
 
-func ExtractId(name string, prefix string, suffixLen int) (string, string, bool) {
+func ExtractId(name string, prefix string, suffixLen int) (string, string) {
 	rest := strings.TrimPrefix(name, prefix)
 	vals := strings.Split(rest, ".")
 	idVals := vals[:len(vals)-suffixLen]
 	entityId := strings.Join(idVals, ".")
-	return prefix + rest[len(entityId)+1:], entityId, true
+	return prefix + rest[len(entityId)+1:], entityId
 }

@@ -145,6 +145,8 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
+	events.InitNetwork(c.network)
+
 	c.network.Run()
 
 	return nil
