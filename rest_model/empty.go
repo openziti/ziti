@@ -90,6 +90,8 @@ func (m *Empty) validateMeta(formats strfmt.Registry) error {
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -118,6 +120,8 @@ func (m *Empty) contextValidateMeta(ctx context.Context, formats strfmt.Registry
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}

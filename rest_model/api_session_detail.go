@@ -266,6 +266,8 @@ func (m *APISessionDetail) validateAuthQueries(formats strfmt.Registry) error {
 	if err := m.AuthQueries.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("authQueries")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("authQueries")
 		}
 		return err
 	}
@@ -305,6 +307,8 @@ func (m *APISessionDetail) validateIdentity(formats strfmt.Registry) error {
 		if err := m.Identity.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}
@@ -399,6 +403,8 @@ func (m *APISessionDetail) contextValidateAuthQueries(ctx context.Context, forma
 	if err := m.AuthQueries.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("authQueries")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("authQueries")
 		}
 		return err
 	}
@@ -412,6 +418,8 @@ func (m *APISessionDetail) contextValidateIdentity(ctx context.Context, formats 
 		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}

@@ -79,7 +79,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -98,7 +98,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /api-sessions/{id}:
     get:
@@ -131,7 +131,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -149,7 +149,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -182,7 +182,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -200,7 +200,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -278,7 +278,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "403":
           description: The authentication request could not be processed as the credentials
@@ -296,7 +296,7 @@ paths:
                 message: The authentication request failed
                 requestId: 5952ed10-3091-474f-a691-47ebab6990dc
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - enum:
@@ -386,7 +386,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -405,7 +405,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -455,7 +455,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -474,7 +474,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /authenticators/{id}:
     get:
@@ -507,7 +507,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -525,7 +525,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -575,7 +575,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -594,7 +594,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -612,7 +612,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -657,7 +657,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -676,7 +676,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -727,7 +727,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -746,7 +746,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -764,7 +764,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -824,7 +824,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -843,7 +843,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -893,7 +893,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -912,7 +912,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /cas/{id}:
     get:
@@ -945,7 +945,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -963,7 +963,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -1013,7 +1013,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1032,7 +1032,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1050,7 +1050,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -1095,7 +1095,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1114,7 +1114,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -1164,7 +1164,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1183,7 +1183,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1201,7 +1201,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -1250,7 +1250,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1268,7 +1268,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -1330,7 +1330,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1349,7 +1349,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1367,7 +1367,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -1427,7 +1427,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1446,7 +1446,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -1495,7 +1495,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1514,7 +1514,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /config-types/{id}:
     get:
@@ -1547,7 +1547,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1565,7 +1565,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -1615,7 +1615,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1634,7 +1634,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1652,7 +1652,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -1697,7 +1697,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1716,7 +1716,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -1735,7 +1735,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -1785,7 +1785,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1804,7 +1804,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -1822,7 +1822,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -1902,7 +1902,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1921,7 +1921,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -1971,7 +1971,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -1990,7 +1990,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /configs/{id}:
     get:
@@ -2023,7 +2023,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2041,7 +2041,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -2091,7 +2091,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2110,7 +2110,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2128,7 +2128,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -2171,7 +2171,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2190,7 +2190,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -2209,7 +2209,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -2259,7 +2259,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2278,7 +2278,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2296,7 +2296,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -2359,7 +2359,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -2390,7 +2390,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /current-identity:
     get:
@@ -2455,7 +2455,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /current-identity/authenticators:
     get:
@@ -2509,7 +2509,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2528,7 +2528,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /current-identity/authenticators/{id}:
     get:
@@ -2562,7 +2562,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2580,7 +2580,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -2632,7 +2632,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2651,7 +2651,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2669,7 +2669,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -2721,7 +2721,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -2740,7 +2740,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2758,7 +2758,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -2809,7 +2809,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -2850,7 +2850,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2868,7 +2868,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -2903,7 +2903,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The identity is already enrolled in MFA
@@ -2919,7 +2919,7 @@ paths:
                 message: The identity is already enrolled in MFA
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -2962,7 +2962,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -2980,7 +2980,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /current-identity/mfa/qr-code:
     get:
@@ -3043,7 +3043,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3061,7 +3061,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -3102,7 +3102,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3120,7 +3120,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /current-identity/mfa/verify:
     post:
@@ -3162,7 +3162,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3180,7 +3180,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /database/check-data-integrity:
     post:
@@ -3214,7 +3214,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "429":
           description: The resource requested is rate limited and the rate limit has
@@ -3232,7 +3232,7 @@ paths:
                   exceeded. Please try again later
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /database/data-integrity-results:
     get:
@@ -3266,7 +3266,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /database/fix-data-integrity:
     post:
@@ -3302,7 +3302,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "429":
           description: The resource requested is rate limited and the rate limit has
@@ -3320,7 +3320,7 @@ paths:
                   exceeded. Please try again later
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /database/snapshot:
     post:
@@ -3353,7 +3353,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "429":
           description: The resource requested is rate limited and the rate limit has
@@ -3371,7 +3371,7 @@ paths:
                   exceeded. Please try again later
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /edge-router-policies:
     get:
@@ -3425,7 +3425,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -3444,7 +3444,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -3494,7 +3494,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -3513,7 +3513,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /edge-router-policies/{id}:
     get:
@@ -3546,7 +3546,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3564,7 +3564,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -3615,7 +3615,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -3634,7 +3634,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3652,7 +3652,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -3695,7 +3695,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -3714,7 +3714,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -3733,7 +3733,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -3784,7 +3784,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -3803,7 +3803,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3821,7 +3821,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -3861,7 +3861,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3879,7 +3879,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -3919,7 +3919,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -3937,7 +3937,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -3997,7 +3997,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4016,7 +4016,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /edge-routers:
     get:
@@ -4079,7 +4079,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4098,7 +4098,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -4148,7 +4148,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4167,7 +4167,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /edge-routers/{id}:
     get:
@@ -4200,7 +4200,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4218,7 +4218,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -4268,7 +4268,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4287,7 +4287,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4305,7 +4305,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -4348,7 +4348,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4367,7 +4367,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -4386,7 +4386,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -4436,7 +4436,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4455,7 +4455,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4473,7 +4473,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4513,7 +4513,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4531,7 +4531,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4571,7 +4571,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4589,7 +4589,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4629,7 +4629,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4647,7 +4647,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4687,7 +4687,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4705,7 +4705,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4765,7 +4765,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4784,7 +4784,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /enrollments/{id}:
     get:
@@ -4818,7 +4818,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -4836,7 +4836,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -4879,7 +4879,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4898,7 +4898,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -4967,7 +4967,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -4986,7 +4986,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -5036,7 +5036,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5055,7 +5055,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /identities/{id}:
     get:
@@ -5088,7 +5088,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5106,7 +5106,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -5156,7 +5156,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5175,7 +5175,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5193,7 +5193,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -5236,7 +5236,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5255,7 +5255,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -5274,7 +5274,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -5324,7 +5324,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5343,7 +5343,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5361,7 +5361,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5401,7 +5401,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5419,7 +5419,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5459,7 +5459,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5477,7 +5477,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5517,7 +5517,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5535,7 +5535,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5578,7 +5578,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5596,7 +5596,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5637,7 +5637,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5655,7 +5655,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5698,7 +5698,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5716,7 +5716,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5762,7 +5762,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5780,7 +5780,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -5819,7 +5819,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5837,7 +5837,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -5886,7 +5886,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5905,7 +5905,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -5923,7 +5923,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -5971,7 +5971,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -5990,7 +5990,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6008,7 +6008,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6048,7 +6048,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6066,7 +6066,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6106,7 +6106,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6124,7 +6124,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6182,7 +6182,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6201,7 +6201,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6219,7 +6219,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6279,7 +6279,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6298,7 +6298,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /identity-types:
     get:
@@ -6352,7 +6352,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6371,7 +6371,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /identity-types/{id}:
     get:
@@ -6404,7 +6404,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6422,7 +6422,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6484,7 +6484,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6503,7 +6503,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /posture-check-types/{id}:
     get:
@@ -6536,7 +6536,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6554,7 +6554,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -6625,7 +6625,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6644,7 +6644,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -6694,7 +6694,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6713,7 +6713,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /posture-checks/{id}:
     get:
@@ -6746,7 +6746,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6764,7 +6764,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -6814,7 +6814,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6833,7 +6833,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6851,7 +6851,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -6884,7 +6884,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6902,7 +6902,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -6952,7 +6952,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -6971,7 +6971,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -6989,7 +6989,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -7049,7 +7049,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7068,7 +7068,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -7118,7 +7118,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7137,7 +7137,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /routers/{id}:
     get:
@@ -7170,7 +7170,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7188,7 +7188,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -7238,7 +7238,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7257,7 +7257,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7275,7 +7275,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -7318,7 +7318,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7337,7 +7337,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -7356,7 +7356,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -7406,7 +7406,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7425,7 +7425,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7443,7 +7443,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -7503,7 +7503,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7522,7 +7522,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -7572,7 +7572,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7591,7 +7591,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /service-edge-router-policies/{id}:
     get:
@@ -7624,7 +7624,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7642,7 +7642,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -7693,7 +7693,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7712,7 +7712,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7730,7 +7730,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -7773,7 +7773,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7792,7 +7792,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -7811,7 +7811,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -7862,7 +7862,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -7881,7 +7881,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7899,7 +7899,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -7939,7 +7939,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -7957,7 +7957,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -7996,7 +7996,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -8014,7 +8014,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -8074,7 +8074,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8093,7 +8093,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -8143,7 +8143,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8162,7 +8162,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /service-policies/{id}:
     get:
@@ -8195,7 +8195,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -8213,7 +8213,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -8263,7 +8263,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8282,7 +8282,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -8300,7 +8300,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -8343,7 +8343,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8362,7 +8362,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -8381,7 +8381,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -8432,7 +8432,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8451,7 +8451,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -8469,7 +8469,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -8518,7 +8518,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8537,7 +8537,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -8586,7 +8586,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8605,7 +8605,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -8654,7 +8654,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8673,7 +8673,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -8733,7 +8733,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8752,7 +8752,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /services:
     get:
@@ -8815,7 +8815,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8834,7 +8834,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -8884,7 +8884,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -8903,7 +8903,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /services/{id}:
     get:
@@ -8936,7 +8936,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -8954,7 +8954,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -9004,7 +9004,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9023,7 +9023,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -9041,7 +9041,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -9084,7 +9084,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9103,7 +9103,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -9122,7 +9122,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -9172,7 +9172,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9191,7 +9191,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -9209,7 +9209,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9269,7 +9269,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9288,7 +9288,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9348,7 +9348,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9367,7 +9367,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9427,7 +9427,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9446,7 +9446,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9506,7 +9506,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9525,7 +9525,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9585,7 +9585,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9604,7 +9604,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9664,7 +9664,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9683,7 +9683,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9746,7 +9746,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9765,7 +9765,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /sessions/{id}:
     get:
@@ -9798,7 +9798,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -9816,7 +9816,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -9859,7 +9859,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -9878,7 +9878,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -9897,7 +9897,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -9936,7 +9936,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -9954,7 +9954,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -10051,7 +10051,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /terminators:
     get:
@@ -10105,7 +10105,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10124,7 +10124,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -10174,7 +10174,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10193,7 +10193,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /terminators/{id}:
     get:
@@ -10226,7 +10226,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10244,7 +10244,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -10294,7 +10294,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10313,7 +10313,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10331,7 +10331,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -10374,7 +10374,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10393,7 +10393,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -10412,7 +10412,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -10462,7 +10462,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10481,7 +10481,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10499,7 +10499,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -10559,7 +10559,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10578,7 +10578,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     post:
       security:
@@ -10628,7 +10628,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10647,7 +10647,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
   /transit-routers/{id}:
     get:
@@ -10680,7 +10680,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10698,7 +10698,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     put:
       security:
@@ -10748,7 +10748,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10767,7 +10767,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10785,7 +10785,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     delete:
       security:
@@ -10828,7 +10828,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10847,7 +10847,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "409":
           description: The resource requested to be removed/altered cannot be as it
@@ -10866,7 +10866,7 @@ paths:
                   resources first.
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     patch:
       security:
@@ -10916,7 +10916,7 @@ paths:
                 message: The supplied request contains an invalid document
                 requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "401":
           description: The currently supplied session does not have the correct access
@@ -10935,7 +10935,7 @@ paths:
                   or the credentials are invalid
                 requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
         "404":
           description: The requested resource does not exist
@@ -10953,7 +10953,7 @@ paths:
                 message: The resource requested was not found or is no longer available
                 requestId: 270908d6-f2ef-4577-b973-67bec18ae376
               meta:
-                apiEnrolmentVersion: 0.0.1
+                apiEnrollmentVersion: 0.0.1
                 apiVersion: 0.0.1
     parameters:
     - type: string
@@ -12172,7 +12172,7 @@ definitions:
         $ref: '#/definitions/meta'
   enrollmentDetail:
     description: |
-      An enrollment object. Enrolments are tied to identities and portentially a CA. Depending on the
+      An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the
       method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
       use the username field, but not vice versa.
     type: object
@@ -12805,7 +12805,7 @@ definitions:
   meta:
     type: object
     properties:
-      apiEnrolmentVersion:
+      apiEnrollmentVersion:
         type: string
       apiVersion:
         type: string

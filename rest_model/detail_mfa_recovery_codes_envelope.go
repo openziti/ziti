@@ -80,6 +80,8 @@ func (m *DetailMfaRecoveryCodesEnvelope) validateError(formats strfmt.Registry) 
 		if err := m.Error.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("error")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("error")
 			}
 			return err
 		}
@@ -98,6 +100,8 @@ func (m *DetailMfaRecoveryCodesEnvelope) validateMeta(formats strfmt.Registry) e
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -130,6 +134,8 @@ func (m *DetailMfaRecoveryCodesEnvelope) contextValidateError(ctx context.Contex
 		if err := m.Error.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("error")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("error")
 			}
 			return err
 		}
@@ -144,6 +150,8 @@ func (m *DetailMfaRecoveryCodesEnvelope) contextValidateMeta(ctx context.Context
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}

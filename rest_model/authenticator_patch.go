@@ -83,6 +83,8 @@ func (m *AuthenticatorPatch) validatePassword(formats strfmt.Registry) error {
 		if err := m.Password.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("password")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("password")
 			}
 			return err
 		}
@@ -100,6 +102,8 @@ func (m *AuthenticatorPatch) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -117,6 +121,8 @@ func (m *AuthenticatorPatch) validateUsername(formats strfmt.Registry) error {
 		if err := m.Username.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("username")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("username")
 			}
 			return err
 		}
@@ -153,6 +159,8 @@ func (m *AuthenticatorPatch) contextValidatePassword(ctx context.Context, format
 		if err := m.Password.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("password")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("password")
 			}
 			return err
 		}
@@ -167,6 +175,8 @@ func (m *AuthenticatorPatch) contextValidateTags(ctx context.Context, formats st
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -181,6 +191,8 @@ func (m *AuthenticatorPatch) contextValidateUsername(ctx context.Context, format
 		if err := m.Username.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("username")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("username")
 			}
 			return err
 		}

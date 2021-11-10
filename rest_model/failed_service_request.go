@@ -100,6 +100,8 @@ func (m *FailedServiceRequest) validatePolicyFailures(formats strfmt.Registry) e
 			if err := m.PolicyFailures[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("policyFailures" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("policyFailures" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -118,6 +120,8 @@ func (m *FailedServiceRequest) validateSessionType(formats strfmt.Registry) erro
 	if err := m.SessionType.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("sessionType")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("sessionType")
 		}
 		return err
 	}
@@ -163,6 +167,8 @@ func (m *FailedServiceRequest) contextValidatePolicyFailures(ctx context.Context
 			if err := m.PolicyFailures[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("policyFailures" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("policyFailures" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -178,6 +184,8 @@ func (m *FailedServiceRequest) contextValidateSessionType(ctx context.Context, f
 	if err := m.SessionType.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("sessionType")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("sessionType")
 		}
 		return err
 	}

@@ -135,6 +135,8 @@ func (m *CaCreate) validateIdentityRoles(formats strfmt.Registry) error {
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -187,6 +189,8 @@ func (m *CaCreate) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -218,6 +222,8 @@ func (m *CaCreate) contextValidateIdentityRoles(ctx context.Context, formats str
 	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -231,6 +237,8 @@ func (m *CaCreate) contextValidateTags(ctx context.Context, formats strfmt.Regis
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}

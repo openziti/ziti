@@ -90,6 +90,8 @@ func (m *ProcessMulti) validateOsType(formats strfmt.Registry) error {
 		if err := m.OsType.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("osType")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("osType")
 			}
 			return err
 		}
@@ -127,6 +129,8 @@ func (m *ProcessMulti) contextValidateOsType(ctx context.Context, formats strfmt
 		if err := m.OsType.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("osType")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("osType")
 			}
 			return err
 		}

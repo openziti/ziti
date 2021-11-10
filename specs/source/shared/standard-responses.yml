@@ -45,7 +45,7 @@ responses:
           message: The supplied request contains an invalid document
           requestId: ac6766d6-3a09-44b3-8d8a-1b541d97fdd9
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   unauthorizedResponse:
     description: The currently supplied session does not have the correct access rights to request this resource
@@ -63,7 +63,7 @@ responses:
             credentials are invalid
           requestId: 0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   invalidAuthResponse:
     description: The authentication request could not be processed as the credentials are invalid
@@ -80,7 +80,7 @@ responses:
           message: The authentication request failed
           requestId: 5952ed10-3091-474f-a691-47ebab6990dc
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   notFoundResponse:
     description: The requested resource does not exist
@@ -98,7 +98,7 @@ responses:
           message: The resource requested was not found or is no longer available
           requestId: 270908d6-f2ef-4577-b973-67bec18ae376
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   cannotDeleteReferencedResourceResponse:
     description: The resource requested to be removed/altered cannot be as it is referenced by another object.
@@ -115,7 +115,7 @@ responses:
           message: The resource cannot be deleted/modified. Remove all referencing resources first.
           requestId: 270908d6-f2ef-4577-b973-67bec18ae376
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   rateLimitedResponse:
     description: The resource requested is rate limited and the rate limit has been exceeded
@@ -131,7 +131,7 @@ responses:
           message: The resource is rate limited and the rate limit has been exceeded. Please try again later
           requestId: 270908d6-f2ef-4577-b973-67bec18ae376
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
 definitions:
   empty:
@@ -155,7 +155,7 @@ definitions:
         x-omitempty: true
       pagination:
         $ref: 'standard-request.yml#/definitions/pagination'
-      apiEnrolmentVersion:
+      apiEnrollmentVersion:
         type: string
       apiVersion:
         type: string

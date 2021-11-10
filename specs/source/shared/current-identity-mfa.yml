@@ -186,7 +186,7 @@ responses:
           message: The identity is already enrolled in MFA
           requestId: 270908d6-f2ef-4577-b973-67bec18ae376
         meta:
-          apiEnrolmentVersion: 0.0.1
+          apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
   mfaCreatedResponse:
     description: The create request was succesful and the response contains the location and details to complete MFA enrollment

@@ -80,6 +80,8 @@ func (m *ListCurrentAPISessionServiceUpdatesEnvelope) validateData(formats strfm
 		if err := m.Data.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -98,6 +100,8 @@ func (m *ListCurrentAPISessionServiceUpdatesEnvelope) validateMeta(formats strfm
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -130,6 +134,8 @@ func (m *ListCurrentAPISessionServiceUpdatesEnvelope) contextValidateData(ctx co
 		if err := m.Data.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -144,6 +150,8 @@ func (m *ListCurrentAPISessionServiceUpdatesEnvelope) contextValidateMeta(ctx co
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}

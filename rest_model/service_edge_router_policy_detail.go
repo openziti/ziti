@@ -202,6 +202,8 @@ func (m *ServiceEdgeRouterPolicyDetail) validateEdgeRouterRoles(formats strfmt.R
 	if err := m.EdgeRouterRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("edgeRouterRoles")
 		}
 		return err
 	}
@@ -218,6 +220,8 @@ func (m *ServiceEdgeRouterPolicyDetail) validateEdgeRouterRolesDisplay(formats s
 	if err := m.EdgeRouterRolesDisplay.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRolesDisplay")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("edgeRouterRolesDisplay")
 		}
 		return err
 	}
@@ -248,6 +252,8 @@ func (m *ServiceEdgeRouterPolicyDetail) validateSemantic(formats strfmt.Registry
 		if err := m.Semantic.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("semantic")
 			}
 			return err
 		}
@@ -265,6 +271,8 @@ func (m *ServiceEdgeRouterPolicyDetail) validateServiceRoles(formats strfmt.Regi
 	if err := m.ServiceRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("serviceRoles")
 		}
 		return err
 	}
@@ -281,6 +289,8 @@ func (m *ServiceEdgeRouterPolicyDetail) validateServiceRolesDisplay(formats strf
 	if err := m.ServiceRolesDisplay.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRolesDisplay")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("serviceRolesDisplay")
 		}
 		return err
 	}
@@ -328,6 +338,8 @@ func (m *ServiceEdgeRouterPolicyDetail) contextValidateEdgeRouterRoles(ctx conte
 	if err := m.EdgeRouterRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("edgeRouterRoles")
 		}
 		return err
 	}
@@ -340,6 +352,8 @@ func (m *ServiceEdgeRouterPolicyDetail) contextValidateEdgeRouterRolesDisplay(ct
 	if err := m.EdgeRouterRolesDisplay.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRolesDisplay")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("edgeRouterRolesDisplay")
 		}
 		return err
 	}
@@ -353,6 +367,8 @@ func (m *ServiceEdgeRouterPolicyDetail) contextValidateSemantic(ctx context.Cont
 		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("semantic")
 			}
 			return err
 		}
@@ -366,6 +382,8 @@ func (m *ServiceEdgeRouterPolicyDetail) contextValidateServiceRoles(ctx context.
 	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("serviceRoles")
 		}
 		return err
 	}
@@ -378,6 +396,8 @@ func (m *ServiceEdgeRouterPolicyDetail) contextValidateServiceRolesDisplay(ctx c
 	if err := m.ServiceRolesDisplay.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRolesDisplay")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("serviceRolesDisplay")
 		}
 		return err
 	}

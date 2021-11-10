@@ -107,6 +107,8 @@ func (m *PolicyAdvice) validateCommonRouters(formats strfmt.Registry) error {
 			if err := m.CommonRouters[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("commonRouters" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("commonRouters" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -126,6 +128,8 @@ func (m *PolicyAdvice) validateIdentity(formats strfmt.Registry) error {
 		if err := m.Identity.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}
@@ -143,6 +147,8 @@ func (m *PolicyAdvice) validateService(formats strfmt.Registry) error {
 		if err := m.Service.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("service")
 			}
 			return err
 		}
@@ -181,6 +187,8 @@ func (m *PolicyAdvice) contextValidateCommonRouters(ctx context.Context, formats
 			if err := m.CommonRouters[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("commonRouters" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("commonRouters" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -197,6 +205,8 @@ func (m *PolicyAdvice) contextValidateIdentity(ctx context.Context, formats strf
 		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}
@@ -211,6 +221,8 @@ func (m *PolicyAdvice) contextValidateService(ctx context.Context, formats strfm
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("service")
 			}
 			return err
 		}

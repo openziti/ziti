@@ -239,6 +239,8 @@ func (m *PostureCheckOperatingSystemUpdate) validateRoleAttributes(formats strfm
 		if err := m.RoleAttributes().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -257,6 +259,8 @@ func (m *PostureCheckOperatingSystemUpdate) validateTags(formats strfmt.Registry
 		if err := m.Tags().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -286,6 +290,8 @@ func (m *PostureCheckOperatingSystemUpdate) validateOperatingSystems(formats str
 			if err := m.OperatingSystems[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -324,6 +330,8 @@ func (m *PostureCheckOperatingSystemUpdate) contextValidateRoleAttributes(ctx co
 		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -338,6 +346,8 @@ func (m *PostureCheckOperatingSystemUpdate) contextValidateTags(ctx context.Cont
 		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -351,6 +361,8 @@ func (m *PostureCheckOperatingSystemUpdate) contextValidateTypeID(ctx context.Co
 	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("typeId")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("typeId")
 		}
 		return err
 	}
@@ -366,6 +378,8 @@ func (m *PostureCheckOperatingSystemUpdate) contextValidateOperatingSystems(ctx 
 			if err := m.OperatingSystems[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

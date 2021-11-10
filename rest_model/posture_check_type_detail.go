@@ -170,6 +170,8 @@ func (m *PostureCheckTypeDetail) validateOperatingSystems(formats strfmt.Registr
 			if err := m.OperatingSystems[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -216,6 +218,8 @@ func (m *PostureCheckTypeDetail) contextValidateOperatingSystems(ctx context.Con
 			if err := m.OperatingSystems[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

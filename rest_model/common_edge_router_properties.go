@@ -110,6 +110,8 @@ func (m *CommonEdgeRouterProperties) validateAppData(formats strfmt.Registry) er
 		if err := m.AppData.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("appData")
 			}
 			return err
 		}
@@ -183,6 +185,8 @@ func (m *CommonEdgeRouterProperties) contextValidateAppData(ctx context.Context,
 		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("appData")
 			}
 			return err
 		}
