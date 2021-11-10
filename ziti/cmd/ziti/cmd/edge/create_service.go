@@ -18,6 +18,7 @@ package edge
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -26,7 +27,7 @@ import (
 )
 
 type createServiceOptions struct {
-	edgeOptions
+	api.Options
 	terminatorStrategy string
 	tags               map[string]string
 	roleAttributes     []string
@@ -38,7 +39,7 @@ type createServiceOptions struct {
 // newCreateServiceCmd creates the 'edge controller create service local' command for the given entity type
 func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServiceOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -77,23 +78,23 @@ func newCreateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *co
 
 // runCreateService implements the command to create a service
 func runCreateService(o *createServiceOptions) (err error) {
-	configs, err := mapNamesToIDs("configs", o.edgeOptions, o.configs...)
+	configs, err := mapNamesToIDs("configs", o.Options, o.configs...)
 	if err != nil {
 		return err
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, o.Args[0], "name")
 	if o.terminatorStrategy != "" {
-		setJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
+		api.SetJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
 	}
 
-	setJSONValue(entityData, o.encryption.Get(), "encryptionRequired")
+	api.SetJSONValue(entityData, o.encryption.Get(), "encryptionRequired")
 
-	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, configs, "configs")
-	setJSONValue(entityData, o.tags, "tags")
+	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	api.SetJSONValue(entityData, configs, "configs")
+	api.SetJSONValue(entityData, o.tags, "tags")
 
-	result, err := createEntityOfType("services", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("service", result, err)
+	result, err := CreateEntityOfType("services", entityData.String(), &o.Options)
+	return o.LogCreateResult("service", result, err)
 }

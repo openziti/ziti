@@ -17,10 +17,11 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/spf13/cobra"
 )
 
-func newDeleteAuthenticatorCmd(idType string, options *edgeOptions) *cobra.Command {
+func newDeleteAuthenticatorCmd(idType string, options *api.Options) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:        idType,

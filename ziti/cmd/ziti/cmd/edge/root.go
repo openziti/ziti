@@ -17,11 +17,9 @@
 package edge
 
 import (
-	"fmt"
 	"github.com/openziti/ziti/common/enrollment"
 	"io"
 
-	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -33,49 +31,6 @@ func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
 	populateEdgeCommands(f, out, errOut, cmd)
 	return cmd
-}
-
-// edgeOptions are common options for edge controller commands
-type edgeOptions struct {
-	common.CommonOptions
-	OutputJSONRequest  bool
-	OutputJSONResponse bool
-}
-
-func (options *edgeOptions) OutputRequestJson() bool {
-	return options.OutputJSONRequest
-}
-
-func (options *edgeOptions) OutputResponseJson() bool {
-	return options.OutputJSONResponse
-}
-
-func (options *edgeOptions) OutputWriter() io.Writer {
-	return options.CommonOptions.Out
-}
-
-func (options *edgeOptions) ErrOutputWriter() io.Writer {
-	return options.CommonOptions.Err
-}
-func (options *edgeOptions) AddCommonFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVarP(&common.CliIdentity, "cli-identity", "i", "", "Specify the saved identity you want the CLI to use when connect to the controller with")
-	cmd.Flags().BoolVarP(&options.OutputJSONResponse, "output-json", "j", false, "Output the full JSON response from the Ziti Edge Controller")
-	cmd.Flags().BoolVar(&options.OutputJSONRequest, "output-request-json", false, "Output the full JSON request to the Ziti Edge Controller")
-	cmd.Flags().IntVarP(&options.Timeout, "timeout", "", 5, "Timeout for REST operations (specified in seconds)")
-	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
-}
-
-func (options *edgeOptions) logCreateResult(entityType string, result *gabs.Container, err error) error {
-	if err != nil {
-		return err
-	}
-
-	if !options.OutputJSONResponse {
-		id := result.S("data", "id").Data()
-		_, err = fmt.Fprintf(options.Out, "New %v %v created with id: %v\n", entityType, options.Args[0], id)
-		return err
-	}
-	return nil
 }
 
 func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
@@ -96,10 +51,4 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newTutorialCmd(p))
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	return cmd
-}
-
-func setJSONValue(container *gabs.Container, value interface{}, path ...string) {
-	if _, err := container.Set(value, path...); err != nil {
-		panic(err)
-	}
 }

@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 
 	"github.com/Jeffail/gabs"
@@ -28,13 +29,13 @@ import (
 )
 
 type updateIdentityConfigsOptions struct {
-	edgeOptions
+	api.Options
 	remove bool
 }
 
 func newUpdateIdentityConfigsCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityConfigsOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -63,17 +64,17 @@ func newUpdateIdentityConfigsCmd(f cmdutil.Factory, out io.Writer, errOut io.Wri
 
 // runupdateIdentityConfigs update a new identity on the Ziti Edge Controller
 func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("identities", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
 
-	serviceId, err := mapNameToID("services", o.Args[1], o.edgeOptions)
+	serviceId, err := mapNameToID("services", o.Args[1], o.Options)
 	if err != nil {
 		return err
 	}
 
-	configId, err := mapNameToID("configs", o.Args[2], o.edgeOptions)
+	configId, err := mapNameToID("configs", o.Args[2], o.Options)
 	if err != nil {
 		return err
 	}
@@ -89,9 +90,9 @@ func runupdateIdentityConfigs(o *updateIdentityConfigsOptions) error {
 	body := entityData.String()
 
 	if o.remove {
-		_, err = deleteEntityOfTypeWithBody(path, body, &o.edgeOptions)
+		_, err = deleteEntityOfTypeWithBody(path, body, &o.Options)
 	} else {
-		_, err = postEntityOfType(path, body, &o.edgeOptions)
+		_, err = postEntityOfType(path, body, &o.Options)
 	}
 	return err
 }

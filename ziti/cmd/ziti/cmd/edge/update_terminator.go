@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -31,7 +32,7 @@ import (
 )
 
 type updateTerminatorOptions struct {
-	edgeOptions
+	api.Options
 	router     string
 	address    string
 	binding    string
@@ -41,7 +42,7 @@ type updateTerminatorOptions struct {
 
 func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateTerminatorOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -79,24 +80,24 @@ func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
 
-	router, err := mapNameToID("edge-routers", o.router, o.edgeOptions)
+	router, err := mapNameToID("edge-routers", o.router, o.Options)
 	if err != nil {
 		router = o.router // might be a pure fabric router, id might not be UUID
 	}
 
 	change := false
 	if o.Cmd.Flags().Changed("router") {
-		setJSONValue(entityData, router, "router")
+		api.SetJSONValue(entityData, router, "router")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("binding") {
-		setJSONValue(entityData, o.binding, "binding")
+		api.SetJSONValue(entityData, o.binding, "binding")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("address") {
-		setJSONValue(entityData, o.address, "address")
+		api.SetJSONValue(entityData, o.address, "address")
 		change = true
 	}
 
@@ -104,7 +105,7 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 		if o.cost > math.MaxUint16 {
 			return errors2.Errorf("Invalid cost %v. Must be positive number less than or equal to %v", o.cost, math.MaxUint16)
 		}
-		setJSONValue(entityData, o.cost, "cost")
+		api.SetJSONValue(entityData, o.cost, "cost")
 		change = true
 	}
 
@@ -113,7 +114,7 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 		if !stringz.Contains(validValues, o.precedence) {
 			return errors2.Errorf("Invalid precedence %v. Must be one of %+v", o.precedence, validValues)
 		}
-		setJSONValue(entityData, o.precedence, "precedence")
+		api.SetJSONValue(entityData, o.precedence, "precedence")
 		change = true
 	}
 
@@ -121,6 +122,6 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("terminators/%v", o.Args[0]), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("terminators/%v", o.Args[0]), entityData.String(), &o.Options)
 	return err
 }

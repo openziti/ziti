@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"io"
 
@@ -44,7 +45,7 @@ func newUpdatePostureCheckCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 type updatePostureCheckOptions struct {
-	edgeOptions
+	api.Options
 	name           string
 	tags           map[string]string
 	roleAttributes []string
@@ -84,7 +85,7 @@ type updatePostureCheckOsOptions struct {
 func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckMacOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		},
@@ -117,7 +118,7 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 
 // runUpdatePostureCheckMac update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -125,17 +126,17 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("mac-addresses") {
-		setJSONValue(entityData, o.addresses, "macAddresses")
+		api.SetJSONValue(entityData, o.addresses, "macAddresses")
 		change = true
 	}
 
@@ -143,16 +144,16 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	setJSONValue(entityData, PostureCheckTypeMAC, "typeId")
+	api.SetJSONValue(entityData, PostureCheckTypeMAC, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.Options)
 	return err
 }
 
 func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckDomainOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		},
@@ -186,7 +187,7 @@ func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckMfaOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		},
@@ -229,7 +230,7 @@ func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command
 }
 
 func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -237,47 +238,47 @@ func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("seconds") {
-		setJSONValue(entityData, o.timeoutSeconds, "timeoutSeconds")
+		api.SetJSONValue(entityData, o.timeoutSeconds, "timeoutSeconds")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("wake") {
-		setJSONValue(entityData, o.promptOnWake, "promptOnWake")
+		api.SetJSONValue(entityData, o.promptOnWake, "promptOnWake")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("no-wake") {
-		setJSONValue(entityData, false, "promptOnWake")
+		api.SetJSONValue(entityData, false, "promptOnWake")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("unlock") {
-		setJSONValue(entityData, o.promptOnUnlock, "promptOnUnlock")
+		api.SetJSONValue(entityData, o.promptOnUnlock, "promptOnUnlock")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("no-unlock") {
-		setJSONValue(entityData, false, "promptOnUnlock")
+		api.SetJSONValue(entityData, false, "promptOnUnlock")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("ignore-legacy") {
-		setJSONValue(entityData, o.ignoreLegacyEndpoints, "ignoreLegacyEndpoints")
+		api.SetJSONValue(entityData, o.ignoreLegacyEndpoints, "ignoreLegacyEndpoints")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("no-ignore-legacy") {
-		setJSONValue(entityData, false, "ignoreLegacyEndpoints")
+		api.SetJSONValue(entityData, false, "ignoreLegacyEndpoints")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
@@ -285,15 +286,15 @@ func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	setJSONValue(entityData, PostureCheckTypeMFA, "typeId")
+	api.SetJSONValue(entityData, PostureCheckTypeMFA, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.Options)
 	return err
 }
 
 // runUpdatePostureCheckDomain update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -301,12 +302,12 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
@@ -315,7 +316,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 			return fmt.Errorf("must specify at least one domain, multiple values may be separated by commas")
 		}
 
-		setJSONValue(entityData, o.domains, "domains")
+		api.SetJSONValue(entityData, o.domains, "domains")
 		change = true
 	}
 
@@ -323,9 +324,9 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	setJSONValue(entityData, PostureCheckTypeDomain, "typeId")
+	api.SetJSONValue(entityData, PostureCheckTypeDomain, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.Options)
 	return err
 }
 
@@ -334,7 +335,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckProcessOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		},
@@ -372,7 +373,7 @@ func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 
 // runUpdatePostureCheckProcess update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -380,17 +381,17 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("path") {
-		setJSONValue(entityData, o.path, "process", "path")
+		api.SetJSONValue(entityData, o.path, "process", "path")
 		change = true
 	}
 
@@ -401,7 +402,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 			return err
 		}
 
-		setJSONValue(entityData, o.hashes, "process", "hashes")
+		api.SetJSONValue(entityData, o.hashes, "process", "hashes")
 		change = true
 	}
 
@@ -412,7 +413,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 			return err
 		}
 
-		setJSONValue(entityData, o.signer, "process", "signerFingerprint")
+		api.SetJSONValue(entityData, o.signer, "process", "signerFingerprint")
 		change = true
 	}
 
@@ -423,7 +424,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 			return fmt.Errorf("invalid os type [%s]: expected %s|%s|%s|%s", o.os, OsLinux, OsMacOs, OsWindows, OsWindowsServer)
 		}
 
-		setJSONValue(entityData, o.os, "process", "osType")
+		api.SetJSONValue(entityData, o.os, "process", "osType")
 		change = true
 	}
 
@@ -431,9 +432,9 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	setJSONValue(entityData, PostureCheckTypeProcess, "typeId")
+	api.SetJSONValue(entityData, PostureCheckTypeProcess, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.Options)
 	return err
 }
 
@@ -441,7 +442,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckOsOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		},
@@ -474,7 +475,7 @@ func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 
 // runUpdatePostureCheckOs update a new identity on the Ziti Edge Controller
 func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
-	id, err := mapNameToID("posture-checks", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("posture-checks", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -482,12 +483,12 @@ func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
@@ -500,7 +501,7 @@ func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
 				oses = append(oses, osSpec)
 			}
 		}
-		setJSONValue(entityData, oses, "operatingSystems")
+		api.SetJSONValue(entityData, oses, "operatingSystems")
 		change = true
 	}
 
@@ -508,8 +509,8 @@ func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	setJSONValue(entityData, PostureCheckTypeOS, "typeId")
+	api.SetJSONValue(entityData, PostureCheckTypeOS, "typeId")
 
-	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("posture-checks/%v", id), entityData.String(), &o.Options)
 	return err
 }

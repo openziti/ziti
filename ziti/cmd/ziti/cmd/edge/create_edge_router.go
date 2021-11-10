@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"io/ioutil"
 
@@ -29,7 +30,7 @@ import (
 )
 
 type createEdgeRouterOptions struct {
-	edgeOptions
+	api.Options
 	isTunnelerEnabled bool
 	roleAttributes    []string
 	jwtOutputFile     string
@@ -39,7 +40,7 @@ type createEdgeRouterOptions struct {
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -75,14 +76,14 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 // runCreateEdgeRouter implements the command to create a gateway on the edge controller
 func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
-	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.tags, "tags")
-	setJSONValue(entityData, o.appData, "appData")
+	api.SetJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
+	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	api.SetJSONValue(entityData, o.tags, "tags")
+	api.SetJSONValue(entityData, o.appData, "appData")
 
-	result, err := createEntityOfType("edge-routers", entityData.String(), &o.edgeOptions)
-	if err := o.logCreateResult("edge router", result, err); err != nil {
+	result, err := CreateEntityOfType("edge-routers", entityData.String(), &o.Options)
+	if err := o.LogCreateResult("edge router", result, err); err != nil {
 		return err
 	}
 
@@ -96,7 +97,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 }
 
 func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.Options.Timeout, o.Options.Verbose)
 	if err != nil {
 		return err
 	}

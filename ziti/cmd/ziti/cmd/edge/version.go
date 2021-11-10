@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -27,13 +28,13 @@ import (
 
 // versionOptions are the flags for version commands
 type versionOptions struct {
-	edgeOptions
+	api.Options
 }
 
 // newVersionCmd creates the command
 func newVersionCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &versionOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -58,7 +59,7 @@ func newVersionCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // Run implements this command
 func (o *versionOptions) Run() error {
-	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+	jsonParsed, err := util.EdgeControllerList("version", nil, o.OutputJSONResponse, o.Out, o.Options.Timeout, o.Options.Verbose)
 	if err != nil {
 		return err
 	}

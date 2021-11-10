@@ -136,23 +136,11 @@ func (o *UseOptions) Run() error {
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
-	err = o.install(branch, c.ZITI_FABRIC_GW)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
-	err = o.install(branch, c.ZITI_FABRIC_TEST)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
 	err = o.install(branch, c.ZITI_ROUTER)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
 	err = o.install(branch, c.ZITI_TUNNEL)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
-	err = o.install(branch, c.ZITI_ENROLLER)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}

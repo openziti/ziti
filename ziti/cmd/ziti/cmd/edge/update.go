@@ -18,6 +18,7 @@ package edge
 
 import (
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -54,27 +55,27 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	return cmd
 }
 
-func putEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
+func putEntityOfType(entityType string, body string, options *api.Options) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPut)
 }
 
-func patchEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
+func patchEntityOfType(entityType string, body string, options *api.Options) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPatch)
 }
 
-func postEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
+func postEntityOfType(entityType string, body string, options *api.Options) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodPost)
 }
 
-func deleteEntityOfTypeWithBody(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
+func deleteEntityOfTypeWithBody(entityType string, body string, options *api.Options) (*gabs.Container, error) {
 	return updateEntityOfType(entityType, body, options, resty.MethodDelete)
 }
 
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
-func updateEntityOfType(entityType string, body string, options *edgeOptions, method string) (*gabs.Container, error) {
-	return util.EdgeControllerUpdate(entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
+func updateEntityOfType(entityType string, body string, options *api.Options, method string) (*gabs.Container, error) {
+	return util.ControllerUpdate(util.EdgeAPI, entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }
 
-func doRequest(entityType string, options *edgeOptions, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
+func doRequest(entityType string, options *api.Options, doRequest func(request *resty.Request, url string) (*resty.Response, error)) (*gabs.Container, error) {
 	return util.EdgeControllerRequest(entityType, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose, doRequest)
 }

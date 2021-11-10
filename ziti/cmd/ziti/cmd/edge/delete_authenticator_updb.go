@@ -20,18 +20,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/openziti/edge/rest_management_api_client/authenticator"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type deleteUpdbOptions struct {
-	edgeOptions
+	api.Options
 }
 
-func newDeleteAuthenticatorUpdb(idType string, options *edgeOptions) *cobra.Command {
+func newDeleteAuthenticatorUpdb(idType string, options *api.Options) *cobra.Command {
 	updbOptions := deleteUpdbOptions{
-		edgeOptions: *options,
+		Options: *options,
 	}
 
 	cmd := &cobra.Command{
@@ -55,7 +56,7 @@ func newDeleteAuthenticatorUpdb(idType string, options *edgeOptions) *cobra.Comm
 }
 
 func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
-	identityId, err := mapIdentityNameToID(idOrName, options.edgeOptions)
+	identityId, err := mapIdentityNameToID(idOrName, options.Options)
 
 	if err != nil {
 		return err
@@ -91,7 +92,7 @@ func runDeleteUpdb(idOrName string, options *deleteUpdbOptions) error {
 
 	authenticatorId := *result.Payload.Data[0].ID
 
-	_, err = deleteEntityOfType(fmt.Sprintf("authenticators/%s", authenticatorId), "", &options.edgeOptions)
+	err = deleteEntityOfType(fmt.Sprintf("authenticators/%s", authenticatorId), "", &options.Options)
 
 	if err != nil {
 		return err

@@ -20,13 +20,10 @@ const (
 	ZITI                    = "ziti"
 	ZITI_CONTROLLER         = "ziti-controller"
 	ZITI_FABRIC             = "ziti-fabric"
-	ZITI_FABRIC_TEST        = "ziti-fabric-test"
-	ZITI_FABRIC_GW          = "ziti-fabric-gw"
 	ZITI_ROUTER             = "ziti-router"
 	ZITI_TUNNEL             = "ziti-tunnel"
 	ZITI_EDGE_TUNNEL        = "ziti-edge-tunnel"
 	ZITI_EDGE_TUNNEL_GITHUB = "ziti-tunnel-sdk-c"
-	ZITI_ENROLLER           = "ziti-enroller"
 	ZITI_PROX_C             = "ziti-prox-c"
 	ZITI_SDK_C_GITHUB       = "ziti-sdk-c"
 

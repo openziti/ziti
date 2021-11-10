@@ -83,10 +83,7 @@ func (o *VersionOptions) Run() error {
 	table.AddRow(c.ZITI, info(version.GetBuildMetadata(o.Verbose)))
 
 	o.versionPrintZitiApp(c.ZITI_CONTROLLER, &table)
-	o.versionPrintZitiApp(c.ZITI_ENROLLER, &table)
 	o.versionPrintZitiApp(c.ZITI_FABRIC, &table)
-	o.versionPrintZitiApp(c.ZITI_FABRIC_GW, &table)
-	o.versionPrintZitiApp(c.ZITI_FABRIC_TEST, &table)
 	o.versionPrintZitiApp(c.ZITI_PROX_C, &table)
 	o.versionPrintZitiApp(c.ZITI_ROUTER, &table)
 	o.versionPrintZitiApp(c.ZITI_TUNNEL, &table)
@@ -133,8 +130,6 @@ func (o *VersionOptions) versionCheck() error {
 	o.versionCheckZitiApp(c.ZITI)
 	o.versionCheckZitiApp(c.ZITI_CONTROLLER)
 	o.versionCheckZitiApp(c.ZITI_FABRIC)
-	o.versionCheckZitiApp(c.ZITI_FABRIC_TEST)
-	o.versionCheckZitiApp(c.ZITI_FABRIC_GW)
 	o.versionCheckZitiApp(c.ZITI_PROX_C)
 	o.versionCheckZitiApp(c.ZITI_ROUTER)
 	o.versionCheckZitiApp(c.ZITI_TUNNEL)
@@ -158,10 +153,6 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_CONTROLLER)
 	case c.ZITI_FABRIC:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC)
-	case c.ZITI_FABRIC_TEST:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC_TEST)
-	case c.ZITI_FABRIC_GW:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC_GW)
 	case c.ZITI_PROX_C:
 		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
 	case c.ZITI_ROUTER:
@@ -202,10 +193,6 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 						err = o.upgradeZitiController()
 					case c.ZITI_FABRIC:
 						err = o.upgradeZitiFabric()
-					case c.ZITI_FABRIC_TEST:
-						err = o.upgradeZitiFabricTest()
-					case c.ZITI_FABRIC_GW:
-						err = o.upgradeZitiMgmtGw()
 					case c.ZITI_PROX_C:
 						err = o.upgradeZitiProxC()
 					case c.ZITI_ROUTER:
@@ -243,20 +230,6 @@ func (o *VersionOptions) upgradeZitiController() error {
 
 func (o *VersionOptions) upgradeZitiFabric() error {
 	options := &UpgradeZitiFabricOptions{
-		CommonOptions: o.CommonOptions,
-	}
-	return options.Run()
-}
-
-func (o *VersionOptions) upgradeZitiFabricTest() error {
-	options := &UpgradeZitiFabricTestOptions{
-		CommonOptions: o.CommonOptions,
-	}
-	return options.Run()
-}
-
-func (o *VersionOptions) upgradeZitiMgmtGw() error {
-	options := &UpgradeZitiMgmtGwOptions{
 		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
