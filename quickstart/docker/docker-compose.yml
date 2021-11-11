@@ -5,9 +5,12 @@ services:
     env_file:
       - ./default.env
     ports:
-      - 1280:1280
+      - "1280:1280"
     networks:
-      ziticontrol:
+      zitiblue:
+        aliases:
+          - ziti-edge-controller
+      zitired:
         aliases:
           - ziti-edge-controller
     volumes:
@@ -20,9 +23,10 @@ services:
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
-      - 3022:3022
+      - "3022:3022"
     networks:
-      - ziticontrol
+      - zitiblue
+      - zitired
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
@@ -32,10 +36,12 @@ services:
     image: openziti/quickstart:latest
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
+      - ZITI_EDGE_ROUTER_PORT=3023
     ports:
-      - 3023:3023
+      - "3023:3023"
     networks:
-      - ziticontrol
+      - zitiblue
+      - zitired
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
@@ -48,7 +54,6 @@ services:
     #ports:
     #  - 3024:3024
     networks:
-      - ziticontrol
       - zitiblue
       - zitired
     volumes:
@@ -63,7 +68,6 @@ services:
     #ports:
     #  - 3025:3025
     networks:
-      - ziticontrol
       - zitired
     volumes:
       - ziti-fs:/openziti
@@ -77,7 +81,6 @@ services:
     #ports:
     #  - 3026:3026
     networks:
-      - ziticontrol
       - zitiblue
     volumes:
       - ziti-fs:/openziti
@@ -87,12 +90,11 @@ services:
   web-test-blue:
     image: crccheck/hello-world
     ports:
-      - 80:8000
+      - "80:8000"
     networks:
       - zitiblue
 
 networks:
-  ziticontrol:
   zitired:
   zitiblue:
 
