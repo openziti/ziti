@@ -26,7 +26,7 @@ jobs:
         uses: netfoundry/ziti-ci@v1
 
       - name: Build and Test
-        run: go test ./...
+        run: go test ./... --tags apitests
 
       - name: Release
         env:

@@ -1,0 +1,23 @@
+v: 3
+
+db: testdata/${ZITI_TEST_DB}.db
+
+identity:
+  cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert: testdata/ca/intermediate/certs/ctrl-server.cert.pem
+  key: testdata/ca/intermediate/private/ctrl.key.pem
+  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+
+ctrl:
+  listener: tls:127.0.0.1:6363
+
+mgmt:
+  listener: tls:127.0.0.1:10001
+
+#web:
+#  - name: localhost
+#    bindPoints:
+#      - interface: 127.0.0.1:1281
+#        address: 127.0.0.1:1281
+#    options: {}
+#    apis: [ ]
