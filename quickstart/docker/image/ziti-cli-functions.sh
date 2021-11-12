@@ -1465,10 +1465,5 @@ function setOs {
   return 0
 }
 
-param1="$@"
-
-if [[ "${param1}" != "" ]]; then
-  eval "$@"
-fi
 
 set +uo pipefail
