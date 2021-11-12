@@ -105,8 +105,11 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 	return found
 }
 
-func (forwarder *Forwarder) RegisterLink(link xlink.Xlink) {
-	forwarder.destinations.addDestination(xgress.Address(link.Id().Token), link)
+func (forwarder *Forwarder) RegisterLink(link xlink.Xlink) error {
+	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id().Token), link) {
+		return errors.Errorf("unable to register link %v as it is already registered", link.Id().Token)
+	}
+	return nil
 }
 
 func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {

@@ -46,6 +46,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newRemoveTerminatorHandler(self.network))
 	ch.AddReceiveHandler(newUpdateTerminatorHandler(self.network))
 	ch.AddReceiveHandler(newLinkHandler(self.router, self.network))
+	ch.AddReceiveHandler(newVerifyLinkHandler(self.router, self.network))
 	ch.AddReceiveHandler(newFaultHandler(self.router, self.network))
 	ch.AddReceiveHandler(newMetricsHandler(self.network))
 	ch.AddReceiveHandler(newTraceHandler(traceDispatchWrapper))

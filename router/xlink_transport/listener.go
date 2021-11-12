@@ -32,7 +32,8 @@ func (self *listener) Listen() error {
 	listener := channel2.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg, nil)
 
 	self.listener = listener
-	if err := self.listener.Listen(); err != nil {
+	connectionHandler := &ConnectionHandler{self.id}
+	if err := self.listener.Listen(connectionHandler); err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
 	go self.acceptLoop()
@@ -104,13 +105,19 @@ func (self *listener) acceptLoop() {
 		log.Info("accepting link")
 
 		if self.chAccepter != nil {
-			if err := self.chAccepter.AcceptChannel(xli, ch, true); err != nil {
+			if err := self.chAccepter.AcceptChannel(xli, ch, true, true); err != nil {
 				log.WithError(err).Error("error accepting incoming channel")
+				if err := xli.Close(); err != nil {
+					log.WithError(err).Debugf("error closing link")
+				}
 			}
 		}
 
 		if err := self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
+			if err := xli.Close(); err != nil {
+				log.WithError(err).Debugf("error closing link")
+			}
 		}
 
 		log.Info("accepted link")
@@ -201,12 +208,12 @@ func (event *newChannelEvent) handle(l *listener) {
 	log.Info("accepting split link")
 
 	if l.chAccepter != nil {
-		if err := l.chAccepter.AcceptChannel(xli, xli.payloadCh, true); err != nil {
+		if err := l.chAccepter.AcceptChannel(xli, xli.payloadCh, true, true); err != nil {
 			log.WithError(err).Error("error accepting incoming channel")
 			_ = xli.Close()
 		}
 
-		if err := l.chAccepter.AcceptChannel(xli, xli.ackCh, true); err != nil {
+		if err := l.chAccepter.AcceptChannel(xli, xli.ackCh, true, true); err != nil {
 			log.WithError(err).Error("error accepting incoming channel")
 			_ = xli.Close()
 		}

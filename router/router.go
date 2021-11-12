@@ -26,7 +26,6 @@ import (
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/health"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -48,6 +47,7 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -223,7 +223,7 @@ func (self *Router) Shutdown() error {
 	if len(errors) == 1 {
 		return errors[0]
 	}
-	return network.MultipleErrors(errors)
+	return errorz.MultipleErrors(errors)
 }
 
 func (self *Router) Run() error {

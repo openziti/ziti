@@ -20,18 +20,46 @@ import (
 	"crypto/x509"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
 )
 
 type ConnectHandler struct {
-	network *network.Network
+	identity identity.Identity
+	network  *network.Network
 }
 
-func NewConnectHandler(network *network.Network) *ConnectHandler {
+func NewConnectHandler(identity identity.Identity, network *network.Network) *ConnectHandler {
 	return &ConnectHandler{
-		network: network,
+		identity: identity,
+		network:  network,
 	}
 }
 
-func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
-	return nil
+func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
+	if len(certificates) == 0 {
+		return errors.New("no certificates provided, unable to verify dialer")
+	}
+
+	config := self.identity.ServerTLSConfig()
+
+	opts := x509.VerifyOptions{
+		Roots:         config.RootCAs,
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+
+	var errorList errorz.MultipleErrors
+
+	for _, cert := range certificates {
+		if _, err := cert.Verify(opts); err == nil {
+			return nil
+		} else {
+			errorList = append(errorList, err)
+		}
+	}
+
+	//goland:noinspection GoNilness
+	return errorList.ToError()
 }

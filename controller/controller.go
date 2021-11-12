@@ -231,8 +231,8 @@ func (c *Controller) registerXts() {
 }
 
 func (c *Controller) registerComponents() error {
-	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.network, c.xctrls)
-	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.network)
+	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.xctrls)
+	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
 	c.config.Mgmt.Options.BindHandlers = []channel2.BindHandler{handler_mgmt.NewBindHandler(c.network, c.xmgmts)}
 

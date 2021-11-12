@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/sequence"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -319,6 +320,30 @@ func (network *Network) LinkConnected(id *identity.TokenId, connected bool) erro
 	return fmt.Errorf("no such link [l/%s]", id.Token)
 }
 
+func (network *Network) VerifyLinkSource(targetRouter *Router, id *identity.TokenId, fingerprints []string) error {
+	l, found := network.linkController.get(id)
+	if !found {
+		return errors.Errorf("invalid link %v", id.Token)
+	}
+
+	if l.Dst.Id != targetRouter.Id {
+		return errors.Errorf("incorrect link target router. link=%v, expected router=%v, actual router=%v", l.Id.Token, l.Dst.Id, targetRouter.Id)
+	}
+
+	routerFingerprint := l.Src.Fingerprint
+	if routerFingerprint == nil {
+		return errors.Errorf("invalid source router %v for link %v, not yet enrolled", l.Src.Id, l.Id.Token)
+	}
+
+	for _, fp := range fingerprints {
+		if fp == *routerFingerprint {
+			return nil
+		}
+	}
+
+	return errors.Errorf("could not verify fingerprint for router %v on link %v", l.Src.Id, l.Id.Token)
+}
+
 func (network *Network) LinkChanged(l *Link) {
 	// This is called from Channel.rxer() and thus may not block
 	go func() {
@@ -515,7 +540,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 	}
 
 	if len(weightedTerminators) == 0 {
-		return nil, nil, nil, MultipleErrors(errList)
+		return nil, nil, nil, errorz.MultipleErrors(errList)
 	}
 
 	strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy)
@@ -959,23 +984,6 @@ func newPathAndCost(path []*Router, cost int64) *PathAndCost {
 type PathAndCost struct {
 	path []*Router
 	cost uint32
-}
-
-type MultipleErrors []error
-
-func (e MultipleErrors) Error() string {
-	if len(e) == 0 {
-		return "no errors occurred"
-	}
-	if len(e) == 1 {
-		return e[0].Error()
-	}
-	buf := strings.Builder{}
-	buf.WriteString("multiple errors occurred")
-	for idx, err := range e {
-		buf.WriteString(fmt.Sprintf(" %v: %v\n", idx, err))
-	}
-	return buf.String()
 }
 
 type InvalidCircuitError struct {

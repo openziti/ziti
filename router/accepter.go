@@ -11,7 +11,9 @@ func newXlinkAccepter(f *forwarder2.Forwarder) xlink.Accepter {
 }
 
 func (self *xlinkAccepter) Accept(xlink xlink.Xlink) error {
-	self.forwarder.RegisterLink(xlink)
+	if err := self.forwarder.RegisterLink(xlink); err != nil {
+		return err
+	}
 	logrus.Infof("accepted new link [l/%s]", xlink.Id().Token)
 	return nil
 }

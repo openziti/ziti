@@ -25,6 +25,7 @@ enum ContentType {
   // CircuitFailedType = 1016;
   ValidateTerminatorsRequestType = 1017;
   UpdateTerminatorRequestType = 1018;
+  VerifyLinkType = 1019;
 }
 
 message CircuitRequest {
@@ -141,4 +142,9 @@ message InspectResponse {
     string name = 1;
     string value = 2;
   }
+}
+
+message VerifyLink {
+  string linkId = 1;
+  repeated string fingerprints = 2;
 }

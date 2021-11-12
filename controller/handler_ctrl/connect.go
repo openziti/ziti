@@ -25,18 +25,25 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/errorz"
 )
 
 type ConnectHandler struct {
-	network *network.Network
-	xctrls  []xctrl.Xctrl
+	identity identity.Identity
+	network  *network.Network
+	xctrls   []xctrl.Xctrl
 }
 
-func NewConnectHandler(network *network.Network, xctrls []xctrl.Xctrl) *ConnectHandler {
-	return &ConnectHandler{network: network, xctrls: xctrls}
+func NewConnectHandler(identity identity.Identity, network *network.Network, xctrls []xctrl.Xctrl) *ConnectHandler {
+	return &ConnectHandler{
+		identity: identity,
+		network:  network,
+		xctrls:   xctrls,
+	}
 }
 
-func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
+func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
 	log := pfxlog.ContextLogger(hello.IdToken)
 
 	id := hello.IdToken
@@ -58,11 +65,11 @@ func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []
 	}
 	/* */
 
-	if h.network.ConnectedRouter(id) {
+	if self.network.ConnectedRouter(id) {
 		return errors.New("router already connected")
 	}
 
-	if r, err := h.network.GetRouter(id); err == nil {
+	if r, err := self.network.GetRouter(id); err == nil {
 		if r.Fingerprint == nil {
 			return errors.New("router enrollment incomplete")
 		}
@@ -73,5 +80,29 @@ func (h *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []
 		return errors.New("unenrolled router")
 	}
 
-	return nil
+	// verify cert chain
+	if len(certificates) == 0 {
+		return errors.New("no certificates provided, unable to verify dialer")
+	}
+
+	config := self.identity.ServerTLSConfig()
+
+	opts := x509.VerifyOptions{
+		Roots:         config.RootCAs,
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+
+	var errorList errorz.MultipleErrors
+
+	for _, cert := range certificates {
+		if _, err := cert.Verify(opts); err == nil {
+			return nil
+		} else {
+			errorList = append(errorList, err)
+		}
+	}
+
+	//goland:noinspection GoNilness
+	return errorList.ToError()
 }

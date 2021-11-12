@@ -113,6 +113,10 @@ func (dt *destinationTable) addDestination(addr xgress.Address, destination Dest
 	dt.destinations.Set(string(addr), destination)
 }
 
+func (dt *destinationTable) addDestinationIfAbsent(addr xgress.Address, destination Destination) bool {
+	return dt.destinations.SetIfAbsent(string(addr), destination)
+}
+
 func (dt *destinationTable) getDestination(addr xgress.Address) (Destination, bool) {
 	if dst, found := dt.destinations.Get(string(addr)); found {
 		return dst.(Destination), true

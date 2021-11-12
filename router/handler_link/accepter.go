@@ -1,6 +1,10 @@
 package handler_link
 
 import (
+	"crypto/sha1"
+	"fmt"
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xgress"
@@ -9,6 +13,9 @@ import (
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"time"
 )
 
 func NewChannelAccepter(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwarder.Options, mr metrics.Registry) xlink_transport.ChannelAccepter {
@@ -20,7 +27,13 @@ func NewChannelAccepter(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwar
 	}
 }
 
-func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channel, trackLatency bool) error {
+func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channel, trackLatency bool, listenerSide bool) error {
+	if listenerSide {
+		if err := self.verifyLink(xlink, ch); err != nil {
+			return err
+		}
+	}
+
 	closeNotify := make(chan struct{})
 
 	ch.SetLogicalName("l/" + xlink.Id().Token)
@@ -44,6 +57,34 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	}
 
 	return nil
+}
+
+func (self *channelAccepter) verifyLink(l xlink.Xlink, ch channel2.Channel) error {
+	verifyLink := &ctrl_pb.VerifyLink{
+		LinkId: l.Id().Token,
+	}
+	for _, cert := range ch.Certificates() {
+		fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+		verifyLink.Fingerprints = append(verifyLink.Fingerprints, fingerprint)
+	}
+	b, err := proto.Marshal(verifyLink)
+	if err != nil {
+		return errors.Wrap(err, "unable to marshal verify link payload")
+	}
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_VerifyLinkType), b)
+	reply, err := self.ctrl.Channel().SendAndWaitWithTimeout(msg, 10*time.Second)
+	if err != nil {
+		return errors.Wrapf(err, "unable to verify link %v", l.Id().Token)
+	}
+	if reply.ContentType != channel2.ContentTypeResultType {
+		return errors.Errorf("unexpected response type to verify link: %v", reply.ContentType)
+	}
+	result := channel2.UnmarshalResult(reply)
+	if result.Success {
+		logrus.Infof("successfully verify link %v", l.Id().Token)
+		return nil
+	}
+	return errors.Errorf("unable to verify link [%v]", result.Message)
 }
 
 type channelAccepter struct {

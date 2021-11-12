@@ -84,11 +84,11 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	xli := &splitImpl{id: linkId, payloadCh: payloadCh, ackCh: ackCh}
 
 	if self.chAccepter != nil {
-		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true); err != nil {
+		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true, false); err != nil {
 			_ = xli.Close()
 			return nil, errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", linkId.Token)
 		}
-		if err := self.chAccepter.AcceptChannel(xli, ackCh, false); err != nil {
+		if err := self.chAccepter.AcceptChannel(xli, ackCh, false, false); err != nil {
 			_ = xli.Close()
 			return nil, errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", linkId.Token)
 		}
@@ -117,7 +117,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	}
 
 	if self.chAccepter != nil {
-		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true); err != nil {
+		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true, false); err != nil {
 			_ = xli.Close()
 			return nil, errors.Wrapf(err, "error accepting outgoing channel for [l/%s]", linkId.Token)
 		}
