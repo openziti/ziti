@@ -1,9 +1,18 @@
-# Release 0.22.12
+# Release 0.23.0
 
 ## What's New
 
 * Bug fix: Fix panic in router when router is shutdown before control channel is established
 * Enhancement: Add source/target router ids on link metrics. 
+* Security: Fabric management channel wasn't properly validating certs against the server cert chain
+* Security: Router link listeners weren't properly validating certs against the server cert chain
+* Security: Link listeners now validate incoming links to ensure that the link was requested by the controller and the correct router dialed
+* Security: Don't allow link forwarding entries to be overriden, as link ids should be unique
+* Security: Validate ctrl channel clients against controller cert chain in addition to checking cert fingerprint
+
+## Breaking Changes
+
+The link validation required a controller side and router side component. The controller will continue to work with earlier routers, but the routers with version >= 0.23.0 will need a controller with version >= 0.23.0.
 
 ## Link Metrics Router Ids
 
