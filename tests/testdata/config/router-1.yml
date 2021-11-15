@@ -1,0 +1,52 @@
+v: 3
+
+# (required) The certificates, ca chains, and private key used to represent this routers identity
+#
+# If the 'edge" section is enabled and enrollment is run, the files in this section will be written to with the results.
+# The "key" value can be provided through any of the support private key engines (file, etc.).
+#
+# If the 'key' value is a file and that file exists; it is expected to a pre-generated private key. It will be used for
+# the  enrollment process and it will back the certificates generated during enrollment. If the file does not exist, it
+# will be generated.
+#
+# The 'cert', 'server_cert', and 'ca' files will be overwritten with the results of the enrollment process.
+#
+# When running the ziti-router the files/values in this section will be read and used. The 'cert' value will be used
+# as the client certificate to connect to the controller. The 'server_cert' is used for all servers/listeners. The
+# 'ca' value is used to populate an internally Trusted CA pool.
+identity:
+  cert: testdata/router/001-client.cert.pem
+  server_cert: testdata/router/001-server.cert.pem
+  key: testdata/router/001.key.pem
+  ca: testdata/ca/intermediate/certs/ca-chain.cert.pem
+
+ctrl:
+  endpoint: tls:127.0.0.1:6363
+
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - "localhost"
+      - "test-network"
+      - "test-network.localhost"
+      - "ziti-dev-ingress01"
+    email:
+      - "admin@example.com"
+    ip:
+      - "127.0.0.1"
+    uri:
+      - "ziti://ziti-dev-router01/made/up/example"
+
+dialers:
+  - binding: transport
+
+link:
+  listeners:
+    - binding: transport
+      bind: tls:127.0.0.1:6004
+      advertise: tls:127.0.0.1:6004
