@@ -18,10 +18,17 @@ package tests
 
 import (
 	"crypto"
+	"crypto/sha1"
 	cryptoTls "crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"github.com/go-resty/resty/v2"
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/foundation/identity/identity"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -43,8 +50,8 @@ import (
 )
 
 const (
-	ControllerConfFile    = "ctrl.yml"
-	TransitRouterConfFile = "router.yml"
+	ControllerConfFile = "./testdata/config/ctrl.yml"
+	RouterConfFile     = "./testdata/config/router-%v.yml"
 )
 
 func init() {
@@ -68,7 +75,7 @@ type TestContext struct {
 	managementApiClient *resty.Client
 	enabledJsonLogging  bool
 
-	router           *router.Router
+	routers          []*router.Router
 	testing          *testing.T
 	LogLevel         string
 	ControllerConfig *controller.Config
@@ -190,19 +197,20 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.Req.NoError(err)
 }
 
-func (ctx *TestContext) startTransitRouter() {
-	config, err := router.LoadConfig(TransitRouterConfFile)
+func (ctx *TestContext) startRouter(index uint8) {
+	config, err := router.LoadConfig(fmt.Sprintf(RouterConfFile, index))
 	ctx.Req.NoError(err)
-	ctx.router = router.Create(config, NewVersionProviderTest())
+	r := router.Create(config, NewVersionProviderTest())
+	ctx.Req.NoError(r.Start())
 
-	ctx.Req.NoError(ctx.router.Start())
+	ctx.routers = append(ctx.routers, r)
 }
 
 func (ctx *TestContext) shutdownRouter() {
-	if ctx.router != nil {
-		ctx.Req.NoError(ctx.router.Shutdown())
-		ctx.router = nil
+	for _, r := range ctx.routers {
+		ctx.Req.NoError(r.Shutdown())
 	}
+	ctx.routers = nil
 }
 
 func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
@@ -276,4 +284,68 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 	ctx.Req.True(now.After(updatedAt) || now.Equal(updatedAt))
 
 	return createdAt
+}
+
+func (ctx *TestContext) createMgmtClient() *MgmtClient {
+	badId, err := identity.LoadClientIdentity(
+		"./testdata/valid_client_cert/client.cert",
+		"./testdata/valid_client_cert/client.key",
+		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+
+	ctx.Req.NoError(err)
+	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
+	ctx.Req.NoError(err)
+	dialer := channel2.NewClassicDialer(badId, mgmtAddress, nil)
+	ch, err := channel2.NewChannel("mgmt", dialer, nil)
+	ctx.Req.NoError(err)
+
+	return &MgmtClient{
+		TestContext: ctx,
+		ch:          ch,
+	}
+}
+
+type MgmtClient struct {
+	*TestContext
+	ch channel2.Channel
+}
+
+func (self *MgmtClient) ListServices(query string) []*mgmt_pb.Service {
+	request := &mgmt_pb.ListServicesRequest{
+		Query: query,
+	}
+	body, err := proto.Marshal(request)
+	self.Req.NoError(err)
+	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListServicesRequestType), body)
+	responseMsg, err := self.ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
+	self.Req.NoError(err)
+	self.Req.Equal(responseMsg.ContentType, int32(mgmt_pb.ContentType_ListServicesResponseType))
+	response := &mgmt_pb.ListServicesResponse{}
+	err = proto.Unmarshal(responseMsg.Body, response)
+	self.Req.NoError(err)
+	return response.Services
+}
+
+func (self *MgmtClient) EnrollRouter(id string, name string, certFile string) {
+	cert, err := certtools.LoadCertFromFile(certFile)
+	self.Req.NoError(err)
+
+	request := &mgmt_pb.CreateRouterRequest{
+		Router: &mgmt_pb.Router{
+			Id:          id,
+			Name:        name,
+			Fingerprint: fmt.Sprintf("%x", sha1.Sum(cert[0].Raw)),
+		},
+	}
+
+	body, err := proto.Marshal(request)
+	self.Req.NoError(err)
+
+	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateRouterRequestType), body)
+	responseMsg, err := self.ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
+	self.Req.NoError(err)
+
+	self.Req.Equal(responseMsg.ContentType, int32(channel2.ContentTypeResultType), "unexpected response type %v", responseMsg.ContentType)
+	result := channel2.UnmarshalResult(responseMsg)
+	self.Req.True(result.Success, "expected success, msg: %v", result.Message)
 }
