@@ -42,7 +42,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert")
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 }
 function cleanZitiController {
   ziti_home="${ZITI_HOME-}"
@@ -60,11 +60,22 @@ function initializeController {
 }
 function startZitiController {
   # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
-  echo -e "ziti-controller started. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
+  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
+  pid=$!
+  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
+  return $pid
 }
 function stopZitiController {
   killall ziti-controller
+}
+function startExpressEdgeRouter {
+  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &
+  pid=$!
+  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log")"
+  return $pid
+}
+function stopAllEdgeRouters {
+  killall ziti-router
 }
 function checkHostsFile {
   ctrlexists=$(grep -c "${ZITI_CONTROLLER_HOSTNAME}" /etc/hosts)
@@ -224,7 +235,8 @@ function checkControllerName {
 }
 
 function unsetZitiEnv {
-  for zEnvVar in $(set -o posix ; set | grep -e "^ZITI_" | sort); do envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"; echo unsetting "[${envvar}]${zEnvVar}"; unset "${envvar}"; done
+  for zEnvVar in $(set | grep -e "^ZITI_" | sort); do envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"; echo unsetting "[${envvar}]${zEnvVar}"; unset "${envvar}"; done
+  unset ZITIx_EXPRESS_COMPLETE
 }
 
 function issueGreeting {
@@ -309,6 +321,12 @@ function generateEnvFile {
 }
 
 function ziti_expressConfiguration {
+  if [[ "${ZITIx_EXPRESS_COMPLETE-}" != "" ]]; then
+    echo -e "$(RED "  --- It looks like you've run an express install in this shell already. ---")"
+    echo -e "$(RED "  --- Please execute unsetZitiEnv to clear any variables already set.    ---")"
+    return 1
+  fi
+  export ZITIx_EXPRESS_COMPLETE="true"
   echo " "
   echo "___________   _______________________________________^__"
   echo " ___   ___ |||  ___   ___   ___    ___ ___  |   __  ,----\ "
@@ -319,6 +337,15 @@ function ziti_expressConfiguration {
   echo "           |||                                        /--------"
   echo "-----------'''---------------------------------------'"
   echo ""
+  if [[ "${ZITI_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_RAWNAME OVERIDDEN: $ZITI_CONTROLLER_RAWNAME"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_HOSTNAME OVERIDDEN: $ZITI_CONTROLLER_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_RAWNAME OVERIDDEN: $ZITI_EDGE_CONTROLLER_RAWNAME"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_HOSTNAME OVERIDDEN: $ZITI_EDGE_CONTROLLER_HOSTNAME"; fi
+  if [[ "${ZITI_ZAC_RAWNAME-}" != "" ]]; then echo "ZITI_ZAC_RAWNAME OVERIDDEN: $ZITI_ZAC_RAWNAME"; fi
+  if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERIDDEN: $ZITI_ZAC_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_RAWNAME OVERIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
 
   if [[ "${1-}" == "" ]]; then
     nw="$(hostname)"
@@ -328,6 +355,7 @@ function ziti_expressConfiguration {
 
   setupZitiNetwork "${nw}"
   setupZitiHome
+  echo "ZITI HOME SET TO: ${ZITI_HOME}"
 
   if ! getLatestZiti "no"; then
     echo -e "$(RED "getLatestZiti failed")"
@@ -341,39 +369,43 @@ function ziti_expressConfiguration {
 
   createPki
   createControllerConfig
-  createControllerSystemdFile
+  #createControllerSystemdFile
   initializeController
   startZitiController
-  echo "starting the ziti controller to enroll the edge router"
+  echo "waiting for the controller to come online to allow the edge router to enroll"
   waitForController
 
   zitiLogin
 
   echo -e "----------  Creating an edge router policy allowing all identities to connect to routers with a $(GREEN "#public") attribute"
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete edge-router-policy allEdgeRouters)
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' )
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router-policy allEdgeRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' > /dev/null
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters)
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all')
+  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
 
   createRouterPki
   createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
-  createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
+  #createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
 
   echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}")
-  unused=$("${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t)
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t -a "public"> /dev/null
   sleep 1
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
 
-  unused=$("${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log")
+  "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
-  sleep 1
-  # shellcheck disable=SC2034
-  unused=$("${ZITI_BIN_DIR-}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &)
 
-  echo "Express setup complete!"
+  killall ziti-controller
+  echo "Edge Router enrolled. Controller stopped."
+
+  echo ""
+  echo -e "$(GREEN "Congratulations. Express setup complete!")"
+  echo -e "Start your Ziti Controller by running the function: $(BLUE "startZitiController")"
+  echo -e "Start your Ziti Edge Router by running : $(BLUE 'startExpressEdgeRouter')"
+  echo ""
 }
 
 function decideToUseDefaultZitiHome {
@@ -1168,7 +1200,7 @@ function ziti_createEnvFile {
   mkdir -p "${ZITI_PKI}"
 
   echo "" > "${ENV_FILE}"
-  for zEnvVar in $(set -o posix ; set | grep ZITI_ | sort); do envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"; envval="$(echo "${zEnvVar}" | cut -d '=' -f2-100)"; echo "export ${envvar}=\"${envval}\"" >> "${ENV_FILE}"; done
+  for zEnvVar in $(set | grep -e "^ZITI_" | sort); do envvar="$(echo "${zEnvVar}" | cut -d '=' -f1)"; envval="$(echo "${zEnvVar}" | cut -d '=' -f2-100)"; echo "export ${envvar}=\"${envval}\"" >> "${ENV_FILE}"; done
 
   export PFXLOG_NO_JSON=true
   # shellcheck disable=SC2129
@@ -1176,6 +1208,7 @@ function ziti_createEnvFile {
 
   echo "alias zec='ziti edge'" >> "${ENV_FILE}"
   echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CONTROLLER_API}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CONTROLLER_API}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path
@@ -1252,7 +1285,7 @@ HeredocForSystemd
 function createRouterSystemdFile {
   router_name="${1-}"
   if [[ "${router_name}" == "" ]]; then
-    echo -e "  * ERROR: $(RED "createRouterSystemdFile requires a parameter to be supplied") "
+    echo -e "  * ERROR: $(RED "createRouterSystemdFile requires parameter [router_name] to be supplied") "
     return 1
   fi
 
@@ -1287,6 +1320,92 @@ WantedBy=multi-user.target
 HeredocForSystemd
   echo "Router systemd file written to: ${systemd_file}"
 }
+
+function createControllerLaunchdFile {
+launchd_file="${ziti_home}/ziti-router-${router_name}.launchd"
+cat > "${launchd_file}" <<HeredocForLaunchd
+<?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0">
+    <dict>
+      <key>Label</key>
+      <string>ziti-controller-${ZITI_BINARIES_VERSION}</string>
+      <key>ProgramArguments</key>
+      <array>
+        <string>./ziti-controller</string>
+        <!--string>--verbose</string-->
+        <string>run</string>
+        <string>./ctrl.with.edge.yml</string>
+      </array>
+      <key>WorkingDirectory</key>
+      <string>${ZITI_HOME}</string>
+      <key>KeepAlive</key>
+      <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+      </dict>
+      <key>StandardOutPath</key>
+      <string>/Users/scarey/Library/Logs/ziti-controller-0.22.9.log</string>
+      <key>StandardErrorPath</key>
+      <string>/Users/scarey/Library/Logs/ziti-controller-0.22.9.log</string>
+    </dict>
+  </plist>
+HeredocForLaunchd
+  echo "Router launchd file written to: ${launchd_file}"
+}
+function createRouterLaunchdFile {
+  router_name="${1-}"
+  if [[ "${router_name}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "createRouterLaunchdFile requires parameter [router_name] to be supplied") "
+    return 1
+  fi
+
+  ziti_home="${ZITI_HOME-}"
+  if [[ "${ziti_home}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "ZITI_HOME is not set") "
+    return 1
+  fi
+
+  ziti_bin_dir="${ZITI_BIN_DIR-}"
+  if [[ "${ziti_bin_dir}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "ZITI_BIN_DIR is not set") "
+    return 1
+  fi
+launchd_file="${ziti_home}/ziti-router-${router_name}.launchd"
+cat > "${launchd_file}" <<HeredocForLaunchd
+<?xml version="1.0" encoding="UTF-8"?>
+  <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+  <plist version="1.0">
+    <dict>
+      <key>Label</key>
+      <string>ziti-controller-0.22.9</string>
+      <key>ProgramArguments</key>
+      <array>
+        <string>./ziti-controller</string>
+        <!--string>--verbose</string-->
+        <string>run</string>
+        <string>./ctrl.with.edge.yml</string>
+      </array>
+      <key>WorkingDirectory</key>
+      <string>${ZITI_HOME}</string>
+      <key>KeepAlive</key>
+      <dict>
+        <key>PathState</key>
+        <dict>
+          <key>${ZITI_HOME}/launchd-enabled</key>
+          <true/>
+        </dict>
+      </dict>
+      <key>StandardOutPath</key>
+      <string>/Users/scarey/Library/Logs/ziti-controller-0.22.9.log</string>
+      <key>StandardErrorPath</key>
+      <string>/Users/scarey/Library/Logs/ziti-controller-0.22.9.log</string>
+    </dict>
+  </plist>
+HeredocForLaunchd
+  echo "Router launchd file written to: ${launchd_file}"
+}
+
 
 function createZacSystemdFile {
   ziti_home="${ZITI_HOME-}"
@@ -1346,10 +1465,5 @@ function setOs {
   return 0
 }
 
-param1="$@"
-
-if [[ "${param1}" != "" ]]; then
-  eval "$@"
-fi
 
 set +uo pipefail
