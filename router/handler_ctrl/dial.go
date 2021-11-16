@@ -62,7 +62,6 @@ func (self *dialHandler) HandleReceive(msg *channel2.Message, ch channel2.Channe
 }
 
 func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
-	logrus.Info("received link connect request")
 	dial := &ctrl_pb.Dial{}
 	if err := proto.Unmarshal(msg.Body, dial); err == nil {
 		log := pfxlog.ChannelLogger("link", "linkDialer").
@@ -89,7 +88,7 @@ func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
 			}
 		}
 	} else {
-		logrus.WithError(err).Error("error unmarshaling dial message")
+		logrus.WithError(err).Error("error unmarshalling dial message")
 	}
 }
 
