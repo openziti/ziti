@@ -173,6 +173,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	if err != nil {
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
 		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
 	}
 
 	ae.GetHandlers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
