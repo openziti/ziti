@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/eid"
+	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/network"
 
 	"github.com/openziti/fabric/rest_model"
@@ -59,7 +59,7 @@ func MapCreateServiceToModel(service *rest_model.ServiceCreate) *network.Service
 	}
 
 	if ret.Id == "" {
-		ret.Id = eid.New()
+		ret.Id = idgen.New()
 	}
 
 	if ret.Id != "" && ret.Name == "" {

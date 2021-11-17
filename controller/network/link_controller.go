@@ -17,23 +17,23 @@
 package network
 
 import (
+	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
-	"github.com/openziti/foundation/util/sequence"
 	"github.com/orcaman/concurrent-map"
 	"math"
 	"time"
 )
 
 type linkController struct {
-	linkTable *linkTable
-	sequence  *sequence.Sequence
+	linkTable      *linkTable
+	idGenerator    idgen.Generator
 }
 
 func newLinkController() *linkController {
 	return &linkController{
 		linkTable: newLinkTable(),
-		sequence:  sequence.NewSequence(),
+		idGenerator:    idgen.NewGenerator(),
 	}
 }
 
@@ -126,7 +126,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 		for _, dstR := range routers {
 			if srcR != dstR && dstR.AdvertisedListener != "" {
 				if !linkController.hasLink(srcR, dstR, pendingLimit) {
-					id, err := linkController.sequence.NextHash()
+					id, err := linkController.idGenerator.NextAlphaNumericPrefixedId()
 					if err != nil {
 						return nil, err
 					}

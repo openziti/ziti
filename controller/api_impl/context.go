@@ -19,13 +19,13 @@ package api_impl
 import (
 	"bytes"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/eid"
+	"github.com/openziti/fabric/controller/idgen"
 	"io/ioutil"
 	"net/http"
 )
 
 func NewRequestContext(rw http.ResponseWriter, r *http.Request) api.RequestContext {
-	rid := eid.New()
+	rid := idgen.New()
 
 	body, _ := ioutil.ReadAll(r.Body)
 	r.Body = ioutil.NopCloser(bytes.NewReader(body))

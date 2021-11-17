@@ -357,7 +357,7 @@ func (network *Network) LinkChanged(l *Link) {
 
 func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context) (*Circuit, error) {
 	// 1: Allocate Circuit Identifier
-	circuitId, err := network.sequence.NextHash()
+	circuitId, err := network.circuitController.nextCircuitId()
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +461,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		logger.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
 
 		// 6: Create Circuit Object
-		ss := &Circuit{
+		circuit := &Circuit{
 			Id:         circuitId,
 			ClientId:   clientId.Token,
 			Service:    svc,
@@ -469,11 +469,11 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			Terminator: terminator,
 			PeerData:   peerData,
 		}
-		network.circuitController.add(ss)
-		network.CircuitCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Path)
+		network.circuitController.add(circuit)
+		network.CircuitCreated(circuit.Id, circuit.ClientId, circuit.Service.Id, circuit.Path)
 
-		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, ss.Path)
-		return ss, nil
+		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, circuit.Path)
+		return circuit, nil
 	}
 }
 
