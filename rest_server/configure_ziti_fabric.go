@@ -35,6 +35,8 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 
 	"github.com/openziti/fabric/rest_server/operations"
+	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
 	"github.com/openziti/fabric/rest_server/operations/terminator"
@@ -79,6 +81,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 			return middleware.NotImplemented("operation terminator.CreateTerminator has not yet been implemented")
 		})
 	}
+	if api.CircuitDeleteCircuitHandler == nil {
+		api.CircuitDeleteCircuitHandler = circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
+		})
+	}
 	if api.RouterDeleteRouterHandler == nil {
 		api.RouterDeleteRouterHandler = router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DeleteRouter has not yet been implemented")
@@ -94,6 +101,16 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 			return middleware.NotImplemented("operation terminator.DeleteTerminator has not yet been implemented")
 		})
 	}
+	if api.CircuitDetailCircuitHandler == nil {
+		api.CircuitDetailCircuitHandler = circuit.DetailCircuitHandlerFunc(func(params circuit.DetailCircuitParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.DetailCircuit has not yet been implemented")
+		})
+	}
+	if api.LinkDetailLinkHandler == nil {
+		api.LinkDetailLinkHandler = link.DetailLinkHandlerFunc(func(params link.DetailLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.DetailLink has not yet been implemented")
+		})
+	}
 	if api.RouterDetailRouterHandler == nil {
 		api.RouterDetailRouterHandler = router.DetailRouterHandlerFunc(func(params router.DetailRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DetailRouter has not yet been implemented")
@@ -107,6 +124,16 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorDetailTerminatorHandler == nil {
 		api.TerminatorDetailTerminatorHandler = terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		})
+	}
+	if api.CircuitListCircuitsHandler == nil {
+		api.CircuitListCircuitsHandler = circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.ListCircuits has not yet been implemented")
+		})
+	}
+	if api.LinkListLinksHandler == nil {
+		api.LinkListLinksHandler = link.ListLinksHandlerFunc(func(params link.ListLinksParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.ListLinks has not yet been implemented")
 		})
 	}
 	if api.RouterListRouterTerminatorsHandler == nil {
@@ -132,6 +159,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorListTerminatorsHandler == nil {
 		api.TerminatorListTerminatorsHandler = terminator.ListTerminatorsHandlerFunc(func(params terminator.ListTerminatorsParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.ListTerminators has not yet been implemented")
+		})
+	}
+	if api.LinkPatchLinkHandler == nil {
+		api.LinkPatchLinkHandler = link.PatchLinkHandlerFunc(func(params link.PatchLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.PatchLink has not yet been implemented")
 		})
 	}
 	if api.ServicePatchServiceHandler == nil {

@@ -43,6 +43,8 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
 
+	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
 	"github.com/openziti/fabric/rest_server/operations/terminator"
@@ -79,6 +81,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		TerminatorCreateTerminatorHandler: terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.CreateTerminator has not yet been implemented")
 		}),
+		CircuitDeleteCircuitHandler: circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
+		}),
 		RouterDeleteRouterHandler: router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DeleteRouter has not yet been implemented")
 		}),
@@ -88,6 +93,12 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		TerminatorDeleteTerminatorHandler: terminator.DeleteTerminatorHandlerFunc(func(params terminator.DeleteTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DeleteTerminator has not yet been implemented")
 		}),
+		CircuitDetailCircuitHandler: circuit.DetailCircuitHandlerFunc(func(params circuit.DetailCircuitParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.DetailCircuit has not yet been implemented")
+		}),
+		LinkDetailLinkHandler: link.DetailLinkHandlerFunc(func(params link.DetailLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.DetailLink has not yet been implemented")
+		}),
 		RouterDetailRouterHandler: router.DetailRouterHandlerFunc(func(params router.DetailRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DetailRouter has not yet been implemented")
 		}),
@@ -96,6 +107,12 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		}),
 		TerminatorDetailTerminatorHandler: terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		}),
+		CircuitListCircuitsHandler: circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams) middleware.Responder {
+			return middleware.NotImplemented("operation circuit.ListCircuits has not yet been implemented")
+		}),
+		LinkListLinksHandler: link.ListLinksHandlerFunc(func(params link.ListLinksParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.ListLinks has not yet been implemented")
 		}),
 		RouterListRouterTerminatorsHandler: router.ListRouterTerminatorsHandlerFunc(func(params router.ListRouterTerminatorsParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.ListRouterTerminators has not yet been implemented")
@@ -111,6 +128,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		}),
 		TerminatorListTerminatorsHandler: terminator.ListTerminatorsHandlerFunc(func(params terminator.ListTerminatorsParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.ListTerminators has not yet been implemented")
+		}),
+		LinkPatchLinkHandler: link.PatchLinkHandlerFunc(func(params link.PatchLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.PatchLink has not yet been implemented")
 		}),
 		ServicePatchServiceHandler: service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
@@ -166,18 +186,28 @@ type ZitiFabricAPI struct {
 	ServiceCreateServiceHandler service.CreateServiceHandler
 	// TerminatorCreateTerminatorHandler sets the operation handler for the create terminator operation
 	TerminatorCreateTerminatorHandler terminator.CreateTerminatorHandler
+	// CircuitDeleteCircuitHandler sets the operation handler for the delete circuit operation
+	CircuitDeleteCircuitHandler circuit.DeleteCircuitHandler
 	// RouterDeleteRouterHandler sets the operation handler for the delete router operation
 	RouterDeleteRouterHandler router.DeleteRouterHandler
 	// ServiceDeleteServiceHandler sets the operation handler for the delete service operation
 	ServiceDeleteServiceHandler service.DeleteServiceHandler
 	// TerminatorDeleteTerminatorHandler sets the operation handler for the delete terminator operation
 	TerminatorDeleteTerminatorHandler terminator.DeleteTerminatorHandler
+	// CircuitDetailCircuitHandler sets the operation handler for the detail circuit operation
+	CircuitDetailCircuitHandler circuit.DetailCircuitHandler
+	// LinkDetailLinkHandler sets the operation handler for the detail link operation
+	LinkDetailLinkHandler link.DetailLinkHandler
 	// RouterDetailRouterHandler sets the operation handler for the detail router operation
 	RouterDetailRouterHandler router.DetailRouterHandler
 	// ServiceDetailServiceHandler sets the operation handler for the detail service operation
 	ServiceDetailServiceHandler service.DetailServiceHandler
 	// TerminatorDetailTerminatorHandler sets the operation handler for the detail terminator operation
 	TerminatorDetailTerminatorHandler terminator.DetailTerminatorHandler
+	// CircuitListCircuitsHandler sets the operation handler for the list circuits operation
+	CircuitListCircuitsHandler circuit.ListCircuitsHandler
+	// LinkListLinksHandler sets the operation handler for the list links operation
+	LinkListLinksHandler link.ListLinksHandler
 	// RouterListRouterTerminatorsHandler sets the operation handler for the list router terminators operation
 	RouterListRouterTerminatorsHandler router.ListRouterTerminatorsHandler
 	// RouterListRoutersHandler sets the operation handler for the list routers operation
@@ -188,6 +218,8 @@ type ZitiFabricAPI struct {
 	ServiceListServicesHandler service.ListServicesHandler
 	// TerminatorListTerminatorsHandler sets the operation handler for the list terminators operation
 	TerminatorListTerminatorsHandler terminator.ListTerminatorsHandler
+	// LinkPatchLinkHandler sets the operation handler for the patch link operation
+	LinkPatchLinkHandler link.PatchLinkHandler
 	// ServicePatchServiceHandler sets the operation handler for the patch service operation
 	ServicePatchServiceHandler service.PatchServiceHandler
 	// TerminatorPatchTerminatorHandler sets the operation handler for the patch terminator operation
@@ -282,6 +314,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	if o.TerminatorCreateTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.CreateTerminatorHandler")
 	}
+	if o.CircuitDeleteCircuitHandler == nil {
+		unregistered = append(unregistered, "circuit.DeleteCircuitHandler")
+	}
 	if o.RouterDeleteRouterHandler == nil {
 		unregistered = append(unregistered, "router.DeleteRouterHandler")
 	}
@@ -291,6 +326,12 @@ func (o *ZitiFabricAPI) Validate() error {
 	if o.TerminatorDeleteTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.DeleteTerminatorHandler")
 	}
+	if o.CircuitDetailCircuitHandler == nil {
+		unregistered = append(unregistered, "circuit.DetailCircuitHandler")
+	}
+	if o.LinkDetailLinkHandler == nil {
+		unregistered = append(unregistered, "link.DetailLinkHandler")
+	}
 	if o.RouterDetailRouterHandler == nil {
 		unregistered = append(unregistered, "router.DetailRouterHandler")
 	}
@@ -299,6 +340,12 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorDetailTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.DetailTerminatorHandler")
+	}
+	if o.CircuitListCircuitsHandler == nil {
+		unregistered = append(unregistered, "circuit.ListCircuitsHandler")
+	}
+	if o.LinkListLinksHandler == nil {
+		unregistered = append(unregistered, "link.ListLinksHandler")
 	}
 	if o.RouterListRouterTerminatorsHandler == nil {
 		unregistered = append(unregistered, "router.ListRouterTerminatorsHandler")
@@ -314,6 +361,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorListTerminatorsHandler == nil {
 		unregistered = append(unregistered, "terminator.ListTerminatorsHandler")
+	}
+	if o.LinkPatchLinkHandler == nil {
+		unregistered = append(unregistered, "link.PatchLinkHandler")
 	}
 	if o.ServicePatchServiceHandler == nil {
 		unregistered = append(unregistered, "service.PatchServiceHandler")
@@ -430,6 +480,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
+	o.handlers["DELETE"]["/circuits/{id}"] = circuit.NewDeleteCircuit(o.context, o.CircuitDeleteCircuitHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
 	o.handlers["DELETE"]["/routers/{id}"] = router.NewDeleteRouter(o.context, o.RouterDeleteRouterHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
@@ -442,6 +496,14 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/circuits/{id}"] = circuit.NewDetailCircuit(o.context, o.CircuitDetailCircuitHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/links/{id}"] = link.NewDetailLink(o.context, o.LinkDetailLinkHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/routers/{id}"] = router.NewDetailRouter(o.context, o.RouterDetailRouterHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -451,6 +513,14 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/terminators/{id}"] = terminator.NewDetailTerminator(o.context, o.TerminatorDetailTerminatorHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/circuits"] = circuit.NewListCircuits(o.context, o.CircuitListCircuitsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/links"] = link.NewListLinks(o.context, o.LinkListLinksHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -471,6 +541,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/terminators"] = terminator.NewListTerminators(o.context, o.TerminatorListTerminatorsHandler)
+	if o.handlers["PATCH"] == nil {
+		o.handlers["PATCH"] = make(map[string]http.Handler)
+	}
+	o.handlers["PATCH"]["/links/{id}"] = link.NewPatchLink(o.context, o.LinkPatchLinkHandler)
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}

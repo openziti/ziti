@@ -197,7 +197,7 @@ func (lt *linkTable) has(link *Link) bool {
 }
 
 func (lt *linkTable) all() []*Link {
-	links := make([]*Link, 0)
+	links := make([]*Link, 0, lt.links.Count())
 	for i := range lt.links.IterBuffered() {
 		links = append(links, i.Val.(*Link))
 	}

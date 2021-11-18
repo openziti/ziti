@@ -413,6 +413,117 @@ paths:
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
 
+  ###################################################################
+  # Links
+  ##################################################################
+  '/links':
+    get:
+      summary: List links
+      description: |
+        Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+      tags:
+        - Link
+      operationId: listLinks
+      #      parameters:
+      #        - $ref: '#/parameters/limit'
+      #        - $ref: '#/parameters/offset'
+      #        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listLinks'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/links/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single link
+      description: Retrieves a single link by id. Requires admin access.
+      tags:
+        - Link
+      operationId: detailLink
+      responses:
+        '200':
+          $ref: '#/responses/detailLink'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a link
+      description: Update the supplied fields on a link. Requires admin access.
+      tags:
+        - Link
+      operationId: patchLink
+      parameters:
+        - name: link
+          in: body
+          required: true
+          description: A link patch object
+          schema:
+            $ref: '#/definitions/linkPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
+  ###################################################################
+  # Circuits
+  ##################################################################
+  '/circuits':
+    get:
+      summary: List circuits
+      description: |
+        Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+      tags:
+        - Circuit
+      operationId: listCircuits
+      #      parameters:
+      #        - $ref: '#/parameters/limit'
+      #        - $ref: '#/parameters/offset'
+      #        - $ref: '#/parameters/filter'
+      responses:
+        '200':
+          $ref: '#/responses/listCircuits'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+  '/circuits/{id}':
+    parameters:
+      - $ref: '#/parameters/id'
+    get:
+      summary: Retrieves a single circuit
+      description: Retrieves a single circuit by id. Requires admin access.
+      tags:
+        - Circuit
+      operationId: detailCircuit
+      responses:
+        '200':
+          $ref: '#/responses/detailCircuit'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a circuit
+      description: Delete a circuit by id. Requires admin access.
+      tags:
+        - Circuit
+      operationId: deleteCircuit
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+        '409':
+          $ref: '#/responses/cannotDeleteReferencedResourceResponse'
+
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
@@ -621,6 +732,29 @@ responses:
     schema:
       $ref: '#/definitions/detailTerminatorEnvelope'
 
+  ###################################################################
+  # Links
+  ##################################################################
+  listLinks:
+    description: A list of links
+    schema:
+      $ref: '#/definitions/listLinksEnvelope'
+  detailLink:
+    description: A single link
+    schema:
+      $ref: '#/definitions/detailLinkEnvelope'
+
+  ###################################################################
+  # Circuits
+  ##################################################################
+  listCircuits:
+    description: A list of circuits
+    schema:
+      $ref: '#/definitions/listCircuitsEnvelope'
+  detailCircuit:
+    description: A single circuit
+    schema:
+      $ref: '#/definitions/detailCircuitEnvelope'
 
 #######################################################################################################################
 #
@@ -1128,3 +1262,116 @@ definitions:
     type: object
     additionalProperties:
       $ref: '#/definitions/terminatorCost'
+
+  ###################################################################
+  # Links
+  ##################################################################
+  listLinksEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/linkList'
+  detailLinkEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/linkDetail'
+  linkList:
+    type: array
+    items:
+      $ref: '#/definitions/linkDetail'
+  linkDetail:
+    type: object
+    required:
+      - id
+      - sourceRouter
+      - destRouter
+      - state
+      - staticCost
+      - sourceLatency
+      - destLatency
+      - cost
+    properties:
+      id:
+        type: string
+      sourceRouter:
+        $ref: '#/definitions/entityRef'
+      destRouter:
+        $ref: '#/definitions/entityRef'
+      state:
+        type: string
+      down:
+        type: boolean
+      staticCost:
+        type: integer
+      sourceLatency:
+        type: integer
+      destLatency:
+        type: integer
+      cost:
+        type: integer
+  linkPatch:
+    type: object
+    properties:
+      down:
+        type: boolean
+      staticCost:
+        type: integer
+
+  ###################################################################
+  # Circuits
+  ##################################################################
+  listCircuitsEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/linkList'
+  detailCircuitEnvelope:
+    type: object
+    required:
+      - meta
+      - data
+    properties:
+      meta:
+        $ref: '#/definitions/meta'
+      data:
+        $ref: '#/definitions/circuitDetail'
+  circuitList:
+    type: array
+    items:
+      $ref: '#/definitions/circuitDetail'
+  circuitDetail:
+    type: object
+    required:
+      - id
+      - service
+      - terminator
+      - path
+    properties:
+      id:
+        type: string
+      clientId:
+        type: string
+      service:
+        $ref: '#/definitions/entityRef'
+      terminator:
+        $ref: '#/definitions/entityRef'
+      path:
+        type: array
+        items:
+          $ref: '#/definitions/entityRef'

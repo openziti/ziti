@@ -60,6 +60,149 @@ func init() {
   "host": "demo.ziti.dev",
   "basePath": "/fabric/v1",
   "paths": {
+    "/circuits": {
+      "get": {
+        "description": "Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "List circuits",
+        "operationId": "listCircuits",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/listCircuits"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
+    "/circuits/{id}": {
+      "get": {
+        "description": "Retrieves a single circuit by id. Requires admin access.",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "Retrieves a single circuit",
+        "operationId": "detailCircuit",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailCircuit"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a circuit by id. Requires admin access.",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "Delete a circuit",
+        "operationId": "deleteCircuit",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/deleteResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "409": {
+            "$ref": "#/responses/cannotDeleteReferencedResourceResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
+    },
+    "/links": {
+      "get": {
+        "description": "Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "tags": [
+          "Link"
+        ],
+        "summary": "List links",
+        "operationId": "listLinks",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/listLinks"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
+    "/links/{id}": {
+      "get": {
+        "description": "Retrieves a single link by id. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Retrieves a single link",
+        "operationId": "detailLink",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/detailLink"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "patch": {
+        "description": "Update the supplied fields on a link. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Update the supplied fields on a link",
+        "operationId": "patchLink",
+        "parameters": [
+          {
+            "description": "A link patch object",
+            "name": "link",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/linkPatch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/patchResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          },
+          "404": {
+            "$ref": "#/responses/notFoundResponse"
+          }
+        }
+      },
+      "parameters": [
+        {
+          "$ref": "#/parameters/id"
+        }
+      ]
+    },
     "/routers": {
       "get": {
         "description": "Retrieves a list of router resources; supports filtering, sorting, and pagination. Requires admin access.\n",
@@ -699,6 +842,41 @@ func init() {
         }
       }
     },
+    "circuitDetail": {
+      "type": "object",
+      "required": [
+        "id",
+        "service",
+        "terminator",
+        "path"
+      ],
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        },
+        "service": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "terminator": {
+          "$ref": "#/definitions/entityRef"
+        }
+      }
+    },
+    "circuitList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/circuitDetail"
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -718,6 +896,36 @@ func init() {
         },
         "id": {
           "type": "string"
+        }
+      }
+    },
+    "detailCircuitEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/circuitDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailLinkEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
         }
       }
     },
@@ -819,6 +1027,65 @@ func init() {
         }
       }
     },
+    "linkDetail": {
+      "type": "object",
+      "required": [
+        "id",
+        "sourceRouter",
+        "destRouter",
+        "state",
+        "staticCost",
+        "sourceLatency",
+        "destLatency",
+        "cost"
+      ],
+      "properties": {
+        "cost": {
+          "type": "integer"
+        },
+        "destLatency": {
+          "type": "integer"
+        },
+        "destRouter": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "down": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "sourceLatency": {
+          "type": "integer"
+        },
+        "sourceRouter": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "state": {
+          "type": "string"
+        },
+        "staticCost": {
+          "type": "integer"
+        }
+      }
+    },
+    "linkList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/linkDetail"
+      }
+    },
+    "linkPatch": {
+      "type": "object",
+      "properties": {
+        "down": {
+          "type": "boolean"
+        },
+        "staticCost": {
+          "type": "integer"
+        }
+      }
+    },
     "links": {
       "description": "A map of named links",
       "type": "object",
@@ -826,6 +1093,36 @@ func init() {
         "$ref": "#/definitions/link"
       },
       "x-omitempty": false
+    },
+    "listCircuitsEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listLinksEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
     },
     "listRoutersEnvelope": {
       "type": "object",
@@ -1404,6 +1701,18 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     },
+    "detailCircuit": {
+      "description": "A single circuit",
+      "schema": {
+        "$ref": "#/definitions/detailCircuitEnvelope"
+      }
+    },
+    "detailLink": {
+      "description": "A single link",
+      "schema": {
+        "$ref": "#/definitions/detailLinkEnvelope"
+      }
+    },
     "detailRouter": {
       "description": "A single router",
       "schema": {
@@ -1450,6 +1759,18 @@ func init() {
             "apiVersion": "0.0.1"
           }
         }
+      }
+    },
+    "listCircuits": {
+      "description": "A list of circuits",
+      "schema": {
+        "$ref": "#/definitions/listCircuitsEnvelope"
+      }
+    },
+    "listLinks": {
+      "description": "A list of links",
+      "schema": {
+        "$ref": "#/definitions/listLinksEnvelope"
       }
     },
     "listRouters": {
@@ -1576,6 +1897,460 @@ func init() {
   "host": "demo.ziti.dev",
   "basePath": "/fabric/v1",
   "paths": {
+    "/circuits": {
+      "get": {
+        "description": "Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "List circuits",
+        "operationId": "listCircuits",
+        "responses": {
+          "200": {
+            "description": "A list of circuits",
+            "schema": {
+              "$ref": "#/definitions/listCircuitsEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/circuits/{id}": {
+      "get": {
+        "description": "Retrieves a single circuit by id. Requires admin access.",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "Retrieves a single circuit",
+        "operationId": "detailCircuit",
+        "responses": {
+          "200": {
+            "description": "A single circuit",
+            "schema": {
+              "$ref": "#/definitions/detailCircuitEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a circuit by id. Requires admin access.",
+        "tags": [
+          "Circuit"
+        ],
+        "summary": "Delete a circuit",
+        "operationId": "deleteCircuit",
+        "responses": {
+          "200": {
+            "description": "The delete request was successful and the resource has been removed",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource requested to be removed/altered cannot be as it is referenced by another object.",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "causeMessage": "referenced by /some-resource/05f4f710-c155-4a74-86d5-77558eb9cb42",
+                  "code": "CONFLICT_CANNOT_MODIFY_REFERENCED",
+                  "message": "The resource cannot be deleted/modified. Remove all referencing resources first.",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/links": {
+      "get": {
+        "description": "Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "tags": [
+          "Link"
+        ],
+        "summary": "List links",
+        "operationId": "listLinks",
+        "responses": {
+          "200": {
+            "description": "A list of links",
+            "schema": {
+              "$ref": "#/definitions/listLinksEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/links/{id}": {
+      "get": {
+        "description": "Retrieves a single link by id. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Retrieves a single link",
+        "operationId": "detailLink",
+        "responses": {
+          "200": {
+            "description": "A single link",
+            "schema": {
+              "$ref": "#/definitions/detailLinkEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "description": "Update the supplied fields on a link. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Update the supplied fields on a link",
+        "operationId": "patchLink",
+        "parameters": [
+          {
+            "description": "A link patch object",
+            "name": "link",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/linkPatch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The patch request was successful and the resource has been altered",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/routers": {
       "get": {
         "description": "Retrieves a list of router resources; supports filtering, sorting, and pagination. Requires admin access.\n",
@@ -3366,6 +4141,41 @@ func init() {
         }
       }
     },
+    "circuitDetail": {
+      "type": "object",
+      "required": [
+        "id",
+        "service",
+        "terminator",
+        "path"
+      ],
+      "properties": {
+        "clientId": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        },
+        "service": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "terminator": {
+          "$ref": "#/definitions/entityRef"
+        }
+      }
+    },
+    "circuitList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/circuitDetail"
+      }
+    },
     "createEnvelope": {
       "type": "object",
       "properties": {
@@ -3385,6 +4195,36 @@ func init() {
         },
         "id": {
           "type": "string"
+        }
+      }
+    },
+    "detailCircuitEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/circuitDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailLinkEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
         }
       }
     },
@@ -3486,6 +4326,65 @@ func init() {
         }
       }
     },
+    "linkDetail": {
+      "type": "object",
+      "required": [
+        "id",
+        "sourceRouter",
+        "destRouter",
+        "state",
+        "staticCost",
+        "sourceLatency",
+        "destLatency",
+        "cost"
+      ],
+      "properties": {
+        "cost": {
+          "type": "integer"
+        },
+        "destLatency": {
+          "type": "integer"
+        },
+        "destRouter": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "down": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "sourceLatency": {
+          "type": "integer"
+        },
+        "sourceRouter": {
+          "$ref": "#/definitions/entityRef"
+        },
+        "state": {
+          "type": "string"
+        },
+        "staticCost": {
+          "type": "integer"
+        }
+      }
+    },
+    "linkList": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/linkDetail"
+      }
+    },
+    "linkPatch": {
+      "type": "object",
+      "properties": {
+        "down": {
+          "type": "boolean"
+        },
+        "staticCost": {
+          "type": "integer"
+        }
+      }
+    },
     "links": {
       "description": "A map of named links",
       "type": "object",
@@ -3493,6 +4392,36 @@ func init() {
         "$ref": "#/definitions/link"
       },
       "x-omitempty": false
+    },
+    "listCircuitsEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listLinksEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/linkList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
     },
     "listRoutersEnvelope": {
       "type": "object",
@@ -4072,6 +5001,18 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     },
+    "detailCircuit": {
+      "description": "A single circuit",
+      "schema": {
+        "$ref": "#/definitions/detailCircuitEnvelope"
+      }
+    },
+    "detailLink": {
+      "description": "A single link",
+      "schema": {
+        "$ref": "#/definitions/detailLinkEnvelope"
+      }
+    },
     "detailRouter": {
       "description": "A single router",
       "schema": {
@@ -4118,6 +5059,18 @@ func init() {
             "apiVersion": "0.0.1"
           }
         }
+      }
+    },
+    "listCircuits": {
+      "description": "A list of circuits",
+      "schema": {
+        "$ref": "#/definitions/listCircuitsEnvelope"
+      }
+    },
+    "listLinks": {
+      "description": "A list of links",
+      "schema": {
+        "$ref": "#/definitions/listLinksEnvelope"
       }
     },
     "listRouters": {

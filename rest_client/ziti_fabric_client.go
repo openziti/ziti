@@ -34,6 +34,8 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 
+	"github.com/openziti/fabric/rest_client/circuit"
+	"github.com/openziti/fabric/rest_client/link"
 	"github.com/openziti/fabric/rest_client/router"
 	"github.com/openziti/fabric/rest_client/service"
 	"github.com/openziti/fabric/rest_client/terminator"
@@ -81,6 +83,8 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiFabric
 
 	cli := new(ZitiFabric)
 	cli.Transport = transport
+	cli.Circuit = circuit.New(transport, formats)
+	cli.Link = link.New(transport, formats)
 	cli.Router = router.New(transport, formats)
 	cli.Service = service.New(transport, formats)
 	cli.Terminator = terminator.New(transport, formats)
@@ -128,6 +132,10 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 
 // ZitiFabric is a client for ziti fabric
 type ZitiFabric struct {
+	Circuit circuit.ClientService
+
+	Link link.ClientService
+
 	Router router.ClientService
 
 	Service service.ClientService
@@ -140,6 +148,8 @@ type ZitiFabric struct {
 // SetTransport changes the transport on the client and all its subresources
 func (c *ZitiFabric) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
+	c.Circuit.SetTransport(transport)
+	c.Link.SetTransport(transport)
 	c.Router.SetTransport(transport)
 	c.Service.SetTransport(transport)
 	c.Terminator.SetTransport(transport)

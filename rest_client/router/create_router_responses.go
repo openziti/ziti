@@ -39,7 +39,7 @@ import (
 	"github.com/openziti/fabric/rest_model"
 )
 
-// CreateRouterReader is a Reader for the createRouter structure.
+// CreateRouterReader is a Reader for the CreateRouter structure.
 type CreateRouterReader struct {
 	formats strfmt.Registry
 }
