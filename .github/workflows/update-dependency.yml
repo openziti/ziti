@@ -6,6 +6,8 @@ on:
         description: The dependency that was updated
         required: true
 
+concurrency: update-dependency
+
 jobs:
   build:
     if: github.ref == 'refs/heads/update-dependency'
