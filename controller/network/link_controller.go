@@ -26,22 +26,21 @@ import (
 )
 
 type linkController struct {
-	linkTable      *linkTable
-	adjacencyTable *adjacencyTable
-	sequence       *sequence.Sequence
+	linkTable *linkTable
+	sequence  *sequence.Sequence
 }
 
 func newLinkController() *linkController {
 	return &linkController{
-		linkTable:      newLinkTable(),
-		adjacencyTable: newAdjacencyTable(),
-		sequence:       sequence.NewSequence(),
+		linkTable: newLinkTable(),
+		sequence:  sequence.NewSequence(),
 	}
 }
 
 func (linkController *linkController) add(link *Link) {
 	linkController.linkTable.add(link)
-	linkController.adjacencyTable.add(link)
+	link.Src.routerLinks.Add(link)
+	link.Dst.routerLinks.Add(link)
 }
 
 func (linkController *linkController) has(link *Link) bool {
@@ -59,20 +58,14 @@ func (linkController *linkController) all() []*Link {
 
 func (linkController *linkController) remove(link *Link) {
 	linkController.linkTable.remove(link)
-	linkController.adjacencyTable.remove(link)
-}
-
-func (linkController *linkController) allLinksForRouter(routerId string) []*Link {
-	if rlt, found := linkController.adjacencyTable.get(routerId); found {
-		return rlt.allLinksForAllRouters()
-	}
-	return nil
+	link.Src.routerLinks.Remove(link)
+	link.Dst.routerLinks.Remove(link)
 }
 
 func (linkController *linkController) connectedNeighborsOfRouter(router *Router) []*Router {
 	neighborMap := make(map[string]*Router)
 
-	links := linkController.allLinksForRouter(router.Id)
+	links := router.routerLinks.GetLinks()
 	for _, link := range links {
 		currentState := link.CurrentState()
 		if currentState != nil && currentState.Mode == Connected && !link.Down {
@@ -96,7 +89,7 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	var selected *Link
 	var cost int64 = math.MaxInt64
 
-	links := linkController.allLinksForRouter(a.Id)
+	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		currentState := link.CurrentState()
 		if currentState != nil && currentState.Mode == Connected && !link.Down {
@@ -156,15 +149,12 @@ func (linkController *linkController) hasLink(a, b *Router, pendingLimit int64) 
 }
 
 func (linkController *linkController) hasDirectedLink(a, b *Router, pendingLimit int64) bool {
-	if rlt, found := linkController.adjacencyTable.get(a.Id); found {
-		if links, found := rlt.allLinksForRouter(b.Id); found {
-			for _, link := range links {
-				state := link.CurrentState()
-				if link.Src == a && link.Dst == b && state != nil {
-					if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
-						return true
-					}
-				}
+	links := a.routerLinks.GetLinks()
+	for _, link := range links {
+		state := link.CurrentState()
+		if link.Src == a && link.Dst == b && state != nil {
+			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
+				return true
 			}
 		}
 	}
@@ -328,19 +318,13 @@ func (rlt *routerLinksTable) allLinksForRouter(routerId string) ([]*Link, bool) 
 }
 
 func (rlt *routerLinksTable) allLinksForAllRouters() []*Link {
-	linksMap := make(map[string]*Link)
+	allLinks := make([]*Link, 0, rlt.routerLinks.Count())
 	for i := range rlt.routerLinks.IterBuffered() {
 		links := i.Val.([]*Link)
 		for _, link := range links {
-			linksMap[link.Id.Token] = link
+			allLinks = append(allLinks, link)
 		}
 	}
-
-	allLinks := make([]*Link, 0)
-	for _, v := range linksMap {
-		allLinks = append(allLinks, v)
-	}
-
 	return allLinks
 }
 

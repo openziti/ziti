@@ -36,21 +36,21 @@ func TestLifecycle(t *testing.T) {
 	linkController.add(l0)
 	assert.True(t, linkController.has(l0))
 
-	links := linkController.allLinksForRouter(r0.Id)
+	links := r0.routerLinks.GetLinks()
 	assert.Equal(t, 1, len(links))
 	assert.Equal(t, l0, links[0])
 
-	links = linkController.allLinksForRouter(r1.Id)
+	links = r1.routerLinks.GetLinks()
 	assert.Equal(t, 1, len(links))
 	assert.Equal(t, l0, links[0])
 
 	linkController.remove(l0)
 	assert.False(t, linkController.has(l0))
 
-	links = linkController.allLinksForRouter(r0.Id)
+	links = r0.routerLinks.GetLinks()
 	assert.Equal(t, 0, len(links))
 
-	links = linkController.allLinksForRouter(r1.Id)
+	links = r1.routerLinks.GetLinks()
 	assert.Equal(t, 0, len(links))
 }
 

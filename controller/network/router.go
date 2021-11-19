@@ -28,6 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"sync"
+	"sync/atomic"
 )
 
 type Router struct {
@@ -38,6 +40,7 @@ type Router struct {
 	Control            channel2.Channel
 	Connected          concurrenz.AtomicBoolean
 	VersionInfo        *common.VersionInfo
+	routerLinks        RouterLinks
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -63,11 +66,67 @@ func NewRouter(id, name, fingerprint string) *Router {
 	if name == "" {
 		name = id
 	}
-	return &Router{
+	result := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
 		Name:        name,
 		Fingerprint: &fingerprint,
 	}
+	result.routerLinks.Store([]*Link{})
+	return result
+}
+
+type routerCopyOnWriteMap struct {
+	sync.Mutex
+	atomic.Value
+}
+
+func newRouterCopyOnWriteMap() *routerCopyOnWriteMap {
+	result := &routerCopyOnWriteMap{}
+	result.Store(map[string]*Router{})
+	return result
+}
+
+func (self *routerCopyOnWriteMap) Has(id string) bool {
+	_, found := self.getCurrentMap()[id]
+	return found
+}
+
+func (self *routerCopyOnWriteMap) Count() int {
+	return len(self.getCurrentMap())
+}
+
+func (self *routerCopyOnWriteMap) Get(id string) (*Router, bool) {
+	r, found := self.getCurrentMap()[id]
+	return r, found
+}
+
+func (self *routerCopyOnWriteMap) Set(id string, router *Router) {
+	self.Lock()
+	defer self.Unlock()
+	m := self.getMapCopy()
+	m[id] = router
+	self.Store(m)
+}
+
+func (self *routerCopyOnWriteMap) Remove(id string) {
+	self.Lock()
+	defer self.Unlock()
+	m := self.getMapCopy()
+	delete(m, id)
+	self.Store(m)
+}
+
+func (self *routerCopyOnWriteMap) getCurrentMap() map[string]*Router {
+	return self.Load().(map[string]*Router)
+}
+
+func (self *routerCopyOnWriteMap) getMapCopy() map[string]*Router {
+	m := self.getCurrentMap()
+	mapCopy := map[string]*Router{}
+	for k, v := range m {
+		mapCopy[k] = v
+	}
+	return mapCopy
 }
 
 type RouterController struct {
@@ -100,6 +159,7 @@ func (ctrl *RouterController) markConnected(r *Router) {
 func (ctrl *RouterController) markDisconnected(r *Router) {
 	r.Connected.Set(false)
 	ctrl.connected.Remove(r.Id)
+	r.routerLinks.Clear()
 }
 
 func (ctrl *RouterController) IsConnected(id string) bool {
@@ -115,8 +175,8 @@ func (ctrl *RouterController) getConnected(id string) *Router {
 
 func (ctrl *RouterController) allConnected() []*Router {
 	var routers []*Router
-	for i := range ctrl.connected.IterBuffered() {
-		routers = append(routers, i.Val.(*Router))
+	for v := range ctrl.connected.IterBuffered() {
+		routers = append(routers, v.Val.(*Router))
 	}
 	return routers
 }
@@ -178,4 +238,46 @@ func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
 			pfxlog.Logger().Errorf("encountered %t in router cache, expected *Router", val)
 		}
 	}
+}
+
+type RouterLinks struct {
+	sync.Mutex
+	atomic.Value
+}
+
+func (self *RouterLinks) GetLinks() []*Link {
+	result := self.Load()
+	if result == nil {
+		return nil
+	}
+	return result.([]*Link)
+}
+
+func (self *RouterLinks) Add(link *Link) {
+	self.Lock()
+	defer self.Unlock()
+	links := self.GetLinks()
+	newLinks := make([]*Link, 0, len(links)+1)
+	for _, l := range links {
+		newLinks = append(newLinks, l)
+	}
+	newLinks = append(newLinks, link)
+	self.Store(newLinks)
+}
+
+func (self *RouterLinks) Remove(link *Link) {
+	self.Lock()
+	defer self.Unlock()
+	links := self.GetLinks()
+	newLinks := make([]*Link, 0, len(links)+1)
+	for _, l := range links {
+		if link != l {
+			newLinks = append(newLinks, l)
+		}
+	}
+	self.Store(newLinks)
+}
+
+func (self *RouterLinks) Clear() {
+	self.Store([]*Link{})
 }

@@ -123,7 +123,7 @@ func debugNetwork(n *Network) {
 
 	for rIdx, router := range routers {
 		debugf("%v router: %v\n", rIdx, router.Id)
-		links := n.linkController.allLinksForRouter(router.Id)
+		links := router.routerLinks.GetLinks()
 		sort.Slice(links, func(i, j int) bool {
 			return links[i].Id.Token < links[j].Id.Token
 		})

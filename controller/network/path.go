@@ -176,6 +176,9 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 
 	for len(unvisited) > 0 {
 		u := minCost(unvisited, dist)
+		if u == dstR { // if the dest router is the lowest cost next link, we can stop evaluating
+			break
+		}
 		delete(unvisited, u)
 
 		neighbors := network.linkController.connectedNeighborsOfRouter(u)
