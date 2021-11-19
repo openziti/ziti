@@ -42,9 +42,9 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.16.131
-	github.com/openziti/foundation v0.16.5
-	github.com/openziti/sdk-golang v0.15.114
+	github.com/openziti/fabric v0.16.133
+	github.com/openziti/foundation v0.16.7
+	github.com/openziti/sdk-golang v0.15.116
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -72,7 +72,7 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
-	github.com/antlr/antlr4 v0.0.0-20210114010855-d34d2e1c271a // indirect
+	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/cheekybits/genny v1.0.0 // indirect
