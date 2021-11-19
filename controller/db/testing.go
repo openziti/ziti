@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-func NewTestContext(t *testing.T) *TestContext {
+func NewTestContext(t testing.TB) *TestContext {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 
 	context := &TestContext{

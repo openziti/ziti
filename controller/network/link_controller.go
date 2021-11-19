@@ -104,11 +104,13 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 			if link.Src == a && link.Dst == b {
 				if linkCost < cost {
 					selected = link
+					cost = linkCost
 				}
 			}
 			if link.Dst == a && link.Src == b {
 				if linkCost < cost {
 					selected = link
+					cost = linkCost
 				}
 			}
 		}
