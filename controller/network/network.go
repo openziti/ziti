@@ -193,7 +193,11 @@ func (network *Network) GetAllLinks() []*Link {
 }
 
 func (network *Network) GetAllLinksForRouter(routerId string) []*Link {
-	return network.linkController.allLinksForRouter(routerId)
+	r := network.GetConnectedRouter(routerId)
+	if r == nil {
+		return nil
+	}
+	return r.routerLinks.GetLinks()
 }
 
 func (network *Network) GetCircuit(circuitId string) (*Circuit, bool) {
@@ -291,7 +295,7 @@ func (network *Network) ValidateTerminators(r *Router) {
 
 func (network *Network) DisconnectRouter(r *Router) {
 	// 1: remove Links for Router
-	for _, l := range network.linkController.allLinksForRouter(r.Id) {
+	for _, l := range r.routerLinks.GetLinks() {
 		network.linkController.remove(l)
 		network.LinkChanged(l)
 	}
@@ -930,13 +934,13 @@ func (network *Network) GetServiceCache() Cache {
 
 func (network *Network) NotifyRouterRenamed(id, name string) {
 	if cached, _ := network.Routers.cache.Get(id); cached != nil {
-		if cachedRouter, ok := cached.(*db.Router); ok {
+		if cachedRouter, ok := cached.(*Router); ok {
 			cachedRouter.Name = name
 		}
 	}
 
 	if cached, _ := network.Routers.connected.Get(id); cached != nil {
-		if cachedRouter, ok := cached.(*db.Router); ok {
+		if cachedRouter, ok := cached.(*Router); ok {
 			cachedRouter.Name = name
 		}
 	}
