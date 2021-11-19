@@ -1,3 +1,10 @@
+# Release 0.23.1
+
+## What's New
+
+* Performance: Improve route selection cpu and memory use.
+* Bug fix: Fix controller panic in routes.MapApiSessionToRestModel caused by missing return
+
 # Release 0.23.0
 
 ## What's New

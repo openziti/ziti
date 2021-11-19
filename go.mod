@@ -34,10 +34,10 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.3
-	github.com/openziti/edge v0.20.130
-	github.com/openziti/fabric v0.16.131
-	github.com/openziti/foundation v0.16.5
-	github.com/openziti/sdk-golang v0.15.114
+	github.com/openziti/edge v0.20.133
+	github.com/openziti/fabric v0.16.133
+	github.com/openziti/foundation v0.16.7
+	github.com/openziti/sdk-golang v0.15.116
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -66,7 +66,7 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
-	github.com/antlr/antlr4 v0.0.0-20210114010855-d34d2e1c271a // indirect
+	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/cenkalti/backoff/v4 v4.1.1 // indirect
