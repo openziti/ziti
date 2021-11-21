@@ -52,7 +52,7 @@ type FullLinkFactory interface {
 }
 
 type LinksFactory interface {
-	Links(entity models.Entity) rest_model.Links
+	Links(entity LinkEntity) rest_model.Links
 	EntityName() string
 }
 
@@ -81,17 +81,17 @@ func (factory *BasicLinkFactory) SelfUrlString(id string) string {
 	return "./" + path.Join(factory.entityName, id)
 }
 
-func (factory *BasicLinkFactory) SelfLink(entity models.Entity) rest_model.Link {
+func (factory *BasicLinkFactory) SelfLink(entity LinkEntity) rest_model.Link {
 	return NewLink(factory.SelfUrlString(entity.GetId()))
 }
 
-func (factory *BasicLinkFactory) Links(entity models.Entity) rest_model.Links {
+func (factory *BasicLinkFactory) Links(entity LinkEntity) rest_model.Links {
 	return rest_model.Links{
 		EntityNameSelf: factory.SelfLink(entity),
 	}
 }
 
-func (factory BasicLinkFactory) NewNestedLink(entity models.Entity, elem ...string) rest_model.Link {
+func (factory BasicLinkFactory) NewNestedLink(entity LinkEntity, elem ...string) rest_model.Link {
 	elem = append([]string{factory.SelfUrlString(entity.GetId())}, elem...)
 	//path.Join will remove the ./ prefix in its "clean" operation
 	return NewLink("./" + path.Join(elem...))
@@ -101,7 +101,11 @@ func (factory *BasicLinkFactory) EntityName() string {
 	return factory.entityName
 }
 
-func ToEntityRef(name string, entity models.Entity, factory LinksFactory) *rest_model.EntityRef {
+type LinkEntity interface {
+	GetId() string
+}
+
+func ToEntityRef(name string, entity LinkEntity, factory LinksFactory) *rest_model.EntityRef {
 	return &rest_model.EntityRef{
 		Links:  factory.Links(entity),
 		Entity: factory.EntityName(),

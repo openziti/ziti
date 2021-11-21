@@ -514,6 +514,13 @@ paths:
       tags:
         - Circuit
       operationId: deleteCircuit
+      parameters:
+        - name: options
+          in: body
+          required: false
+          description: A circuit delete object
+          schema:
+            $ref: '#/definitions/circuitDelete'
       responses:
         '200':
           $ref: '#/responses/deleteResponse'
@@ -1373,6 +1380,18 @@ definitions:
       terminator:
         $ref: '#/definitions/entityRef'
       path:
-        type: array
-        items:
-          $ref: '#/definitions/entityRef'
+        type: object
+        properties:
+          nodes:
+            type: array
+            items:
+              $ref: '#/definitions/entityRef'
+          links:
+            type: array
+            items:
+              $ref: '#/definitions/entityRef'
+  circuitDelete:
+    type: object
+    properties:
+      immediate:
+        type: boolean

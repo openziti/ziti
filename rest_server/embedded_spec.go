@@ -105,6 +105,16 @@ func init() {
         ],
         "summary": "Delete a circuit",
         "operationId": "deleteCircuit",
+        "parameters": [
+          {
+            "description": "A circuit delete object",
+            "name": "options",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/circuitDelete"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "$ref": "#/responses/deleteResponse"
@@ -842,6 +852,14 @@ func init() {
         }
       }
     },
+    "circuitDelete": {
+      "type": "object",
+      "properties": {
+        "immediate": {
+          "type": "boolean"
+        }
+      }
+    },
     "circuitDetail": {
       "type": "object",
       "required": [
@@ -858,9 +876,20 @@ func init() {
           "type": "string"
         },
         "path": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/entityRef"
+          "type": "object",
+          "properties": {
+            "links": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/entityRef"
+              }
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/entityRef"
+              }
+            }
           }
         },
         "service": {
@@ -2014,6 +2043,16 @@ func init() {
         ],
         "summary": "Delete a circuit",
         "operationId": "deleteCircuit",
+        "parameters": [
+          {
+            "description": "A circuit delete object",
+            "name": "options",
+            "in": "body",
+            "schema": {
+              "$ref": "#/definitions/circuitDelete"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "The delete request was successful and the resource has been removed",
@@ -4035,6 +4074,23 @@ func init() {
     }
   },
   "definitions": {
+    "CircuitDetailPath": {
+      "type": "object",
+      "properties": {
+        "links": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/entityRef"
+          }
+        }
+      }
+    },
     "apiError": {
       "type": "object",
       "properties": {
@@ -4142,6 +4198,14 @@ func init() {
         }
       }
     },
+    "circuitDelete": {
+      "type": "object",
+      "properties": {
+        "immediate": {
+          "type": "boolean"
+        }
+      }
+    },
     "circuitDetail": {
       "type": "object",
       "required": [
@@ -4158,9 +4222,20 @@ func init() {
           "type": "string"
         },
         "path": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/entityRef"
+          "type": "object",
+          "properties": {
+            "links": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/entityRef"
+              }
+            },
+            "nodes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/entityRef"
+              }
+            }
           }
         },
         "service": {

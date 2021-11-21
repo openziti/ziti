@@ -109,7 +109,7 @@ func debugPath(p *Path) {
 	if len(p.Links) > 0 {
 		nodes = nodes[1:]
 		for _, link := range p.Links {
-			debugf(" -> [l/%v cost=%v] -> [r/%v]", link.Id.Token, link.Cost, nodes[0].Id)
+			debugf(" -> [l/%v cost=%v] -> [r/%v]", link.Id, link.Cost, nodes[0].Id)
 		}
 	}
 	debugf("\n")
@@ -125,11 +125,11 @@ func debugNetwork(n *Network) {
 		debugf("%v router: %v\n", rIdx, router.Id)
 		links := router.routerLinks.GetLinks()
 		sort.Slice(links, func(i, j int) bool {
-			return links[i].Id.Token < links[j].Id.Token
+			return links[i].Id < links[j].Id
 		})
 		for lIdx, link := range links {
 			debugf("    %v link %v for (%v -> %v) c: %v sc: %v sl:%v dl: %v\n",
-				lIdx, link.Id.Token, link.Src.Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
+				lIdx, link.Id, link.Src.Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
 		}
 	}
 }

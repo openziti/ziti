@@ -20,8 +20,6 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
-
-	"github.com/openziti/fabric/controller/models"
 )
 
 const EntityNameLink = "links"
@@ -38,7 +36,7 @@ func NewLinkLinkFactory() *LinkLinkFactoryIml {
 	}
 }
 
-func (factory *LinkLinkFactoryIml) Links(entity models.Entity) rest_model.Links {
+func (factory *LinkLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
 	return links
 }

@@ -56,6 +56,10 @@ func (entity *Terminator) GetCost() uint16 {
 	return entity.Cost
 }
 
+func (entity *Terminator) GetPrecedence() xt.Precedence {
+	return xt.GetPrecedenceForName(entity.Precedence)
+}
+
 func (entity *Terminator) GetServiceId() string {
 	return entity.Service
 }

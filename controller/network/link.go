@@ -49,6 +49,10 @@ func newLink(id string) *Link {
 	return l
 }
 
+func (link *Link) GetId() string {
+	return link.Id
+}
+
 func (link *Link) CurrentState() *LinkState {
 	link.lock.Lock()
 	defer link.lock.Unlock()

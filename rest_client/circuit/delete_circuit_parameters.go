@@ -38,6 +38,8 @@ import (
 	"github.com/go-openapi/runtime"
 	cr "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+
+	"github.com/openziti/fabric/rest_model"
 )
 
 // NewDeleteCircuitParams creates a new DeleteCircuitParams object,
@@ -88,6 +90,12 @@ type DeleteCircuitParams struct {
 	   The id of the requested resource
 	*/
 	ID string
+
+	/* Options.
+
+	   A circuit delete object
+	*/
+	Options *rest_model.CircuitDelete
 
 	timeout    time.Duration
 	Context    context.Context
@@ -153,6 +161,17 @@ func (o *DeleteCircuitParams) SetID(id string) {
 	o.ID = id
 }
 
+// WithOptions adds the options to the delete circuit params
+func (o *DeleteCircuitParams) WithOptions(options *rest_model.CircuitDelete) *DeleteCircuitParams {
+	o.SetOptions(options)
+	return o
+}
+
+// SetOptions adds the options to the delete circuit params
+func (o *DeleteCircuitParams) SetOptions(options *rest_model.CircuitDelete) {
+	o.Options = options
+}
+
 // WriteToRequest writes these params to a swagger request
 func (o *DeleteCircuitParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
@@ -164,6 +183,11 @@ func (o *DeleteCircuitParams) WriteToRequest(r runtime.ClientRequest, reg strfmt
 	// path param id
 	if err := r.SetPathParam("id", o.ID); err != nil {
 		return err
+	}
+	if o.Options != nil {
+		if err := r.SetBodyParam(o.Options); err != nil {
+			return err
+		}
 	}
 
 	if len(res) > 0 {

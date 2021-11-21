@@ -43,7 +43,7 @@ func NewServiceLinkFactory() *ServiceLinkFactoryIml {
 	}
 }
 
-func (factory *ServiceLinkFactoryIml) Links(entity models.Entity) rest_model.Links {
+func (factory *ServiceLinkFactoryIml) Links(entity LinkEntity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
 	links[EntityNameTerminator] = factory.NewNestedLink(entity, EntityNameTerminator)
 	return links

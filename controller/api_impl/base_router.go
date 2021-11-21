@@ -225,6 +225,12 @@ type DeleteHandler interface {
 	Delete(id string) error
 }
 
+type DeleteHandlerF func(id string) error
+
+func (self DeleteHandlerF) Delete(id string) error {
+	return self(id)
+}
+
 func DeleteWithHandler(rc api.RequestContext, deleteHandler DeleteHandler) {
 	Delete(rc, func(rc api.RequestContext, id string) error {
 		return deleteHandler.Delete(id)
