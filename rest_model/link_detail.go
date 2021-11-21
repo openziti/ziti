@@ -56,7 +56,8 @@ type LinkDetail struct {
 	DestRouter *EntityRef `json:"destRouter"`
 
 	// down
-	Down bool `json:"down,omitempty"`
+	// Required: true
+	Down *bool `json:"down"`
 
 	// id
 	// Required: true
@@ -92,6 +93,10 @@ func (m *LinkDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateDestRouter(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDown(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -154,6 +159,15 @@ func (m *LinkDetail) validateDestRouter(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *LinkDetail) validateDown(formats strfmt.Registry) error {
+
+	if err := validate.Required("down", "body", m.Down); err != nil {
+		return err
 	}
 
 	return nil

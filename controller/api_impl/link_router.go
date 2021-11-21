@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/link"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"sort"
 )
@@ -61,7 +60,7 @@ func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
 	ListWithEnvelopeFactory(rc, defaultToListEnvelope, func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		links := n.GetAllLinks()
 		sort.Slice(links, func(i, j int) bool {
-			return links[i].Id.Token < links[j].Id.Token
+			return links[i].Id < links[j].Id
 		})
 		apiLinks := make([]*rest_model.LinkDetail, 0, len(links))
 		for _, modelLink := range links {
@@ -84,7 +83,7 @@ func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
 
 func (r *LinkRouter) Detail(n *network.Network, rc api.RequestContext) {
 	Detail(rc, func(rc api.RequestContext, id string) (interface{}, error) {
-		l, found := n.GetLink(&identity.TokenId{Token: id})
+		l, found := n.GetLink(id)
 		if !found {
 			return nil, boltz.NewNotFoundError("link", "id", id)
 		}
@@ -97,7 +96,18 @@ func (r *LinkRouter) Detail(n *network.Network, rc api.RequestContext) {
 }
 
 func (r *LinkRouter) Patch(n *network.Network, rc api.RequestContext, params link.PatchLinkParams) {
-	//Patch(rc, func(id string, fields api.JsonFields) error {
-	//	return n.Controllers.Links.Patch(MapPatchLinkToModel(params.ID, params.Link), fields.ConcatNestedNames().FilterMaps("tags"))
-	//})
+	Patch(rc, func(id string, fields api.JsonFields) error {
+		l, found := n.GetLink(id)
+		if !found {
+			return boltz.NewNotFoundError("link", "id", id)
+		}
+		if fields.IsUpdated("staticCost") {
+			l.SetStaticCost(int32(params.Link.StaticCost))
+		}
+		if fields.IsUpdated("down") {
+			l.SetDown(params.Link.Down)
+		}
+		n.LinkChanged(l)
+		return nil
+	})
 }

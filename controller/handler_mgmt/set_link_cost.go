@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type setLinkCostHandler struct {
@@ -44,7 +43,7 @@ func (h *setLinkCostHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 
 	set := &mgmt_pb.SetLinkCostRequest{}
 	if err := proto.Unmarshal(msg.Body, set); err == nil {
-		if l, found := h.network.GetLink(&identity.TokenId{Token: set.LinkId}); found {
+		if l, found := h.network.GetLink(set.LinkId); found {
 			l.SetStaticCost(set.Cost)
 			h.network.LinkChanged(l)
 			log.Infof("set cost of link [l/%s] to [%d]", set.LinkId, set.Cost)

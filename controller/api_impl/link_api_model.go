@@ -19,8 +19,6 @@ package api_impl
 import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/identity/identity"
-
 	"github.com/openziti/fabric/rest_model"
 
 	"github.com/openziti/fabric/controller/models"
@@ -45,16 +43,6 @@ func (factory *LinkLinkFactoryIml) Links(entity models.Entity) rest_model.Links 
 	return links
 }
 
-func MapPatchLinkToModel(id string, link *rest_model.LinkPatch) *network.Link {
-	ret := &network.Link{
-		Id:         &identity.TokenId{Token: id},
-		Down:       link.Down,
-		StaticCost: int32(link.StaticCost),
-	}
-
-	return ret
-}
-
 func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.Link) (*rest_model.LinkDetail, error) {
 	staticCost := int64(link.StaticCost)
 	linkState := link.CurrentState()
@@ -62,12 +50,15 @@ func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.
 	if linkState != nil {
 		linkStateStr = linkState.Mode.String()
 	}
+
+	down := link.IsDown()
+
 	ret := &rest_model.LinkDetail{
 		Cost:          &link.Cost,
 		DestLatency:   &link.DstLatency,
 		DestRouter:    ToEntityRef(link.Dst.Name, link.Dst, RouterLinkFactory),
-		Down:          link.Down,
-		ID:            &link.Id.Token,
+		Down:          &down,
+		ID:            &link.Id,
 		SourceLatency: &link.SrcLatency,
 		SourceRouter:  ToEntityRef(link.Src.Name, link.Src, RouterLinkFactory),
 		State:         &linkStateStr,

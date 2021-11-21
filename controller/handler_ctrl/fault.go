@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 	"strings"
 )
 
@@ -57,12 +56,12 @@ func (h *faultHandler) handleFault(msg *channel2.Message, ch channel2.Channel, f
 
 	switch fault.Subject {
 	case ctrl_pb.FaultSubject_LinkFault:
-		linkId := &identity.TokenId{Token: fault.Id}
+		linkId := fault.Id
 		if err := h.network.LinkConnected(linkId, false); err == nil {
 			if link, found := h.network.GetLink(linkId); found {
 				h.network.LinkChanged(link)
 			}
-			log.Infof("link fault [l/%s]", linkId.Token)
+			log.Infof("link fault [l/%s]", linkId)
 		}
 
 	case ctrl_pb.FaultSubject_IngressFault:

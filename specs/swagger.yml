@@ -1301,6 +1301,7 @@ definitions:
       - sourceLatency
       - destLatency
       - cost
+      - down
     properties:
       id:
         type: string

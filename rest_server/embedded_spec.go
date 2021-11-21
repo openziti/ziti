@@ -1037,7 +1037,8 @@ func init() {
         "staticCost",
         "sourceLatency",
         "destLatency",
-        "cost"
+        "cost",
+        "down"
       ],
       "properties": {
         "cost": {
@@ -4336,7 +4337,8 @@ func init() {
         "staticCost",
         "sourceLatency",
         "destLatency",
-        "cost"
+        "cost",
+        "down"
       ],
       "properties": {
         "cost": {

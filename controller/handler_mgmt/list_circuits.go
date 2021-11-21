@@ -76,7 +76,7 @@ func NewPath(path *network.Path) *mgmt_pb.Path {
 		mgmtPath.Nodes = append(mgmtPath.Nodes, r.Id)
 	}
 	for _, l := range path.Links {
-		mgmtPath.Links = append(mgmtPath.Links, l.Id.Token)
+		mgmtPath.Links = append(mgmtPath.Links, l.Id)
 	}
 	return mgmtPath
 }

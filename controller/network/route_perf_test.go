@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"math/rand"
 	"testing"
@@ -58,7 +57,7 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -184,7 +183,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -278,7 +277,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -352,7 +351,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)

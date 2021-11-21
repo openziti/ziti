@@ -40,7 +40,7 @@ func (self *Path) String() string {
 	}
 	out := fmt.Sprintf("[r/%s]", self.Nodes[0].Id)
 	for i := 0; i < len(self.Links); i++ {
-		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id.Token)
+		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id)
 		out += fmt.Sprintf("->[r/%s]", self.Nodes[i+1].Id)
 	}
 	return out
@@ -100,10 +100,10 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.IngressId,
-				DstAddress: link.Id.Token,
+				DstAddress: link.Id,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
+				SrcAddress: link.Id,
 				DstAddress: self.IngressId,
 			})
 			routeMessages = append(routeMessages, routeMessage)
@@ -113,12 +113,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			nextLink := self.Links[i+1]
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
-				DstAddress: nextLink.Id.Token,
+				SrcAddress: link.Id,
+				DstAddress: nextLink.Id,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: nextLink.Id.Token,
-				DstAddress: link.Id.Token,
+				SrcAddress: nextLink.Id,
+				DstAddress: link.Id,
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}
@@ -132,10 +132,10 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.EgressId,
-				DstAddress: link.Id.Token,
+				DstAddress: link.Id,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
-				SrcAddress: link.Id.Token,
+				SrcAddress: link.Id,
 				DstAddress: self.EgressId,
 			})
 			routeMessages = append(routeMessages, routeMessage)

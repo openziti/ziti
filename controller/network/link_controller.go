@@ -18,7 +18,6 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/idgen"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
 	"math"
@@ -26,14 +25,14 @@ import (
 )
 
 type linkController struct {
-	linkTable      *linkTable
-	idGenerator    idgen.Generator
+	linkTable   *linkTable
+	idGenerator idgen.Generator
 }
 
 func newLinkController() *linkController {
 	return &linkController{
-		linkTable: newLinkTable(),
-		idGenerator:    idgen.NewGenerator(),
+		linkTable:   newLinkTable(),
+		idGenerator: idgen.NewGenerator(),
 	}
 }
 
@@ -47,7 +46,7 @@ func (linkController *linkController) has(link *Link) bool {
 	return linkController.linkTable.has(link)
 }
 
-func (linkController *linkController) get(linkId *identity.TokenId) (*Link, bool) {
+func (linkController *linkController) get(linkId string) (*Link, bool) {
 	link, found := linkController.linkTable.get(linkId)
 	return link, found
 }
@@ -130,7 +129,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 					if err != nil {
 						return nil, err
 					}
-					link := newLink(&identity.TokenId{Token: id})
+					link := newLink(id)
 					link.Src = srcR
 					link.Dst = dstR
 					missingLinks = append(missingLinks, link)
@@ -176,11 +175,11 @@ func newLinkTable() *linkTable {
 }
 
 func (lt *linkTable) add(link *Link) {
-	lt.links.Set(link.Id.Token, link)
+	lt.links.Set(link.Id, link)
 }
 
-func (lt *linkTable) get(linkId *identity.TokenId) (*Link, bool) {
-	link, found := lt.links.Get(linkId.Token)
+func (lt *linkTable) get(linkId string) (*Link, bool) {
+	link, found := lt.links.Get(linkId)
 	if link != nil {
 		return link.(*Link), found
 	}
@@ -188,7 +187,7 @@ func (lt *linkTable) get(linkId *identity.TokenId) (*Link, bool) {
 }
 
 func (lt *linkTable) has(link *Link) bool {
-	if i, found := lt.links.Get(link.Id.Token); found {
+	if i, found := lt.links.Get(link.Id); found {
 		if i.(*Link) == link {
 			return true
 		}
@@ -216,7 +215,7 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 }
 
 func (lt *linkTable) remove(link *Link) {
-	lt.links.Remove(link.Id.Token)
+	lt.links.Remove(link.Id)
 }
 
 /*

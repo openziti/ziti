@@ -50,7 +50,7 @@ func (h *listLinksHandler) HandleReceive(msg *channel2.Message, ch channel2.Chan
 	}
 	for _, l := range links {
 		responseLink := &mgmt_pb.Link{
-			Id:         l.Id.Token,
+			Id:         l.Id,
 			Src:        l.Src.Id,
 			Dst:        l.Dst.Id,
 			State:      l.CurrentState().Mode.String(),
