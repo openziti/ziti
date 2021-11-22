@@ -23,10 +23,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"math/rand"
-	"os"
-	"runtime/pprof"
 	"testing"
-	"time"
 )
 
 func TestShortestPathAgainstEstablished(t *testing.T) {
@@ -187,7 +184,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -265,7 +262,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	var routers []*Router
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		router := entityHelper.addTestRouter()
 		routers = append(routers, router)
 	}
@@ -281,7 +278,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -319,7 +316,6 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 				dstIndex++
 			}
 		}
-
 	}
 }
 
@@ -356,7 +352,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link := newLink(&identity.TokenId{Token: fmt.Sprintf("link-%04d", linkIdx)})
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -391,22 +387,25 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 		}
 	}
 
-	f, err := os.Create("/home/plorenz/tmp/routing.pprof")
-	ctx.NoError(err)
-	defer func() { _ = f.Close() }()
-
-	if err := pprof.StartCPUProfile(f); err != nil {
-		ctx.NoError(err)
-	}
-
 	b.StartTimer()
-	srcRouter := privateRouters[0]
-	start := time.Now()
-	for i := 0; i < 50; i++ {
-		_, _, err := network.shortestPath(srcRouter, privateRouters[1+i])
+	srcIndex := 0
+	dstIndex := 1
+	for i := 0; i < b.N; i++ {
+		srcRouter := privateRouters[srcIndex]
+		dstRouter := privateRouters[dstIndex]
+		_, _, err := network.shortestPath(srcRouter, dstRouter)
 		ctx.NoError(err)
-	}
-	fmt.Printf("took: %v\n", time.Now().Sub(start))
 
-	pprof.StopCPUProfile()
+		dstIndex++
+		for dstIndex >= len(privateRouters) {
+			srcIndex++
+			if srcIndex >= len(privateRouters) {
+				srcIndex = 0
+			}
+			dstIndex = 0
+			if dstIndex == srcIndex {
+				dstIndex++
+			}
+		}
+	}
 }

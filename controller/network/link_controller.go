@@ -67,8 +67,7 @@ func (linkController *linkController) connectedNeighborsOfRouter(router *Router)
 
 	links := router.routerLinks.GetLinks()
 	for _, link := range links {
-		currentState := link.CurrentState()
-		if currentState != nil && currentState.Mode == Connected && !link.Down {
+		if link.IsUsable() {
 			if link.Src != router {
 				neighborMap[link.Src.Id] = link.Src
 			}
@@ -91,16 +90,14 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
-		currentState := link.CurrentState()
-		if currentState != nil && currentState.Mode == Connected && !link.Down {
+		if link.IsUsable() {
 			linkCost := link.GetCost()
-			if link.Src == a && link.Dst == b {
+			if link.Dst == b {
 				if linkCost < cost {
 					selected = link
 					cost = linkCost
 				}
-			}
-			if link.Dst == a && link.Src == b {
+			} else if link.Src == b {
 				if linkCost < cost {
 					selected = link
 					cost = linkCost
