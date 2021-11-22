@@ -23,14 +23,16 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/sirupsen/logrus"
 	"math/rand"
+	"os"
+	"runtime/pprof"
 	"testing"
+	"time"
 )
 
-func BenchmarkShortestPathPerf(b *testing.B) {
-	b.StopTimer()
+func TestShortestPathAgainstEstablished(t *testing.T) {
 	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
 
-	ctx := db.NewTestContext(b)
+	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	closeNotify := make(chan struct{})
@@ -129,7 +131,6 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 		{cost: 141, path: []string{"router-000", "router-050"}},
 	}
 
-	b.StartTimer()
 	srcRouter := routers[0]
 	replaceIdx := len(routers) - 1
 	for i := 1; i < len(routers); i++ {
@@ -153,7 +154,259 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 	}
 }
 
+func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
+	b.StopTimer()
+	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
+
+	ctx := db.NewTestContext(b)
+	defer ctx.Cleanup()
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	ctx.NoError(err)
+
+	entityHelper := newTestEntityHelper(ctx, network)
+
+	var routers []*Router
+
+	for i := 0; i < 50; i++ {
+		router := entityHelper.addTestRouter()
+		routers = append(routers, router)
+	}
+
+	linkIdx := 0
+
+	r := rand.New(rand.NewSource(1))
+
+	nextCost := func() int64 {
+		v := r.Uint32()
+		return int64(v % 1000)
+	}
+
+	addLink := func(srcRouter, dstRouter *Router) {
+		if srcRouter != dstRouter {
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link.SetStaticCost(int32(nextCost()))
+			link.SetDstLatency(nextCost() * 100_000)
+			link.SetSrcLatency(nextCost() * 100_000)
+			link.Src = srcRouter
+			link.Dst = dstRouter
+			link.addState(newLinkState(Connected))
+			network.linkController.add(link)
+			linkIdx++
+		}
+	}
+
+	for _, srcRouter := range routers {
+		for _, dstRouter := range routers {
+			addLink(srcRouter, dstRouter)
+		}
+	}
+
+	b.StartTimer()
+	replaceIdx := len(routers) - 1
+	srcIndex := 0
+	dstIndex := 1
+	for i := 0; i < b.N; i++ {
+		srcRouter := routers[srcIndex]
+		dstRouter := routers[dstIndex]
+		_, _, err := network.shortestPath(srcRouter, dstRouter)
+		ctx.NoError(err)
+
+		network.DisconnectRouter(routers[replaceIdx])
+		newRouter := entityHelper.addTestRouter()
+		routers[replaceIdx] = newRouter
+		for _, r := range routers {
+			addLink(newRouter, r)
+			addLink(r, newRouter)
+		}
+		replaceIdx--
+		if replaceIdx < 0 {
+			replaceIdx = len(routers) - 1
+		}
+		entityHelper.discardControllerEvents()
+
+		dstIndex++
+		for dstIndex >= len(routers) {
+			srcIndex++
+			if srcIndex >= len(routers) {
+				srcIndex = 0
+			}
+			dstIndex = 0
+			if dstIndex == srcIndex {
+				dstIndex++
+			}
+		}
+
+	}
+}
+
 type expectedRoute struct {
 	cost int64
 	path []string
+}
+
+func BenchmarkShortestPathPerf(b *testing.B) {
+	b.StopTimer()
+	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
+
+	ctx := db.NewTestContext(b)
+	defer ctx.Cleanup()
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	ctx.NoError(err)
+
+	entityHelper := newTestEntityHelper(ctx, network)
+
+	var routers []*Router
+
+	for i := 0; i < 50; i++ {
+		router := entityHelper.addTestRouter()
+		routers = append(routers, router)
+	}
+
+	linkIdx := 0
+
+	r := rand.New(rand.NewSource(1))
+
+	nextCost := func() int64 {
+		v := r.Uint32()
+		return int64(v % 1000)
+	}
+
+	addLink := func(srcRouter, dstRouter *Router) {
+		if srcRouter != dstRouter {
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link.SetStaticCost(int32(nextCost()))
+			link.SetDstLatency(nextCost() * 100_000)
+			link.SetSrcLatency(nextCost() * 100_000)
+			link.Src = srcRouter
+			link.Dst = dstRouter
+			link.addState(newLinkState(Connected))
+			network.linkController.add(link)
+			linkIdx++
+		}
+	}
+
+	for _, srcRouter := range routers {
+		for _, dstRouter := range routers {
+			addLink(srcRouter, dstRouter)
+		}
+	}
+
+	b.StartTimer()
+	srcIndex := 0
+	dstIndex := 1
+	for i := 0; i < b.N; i++ {
+		srcRouter := routers[srcIndex]
+		dstRouter := routers[dstIndex]
+		_, _, err := network.shortestPath(srcRouter, dstRouter)
+		ctx.NoError(err)
+
+		dstIndex++
+		for dstIndex >= len(routers) {
+			srcIndex++
+			if srcIndex >= len(routers) {
+				srcIndex = 0
+			}
+			dstIndex = 0
+			if dstIndex == srcIndex {
+				dstIndex++
+			}
+		}
+
+	}
+}
+
+func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
+	//b.StopTimer()
+	pfxlog.GlobalInit(logrus.WarnLevel, pfxlog.DefaultOptions())
+
+	ctx := db.NewTestContext(b)
+	defer ctx.Cleanup()
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	ctx.NoError(err)
+
+	entityHelper := newTestEntityHelper(ctx, network)
+
+	var routers []*Router
+
+	for i := 0; i < 200; i++ {
+		router := entityHelper.addTestRouter()
+		routers = append(routers, router)
+	}
+
+	linkIdx := 0
+
+	r := rand.New(rand.NewSource(1))
+
+	nextCost := func() int64 {
+		v := r.Uint32()
+		return int64(v % 1000)
+	}
+
+	addLink := func(srcRouter, dstRouter *Router) {
+		if srcRouter != dstRouter {
+			link := newLink(fmt.Sprintf("link-%04d", linkIdx))
+			link.SetStaticCost(int32(nextCost()))
+			link.SetDstLatency(nextCost() * 100_000)
+			link.SetSrcLatency(nextCost() * 100_000)
+			link.Src = srcRouter
+			link.Dst = dstRouter
+			link.addState(newLinkState(Connected))
+			network.linkController.add(link)
+			linkIdx++
+		}
+	}
+
+	// make half the routers private routers
+	var privateRouters []*Router
+	var publicRouters []*Router
+	for idx, router := range routers {
+		if idx <= len(routers)/2 {
+			privateRouters = append(privateRouters, router)
+		} else {
+			publicRouters = append(publicRouters, router)
+		}
+	}
+
+	for _, srcRouter := range privateRouters {
+		for _, dstRouter := range publicRouters {
+			addLink(srcRouter, dstRouter)
+		}
+	}
+
+	for _, srcRouter := range publicRouters {
+		for _, dstRouter := range publicRouters {
+			addLink(srcRouter, dstRouter)
+		}
+	}
+
+	f, err := os.Create("/home/plorenz/tmp/routing.pprof")
+	ctx.NoError(err)
+	defer func() { _ = f.Close() }()
+
+	if err := pprof.StartCPUProfile(f); err != nil {
+		ctx.NoError(err)
+	}
+
+	b.StartTimer()
+	srcRouter := privateRouters[0]
+	start := time.Now()
+	for i := 0; i < 50; i++ {
+		_, _, err := network.shortestPath(srcRouter, privateRouters[1+i])
+		ctx.NoError(err)
+	}
+	fmt.Printf("took: %v\n", time.Now().Sub(start))
+
+	pprof.StopCPUProfile()
 }
