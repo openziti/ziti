@@ -39,8 +39,8 @@ func newLinkController() *linkController {
 
 func (linkController *linkController) add(link *Link) {
 	linkController.linkTable.add(link)
-	link.Src.routerLinks.Add(link)
-	link.Dst.routerLinks.Add(link)
+	link.Src.routerLinks.Add(link, link.Dst)
+	link.Dst.routerLinks.Add(link, link.Src)
 }
 
 func (linkController *linkController) has(link *Link) bool {
@@ -58,8 +58,8 @@ func (linkController *linkController) all() []*Link {
 
 func (linkController *linkController) remove(link *Link) {
 	linkController.linkTable.remove(link)
-	link.Src.routerLinks.Remove(link)
-	link.Dst.routerLinks.Remove(link)
+	link.Src.routerLinks.Remove(link, link.Dst)
+	link.Dst.routerLinks.Remove(link, link.Src)
 }
 
 func (linkController *linkController) connectedNeighborsOfRouter(router *Router) []*Router {
@@ -88,7 +88,8 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	var selected *Link
 	var cost int64 = math.MaxInt64
 
-	links := a.routerLinks.GetLinks()
+	linksByRouter := a.routerLinks.GetLinksByRouter()
+	links := linksByRouter[b.Id]
 	for _, link := range links {
 		if link.IsUsable() {
 			linkCost := link.GetCost()

@@ -262,7 +262,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	var routers []*Router
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 400; i++ {
 		router := entityHelper.addTestRouter()
 		routers = append(routers, router)
 	}
