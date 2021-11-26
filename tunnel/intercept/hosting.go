@@ -189,6 +189,10 @@ func (self *hostingContext) GetHealthChecks() []health.CheckDefinition {
 }
 
 func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool, error) {
+	if connType, found := options["connType"]; found && connType == "resolver" {
+		return newResolvConn(self)
+	}
+
 	protocol, err := self.config.GetProtocol(options)
 	if err != nil {
 		return nil, false, err
