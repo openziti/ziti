@@ -388,8 +388,22 @@ func (self *tProxy) Stop(tracker intercept.AddressTracker) {
 		log.WithError(err).Error("failed to clean up intercept configuration")
 	}
 }
-func (self *tProxy) port() IPPortAddr {
-	return (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr))
+
+func (self *tProxy) tcpPort() IPPortAddr {
+	if self.tcpLn != nil {
+		return (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr))
+	}
+	logrus.Errorf("invalid state: no tcp listener for tproxy[%s]", self.service.Name)
+	return nil
+}
+
+func (self *tProxy) udpPort() IPPortAddr {
+	if self.udpLn != nil {
+		return (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr))
+	}
+
+	logrus.Errorf("invalid state: no udp listener for tproxy[%s]", self.service.Name)
+	return nil
 }
 
 func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker) error {
@@ -404,10 +418,10 @@ func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTr
 	for _, p := range config.Protocols {
 		if p == "tcp" {
 			logrus.Debugf("service %v intercepting tcp", service.Name)
-			ports = append(ports, self.port())
+			ports = append(ports, self.tcpPort())
 		} else if p == "udp" {
 			logrus.Debugf("service %v intercepting udp", service.Name)
-			ports = append(ports, (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr)))
+			ports = append(ports, self.udpPort())
 		}
 	}
 
@@ -416,7 +430,18 @@ func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTr
 
 func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
 	logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
-	if err := self.addInterceptAddr(addr, self.service, self.port(), self.tracker); err != nil {
+
+	var port IPPortAddr
+	switch addr.Proto() {
+	case "tcp":
+		port = self.tcpPort()
+	case "udp":
+		port = self.udpPort()
+	default:
+		logrus.Errorf("unknown proto[%s] for tproxy[%s]", addr.Proto(), self.service.Name)
+		return
+	}
+	if err := self.addInterceptAddr(addr, self.service, port, self.tracker); err != nil {
 		logrus.Debugf("failed for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
 
 		// do we undo the previous succesful ones?
