@@ -1,3 +1,9 @@
+# Release 0.23.2
+
+## What's New
+
+* Bug fix: Fix panic for UDP-only tproxy intercepts
+
 # Release 0.23.1
 
 ## What's New
