@@ -132,11 +132,17 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		LinkPatchLinkHandler: link.PatchLinkHandlerFunc(func(params link.PatchLinkParams) middleware.Responder {
 			return middleware.NotImplemented("operation link.PatchLink has not yet been implemented")
 		}),
+		RouterPatchRouterHandler: router.PatchRouterHandlerFunc(func(params router.PatchRouterParams) middleware.Responder {
+			return middleware.NotImplemented("operation router.PatchRouter has not yet been implemented")
+		}),
 		ServicePatchServiceHandler: service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
 		}),
 		TerminatorPatchTerminatorHandler: terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
+		}),
+		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
+			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		}),
 		ServiceUpdateServiceHandler: service.UpdateServiceHandlerFunc(func(params service.UpdateServiceParams) middleware.Responder {
 			return middleware.NotImplemented("operation service.UpdateService has not yet been implemented")
@@ -220,10 +226,14 @@ type ZitiFabricAPI struct {
 	TerminatorListTerminatorsHandler terminator.ListTerminatorsHandler
 	// LinkPatchLinkHandler sets the operation handler for the patch link operation
 	LinkPatchLinkHandler link.PatchLinkHandler
+	// RouterPatchRouterHandler sets the operation handler for the patch router operation
+	RouterPatchRouterHandler router.PatchRouterHandler
 	// ServicePatchServiceHandler sets the operation handler for the patch service operation
 	ServicePatchServiceHandler service.PatchServiceHandler
 	// TerminatorPatchTerminatorHandler sets the operation handler for the patch terminator operation
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
+	// RouterUpdateRouterHandler sets the operation handler for the update router operation
+	RouterUpdateRouterHandler router.UpdateRouterHandler
 	// ServiceUpdateServiceHandler sets the operation handler for the update service operation
 	ServiceUpdateServiceHandler service.UpdateServiceHandler
 	// TerminatorUpdateTerminatorHandler sets the operation handler for the update terminator operation
@@ -365,11 +375,17 @@ func (o *ZitiFabricAPI) Validate() error {
 	if o.LinkPatchLinkHandler == nil {
 		unregistered = append(unregistered, "link.PatchLinkHandler")
 	}
+	if o.RouterPatchRouterHandler == nil {
+		unregistered = append(unregistered, "router.PatchRouterHandler")
+	}
 	if o.ServicePatchServiceHandler == nil {
 		unregistered = append(unregistered, "service.PatchServiceHandler")
 	}
 	if o.TerminatorPatchTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.PatchTerminatorHandler")
+	}
+	if o.RouterUpdateRouterHandler == nil {
+		unregistered = append(unregistered, "router.UpdateRouterHandler")
 	}
 	if o.ServiceUpdateServiceHandler == nil {
 		unregistered = append(unregistered, "service.UpdateServiceHandler")
@@ -548,11 +564,19 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
+	o.handlers["PATCH"]["/routers/{id}"] = router.NewPatchRouter(o.context, o.RouterPatchRouterHandler)
+	if o.handlers["PATCH"] == nil {
+		o.handlers["PATCH"] = make(map[string]http.Handler)
+	}
 	o.handlers["PATCH"]["/services/{id}"] = service.NewPatchService(o.context, o.ServicePatchServiceHandler)
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/terminators/{id}"] = terminator.NewPatchTerminator(o.context, o.TerminatorPatchTerminatorHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/routers/{id}"] = router.NewUpdateRouter(o.context, o.RouterUpdateRouterHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

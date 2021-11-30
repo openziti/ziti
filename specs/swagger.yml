@@ -213,50 +213,50 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
-    #    put:
-    #      summary: Update all fields on a router
-    #      description: Update all fields on a router by id. Requires admin access.
-    #      tags:
-    #        - Router
-    #      operationId: updateRouter
-    #      parameters:
-    #        - name: router
-    #          in: body
-    #          required: true
-    #          description: A router update object
-    #          schema:
-    #            $ref: '#/definitions/routerUpdate'
-    #      responses:
-    #        '200':
-    #          $ref: '#/responses/updateResponse'
-    #        '400':
-    #          $ref: '#/responses/badRequestResponse'
-    #        '404':
-    #          $ref: '#/responses/notFoundResponse'
-    #        '401':
-    #          $ref: '#/responses/unauthorizedResponse'
-    #    patch:
-    #      summary: Update the supplied fields on a router
-    #      description: Update the supplied fields on a router. Requires admin access.
-    #      tags:
-    #        - Router
-    #      operationId: patchRouter
-    #      parameters:
-    #        - name: router
-    #          in: body
-    #          required: true
-    #          description: A router patch object
-    #          schema:
-    #            $ref: '#/definitions/routerPatch'
-    #      responses:
-    #        '200':
-    #          $ref: '#/responses/patchResponse'
-    #        '400':
-    #          $ref: '#/responses/badRequestResponse'
-    #        '404':
-    #          $ref: '#/responses/notFoundResponse'
-    #        '401':
-    #          $ref: '#/responses/unauthorizedResponse'
+    put:
+      summary: Update all fields on a router
+      description: Update all fields on a router by id. Requires admin access.
+      tags:
+        - Router
+      operationId: updateRouter
+      parameters:
+        - name: router
+          in: body
+          required: true
+          description: A router update object
+          schema:
+            $ref: '#/definitions/routerUpdate'
+      responses:
+        '200':
+          $ref: '#/responses/updateResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+    patch:
+      summary: Update the supplied fields on a router
+      description: Update the supplied fields on a router. Requires admin access.
+      tags:
+        - Router
+      operationId: patchRouter
+      parameters:
+        - name: router
+          in: body
+          required: true
+          description: A router patch object
+          schema:
+            $ref: '#/definitions/routerPatch'
+      responses:
+        '200':
+          $ref: '#/responses/patchResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '404':
+          $ref: '#/responses/notFoundResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
     delete:
       summary: Delete a router
       description: Delete a router by id. Requires admin access.

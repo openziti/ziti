@@ -166,6 +166,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 			return middleware.NotImplemented("operation link.PatchLink has not yet been implemented")
 		})
 	}
+	if api.RouterPatchRouterHandler == nil {
+		api.RouterPatchRouterHandler = router.PatchRouterHandlerFunc(func(params router.PatchRouterParams) middleware.Responder {
+			return middleware.NotImplemented("operation router.PatchRouter has not yet been implemented")
+		})
+	}
 	if api.ServicePatchServiceHandler == nil {
 		api.ServicePatchServiceHandler = service.PatchServiceHandlerFunc(func(params service.PatchServiceParams) middleware.Responder {
 			return middleware.NotImplemented("operation service.PatchService has not yet been implemented")
@@ -174,6 +179,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorPatchTerminatorHandler == nil {
 		api.TerminatorPatchTerminatorHandler = terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
+		})
+	}
+	if api.RouterUpdateRouterHandler == nil {
+		api.RouterUpdateRouterHandler = router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
+			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		})
 	}
 	if api.ServiceUpdateServiceHandler == nil {

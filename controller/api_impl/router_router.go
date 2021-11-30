@@ -57,13 +57,13 @@ func (r *RouterRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Req
 		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Create(n, rc, params) }, params.HTTPRequest, "", "")
 	})
 
-	//fabricApi.RouterUpdateRouterHandler = router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
-	//	return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Update(n, rc, params) }, params.HTTPRequest, params.ID, "")
-	//})
-	//
-	//fabricApi.RouterPatchRouterHandler = router.PatchRouterHandlerFunc(func(params router.PatchRouterParams) middleware.Responder {
-	//	return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Patch(n, rc, params) }, params.HTTPRequest, params.ID, "")
-	//})
+	fabricApi.RouterUpdateRouterHandler = router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
+		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Update(n, rc, params) }, params.HTTPRequest, params.ID, "")
+	})
+
+	fabricApi.RouterPatchRouterHandler = router.PatchRouterHandlerFunc(func(params router.PatchRouterParams) middleware.Responder {
+		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Patch(n, rc, params) }, params.HTTPRequest, params.ID, "")
+	})
 
 	fabricApi.RouterListRouterTerminatorsHandler = router.ListRouterTerminatorsHandlerFunc(func(params router.ListRouterTerminatorsParams) middleware.Responder {
 		return wrapper.WrapRequest(r.listManagementTerminators, params.HTTPRequest, params.ID, "")
@@ -93,17 +93,17 @@ func (r *RouterRouter) Delete(network *network.Network, rc api.RequestContext) {
 	DeleteWithHandler(rc, network.Controllers.Routers)
 }
 
-//func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params router.UpdateRouterParams) {
-//	Update(rc, func(id string) error {
-//		return n.Controllers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router))
-//	})
-//}
-//
-//func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
-//	Patch(rc, func(id string, fields api.JsonFields) error {
-//		return n.Controllers.Routers.Patch(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
-//	})
-//}
+func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params router.UpdateRouterParams) {
+	Update(rc, func(id string) error {
+		return n.Controllers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router))
+	})
+}
+
+func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
+	Patch(rc, func(id string, fields api.JsonFields) error {
+		return n.Controllers.Routers.Patch(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
+	})
+}
 
 func (r *RouterRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
 	r.listAssociations(n, rc, n.Controllers.Terminators, MapTerminatorToRestEntity)

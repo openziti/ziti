@@ -64,6 +64,10 @@ type ClientService interface {
 
 	ListRouters(params *ListRoutersParams, opts ...ClientOption) (*ListRoutersOK, error)
 
+	PatchRouter(params *PatchRouterParams, opts ...ClientOption) (*PatchRouterOK, error)
+
+	UpdateRouter(params *UpdateRouterParams, opts ...ClientOption) (*UpdateRouterOK, error)
+
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -266,6 +270,86 @@ func (a *Client) ListRouters(params *ListRoutersParams, opts ...ClientOption) (*
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listRouters: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  PatchRouter updates the supplied fields on a router
+
+  Update the supplied fields on a router. Requires admin access.
+*/
+func (a *Client) PatchRouter(params *PatchRouterParams, opts ...ClientOption) (*PatchRouterOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewPatchRouterParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "patchRouter",
+		Method:             "PATCH",
+		PathPattern:        "/routers/{id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &PatchRouterReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*PatchRouterOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for patchRouter: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  UpdateRouter updates all fields on a router
+
+  Update all fields on a router by id. Requires admin access.
+*/
+func (a *Client) UpdateRouter(params *UpdateRouterParams, opts ...ClientOption) (*UpdateRouterOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewUpdateRouterParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "updateRouter",
+		Method:             "PUT",
+		PathPattern:        "/routers/{id}",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &UpdateRouterReader{formats: a.formats},
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*UpdateRouterOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for updateRouter: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 
