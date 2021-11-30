@@ -42,7 +42,7 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/mapstructure v1.4.2
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.16.134
+	github.com/openziti/fabric v0.17.0
 	github.com/openziti/foundation v0.16.7
 	github.com/openziti/sdk-golang v0.15.116
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -53,7 +53,7 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf
+	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
 	golang.org/x/crypto v0.0.0-20210616213533-5ff15b29337e
