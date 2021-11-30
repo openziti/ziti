@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type verifyLinkHandler struct {
@@ -48,7 +47,7 @@ func (h *verifyLinkHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		return
 	}
 
-	if err := h.network.VerifyLinkSource(h.r, &identity.TokenId{Token: verifyLink.LinkId}, verifyLink.Fingerprints); err == nil {
+	if err := h.network.VerifyLinkSource(h.r, verifyLink.LinkId, verifyLink.Fingerprints); err == nil {
 		go handler_common.SendSuccess(msg, ch, "link verified")
 		log.Debugf("link verification successful [l/%s]", verifyLink.LinkId)
 	} else {

@@ -17,7 +17,6 @@
 package network
 
 import (
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -28,7 +27,7 @@ func TestLifecycle(t *testing.T) {
 	r0 := NewRouter("r0", "", "")
 	r1 := NewRouter("r1", "", "")
 	l0 := &Link{
-		Id:  &identity.TokenId{Token: "l0"},
+		Id:  "l0",
 		Src: r0,
 		Dst: r1,
 	}
@@ -60,7 +59,7 @@ func TestNeighbors(t *testing.T) {
 	r0 := newRouterForTest("r0", "", nil, nil)
 	r1 := newRouterForTest("r1", "", nil, nil)
 	l0 := &Link{
-		Id:  &identity.TokenId{Token: "l0"},
+		Id:  "l0",
 		Src: r0,
 		Dst: r1,
 	}

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -54,7 +55,7 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 	return nil
 }
 
-func (entity *Router) toBolt() *db.Router {
+func (entity *Router) toBolt() boltz.Entity {
 	return &db.Router{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
@@ -239,6 +240,28 @@ func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
 			pfxlog.Logger().Errorf("encountered %t in router cache, expected *Router", val)
 		}
 	}
+}
+
+func (ctrl *RouterController) Update(r *Router) error {
+	if err := ctrl.updateGeneral(r, nil); err != nil {
+		return err
+	}
+
+	ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
+
+	return nil
+}
+
+func (ctrl *RouterController) Patch(r *Router, checker boltz.FieldChecker) error {
+	if err := ctrl.updateGeneral(r, checker); err != nil {
+		return err
+	}
+
+	if checker.IsUpdated("fingerprint") {
+		ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
+	}
+
+	return nil
 }
 
 type RouterLinks struct {

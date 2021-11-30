@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
@@ -42,13 +43,19 @@ func (self *Circuit) latency() int64 {
 }
 
 type circuitController struct {
-	circuits cmap.ConcurrentMap // map[string]*Circuit
+	circuits    cmap.ConcurrentMap // map[string]*Circuit
+	idGenerator idgen.Generator
 }
 
 func newCircuitController() *circuitController {
 	return &circuitController{
-		circuits: cmap.New(),
+		circuits:    cmap.New(),
+		idGenerator: idgen.NewGenerator(),
 	}
+}
+
+func (c *circuitController) nextCircuitId() (string, error) {
+	return c.idGenerator.NextAlphaNumericPrefixedId()
 }
 
 func (c *circuitController) add(sn *Circuit) {

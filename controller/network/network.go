@@ -184,7 +184,7 @@ func (network *Network) AllConnectedRouters() []*Router {
 	return network.Routers.allConnected()
 }
 
-func (network *Network) GetLink(linkId *identity.TokenId) (*Link, bool) {
+func (network *Network) GetLink(linkId string) (*Link, bool) {
 	return network.linkController.get(linkId)
 }
 
@@ -308,35 +308,35 @@ func (network *Network) DisconnectRouter(r *Router) {
 	}
 }
 
-func (network *Network) LinkConnected(id *identity.TokenId, connected bool) error {
+func (network *Network) LinkConnected(id string, connected bool) error {
 	log := pfxlog.Logger()
 
 	if l, found := network.linkController.get(id); found {
 		if connected {
 			l.addState(newLinkState(Connected))
-			log.Infof("link [l/%s] connected", id.Token)
+			log.Infof("link [l/%s] connected", id)
 			return nil
 		}
 		l.addState(newLinkState(Failed))
-		log.Infof("link [l/%s] failed", id.Token)
+		log.Infof("link [l/%s] failed", id)
 		return nil
 	}
-	return fmt.Errorf("no such link [l/%s]", id.Token)
+	return fmt.Errorf("no such link [l/%s]", id)
 }
 
-func (network *Network) VerifyLinkSource(targetRouter *Router, id *identity.TokenId, fingerprints []string) error {
-	l, found := network.linkController.get(id)
+func (network *Network) VerifyLinkSource(targetRouter *Router, linkId string, fingerprints []string) error {
+	l, found := network.linkController.get(linkId)
 	if !found {
-		return errors.Errorf("invalid link %v", id.Token)
+		return errors.Errorf("invalid link %v", linkId)
 	}
 
 	if l.Dst.Id != targetRouter.Id {
-		return errors.Errorf("incorrect link target router. link=%v, expected router=%v, actual router=%v", l.Id.Token, l.Dst.Id, targetRouter.Id)
+		return errors.Errorf("incorrect link target router. link=%v, expected router=%v, actual router=%v", l.Id, l.Dst.Id, targetRouter.Id)
 	}
 
 	routerFingerprint := l.Src.Fingerprint
 	if routerFingerprint == nil {
-		return errors.Errorf("invalid source router %v for link %v, not yet enrolled", l.Src.Id, l.Id.Token)
+		return errors.Errorf("invalid source router %v for link %v, not yet enrolled", l.Src.Id, l.Id)
 	}
 
 	for _, fp := range fingerprints {
@@ -345,7 +345,7 @@ func (network *Network) VerifyLinkSource(targetRouter *Router, id *identity.Toke
 		}
 	}
 
-	return errors.Errorf("could not verify fingerprint for router %v on link %v", l.Src.Id, l.Id.Token)
+	return errors.Errorf("could not verify fingerprint for router %v on link %v", l.Src.Id, l.Id)
 }
 
 func (network *Network) LinkChanged(l *Link) {
@@ -357,7 +357,7 @@ func (network *Network) LinkChanged(l *Link) {
 
 func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context) (*Circuit, error) {
 	// 1: Allocate Circuit Identifier
-	circuitId, err := network.sequence.NextHash()
+	circuitId, err := network.circuitController.nextCircuitId()
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +461,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		logger.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
 
 		// 6: Create Circuit Object
-		ss := &Circuit{
+		circuit := &Circuit{
 			Id:         circuitId,
 			ClientId:   clientId.Token,
 			Service:    svc,
@@ -469,11 +469,11 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			Terminator: terminator,
 			PeerData:   peerData,
 		}
-		network.circuitController.add(ss)
-		network.CircuitCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Path)
+		network.circuitController.add(circuit)
+		network.CircuitCreated(circuit.Id, circuit.ClientId, circuit.Service.Id, circuit.Path)
 
-		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, ss.Path)
-		return ss, nil
+		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, circuit.Path)
+		return circuit, nil
 	}
 }
 
@@ -729,7 +729,7 @@ func (network *Network) Run() {
 }
 
 func (network *Network) handleLinkChanged(l *Link) {
-	logrus.Infof("changed link [l/%s]", l.Id.Token)
+	logrus.Infof("changed link [l/%s]", l.Id)
 	if err := network.rerouteLink(l); err != nil {
 		logrus.Errorf("unexpected error rerouting link (%s)", err)
 	}
@@ -752,12 +752,12 @@ func (network *Network) GetCapabilities() []string {
 }
 
 func (network *Network) rerouteLink(l *Link) error {
-	logrus.Infof("link [l/%s] changed", l.Id.Token)
+	logrus.Infof("link [l/%s] changed", l.Id)
 
 	circuits := network.circuitController.all()
 	for _, s := range circuits {
 		if s.Path.usesLink(l) {
-			logrus.Infof("circuit [s/%s] uses link [l/%s]", s.Id, l.Id.Token)
+			logrus.Infof("circuit [s/%s] uses link [l/%s]", s.Id, l.Id)
 			if err := network.rerouteCircuit(s); err != nil {
 				logrus.Errorf("error rerouting circuit [s/%s], removing", s.Id)
 				if err := network.RemoveCircuit(s.Id, true); err != nil {
@@ -849,7 +849,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 	}
 
 	for _, link := range network.GetAllLinksForRouter(router.Id) {
-		metricId := "link." + link.Id.Token + ".latency"
+		metricId := "link." + link.Id + ".latency"
 		if latency, ok := metrics.Histograms[metricId]; ok {
 			if link.Src.Id == router.Id {
 				link.SetSrcLatency(int64(latency.Mean)) // latency is in nanoseconds

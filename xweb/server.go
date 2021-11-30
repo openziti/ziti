@@ -31,7 +31,7 @@ import (
 type ContextKey string
 
 const (
-	WebHandlerContextKey  = ContextKey("XWebHandlerContextKey")
+	WebHandlerContextKey = ContextKey("XWebHandlerContextKey")
 	WebContextKey        = ContextKey("XWebContext")
 )
 
@@ -79,7 +79,6 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 
 	tlsConfig := webListener.Identity.ServerTLSConfig()
 	tlsConfig.ClientAuth = tls.RequestClientCert
-
 	tlsConfig.MinVersion = uint16(webListener.Options.MinTLSVersion)
 	tlsConfig.MaxVersion = uint16(webListener.Options.MaxTLSVersion)
 
@@ -138,7 +137,7 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 }
 
 // wrapPanicRecovery wraps a http.Handler with another http.Handler that provides recovery.
-func (server *Server) wrapPanicRecovery(handler http.Handler, ) http.Handler {
+func (server *Server) wrapPanicRecovery(handler http.Handler) http.Handler {
 
 	wrappedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() {

@@ -33,6 +33,7 @@ type Factory interface {
 
 type Terminator interface {
 	GetId() string
+	GetPrecedence() Precedence
 	GetCost() uint16
 	GetServiceId() string
 	GetRouterId() string
@@ -47,7 +48,6 @@ type PeerData map[uint32][]byte
 type CostedTerminator interface {
 	Terminator
 	GetRouteCost() uint32
-	GetPrecedence() Precedence
 }
 
 type StrategyChangeEvent interface {

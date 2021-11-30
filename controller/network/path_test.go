@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
@@ -50,7 +49,7 @@ func TestSimplePath2(t *testing.T) {
 	r1 := newRouterForTest("r1", "", transportAddr, nil)
 	network.Routers.markConnected(r1)
 
-	l0 := newLink(&identity.TokenId{Token: "l0"})
+	l0 := newLink("l0")
 	l0.Src = r0
 	l0.Dst = r1
 	l0.addState(newLinkState(Connected))
@@ -78,8 +77,8 @@ func TestSimplePath2(t *testing.T) {
 	assert.Nil(t, rm0.Egress)
 	assert.Equal(t, 2, len(rm0.Forwards))
 	assert.Equal(t, path.IngressId, rm0.Forwards[0].SrcAddress)
-	assert.Equal(t, l0.Id.Token, rm0.Forwards[0].DstAddress)
-	assert.Equal(t, l0.Id.Token, rm0.Forwards[1].SrcAddress)
+	assert.Equal(t, l0.Id, rm0.Forwards[0].DstAddress)
+	assert.Equal(t, l0.Id, rm0.Forwards[1].SrcAddress)
 	assert.Equal(t, path.IngressId, rm0.Forwards[1].DstAddress)
 
 	// egress route message
@@ -89,8 +88,8 @@ func TestSimplePath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm1.Egress.Address)
 	assert.Equal(t, addr, rm1.Egress.Destination)
 	assert.Equal(t, path.EgressId, rm1.Forwards[0].SrcAddress)
-	assert.Equal(t, l0.Id.Token, rm1.Forwards[0].DstAddress)
-	assert.Equal(t, l0.Id.Token, rm1.Forwards[1].SrcAddress)
+	assert.Equal(t, l0.Id, rm1.Forwards[0].DstAddress)
+	assert.Equal(t, l0.Id, rm1.Forwards[1].SrcAddress)
 	assert.Equal(t, path.EgressId, rm1.Forwards[1].DstAddress)
 }
 
@@ -117,13 +116,13 @@ func TestTransitPath2(t *testing.T) {
 	r2 := newRouterForTest("r2", "", transportAddr, nil)
 	network.Routers.markConnected(r2)
 
-	l0 := newLink(&identity.TokenId{Token: "l0"})
+	l0 := newLink("l0")
 	l0.Src = r0
 	l0.Dst = r1
 	l0.addState(newLinkState(Connected))
 	network.linkController.add(l0)
 
-	l1 := newLink(&identity.TokenId{Token: "l1"})
+	l1 := newLink("l1")
 	l1.Src = r1
 	l1.Dst = r2
 	l1.addState(newLinkState(Connected))
@@ -153,8 +152,8 @@ func TestTransitPath2(t *testing.T) {
 	assert.Nil(t, rm0.Egress)
 	assert.Equal(t, 2, len(rm0.Forwards))
 	assert.Equal(t, path.IngressId, rm0.Forwards[0].SrcAddress)
-	assert.Equal(t, l0.Id.Token, rm0.Forwards[0].DstAddress)
-	assert.Equal(t, l0.Id.Token, rm0.Forwards[1].SrcAddress)
+	assert.Equal(t, l0.Id, rm0.Forwards[0].DstAddress)
+	assert.Equal(t, l0.Id, rm0.Forwards[1].SrcAddress)
 	assert.Equal(t, path.IngressId, rm0.Forwards[1].DstAddress)
 
 	// transit route message
@@ -162,10 +161,10 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, "s0", rm1.CircuitId)
 	assert.Nil(t, rm1.Egress)
 	assert.Equal(t, 2, len(rm1.Forwards))
-	assert.Equal(t, l0.Id.Token, rm1.Forwards[0].SrcAddress)
-	assert.Equal(t, l1.Id.Token, rm1.Forwards[0].DstAddress)
-	assert.Equal(t, l1.Id.Token, rm1.Forwards[1].SrcAddress)
-	assert.Equal(t, l0.Id.Token, rm1.Forwards[1].DstAddress)
+	assert.Equal(t, l0.Id, rm1.Forwards[0].SrcAddress)
+	assert.Equal(t, l1.Id, rm1.Forwards[0].DstAddress)
+	assert.Equal(t, l1.Id, rm1.Forwards[1].SrcAddress)
+	assert.Equal(t, l0.Id, rm1.Forwards[1].DstAddress)
 
 	// egress route message
 	rm2 := routeMessages[2]
@@ -174,8 +173,8 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm2.Egress.Address)
 	assert.Equal(t, transportAddr.String(), rm2.Egress.Destination)
 	assert.Equal(t, path.EgressId, rm2.Forwards[0].SrcAddress)
-	assert.Equal(t, l1.Id.Token, rm2.Forwards[0].DstAddress)
-	assert.Equal(t, l1.Id.Token, rm2.Forwards[1].SrcAddress)
+	assert.Equal(t, l1.Id, rm2.Forwards[0].DstAddress)
+	assert.Equal(t, l1.Id, rm2.Forwards[1].SrcAddress)
 	assert.Equal(t, path.EgressId, rm2.Forwards[1].DstAddress)
 }
 
@@ -256,7 +255,7 @@ func TestShortestPath(t *testing.T) {
 	r3 := newRouterForTest("r3", "", transportAddr, nil)
 	network.Routers.markConnected(r3)
 
-	link := newLink(&identity.TokenId{Token: "l0"})
+	link := newLink("l0")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -265,7 +264,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink(&identity.TokenId{Token: "l1"})
+	link = newLink("l1")
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
@@ -274,7 +273,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink(&identity.TokenId{Token: "l2"})
+	link = newLink("l2")
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
@@ -283,7 +282,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink(&identity.TokenId{Token: "l3"})
+	link = newLink("l3")
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)

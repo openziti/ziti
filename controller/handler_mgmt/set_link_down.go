@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type setLinkDownHandler struct {
@@ -44,7 +43,7 @@ func (h *setLinkDownHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 
 	set := &mgmt_pb.SetLinkDownRequest{}
 	if err := proto.Unmarshal(msg.Body, set); err == nil {
-		if l, found := h.network.GetLink(&identity.TokenId{Token: set.LinkId}); found {
+		if l, found := h.network.GetLink(set.LinkId); found {
 			l.SetDown(set.Down)
 			h.network.LinkChanged(l)
 			log.Infof("set down state of link [l/%s] to [%t]", set.LinkId, set.Down)

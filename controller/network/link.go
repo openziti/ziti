@@ -17,7 +17,6 @@
 package network
 
 import (
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"sync"
@@ -25,7 +24,7 @@ import (
 )
 
 type Link struct {
-	Id         *identity.TokenId
+	Id         string
 	Src        *Router
 	Dst        *Router
 	state      []*LinkState
@@ -38,7 +37,7 @@ type Link struct {
 	lock       sync.Mutex
 }
 
-func newLink(id *identity.TokenId) *Link {
+func newLink(id string) *Link {
 	l := &Link{
 		Id:         id,
 		state:      make([]*LinkState, 0),
@@ -48,6 +47,10 @@ func newLink(id *identity.TokenId) *Link {
 	}
 	l.addState(&LinkState{Mode: Pending, Timestamp: info.NowInMilliseconds()})
 	return l
+}
+
+func (link *Link) GetId() string {
+	return link.Id
 }
 
 func (link *Link) CurrentState() *LinkState {

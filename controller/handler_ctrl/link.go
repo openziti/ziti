@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/identity/identity"
 )
 
 type linkHandler struct {
@@ -53,7 +52,7 @@ func (h *linkHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) 
 func (h *linkHandler) HandleLink(msg *channel2.Message, ch channel2.Channel, link *ctrl_pb.Link) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	if err := h.network.LinkConnected(&identity.TokenId{Token: link.Id}, true); err == nil {
+	if err := h.network.LinkConnected(link.Id, true); err == nil {
 		log.Infof("link connected [l/%s]", link.Id)
 	} else {
 		log.WithError(err).Error("unexpected error marking link connected")

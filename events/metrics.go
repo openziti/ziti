@@ -5,7 +5,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/events"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -47,7 +46,7 @@ func mapLinkMetrics(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
 		event.Metric = name
 		event.SourceEntityId = linkId
 
-		if link, _ := currentNetwork.GetLink(&identity.TokenId{Token: linkId}); link != nil {
+		if link, _ := currentNetwork.GetLink(linkId); link != nil {
 			sourceTags := event.Tags
 			event.Tags = map[string]string{}
 			for k, v := range sourceTags {

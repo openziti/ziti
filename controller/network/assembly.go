@@ -36,7 +36,7 @@ func (network *Network) assemble() {
 				network.linkController.add(missingLink)
 
 				dial := &ctrl_pb.Dial{
-					LinkId:   missingLink.Id.Token,
+					LinkId:   missingLink.Id,
 					Address:  missingLink.Dst.AdvertisedListener,
 					RouterId: missingLink.Dst.Id,
 				}
@@ -65,11 +65,11 @@ func (network *Network) clean() {
 	lRemove := make(map[string]*Link)
 	for _, l := range failedLinks {
 		if now-l.CurrentState().Timestamp >= 30000 {
-			lRemove[l.Id.Token] = l
+			lRemove[l.Id] = l
 		}
 	}
 	for _, lr := range lRemove {
-		log.Infof("removing [l/%s]", lr.Id.Token)
+		log.Infof("removing [l/%s]", lr.Id)
 		network.linkController.remove(lr)
 	}
 }
