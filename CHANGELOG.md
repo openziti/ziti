@@ -1,8 +1,52 @@
-# Release 0.23.2
+# Release 0.24.0
+
+## Breaking Changes
+
+* ziti-fabric-gw has been removed since the fabric now has its own REST API
+* ziti-fabric-test is no longer being built by default and won't be included in future release bundles. Use `go build --tags all ./...` to build it
+* ziti-fabric has been deprecated. Most of its features are now available in the `ziti` CLI under `ziti fabric`
 
 ## What's New
 
+* Feature: Fabric REST API
+* Performance: Additional route selection work
+* Bug Fix: Fix controller deadlock which can happen if a control channel is closed while controller is responding
 * Bug fix: Fix panic for UDP-only tproxy intercepts
+
+## Fabric REST API
+
+The fabric now has a REST API in addition to the channel2 management API. To enable it, add the fabric binding to the apis section off the xweb config, as follows:
+
+```
+    apis:
+      # binding - required
+      # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - health-checks
+      - binding: fabric
+```
+
+If running without the edge, the fabric API uses client certificates for authorization, much like the existing channel2 mgmt based API does. If running with the edge, the edge provides authentication/authorization for the fabric REST APIs.
+
+### Supported Operations
+
+These operations are supported in the REST API. The ziti CLI has been updated to use this in the new `ziti fabric` sub-command.
+
+* Services: create/read/update/delete
+* Routers: create/read/update/delete
+* Terminators: create/read/update/delete
+* Links: read/update
+* Circuits: read/delete
+
+### Unsupported Operations
+
+Some operations from ziti-fabric aren't get supported:
+
+* Stream metrics/traces/circuits
+    * This feature may be re-implemented in terms of websockets, or may be left as-is, or may be dropped
+* Inspect (get stackdumps)
+    * This will be ported to `ziti fabric`
+* Decode trace files
+    * This may be ported to `ziti-ops`
 
 # Release 0.23.1
 
