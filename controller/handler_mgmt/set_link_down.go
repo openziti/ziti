@@ -45,7 +45,7 @@ func (h *setLinkDownHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 	set := &mgmt_pb.SetLinkDownRequest{}
 	if err := proto.Unmarshal(msg.Body, set); err == nil {
 		if l, found := h.network.GetLink(&identity.TokenId{Token: set.LinkId}); found {
-			l.Down = set.Down
+			l.SetDown(set.Down)
 			h.network.LinkChanged(l)
 			log.Infof("set down state of link [l/%s] to [%t]", set.LinkId, set.Down)
 			handler_common.SendSuccess(msg, ch, "")

@@ -71,7 +71,8 @@ func NewRouter(id, name, fingerprint string) *Router {
 		Name:        name,
 		Fingerprint: &fingerprint,
 	}
-	result.routerLinks.Store([]*Link{})
+	result.routerLinks.allLinks.Store([]*Link{})
+	result.routerLinks.linkByRouter.Store(map[string][]*Link{})
 	return result
 }
 
@@ -242,18 +243,27 @@ func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
 
 type RouterLinks struct {
 	sync.Mutex
-	atomic.Value
+	allLinks     atomic.Value
+	linkByRouter atomic.Value
 }
 
 func (self *RouterLinks) GetLinks() []*Link {
-	result := self.Load()
+	result := self.allLinks.Load()
 	if result == nil {
 		return nil
 	}
 	return result.([]*Link)
 }
 
-func (self *RouterLinks) Add(link *Link) {
+func (self *RouterLinks) GetLinksByRouter() map[string][]*Link {
+	result := self.linkByRouter.Load()
+	if result == nil {
+		return nil
+	}
+	return result.(map[string][]*Link)
+}
+
+func (self *RouterLinks) Add(link *Link, other *Router) {
 	self.Lock()
 	defer self.Unlock()
 	links := self.GetLinks()
@@ -262,10 +272,20 @@ func (self *RouterLinks) Add(link *Link) {
 		newLinks = append(newLinks, l)
 	}
 	newLinks = append(newLinks, link)
-	self.Store(newLinks)
+	self.allLinks.Store(newLinks)
+
+	byRouter := self.GetLinksByRouter()
+	newLinksByRouter := map[string][]*Link{}
+	for k, v := range byRouter {
+		newLinksByRouter[k] = v
+	}
+	forRouterList := newLinksByRouter[other.Id]
+	newForRouterList := append([]*Link{link}, forRouterList...)
+	newLinksByRouter[other.Id] = newForRouterList
+	self.linkByRouter.Store(newLinksByRouter)
 }
 
-func (self *RouterLinks) Remove(link *Link) {
+func (self *RouterLinks) Remove(link *Link, other *Router) {
 	self.Lock()
 	defer self.Unlock()
 	links := self.GetLinks()
@@ -275,9 +295,31 @@ func (self *RouterLinks) Remove(link *Link) {
 			newLinks = append(newLinks, l)
 		}
 	}
-	self.Store(newLinks)
+	self.allLinks.Store(newLinks)
+
+	byRouter := self.GetLinksByRouter()
+	newLinksByRouter := map[string][]*Link{}
+	for k, v := range byRouter {
+		newLinksByRouter[k] = v
+	}
+	forRouterList := newLinksByRouter[other.Id]
+	var newForRouterList []*Link
+	for _, l := range forRouterList {
+		if l != link {
+			newForRouterList = append(newForRouterList, l)
+		}
+	}
+	if len(newForRouterList) == 0 {
+		delete(newLinksByRouter, other.Id)
+	} else {
+		newLinksByRouter[other.Id] = newForRouterList
+	}
+
+	self.linkByRouter.Store(newLinksByRouter)
+
 }
 
 func (self *RouterLinks) Clear() {
-	self.Store([]*Link{})
+	self.allLinks.Store([]*Link{})
+	self.linkByRouter.Store(map[string][]*Link{})
 }

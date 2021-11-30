@@ -18,7 +18,9 @@ package network
 
 import (
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
+	"sync"
 	"sync/atomic"
 )
 
@@ -27,18 +29,20 @@ type Link struct {
 	Src        *Router
 	Dst        *Router
 	state      []*LinkState
-	Down       bool
+	down       bool
 	StaticCost int32
 	SrcLatency int64
 	DstLatency int64
 	Cost       int64
+	usable     concurrenz.AtomicBoolean
+	lock       sync.Mutex
 }
 
 func newLink(id *identity.TokenId) *Link {
 	l := &Link{
 		Id:         id,
 		state:      make([]*LinkState, 0),
-		Down:       false,
+		down:       false,
 		StaticCost: 1,
 		Cost:       1,
 	}
@@ -47,6 +51,8 @@ func newLink(id *identity.TokenId) *Link {
 }
 
 func (link *Link) CurrentState() *LinkState {
+	link.lock.Lock()
+	defer link.lock.Unlock()
 	if link.state == nil || len(link.state) < 1 {
 		return nil
 	}
@@ -54,10 +60,41 @@ func (link *Link) CurrentState() *LinkState {
 }
 
 func (link *Link) addState(s *LinkState) {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+
 	if link.state == nil {
 		link.state = make([]*LinkState, 0)
 	}
 	link.state = append([]*LinkState{s}, link.state...)
+	link.recalculateUsable()
+}
+
+func (link *Link) SetDown(down bool) {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+	link.down = down
+	link.recalculateUsable()
+}
+
+func (link *Link) IsDown() bool {
+	link.lock.Lock()
+	defer link.lock.Unlock()
+	return link.down
+}
+
+func (link *Link) recalculateUsable() {
+	if link.down {
+		link.usable.Set(false)
+	} else if len(link.state) < 1 || link.state[0].Mode != Connected {
+		link.usable.Set(false)
+	} else {
+		link.usable.Set(true)
+	}
+}
+
+func (link *Link) IsUsable() bool {
+	return link.usable.Get()
 }
 
 func (link *Link) GetStaticCost() int32 {
