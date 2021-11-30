@@ -42,13 +42,20 @@ func (h *linkHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) 
 	log := pfxlog.ContextLogger(ch.Label())
 
 	link := &ctrl_pb.Link{}
-	if err := proto.Unmarshal(msg.Body, link); err == nil {
-		if err := h.network.LinkConnected(&identity.TokenId{Token: link.Id}, true); err == nil {
-			log.Infof("link connected [l/%s]", link.Id)
-		} else {
-			log.Errorf("unexpected error (%s)", err)
-		}
+	if err := proto.Unmarshal(msg.Body, link); err != nil {
+		log.WithError(err).Error("failed to unmarshal link message")
+		return
+	}
+
+	go h.HandleLink(msg, ch, link)
+}
+
+func (h *linkHandler) HandleLink(msg *channel2.Message, ch channel2.Channel, link *ctrl_pb.Link) {
+	log := pfxlog.ContextLogger(ch.Label())
+
+	if err := h.network.LinkConnected(&identity.TokenId{Token: link.Id}, true); err == nil {
+		log.Infof("link connected [l/%s]", link.Id)
 	} else {
-		log.Errorf("unexpected error (%s)", err)
+		log.WithError(err).Error("unexpected error marking link connected")
 	}
 }

@@ -44,49 +44,56 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 	log := pfxlog.ContextLogger(ch.Label())
 
 	fault := &ctrl_pb.Fault{}
-	if err := proto.Unmarshal(msg.Body, fault); err == nil {
-		switch fault.Subject {
-		case ctrl_pb.FaultSubject_LinkFault:
-			linkId := &identity.TokenId{Token: fault.Id}
-			if err := h.network.LinkConnected(linkId, false); err == nil {
-				if link, found := h.network.GetLink(linkId); found {
-					h.network.LinkChanged(link)
-				}
-				log.Infof("link fault [l/%s]", linkId.Token)
+	if err := proto.Unmarshal(msg.Body, fault); err != nil {
+		log.WithError(err).Error("failed to unmarshal fault message")
+		return
+	}
+
+	go h.handleFault(msg, ch, fault)
+}
+
+func (h *faultHandler) handleFault(msg *channel2.Message, ch channel2.Channel, fault *ctrl_pb.Fault) {
+	log := pfxlog.ContextLogger(ch.Label())
+
+	switch fault.Subject {
+	case ctrl_pb.FaultSubject_LinkFault:
+		linkId := &identity.TokenId{Token: fault.Id}
+		if err := h.network.LinkConnected(linkId, false); err == nil {
+			if link, found := h.network.GetLink(linkId); found {
+				h.network.LinkChanged(link)
 			}
-
-		case ctrl_pb.FaultSubject_IngressFault:
-			if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
-				invalidCircuitErr := network.InvalidCircuitError{}
-				if errors.As(err, &invalidCircuitErr) {
-					log.Debugf("error handling ingress fault (%s)", err)
-				} else {
-					log.Errorf("error handling ingress fault (%s)", err)
-				}
-			} else {
-				log.Debugf("handled ingress fault for (%s)", fault.Id)
-			}
-
-		case ctrl_pb.FaultSubject_EgressFault:
-			if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
-				invalidCircuitErr := network.InvalidCircuitError{}
-				if errors.As(err, &invalidCircuitErr) {
-					log.Debugf("error handling egress fault (%s)", err)
-				} else {
-					log.Errorf("error handling egress fault (%s)", err)
-				}
-			} else {
-				log.Debugf("handled egress fault for (%s)", fault.Id)
-			}
-
-		case ctrl_pb.FaultSubject_ForwardFault:
-			circuitIds := strings.Split(fault.Id, " ")
-			h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, CircuitIds: circuitIds})
-
-		default:
-			log.Errorf("unexpected subject (%s)", fault.Subject.String())
+			log.Infof("link fault [l/%s]", linkId.Token)
 		}
-	} else {
-		log.Errorf("unexpected error (%s)", err)
+
+	case ctrl_pb.FaultSubject_IngressFault:
+		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+			invalidCircuitErr := network.InvalidCircuitError{}
+			if errors.As(err, &invalidCircuitErr) {
+				log.Debugf("error handling ingress fault (%s)", err)
+			} else {
+				log.Errorf("error handling ingress fault (%s)", err)
+			}
+		} else {
+			log.Debugf("handled ingress fault for (%s)", fault.Id)
+		}
+
+	case ctrl_pb.FaultSubject_EgressFault:
+		if err := h.network.RemoveCircuit(fault.Id, false); err != nil {
+			invalidCircuitErr := network.InvalidCircuitError{}
+			if errors.As(err, &invalidCircuitErr) {
+				log.Debugf("error handling egress fault (%s)", err)
+			} else {
+				log.Errorf("error handling egress fault (%s)", err)
+			}
+		} else {
+			log.Debugf("handled egress fault for (%s)", fault.Id)
+		}
+
+	case ctrl_pb.FaultSubject_ForwardFault:
+		circuitIds := strings.Split(fault.Id, " ")
+		h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, CircuitIds: circuitIds})
+
+	default:
+		log.Errorf("unexpected subject (%s)", fault.Subject.String())
 	}
 }

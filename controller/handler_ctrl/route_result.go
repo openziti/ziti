@@ -45,6 +45,10 @@ func (self *routeResultHandler) ContentType() int32 {
 }
 
 func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+	go self.handleRouteResult(msg)
+}
+
+func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
 		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
 		rerrv, _ := msg.Headers[ctrl_msg.RouteResultErrorHeader]

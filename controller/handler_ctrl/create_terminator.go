@@ -44,12 +44,16 @@ func (h *createTerminatorHandler) ContentType() int32 {
 }
 
 func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	log := pfxlog.ContextLogger(ch.Label())
 	request := &ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		log.WithError(err).Error("failed to unmarshal create terminator message")
 		return
 	}
+	go h.handleCreateTerminator(msg, ch, request)
+}
 
+func (h *createTerminatorHandler) handleCreateTerminator(msg *channel2.Message, ch channel2.Channel, request *ctrl_pb.CreateTerminatorRequest) {
 	if request.Cost > math.MaxUint16 {
 		handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", request.Cost, math.MaxUint16))
 		return

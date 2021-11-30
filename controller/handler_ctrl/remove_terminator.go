@@ -42,9 +42,15 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 
 	request := &ctrl_pb.RemoveTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		log.WithError(err).Error("failed to unmarshal remove terminator message")
 		return
 	}
+
+	go h.handleRemoveTerminator(msg, ch, request)
+}
+
+func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel2.Message, ch channel2.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
+	log := pfxlog.ContextLogger(ch.Label())
 
 	_, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
