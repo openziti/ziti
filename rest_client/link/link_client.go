@@ -106,7 +106,7 @@ func (a *Client) DetailLink(params *DetailLinkParams, opts ...ClientOption) (*De
 /*
   ListLinks lists links
 
-  Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+  Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
 
 */
 func (a *Client) ListLinks(params *ListLinksParams, opts ...ClientOption) (*ListLinksOK, error) {

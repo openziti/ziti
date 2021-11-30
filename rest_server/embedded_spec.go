@@ -62,7 +62,7 @@ func init() {
   "paths": {
     "/circuits": {
       "get": {
-        "description": "Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "description": "Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.\n",
         "tags": [
           "Circuit"
         ],
@@ -138,7 +138,7 @@ func init() {
     },
     "/links": {
       "get": {
-        "description": "Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "description": "Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.\n",
         "tags": [
           "Link"
         ],
@@ -1995,7 +1995,7 @@ func init() {
   "paths": {
     "/circuits": {
       "get": {
-        "description": "Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "description": "Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.\n",
         "tags": [
           "Circuit"
         ],
@@ -2226,7 +2226,7 @@ func init() {
     },
     "/links": {
       "get": {
-        "description": "Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.\n",
+        "description": "Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.\n",
         "tags": [
           "Link"
         ],

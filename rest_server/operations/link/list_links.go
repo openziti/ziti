@@ -57,7 +57,7 @@ func NewListLinks(ctx *middleware.Context, handler ListLinksHandler) *ListLinks 
 
 List links
 
-Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
 
 
 */

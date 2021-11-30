@@ -420,14 +420,10 @@ paths:
     get:
       summary: List links
       description: |
-        Retrieves a list of link resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+        Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
       tags:
         - Link
       operationId: listLinks
-      #      parameters:
-      #        - $ref: '#/parameters/limit'
-      #        - $ref: '#/parameters/offset'
-      #        - $ref: '#/parameters/filter'
       responses:
         '200':
           $ref: '#/responses/listLinks'
@@ -479,14 +475,10 @@ paths:
     get:
       summary: List circuits
       description: |
-        Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+        Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
       tags:
         - Circuit
       operationId: listCircuits
-      #      parameters:
-      #        - $ref: '#/parameters/limit'
-      #        - $ref: '#/parameters/offset'
-      #        - $ref: '#/parameters/filter'
       responses:
         '200':
           $ref: '#/responses/listCircuits'

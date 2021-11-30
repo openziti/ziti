@@ -146,7 +146,7 @@ func (a *Client) DetailCircuit(params *DetailCircuitParams, opts ...ClientOption
 /*
   ListCircuits lists circuits
 
-  Retrieves a list of circuit resources; doesn not supports filtering, sorting, or pagination. Requires admin access.
+  Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
 
 */
 func (a *Client) ListCircuits(params *ListCircuitsParams, opts ...ClientOption) (*ListCircuitsOK, error) {
