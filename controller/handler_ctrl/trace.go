@@ -24,7 +24,7 @@ func (*traceHandler) ContentType() int32 {
 func (handler *traceHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
 	event := &trace_pb.ChannelMessage{}
 	if err := proto.Unmarshal(msg.Body, event); err == nil {
-		handler.dispatcher.Accept(event)
+		go handler.dispatcher.Accept(event)
 	} else {
 		pfxlog.Logger().Errorf("unexpected error decoding trace message (%s)", err)
 	}

@@ -40,7 +40,7 @@ func (h *metricsHandler) ContentType() int32 {
 func (h *metricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	metricsMsg := &metrics_pb.MetricsMessage{}
 	if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
-		h.AcceptMetrics(metricsMsg)
+		go h.AcceptMetrics(metricsMsg)
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}

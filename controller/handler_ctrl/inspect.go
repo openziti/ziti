@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
@@ -42,10 +41,14 @@ func (h *inspectHandler) HandleReceive(request *channel2.Message, ch channel2.Ch
 
 	inspectRequest := &ctrl_pb.InspectRequest{}
 	if err := proto.Unmarshal(request.Body, inspectRequest); err != nil {
-		log.Errorf("unexpected error (%s)", err)
-		h.respondWithError(ch, request, fmt.Errorf("failed to decode request: (%v)", err).Error())
+		log.WithError(err).Error("failed to unmarshal inspect message")
+		return
 	}
 
+	go h.handleInspect(request, ch, inspectRequest)
+}
+
+func (h *inspectHandler) handleInspect(request *channel2.Message, ch channel2.Channel, inspectRequest *ctrl_pb.InspectRequest) {
 	response := &ctrl_pb.InspectResponse{Success: true}
 	for _, value := range inspectRequest.RequestedValues {
 		if value == "capability" {
