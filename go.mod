@@ -31,7 +31,6 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
 	github.com/google/uuid v1.3.0
-	github.com/gorilla/handlers v1.5.1
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jinzhu/copier v0.3.2
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
@@ -88,6 +87,7 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0 // indirect
+	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/josharian/intern v1.0.0 // indirect

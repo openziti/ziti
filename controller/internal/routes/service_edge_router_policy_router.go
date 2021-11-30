@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/service_edge_router_policy"
+	"github.com/openziti/fabric/controller/api"
 )
 
 func init() {
@@ -100,7 +101,7 @@ func (r *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.Requ
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.ServiceEdgeRouterPolicy.Patch(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }

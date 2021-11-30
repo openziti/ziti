@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge/rest_management_api_server/operations/service"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/storage/boltz"
@@ -243,7 +244,7 @@ func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, para
 }
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }

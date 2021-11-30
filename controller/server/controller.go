@@ -21,6 +21,7 @@ import (
 	"fmt"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/fabric/controller/api_impl"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -113,6 +114,8 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 	if err := host.RegisterXmgmt(c.xmgmt); err != nil {
 		panic(err)
 	}
+
+	api_impl.OverrideRequestWrapper(&fabricWrapper{ae: c.AppEnv})
 
 	return c, nil
 }

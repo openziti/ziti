@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	fabricApiError "github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -117,7 +118,7 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 
 	if existing != nil {
 		apiError := apierror.NewCertInUse()
-		apiError.Cause = &apierror.GenericCauseError{
+		apiError.Cause = &fabricApiError.GenericCauseError{
 			DataMap: map[string]interface{}{
 				"fingerprint": fingerprint,
 			},

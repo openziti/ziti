@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/posture_checks"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -132,7 +133,7 @@ func (r *PostureCheckRouter) Update(ae *env.AppEnv, rc *response.RequestContext,
 }
 
 func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.PatchPostureCheckParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		check := MapPatchPostureCheckToModel(params.ID, params.PostureCheck)
 
 		if fields.IsUpdated("operatingSystems") {

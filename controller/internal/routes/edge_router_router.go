@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 )
@@ -123,7 +124,7 @@ func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 }
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.EdgeRouter.Patch(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), fields)
 	})
 }

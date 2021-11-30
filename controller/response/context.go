@@ -35,11 +35,26 @@ type RequestContext struct {
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
-	EventLogger       EventLogger
 	SessionToken      string
 	entityId          string
 	entitySubId       string
 	Body              []byte
+}
+
+func (rc *RequestContext) GetId() string {
+	return rc.Id
+}
+
+func (rc *RequestContext) GetBody() []byte {
+	return rc.Body
+}
+
+func (rc *RequestContext) GetRequest() *http.Request {
+	return rc.Request
+}
+
+func (rc *RequestContext) GetResponseWriter() http.ResponseWriter {
+	return rc.ResponseWriter
 }
 
 type EventLogger interface {

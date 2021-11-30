@@ -17,7 +17,7 @@
 package response
 
 import (
-	"github.com/openziti/edge/build"
+	"github.com/openziti/fabric/build"
 	"strconv"
 )
 

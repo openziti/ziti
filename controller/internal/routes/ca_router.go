@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/certificate_authority"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/pkg/errors"
@@ -113,7 +114,7 @@ func (r *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params ce
 }
 
 func (r *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.PatchCaParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.Ca.Patch(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
 	})
 }

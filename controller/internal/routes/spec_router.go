@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/build"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
@@ -30,6 +29,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_server"
 	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/controller/models"
 	"time"
 )

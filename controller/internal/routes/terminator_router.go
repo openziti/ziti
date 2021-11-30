@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/terminator"
+	"github.com/openziti/fabric/controller/api"
 )
 
 func init() {
@@ -90,7 +91,7 @@ func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.Terminator.Patch(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }

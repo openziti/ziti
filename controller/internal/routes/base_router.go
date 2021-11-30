@@ -17,14 +17,13 @@
 package routes
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/controller/schema"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -37,70 +36,6 @@ import (
 const (
 	EntityNameSelf = "self"
 )
-
-type JsonFields map[string]bool
-
-func (j JsonFields) IsUpdated(key string) bool {
-	_, ok := j[key]
-	return ok
-}
-
-func (j JsonFields) AddField(key string) {
-	j[key] = true
-}
-
-func (j JsonFields) ConcatNestedNames() JsonFields {
-	for key, val := range j {
-		if strings.Contains(key, ".") {
-			delete(j, key)
-			key = strings.ReplaceAll(key, ".", "")
-			j[key] = val
-		}
-	}
-	return j
-}
-
-func (j JsonFields) FilterMaps(mapNames ...string) JsonFields {
-	nameMap := map[string]string{}
-	for _, name := range mapNames {
-		nameMap[name] = name + "."
-	}
-	for key := range j {
-		for name, dotName := range nameMap {
-			if strings.HasPrefix(key, dotName) {
-				delete(j, key)
-				j[name] = true
-				break
-			}
-		}
-	}
-	return j
-}
-
-func getFields(body []byte) (JsonFields, error) {
-	jsonMap := map[string]interface{}{}
-	err := json.Unmarshal(body, &jsonMap)
-
-	if err != nil {
-		return nil, apierror.GetJsonParseError(err, body)
-	}
-
-	resultMap := JsonFields{}
-	getJsonFields("", jsonMap, resultMap)
-	return resultMap, nil
-}
-
-func getJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
-	for k, v := range m {
-		name := k
-		if subMap, ok := v.(map[string]interface{}); ok {
-			getJsonFields(prefix+name+".", subMap, result)
-		} else {
-			isSet := v != nil
-			result[prefix+name] = isSet
-		}
-	}
-}
 
 func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]interface{}, error) {
 	apiEntities := make([]interface{}, 0)
@@ -237,7 +172,7 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 			return
 		}
 
-		if sve, ok := err.(*schema.ValidationErrors); ok {
+		if sve, ok := err.(*apierror.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}
@@ -349,7 +284,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
 			return
 		}
 
-		if sve, ok := err.(*schema.ValidationErrors); ok {
+		if sve, ok := err.(*apierror.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}
@@ -361,7 +296,7 @@ func UpdateAllowEmptyBody(rc *response.RequestContext, updateF ModelUpdateF) {
 	rc.RespondWithEmptyOk()
 }
 
-type ModelPatchF func(id string, fields JsonFields) error
+type ModelPatchF func(id string, fields api.JsonFields) error
 
 func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 	id, err := rc.GetEntityId()
@@ -373,7 +308,7 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 		return
 	}
 
-	jsonFields, err := getFields(rc.Body)
+	jsonFields, err := api.GetFields(rc.Body)
 	if err != nil {
 		rc.RespondWithCouldNotParseBody(err)
 	}
@@ -390,7 +325,7 @@ func Patch(rc *response.RequestContext, patchF ModelPatchF) {
 			return
 		}
 
-		if sve, ok := err.(*schema.ValidationErrors); ok {
+		if sve, ok := err.(*apierror.ValidationErrors); ok {
 			rc.RespondWithValidationErrors(sve)
 			return
 		}
@@ -514,7 +449,7 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 		rc.RespondWithError(err)
 		return
 	}
-	
+
 	queryOptions, err := GetModelQueryOptionsFromRequest(rc.Request)
 
 	if err != nil {

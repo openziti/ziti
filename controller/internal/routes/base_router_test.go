@@ -18,6 +18,7 @@ package routes
 
 import (
 	"encoding/json"
+	"github.com/openziti/fabric/controller/api"
 	"reflect"
 	"testing"
 
@@ -52,13 +53,13 @@ func Test_getFields(t *testing.T) {
 	tests := []struct {
 		name    string
 		body    []byte
-		want    JsonFields
+		want    api.JsonFields
 		wantErr bool
 	}{
 		{
 			name: "test",
 			body: []byte(test),
-			want: JsonFields{
+			want: api.JsonFields{
 				"name":               true,
 				"terminatorStrategy": true,
 				"configs":            true,
@@ -68,7 +69,7 @@ func Test_getFields(t *testing.T) {
 		{
 			name: "test2",
 			body: test2Bytes,
-			want: JsonFields{
+			want: api.JsonFields{
 				"name":               true,
 				"terminatorStrategy": true,
 				"roleAttributes":     true,
@@ -80,7 +81,7 @@ func Test_getFields(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := getFields(tt.body)
+			got, err := api.GetFields(tt.body)
 			got.FilterMaps("tags")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("getFields() error = %v, wantErr %v", err, tt.wantErr)
@@ -96,17 +97,17 @@ func Test_getFields(t *testing.T) {
 func TestJsonFields_ConcatNestedNames(t *testing.T) {
 	tests := []struct {
 		name string
-		j    JsonFields
-		want JsonFields
+		j    api.JsonFields
+		want api.JsonFields
 	}{
 		{"test",
-			JsonFields{
+			api.JsonFields{
 				"Name":                  true,
 				"This.Is.A.Longer.Name": true,
 				"EgressRouter":          true,
 				"Address":               false,
 			},
-			JsonFields{
+			api.JsonFields{
 				"Name":              true,
 				"ThisIsALongerName": true,
 				"EgressRouter":      true,

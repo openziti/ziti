@@ -17,6 +17,7 @@
 package apierror
 
 import (
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/util/errorz"
 )
 
@@ -213,7 +214,7 @@ func NewInvalidUuid(val string) *errorz.ApiError {
 		Code:    InvalidUuidCode,
 		Message: InvalidUuidMessage,
 		Status:  InvalidUuidStatus,
-		Cause: &GenericCauseError{
+		Cause: &apierror.GenericCauseError{
 			Message: "invalid uuid",
 			DataMap: map[string]interface{}{
 				"uuid": val,

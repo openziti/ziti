@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/controller/timeout"
 	"github.com/openziti/edge/rest_management_api_client"
 	"github.com/openziti/edge/rest_management_api_server"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/xweb"
 	"net/http"
 	"strings"
@@ -119,7 +119,7 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 
 		rc := ae.CreateRequestContext(rw, r)
 
-		env.AddRequestContextToHttpContext(r, rc)
+		api.AddRequestContextToHttpContext(r, rc)
 
 		err := ae.FillRequestContext(rc)
 		if err != nil {
@@ -133,5 +133,5 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		innerManagementHandler.ServeHTTP(rw, r)
 	})
 
-	return timeout.TimeoutHandler(wrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError())
+	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
 }

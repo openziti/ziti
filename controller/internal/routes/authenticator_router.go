@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/authenticator"
+	"github.com/openziti/fabric/controller/api"
 )
 
 func init() {
@@ -96,7 +97,7 @@ func (r *AuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext
 }
 
 func (r *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params authenticator.PatchAuthenticatorParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		model := MapPatchAuthenticatorToModel(params.ID, params.Authenticator)
 
 		if fields.IsUpdated("password") {

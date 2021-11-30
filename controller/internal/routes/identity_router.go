@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/storage/ast"
@@ -201,7 +202,7 @@ func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, par
 }
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		fields = fields.FilterMaps(boltz.FieldTags, persistence.FieldIdentityAppData, persistence.FieldIdentityServiceHostingCosts, persistence.FieldIdentityServiceHostingPrecedences)
 		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields)
 	})

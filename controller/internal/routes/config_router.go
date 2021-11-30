@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/config"
+	"github.com/openziti/fabric/controller/api"
 )
 
 func init() {
@@ -101,7 +102,7 @@ func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, param
 }
 
 func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigParams) {
-	Patch(rc, func(id string, fields JsonFields) error {
+	Patch(rc, func(id string, fields api.JsonFields) error {
 		return ae.Handlers.Config.Patch(MapPatchConfigToModel(params.ID, params.Config), fields.FilterMaps("tags", "data"))
 	})
 }

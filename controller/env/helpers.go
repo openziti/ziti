@@ -1,13 +1,9 @@
 package env
 
 import (
-	"errors"
-	"fmt"
 	openApiErrors "github.com/go-openapi/errors"
-	"github.com/go-openapi/runtime"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
-	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 )
@@ -54,26 +50,14 @@ func ServeError(rw http.ResponseWriter, r *http.Request, inErr error) {
 		}
 		apiError.Cause = openApiError
 
-		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
+		NewRequestContext(rw, r).RespondWithApiError(apiError)
 		return
 	}
 
 	requestContext, err := GetRequestContextFromHttpContext(r)
-
-	if err != nil {
-		apiError := errorz.NewUnhandled(err)
-
-		apiError.Cause = fmt.Errorf("error retrieveing request context: %w", err)
-
-		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
-		return
-	}
-
-	if requestContext == nil {
-		apiError := errorz.NewUnhandled(err)
-		apiError.Cause = errors.New("expected request context is nil")
-		response.RespondWithApiError(rw, r, eid.New(), runtime.JSONProducer(), apiError)
-		return
+	if requestContext == nil || err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to retrieve request context")
+		requestContext = NewRequestContext(rw, r)
 	}
 
 	requestContext.RespondWithError(inErr)

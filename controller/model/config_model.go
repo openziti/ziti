@@ -18,7 +18,7 @@ package model
 
 import (
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/controller/schema"
+	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
@@ -63,7 +63,7 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 			return nil, err
 		}
 		if !result.Valid() {
-			return nil, schema.NewValidationErrors(result)
+			return nil, apierror.NewValidationErrors(result)
 		}
 	}
 
