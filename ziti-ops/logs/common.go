@@ -4,8 +4,11 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/Jeffail/gabs/v2"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
+	"github.com/spf13/cobra"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -117,11 +120,30 @@ func (self *filter) Desc() string {
 }
 
 type JsonLogsParser struct {
-	bucketSize    time.Duration
-	currentBucket time.Time
-	filters       []LogFilter
-	bucketMatches map[LogFilter]int
-	unmatched     int
+	bucketSize                  time.Duration
+	currentBucket               time.Time
+	filters                     []LogFilter
+	bucketMatches               map[LogFilter]int
+	unmatched                   int
+	maxUnmatchedLoggedPerBucket int
+	ignore                      []string
+}
+
+func (self *JsonLogsParser) validate() error {
+	ids := map[string]int{}
+	for idx, k := range self.filters {
+		if v, found := ids[k.Id()]; found {
+			return errors.Errorf("duplicate filter id %v at indices %v and %v", k.Id(), idx, v)
+		}
+		ids[k.Id()] = idx
+	}
+	return nil
+}
+
+func (self *JsonLogsParser) ShowCategories(*cobra.Command, []string) {
+	for _, filter := range self.filters {
+		fmt.Printf("%v (%v): %v\n", filter.Id(), filter.Label(), filter.Desc())
+	}
 }
 
 func (self *JsonLogsParser) examineLogEntry(ctx *JsonParseContext) error {
@@ -147,7 +169,7 @@ func (self *JsonLogsParser) examineLogEntry(ctx *JsonParseContext) error {
 	}
 
 	self.unmatched++
-	if self.unmatched == 1 {
+	if self.unmatched <= self.maxUnmatchedLoggedPerBucket {
 		fmt.Printf("WARN: unmatched line: %v\n\n", ctx.line)
 	}
 
@@ -176,16 +198,18 @@ func (self *JsonLogsParser) bucket(ctx *JsonParseContext) error {
 }
 
 func (self *JsonLogsParser) dumpBucket() {
-	if len(self.bucketMatches) == 0 {
-		return
-	}
 	var filters []LogFilter
 	for k := range self.bucketMatches {
-		filters = append(filters, k)
+		if !stringz.Contains(self.ignore, k.Id()) {
+			filters = append(filters, k)
+		}
 	}
 	sort.Slice(filters, func(i, j int) bool {
 		return filters[i].Label() < filters[j].Label()
 	})
+	if len(filters) == 0 && self.unmatched == 0 {
+		return
+	}
 	fmt.Printf("%v\n---------------------------------------------------\n", self.currentBucket.Format(time.RFC3339))
 	for _, filter := range filters {
 		fmt.Printf("    %v (%v): %0000v\n", filter.Id(), filter.Label(), self.bucketMatches[filter])
@@ -272,4 +296,28 @@ func (self *AndMatcher) Matches(ctx *JsonParseContext) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func FieldMatches(field, expr string) LogMatcher {
+	regex, err := regexp.Compile(expr)
+	if err != nil {
+		panic(err)
+	}
+	return &EntryFieldMatchesMatcher{
+		field: field,
+		regex: regex,
+	}
+}
+
+type EntryFieldMatchesMatcher struct {
+	field string
+	regex *regexp.Regexp
+}
+
+func (self *EntryFieldMatchesMatcher) Matches(ctx *JsonParseContext) (bool, error) {
+	fieldValue, err := ctx.RequiredString(self.field)
+	if err != nil {
+		return false, err
+	}
+	return self.regex.MatchString(fieldValue), nil
 }

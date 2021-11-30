@@ -62,6 +62,7 @@ func newUpdateCommand(p common.OptionsProvider) *cobra.Command {
 	}
 
 	updateCmd.AddCommand(newUpdateLinkCmd(p))
+	updateCmd.AddCommand(newUpdateRouterCmd(p))
 	updateCmd.AddCommand(newUpdateServiceCmd(p))
 	updateCmd.AddCommand(newUpdateTerminatorCmd(p))
 
