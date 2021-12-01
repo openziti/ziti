@@ -1,3 +1,4 @@
+//go:build perftests
 // +build perftests
 
 package tests
@@ -31,10 +32,10 @@ type modelPerf struct {
 func Test_SpecManyService(t *testing.T) {
 	spec := &perfScenarioSpec{
 		name:                         "many-services",
-		serviceCount:                 2000,
-		identityCount:                3000,
-		edgeRouterCount:              50,
-		servicePolicyCount:           250,
+		serviceCount:                 10_000,
+		identityCount:                10_000,
+		edgeRouterCount:              100,
+		servicePolicyCount:           2500,
 		edgeRouterPolicyCount:        250,
 		serviceEdgeRouterPolicyCount: 100,
 	}
@@ -193,7 +194,7 @@ func (ctx *modelPerf) runScenario(spec *perfScenarioSpec) {
 	}()
 
 	ctx.StartServer()
-	ctx.RequireAdminLogin()
+	ctx.RequireAdminManagementApiLogin()
 
 	ctx.CreateEnrollAndStartEdgeRouter()
 
@@ -360,6 +361,7 @@ func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serv
 		PolicyType:    policyType,
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
+		Semantic:      persistence.SemanticAnyOf,
 	}
 	_, err := policyHandler.Create(policy)
 	ctx.Req.NoError(err)
@@ -373,6 +375,7 @@ func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []st
 		Name:            id,
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
+		Semantic:        persistence.SemanticAnyOf,
 	}
 	_, err := policyHandler.Create(policy)
 	ctx.Req.NoError(err)
@@ -386,6 +389,7 @@ func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRole
 		Name:            id,
 		EdgeRouterRoles: edgeRouterRoles,
 		ServiceRoles:    serviceRoles,
+		Semantic:        persistence.SemanticAnyOf,
 	}
 	_, err := policyHandler.Create(policy)
 	ctx.Req.NoError(err)
@@ -397,6 +401,12 @@ func (ctx *modelPerf) firstNPermuations(n int, v []string) [][]string {
 		result = append(result, strings)
 		return len(result) < n
 	})
+	// if we don't have enough permutations, just copy
+	idx := 0
+	for len(result) < n {
+		result = append(result, result[idx])
+		idx++
+	}
 	return result
 }
 

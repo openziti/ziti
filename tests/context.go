@@ -64,6 +64,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
+	idlib "github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/quic"
 	"github.com/openziti/foundation/transport/tcp"
@@ -151,6 +152,22 @@ func (ctx *TestContext) NewTransport() *http.Transport {
 	return ctx.NewTransportWithClientCert(nil, nil)
 }
 
+func (ctx *TestContext) NewTransportWithIdentity(i idlib.Identity) *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       i.ClientTLSConfig(),
+	}
+}
+
 func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
 	// #nosec
 	tlsClientConfig := &cryptoTls.Config{
@@ -192,6 +209,10 @@ func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
 
 func (ctx *TestContext) NewRestClientWithDefaults() *resty.Client {
 	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+}
+
+func (ctx *TestContext) NewRestClient(i idlib.Identity) *resty.Client {
+	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransportWithIdentity(i)))
 }
 
 func (ctx *TestContext) DefaultClientApiClient() *resty.Client {
