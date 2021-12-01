@@ -393,11 +393,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 4a: Create Route Messages
-		rms, err := path.CreateRouteMessages(attempt, circuitId, terminator)
-		if err != nil {
-			network.ServiceDialOtherError(serviceId)
-			return nil, err
-		}
+		rms := path.CreateRouteMessages(attempt, circuitId, terminator)
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		for _, msg := range rms {
@@ -779,11 +775,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 		if cq, err := network.UpdatePath(circuit.Path); err == nil {
 			circuit.Path = cq
 
-			rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator)
-			if err != nil {
-				logrus.Errorf("error creating route messages (%s)", err)
-				return err
-			}
+			rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator)
 
 			for i := 0; i < len(cq.Nodes); i++ {
 				if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {
@@ -811,11 +803,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 
 		s.Path = cq
 
-		rms, err := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator)
-		if err != nil {
-			logrus.Errorf("error creating route messages (%s)", err)
-			return err
-		}
+		rms := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator)
 
 		for i := 0; i < len(cq.Nodes); i++ {
 			if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {

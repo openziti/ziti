@@ -17,13 +17,12 @@
 package tests
 
 import (
-	"crypto"
 	"crypto/sha1"
-	cryptoTls "crypto/tls"
-	"crypto/x509"
+	tls2 "crypto/tls"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/channel2"
@@ -103,22 +102,12 @@ func (ctx *TestContext) T() *testing.T {
 	return ctx.testing
 }
 
-func (ctx *TestContext) NewTransport() *http.Transport {
-	return ctx.NewTransportWithClientCert(nil, nil)
-}
+func (ctx *TestContext) NewTransport(i identity.Identity) *http.Transport {
+	var tlsClientConfig *tls2.Config
 
-func (ctx *TestContext) NewTransportWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *http.Transport {
-	// #nosec
-	tlsClientConfig := &cryptoTls.Config{
-		InsecureSkipVerify: true,
+	if i != nil {
+		tlsClientConfig = i.ClientTLSConfig()
 	}
-
-	if cert != nil && privateKey != nil {
-		tlsClientConfig.Certificates = []cryptoTls.Certificate{
-			{Certificate: [][]byte{cert.Raw}, PrivateKey: privateKey, Leaf: cert},
-		}
-	}
-
 	return &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
@@ -146,8 +135,17 @@ func (ctx *TestContext) NewHttpClient(transport *http.Transport) *http.Client {
 	}
 }
 
+func (ctx *TestContext) NewRestClient(i identity.Identity) *resty.Client {
+	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport(i)))
+}
+
 func (ctx *TestContext) NewRestClientWithDefaults() *resty.Client {
-	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport()))
+	id, err := identity.LoadClientIdentity(
+		"./testdata/valid_client_cert/client.cert",
+		"./testdata/valid_client_cert/client.key",
+		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
+	ctx.Req.NoError(err)
+	return resty.NewWithClient(ctx.NewHttpClient(ctx.NewTransport(id)))
 }
 
 func (ctx *TestContext) StartServer() {
@@ -155,6 +153,7 @@ func (ctx *TestContext) StartServer() {
 }
 
 func (ctx *TestContext) StartServerFor(test string, clean bool) {
+	api_impl.OverrideRequestWrapper(nil) // clear possible wrapper from another test
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -195,6 +194,8 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	}()
 	err = ctx.waitForCtrlPort(time.Second * 5)
 	ctx.Req.NoError(err)
+
+	ctx.requireRestPort(time.Second * 5)
 }
 
 func (ctx *TestContext) startRouter(index uint8) {
@@ -215,6 +216,11 @@ func (ctx *TestContext) shutdownRouter() {
 
 func (ctx *TestContext) waitForCtrlPort(duration time.Duration) error {
 	return ctx.waitForPort("127.0.0.1:6363", duration)
+}
+
+func (ctx *TestContext) requireRestPort(duration time.Duration) {
+	err := ctx.waitForPort("127.0.0.1:1281", duration)
+	ctx.Req.NoError(err)
 }
 
 func (ctx *TestContext) waitForPort(address string, duration time.Duration) error {
@@ -287,7 +293,7 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 }
 
 func (ctx *TestContext) createMgmtClient() *MgmtClient {
-	badId, err := identity.LoadClientIdentity(
+	id, err := identity.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
@@ -295,7 +301,7 @@ func (ctx *TestContext) createMgmtClient() *MgmtClient {
 	ctx.Req.NoError(err)
 	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
 	ctx.Req.NoError(err)
-	dialer := channel2.NewClassicDialer(badId, mgmtAddress, nil)
+	dialer := channel2.NewClassicDialer(id, mgmtAddress, nil)
 	ch, err := channel2.NewChannel("mgmt", dialer, nil)
 	ctx.Req.NoError(err)
 

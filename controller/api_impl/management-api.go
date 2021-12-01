@@ -39,17 +39,17 @@ var _ xweb.WebHandlerFactory = &ManagementApiFactory{}
 type ManagementApiFactory struct {
 	InitFunc func(managementApi *ManagementApiHandler) error
 	network  *network.Network
-	routerId identity.Identity
+	nodeId   identity.Identity
 }
 
 func (factory ManagementApiFactory) Validate(_ *xweb.Config) error {
 	return nil
 }
 
-func NewManagementApiFactory(routerId identity.Identity, network *network.Network) *ManagementApiFactory {
+func NewManagementApiFactory(nodeId identity.Identity, network *network.Network) *ManagementApiFactory {
 	return &ManagementApiFactory{
-		network:  network,
-		routerId: routerId,
+		network: network,
+		nodeId:  nodeId,
 	}
 }
 
@@ -68,6 +68,7 @@ func (factory ManagementApiFactory) New(_ *xweb.WebListener, options map[interfa
 
 	if requestWrapper == nil {
 		requestWrapper = &FabricRequestWrapper{
+			nodeId:  factory.nodeId,
 			network: factory.network,
 		}
 	}

@@ -34,8 +34,8 @@ type RequestWrapper interface {
 }
 
 type FabricRequestWrapper struct {
-	routerId identity.Identity
-	network  *network.Network
+	nodeId  identity.Identity
+	network *network.Network
 }
 
 func (self *FabricRequestWrapper) WrapRequest(handler RequestHandler, request *http.Request, entityId, entitySubId string) openApiMiddleware.Responder {
@@ -71,6 +71,11 @@ func (self *FabricRequestWrapper) WrapHttpHandler(handler http.Handler) http.Han
 
 		rc := NewRequestContext(rw, r)
 
+		if err := self.verifyCert(r); err != nil {
+			rc.RespondWithError(apierror.NewInvalidAuth())
+			return
+		}
+
 		api.AddRequestContextToHttpContext(r, rc)
 
 		//after request context is filled so that api session is present for session expiration headers
@@ -91,7 +96,7 @@ func (self *FabricRequestWrapper) verifyCert(r *http.Request) error {
 		return errors.New("no certificates provided, unable to verify dialer")
 	}
 
-	config := self.routerId.ServerTLSConfig()
+	config := self.nodeId.ServerTLSConfig()
 
 	opts := x509.VerifyOptions{
 		Roots:         config.RootCAs,

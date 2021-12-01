@@ -73,7 +73,7 @@ func (self *Path) EgressRouter() *Router {
 	return nil
 }
 
-func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator) ([]*ctrl_pb.Route, error) {
+func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator) []*ctrl_pb.Route {
 	var routeMessages []*ctrl_pb.Route
 	if len(self.Links) == 0 {
 		// single router path
@@ -141,7 +141,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			routeMessages = append(routeMessages, routeMessage)
 		}
 	}
-	return routeMessages, nil
+	return routeMessages
 }
 
 func (self *Path) usesLink(l *Link) bool {
