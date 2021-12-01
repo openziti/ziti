@@ -53,7 +53,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerI
 }
 
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
-	logrus.Infof("dialing link with split payload/ack channels [l/%s]", linkId.Token)
+	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
 	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
 		LinkHeaderRouterId: []byte(routerId),
@@ -61,7 +61,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderType:     {PayloadChannel},
 	})
 
-	logrus.Infof("dialing payload channel for [l/%s]", linkId.Token)
+	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
 
 	payloadCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, self.config.options, self.tcfg)
 	if err != nil {
@@ -73,7 +73,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		LinkHeaderType:   {AckChannel},
 	})
 
-	logrus.Infof("dialing ack channel for [l/%s]", linkId.Token)
+	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
 	ackCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, self.config.options, self.tcfg)
 	if err != nil {
@@ -98,7 +98,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 }
 
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
-	logrus.Infof("dialing link with single channel [l/%s]", linkId.Token)
+	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
 	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
 		LinkHeaderRouterId: []byte(routerId),

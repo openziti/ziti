@@ -92,7 +92,7 @@ func (self *Scanner) scan() {
 			if err == nil {
 				msg := channel2.NewMessage(ctrl_msg.CircuitConfirmationType, body)
 				if err := self.ctrl.Send(msg); err == nil {
-					logrus.Warnf("sent confirmation for [%d] circuits", len(idleCircuitIds))
+					logrus.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
 				} else {
 					logrus.Errorf("error sending confirmation request (%v)", err)
 				}
