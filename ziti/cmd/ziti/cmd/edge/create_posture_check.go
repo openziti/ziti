@@ -21,6 +21,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/posture_checks"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -47,7 +48,7 @@ func newCreatePostureCheckCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 type createPostureCheckOptions struct {
-	edgeOptions
+	api.Options
 	name           string
 	tags           map[string]string
 	roleAttributes []string
@@ -108,7 +109,7 @@ func (options *createPostureCheckOptions) addPostureFlags(cmd *cobra.Command) {
 func newCreatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckMacOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -147,7 +148,7 @@ func newCreatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 func newCreatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckDomainOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -186,7 +187,7 @@ func newCreatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 func newCreatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckProcessOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -239,7 +240,7 @@ func newCreatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Com
 func newCreatePostureCheckProcessMultiCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createPostureCheckProcessMultiOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -433,8 +434,8 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 	entityData := gabs.New()
 	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeProcess)
 
-	setJSONValue(entityData, o.normalizedOs, "process", "osType")
-	setJSONValue(entityData, o.path, "process", "path")
+	api.SetJSONValue(entityData, o.normalizedOs, "process", "osType")
+	api.SetJSONValue(entityData, o.path, "process", "path")
 
 	hashes, err := cleanSha512s(o.hashes)
 
@@ -443,7 +444,7 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 	}
 
 	if len(hashes) > 0 {
-		setJSONValue(entityData, hashes, "process", "hashes")
+		api.SetJSONValue(entityData, hashes, "process", "hashes")
 	}
 
 	if o.signer != "" {
@@ -453,11 +454,11 @@ func runCreatePostureCheckProcess(o *createPostureCheckProcessOptions) error {
 			return err
 		}
 
-		setJSONValue(entityData, cleanSigner, "process", "signerFingerprint")
+		api.SetJSONValue(entityData, cleanSigner, "process", "signerFingerprint")
 	}
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("posture check", result, err)
+	result, err := CreateEntityOfType("posture-checks", entityData.String(), &o.Options)
+	return o.LogCreateResult("posture check", result, err)
 }
 
 func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOptions) error {
@@ -514,10 +515,10 @@ func runCreatePostureCheckProcessMulti(options *createPostureCheckProcessMultiOp
 }
 
 func setPostureCheckEntityValues(entity *gabs.Container, options *createPostureCheckOptions, typeId string) {
-	setJSONValue(entity, options.Args[0], "name")
-	setJSONValue(entity, options.roleAttributes, "roleAttributes")
-	setJSONValue(entity, options.tags, "tags")
-	setJSONValue(entity, typeId, "typeId")
+	api.SetJSONValue(entity, options.Args[0], "name")
+	api.SetJSONValue(entity, options.roleAttributes, "roleAttributes")
+	api.SetJSONValue(entity, options.tags, "tags")
+	api.SetJSONValue(entity, typeId, "typeId")
 }
 
 func cleanMacAddresses(inAddresses []string) ([]string, error) {
@@ -557,9 +558,9 @@ func runCreatePostureCheckMac(o *createPostureCheckMacOptions) (err error) {
 		return fmt.Errorf("must specify at least one MAC Address, multiple values may be separated by commas")
 	}
 
-	setJSONValue(entityData, addresses, "macAddresses")
+	api.SetJSONValue(entityData, addresses, "macAddresses")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+	result, err := CreateEntityOfType("posture-checks", entityData.String(), &o.Options)
 
 	if err != nil {
 		panic(err)
@@ -603,9 +604,9 @@ func runCreatePostureCheckDomain(o *createPostureCheckDomainOptions) (err error)
 		return fmt.Errorf("must specify at least one domain, multiple values may be separated by commas or multiple flags")
 	}
 
-	setJSONValue(entityData, domains, "domains")
+	api.SetJSONValue(entityData, domains, "domains")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+	result, err := CreateEntityOfType("posture-checks", entityData.String(), &o.Options)
 
 	if err != nil {
 		panic(err)
@@ -624,7 +625,7 @@ func newCreatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command 
 
 	options := &createPostureCheckOsOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -677,9 +678,9 @@ func runCreatePostureCheckOs(o *createPostureCheckOsOptions) error {
 
 	entityData := gabs.New()
 	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeOS)
-	setJSONValue(entityData, osSpecs, "operatingSystems")
+	api.SetJSONValue(entityData, osSpecs, "operatingSystems")
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+	result, err := CreateEntityOfType("posture-checks", entityData.String(), &o.Options)
 
 	if err != nil {
 		panic(err)
@@ -728,7 +729,7 @@ func parseOsSpec(osSpecStr string) (*osSpec, error) {
 func newCreatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := createPostureCheckMfaOptions{
 		createPostureCheckOptions: createPostureCheckOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{
 					Out: out,
 					Err: errOut,
@@ -782,7 +783,7 @@ func runCreatePostureCheckMfa(o *createPostureCheckMfaOptions) error {
 
 	setPostureCheckEntityValues(entityData, &o.createPostureCheckOptions, PostureCheckTypeMFA)
 
-	result, err := createEntityOfType("posture-checks", entityData.String(), &o.edgeOptions)
+	result, err := CreateEntityOfType("posture-checks", entityData.String(), &o.Options)
 
 	if err != nil {
 		panic(err)

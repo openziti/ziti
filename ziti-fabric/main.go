@@ -17,6 +17,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/quic"
@@ -41,5 +42,6 @@ func init() {
 }
 
 func main() {
+	fmt.Println("DEPRECATION WARNING: ziti-fabric is deprecated and will be removed in a future release. Use ziti fabric instead.")
 	subcmd.Execute()
 }

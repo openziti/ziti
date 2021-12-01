@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -26,13 +27,13 @@ import (
 
 // logoutOptions are the flags for logout commands
 type logoutOptions struct {
-	edgeOptions
+	api.Options
 }
 
 // newLogoutCmd creates the command
 func newLogoutCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &logoutOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -67,6 +68,6 @@ func (o *logoutOptions) Run() error {
 
 	id := config.GetIdentity()
 	o.Printf("Removing identity '%v' from %v\n", id, configFile)
-	delete(config.Identities, id)
+	delete(config.EdgeIdentities, id)
 	return util.PersistRestClientConfig(config)
 }

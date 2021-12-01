@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// edgeOptions are common options for edge controller commands
+// Options are common options for edge controller commands
 type zitiEchoServerOptions struct {
 	common.CommonOptions
 	identity string

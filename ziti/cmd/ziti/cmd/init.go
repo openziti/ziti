@@ -100,8 +100,6 @@ func (o *InitOptions) Run() error {
 		return nil
 	case c.ZITI_FABRIC:
 		return nil
-	case c.ZITI_FABRIC_GW:
-		err = o.createInitialMgmtGwConfig()
 	case c.ZITI:
 		err = o.createInitialZitiConfig()
 	default:

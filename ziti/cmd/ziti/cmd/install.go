@@ -70,12 +70,9 @@ func NewCmdInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 
 	cmd.AddCommand(NewCmdInstallZitiController(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiFabric(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiFabricTest(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiMgmtGw(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiRouter(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiTunnel(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiEnroller(f, out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiProxC(f, out, errOut))
 
 	// cmd.AddCommand(NewCmdInstallAnsible(f, out, errOut))		// Disable/hide this for now

@@ -23,20 +23,21 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
 type createAuthenticatorUpdb struct {
-	edgeOptions
+	api.Options
 	idOrName string
 	password string
 	username string
 }
 
-func newCreateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Command {
-	updbOptions := &createAuthenticatorUpdb{edgeOptions: options}
+func newCreateAuthenticatorUpdb(idType string, options api.Options) *cobra.Command {
+	updbOptions := &createAuthenticatorUpdb{Options: options}
 
 	cmd := &cobra.Command{
 		Use:     idType + " <identityIdOrName> <username> [<password>]",
@@ -81,7 +82,7 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 		return errors.New("an identity must be specified")
 	}
 
-	identityId, err := mapIdentityNameToID(options.idOrName, options.edgeOptions)
+	identityId, err := mapIdentityNameToID(options.idOrName, options.Options)
 
 	if err != nil {
 		return err
@@ -122,12 +123,12 @@ func runCreateIdentityPassword(idType string, options *createAuthenticatorUpdb) 
 	}
 
 	authenticatorData := gabs.New()
-	setJSONValue(authenticatorData, identityId, "identityId")
-	setJSONValue(authenticatorData, options.password, "password")
-	setJSONValue(authenticatorData, options.username, "username")
-	setJSONValue(authenticatorData, "updb", "method")
+	api.SetJSONValue(authenticatorData, identityId, "identityId")
+	api.SetJSONValue(authenticatorData, options.password, "password")
+	api.SetJSONValue(authenticatorData, options.username, "username")
+	api.SetJSONValue(authenticatorData, "updb", "method")
 
-	if _, err = createEntityOfType("authenticators", authenticatorData.String(), &options.edgeOptions); err != nil {
+	if _, err = CreateEntityOfType("authenticators", authenticatorData.String(), &options.Options); err != nil {
 		return err
 	}
 

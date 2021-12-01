@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -26,13 +27,13 @@ import (
 
 // useOptions are the flags for use commands
 type useOptions struct {
-	edgeOptions
+	api.Options
 }
 
 // newUseCmd creates the command
 func newUseCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &useOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -67,7 +68,7 @@ func (o *useOptions) Run() error {
 	// If no identities specified, list known identities
 	if len(o.Args) == 0 {
 		id := config.GetIdentity()
-		for k, v := range config.Identities {
+		for k, v := range config.EdgeIdentities {
 			o.Printf("id: %12v | current: %5v | read-only: %5v | urL: %v\n", k, k == id, v.ReadOnly, v.Url)
 		}
 		return nil
@@ -75,6 +76,6 @@ func (o *useOptions) Run() error {
 
 	id := o.Args[0]
 	config.Default = id
-	o.Printf("Settting identity '%v' as default in %v\n", id, configFile)
+	o.Printf("Setting identity '%v' as default in %v\n", id, configFile)
 	return util.PersistRestClientConfig(config)
 }

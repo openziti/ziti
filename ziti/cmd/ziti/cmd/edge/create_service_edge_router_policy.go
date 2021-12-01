@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 
 	"github.com/Jeffail/gabs"
@@ -27,7 +28,7 @@ import (
 )
 
 type createServiceEdgeRouterPolicyOptions struct {
-	edgeOptions
+	api.Options
 	edgeRouterRoles []string
 	serviceRoles    []string
 	semantic        string
@@ -36,7 +37,7 @@ type createServiceEdgeRouterPolicyOptions struct {
 // newCreateServiceEdgeRouterPolicyCmd creates the 'edge controller create service-edge-router-policy' command
 func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServiceEdgeRouterPolicyOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -68,23 +69,23 @@ func newCreateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 
 // runCreateServiceEdgeRouterPolicy create a new edgeRouterPolicy on the Ziti Edge Controller
 func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) error {
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.edgeOptions)
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.Options)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.Options)
 	if err != nil {
 		return err
 	}
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
-	setJSONValue(entityData, serviceRoles, "serviceRoles")
+	api.SetJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+	api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
 	if o.semantic != "" {
-		setJSONValue(entityData, o.semantic, "semantic")
+		api.SetJSONValue(entityData, o.semantic, "semantic")
 	}
 
-	result, err := createEntityOfType("service-edge-router-policies", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("service edge router policy", result, err)
+	result, err := CreateEntityOfType("service-edge-router-policies", entityData.String(), &o.Options)
+	return o.LogCreateResult("service edge router policy", result, err)
 }

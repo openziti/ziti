@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
@@ -25,7 +26,7 @@ import (
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
 func newUpdateAuthenticatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := edgeOptions{
+	options := api.Options{
 		CommonOptions:      common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		OutputJSONResponse: false,
 	}

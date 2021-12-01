@@ -19,6 +19,7 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"io/ioutil"
 
@@ -32,7 +33,7 @@ import (
 )
 
 type updateConfigOptions struct {
-	edgeOptions
+	api.Options
 	name     string
 	data     string
 	jsonFile string
@@ -41,7 +42,7 @@ type updateConfigOptions struct {
 // newUpdateConfigCmd updates the 'edge controller update service-policy' command
 func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateConfigOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -72,7 +73,7 @@ func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 // runUpdateConfig update a new config on the Ziti Edge Controller
 func runUpdateConfig(o *updateConfigOptions) error {
-	id, err := mapNameToID("configs", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("configs", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -80,7 +81,7 @@ func runUpdateConfig(o *updateConfigOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
@@ -107,7 +108,7 @@ func runUpdateConfig(o *updateConfigOptions) error {
 			fmt.Printf("Failing parsing JSON: %+v\n", err)
 			return errors.Errorf("unable to parse data as json: %v", err)
 		}
-		setJSONValue(entityData, dataMap, "data")
+		api.SetJSONValue(entityData, dataMap, "data")
 		change = true
 	}
 
@@ -115,7 +116,7 @@ func runUpdateConfig(o *updateConfigOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("configs/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("configs/%v", id), entityData.String(), &o.Options)
 
 	if err != nil {
 		panic(err)

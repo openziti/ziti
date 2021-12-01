@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// edgeOptions are common options for edge controller commands
+// Options are common options for edge controller commands
 type plainEchoClientOptions struct {
 	common.CommonOptions
 	port uint16

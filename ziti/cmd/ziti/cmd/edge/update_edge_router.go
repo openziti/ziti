@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ import (
 )
 
 type updateEdgeRouterOptions struct {
-	edgeOptions
+	api.Options
 	name              string
 	isTunnelerEnabled bool
 	roleAttributes    []string
@@ -41,7 +42,7 @@ type updateEdgeRouterOptions struct {
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -78,7 +79,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 
 // runUpdateEdgeRouter update a new edgeRouter on the Ziti Edge Controller
 func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
-	id, err := mapNameToID("edge-routers", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("edge-routers", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -86,27 +87,27 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("tunneler-enabled") {
-		setJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
+		api.SetJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("tags") {
-		setJSONValue(entityData, o.tags, "tags")
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("app-data") {
-		setJSONValue(entityData, o.appData, "appData")
+		api.SetJSONValue(entityData, o.appData, "appData")
 		change = true
 	}
 
@@ -115,9 +116,9 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 	}
 
 	if o.usePut {
-		_, err = putEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+		_, err = putEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.Options)
 	} else {
-		_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.edgeOptions)
+		_, err = patchEntityOfType(fmt.Sprintf("edge-routers/%v", id), entityData.String(), &o.Options)
 	}
 	return err
 }

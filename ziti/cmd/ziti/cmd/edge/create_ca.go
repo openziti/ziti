@@ -19,6 +19,7 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -28,7 +29,7 @@ import (
 )
 
 type createCaOptions struct {
-	edgeOptions
+	api.Options
 	tags               map[string]string
 	name               string
 	caPath             string
@@ -43,7 +44,7 @@ type createCaOptions struct {
 // newCreateCaCmd creates the 'edge controller create ca local' command for the given entity type
 func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createCaOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -99,17 +100,17 @@ func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.C
 
 func runCreateCa(options *createCaOptions) (err error) {
 	data := gabs.New()
-	setJSONValue(data, options.name, "name")
-	setJSONValue(data, options.autoCaEnrollment, "isAutoCaEnrollmentEnabled")
-	setJSONValue(data, options.ottCaEnrollment, "isOttCaEnrollmentEnabled")
-	setJSONValue(data, options.authEnabled, "isAuthEnabled")
-	setJSONValue(data, string(options.caPemBytes), "certPem")
-	setJSONValue(data, options.identityRoles, "identityRoles")
+	api.SetJSONValue(data, options.name, "name")
+	api.SetJSONValue(data, options.autoCaEnrollment, "isAutoCaEnrollmentEnabled")
+	api.SetJSONValue(data, options.ottCaEnrollment, "isOttCaEnrollmentEnabled")
+	api.SetJSONValue(data, options.authEnabled, "isAuthEnabled")
+	api.SetJSONValue(data, string(options.caPemBytes), "certPem")
+	api.SetJSONValue(data, options.identityRoles, "identityRoles")
 
 	if options.Cmd.Flag("identity-name-format").Changed {
-		setJSONValue(data, options.identityNameFormat, "identityNameFormat")
+		api.SetJSONValue(data, options.identityNameFormat, "identityNameFormat")
 	}
 
-	result, err := createEntityOfType("cas", data.String(), &options.edgeOptions)
-	return options.logCreateResult("ca", result, err)
+	result, err := CreateEntityOfType("cas", data.String(), &options.Options)
+	return options.LogCreateResult("ca", result, err)
 }

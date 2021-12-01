@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// edgeOptions are common options for edge controller commands
+// Options are common options for edge controller commands
 type zitiEchoClientOptions struct {
 	common.CommonOptions
 	identity string

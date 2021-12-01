@@ -17,12 +17,13 @@
 package edge
 
 import (
+	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"io"
 
-	"github.com/Jeffail/gabs"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,7 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	return cmd
 }
 
-// createEntityOfType create an entity of the given type on the Ziti Edge Controller
-func createEntityOfType(entityType string, body string, options *edgeOptions) (*gabs.Container, error) {
-	return util.EdgeControllerCreate(entityType, body, options.Out, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
+// CreateEntityOfType create an entity of the given type on the Ziti Controller
+func CreateEntityOfType(entityType string, body string, options *api.Options) (*gabs.Container, error) {
+	return util.ControllerCreate("edge", entityType, body, options.Out, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

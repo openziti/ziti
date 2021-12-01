@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -32,7 +33,7 @@ import (
 )
 
 type updateCaOptions struct {
-	edgeOptions
+	api.Options
 	verify             bool
 	verifyCertPath     string
 	verifyCertBytes    []byte
@@ -48,7 +49,7 @@ type updateCaOptions struct {
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
 func newUpdateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := updateCaOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions:      common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			OutputJSONResponse: false,
 		},
@@ -115,7 +116,7 @@ func runUpdateCa(options updateCaOptions) error {
 		return runVerifyCa(options)
 	}
 
-	id, err := mapCaNameToID(options.nameOrId, options.edgeOptions)
+	id, err := mapCaNameToID(options.nameOrId, options.Options)
 
 	if err != nil {
 		return err
@@ -181,13 +182,13 @@ func runUpdateCa(options updateCaOptions) error {
 }
 
 func runVerifyCa(options updateCaOptions) error {
-	id, err := mapCaNameToID(options.nameOrId, options.edgeOptions)
+	id, err := mapCaNameToID(options.nameOrId, options.Options)
 
 	if err != nil {
 		return err
 	}
 
-	_, err = doRequest("cas/"+id+"/verify", &options.edgeOptions, func(request *resty.Request, url string) (response *resty.Response, e error) {
+	_, err = doRequest("cas/"+id+"/verify", &options.Options, func(request *resty.Request, url string) (response *resty.Response, e error) {
 		return request.SetHeader("Content-Type", "text/plain").
 			SetBody(string(options.verifyCertBytes)).
 			Post(url)

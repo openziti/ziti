@@ -19,6 +19,7 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"io/ioutil"
 
@@ -32,14 +33,14 @@ import (
 )
 
 type createConfigTypeOptions struct {
-	edgeOptions
+	api.Options
 	schemaFile string
 }
 
 // newCreateConfigTypeCmd creates the 'edge controller create service-policy' command
 func newCreateConfigTypeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createConfigTypeOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -96,11 +97,11 @@ func runCreateConfigType(o *createConfigTypeOptions) error {
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, o.Args[0], "name")
 	if schemaMap != nil {
-		setJSONValue(entityData, schemaMap, "schema")
+		api.SetJSONValue(entityData, schemaMap, "schema")
 	}
 
-	result, err := createEntityOfType("config-types", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("config type", result, err)
+	result, err := CreateEntityOfType("config-types", entityData.String(), &o.Options)
+	return o.LogCreateResult("config type", result, err)
 }

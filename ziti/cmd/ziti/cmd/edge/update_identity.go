@@ -19,6 +19,7 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"math"
 	"strings"
@@ -33,7 +34,7 @@ import (
 )
 
 type updateIdentityOptions struct {
-	edgeOptions
+	api.Options
 	name                     string
 	roleAttributes           []string
 	defaultHostingPrecedence string
@@ -46,7 +47,7 @@ type updateIdentityOptions struct {
 
 func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -83,7 +84,7 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 
 // runUpdateIdentity update a new identity on the Ziti Edge Controller
 func runUpdateIdentity(o *updateIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("identities", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
@@ -91,17 +92,17 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("role-attributes") {
-		setJSONValue(entityData, o.roleAttributes, "roleAttributes")
+		api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("default-hosting-cost") {
-		setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
+		api.SetJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 		change = true
 	}
 
@@ -110,7 +111,7 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		if err != nil {
 			return err
 		}
-		setJSONValue(entityData, prec, "defaultHostingPrecedence")
+		api.SetJSONValue(entityData, prec, "defaultHostingPrecedence")
 		change = true
 	}
 
@@ -119,20 +120,20 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 			if v < 0 || v > math.MaxUint16 {
 				return errors.Errorf("hosting costs must be in the range %v-%v", 0, math.MaxUint16)
 			}
-			id, err := mapNameToID("services", k, o.edgeOptions)
+			id, err := mapNameToID("services", k, o.Options)
 			if err != nil {
 				return err
 			}
 			delete(o.serviceCosts, k)
 			o.serviceCosts[id] = v
 		}
-		setJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
+		api.SetJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("service-precedences") {
 		for k, v := range o.servicePrecedences {
-			id, err := mapNameToID("services", k, o.edgeOptions)
+			id, err := mapNameToID("services", k, o.Options)
 			if err != nil {
 				return err
 			}
@@ -145,17 +146,17 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 			delete(o.servicePrecedences, k)
 			o.servicePrecedences[id] = prec
 		}
-		setJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
+		api.SetJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("tags") {
-		setJSONValue(entityData, o.tags, "tags")
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("app-data") {
-		setJSONValue(entityData, o.appData, "appData")
+		api.SetJSONValue(entityData, o.appData, "appData")
 		change = true
 	}
 
@@ -163,7 +164,7 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("identities/%v", id), entityData.String(), &o.Options)
 	return err
 }
 
