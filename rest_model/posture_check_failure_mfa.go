@@ -239,8 +239,6 @@ func (m *PostureCheckFailureMfa) validateActualValue(formats strfmt.Registry) er
 		if err := m.ActualValue.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("actualValue")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("actualValue")
 			}
 			return err
 		}
@@ -259,8 +257,6 @@ func (m *PostureCheckFailureMfa) validateExpectedValue(formats strfmt.Registry) 
 		if err := m.ExpectedValue.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("expectedValue")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("expectedValue")
 			}
 			return err
 		}
@@ -293,8 +289,6 @@ func (m *PostureCheckFailureMfa) contextValidateActualValue(ctx context.Context,
 		if err := m.ActualValue.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("actualValue")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("actualValue")
 			}
 			return err
 		}
@@ -309,8 +303,6 @@ func (m *PostureCheckFailureMfa) contextValidateExpectedValue(ctx context.Contex
 		if err := m.ExpectedValue.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("expectedValue")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("expectedValue")
 			}
 			return err
 		}

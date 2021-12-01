@@ -16650,6 +16650,11 @@ func init() {
             "isTunnelerEnabled"
           ],
           "properties": {
+            "certPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
             "enrollmentCreatedAt": {
               "type": "string",
               "format": "date-time",
@@ -16679,6 +16684,16 @@ func init() {
             },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"
+            },
+            "unverifiedCertPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
+            "unverifiedFingerprint": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -19341,6 +19356,16 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "unverifiedCertPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
+            "unverifiedFingerprint": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
             }
           }
         }
@@ -37075,6 +37100,11 @@ func init() {
             "isTunnelerEnabled"
           ],
           "properties": {
+            "certPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
             "enrollmentCreatedAt": {
               "type": "string",
               "format": "date-time",
@@ -37104,6 +37134,16 @@ func init() {
             },
             "roleAttributes": {
               "$ref": "#/definitions/attributes"
+            },
+            "unverifiedCertPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
+            "unverifiedFingerprint": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -39766,6 +39806,16 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "unverifiedCertPem": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
+            },
+            "unverifiedFingerprint": {
+              "type": "string",
+              "x-nullable": true,
+              "x-omitempty": false
             }
           }
         }

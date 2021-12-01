@@ -127,8 +127,6 @@ func (m *AuthenticatorUpdateWithCurrent) validateCurrentPassword(formats strfmt.
 		if err := m.CurrentPassword.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("currentPassword")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("currentPassword")
 			}
 			return err
 		}
@@ -162,8 +160,6 @@ func (m *AuthenticatorUpdateWithCurrent) contextValidateCurrentPassword(ctx cont
 		if err := m.CurrentPassword.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("currentPassword")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("currentPassword")
 			}
 			return err
 		}

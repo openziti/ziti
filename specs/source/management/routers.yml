@@ -322,6 +322,14 @@ definitions:
             type: string
             format: date-time
             x-nullable: true
+          unverifiedFingerprint:
+            type: string
+            x-nullable: true
+            x-omitempty: false
+          unverifiedCertPem:
+            type: string
+            x-nullable: true
+            x-omitempty: false
   routerCreate:
     type: object
     required:

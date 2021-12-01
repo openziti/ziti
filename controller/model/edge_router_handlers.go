@@ -304,13 +304,87 @@ func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsr
 		return nil, err
 	}
 
-	//Otherwise the controller will continue to use old fingerprint if the router is cached
+	//Otherwise, the controller will continue to use old fingerprint if the router is cached
 	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, fingerprint)
 
 	return &ExtendedCerts{
 		RawClientCert: clientCertRaw,
 		RawServerCert: serverCertRaw,
 	}, nil
+}
+
+func (handler *EdgeRouterHandler) ExtendEnrollmentWithVerify(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+
+	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	clientPem, _ := cert.RawToPem(clientCertRaw)
+	clientPemString := string(clientPem)
+
+	pfxlog.Logger().Debugf("extending enrollment for edge router %s, old fingerprint: %s new fingerprint: %s", router.Id, *router.Fingerprint, fingerprint)
+
+	router.UnverifiedFingerprint = &fingerprint
+	router.UnverifiedCertPem = &clientPemString
+
+	err = handler.PatchUnrestricted(router, &boltz.MapFieldChecker{
+		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtendedCerts{
+		RawClientCert: clientCertRaw,
+		RawServerCert: serverCertRaw,
+	}, nil
+}
+
+func (handler *EdgeRouterHandler) ReadOneByUnverifiedFingerprint(fingerprint string) (*EdgeRouter, error) {
+	return handler.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
+}
+
+func (handler *EdgeRouterHandler) ExtendEnrollmentVerify(router *EdgeRouter) error {
+	if router.UnverifiedFingerprint != nil && router.UnverifiedCertPem != nil {
+		router.Fingerprint = router.UnverifiedFingerprint
+		router.CertPem = router.UnverifiedCertPem
+
+		router.UnverifiedFingerprint = nil
+		router.UnverifiedCertPem = nil
+
+		if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+			db.FieldRouterFingerprint:                        struct{}{},
+			persistence.FieldCaCertPem:                       struct{}{},
+			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+		}); err == nil {
+			//Otherwise, the controller will continue to use old fingerprint if the router is cached
+			handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, *router.Fingerprint)
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	return errors.New("no outstanding verification necessary")
 }
 
 type EdgeRouterListResult struct {

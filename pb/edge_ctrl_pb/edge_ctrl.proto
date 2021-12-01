@@ -31,6 +31,7 @@ enum ContentType {
   EnrollType = 20300;
   EnrollmentCertsResponseType = 20301;
   EnrollmentExtendRouterRequestType = 20302;
+  EnrollmentExtendRouterVerifyRequestType = 20303;
 
   CreateApiSessionRequestType = 20400;
   CreateApiSessionResponseType = 20401;
@@ -282,10 +283,15 @@ message UpdateTunnelTerminatorRequest {
 message EnrollmentExtendRouterRequest {
   string clientCertCsr = 1;
   string serverCertCsr = 2;
+  bool requireVerification = 3;
 }
 
 message EnrollmentCertsResponse {
   string clientCertPem = 1;
   string serverCertPem = 2;
   string caCertsPem = 3;
+}
+
+message EnrollmentExtendRouterVerifyRequest {
+  string clientCertPem = 1;
 }

@@ -47,6 +47,9 @@ type EdgeRouterDetail struct {
 
 	CommonEdgeRouterProperties
 
+	// cert pem
+	CertPem *string `json:"certPem"`
+
 	// enrollment created at
 	// Format: date-time
 	EnrollmentCreatedAt *strfmt.DateTime `json:"enrollmentCreatedAt,omitempty"`
@@ -76,6 +79,12 @@ type EdgeRouterDetail struct {
 	// Required: true
 	RoleAttributes *Attributes `json:"roleAttributes"`
 
+	// unverified cert pem
+	UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+	// unverified fingerprint
+	UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
+
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 }
@@ -98,6 +107,8 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO2
 	var dataAO2 struct {
+		CertPem *string `json:"certPem"`
+
 		EnrollmentCreatedAt *strfmt.DateTime `json:"enrollmentCreatedAt,omitempty"`
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
@@ -114,11 +125,17 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 		RoleAttributes *Attributes `json:"roleAttributes"`
 
+		UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO2); err != nil {
 		return err
 	}
+
+	m.CertPem = dataAO2.CertPem
 
 	m.EnrollmentCreatedAt = dataAO2.EnrollmentCreatedAt
 
@@ -135,6 +152,10 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 	m.IsVerified = dataAO2.IsVerified
 
 	m.RoleAttributes = dataAO2.RoleAttributes
+
+	m.UnverifiedCertPem = dataAO2.UnverifiedCertPem
+
+	m.UnverifiedFingerprint = dataAO2.UnverifiedFingerprint
 
 	m.VersionInfo = dataAO2.VersionInfo
 
@@ -157,6 +178,8 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO1)
 	var dataAO2 struct {
+		CertPem *string `json:"certPem"`
+
 		EnrollmentCreatedAt *strfmt.DateTime `json:"enrollmentCreatedAt,omitempty"`
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
@@ -173,8 +196,14 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 		RoleAttributes *Attributes `json:"roleAttributes"`
 
+		UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
+
+	dataAO2.CertPem = m.CertPem
 
 	dataAO2.EnrollmentCreatedAt = m.EnrollmentCreatedAt
 
@@ -191,6 +220,10 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO2.IsVerified = m.IsVerified
 
 	dataAO2.RoleAttributes = m.RoleAttributes
+
+	dataAO2.UnverifiedCertPem = m.UnverifiedCertPem
+
+	dataAO2.UnverifiedFingerprint = m.UnverifiedFingerprint
 
 	dataAO2.VersionInfo = m.VersionInfo
 
@@ -299,8 +332,6 @@ func (m *EdgeRouterDetail) validateRoleAttributes(formats strfmt.Registry) error
 		if err := m.RoleAttributes.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -319,8 +350,6 @@ func (m *EdgeRouterDetail) validateVersionInfo(formats strfmt.Registry) error {
 		if err := m.VersionInfo.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("versionInfo")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("versionInfo")
 			}
 			return err
 		}
@@ -362,8 +391,6 @@ func (m *EdgeRouterDetail) contextValidateRoleAttributes(ctx context.Context, fo
 		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -378,8 +405,6 @@ func (m *EdgeRouterDetail) contextValidateVersionInfo(ctx context.Context, forma
 		if err := m.VersionInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("versionInfo")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("versionInfo")
 			}
 			return err
 		}

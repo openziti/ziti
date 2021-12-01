@@ -135,7 +135,56 @@ paths:
           $ref: '#/responses/routerExtendEnrollmentResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  enroll-extend-router-with-verify:
+    post:
+      summary: Extend the life of a currently enrolled router's certificates
+      description: |
+        Allows a router to extend its certificates' expiration date by
+        using its current and valid client certificate to submit a CSR. This CSR may
+        be passed in using a new private key, thus allowing private key rotation or swapping.
 
+        After completion any new connections must be made with certificates returned from a 200 OK
+        response. The previous client certificate is reamins in use till the newly issued client
+        certificate is validated in a subsequent request.
+
+        This request must be made using the existing, valid, client certificate.
+      operationId: extendRouterEnrollmentWithVerify
+      parameters:
+        - name: routerExtendEnrollmentRequest
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/routerExtendEnrollmentRequest'
+      tags:
+        - Enroll
+        - Extend Enrollment
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  enroll-extend-router-verify:
+    post:
+      summary: Verifies a newly created client certificate for a router
+      description: |
+        Allows a router to verify its enrollment extension. The request is a POST
+        with an empty object.
+
+        This request must be made using the new client certificate.
+      operationId: extendRouterEnrollmentVerify
+      parameters:
+      tags:
+        - Enroll
+        - Extend Enrollment
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
   erottResponse:
     description: A response containing the edge routers signed certificates (server chain, server cert, CAs).

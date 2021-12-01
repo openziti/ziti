@@ -700,8 +700,6 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/fabric v0.17.9 h1:s8YmUehZXI6svwNJ01D3VyLr79AT/q470PPqT5q4qBg=
 github.com/openziti/fabric v0.17.9/go.mod h1:U0oa6oD4alAiJepqPhzGRt5YZgs4aL79Lso/p2ItZqg=
-github.com/openziti/foundation v0.16.9 h1:iAGPDESXRArGJQYBQSOif+fXfwYRxnvBh68tiXKB1g8=
-github.com/openziti/foundation v0.16.9/go.mod h1:DrzmWd4wka7/RlA37KTN2q+dz9dVSH6YJ9VP6xxf28w=
 github.com/openziti/sdk-golang v0.15.123 h1:4gk0n2L+3V4ZWIXSpW1r3flwBmSDbb10THKHDQXrwLc=
 github.com/openziti/sdk-golang v0.15.123/go.mod h1:eyBRYi1X0uSQkisC7y0dbB6lrOYuEkETbDNRyA58PAs=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=

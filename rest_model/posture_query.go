@@ -211,8 +211,6 @@ func (m *PostureQuery) validateProcess(formats strfmt.Registry) error {
 		if err := m.Process.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("process")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("process")
 			}
 			return err
 		}
@@ -236,8 +234,6 @@ func (m *PostureQuery) validateProcesses(formats strfmt.Registry) error {
 			if err := m.Processes[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("processes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -262,8 +258,6 @@ func (m *PostureQuery) validateQueryType(formats strfmt.Registry) error {
 		if err := m.QueryType.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("queryType")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("queryType")
 			}
 			return err
 		}
@@ -323,8 +317,6 @@ func (m *PostureQuery) contextValidateProcess(ctx context.Context, formats strfm
 		if err := m.Process.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("process")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("process")
 			}
 			return err
 		}
@@ -341,8 +333,6 @@ func (m *PostureQuery) contextValidateProcesses(ctx context.Context, formats str
 			if err := m.Processes[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("processes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -359,8 +349,6 @@ func (m *PostureQuery) contextValidateQueryType(ctx context.Context, formats str
 		if err := m.QueryType.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("queryType")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("queryType")
 			}
 			return err
 		}

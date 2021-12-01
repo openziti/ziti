@@ -73,11 +73,13 @@ func MapTransitRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*rest_model.RouterDetail, error) {
 	isConnected := ae.GetHandlers().Router.IsConnected(router.GetId())
 	ret := &rest_model.RouterDetail{
-		BaseEntity:  BaseEntityToRestModel(router, TransitRouterLinkFactory),
-		Fingerprint: router.Fingerprint,
-		IsOnline:    &isConnected,
-		IsVerified:  &router.IsVerified,
-		Name:        &router.Name,
+		BaseEntity:            BaseEntityToRestModel(router, TransitRouterLinkFactory),
+		Fingerprint:           router.Fingerprint,
+		IsOnline:              &isConnected,
+		IsVerified:            &router.IsVerified,
+		Name:                  &router.Name,
+		UnverifiedFingerprint: router.UnverifiedFingerprint,
+		UnverifiedCertPem:     router.UnverifiedCertPem,
 	}
 
 	if !router.IsBase && !router.IsVerified {

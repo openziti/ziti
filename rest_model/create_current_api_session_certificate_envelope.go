@@ -80,8 +80,6 @@ func (m *CreateCurrentAPISessionCertificateEnvelope) validateData(formats strfmt
 		if err := m.Data.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -100,8 +98,6 @@ func (m *CreateCurrentAPISessionCertificateEnvelope) validateMeta(formats strfmt
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -134,8 +130,6 @@ func (m *CreateCurrentAPISessionCertificateEnvelope) contextValidateData(ctx con
 		if err := m.Data.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -150,8 +144,6 @@ func (m *CreateCurrentAPISessionCertificateEnvelope) contextValidateMeta(ctx con
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}

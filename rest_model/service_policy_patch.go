@@ -106,8 +106,6 @@ func (m *ServicePolicyPatch) validateIdentityRoles(formats strfmt.Registry) erro
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -123,8 +121,6 @@ func (m *ServicePolicyPatch) validatePostureCheckRoles(formats strfmt.Registry) 
 	if err := m.PostureCheckRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("postureCheckRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("postureCheckRoles")
 		}
 		return err
 	}
@@ -140,8 +136,6 @@ func (m *ServicePolicyPatch) validateSemantic(formats strfmt.Registry) error {
 	if err := m.Semantic.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("semantic")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("semantic")
 		}
 		return err
 	}
@@ -157,8 +151,6 @@ func (m *ServicePolicyPatch) validateServiceRoles(formats strfmt.Registry) error
 	if err := m.ServiceRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("serviceRoles")
 		}
 		return err
 	}
@@ -175,8 +167,6 @@ func (m *ServicePolicyPatch) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -193,8 +183,6 @@ func (m *ServicePolicyPatch) validateType(formats strfmt.Registry) error {
 	if err := m.Type.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("type")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("type")
 		}
 		return err
 	}
@@ -241,8 +229,6 @@ func (m *ServicePolicyPatch) contextValidateIdentityRoles(ctx context.Context, f
 	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -255,8 +241,6 @@ func (m *ServicePolicyPatch) contextValidatePostureCheckRoles(ctx context.Contex
 	if err := m.PostureCheckRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("postureCheckRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("postureCheckRoles")
 		}
 		return err
 	}
@@ -269,8 +253,6 @@ func (m *ServicePolicyPatch) contextValidateSemantic(ctx context.Context, format
 	if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("semantic")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("semantic")
 		}
 		return err
 	}
@@ -283,8 +265,6 @@ func (m *ServicePolicyPatch) contextValidateServiceRoles(ctx context.Context, fo
 	if err := m.ServiceRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("serviceRoles")
 		}
 		return err
 	}
@@ -298,8 +278,6 @@ func (m *ServicePolicyPatch) contextValidateTags(ctx context.Context, formats st
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -313,8 +291,6 @@ func (m *ServicePolicyPatch) contextValidateType(ctx context.Context, formats st
 	if err := m.Type.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("type")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("type")
 		}
 		return err
 	}

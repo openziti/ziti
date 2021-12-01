@@ -80,8 +80,6 @@ func (m *DetailServicePolicyEnvelop) validateData(formats strfmt.Registry) error
 		if err := m.Data.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -100,8 +98,6 @@ func (m *DetailServicePolicyEnvelop) validateMeta(formats strfmt.Registry) error
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -134,8 +130,6 @@ func (m *DetailServicePolicyEnvelop) contextValidateData(ctx context.Context, fo
 		if err := m.Data.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -150,8 +144,6 @@ func (m *DetailServicePolicyEnvelop) contextValidateMeta(ctx context.Context, fo
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}

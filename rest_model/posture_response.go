@@ -78,8 +78,6 @@ func (m *PostureResponse) validateServices(formats strfmt.Registry) error {
 			if err := m.Services[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("services" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("services" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -112,8 +110,6 @@ func (m *PostureResponse) contextValidateServices(ctx context.Context, formats s
 			if err := m.Services[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("services" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("services" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

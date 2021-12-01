@@ -236,8 +236,6 @@ func (m *SessionDetail) validateAPISession(formats strfmt.Registry) error {
 		if err := m.APISession.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("apiSession")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("apiSession")
 			}
 			return err
 		}
@@ -270,8 +268,6 @@ func (m *SessionDetail) validateEdgeRouters(formats strfmt.Registry) error {
 			if err := m.EdgeRouters[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("edgeRouters" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("edgeRouters" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -301,8 +297,6 @@ func (m *SessionDetail) validateService(formats strfmt.Registry) error {
 		if err := m.Service.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}
@@ -343,8 +337,6 @@ func (m *SessionDetail) validateType(formats strfmt.Registry) error {
 		if err := m.Type.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
 			}
 			return err
 		}
@@ -390,8 +382,6 @@ func (m *SessionDetail) contextValidateAPISession(ctx context.Context, formats s
 		if err := m.APISession.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("apiSession")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("apiSession")
 			}
 			return err
 		}
@@ -408,8 +398,6 @@ func (m *SessionDetail) contextValidateEdgeRouters(ctx context.Context, formats 
 			if err := m.EdgeRouters[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("edgeRouters" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("edgeRouters" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -426,8 +414,6 @@ func (m *SessionDetail) contextValidateService(ctx context.Context, formats strf
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}
@@ -442,8 +428,6 @@ func (m *SessionDetail) contextValidateType(ctx context.Context, formats strfmt.
 		if err := m.Type.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
 			}
 			return err
 		}

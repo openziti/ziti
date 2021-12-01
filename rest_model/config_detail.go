@@ -171,8 +171,6 @@ func (m *ConfigDetail) validateConfigType(formats strfmt.Registry) error {
 		if err := m.ConfigType.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("configType")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("configType")
 			}
 			return err
 		}
@@ -233,8 +231,6 @@ func (m *ConfigDetail) contextValidateConfigType(ctx context.Context, formats st
 		if err := m.ConfigType.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("configType")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("configType")
 			}
 			return err
 		}

@@ -84,8 +84,6 @@ func (m *IdentityEnrollments) validateOtt(formats strfmt.Registry) error {
 		if err := m.Ott.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ott")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ott")
 			}
 			return err
 		}
@@ -103,8 +101,6 @@ func (m *IdentityEnrollments) validateOttca(formats strfmt.Registry) error {
 		if err := m.Ottca.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ottca")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ottca")
 			}
 			return err
 		}
@@ -122,8 +118,6 @@ func (m *IdentityEnrollments) validateUpdb(formats strfmt.Registry) error {
 		if err := m.Updb.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("updb")
 			}
 			return err
 		}
@@ -160,8 +154,6 @@ func (m *IdentityEnrollments) contextValidateOtt(ctx context.Context, formats st
 		if err := m.Ott.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ott")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ott")
 			}
 			return err
 		}
@@ -176,8 +168,6 @@ func (m *IdentityEnrollments) contextValidateOttca(ctx context.Context, formats 
 		if err := m.Ottca.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ottca")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ottca")
 			}
 			return err
 		}
@@ -192,8 +182,6 @@ func (m *IdentityEnrollments) contextValidateUpdb(ctx context.Context, formats s
 		if err := m.Updb.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("updb")
 			}
 			return err
 		}
@@ -340,8 +328,6 @@ func (m *IdentityEnrollmentsOttca) validateCa(formats strfmt.Registry) error {
 		if err := m.Ca.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ottca" + "." + "ca")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ottca" + "." + "ca")
 			}
 			return err
 		}
@@ -382,8 +368,6 @@ func (m *IdentityEnrollmentsOttca) contextValidateCa(ctx context.Context, format
 		if err := m.Ca.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("ottca" + "." + "ca")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("ottca" + "." + "ca")
 			}
 			return err
 		}

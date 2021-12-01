@@ -143,8 +143,6 @@ func (m *IdentityCreate) validateAppData(formats strfmt.Registry) error {
 		if err := m.AppData.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("appData")
 			}
 			return err
 		}
@@ -162,8 +160,6 @@ func (m *IdentityCreate) validateDefaultHostingCost(formats strfmt.Registry) err
 		if err := m.DefaultHostingCost.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("defaultHostingCost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("defaultHostingCost")
 			}
 			return err
 		}
@@ -180,8 +176,6 @@ func (m *IdentityCreate) validateDefaultHostingPrecedence(formats strfmt.Registr
 	if err := m.DefaultHostingPrecedence.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("defaultHostingPrecedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("defaultHostingPrecedence")
 		}
 		return err
 	}
@@ -198,8 +192,6 @@ func (m *IdentityCreate) validateEnrollment(formats strfmt.Registry) error {
 		if err := m.Enrollment.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("enrollment")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("enrollment")
 			}
 			return err
 		}
@@ -235,8 +227,6 @@ func (m *IdentityCreate) validateRoleAttributes(formats strfmt.Registry) error {
 		if err := m.RoleAttributes.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -254,8 +244,6 @@ func (m *IdentityCreate) validateServiceHostingCosts(formats strfmt.Registry) er
 		if err := m.ServiceHostingCosts.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("serviceHostingCosts")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("serviceHostingCosts")
 			}
 			return err
 		}
@@ -273,8 +261,6 @@ func (m *IdentityCreate) validateServiceHostingPrecedences(formats strfmt.Regist
 		if err := m.ServiceHostingPrecedences.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("serviceHostingPrecedences")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("serviceHostingPrecedences")
 			}
 			return err
 		}
@@ -292,8 +278,6 @@ func (m *IdentityCreate) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -316,8 +300,6 @@ func (m *IdentityCreate) validateType(formats strfmt.Registry) error {
 		if err := m.Type.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
 			}
 			return err
 		}
@@ -378,8 +360,6 @@ func (m *IdentityCreate) contextValidateAppData(ctx context.Context, formats str
 		if err := m.AppData.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("appData")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("appData")
 			}
 			return err
 		}
@@ -394,8 +374,6 @@ func (m *IdentityCreate) contextValidateDefaultHostingCost(ctx context.Context, 
 		if err := m.DefaultHostingCost.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("defaultHostingCost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("defaultHostingCost")
 			}
 			return err
 		}
@@ -409,8 +387,6 @@ func (m *IdentityCreate) contextValidateDefaultHostingPrecedence(ctx context.Con
 	if err := m.DefaultHostingPrecedence.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("defaultHostingPrecedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("defaultHostingPrecedence")
 		}
 		return err
 	}
@@ -424,8 +400,6 @@ func (m *IdentityCreate) contextValidateEnrollment(ctx context.Context, formats 
 		if err := m.Enrollment.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("enrollment")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("enrollment")
 			}
 			return err
 		}
@@ -440,8 +414,6 @@ func (m *IdentityCreate) contextValidateRoleAttributes(ctx context.Context, form
 		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -455,8 +427,6 @@ func (m *IdentityCreate) contextValidateServiceHostingCosts(ctx context.Context,
 	if err := m.ServiceHostingCosts.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceHostingCosts")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("serviceHostingCosts")
 		}
 		return err
 	}
@@ -469,8 +439,6 @@ func (m *IdentityCreate) contextValidateServiceHostingPrecedences(ctx context.Co
 	if err := m.ServiceHostingPrecedences.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("serviceHostingPrecedences")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("serviceHostingPrecedences")
 		}
 		return err
 	}
@@ -484,8 +452,6 @@ func (m *IdentityCreate) contextValidateTags(ctx context.Context, formats strfmt
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -500,8 +466,6 @@ func (m *IdentityCreate) contextValidateType(ctx context.Context, formats strfmt
 		if err := m.Type.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("type")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("type")
 			}
 			return err
 		}

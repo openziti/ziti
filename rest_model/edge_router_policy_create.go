@@ -99,8 +99,6 @@ func (m *EdgeRouterPolicyCreate) validateEdgeRouterRoles(formats strfmt.Registry
 	if err := m.EdgeRouterRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("edgeRouterRoles")
 		}
 		return err
 	}
@@ -116,8 +114,6 @@ func (m *EdgeRouterPolicyCreate) validateIdentityRoles(formats strfmt.Registry) 
 	if err := m.IdentityRoles.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -148,8 +144,6 @@ func (m *EdgeRouterPolicyCreate) validateSemantic(formats strfmt.Registry) error
 		if err := m.Semantic.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("semantic")
 			}
 			return err
 		}
@@ -167,8 +161,6 @@ func (m *EdgeRouterPolicyCreate) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -208,8 +200,6 @@ func (m *EdgeRouterPolicyCreate) contextValidateEdgeRouterRoles(ctx context.Cont
 	if err := m.EdgeRouterRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("edgeRouterRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("edgeRouterRoles")
 		}
 		return err
 	}
@@ -222,8 +212,6 @@ func (m *EdgeRouterPolicyCreate) contextValidateIdentityRoles(ctx context.Contex
 	if err := m.IdentityRoles.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("identityRoles")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("identityRoles")
 		}
 		return err
 	}
@@ -237,8 +225,6 @@ func (m *EdgeRouterPolicyCreate) contextValidateSemantic(ctx context.Context, fo
 		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("semantic")
 			}
 			return err
 		}
@@ -253,8 +239,6 @@ func (m *EdgeRouterPolicyCreate) contextValidateTags(ctx context.Context, format
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}

@@ -325,6 +325,18 @@ definitions:
             $ref: '../shared/base-entity.yml#/definitions/attributes'
           fingerprint:
             type: string
+          certPem:
+            type: string
+            x-nullable: true
+            x-omitempty: false
+          unverifiedFingerprint:
+            type: string
+            x-nullable: true
+            x-omitempty: false
+          unverifiedCertPem:
+            type: string
+            x-nullable: true
+            x-omitempty: false
           versionInfo:
             $ref: '../shared/version.yml#/definitions/versionInfo'
           isTunnelerEnabled:

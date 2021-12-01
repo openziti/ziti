@@ -95,8 +95,6 @@ func (m *TerminatorPatch) validateCost(formats strfmt.Registry) error {
 		if err := m.Cost.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("cost")
 			}
 			return err
 		}
@@ -113,8 +111,6 @@ func (m *TerminatorPatch) validatePrecedence(formats strfmt.Registry) error {
 	if err := m.Precedence.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("precedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("precedence")
 		}
 		return err
 	}
@@ -131,8 +127,6 @@ func (m *TerminatorPatch) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -169,8 +163,6 @@ func (m *TerminatorPatch) contextValidateCost(ctx context.Context, formats strfm
 		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cost")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("cost")
 			}
 			return err
 		}
@@ -184,8 +176,6 @@ func (m *TerminatorPatch) contextValidatePrecedence(ctx context.Context, formats
 	if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("precedence")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("precedence")
 		}
 		return err
 	}
@@ -199,8 +189,6 @@ func (m *TerminatorPatch) contextValidateTags(ctx context.Context, formats strfm
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}

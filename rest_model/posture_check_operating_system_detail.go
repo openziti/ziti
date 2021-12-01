@@ -346,8 +346,6 @@ func (m *PostureCheckOperatingSystemDetail) validateLinks(formats strfmt.Registr
 		if err := m.Links().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("_links")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("_links")
 			}
 			return err
 		}
@@ -397,8 +395,6 @@ func (m *PostureCheckOperatingSystemDetail) validateRoleAttributes(formats strfm
 		if err := m.RoleAttributes().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -417,8 +413,6 @@ func (m *PostureCheckOperatingSystemDetail) validateTags(formats strfmt.Registry
 		if err := m.Tags().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -464,8 +458,6 @@ func (m *PostureCheckOperatingSystemDetail) validateOperatingSystems(formats str
 			if err := m.OperatingSystems[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -507,8 +499,6 @@ func (m *PostureCheckOperatingSystemDetail) contextValidateLinks(ctx context.Con
 	if err := m.Links().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("_links")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("_links")
 		}
 		return err
 	}
@@ -522,8 +512,6 @@ func (m *PostureCheckOperatingSystemDetail) contextValidateRoleAttributes(ctx co
 		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -538,8 +526,6 @@ func (m *PostureCheckOperatingSystemDetail) contextValidateTags(ctx context.Cont
 		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -556,8 +542,6 @@ func (m *PostureCheckOperatingSystemDetail) contextValidateOperatingSystems(ctx 
 			if err := m.OperatingSystems[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("operatingSystems" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

@@ -97,8 +97,6 @@ func (m *ServiceConfigDetail) validateConfig(formats strfmt.Registry) error {
 		if err := m.Config.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("config")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("config")
 			}
 			return err
 		}
@@ -126,8 +124,6 @@ func (m *ServiceConfigDetail) validateService(formats strfmt.Registry) error {
 		if err := m.Service.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}
@@ -169,8 +165,6 @@ func (m *ServiceConfigDetail) contextValidateConfig(ctx context.Context, formats
 		if err := m.Config.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("config")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("config")
 			}
 			return err
 		}
@@ -185,8 +179,6 @@ func (m *ServiceConfigDetail) contextValidateService(ctx context.Context, format
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}

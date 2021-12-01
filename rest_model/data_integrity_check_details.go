@@ -161,8 +161,6 @@ func (m *DataIntegrityCheckDetails) validateResults(formats strfmt.Registry) err
 	if err := m.Results.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("results")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("results")
 		}
 		return err
 	}
@@ -211,8 +209,6 @@ func (m *DataIntegrityCheckDetails) contextValidateResults(ctx context.Context, 
 	if err := m.Results.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("results")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("results")
 		}
 		return err
 	}

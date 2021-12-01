@@ -91,8 +91,6 @@ func (m *APIError) validateArgs(formats strfmt.Registry) error {
 		if err := m.Args.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("args")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("args")
 			}
 			return err
 		}
@@ -110,8 +108,6 @@ func (m *APIError) validateCause(formats strfmt.Registry) error {
 		if err := m.Cause.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cause")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("cause")
 			}
 			return err
 		}
@@ -144,8 +140,6 @@ func (m *APIError) contextValidateArgs(ctx context.Context, formats strfmt.Regis
 		if err := m.Args.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("args")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("args")
 			}
 			return err
 		}
@@ -160,8 +154,6 @@ func (m *APIError) contextValidateCause(ctx context.Context, formats strfmt.Regi
 		if err := m.Cause.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cause")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("cause")
 			}
 			return err
 		}

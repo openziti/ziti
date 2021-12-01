@@ -2138,6 +2138,154 @@ func init() {
         }
       }
     },
+    "/enroll/extend/router-verify'": {
+      "post": {
+        "description": "Allows a router to verify its enrollment extension. The request is a POST\nwith an empty object.\n\nThis request must be made using the new client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Verifies a newly created client certificate for a router",
+        "operationId": "extendRouterEnrollmentVerify",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enroll/extend/router-with-verify": {
+      "post": {
+        "description": "Allows a router to extend its certificates' expiration date by\nusing its current and valid client certificate to submit a CSR. This CSR may\nbe passed in using a new private key, thus allowing private key rotation or swapping.\n\nAfter completion any new connections must be made with certificates returned from a 200 OK\nresponse. The previous client certificate is reamins in use till the newly issued client\ncertificate is validated in a subsequent request.\n\nThis request must be made using the existing, valid, client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Extend the life of a currently enrolled router's certificates",
+        "operationId": "extendRouterEnrollmentWithVerify",
+        "parameters": [
+          {
+            "name": "routerExtendEnrollmentRequest",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/routerExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/enroll/ott": {
       "post": {
         "description": "Enroll an identity via a one-time-token which is supplied via a query string parameter. This enrollment method\nexpects a PEM encoded CSRs to be provided for fulfillment. It is up to the enrolling identity to manage the\nprivate key backing the CSR request.\n",
@@ -7764,6 +7912,154 @@ func init() {
                   "code": "UNAUTHORIZED",
                   "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
                   "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enroll/extend/router-verify'": {
+      "post": {
+        "description": "Allows a router to verify its enrollment extension. The request is a POST\nwith an empty object.\n\nThis request must be made using the new client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Verifies a newly created client certificate for a router",
+        "operationId": "extendRouterEnrollmentVerify",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/enroll/extend/router-with-verify": {
+      "post": {
+        "description": "Allows a router to extend its certificates' expiration date by\nusing its current and valid client certificate to submit a CSR. This CSR may\nbe passed in using a new private key, thus allowing private key rotation or swapping.\n\nAfter completion any new connections must be made with certificates returned from a 200 OK\nresponse. The previous client certificate is reamins in use till the newly issued client\ncertificate is validated in a subsequent request.\n\nThis request must be made using the existing, valid, client certificate.\n",
+        "tags": [
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Extend the life of a currently enrolled router's certificates",
+        "operationId": "extendRouterEnrollmentWithVerify",
+        "parameters": [
+          {
+            "name": "routerExtendEnrollmentRequest",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/routerExtendEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
                 },
                 "meta": {
                   "apiEnrollmentVersion": "0.0.1",

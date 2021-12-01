@@ -80,8 +80,6 @@ func (m *DetailMfaEnvelope) validateError(formats strfmt.Registry) error {
 		if err := m.Error.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("error")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("error")
 			}
 			return err
 		}
@@ -100,8 +98,6 @@ func (m *DetailMfaEnvelope) validateMeta(formats strfmt.Registry) error {
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -134,8 +130,6 @@ func (m *DetailMfaEnvelope) contextValidateError(ctx context.Context, formats st
 		if err := m.Error.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("error")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("error")
 			}
 			return err
 		}
@@ -150,8 +144,6 @@ func (m *DetailMfaEnvelope) contextValidateMeta(ctx context.Context, formats str
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("meta")
 			}
 			return err
 		}

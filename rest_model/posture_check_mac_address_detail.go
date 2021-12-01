@@ -348,8 +348,6 @@ func (m *PostureCheckMacAddressDetail) validateLinks(formats strfmt.Registry) er
 		if err := m.Links().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("_links")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("_links")
 			}
 			return err
 		}
@@ -399,8 +397,6 @@ func (m *PostureCheckMacAddressDetail) validateRoleAttributes(formats strfmt.Reg
 		if err := m.RoleAttributes().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -419,8 +415,6 @@ func (m *PostureCheckMacAddressDetail) validateTags(formats strfmt.Registry) err
 		if err := m.Tags().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -493,8 +487,6 @@ func (m *PostureCheckMacAddressDetail) contextValidateLinks(ctx context.Context,
 	if err := m.Links().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("_links")
-		} else if ce, ok := err.(*errors.CompositeError); ok {
-			return ce.ValidateName("_links")
 		}
 		return err
 	}
@@ -508,8 +500,6 @@ func (m *PostureCheckMacAddressDetail) contextValidateRoleAttributes(ctx context
 		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -524,8 +514,6 @@ func (m *PostureCheckMacAddressDetail) contextValidateTags(ctx context.Context, 
 		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("tags")
 			}
 			return err
 		}

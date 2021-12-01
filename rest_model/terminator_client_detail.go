@@ -189,8 +189,6 @@ func (m *TerminatorClientDetail) validateService(formats strfmt.Registry) error 
 		if err := m.Service.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}
@@ -233,8 +231,6 @@ func (m *TerminatorClientDetail) contextValidateService(ctx context.Context, for
 		if err := m.Service.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("service")
-			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("service")
 			}
 			return err
 		}

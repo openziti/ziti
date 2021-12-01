@@ -80,6 +80,18 @@ func (ro *EnrollRouter) Register(ae *env.AppEnv) {
 		}, params.HTTPRequest, "", "", permissions.Always())
 	})
 
+	ae.ClientApi.EnrollExtendRouterEnrollmentWithVerifyHandler = enroll.ExtendRouterEnrollmentWithVerifyHandlerFunc(func(params enroll.ExtendRouterEnrollmentWithVerifyParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.extendRouterEnrollmentWithVerify(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
+	})
+
+	ae.ClientApi.EnrollExtendRouterEnrollmentVerifyHandler = enroll.ExtendRouterEnrollmentVerifyHandlerFunc(func(params enroll.ExtendRouterEnrollmentVerifyParams) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			ro.extendRouterEnrollmentVerify(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.Always())
+	})
+
 	// Utility, well-known
 	ae.ClientApi.WellKnownListWellKnownCasHandler = well_known.ListWellKnownCasHandlerFunc(func(params well_known.ListWellKnownCasParams) middleware.Responder {
 		return ae.IsAllowed(ro.getCaCerts, params.HTTPRequest, "", "", permissions.Always())
@@ -278,6 +290,170 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			ServerCert: string(serverPem),
 		}, &rest_model.Meta{})
 
+		return
+	}
+
+	//default unauthorized
+	rc.RespondWithApiError(errorz.NewUnauthorized())
+}
+
+func (ro *EnrollRouter) extendRouterEnrollmentWithVerify(ae *env.AppEnv, rc *response.RequestContext, params enroll.ExtendRouterEnrollmentWithVerifyParams) {
+	peerCerts := rc.Request.TLS.PeerCertificates
+
+	if len(peerCerts) == 0 {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	var cert *x509.Certificate
+	for _, peerCert := range peerCerts {
+		if !peerCert.IsCA {
+			cert = peerCert
+		}
+	}
+
+	if cert == nil {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	fingerprint := ae.GetFingerprintGenerator().FromCert(cert)
+
+	if fingerprint == "" {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	if params.RouterExtendEnrollmentRequest.CertCsr == nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "client CSR is required",
+			FieldName:  "certCsr",
+			FieldValue: params.RouterExtendEnrollmentRequest.CertCsr,
+		}))
+		return
+	}
+
+	if params.RouterExtendEnrollmentRequest.ServerCertCsr == nil {
+		rc.RespondWithError(errorz.NewFieldApiError(&errorz.FieldError{
+			Reason:     "server CSR is required",
+			FieldName:  "serverCertCsr",
+			FieldValue: params.RouterExtendEnrollmentRequest.ServerCertCsr,
+		}))
+		return
+	}
+
+	if edgeRouter, _ := ae.Handlers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+		certs, err := ae.Handlers.EdgeRouter.ExtendEnrollmentWithVerify(edgeRouter, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		clientPem, err := cert2.RawToPem(certs.RawClientCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithOk(&rest_model.EnrollmentCerts{
+			Cert:       string(clientPem),
+			ServerCert: string(serverPem),
+		}, &rest_model.Meta{})
+
+		return
+	}
+
+	if router, _ := ae.Handlers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
+		certs, err := ae.Handlers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		clientPem, err := cert2.RawToPem(certs.RawClientCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		serverPem, err := cert2.RawToPem(certs.RawServerCert)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithOk(&rest_model.EnrollmentCerts{
+			Cert:       string(clientPem),
+			ServerCert: string(serverPem),
+		}, &rest_model.Meta{})
+
+		return
+	}
+
+	//default unauthorized
+	rc.RespondWithApiError(errorz.NewUnauthorized())
+}
+
+func (ro *EnrollRouter) extendRouterEnrollmentVerify(ae *env.AppEnv, rc *response.RequestContext, params enroll.ExtendRouterEnrollmentVerifyParams) {
+	peerCerts := rc.Request.TLS.PeerCertificates
+
+	if len(peerCerts) == 0 {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	var cert *x509.Certificate
+	for _, peerCert := range peerCerts {
+		if !peerCert.IsCA {
+			cert = peerCert
+		}
+	}
+
+	if cert == nil {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	fingerprint := ae.GetFingerprintGenerator().FromCert(cert)
+
+	if fingerprint == "" {
+		rc.RespondWithApiError(errorz.NewUnauthorized())
+		return
+	}
+
+	if edgeRouter, _ := ae.Handlers.EdgeRouter.ReadOneByUnverifiedFingerprint(fingerprint); edgeRouter != nil {
+		err := ae.Handlers.EdgeRouter.ExtendEnrollmentVerify(edgeRouter)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithEmptyOk()
+		return
+	}
+
+	if router, _ := ae.Handlers.TransitRouter.ReadOneByUnverifiedFingerprint(fingerprint); router != nil {
+		err := ae.Handlers.TransitRouter.ExtendEnrollmentVerify(router)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		rc.RespondWithEmptyOk()
 		return
 	}
 

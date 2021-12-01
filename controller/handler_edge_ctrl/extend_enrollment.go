@@ -30,7 +30,7 @@ type extendEnrollmentHandler struct {
 	appEnv *env.AppEnv
 }
 
-func NewextendEnrollmentHandler(appEnv *env.AppEnv) *extendEnrollmentHandler {
+func NewExtendEnrollmentHandler(appEnv *env.AppEnv) *extendEnrollmentHandler {
 	return &extendEnrollmentHandler{
 		appEnv: appEnv,
 	}
@@ -65,7 +65,11 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 				routerId = router.Id
 				routerName = router.Name
 
-				newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				if req.RequireVerification {
+					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				} else {
+					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				}
 
 				if err != nil {
 					pfxlog.Logger().Errorf("request to extend the enrollment for an edge router [%s - %s] errored: %s", routerId, routerName, err)
@@ -76,7 +80,11 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 				routerId = router.Id
 				routerName = router.Name
 
-				newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				if req.RequireVerification {
+					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				} else {
+					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				}
 
 				if err != nil {
 					pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] errored: %s", routerId, routerName, err)
@@ -113,7 +121,10 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 
 			msg := channel2.NewMessage(env.EnrollmentCertsResponseType, body)
 
-			ch.Send(msg)
+			if err := ch.Send(msg); err != nil {
+				pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] failed: %v", routerId, routerName, err)
+				return
+			}
 
 			pfxlog.Logger().Infof("request to extend the enrollment for a router [%s - %s] sent", routerId, routerName)
 
