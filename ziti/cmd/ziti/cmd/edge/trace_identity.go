@@ -19,6 +19,7 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ import (
 )
 
 type traceIdentityOptions struct {
-	edgeOptions
+	api.Options
 	disable  bool
 	duration string
 	traceId  string
@@ -46,7 +47,7 @@ func newTraceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func newTraceIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &traceIdentityOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -76,24 +77,24 @@ func newTraceIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func runTraceIdentity(o *traceIdentityOptions) error {
-	id, err := mapNameToID("identities", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("identities", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, !o.disable, "enabled")
-	setJSONValue(entityData, o.duration, "duration")
+	api.SetJSONValue(entityData, !o.disable, "enabled")
+	api.SetJSONValue(entityData, o.duration, "duration")
 
 	if o.traceId != "" {
-		setJSONValue(entityData, o.traceId, "traceId")
+		api.SetJSONValue(entityData, o.traceId, "traceId")
 	}
 
 	if len(o.Args) > 1 {
-		setJSONValue(entityData, o.Args[1:], "channels")
+		api.SetJSONValue(entityData, o.Args[1:], "channels")
 	}
 
-	result, err := putEntityOfType("identities/"+id+"/trace", entityData.String(), &o.edgeOptions)
+	result, err := putEntityOfType("identities/"+id+"/trace", entityData.String(), &o.Options)
 
 	if err != nil {
 		return err

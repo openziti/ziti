@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -34,11 +35,11 @@ import (
 
 // loginOptions are the flags for login commands
 type loginOptions struct {
-	edgeOptions
+	api.Options
 	Username     string
 	Password     string
 	Token        string
-	Cert         string
+	CaCert       string
 	ReadOnly     bool
 	Yes          bool
 	IgnoreConfig bool
@@ -47,7 +48,7 @@ type loginOptions struct {
 // newLoginCmd creates the command
 func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &loginOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -72,7 +73,7 @@ func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
 	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
-	cmd.Flags().StringVarP(&options.Cert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
+	cmd.Flags().StringVarP(&options.CaCert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
 	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
@@ -92,7 +93,7 @@ func (o *loginOptions) Run() error {
 
 	var host string
 	if len(o.Args) == 0 {
-		if defaultId := config.Identities[id]; defaultId != nil && !o.IgnoreConfig {
+		if defaultId := config.EdgeIdentities[id]; defaultId != nil && !o.IgnoreConfig {
 			host = defaultId.Url
 			o.Printf("Using controller url: %v from identity '%v' in config file: %v\n", host, id, configFile)
 		} else {
@@ -122,12 +123,12 @@ func (o *loginOptions) Run() error {
 		return err
 	}
 
-	if certAbs, err := filepath.Abs(o.Cert); err == nil {
-		o.Cert = certAbs
+	if certAbs, err := filepath.Abs(o.CaCert); err == nil {
+		o.CaCert = certAbs
 	}
 
 	if ctrlUrl.Path == "" {
-		host = util.EdgeControllerGetManagementApiBasePath(host, o.Cert)
+		host = util.EdgeControllerGetManagementApiBasePath(host, o.CaCert)
 	} else {
 		host = host + ctrlUrl.Path
 	}
@@ -139,7 +140,7 @@ func (o *loginOptions) Run() error {
 
 	if o.Token == "" {
 		for o.Username == "" {
-			if defaultId := config.Identities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
+			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
 				o.Username = defaultId.Username
 				o.Printf("Using username: %v from identity '%v' in config file: %v\n", o.Username, id, configFile)
 			} else if o.Username, err = term.Prompt("Enter username: "); err != nil {
@@ -159,7 +160,7 @@ func (o *loginOptions) Run() error {
 
 		body := container.String()
 
-		jsonParsed, err := util.EdgeControllerLogin(host, o.Cert, body, o.Out, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+		jsonParsed, err := util.EdgeControllerLogin(host, o.CaCert, body, o.Out, o.OutputJSONResponse, o.Options.Timeout, o.Options.Verbose)
 
 		if err != nil {
 			return err
@@ -181,22 +182,22 @@ func (o *loginOptions) Run() error {
 		}
 	}
 
-	absCertPath, err := filepath.Abs(o.Cert)
+	absCertPath, err := filepath.Abs(o.CaCert)
 	if err == nil {
-		o.Cert = absCertPath
+		o.CaCert = absCertPath
 	}
 
-	loginIdentity := &util.RestClientIdentity{
+	loginIdentity := &util.RestClientEdgeIdentity{
 		Url:       host,
 		Username:  o.Username,
 		Token:     o.Token,
 		LoginTime: time.Now().Format(time.RFC3339),
-		Cert:      o.Cert,
+		CaCert:    o.CaCert,
 		ReadOnly:  o.ReadOnly,
 	}
 
 	o.Printf("Saving identity '%v' to %v\n", id, configFile)
-	config.Identities[id] = loginIdentity
+	config.EdgeIdentities[id] = loginIdentity
 
 	err = util.PersistRestClientConfig(config)
 
@@ -209,7 +210,7 @@ func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 		return err
 	}
 
-	if !isServerTrusted && o.Cert == "" {
+	if !isServerTrusted && o.CaCert == "" {
 		wellKnownCerts, certs, err := util.GetWellKnownCerts(host)
 		if err != nil {
 			return errors.Wrapf(err, "unable to retrieve server certificate authority from %v", host)
@@ -229,7 +230,7 @@ func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 		}
 
 		if savedCerts != nil {
-			o.Cert = certFile
+			o.CaCert = certFile
 			if !util.AreCertsSame(o, wellKnownCerts, savedCerts) {
 				o.Printf("WARNING: server supplied certificate authority doesn't match cached certs at %v\n", certFile)
 				replace := o.Yes
@@ -256,7 +257,7 @@ func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				}
 			}
 			if importCerts {
-				o.Cert, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
+				o.CaCert, err = util.WriteCert(o, ctrlUrl.Hostname(), wellKnownCerts)
 				if err != nil {
 					return err
 				}
@@ -264,13 +265,13 @@ func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 				o.Println("WARNING: no certificate authority provided for server, continuing but login will likely fail")
 			}
 		}
-	} else if isServerTrusted && o.Cert != "" {
+	} else if isServerTrusted && o.CaCert != "" {
 		override, err := o.askYesNo("Server certificate authority is already trusted. Are you sure you want to provide an additional CA [Y/N]: ")
 		if err != nil {
 			return err
 		}
 		if !override {
-			o.Cert = ""
+			o.CaCert = ""
 		}
 	}
 

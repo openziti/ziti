@@ -93,7 +93,7 @@ func runRevoke(options *leOptions) (err error) {
 		return err
 	}
 
-	log.Infof("Certificate was archived for domain:", options.domain)
+	log.Infof("Certificate was archived for domain: %v", options.domain)
 
 	return nil
 

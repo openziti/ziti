@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
@@ -33,7 +34,7 @@ import (
 )
 
 type createIdentityOptions struct {
-	edgeOptions
+	api.Options
 	isAdmin                  bool
 	roleAttributes           []string
 	jwtOutputFile            string
@@ -50,7 +51,7 @@ type createIdentityOptions struct {
 func newCreateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *createIdentityOptions {
 		return &createIdentityOptions{
-			edgeOptions: edgeOptions{
+			Options: api.Options{
 				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 			},
 		}
@@ -104,19 +105,19 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 
 func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, strings.Title(idType), "type")
+	api.SetJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, strings.Title(idType), "type")
 
 	o.username = strings.TrimSpace(o.username)
 	if o.username != "" {
-		setJSONValue(entityData, o.username, "enrollment", "updb")
+		api.SetJSONValue(entityData, o.username, "enrollment", "updb")
 	} else {
-		setJSONValue(entityData, true, "enrollment", "ott")
+		api.SetJSONValue(entityData, true, "enrollment", "ott")
 	}
-	setJSONValue(entityData, o.isAdmin, "isAdmin")
-	setJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	setJSONValue(entityData, o.tags, "tags")
-	setJSONValue(entityData, o.appData, "appData")
+	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
+	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
+	api.SetJSONValue(entityData, o.tags, "tags")
+	api.SetJSONValue(entityData, o.appData, "appData")
 
 	if o.defaultHostingPrecedence != "" {
 		prec, err := normalizeAndValidatePrecedence(o.defaultHostingPrecedence)
@@ -124,26 +125,26 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 			return err
 		}
 
-		setJSONValue(entityData, prec, "defaultHostingPrecedence")
+		api.SetJSONValue(entityData, prec, "defaultHostingPrecedence")
 	}
 
-	setJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
+	api.SetJSONValue(entityData, o.defaultHostingCost, "defaultHostingCost")
 
 	for k, v := range o.serviceCosts {
 		if v < 0 || v > math.MaxUint16 {
 			return errors.Errorf("hosting costs must be in the range %v-%v", 0, math.MaxUint16)
 		}
-		id, err := mapNameToID("services", k, o.edgeOptions)
+		id, err := mapNameToID("services", k, o.Options)
 		if err != nil {
 			return err
 		}
 		delete(o.serviceCosts, k)
 		o.serviceCosts[id] = v
 	}
-	setJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
+	api.SetJSONValue(entityData, o.serviceCosts, "serviceHostingCosts")
 
 	for k, v := range o.servicePrecedences {
-		id, err := mapNameToID("services", k, o.edgeOptions)
+		id, err := mapNameToID("services", k, o.Options)
 		if err != nil {
 			return err
 		}
@@ -156,16 +157,16 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 		delete(o.servicePrecedences, k)
 		o.servicePrecedences[id] = prec
 	}
-	setJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
+	api.SetJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
 
-	result, err := createEntityOfType("identities", entityData.String(), &o.edgeOptions)
-	if err := o.logCreateResult("identity", result, err); err != nil {
+	result, err := CreateEntityOfType("identities", entityData.String(), &o.Options)
+	if err := o.LogCreateResult("identity", result, err); err != nil {
 		return err
 	}
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		if err := getIdentityJwt(o, id, o.edgeOptions.Timeout, o.edgeOptions.Verbose); err != nil {
+		if err := getIdentityJwt(o, id, o.Options.Timeout, o.Options.Verbose); err != nil {
 			return err
 		}
 	}

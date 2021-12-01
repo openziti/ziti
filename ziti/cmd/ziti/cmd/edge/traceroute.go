@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/sirupsen/logrus"
@@ -14,7 +15,7 @@ import (
 )
 
 type traceRouteOptions struct {
-	edgeOptions
+	api.Options
 	skipIntermediate bool
 	hops             uint8
 	configFile       string
@@ -23,7 +24,7 @@ type traceRouteOptions struct {
 
 func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &traceRouteOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -98,7 +99,7 @@ func (o *traceRouteOptions) Run() error {
 
 		hopLabel := result.HopId
 		if result.HopType == "forwarder" {
-			hopLabel, err = mapIdToName("transit-routers", result.HopId, o.edgeOptions)
+			hopLabel, err = mapIdToName("transit-routers", result.HopId, o.Options)
 			if err != nil {
 				hopLabel = result.HopId
 				routerNameLookupsFailed = true

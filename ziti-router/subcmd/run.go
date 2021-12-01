@@ -135,6 +135,6 @@ func waitForShutdown(r *router.Router, config *router.Config) {
 	pfxlog.Logger().Info("shutting down ziti-router")
 
 	if err := r.Shutdown(); err != nil {
-		pfxlog.Logger().Info("error encountered during shutdown: %v", err)
+		pfxlog.Logger().WithError(err).Info("error encountered during shutdown")
 	}
 }

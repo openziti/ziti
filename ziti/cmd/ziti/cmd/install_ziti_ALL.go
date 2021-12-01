@@ -100,22 +100,7 @@ func (o *InstallZitiALLOptions) Run() error {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}
 
-	err = o.install(c.ZITI_ENROLLER)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
-
 	err = o.install(c.ZITI_FABRIC)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
-
-	err = o.install(c.ZITI_FABRIC_GW)
-	if err != nil {
-		log.Errorf("Error: install failed  %s \n", err.Error())
-	}
-
-	err = o.install(c.ZITI_FABRIC_TEST)
 	if err != nil {
 		log.Errorf("Error: install failed  %s \n", err.Error())
 	}

@@ -19,11 +19,11 @@ package edge
 import (
 	"github.com/fatih/color"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"net/url"
 	"strings"
 
-	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -42,8 +42,8 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	newOptions := func() *edgeOptions {
-		return &edgeOptions{
+	newOptions := func() *api.Options {
+		return &api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: out,
 				Err: errOut,
@@ -70,7 +70,7 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // newDeleteCmdForEntityType creates the delete command for the given entity type
-func newDeleteCmdForEntityType(entityType string, options *edgeOptions, aliases ...string) *cobra.Command {
+func newDeleteCmdForEntityType(entityType string, options *api.Options, aliases ...string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     entityType + " <id>",
 		Short:   "deletes " + getPlural(entityType) + " managed by the Ziti Edge Controller",
@@ -94,7 +94,7 @@ func newDeleteCmdForEntityType(entityType string, options *edgeOptions, aliases 
 	return cmd
 }
 
-func newDeleteWhereCmdForEntityType(entityType string, options *edgeOptions) *cobra.Command {
+func newDeleteWhereCmdForEntityType(entityType string, options *api.Options) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "where <filter>",
 		Short: "deletes " + getPlural(entityType) + " matching the filter managed by the Ziti Edge Controller",
@@ -116,7 +116,7 @@ func newDeleteWhereCmdForEntityType(entityType string, options *edgeOptions) *co
 }
 
 // runDeleteEntityOfType implements the commands to delete various entity types
-func runDeleteEntityOfType(o *edgeOptions, entityType string) error {
+func runDeleteEntityOfType(o *api.Options, entityType string) error {
 	var err error
 	ids := o.Args
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" {
@@ -128,9 +128,9 @@ func runDeleteEntityOfType(o *edgeOptions, entityType string) error {
 	return deleteEntitiesOfType(o, entityType, ids)
 }
 
-func deleteEntitiesOfType(o *edgeOptions, entityType string, ids []string) error {
+func deleteEntitiesOfType(o *api.Options, entityType string, ids []string) error {
 	for _, id := range ids {
-		_, err := util.EdgeControllerDelete(entityType, id, o.Out, o.OutputJSONResponse, o.Timeout, o.Verbose)
+		err := util.ControllerDelete("edge", entityType, id, "", o.Out, o.OutputJSONRequest, o.OutputJSONResponse, o.Timeout, o.Verbose)
 		if err != nil {
 			o.Printf("delete of %v with id %v: %v\n", boltz.GetSingularEntityType(entityType), id, color.New(color.FgRed, color.Bold).Sprint("FAIL"))
 			return err
@@ -141,7 +141,7 @@ func deleteEntitiesOfType(o *edgeOptions, entityType string, ids []string) error
 }
 
 // runDeleteEntityOfType implements the commands to delete various entity types
-func runDeleteEntityOfTypeWhere(options *edgeOptions, entityType string) error {
+func runDeleteEntityOfTypeWhere(options *api.Options, entityType string) error {
 	filter := strings.Join(options.Args, " ")
 
 	params := url.Values{}
@@ -171,6 +171,6 @@ func getPlural(entityType string) string {
 	return entityType + "s"
 }
 
-func deleteEntityOfType(entityType string, id string, options *edgeOptions) (*gabs.Container, error) {
-	return util.EdgeControllerDelete(entityType, id, options.Out, options.OutputJSONResponse, options.Timeout, options.Verbose)
+func deleteEntityOfType(entityType string, id string, options *api.Options) error {
+	return util.ControllerDelete("edge", entityType, id, "", options.Out, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
 }

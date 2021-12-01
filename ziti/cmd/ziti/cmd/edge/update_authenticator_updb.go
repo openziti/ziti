@@ -23,13 +23,14 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 import cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 type updateUpdbOptions struct {
-	edgeOptions
+	api.Options
 	identity         string
 	newPassword      string
 	currentPassword  string
@@ -37,9 +38,9 @@ type updateUpdbOptions struct {
 	self             bool
 }
 
-func newUpdateAuthenticatorUpdb(idType string, options edgeOptions) *cobra.Command {
+func newUpdateAuthenticatorUpdb(idType string, options api.Options) *cobra.Command {
 	updbOptions := updateUpdbOptions{
-		edgeOptions: options,
+		Options: options,
 	}
 	cmd := &cobra.Command{
 		Use:   idType + " (--identity <identityIdOrName> -p <newPassword>) | (-c <currentPassword> -n <newPassword>)",
@@ -74,17 +75,17 @@ func runUpdateUpdbPassword(idType string, options *updateUpdbOptions) error {
 	}
 
 	if options.identity != "" {
-		return setIdentityPassword(options.identity, options.identityPassword, options.edgeOptions)
+		return setIdentityPassword(options.identity, options.identityPassword, options.Options)
 	}
 
 	if options.self {
-		return updateSelfPassword(options.currentPassword, options.newPassword, options.edgeOptions)
+		return updateSelfPassword(options.currentPassword, options.newPassword, options.Options)
 	}
 
 	return errors.New("invalid arguments, requires --self or --identity, see help for details")
 }
 
-func updateSelfPassword(current string, new string, options edgeOptions) error {
+func updateSelfPassword(current string, new string, options api.Options) error {
 	var err error
 	if current == "" {
 		if current, err = term.PromptPassword("Enter your current password: ", false); err != nil {
@@ -99,8 +100,8 @@ func updateSelfPassword(current string, new string, options edgeOptions) error {
 	}
 
 	passwordData := gabs.New()
-	setJSONValue(passwordData, current, "currentPassword")
-	setJSONValue(passwordData, new, "password")
+	api.SetJSONValue(passwordData, current, "currentPassword")
+	api.SetJSONValue(passwordData, new, "password")
 
 	respEnvelope, err := util.EdgeControllerList("current-identity/authenticators", map[string][]string{"filter": {`method="updb"`}}, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 
@@ -129,7 +130,7 @@ func updateSelfPassword(current string, new string, options edgeOptions) error {
 	return nil
 }
 
-func setIdentityPassword(identity, password string, options edgeOptions) error {
+func setIdentityPassword(identity, password string, options api.Options) error {
 	id, err := mapIdentityNameToID(identity, options)
 
 	if err != nil {
@@ -182,7 +183,7 @@ func setIdentityPassword(identity, password string, options edgeOptions) error {
 	}
 
 	passwordData := gabs.New()
-	setJSONValue(passwordData, password, "password")
+	api.SetJSONValue(passwordData, password, "password")
 
 	_, err = patchEntityOfType(fmt.Sprintf("authenticators/%s", *authenticatorId), passwordData.String(), &options)
 

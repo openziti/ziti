@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
@@ -61,13 +62,13 @@ type tutorialOptions struct {
 }
 
 type firstServiceTutorialOptions struct {
-	edgeOptions
+	api.Options
 	tutorialOptions
 }
 
 func newFirstServiceTutorialCmd(p common.OptionsProvider) *cobra.Command {
 	options := &firstServiceTutorialOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
