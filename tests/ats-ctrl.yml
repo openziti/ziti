@@ -50,9 +50,8 @@ web:
     bindPoints:
       - interface: 127.0.0.1:1281
         address: 127.0.0.1:1281
-    options: { }
+    options: {}
     apis:
+      - binding: fabric
       - binding: edge-management
-        options: { }
       - binding: edge-client
-        options: { }
