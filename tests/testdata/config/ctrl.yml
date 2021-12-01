@@ -14,10 +14,11 @@ ctrl:
 mgmt:
   listener: tls:127.0.0.1:10001
 
-#web:
-#  - name: localhost
-#    bindPoints:
-#      - interface: 127.0.0.1:1281
-#        address: 127.0.0.1:1281
-#    options: {}
-#    apis: [ ]
+web:
+  - name: localhost
+    bindPoints:
+      - interface: 127.0.0.1:1281
+        address: 127.0.0.1:1281
+    options: {}
+    apis:
+      - binding: fabric
