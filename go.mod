@@ -16,7 +16,7 @@ require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cenkalti/backoff/v4 v4.1.1
+	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/coreos/go-iptables v0.6.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
@@ -43,7 +43,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.2
 	github.com/openziti/foundation v0.16.7
-	github.com/openziti/sdk-golang v0.15.118
+	github.com/openziti/sdk-golang v0.15.119
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
