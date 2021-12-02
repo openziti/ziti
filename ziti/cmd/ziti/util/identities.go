@@ -249,6 +249,8 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 	_, err = os.Stat(configFile)
 	if err != nil {
 		if os.IsNotExist(err) {
+			config.EdgeIdentities = map[string]*RestClientEdgeIdentity{}
+			config.FabricIdentities = map[string]*RestClientFabricIdentity{}
 			return config, configFile, nil
 		}
 		return nil, "", errors.Wrapf(err, "error while statting config file %v", configFile)
