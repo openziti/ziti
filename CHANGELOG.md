@@ -1,3 +1,8 @@
+# Release 0.24.1
+
+## What's New
+* Bug Fix: Very first time using ziti cli to login with `ziti edge login` would panic
+
 # Release 0.24.0
 
 ## Breaking Changes
