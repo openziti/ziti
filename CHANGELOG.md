@@ -1,7 +1,9 @@
 # Release 0.24.1
 
 ## What's New
+
 * Bug Fix: Very first time using ziti cli to login with `ziti edge login` would panic
+* Security: When using new fabric REST API in fabric only mode, certs weren't being properly checked. Regression exists only in 0.24.0
 
 # Release 0.24.0
 
