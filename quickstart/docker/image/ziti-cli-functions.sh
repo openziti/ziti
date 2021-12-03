@@ -324,7 +324,7 @@ function ziti_expressConfiguration {
   if [[ "${ZITIx_EXPRESS_COMPLETE-}" != "" ]]; then
     echo -e "$(RED "  --- It looks like you've run an express install in this shell already. ---")"
     echo -en "Would you like to clear existing Ziti variables and continue (y/n)? "
-    read -n 1 -r
+    read -r
     echo
     if [[ "${REPLY}" =~ [Yy]$ ]]; then
       echo -e "$(GREEN "Clearing existing Ziti variables and continuing with express install")"
