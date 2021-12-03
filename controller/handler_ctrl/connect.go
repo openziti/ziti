@@ -66,7 +66,12 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 	/* */
 
 	if self.network.ConnectedRouter(id) {
-		return errors.New("router already connected")
+		router := self.network.GetConnectedRouter(id)
+		name := "unknown"
+		if router != nil {
+			name = router.Name
+		}
+		return fmt.Errorf("router already connected id: %s, name: %s", id, name)
 	}
 
 	if r, err := self.network.GetRouter(id); err == nil {
