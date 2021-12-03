@@ -7,6 +7,7 @@ import (
 	"fmt"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge/rest_management_api_client"
+	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
@@ -46,11 +47,13 @@ func (self *RestClientConfig) GetIdentity() string {
 }
 
 type RestClientIdentity interface {
+	NewTlsClientConfig() (*tls.Config, error)
 	NewClient(timeout time.Duration, verbose bool) (*resty.Client, error)
 	NewRequest(client *resty.Client) *resty.Request
 	IsReadOnly() bool
 	GetBaseUrlForApi(api API) (string, error)
-	NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error)
+	NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error)
+	NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error)
 }
 
 func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool) (*resty.Request, error) {
@@ -72,6 +75,21 @@ type RestClientEdgeIdentity struct {
 
 func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 	return self.ReadOnly
+}
+
+func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
+	rootCaPool := x509.NewCertPool()
+
+	rootPemData, err := ioutil.ReadFile(self.CaCert)
+	if err != nil {
+		return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+	}
+
+	rootCaPool.AppendCertsFromPEM(rootPemData)
+
+	return &tls.Config{
+		RootCAs: rootCaPool,
+	}, nil
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
@@ -102,85 +120,12 @@ func (self *RestClientEdgeIdentity) GetBaseUrlForApi(api API) (string, error) {
 	return "", errors.Errorf("unsupport api %v", api)
 }
 
-func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
-	respFunc := func(resp *http.Response, err error) {
-		if clientOpts.OutputResponseJson() {
-			if resp == nil || resp.Body == nil {
-				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty response body>\n")
-				return
-			}
-
-			resp.Body = ioutil.NopCloser(resp.Body)
-			bodyContent, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not read response body: %v", err)
-				return
-			}
-			bodyStr := string(bodyContent)
-			_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
-		}
-	}
-
-	reqFunc := func(request *http.Request) error {
-		if self.ReadOnly && !strings.EqualFold(request.Method, "get") {
-			return errors.New("this login is marked read-only, only GET operations are allowed")
-		}
-		if clientOpts.OutputRequestJson() {
-			if request == nil || request.Body == nil {
-				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty request body>\n")
-				return nil
-			}
-
-			body, err := request.GetBody()
-			if err == nil {
-				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not copy request body: %v", err)
-				return nil
-			}
-			bodyContent, err := ioutil.ReadAll(body)
-			if err != nil {
-				bodyStr := string(bodyContent)
-				_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
-				return nil
-			}
-		}
-		return nil
-	}
-
-	httpClientTransport := &edgeTransport{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-			DialContext: (&net.Dialer{
-				Timeout:   10 * time.Second,
-				KeepAlive: 10 * time.Second,
-			}).DialContext,
-
-			ForceAttemptHTTP2:     true,
-			MaxIdleConns:          10,
-			IdleConnTimeout:       10 * time.Second,
-			TLSHandshakeTimeout:   10 * time.Second,
-			ExpectContinueTimeout: 1 * time.Second,
-		},
-		ResponseFunc: respFunc,
-		RequestFunc:  reqFunc,
-	}
-
-	rootCaPool := x509.NewCertPool()
-
-	rootPemData, err := ioutil.ReadFile(self.CaCert)
+func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
+	httpClient, err := newRestClientTransport(clientOpts, self)
 	if err != nil {
-		return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+		return nil, err
 	}
 
-	rootCaPool.AppendCertsFromPEM(rootPemData)
-
-	httpClientTransport.TLSClientConfig = &tls.Config{
-		RootCAs: rootCaPool,
-	}
-
-	httpClient := &http.Client{
-		Transport: httpClientTransport,
-		Timeout:   10 * time.Second,
-	}
 	parsedHost, err := url.Parse(self.Url)
 	if err != nil {
 		return nil, err
@@ -195,12 +140,40 @@ func (self *RestClientEdgeIdentity) NewEdgeManagementClient(clientOpts EdgeManag
 	return rest_management_api_client.New(clientRuntime, nil), nil
 }
 
+func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error) {
+	httpClient, err := newRestClientTransport(clientOpts, self)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedHost, err := url.Parse(self.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	clientRuntime := httptransport.NewWithClient(parsedHost.Host, fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
+
+	clientRuntime.DefaultAuthentication = &EdgeManagementAuth{
+		Token: self.Token,
+	}
+
+	return fabric_rest_client.New(clientRuntime, nil), nil
+}
+
 type RestClientFabricIdentity struct {
 	Url        string `json:"url"`
 	CaCert     string `json:"caCert,omitempty"`
 	ClientCert string `json:"clientCert,omitempty"`
 	ClientKey  string `json:"clientKey,omitempty"`
 	ReadOnly   bool   `json:"readOnly"`
+}
+
+func (self *RestClientFabricIdentity) NewTlsClientConfig() (*tls.Config, error) {
+	id, err := identity.LoadClientIdentity(self.ClientCert, self.ClientKey, self.CaCert)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to load identity")
+	}
+	return id.ClientTLSConfig(), nil
 }
 
 func (self *RestClientFabricIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
@@ -234,8 +207,24 @@ func (self *RestClientFabricIdentity) IsReadOnly() bool {
 	return self.ReadOnly
 }
 
-func (self *RestClientFabricIdentity) NewEdgeManagementClient(EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
+func (self *RestClientFabricIdentity) NewEdgeManagementClient(ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
 	return nil, errors.New("fabric identities cannot be used to connect to the edge management API")
+}
+
+func (self *RestClientFabricIdentity) NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error) {
+	httpClient, err := newRestClientTransport(clientOpts, self)
+	if err != nil {
+		return nil, err
+	}
+
+	parsedHost, err := url.Parse(self.Url)
+	if err != nil {
+		return nil, err
+	}
+
+	clientRuntime := httptransport.NewWithClient(parsedHost.Host, fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
+
+	return fabric_rest_client.New(clientRuntime, nil), nil
 }
 
 func LoadRestClientConfig() (*RestClientConfig, string, error) {
@@ -369,4 +358,84 @@ func LoadSelectedRWIdentityForApi(api API) (RestClientIdentity, error) {
 		return nil, errors.New("this login is marked read-only, only GET operations are allowed")
 	}
 	return id, nil
+}
+
+func newRestClientResponseF(clientOpts ClientOpts) func(*http.Response, error) {
+	return func(resp *http.Response, err error) {
+		if clientOpts.OutputResponseJson() {
+			if resp == nil || resp.Body == nil {
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty response body>\n")
+				return
+			}
+
+			resp.Body = ioutil.NopCloser(resp.Body)
+			bodyContent, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not read response body: %v", err)
+				return
+			}
+			bodyStr := string(bodyContent)
+			_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
+		}
+	}
+}
+
+func newRestClientRequestF(clientOpts ClientOpts, readOnly bool) func(*http.Request) error {
+	return func(request *http.Request) error {
+		if readOnly && !strings.EqualFold(request.Method, "get") {
+			return errors.New("this login is marked read-only, only GET operations are allowed")
+		}
+		if clientOpts.OutputRequestJson() {
+			if request == nil || request.Body == nil {
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), "<empty request body>\n")
+				return nil
+			}
+
+			body, err := request.GetBody()
+			if err == nil {
+				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not copy request body: %v", err)
+				return nil
+			}
+			bodyContent, err := ioutil.ReadAll(body)
+			if err != nil {
+				bodyStr := string(bodyContent)
+				_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
+				return nil
+			}
+		}
+		return nil
+	}
+}
+
+func newRestClientTransport(clientOpts ClientOpts, clientIdentity RestClientIdentity) (*http.Client, error) {
+	httpClientTransport := &edgeTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   10 * time.Second,
+				KeepAlive: 10 * time.Second,
+			}).DialContext,
+
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          10,
+			IdleConnTimeout:       10 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ResponseFunc: newRestClientResponseF(clientOpts),
+		RequestFunc:  newRestClientRequestF(clientOpts, clientIdentity.IsReadOnly()),
+	}
+
+	tlsClientConfig, err := clientIdentity.NewTlsClientConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	httpClientTransport.TLSClientConfig = tlsClientConfig
+
+	httpClient := &http.Client{
+		Transport: httpClientTransport,
+		Timeout:   10 * time.Second,
+	}
+	return httpClient, nil
 }
