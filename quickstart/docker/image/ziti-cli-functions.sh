@@ -221,7 +221,7 @@ function checkPrereqs {
       echo " "
       return 1
   fi
-  echo "Let's get stated creating your local development network!"
+  echo "Let's get started creating your local development network!"
   echo ""
   echo ""
 }
@@ -276,8 +276,8 @@ function setupZitiNetwork {
       fi
       echo "name: ${ZITI_NETWORK-}"
     else
-      echo " "
-      echo "nah bro"
+      echo ""
+      echo "============ FAILED TO SETUP NETWORK ============"
       return 1
     fi
     echo " "
@@ -323,8 +323,16 @@ function generateEnvFile {
 function ziti_expressConfiguration {
   if [[ "${ZITIx_EXPRESS_COMPLETE-}" != "" ]]; then
     echo -e "$(RED "  --- It looks like you've run an express install in this shell already. ---")"
-    echo -e "$(RED "  --- Please execute unsetZitiEnv to clear any variables already set.    ---")"
-    return 1
+    echo -en "Would you like to clear existing Ziti variables and continue (y/n)? "
+    read -q -r
+    echo
+    if [[ "${REPLY}" =~ [Yy]$ ]]; then
+      echo -e "$(GREEN "Clearing existing Ziti variables and continuing with express install")"
+      unsetZitiEnv
+    else
+      echo -e "$(RED "  --- Exiting express install ---")"
+      return 1
+    fi
   fi
   export ZITIx_EXPRESS_COMPLETE="true"
   echo " "
