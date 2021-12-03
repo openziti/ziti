@@ -136,6 +136,35 @@ func init() {
         }
       ]
     },
+    "/inspections": {
+      "post": {
+        "description": "Requests system information, such as stack dumps or information about capabilities. Requires admin access.\n",
+        "tags": [
+          "Inspect"
+        ],
+        "summary": "Inspect system values",
+        "operationId": "inspect",
+        "parameters": [
+          {
+            "description": "An inspect request",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/inspectRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/responses/inspectResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
+    },
     "/links": {
       "get": {
         "description": "Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.\n",
@@ -1103,6 +1132,66 @@ func init() {
         }
       }
     },
+    "inspectRequest": {
+      "type": "object",
+      "required": [
+        "appRegex",
+        "requestedValues"
+      ],
+      "properties": {
+        "appRegex": {
+          "type": "string"
+        },
+        "requestedValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "inspectResponse": {
+      "type": "object",
+      "required": [
+        "success"
+      ],
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/inspectResponseValue"
+          }
+        }
+      }
+    },
+    "inspectResponseValue": {
+      "type": "object",
+      "required": [
+        "appId",
+        "name",
+        "value"
+      ],
+      "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "link": {
       "description": "A link to another resource",
       "type": "object",
@@ -1833,6 +1922,12 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     },
+    "inspectResponse": {
+      "description": "A response to an inspect request",
+      "schema": {
+        "$ref": "#/definitions/inspectResponse"
+      }
+    },
     "invalidAuthResponse": {
       "description": "The authentication request could not be processed as the credentials are invalid",
       "schema": {
@@ -2223,6 +2318,59 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/inspections": {
+      "post": {
+        "description": "Requests system information, such as stack dumps or information about capabilities. Requires admin access.\n",
+        "tags": [
+          "Inspect"
+        ],
+        "summary": "Inspect system values",
+        "operationId": "inspect",
+        "parameters": [
+          {
+            "description": "An inspect request",
+            "name": "request",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/inspectRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A response to an inspect request",
+            "schema": {
+              "$ref": "#/definitions/inspectResponse"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/links": {
       "get": {
@@ -4677,6 +4825,66 @@ func init() {
         }
       }
     },
+    "inspectRequest": {
+      "type": "object",
+      "required": [
+        "appRegex",
+        "requestedValues"
+      ],
+      "properties": {
+        "appRegex": {
+          "type": "string"
+        },
+        "requestedValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "inspectResponse": {
+      "type": "object",
+      "required": [
+        "success"
+      ],
+      "properties": {
+        "errors": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "success": {
+          "type": "boolean"
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/inspectResponseValue"
+          }
+        }
+      }
+    },
+    "inspectResponseValue": {
+      "type": "object",
+      "required": [
+        "appId",
+        "name",
+        "value"
+      ],
+      "properties": {
+        "appId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
     "link": {
       "description": "A link to another resource",
       "type": "object",
@@ -5406,6 +5614,12 @@ func init() {
       "description": "Base empty response",
       "schema": {
         "$ref": "#/definitions/empty"
+      }
+    },
+    "inspectResponse": {
+      "description": "A response to an inspect request",
+      "schema": {
+        "$ref": "#/definitions/inspectResponse"
       }
     },
     "invalidAuthResponse": {

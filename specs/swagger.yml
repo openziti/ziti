@@ -523,6 +523,30 @@ paths:
         '409':
           $ref: '#/responses/cannotDeleteReferencedResourceResponse'
 
+  ###################################################################
+  # Inspections
+  ##################################################################
+  '/inspections':
+    post:
+      summary: Inspect system values
+      description: |
+        Requests system information, such as stack dumps or information about capabilities. Requires admin access.
+      tags:
+        - Inspect
+      operationId: inspect
+      parameters:
+        - name: request
+          in: body
+          required: true
+          description: An inspect request
+          schema:
+            $ref: '#/definitions/inspectRequest'
+      responses:
+        '200':
+          $ref: '#/responses/inspectResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
@@ -745,7 +769,7 @@ responses:
 
   ###################################################################
   # Circuits
-  ##################################################################
+  ###################################################################
   listCircuits:
     description: A list of circuits
     schema:
@@ -754,6 +778,14 @@ responses:
     description: A single circuit
     schema:
       $ref: '#/definitions/detailCircuitEnvelope'
+
+  ###################################################################
+  # Inspections
+  ###################################################################
+  inspectResponse:
+    description: A response to an inspect request
+    schema:
+      $ref: '#/definitions/inspectResponse'
 
 #######################################################################################################################
 #
@@ -1387,3 +1419,52 @@ definitions:
     properties:
       immediate:
         type: boolean
+
+  ###################################################################
+  # Inspections
+  ##################################################################
+  inspectRequest:
+    type: object
+    required:
+      - appRegex
+      - requestedValues
+    properties:
+      appRegex:
+        type: string
+      requestedValues:
+        type: array
+        items:
+          type: string
+  inspectResponseValue:
+    type: object
+    required:
+      - appId
+      - name
+      - value
+    properties:
+      appId:
+        type: string
+      name:
+        type: string
+      value:
+        type: string
+  inspectResponse:
+    type: object
+    required:
+      - success
+    properties:
+      success:
+        type: boolean
+      errors:
+        type: array
+        items:
+          type: string
+      values:
+        type: array
+        items:
+          $ref: '#/definitions/inspectResponseValue'
+
+
+
+
+
