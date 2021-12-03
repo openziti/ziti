@@ -323,7 +323,7 @@ function generateEnvFile {
 function ziti_expressConfiguration {
   if [[ "${ZITIx_EXPRESS_COMPLETE-}" != "" ]]; then
     echo -e "$(RED "  --- It looks like you've run an express install in this shell already. ---")"
-    echo -en "Would you like to clear existing Ziti variables and continue (y/n)? "
+    echo -en "Would you like to clear existing Ziti variables and continue (y/N)? "
     read -r
     echo
     if [[ "${REPLY}" =~ [Yy]$ ]]; then
