@@ -1,0 +1,70 @@
+FROM ubuntu:18.04
+#
+# this file mirrors the build params used in the GitHub Actions and enables
+# reproducible builds for downstream forks and Ziti contributors 
+#
+
+ARG latest_golang=1.17.2
+ARG go_distribution_file=go${latest_golang}.linux-amd64.tar.gz
+ARG GOPATH=/root/go
+ARG GOROOT=/usr/local/go
+RUN apt-get update
+RUN apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+RUN apt-get -yq install wget build-essential
+RUN wget -q https://golang.org/dl/${go_distribution_file}
+RUN tar -xzf ${go_distribution_file} -C /usr/local/
+RUN mkdir ${GOPATH}
+ENV GOPATH=${GOPATH}
+ENV GOROOT=${GOROOT}
+ENV PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+RUN go install github.com/mitchellh/gox@latest
+WORKDIR /mnt
+CMD ["./linux-build.sh"]
+
+##
+# build this Dockerfile
+##
+#
+#  MINIMUM_GOLANG=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod)
+#  LATEST_GOLANG=$(curl -sSf "https://golang.org/VERSION?m=text" | /bin/grep -Po '^go(\s+)?\K\d+\.\d+\.\d+$')
+#  docker build --tag=zitibuilder --file=Dockerfile.linux-build --build-arg latest_golang=${LATEST_GOLANG} .
+
+##
+# build Ziti
+##
+#  docker run --rm --name=zitibuilder --volume=$PWD:/mnt zitibuilder             
+
+# $ tree ./release
+# ./release
+# ├── amd64
+# │   └── linux
+# │       ├── ziti
+# │       ├── ziti-controller
+# │       ├── ziti-fabric
+# │       ├── ziti-fabric-gw
+# │       ├── ziti-fabric-test
+# │       ├── ziti-probe
+# │       ├── ziti-router
+# │       └── ziti-tunnel
+# ├── arm
+# │   └── linux
+# │       ├── ziti
+# │       ├── ziti-controller
+# │       ├── ziti-fabric
+# │       ├── ziti-fabric-gw
+# │       ├── ziti-fabric-test
+# │       ├── ziti-probe
+# │       ├── ziti-router
+# │       └── ziti-tunnel
+# └── arm64
+#     └── linux
+#         ├── ziti
+#         ├── ziti-controller
+#         ├── ziti-fabric
+#         ├── ziti-fabric-gw
+#         ├── ziti-fabric-test
+#         ├── ziti-probe
+#         ├── ziti-router
+#         └── ziti-tunnel
+
+# 6 directories, 24 files
