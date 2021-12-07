@@ -33,10 +33,10 @@ func Test_SpecManyService(t *testing.T) {
 	spec := &perfScenarioSpec{
 		name:                         "many-services",
 		serviceCount:                 10_000,
-		identityCount:                10_000,
+		identityCount:                16_000,
 		edgeRouterCount:              100,
-		servicePolicyCount:           2500,
-		edgeRouterPolicyCount:        250,
+		servicePolicyCount:           100,
+		edgeRouterPolicyCount:        100,
 		serviceEdgeRouterPolicyCount: 100,
 	}
 
@@ -201,10 +201,10 @@ func (ctx *modelPerf) runScenario(spec *perfScenarioSpec) {
 	ctx.createScenario(spec)
 
 	stats := newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(100)
+	stats.collectStats(10)
 
 	stats = newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(100)
+	stats.collectStats(10)
 
 	ctx.Teardown()
 	shutdown = true

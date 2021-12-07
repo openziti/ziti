@@ -424,8 +424,10 @@ func (self *tunnelTerminator) Close() error {
 		log.Debug("closing tunnel terminator context")
 		self.context.OnClose()
 
-		log.Debug("unregistering session listener for tunnel terminator")
-		self.closeCallback()
+		if self.closeCallback != nil {
+			log.Debug("unregistering session listener for tunnel terminator")
+			self.closeCallback()
+		}
 
 		log.Debug("removing tunnel terminator")
 		if err := self.provider.removeTerminator(self); err != nil {

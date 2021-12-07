@@ -110,11 +110,12 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	}
 
 	n := self.appEnv.GetHostController().GetNetwork()
-	id, err := n.Terminators.Create(terminator)
+	err := n.Terminators.Create(terminator)
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return
 	}
+	id := terminator.Id
 
 	logger = logger.WithField("terminator", id)
 	logger.Info("created terminator")

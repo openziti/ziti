@@ -34,6 +34,13 @@ import (
 
 const (
 	IdentityActiveIntervalSeconds = 60
+
+	minDefaultAdminPasswordLength = 5
+	maxDefaultAdminPasswordLength = 100
+	minDefaultAdminUsernameLength = 4
+	maxDefaultAdminUsernameLength = 100
+	minDefaultAdminNameLength     = 4
+	maxDefaultAdminNameLength     = 100
 )
 
 type IdentityHandler struct {
@@ -241,11 +248,31 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 	identity, err := handler.ReadDefaultAdmin()
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		pfxlog.Logger().Panic(err)
+		return err
 	}
 
 	if identity != nil {
 		return errors.New("already initialized: Ziti Edge default admin already defined")
+	}
+
+	if len(username) < minDefaultAdminUsernameLength {
+		return errorz.NewFieldError(fmt.Sprintf("username must be at least %v characters", minDefaultAdminUsernameLength), "username", username)
+	}
+	if len(password) < minDefaultAdminPasswordLength {
+		return errorz.NewFieldError(fmt.Sprintf("password must be at least %v characters", minDefaultAdminPasswordLength), "password", "******")
+	}
+	if len(name) < minDefaultAdminNameLength {
+		return errorz.NewFieldError(fmt.Sprintf("name must be at least %v characters", minDefaultAdminNameLength), "name", name)
+	}
+
+	if len(username) > maxDefaultAdminUsernameLength {
+		return errorz.NewFieldError(fmt.Sprintf("username must be at most %v characters", maxDefaultAdminUsernameLength), "username", username)
+	}
+	if len(password) > maxDefaultAdminPasswordLength {
+		return errorz.NewFieldError(fmt.Sprintf("password must be at most %v characters", maxDefaultAdminPasswordLength), "password", "******")
+	}
+	if len(name) > maxDefaultAdminNameLength {
+		return errorz.NewFieldError(fmt.Sprintf("name must be at most %v characters", maxDefaultAdminNameLength), "name", name)
 	}
 
 	identityType, err := handler.env.GetHandlers().IdentityType.ReadByName(IdentityTypeUser)

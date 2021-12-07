@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
@@ -149,6 +150,7 @@ func (ae *AppEnv) GetFingerprintGenerator() cert.FingerprintGenerator {
 }
 
 type HostController interface {
+	RegisterAgentBindHandler(bindHandler channel.BindHandler)
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
 	RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error

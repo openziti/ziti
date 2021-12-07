@@ -53,6 +53,10 @@ type EdgeRouterHandler struct {
 	allowedFieldsChecker boltz.FieldChecker
 }
 
+func (handler *EdgeRouterHandler) GetEntityTypeId() string {
+	return "edgeRouters"
+}
+
 func (handler *EdgeRouterHandler) newModelEntity() boltEntitySink {
 	return &EdgeRouter{}
 }
@@ -205,7 +209,7 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 			return err
 		}
 
-		if err = handler.validateNameOnCreate(ctx, boltEdgeRouter); err != nil {
+		if err = handler.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
 			return err
 		}
 

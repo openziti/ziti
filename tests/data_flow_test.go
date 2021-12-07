@@ -1,3 +1,4 @@
+//go:build dataflow
 // +build dataflow
 
 /*
@@ -19,8 +20,11 @@
 package tests
 
 import (
+	"bytes"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"math"
 	"testing"
 	"time"
 )
@@ -43,7 +47,7 @@ func Test_Dataflow(t *testing.T) {
 
 	testServer := newTestServer(listener, func(conn *testServerConn) error {
 		for {
-			name, eof := conn.ReadString(1024, 1*time.Minute)
+			name, eof := conn.ReadString(math.MaxUint16*4, 1*time.Minute)
 			if eof {
 				return conn.server.close()
 			}
@@ -68,6 +72,13 @@ func Test_Dataflow(t *testing.T) {
 	name := eid.New()
 	conn.WriteString(name, time.Second)
 	conn.ReadExpected("hello, "+name, time.Second)
+
+	longStr := &bytes.Buffer{}
+	for longStr.Len() < math.MaxUint16*2 {
+		longStr.WriteString(uuid.NewString())
+	}
+	conn.WriteString(longStr.String(), time.Second)
+	conn.ReadExpected("hello, "+longStr.String(), time.Second)
 	conn.WriteString("quit", time.Second)
 	conn.ReadExpected("ok", time.Second)
 

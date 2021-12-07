@@ -17,14 +17,18 @@
 package model
 
 import (
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/network"
+	"google.golang.org/protobuf/proto"
 )
 
 type Handlers struct {
 	// fabric
-	Router     *network.RouterController
-	Service    *network.ServiceController
-	Terminator *network.TerminatorController
+	Router     *network.RouterManager
+	Service    *network.ServiceManager
+	Terminator *network.TerminatorManager
+	Command    *network.CommandManager
 
 	// edge
 	ApiSession              *ApiSessionHandler
@@ -57,9 +61,10 @@ type Handlers struct {
 func InitHandlers(env Env) *Handlers {
 	handlers := &Handlers{}
 
-	handlers.Router = env.GetDbProvider().GetControllers().Routers
-	handlers.Service = env.GetDbProvider().GetControllers().Services
-	handlers.Terminator = env.GetDbProvider().GetControllers().Terminators
+	handlers.Command = env.GetDbProvider().GetManagers().Command
+	handlers.Router = env.GetDbProvider().GetManagers().Routers
+	handlers.Service = env.GetDbProvider().GetManagers().Services
+	handlers.Terminator = env.GetDbProvider().GetManagers().Terminators
 
 	handlers.ApiSession = NewApiSessionHandler(env)
 	handlers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
@@ -87,5 +92,44 @@ func InitHandlers(env Env) *Handlers {
 	handlers.PostureResponse = NewPostureResponseHandler(env)
 	handlers.Mfa = NewMfaHandler(env)
 
+	RegisterCommand(env, &CreateEdgeTerminatorCmd{}, &edge_cmd_pb.CreateEdgeTerminatorCommand{})
+
 	return handlers
+}
+
+// decodableCommand is a Command which knows how to decode itself from the given message type
+//
+// T is the type of the command. We want to enforce that the command is a pointer type so we can
+// use new(T) to create new instances of it
+// M is the message type that the command can use to set its internals
+type decodableCommand[T any, M any] interface {
+	command.Command
+	Decode(env Env, msg M) error
+	*T
+}
+
+// RegisterCommand register a decoder for the given command and message pair
+// MT is the message type (ex: cmd_pb.CreateServiceCommand)
+// CT is the command type (ex: CreateServiceCommand)
+// M is the CommandMsg/command.TypedMessage implementation (ex: *cmd_pb.CreateServiceCommand)
+// C is the decodableCommand/command.Command implementation (ex: *CreateServiceCommand)
+//
+// We only have both types specified so that we can enforce that each is a pointer type. If didn't
+// enforce that the instances were pointer types, we couldn't use new to instantiate new instances.
+func RegisterCommand[MT any, CT any, M network.CommandMsg[MT], C decodableCommand[CT, M]](env Env, _ C, _ M) {
+	decoder := func(commandType int32, data []byte) (command.Command, error) {
+		var msg M = new(MT)
+		if err := proto.Unmarshal(data, msg); err != nil {
+			return nil, err
+		}
+
+		cmd := C(new(CT))
+		if err := cmd.Decode(env, msg); err != nil {
+			return nil, err
+		}
+		return cmd, nil
+	}
+
+	var msg M = new(MT)
+	env.GetHostController().GetNetwork().Managers.Command.Decoders.RegisterF(msg.GetCommandType(), decoder)
 }

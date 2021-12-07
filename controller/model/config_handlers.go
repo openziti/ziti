@@ -17,9 +17,13 @@
 package model
 
 import (
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -28,6 +32,9 @@ func NewConfigHandler(env Env) *ConfigHandler {
 		baseHandler: newBaseHandler(env, env.GetStores().Config),
 	}
 	handler.impl = handler
+
+	network.RegisterManagerDecoder[*Config](env.GetHostController().GetNetwork().Managers, handler)
+
 	return handler
 }
 
@@ -35,45 +42,88 @@ type ConfigHandler struct {
 	baseHandler
 }
 
-func (handler *ConfigHandler) newModelEntity() boltEntitySink {
+func (self *ConfigHandler) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if checker != nil {
+		checker = &AndFieldChecker{first: self, second: checker}
+	}
+	return self.updateEntity(cmd.Entity, checker)
+}
+
+func (self *ConfigHandler) newModelEntity() boltEntitySink {
 	return &Config{}
 }
 
-func (handler *ConfigHandler) Create(config *Config) (string, error) {
-	return handler.createEntity(config)
+func (self *ConfigHandler) Create(config *Config) error {
+	return network.DispatchCreate[*Config](self, config)
 }
 
-func (handler *ConfigHandler) Read(id string) (*Config, error) {
+func (self *ConfigHandler) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
+	_, err := self.createEntity(cmd.Entity)
+	return err
+}
+
+func (self *ConfigHandler) Read(id string) (*Config, error) {
 	modelEntity := &Config{}
-	if err := handler.readEntity(id, modelEntity); err != nil {
+	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *ConfigHandler) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
+func (self *ConfigHandler) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
 	modelEntity := &Config{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *ConfigHandler) IsUpdated(field string) bool {
+func (self *ConfigHandler) IsUpdated(field string) bool {
 	return !strings.EqualFold(field, "type")
 }
 
-func (handler *ConfigHandler) Update(config *Config) error {
-	return handler.updateEntity(config, handler)
+func (self *ConfigHandler) Update(config *Config, checker boltz.UpdatedFields) error {
+	return network.DispatchUpdate[*Config](self, config, checker)
 }
 
-func (handler *ConfigHandler) Patch(config *Config, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	return handler.patchEntity(config, combinedChecker)
+func (self *ConfigHandler) Marshall(entity *Config) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := edge_cmd_pb.EncodeJson(entity.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.Config{
+		Id:           entity.Id,
+		Name:         entity.Name,
+		ConfigTypeId: entity.TypeId,
+		Data:         data,
+		Tags:         tags,
+	}
+
+	return proto.Marshal(msg)
 }
 
-func (handler *ConfigHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *ConfigHandler) Unmarshall(bytes []byte) (*Config, error) {
+	msg := &edge_cmd_pb.Config{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	return &Config{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:   msg.Name,
+		TypeId: msg.ConfigTypeId,
+		Data:   edge_cmd_pb.DecodeJson(msg.Data),
+	}, nil
 }
 
 type ConfigListResult struct {

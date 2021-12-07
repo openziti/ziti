@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package ziti.edge_cmd.pb;
+option go_package = "github.com/openziti/edge/pb/edge_cmd_pb";
+
+enum CommandType {
+  Zero = 0;
+  CreateEdgeTerminatorType = 1000;
+}
+
+message CreateEdgeTerminatorCommand {
+  bytes terminatorData = 1;
+}
+
+message TagValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    bool nilValue = 4;
+  }
+}
+
+message JsonMap {
+  map<string, JsonValue> value = 1;
+}
+
+message JsonValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    bool nilValue = 4;
+    JsonMap mapValue = 5;
+  }
+}
+
+message Config {
+  string id = 1;
+  string name = 2;
+  string configTypeId = 3;
+  JsonMap data = 4;
+  map<string, TagValue> tags = 5;
+}

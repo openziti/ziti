@@ -20,10 +20,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -40,7 +41,7 @@ type Handler interface {
 
 func newBaseHandler(env Env, store boltz.CrudStore) baseHandler {
 	return baseHandler{
-		BaseController: models.BaseController{
+		BaseEntityManager: models.BaseEntityManager{
 			Store: store,
 		},
 		env: env,
@@ -48,9 +49,19 @@ func newBaseHandler(env Env, store boltz.CrudStore) baseHandler {
 }
 
 type baseHandler struct {
-	models.BaseController
+	models.BaseEntityManager
 	env  Env
 	impl Handler
+}
+
+func (self *baseHandler) Dispatch(command command.Command) error {
+	return self.env.GetHandlers().Command.Dispatch(command)
+}
+
+func (handler *baseHandler) GetEntityTypeId() string {
+	// default this to the store entity type and let individual controllers override it where
+	// needed to avoid collisions (e.g. edge service/router)
+	return handler.GetStore().GetEntityType()
 }
 
 func (handler *baseHandler) GetStore() boltz.CrudStore {
@@ -142,23 +153,6 @@ func (handler *baseHandler) createEntity(modelEntity boltEntitySource) (string, 
 	return id, nil
 }
 
-func (handler *baseHandler) validateNameOnCreate(ctx boltz.MutateContext, boltEntity boltz.Entity) error {
-	// validate name for named entities
-	if namedEntity, ok := boltEntity.(boltz.NamedExtEntity); ok {
-		if namedEntity.GetName() == "" {
-			return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
-		}
-		if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
-			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
-				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
-			}
-		} else {
-			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
-		}
-	}
-	return nil
-}
-
 func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntity boltEntitySource) (string, error) {
 	if modelEntity == nil {
 		return "", errors.Errorf("can't create %v with nil value", handler.Store.GetEntityType())
@@ -172,7 +166,7 @@ func (handler *baseHandler) createEntityInTx(ctx boltz.MutateContext, modelEntit
 		return "", err
 	}
 
-	if err = handler.validateNameOnCreate(ctx, boltEntity); err != nil {
+	if err = handler.ValidateNameOnCreate(ctx, boltEntity); err != nil {
 		return "", err
 	}
 
@@ -339,6 +333,21 @@ func (handler *baseHandler) readEntityByQuery(query string) (models.Entity, erro
 		return result.GetEntities()[0], nil
 	}
 	return nil, nil
+}
+
+func (self *baseHandler) Delete(id string) error {
+	cmd := &command.DeleteEntityCommand{
+		Deleter: self,
+		Id:      id,
+	}
+	return self.Dispatch(cmd)
+}
+
+func (self *baseHandler) ApplyDelete(cmd *command.DeleteEntityCommand) error {
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		return self.Store.DeleteById(ctx, cmd.Id)
+	})
 }
 
 func (handler *baseHandler) deleteEntity(id string) error {

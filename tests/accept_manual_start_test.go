@@ -1,3 +1,4 @@
+//go:build dataflow
 // +build dataflow
 
 /*
@@ -191,7 +192,7 @@ func (self *testFailoverStrategy) VisitDialSucceeded(xt.TerminatorEvent) {
 	atomic.StoreInt32(&self.failCount, 0)
 }
 
-func (self *testFailoverStrategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *testFailoverStrategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
 	return terminators[0], nil
 }
 

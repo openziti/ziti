@@ -39,6 +39,10 @@ type EdgeServiceHandler struct {
 	baseHandler
 }
 
+func (handler *EdgeServiceHandler) GetEntityTypeId() string {
+	return "edgeServices"
+}
+
 func (handler *EdgeServiceHandler) newModelEntity() boltEntitySink {
 	return &ServiceDetail{}
 }

@@ -82,12 +82,15 @@ func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, param
 	}
 
 	Create(rc, rc, ConfigLinkFactory, func() (string, error) {
-		model, err := MapCreateConfigToModel(params.Config)
-
+		entity, err := MapCreateConfigToModel(params.Config)
 		if err != nil {
 			return "", err
 		}
-		return ae.Handlers.Config.Create(model)
+		err = ae.Handlers.Config.Create(entity)
+		if err != nil {
+			return "", err
+		}
+		return entity.Id, nil
 	})
 }
 
@@ -108,7 +111,7 @@ func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, param
 			return err
 		}
 
-		return ae.Handlers.Config.Update(model)
+		return ae.Handlers.Config.Update(model, nil)
 	})
 }
 
@@ -119,6 +122,6 @@ func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params
 		if err != nil {
 			return err
 		}
-		return ae.Handlers.Config.Patch(model, fields.FilterMaps("tags", "data"))
+		return ae.Handlers.Config.Update(model, fields.FilterMaps("tags", "data"))
 	})
 }
