@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package ziti.cmd.pb;
+option go_package = "github.com/openziti/fabric/pb/cmd_pb";
+
+enum CommandType {
+  Zero = 0;
+  CreateEntityType = 1;
+  UpdateEntityType = 2;
+  DeleteEntityType = 3;
+}
+
+message CreateEntityCommand {
+  string entityType = 1;
+  bytes entityData = 2;
+}
+
+message UpdateEntityCommand {
+  string entityType = 1;
+  bytes entityData = 2;
+  repeated string updatedFields = 3;
+}
+
+message DeleteEntityCommand {
+  string entityId = 1;
+  string entityType = 2;
+}
+
+message TagValue {
+  oneof value {
+    bool boolValue = 1;
+    string stringValue = 2;
+    double fpValue = 3;
+    bool nilValue = 4;
+  }
+}
+
+message Service {
+  string id = 1;
+  string name = 2;
+  string terminatorStrategy = 3;
+  map<string, TagValue> tags = 4;
+}
+
+message Router {
+  string id = 1;
+  string name = 2;
+  bytes fingerprint = 3;
+  uint32 cost = 4;
+  bool noTraversal = 5;
+  map<string, TagValue> tags = 6;
+}
+
+message Terminator {
+  string id = 1;
+  string serviceId = 2;
+  string routerId = 3;
+  string binding = 4;
+  string address = 5;
+  string identity = 6;
+  bytes identitySecret = 7;
+  uint32 cost = 8;
+  uint32 precedence = 9;
+  map<uint32, bytes> peerData = 10;
+  map<string, TagValue> tags = 11;
+}

@@ -39,6 +39,12 @@ type InspectResult struct {
 	Results []*InspectResultValue
 }
 
+func NewInspectionsController(network *Network) *InspectionsController {
+	return &InspectionsController{
+		network: network,
+	}
+}
+
 type InspectionsController struct {
 	network *Network
 }

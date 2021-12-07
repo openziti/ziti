@@ -95,13 +95,13 @@ func (r *RouterRouter) Delete(network *network.Network, rc api.RequestContext) {
 
 func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params router.UpdateRouterParams) {
 	Update(rc, func(id string) error {
-		return n.Controllers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router))
+		return n.Controllers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router), nil)
 	})
 }
 
 func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return n.Controllers.Routers.Patch(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Controllers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 

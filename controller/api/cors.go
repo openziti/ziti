@@ -18,7 +18,6 @@ func WrapCorsHandler(innerHandler http.Handler) http.Handler {
 			"content-type",
 			"accept",
 			"authorization",
-			// TODO: Not required for pure fabric. Is it worth having separate CorsHandlers for fabric and edge?
 			ZitiSession,
 		}),
 		handlers.AllowedMethods([]string{

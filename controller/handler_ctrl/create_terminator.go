@@ -71,9 +71,9 @@ func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, c
 		Cost:           uint16(request.Cost),
 	}
 
-	if id, err := h.network.Terminators.Create(terminator); err == nil {
-		pfxlog.Logger().Infof("created terminator [t/%s]", id)
-		handler_common.SendSuccess(msg, ch, id)
+	if err := h.network.Terminators.Create(terminator); err == nil {
+		pfxlog.Logger().Infof("created terminator [t/%s]", terminator.Id)
+		handler_common.SendSuccess(msg, ch, terminator.Id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

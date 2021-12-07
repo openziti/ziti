@@ -6,7 +6,15 @@ import (
 	"strings"
 )
 
-type JsonFields map[string]bool
+type JsonFields map[string]struct{}
+
+func (j JsonFields) ToSlice() []string {
+	var result []string
+	for k := range j {
+		result = append(result, k)
+	}
+	return result
+}
 
 func (j JsonFields) IsUpdated(key string) bool {
 	_, ok := j[key]
@@ -14,7 +22,7 @@ func (j JsonFields) IsUpdated(key string) bool {
 }
 
 func (j JsonFields) AddField(key string) {
-	j[key] = true
+	j[key] = struct{}{}
 }
 
 func (j JsonFields) ConcatNestedNames() JsonFields {
@@ -37,7 +45,7 @@ func (j JsonFields) FilterMaps(mapNames ...string) JsonFields {
 		for name, dotName := range nameMap {
 			if strings.HasPrefix(key, dotName) {
 				delete(j, key)
-				j[name] = true
+				j[name] = struct{}{}
 				break
 			}
 		}
@@ -63,9 +71,8 @@ func GetJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
 		name := k
 		if subMap, ok := v.(map[string]interface{}); ok {
 			GetJsonFields(prefix+name+".", subMap, result)
-		} else {
-			isSet := v != nil
-			result[prefix+name] = isSet
+		} else if v != nil {
+			result[prefix+name] = struct{}{}
 		}
 	}
 }

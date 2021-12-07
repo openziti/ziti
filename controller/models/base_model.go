@@ -19,9 +19,9 @@ package models
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -44,6 +44,11 @@ type EntityRetriever interface {
 	BasePreparedListAssociated(id string, typeLoader EntityRetriever, query ast.Query) (*EntityListResult, error)
 
 	GetStore() boltz.CrudStore
+
+	// GetEntityTypeId returns a unique id for the entity type. Some entities may share a storage type, such
+	// as fabric and edge services, and fabric and edge routers. However, they should have distinct entity type
+	// ids, so we can figure out to which controller to route commands
+	GetEntityTypeId() string
 }
 
 type Entity interface {
@@ -229,6 +234,10 @@ func (ctrl *BaseController) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvid
 	return resultHandler(tx, keys, qmd)
 }
 
+type Named interface {
+	GetName() string
+}
+
 func (ctrl *BaseController) ValidateNameOnUpdate(ctx boltz.MutateContext, updatedEntity, existingEntity boltz.Entity, checker boltz.FieldChecker) error {
 	// validate name for named entities
 	if namedEntity, ok := updatedEntity.(boltz.NamedExtEntity); ok {
@@ -244,6 +253,30 @@ func (ctrl *BaseController) ValidateNameOnUpdate(ctx boltz.MutateContext, update
 			} else {
 				pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(updatedEntity))
 			}
+		}
+	}
+	return nil
+}
+
+func (handler *BaseController) ValidateName(db boltz.Db, boltEntity Named) error {
+	return db.View(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		return handler.ValidateNameOnCreate(ctx, boltEntity)
+	})
+}
+
+func (handler *BaseController) ValidateNameOnCreate(ctx boltz.MutateContext, entity interface{}) error {
+	// validate name for named entities
+	if namedEntity, ok := entity.(Named); ok {
+		if namedEntity.GetName() == "" {
+			return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
+		}
+		if nameIndexStore, ok := handler.GetStore().(db.NameIndexedStore); ok {
+			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
+				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
+			}
+		} else {
+			pfxlog.Logger().Errorf("entity of type %v is named, but store doesn't have name index", reflect.TypeOf(entity))
 		}
 	}
 	return nil

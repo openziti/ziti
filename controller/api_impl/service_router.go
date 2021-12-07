@@ -95,13 +95,13 @@ func (r *ServiceRouter) Delete(network *network.Network, rc api.RequestContext) 
 
 func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params service.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return n.Controllers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service))
+		return n.Controllers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil)
 	})
 }
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return n.Controllers.Services.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Controllers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 

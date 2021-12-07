@@ -21,12 +21,13 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/config"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/transport/v2"
@@ -42,10 +43,14 @@ const (
 	DefaultHealthChecksBoltCheckInterval     = 30 * time.Second
 	DefaultHealthChecksBoltCheckTimeout      = 20 * time.Second
 	DefaultHealthChecksBoltCheckInitialDelay = 30 * time.Second
+
+	DefaultRaftCommandHandlerMaxQueueSize = 1000
+	DefaultRaftCommandHandlerMaxWorkers   = 10
 )
 
 type Config struct {
 	Id      *identity.TokenId
+	Raft    *raft.Config
 	Network *network.Options
 	Db      *db.Db
 	Trace   struct {
@@ -145,14 +150,61 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	if value, found := cfgmap["db"]; found {
+	if value, found := cfgmap["raft"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			controllerConfig.Raft = &raft.Config{}
+			controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = DefaultRaftCommandHandlerMaxQueueSize
+			controllerConfig.Raft.CommandHandlerOptions.MaxWorkers = DefaultRaftCommandHandlerMaxWorkers
+
+			if value, found := submap["dataDir"]; found {
+				controllerConfig.Raft.DataDir = value.(string)
+			} else {
+				return nil, errors.Errorf("raft dataDir configuration missing")
+			}
+			if value, found := submap["minClusterSize"]; found {
+				controllerConfig.Raft.MinClusterSize = uint32(value.(int))
+			}
+			if value, found := submap["advertiseAddress"]; found {
+				controllerConfig.Raft.AdvertiseAddress = value.(string)
+			}
+			if value, found := submap["bindAddress"]; found {
+				controllerConfig.Raft.BindAddress = value.(string)
+			}
+			if value, found := submap["bootstrapMembers"]; found {
+				if lst, ok := value.([]interface{}); ok {
+					for idx, val := range lst {
+						if member, ok := val.(string); ok {
+							controllerConfig.Raft.BootstrapMembers = append(controllerConfig.Raft.BootstrapMembers, member)
+						} else {
+							return nil, errors.Errorf("invalid bootstrapMembers value '%v'at index %v, should be array", idx, val)
+						}
+					}
+				} else {
+					return nil, errors.New("invalid bootstrapMembers value, should be array")
+				}
+			}
+			if value, found := cfgmap["commandHandler"]; found {
+				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := chSubMap["maxQueueSize"]; found {
+						controllerConfig.Raft.CommandHandlerOptions.MaxQueueSize = uint16(value.(int))
+					}
+					if value, found := chSubMap["maxWorkers"]; found {
+						controllerConfig.Raft.CommandHandlerOptions.MaxWorkers = uint16(value.(int))
+					}
+				} else {
+					return nil, errors.New("invalid commandHandler value, should be map")
+				}
+			}
+			return nil, errors.Errorf("invalid raft configuration")
+		}
+	} else if value, found := cfgmap["db"]; found {
 		str, err := db.Open(value.(string))
 		if err != nil {
 			return nil, err
 		}
 		controllerConfig.Db = str
 	} else {
-		panic("controllerConfig must provide [db]")
+		panic("controllerConfig must provide [db] or [raft]")
 	}
 
 	if value, found := cfgmap["trace"]; found {

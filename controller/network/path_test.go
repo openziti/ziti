@@ -17,7 +17,6 @@
 package network
 
 import (
-	"runtime"
 	"testing"
 	"time"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/common"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
@@ -36,12 +34,10 @@ func TestSimplePath2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -101,12 +97,10 @@ func TestTransitPath2(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -198,55 +192,16 @@ func newRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 	return r
 }
 
-type VersionProviderTest struct {
-}
-
-func (v VersionProviderTest) Branch() string {
-	return "local"
-}
-
-func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
-	return &common.StdVersionEncDec
-}
-
-func (v VersionProviderTest) Version() string {
-	return "v0.0.0"
-}
-
-func (v VersionProviderTest) BuildDate() string {
-	return time.Now().String()
-}
-
-func (v VersionProviderTest) Revision() string {
-	return ""
-}
-
-func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
-		Version:   v.Version(),
-		Revision:  v.Revision(),
-		BuildDate: v.BuildDate(),
-		OS:        runtime.GOOS,
-		Arch:      runtime.GOARCH,
-	}
-}
-
-func NewVersionProviderTest() common.VersionProvider {
-	return &VersionProviderTest{}
-}
-
 func TestShortestPath(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -319,12 +274,10 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -397,12 +350,10 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -441,12 +392,10 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -485,12 +434,10 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -543,12 +490,10 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 
 	req := assert.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -596,12 +541,10 @@ func TestRouterCost(t *testing.T) {
 
 	req := require.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -654,12 +597,11 @@ func TestMinRouterCost(t *testing.T) {
 
 	req := require.New(t)
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 10
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	config.options.MinRouterCost = 10
+	network, err := NewNetwork(config)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"

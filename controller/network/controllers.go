@@ -18,35 +18,152 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/ioc"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
+const (
+	CreateDecoder = "CreateDecoder"
+	UpdateDecoder = "UpdateDecoder"
+	DeleteDecoder = "DeleteDecoder"
+)
+
 type Controllers struct {
+	network     *Network
 	db          boltz.Db
 	stores      *db.Stores
 	Terminators *TerminatorController
 	Routers     *RouterController
 	Services    *ServiceController
 	Inspections *InspectionsController
+	Command     *CommandController
+	Dispatcher  command.Dispatcher
+	Registry    ioc.Registry
 }
 
-func (e *Controllers) getDb() boltz.Db {
-	return e.db
+func (self *Controllers) getDb() boltz.Db {
+	return self.db
 }
 
-func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {
-	result := &Controllers{
-		db:     db,
-		stores: stores,
+func (self *Controllers) Dispatch(command command.Command) error {
+	return self.Dispatcher.Dispatch(command)
+}
+
+type creator[T models.Entity] interface {
+	command.EntityCreator[T]
+	Dispatch(cmd command.Command) error
+}
+
+type updater[T models.Entity] interface {
+	command.EntityUpdater[T]
+	Dispatch(cmd command.Command) error
+}
+
+func DispatchCreate[T models.Entity](c creator[T], entity T) error {
+	if entity.GetId() == "" {
+		id, err := idgen.NewUUIDString()
+		if err != nil {
+			return err
+		}
+		entity.SetId(id)
 	}
+
+	cmd := &command.CreateEntityCommand[T]{
+		Creator: c,
+		Entity:  entity,
+	}
+
+	return c.Dispatch(cmd)
+}
+
+func DispatchUpdate[T models.Entity](u updater[T], entity T, updatedFields boltz.UpdatedFields) error {
+	cmd := &command.UpdateEntityCommand[T]{
+		Updater:       u,
+		Entity:        entity,
+		UpdatedFields: updatedFields,
+	}
+
+	return u.Dispatch(cmd)
+}
+
+type createDecoderF func(entityData []byte) (command.Command, error)
+
+func RegisterCreateDecoder[T models.Entity](controllers *Controllers, creator command.EntityCreator[T]) {
+	entityType := creator.GetEntityTypeId()
+	controllers.Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(data []byte) (command.Command, error) {
+		entity, err := creator.Unmarshall(data)
+		if err != nil {
+			return nil, err
+		}
+		return &command.CreateEntityCommand[T]{
+			Entity:  entity,
+			Creator: creator,
+		}, nil
+	}))
+}
+
+type updateDecoderF func(entityData []byte, updateFields boltz.UpdatedFields) (command.Command, error)
+
+func RegisterUpdateDecoder[T models.Entity](controllers *Controllers, updater command.EntityUpdater[T]) {
+	entityType := updater.GetEntityTypeId()
+	controllers.Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(data []byte, updatedFields boltz.UpdatedFields) (command.Command, error) {
+		entity, err := updater.Unmarshall(data)
+		if err != nil {
+			return nil, err
+		}
+		return &command.UpdateEntityCommand[T]{
+			Entity:        entity,
+			Updater:       updater,
+			UpdatedFields: updatedFields,
+		}, nil
+	}))
+}
+
+type deleteDecoderF func(entityId string) (command.Command, error)
+
+func RegisterDeleteDecoder(controllers *Controllers, deleter command.EntityDeleter) {
+	entityType := deleter.GetEntityTypeId()
+	controllers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(entityId string) (command.Command, error) {
+		return &command.DeleteEntityCommand{
+			Deleter: deleter,
+			Id:      entityId,
+		}, nil
+	}))
+}
+
+func RegisterControllerDecoder[T models.Entity](controllers *Controllers, ctrl command.EntityController[T]) {
+	RegisterCreateDecoder[T](controllers, ctrl)
+	RegisterUpdateDecoder[T](controllers, ctrl)
+	RegisterDeleteDecoder(controllers, ctrl)
+}
+
+func NewControllers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores) *Controllers {
+	result := &Controllers{
+		network:    network,
+		db:         db,
+		stores:     stores,
+		Dispatcher: dispatcher,
+		Registry:   ioc.NewRegistry(),
+	}
+	result.Command = newCommandController(result)
 	result.Terminators = newTerminatorController(result)
 	result.Routers = newRouterController(result)
 	result.Services = newServiceController(result)
-	result.Inspections = &InspectionsController{}
+	result.Inspections = NewInspectionsController(network)
+	if result.Dispatcher == nil {
+		result.Dispatcher = command.LocalDispatcher{}
+	}
+	result.Command.registerGenericCommands()
+
+	RegisterControllerDecoder[*Service](result, result.Services)
+	RegisterControllerDecoder[*Router](result, result.Routers)
+
 	return result
 }
 
@@ -76,6 +193,27 @@ type baseController struct {
 	models.BaseController
 	*Controllers
 	impl Controller
+}
+
+func (self *baseController) GetEntityTypeId() string {
+	// default this to the store entity type and let individual controllers override it where
+	// needed to avoid collisions (e.g. edge service/router)
+	return self.GetStore().GetEntityType()
+}
+
+func (self *baseController) Delete(id string) error {
+	cmd := &command.DeleteEntityCommand{
+		Deleter: self,
+		Id:      id,
+	}
+	return self.Controllers.Dispatch(cmd)
+}
+
+func (self *baseController) ApplyDelete(cmd *command.DeleteEntityCommand) error {
+	return self.db.Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		return self.Store.DeleteById(ctx, cmd.Id)
+	})
 }
 
 func (ctrl *baseController) BaseLoad(id string) (models.Entity, error) {
