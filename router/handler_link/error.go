@@ -17,9 +17,7 @@
 package handler_link
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/channel2"
@@ -35,18 +33,12 @@ func newErrorHandler(link xlink.Xlink, ctrl xgress.CtrlChannel) *errorHandler {
 }
 
 func (self *errorHandler) HandleError(err error, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(self.link.Id().Token)
-	fault := &ctrl_pb.Fault{
-		Subject: ctrl_pb.FaultSubject_LinkFault,
-		Id:      self.link.Id().Token,
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("linkId", self.link.Id().Token).
+		WithField("routerId", self.link.DestinationId())
+
+	log.WithError(err).Error("link error, closing")
+	if err := self.link.Close(); err != nil { // this will trigger the link close handler, which will send the fault
+		log.WithError(err).Error("error while closing link")
 	}
-	if body, err := proto.Marshal(fault); err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		if err := self.ctrl.Channel().Send(msg); err == nil {
-			log.Infof("transmitted link fault")
-		} else {
-			log.Errorf("unexpected error sending fault (%v)", err)
-		}
-	}
-	self.link.Close()
 }

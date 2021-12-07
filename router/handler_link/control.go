@@ -58,7 +58,10 @@ func (self *controlHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 }
 
 func (self *controlHandler) run(label string, closeNotify <-chan struct{}) {
-	log := pfxlog.ContextLogger(label)
+	log := pfxlog.ContextLogger(label).
+		WithField("linkId", self.link.Id().Token).
+		WithField("routerId", self.link.DestinationId())
+
 	log.Info("starting")
 	defer log.Info("exiting")
 
