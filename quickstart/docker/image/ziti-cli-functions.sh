@@ -267,7 +267,8 @@ function setupZitiNetwork {
     echo -n "what a hostname looks like. A good choice is to actually use your system's hostname: "
     echo -e "$(BLUE "$(hostname)")"
     echo " "
-    read -rp "$(echo -ne "Network Name [$(BLUE "$(hostname)")]: ")" ZITI_NETWORK
+    echo -en "$(echo -ne "Network Name [$(BLUE "$(hostname)")]: ")"
+    read -r ZITI_NETWORK
     echo " "
     if checkControllerName; then
       : #clear to continue
@@ -422,7 +423,8 @@ function decideToUseDefaultZitiHome {
   do
     echo "ZITI_HOME has not been set. Do you want to use the default ZITI_HOME: ${DEFAULT_ZITI_HOME_LOCATION}"
     echo " "
-    read -rp "Select an action: " yn
+    echo -en "Select an action: "
+    read -r yn
     case $yn in
         [yY]* )
             break;;
@@ -449,7 +451,8 @@ function decideOperation {
       echo "  3.) Create Edge Router configuration - answer a few questions and an edge router config will be emitted"
       echo "  4.) Start a network with the provided name"
       echo " "
-      read -rp "Select an action: " yn
+      echo -en "Select an action: "
+      read -r yn
     fi
     case $yn in
         [1]* )
