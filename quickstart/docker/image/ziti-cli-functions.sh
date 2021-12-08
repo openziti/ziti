@@ -974,6 +974,10 @@ function createControllerConfig {
     return 1
   fi
 
+cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem" > "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
+cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert" >> "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
+echo "wrote CA file to: ${ZITI_PKI_OS_SPECIFIC}/cas.pem"
+
 cat > "${ziti_home}/controller.yaml" <<HereDocForEdgeConfiguration
 v: 3
 
@@ -990,7 +994,7 @@ identity:
   cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"
   server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
   key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
+  ca:                   "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
 
 ctrl:
   listener:             tls:0.0.0.0:${ZITI_FAB_CTRL_PORT}
