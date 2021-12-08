@@ -90,6 +90,12 @@ func (self *Router) MetricsRegistry() metrics.UsageRegistry {
 }
 
 func (self *Router) Channel() channel2.Channel {
+	// if we're just starting up, we may be nil. wait till initialized
+	// The initial control channel connect has a timeout, so if that timeouts the process will exit
+	// Once connected the control channel will never get set back to nil. Reconnects happen under the hood
+	for self.ctrl == nil {
+		time.Sleep(50 * time.Millisecond)
+	}
 	return self.ctrl
 }
 

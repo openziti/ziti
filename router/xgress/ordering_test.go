@@ -106,7 +106,7 @@ func Test_Ordering(t *testing.T) {
 		}
 	}()
 
-	timeout := time.After(10 * time.Second)
+	timeout := time.After(20 * time.Second)
 
 	req := require.New(t)
 	for i := 0; i < msgCount; i++ {
