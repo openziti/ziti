@@ -41,7 +41,9 @@ func (self *payloadHandler) ContentType() int32 {
 }
 
 func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("linkId", self.link.Id().Token).
+		WithField("routerId", self.link.DestinationId())
 
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err == nil {
@@ -52,6 +54,6 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 			self.forwarder.EndCircuit(payload.GetCircuitId())
 		}
 	} else {
-		log.Errorf("unexpected error (%v)", err)
+		log.WithError(err).Errorf("error unmarshalling payload")
 	}
 }

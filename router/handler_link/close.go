@@ -45,29 +45,29 @@ func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwa
 }
 
 func (self *closeHandler) HandleClose(ch channel2.Channel) {
-	defer func() {
-		if self.closed.CompareAndSwap(false, true) {
-			close(self.closeNotify)
-		}
-	}()
+	if self.closed.CompareAndSwap(false, true) {
+		log := pfxlog.ContextLogger(ch.Label()).
+			WithField("linkId", self.link.Id().Token).
+			WithField("routerId", self.link.DestinationId())
 
-	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("linkId", self.link.Id()).
-		WithField("routerId", self.link.DestinationId())
+		// ensure that both parts of a split link are closed, if one side closes
+		go func() { _ = self.link.Close() }()
 
-	log.Info("link closed")
+		log.Info("link closed")
 
-	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
-	if body, err := proto.Marshal(fault); err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		if err := self.ctrl.Channel().Send(msg); err == nil {
-			log.Debug("transmitted link fault")
+		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
+		if body, err := proto.Marshal(fault); err == nil {
+			msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
+			if err := self.ctrl.Channel().Send(msg); err == nil {
+				log.Debug("transmitted link fault")
+			} else {
+				log.WithError(err).Error("unexpected error transmitting link fault")
+			}
 		} else {
-			log.WithError(err).Error("unexpected error transmitting link fault")
+			log.WithError(err).Error("unexpected error")
 		}
-	} else {
-		log.WithError(err).Error("unexpected error")
-	}
 
-	self.forwarder.UnregisterLink(self.link)
+		self.forwarder.UnregisterLink(self.link)
+		close(self.closeNotify)
+	}
 }

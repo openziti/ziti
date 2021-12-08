@@ -61,12 +61,17 @@ func (self *queuingAckHandler) ContentType() int32 {
 }
 
 func (self *queuingAckHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
-
 	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
-		self.ackIngest <- ack
+		select {
+		case self.ackIngest <- ack:
+		case <-self.closeNotify:
+		}
 	} else {
-		log.Errorf("unexpected error (%v)", err)
+		pfxlog.ContextLogger(ch.Label()).
+			WithField("linkId", self.link.Id().Token).
+			WithField("routerId", self.link.DestinationId()).
+			WithError(err).
+			Error("error unmarshalling ack")
 	}
 }
 
@@ -106,7 +111,10 @@ func (self *queuingAckHandler) ackForwarder() {
 		select {
 		case ack := <-self.ackForward:
 			if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
-				logger.WithError(err).Debugf("unable to forward acknowledgement (%v)", err)
+				logger.WithField("linkId", self.link.Id().Token).
+					WithField("routerId", self.link.DestinationId()).
+					WithError(err).
+					Debug("unable to forward acknowledgement")
 			}
 		case <-self.closeNotify:
 			return
