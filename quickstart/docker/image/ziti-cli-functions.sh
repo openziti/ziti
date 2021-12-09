@@ -757,6 +757,8 @@ function createPki {
 
 }
 
+
+
 function createFabricRouterConfig {
   # Allow router name to be passed in as arg
   router_name="${1-}"
