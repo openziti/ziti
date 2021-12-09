@@ -1,3 +1,10 @@
+# Release 0.24.2
+
+## What's New
+
+* Bug fix: link verification could panic if link was established before control was finished establishing
+* Enhancement: Improve logging around links in routers. Ensure we close both channels when closing a split link
+
 # Release 0.24.1
 
 ## What's New
