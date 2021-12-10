@@ -32,7 +32,7 @@ type Db struct {
 	db *bbolt.DB
 }
 
-func Open(path string, trace bool) (*Db, error) {
+func Open(path string) (*Db, error) {
 	// Only wait 1 second if database file can't be locked, as it most likely means another controller is running
 	options := *bbolt.DefaultOptions
 	options.Timeout = time.Second
@@ -40,15 +40,6 @@ func Open(path string, trace bool) (*Db, error) {
 	db, err := bbolt.Open(path, 0600, &options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to open controller database [%s] (%s)", path, err)
-	}
-
-	if trace {
-		db.TraceUpdateEnter = traceUpdateEnter
-		db.TraceUpdateExit = traceUpdateExit
-		db.TraceViewEnter = traceViewEnter
-		db.TraceViewExit = traceViewExit
-		db.TraceBatchEnter = traceBatchEnter
-		db.TraceBatchExit = traceBatchExit
 	}
 
 	if err := db.Update(createRoots); err != nil {

@@ -98,7 +98,7 @@ func LoadConfig(path string) (*Config, error) {
 
 	if value, found := cfgmap["identity"]; found {
 		subMap := value.(map[interface{}]interface{})
-		identityConfig, err =  identity.NewConfigFromMapWithPathContext(subMap, "identity")
+		identityConfig, err = identity.NewConfigFromMapWithPathContext(subMap, "identity")
 
 		if err != nil {
 			return nil, fmt.Errorf("could not parse root identity: %v", err)
@@ -130,13 +130,8 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	dbTrace := false
-	if value, found := cfgmap["dbTrace"]; found {
-		dbTrace = value.(bool)
-	}
-
 	if value, found := cfgmap["db"]; found {
-		str, err := db.Open(value.(string), dbTrace)
+		str, err := db.Open(value.(string))
 		if err != nil {
 			return nil, err
 		}
