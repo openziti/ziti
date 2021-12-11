@@ -103,7 +103,7 @@ func (ctx *TestContext) InitWithDbFile(path string) {
 	}
 
 	var err error
-	ctx.db, err = db.Open(path, false)
+	ctx.db, err = db.Open(path)
 	ctx.NoError(err)
 
 	ctx.fabricStores, err = db.InitStores(ctx.GetDb())
