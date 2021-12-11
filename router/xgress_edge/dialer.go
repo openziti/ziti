@@ -48,8 +48,8 @@ func (dialer dialer) IsTerminatorValid(id string, destination string) bool {
 	token := destParts[1]
 
 	pfxlog.Logger().Debug("looking up hosted service conn")
-	_, found := dialer.factory.hostedServices.Get(token)
-	return found
+	terminator, found := dialer.factory.hostedServices.Get(token)
+	return found && terminator.terminatorId == id
 }
 
 func newDialer(factory *Factory, options *Options) xgress.Dialer {
