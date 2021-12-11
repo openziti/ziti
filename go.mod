@@ -10,7 +10,7 @@ go 1.17
 
 //replace github.com/kataras/go-events => ../go-events
 
-replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
+//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -41,7 +41,7 @@ require (
 	github.com/miekg/dns v1.1.43
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.17.7
+	github.com/openziti/fabric v0.17.8
 	github.com/openziti/foundation v0.16.9
 	github.com/openziti/sdk-golang v0.15.122
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231

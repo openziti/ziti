@@ -622,11 +622,9 @@ github.com/onsi/gomega v1.13.0/go.mod h1:lRk9szgn8TxENtWd0Tp4c3wjlRfMTMH27I+3Je4
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
-github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.7 h1:wdXqlOuor/BL3jbypbQB2sv4T5oPmx97VkngSq5qunM=
-github.com/openziti/fabric v0.17.7/go.mod h1:6ITQHTbVrvE0DHHnYkyx1XlnkKzwT+iU33hQxTnR29E=
+github.com/openziti/fabric v0.17.8 h1:oEnWSG2V2MoAVD6LyJK/Ar+Tz93q/7PTOydGFeg0eMw=
+github.com/openziti/fabric v0.17.8/go.mod h1:U0oa6oD4alAiJepqPhzGRt5YZgs4aL79Lso/p2ItZqg=
 github.com/openziti/foundation v0.16.9 h1:iAGPDESXRArGJQYBQSOif+fXfwYRxnvBh68tiXKB1g8=
 github.com/openziti/foundation v0.16.9/go.mod h1:DrzmWd4wka7/RlA37KTN2q+dz9dVSH6YJ9VP6xxf28w=
 github.com/openziti/sdk-golang v0.15.122 h1:RxFNpfsXb2wkLlvNpXUoBqABVkt/i8CnhDbk98VM6ig=
@@ -789,6 +787,9 @@ github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9de
 github.com/yuin/goldmark v1.1.32/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.3.5/go.mod h1:mwnBkeHKe2W/ZEtQ+71ViKU8L12m81fl3OWwC1Zlc8k=
+go.etcd.io/bbolt v1.3.2/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
+go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50 h1:ASw9n1EHMftwnP3Az4XW6e308+gNsrHzmdhd0Olz9Hs=
+go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
 go.etcd.io/etcd/api/v3 v3.5.0/go.mod h1:cbVKeC6lCfl7j/8jBhAK6aIYO9XOjdptoxU/nLQcPvs=
 go.etcd.io/etcd/client/pkg/v3 v3.5.0/go.mod h1:IJHfcCEKxYu1Os13ZdwCwIUTUVGYTSAM3YSwc9/Ac1g=
 go.etcd.io/etcd/client/v2 v2.305.0/go.mod h1:h9puh54ZTgAKtEbut2oe9P4L/oqKCVB6xsXlzd7alYQ=
