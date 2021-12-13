@@ -29,6 +29,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/rest_management_api_client"
 	"github.com/openziti/edge/rest_model"
+	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -766,19 +767,27 @@ func WrapIfApiError(err error) error {
 	return err
 }
 
-type EdgeManagementClientOpts interface {
+type ClientOpts interface {
 	OutputRequestJson() bool
 	OutputResponseJson() bool
 	OutputWriter() io.Writer
 	ErrOutputWriter() io.Writer
 }
 
-func NewEdgeManagementClient(clientOpts EdgeManagementClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
+func NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error) {
 	restClientIdentity, err := LoadSelectedIdentity()
 	if err != nil {
 		return nil, err
 	}
 	return restClientIdentity.NewEdgeManagementClient(clientOpts)
+}
+
+func NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error) {
+	restClientIdentity, err := LoadSelectedIdentity()
+	if err != nil {
+		return nil, err
+	}
+	return restClientIdentity.NewFabricManagementClient(clientOpts)
 }
 
 type EdgeManagementAuth struct {

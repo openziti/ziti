@@ -94,6 +94,21 @@ services:
     networks:
       - zitiblue
 
+  ziti-console:
+    image: openziti/zac
+    environment:
+      - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
+      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key -it
+    ports:
+      - "1408:1408"
+      - "8443:8443"
+    volumes:
+      - ziti-fs:/openziti
+
+    networks:
+      - zitiblue
+      - zitired
+
 networks:
   zitired:
   zitiblue:
