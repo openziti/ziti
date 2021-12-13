@@ -3,7 +3,9 @@
 ## What's New
 
 * Bug fix: link verification could panic if link was established before control was finished establishing
+* Bug fix: When checking edge terminator validity in the router, check terminator id as well the address
 * Enhancement: Improve logging around links in routers. Ensure we close both channels when closing a split link
+* Enhancement: Add support for inspect in `ziti fabric`. Works the same as `ziti-fabric inspect`
 
 # Release 0.24.1
 

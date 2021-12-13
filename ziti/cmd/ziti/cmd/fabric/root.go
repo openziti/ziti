@@ -32,7 +32,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 
 	fabricCmd.AddCommand(newAddIdentityCmd(p), newRemoveIdentityCmd(p))
 	fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
-
+	fabricCmd.AddCommand(newInspectCmd(p))
 	return fabricCmd
 }
 
