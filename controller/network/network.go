@@ -35,6 +35,7 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/sequence"
 	"github.com/pkg/errors"
@@ -112,6 +113,8 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 		serviceDialTimeoutCounter:    serviceEventMetrics.IntervalCounter("service.dial.timeout", time.Minute),
 		serviceDialOtherErrorCounter: serviceEventMetrics.IntervalCounter("service.dial.error_other", time.Minute),
 	}
+
+	network.Controllers.Inspections.network = network
 
 	metrics.Init(metricsCfg)
 	events.AddMetricsEventHandler(network)
@@ -932,6 +935,14 @@ func (network *Network) NotifyRouterRenamed(id, name string) {
 			cachedRouter.Name = name
 		}
 	}
+}
+
+func (network *Network) Inspect(name string) *string {
+	if strings.ToLower(name) == "stackdump" {
+		result := debugz.GenerateStack()
+		return &result
+	}
+	return nil
 }
 
 var DbSnapshotTooFrequentError = dbSnapshotTooFrequentError{}

@@ -44,6 +44,7 @@ import (
 	"github.com/go-openapi/swag"
 
 	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
@@ -107,6 +108,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		}),
 		TerminatorDetailTerminatorHandler: terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		}),
+		InspectInspectHandler: inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
+			return middleware.NotImplemented("operation inspect.Inspect has not yet been implemented")
 		}),
 		CircuitListCircuitsHandler: circuit.ListCircuitsHandlerFunc(func(params circuit.ListCircuitsParams) middleware.Responder {
 			return middleware.NotImplemented("operation circuit.ListCircuits has not yet been implemented")
@@ -210,6 +214,8 @@ type ZitiFabricAPI struct {
 	ServiceDetailServiceHandler service.DetailServiceHandler
 	// TerminatorDetailTerminatorHandler sets the operation handler for the detail terminator operation
 	TerminatorDetailTerminatorHandler terminator.DetailTerminatorHandler
+	// InspectInspectHandler sets the operation handler for the inspect operation
+	InspectInspectHandler inspect.InspectHandler
 	// CircuitListCircuitsHandler sets the operation handler for the list circuits operation
 	CircuitListCircuitsHandler circuit.ListCircuitsHandler
 	// LinkListLinksHandler sets the operation handler for the list links operation
@@ -350,6 +356,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorDetailTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.DetailTerminatorHandler")
+	}
+	if o.InspectInspectHandler == nil {
+		unregistered = append(unregistered, "inspect.InspectHandler")
 	}
 	if o.CircuitListCircuitsHandler == nil {
 		unregistered = append(unregistered, "circuit.ListCircuitsHandler")
@@ -529,6 +538,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/terminators/{id}"] = terminator.NewDetailTerminator(o.context, o.TerminatorDetailTerminatorHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/inspections"] = inspect.NewInspect(o.context, o.InspectInspectHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

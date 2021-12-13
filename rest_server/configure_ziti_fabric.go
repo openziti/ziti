@@ -36,6 +36,7 @@ import (
 
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
@@ -124,6 +125,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorDetailTerminatorHandler == nil {
 		api.TerminatorDetailTerminatorHandler = terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		})
+	}
+	if api.InspectInspectHandler == nil {
+		api.InspectInspectHandler = inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
+			return middleware.NotImplemented("operation inspect.Inspect has not yet been implemented")
 		})
 	}
 	if api.CircuitListCircuitsHandler == nil {

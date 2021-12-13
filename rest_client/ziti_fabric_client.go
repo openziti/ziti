@@ -35,6 +35,7 @@ import (
 	"github.com/go-openapi/strfmt"
 
 	"github.com/openziti/fabric/rest_client/circuit"
+	"github.com/openziti/fabric/rest_client/inspect"
 	"github.com/openziti/fabric/rest_client/link"
 	"github.com/openziti/fabric/rest_client/router"
 	"github.com/openziti/fabric/rest_client/service"
@@ -84,6 +85,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiFabric
 	cli := new(ZitiFabric)
 	cli.Transport = transport
 	cli.Circuit = circuit.New(transport, formats)
+	cli.Inspect = inspect.New(transport, formats)
 	cli.Link = link.New(transport, formats)
 	cli.Router = router.New(transport, formats)
 	cli.Service = service.New(transport, formats)
@@ -134,6 +136,8 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 type ZitiFabric struct {
 	Circuit circuit.ClientService
 
+	Inspect inspect.ClientService
+
 	Link link.ClientService
 
 	Router router.ClientService
@@ -149,6 +153,7 @@ type ZitiFabric struct {
 func (c *ZitiFabric) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.Circuit.SetTransport(transport)
+	c.Inspect.SetTransport(transport)
 	c.Link.SetTransport(transport)
 	c.Router.SetTransport(transport)
 	c.Service.SetTransport(transport)

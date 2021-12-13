@@ -31,6 +31,7 @@ type Controllers struct {
 	Terminators *TerminatorController
 	Routers     *RouterController
 	Services    *ServiceController
+	Inspections *InspectionsController
 }
 
 func (e *Controllers) getDb() boltz.Db {
@@ -45,6 +46,7 @@ func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {
 	result.Terminators = newTerminatorController(result)
 	result.Routers = newRouterController(result)
 	result.Services = newServiceController(result)
+	result.Inspections = &InspectionsController{}
 	return result
 }
 
