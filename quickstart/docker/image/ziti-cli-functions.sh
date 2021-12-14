@@ -80,7 +80,7 @@ function startExpressEdgeRouter {
 }
 
 function stopAllEdgeRouters {
-  killall ziti-controller
+  killall ziti-router
   # shellcheck disable=SC2181
   if [[ $? == 0 ]]; then echo "Router(s) stopped."; fi
 }
