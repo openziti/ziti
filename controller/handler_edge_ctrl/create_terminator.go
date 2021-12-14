@@ -68,7 +68,7 @@ func (self *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch cha
 }
 
 func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorRequestContext) {
-	log := pfxlog.ContextLogger(self.ch.Label()).WithField("token", ctx.req.SessionToken)
+	log := pfxlog.ContextLogger(self.ch.Label()).WithField("routerId", self.ch.Id().Token).WithField("token", ctx.req.SessionToken)
 
 	if !ctx.loadRouter() {
 		return

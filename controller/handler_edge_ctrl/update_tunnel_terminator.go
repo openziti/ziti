@@ -67,7 +67,7 @@ func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTer
 		return
 	}
 
-	logger := logrus.WithField("router", self.ch.Id().Token).
+	logger := logrus.WithField("routerId", self.ch.Id().Token).
 		WithField("terminatorId", ctx.req.TerminatorId).
 		WithField("cost", ctx.req.Cost).
 		WithField("updateCost", ctx.req.UpdateCost).
@@ -83,6 +83,7 @@ func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTer
 		return
 	}
 
+	logger = logger.WithField("serviceId", terminator.Service)
 	logger.Info("updated terminator")
 
 	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_UpdateTunnelTerminatorResponseType), nil)

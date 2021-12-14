@@ -69,9 +69,9 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 	}
 
 	logger := logrus.
-		WithField("router", self.ch.Id().Token).
+		WithField("routerId", self.ch.Id().Token).
 		WithField("token", ctx.req.SessionToken).
-		WithField("terminator", ctx.req.TerminatorId).
+		WithField("terminatorId", ctx.req.TerminatorId).
 		WithField("cost", ctx.req.Cost).
 		WithField("updateCost", ctx.req.UpdateCost).
 		WithField("precedence", ctx.req.Precedence).
@@ -90,6 +90,7 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 		return
 	}
 
+	logger = logger.WithField("serviceId", terminator.Service)
 	logger.Info("updated terminator")
 
 	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_UpdateTerminatorResponseType), nil)

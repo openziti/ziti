@@ -74,7 +74,7 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, 
 }
 
 func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTerminatorRequestContext) {
-	logger := logrus.WithField("router", self.ch.Id().Token)
+	logger := logrus.WithField("routerId", self.ch.Id().Token)
 
 	if !ctx.loadRouter() {
 		return
@@ -90,7 +90,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		return
 	}
 
-	logger = logger.WithField("service", ctx.service.Name)
+	logger = logger.WithField("serviceId", ctx.service.Id).WithField("service", ctx.service.Name)
 
 	if ctx.req.Cost > math.MaxUint16 {
 		self.returnError(ctx, invalidCost(fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", ctx.req.Cost, math.MaxUint16)))
