@@ -111,6 +111,8 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 	}
 
 	logrus.
+		WithField("routerId", self.ch.Id().Token).
+		WithField("serviceId", terminator.Service).
 		WithField("token", ctx.req.SessionToken).
 		WithField("terminator", ctx.req.TerminatorId).
 		Info("removed terminator")

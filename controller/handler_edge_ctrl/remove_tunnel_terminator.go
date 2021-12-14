@@ -55,7 +55,7 @@ func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, 
 }
 
 func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTerminatorRequestContext) {
-	logger := logrus.WithField("router", self.ch.Id().Token).WithField("terminatorId", ctx.terminatorId)
+	logger := logrus.WithField("routerId", self.ch.Id().Token).WithField("terminatorId", ctx.terminatorId)
 
 	if !ctx.loadRouter() {
 		return

@@ -65,7 +65,7 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 	logger := pfxlog.
 		ContextLogger(self.ch.Label()).
 		WithError(err).
-		WithField("router", ctx.GetHandler().getChannel().Id().Token).
+		WithField("routerId", ctx.GetHandler().getChannel().Id().Token).
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
@@ -81,7 +81,7 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 
 func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 	logger := logrus.
-		WithField("router", ctx.GetHandler().getChannel().Id().Token).
+		WithField("routerId", ctx.GetHandler().getChannel().Id().Token).
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
@@ -121,7 +121,7 @@ func (self *baseSessionRequestContext) CleanupOnError() {
 	if self.newSession && self.session != nil {
 		logger := logrus.
 			WithField("operation", self.handler.Label()).
-			WithField("router", self.sourceRouter.Name)
+			WithField("routerId", self.sourceRouter.Name)
 
 		if err := self.handler.getAppEnv().Handlers.Session.Delete(self.session.Id); err != nil {
 			logger.WithError(err).Error("unable to delete session created before error encountered")
