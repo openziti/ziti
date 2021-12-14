@@ -68,10 +68,6 @@ type ClientService interface {
 
 	ExtendRouterEnrollment(params *ExtendRouterEnrollmentParams, opts ...ClientOption) (*ExtendRouterEnrollmentOK, error)
 
-	ExtendRouterEnrollmentVerify(params *ExtendRouterEnrollmentVerifyParams, opts ...ClientOption) (*ExtendRouterEnrollmentVerifyOK, error)
-
-	ExtendRouterEnrollmentWithVerify(params *ExtendRouterEnrollmentWithVerifyParams, opts ...ClientOption) (*ExtendRouterEnrollmentWithVerifyOK, error)
-
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -377,99 +373,6 @@ func (a *Client) ExtendRouterEnrollment(params *ExtendRouterEnrollmentParams, op
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for extendRouterEnrollment: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-  ExtendRouterEnrollmentVerify verifies a newly created client certificate for a router
-
-  Allows a router to verify its enrollment extension. The request is a POST
-with an empty object.
-
-This request must be made using the new client certificate.
-
-*/
-func (a *Client) ExtendRouterEnrollmentVerify(params *ExtendRouterEnrollmentVerifyParams, opts ...ClientOption) (*ExtendRouterEnrollmentVerifyOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewExtendRouterEnrollmentVerifyParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "extendRouterEnrollmentVerify",
-		Method:             "POST",
-		PathPattern:        "/enroll/extend/router-verify'",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &ExtendRouterEnrollmentVerifyReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*ExtendRouterEnrollmentVerifyOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for extendRouterEnrollmentVerify: API contract not enforced by server. Client expected to get an error, but got: %T", result)
-	panic(msg)
-}
-
-/*
-  ExtendRouterEnrollmentWithVerify extends the life of a currently enrolled router s certificates
-
-  Allows a router to extend its certificates' expiration date by
-using its current and valid client certificate to submit a CSR. This CSR may
-be passed in using a new private key, thus allowing private key rotation or swapping.
-
-After completion any new connections must be made with certificates returned from a 200 OK
-response. The previous client certificate is reamins in use till the newly issued client
-certificate is validated in a subsequent request.
-
-This request must be made using the existing, valid, client certificate.
-
-*/
-func (a *Client) ExtendRouterEnrollmentWithVerify(params *ExtendRouterEnrollmentWithVerifyParams, opts ...ClientOption) (*ExtendRouterEnrollmentWithVerifyOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewExtendRouterEnrollmentWithVerifyParams()
-	}
-	op := &runtime.ClientOperation{
-		ID:                 "extendRouterEnrollmentWithVerify",
-		Method:             "POST",
-		PathPattern:        "/enroll/extend/router-with-verify",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &ExtendRouterEnrollmentWithVerifyReader{formats: a.formats},
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	}
-	for _, opt := range opts {
-		opt(op)
-	}
-
-	result, err := a.transport.Submit(op)
-	if err != nil {
-		return nil, err
-	}
-	success, ok := result.(*ExtendRouterEnrollmentWithVerifyOK)
-	if ok {
-		return success, nil
-	}
-	// unexpected success response
-	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
-	msg := fmt.Sprintf("unexpected success response for extendRouterEnrollmentWithVerify: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

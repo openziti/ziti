@@ -73,10 +73,6 @@ paths:
     $ref: 'client/enroll.yml#/paths/enroll-erott'
   '/enroll/extend/router':
     $ref: 'client/enroll.yml#/paths/enroll-extend-router'
-  '/enroll/extend/router-with-verify':
-    $ref: 'client/enroll.yml#/paths/enroll-extend-router-with-verify'
-  /enroll/extend/router-verify':
-    $ref: 'client/enroll.yml#/paths/enroll-extend-router-verify'
 
   '/posture-response':
     $ref: 'client/posture-response.yml#/paths/posture-response'
