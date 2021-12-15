@@ -274,6 +274,8 @@ func (m *EnrollmentDetail) validateEdgeRouter(formats strfmt.Registry) error {
 		if err := m.EdgeRouter.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("edgeRouter")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("edgeRouter")
 			}
 			return err
 		}
@@ -305,6 +307,8 @@ func (m *EnrollmentDetail) validateIdentity(formats strfmt.Registry) error {
 		if err := m.Identity.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}
@@ -341,6 +345,8 @@ func (m *EnrollmentDetail) validateTransitRouter(formats strfmt.Registry) error 
 		if err := m.TransitRouter.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("transitRouter")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("transitRouter")
 			}
 			return err
 		}
@@ -382,6 +388,8 @@ func (m *EnrollmentDetail) contextValidateEdgeRouter(ctx context.Context, format
 		if err := m.EdgeRouter.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("edgeRouter")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("edgeRouter")
 			}
 			return err
 		}
@@ -396,6 +404,8 @@ func (m *EnrollmentDetail) contextValidateIdentity(ctx context.Context, formats 
 		if err := m.Identity.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("identity")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("identity")
 			}
 			return err
 		}
@@ -410,6 +420,8 @@ func (m *EnrollmentDetail) contextValidateTransitRouter(ctx context.Context, for
 		if err := m.TransitRouter.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("transitRouter")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("transitRouter")
 			}
 			return err
 		}

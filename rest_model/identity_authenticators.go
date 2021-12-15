@@ -76,6 +76,8 @@ func (m *IdentityAuthenticators) validateCert(formats strfmt.Registry) error {
 		if err := m.Cert.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cert")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("cert")
 			}
 			return err
 		}
@@ -93,6 +95,8 @@ func (m *IdentityAuthenticators) validateUpdb(formats strfmt.Registry) error {
 		if err := m.Updb.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("updb")
 			}
 			return err
 		}
@@ -125,6 +129,8 @@ func (m *IdentityAuthenticators) contextValidateCert(ctx context.Context, format
 		if err := m.Cert.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cert")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("cert")
 			}
 			return err
 		}
@@ -139,6 +145,8 @@ func (m *IdentityAuthenticators) contextValidateUpdb(ctx context.Context, format
 		if err := m.Updb.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("updb")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("updb")
 			}
 			return err
 		}

@@ -92,6 +92,8 @@ func (m *AuthQueryDetail) validateFormat(formats strfmt.Registry) error {
 	if err := m.Format.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("format")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("format")
 		}
 		return err
 	}
@@ -113,6 +115,8 @@ func (m *AuthQueryDetail) validateProvider(formats strfmt.Registry) error {
 		if err := m.Provider.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("provider")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("provider")
 			}
 			return err
 		}
@@ -144,6 +148,8 @@ func (m *AuthQueryDetail) contextValidateFormat(ctx context.Context, formats str
 	if err := m.Format.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("format")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("format")
 		}
 		return err
 	}
@@ -157,6 +163,8 @@ func (m *AuthQueryDetail) contextValidateProvider(ctx context.Context, formats s
 		if err := m.Provider.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("provider")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("provider")
 			}
 			return err
 		}

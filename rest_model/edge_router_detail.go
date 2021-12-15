@@ -332,6 +332,8 @@ func (m *EdgeRouterDetail) validateRoleAttributes(formats strfmt.Registry) error
 		if err := m.RoleAttributes.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -350,6 +352,8 @@ func (m *EdgeRouterDetail) validateVersionInfo(formats strfmt.Registry) error {
 		if err := m.VersionInfo.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("versionInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("versionInfo")
 			}
 			return err
 		}
@@ -391,6 +395,8 @@ func (m *EdgeRouterDetail) contextValidateRoleAttributes(ctx context.Context, fo
 		if err := m.RoleAttributes.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -405,6 +411,8 @@ func (m *EdgeRouterDetail) contextValidateVersionInfo(ctx context.Context, forma
 		if err := m.VersionInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("versionInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("versionInfo")
 			}
 			return err
 		}

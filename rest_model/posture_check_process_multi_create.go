@@ -258,6 +258,8 @@ func (m *PostureCheckProcessMultiCreate) validateRoleAttributes(formats strfmt.R
 		if err := m.RoleAttributes().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -276,6 +278,8 @@ func (m *PostureCheckProcessMultiCreate) validateTags(formats strfmt.Registry) e
 		if err := m.Tags().Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -305,6 +309,8 @@ func (m *PostureCheckProcessMultiCreate) validateProcesses(formats strfmt.Regist
 			if err := m.Processes[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("processes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -329,6 +335,8 @@ func (m *PostureCheckProcessMultiCreate) validateSemantic(formats strfmt.Registr
 		if err := m.Semantic.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("semantic")
 			}
 			return err
 		}
@@ -369,6 +377,8 @@ func (m *PostureCheckProcessMultiCreate) contextValidateRoleAttributes(ctx conte
 		if err := m.RoleAttributes().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("roleAttributes")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("roleAttributes")
 			}
 			return err
 		}
@@ -383,6 +393,8 @@ func (m *PostureCheckProcessMultiCreate) contextValidateTags(ctx context.Context
 		if err := m.Tags().ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -396,6 +408,8 @@ func (m *PostureCheckProcessMultiCreate) contextValidateTypeID(ctx context.Conte
 	if err := m.TypeID().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("typeId")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("typeId")
 		}
 		return err
 	}
@@ -411,6 +425,8 @@ func (m *PostureCheckProcessMultiCreate) contextValidateProcesses(ctx context.Co
 			if err := m.Processes[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("processes" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("processes" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -427,6 +443,8 @@ func (m *PostureCheckProcessMultiCreate) contextValidateSemantic(ctx context.Con
 		if err := m.Semantic.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("semantic")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("semantic")
 			}
 			return err
 		}

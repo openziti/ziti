@@ -152,6 +152,8 @@ func (m *ListPostureCheckEnvelope) validateData(formats strfmt.Registry) error {
 		if err := m.dataField[i].Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("data" + "." + strconv.Itoa(i))
 			}
 			return err
 		}
@@ -171,6 +173,8 @@ func (m *ListPostureCheckEnvelope) validateMeta(formats strfmt.Registry) error {
 		if err := m.Meta.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}
@@ -204,6 +208,8 @@ func (m *ListPostureCheckEnvelope) contextValidateData(ctx context.Context, form
 		if err := m.dataField[i].ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("data" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("data" + "." + strconv.Itoa(i))
 			}
 			return err
 		}
@@ -219,6 +225,8 @@ func (m *ListPostureCheckEnvelope) contextValidateMeta(ctx context.Context, form
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("meta")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("meta")
 			}
 			return err
 		}

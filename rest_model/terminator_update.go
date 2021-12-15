@@ -134,6 +134,8 @@ func (m *TerminatorUpdate) validateCost(formats strfmt.Registry) error {
 		if err := m.Cost.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cost")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("cost")
 			}
 			return err
 		}
@@ -150,6 +152,8 @@ func (m *TerminatorUpdate) validatePrecedence(formats strfmt.Registry) error {
 	if err := m.Precedence.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("precedence")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("precedence")
 		}
 		return err
 	}
@@ -184,6 +188,8 @@ func (m *TerminatorUpdate) validateTags(formats strfmt.Registry) error {
 		if err := m.Tags.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}
@@ -220,6 +226,8 @@ func (m *TerminatorUpdate) contextValidateCost(ctx context.Context, formats strf
 		if err := m.Cost.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("cost")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("cost")
 			}
 			return err
 		}
@@ -233,6 +241,8 @@ func (m *TerminatorUpdate) contextValidatePrecedence(ctx context.Context, format
 	if err := m.Precedence.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("precedence")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("precedence")
 		}
 		return err
 	}
@@ -246,6 +256,8 @@ func (m *TerminatorUpdate) contextValidateTags(ctx context.Context, formats strf
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("tags")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("tags")
 			}
 			return err
 		}

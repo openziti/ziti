@@ -96,6 +96,8 @@ func (m *Authenticate) validateConfigTypes(formats strfmt.Registry) error {
 	if err := m.ConfigTypes.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("configTypes")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("configTypes")
 		}
 		return err
 	}
@@ -112,6 +114,8 @@ func (m *Authenticate) validateEnvInfo(formats strfmt.Registry) error {
 		if err := m.EnvInfo.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("envInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("envInfo")
 			}
 			return err
 		}
@@ -128,6 +132,8 @@ func (m *Authenticate) validatePassword(formats strfmt.Registry) error {
 	if err := m.Password.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("password")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("password")
 		}
 		return err
 	}
@@ -144,6 +150,8 @@ func (m *Authenticate) validateSdkInfo(formats strfmt.Registry) error {
 		if err := m.SdkInfo.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("sdkInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("sdkInfo")
 			}
 			return err
 		}
@@ -160,6 +168,8 @@ func (m *Authenticate) validateUsername(formats strfmt.Registry) error {
 	if err := m.Username.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("username")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("username")
 		}
 		return err
 	}
@@ -202,6 +212,8 @@ func (m *Authenticate) contextValidateConfigTypes(ctx context.Context, formats s
 	if err := m.ConfigTypes.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("configTypes")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("configTypes")
 		}
 		return err
 	}
@@ -215,6 +227,8 @@ func (m *Authenticate) contextValidateEnvInfo(ctx context.Context, formats strfm
 		if err := m.EnvInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("envInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("envInfo")
 			}
 			return err
 		}
@@ -228,6 +242,8 @@ func (m *Authenticate) contextValidatePassword(ctx context.Context, formats strf
 	if err := m.Password.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("password")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("password")
 		}
 		return err
 	}
@@ -241,6 +257,8 @@ func (m *Authenticate) contextValidateSdkInfo(ctx context.Context, formats strfm
 		if err := m.SdkInfo.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("sdkInfo")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("sdkInfo")
 			}
 			return err
 		}
@@ -254,6 +272,8 @@ func (m *Authenticate) contextValidateUsername(ctx context.Context, formats strf
 	if err := m.Username.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("username")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("username")
 		}
 		return err
 	}

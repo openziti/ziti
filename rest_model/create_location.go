@@ -72,6 +72,8 @@ func (m *CreateLocation) validateLinks(formats strfmt.Registry) error {
 		if err := m.Links.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("_links")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("_links")
 			}
 			return err
 		}
@@ -99,6 +101,8 @@ func (m *CreateLocation) contextValidateLinks(ctx context.Context, formats strfm
 	if err := m.Links.ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("_links")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("_links")
 		}
 		return err
 	}
