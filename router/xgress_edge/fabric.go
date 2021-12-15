@@ -57,7 +57,9 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 }
 
 func (self *edgeTerminator) close(notify bool, reason string) {
-	logger := pfxlog.Logger()
+	logger := pfxlog.Logger().
+		WithField("terminatorId", self.terminatorId).
+		WithField("token", self.token)
 
 	if notify && !self.IsClosed() {
 		// Notify edge client of close
@@ -68,12 +70,16 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 		}
 	}
 
-	logger.Debugf("removing terminator %v for token %v on controller", self.terminatorId, self.token)
-	if err := self.edgeClientConn.removeTerminator(self); err != nil {
-		logger.Errorf("failed to remove terminator %v (%v)", self.terminatorId, err)
+	if self.terminatorId != "" {
+		logger.Info("removing terminator on controller")
+		if err := self.edgeClientConn.removeTerminator(self); err != nil {
+			logger.WithError(err).Error("failed to remove terminator")
+		}
+	} else {
+		logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
 	}
 
-	logger.Debugf("removing terminator %v for token %v on router", self.terminatorId, self.token)
+	logger.Debug("removing terminator on router")
 	self.edgeClientConn.listener.factory.hostedServices.Delete(self.token)
 
 	if self.onClose != nil {

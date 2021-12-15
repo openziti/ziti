@@ -174,7 +174,10 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
 
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("sessionId", token).
+		WithFields(edge.GetLoggerFields(req))
+
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
@@ -252,21 +255,31 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 	log.Debugf("registered listener for terminator %v, token: %v", messageSink.terminatorId, token)
 	log.Debug("returning connection state CONNECTED to client")
 	self.sendStateConnectedReply(req, nil)
+
+	log.WithField("routerId", self.listener.id.Token).
+		WithField("terminatorId", messageSink.terminatorId).Info("created terminator")
 }
 
 func (self *edgeClientConn) processUnbind(req *channel2.Message, ch channel2.Channel) {
 	token := string(req.Body)
-	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+	log := pfxlog.ContextLogger(ch.Label()).
+		WithField("sessionId", token).
+		WithFields(edge.GetLoggerFields(req))
 
 	terminator, ok := self.listener.factory.hostedServices.Get(token)
 	if ok {
+		log = log.WithField("routerId", self.listener.id.Token).
+			WithField("terminatorId", terminator.terminatorId)
+
 		defer self.listener.factory.hostedServices.Delete(token)
 
-		log.Debugf("removing terminator %v for token: %v", terminator.terminatorId, token)
+		log.Debug("removing terminator")
 		if err := self.removeTerminator(terminator); err != nil {
+			log.WithError(err).Error("error while removing terminator")
 			self.sendStateClosedReply(err.Error(), req)
 		} else {
 			self.sendStateClosedReply("unbind successful", req)
+			log.Info("removed terminator")
 		}
 	} else {
 		self.sendStateClosedReply("unbind successful", req)
