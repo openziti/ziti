@@ -260,6 +260,66 @@ func (handler *EdgeRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 	return nil
 }
 
+// ReEnroll creates a new JWT enrollment for an existing edge router. If the edge router already exists
+// with a JWT, a new JWT is created. If the edge router was already enrolled, all record of the enrollment is
+// reset and the edge router is disconnected forcing the edge router to complete enrollment before connecting.
+func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
+	log := pfxlog.Logger().WithField("routerId", router.Id)
+
+	log.Info("attempting to set edge router state to unenrolled")
+	enrollment := &Enrollment{
+		BaseEntity:   models.BaseEntity{},
+		Method:       MethodEnrollEdgeRouterOtt,
+		EdgeRouterId: &router.Id,
+	}
+
+	if err := enrollment.FillJwtInfo(handler.env, router.Id); err != nil {
+		return fmt.Errorf("unable to fill jwt info for re-enrolling edge router: %v", err)
+	}
+
+	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		if id, err := handler.GetEnv().GetHandlers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
+			return fmt.Errorf("could not create enrollment for re-enrolling edge router: %v", err)
+		} else {
+			log.WithField("enrollmentId", id).Infof("edge router re-enrollment entity created")
+		}
+		router.Fingerprint = nil
+		router.CertPem = nil
+		router.IsVerified = false
+
+		if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+			db.FieldRouterFingerprint:             struct{}{},
+			persistence.FieldEdgeRouterCertPEM:    struct{}{},
+			persistence.FieldEdgeRouterIsVerified: struct{}{},
+		}); err != nil {
+			err = fmt.Errorf("unable to patch re-enrolling edge router: %v", err)
+			log.Error(err)
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("unabled to alter db for re-enrolling edge router: %v", err)
+	}
+
+	log.Info("clearing cached fingerprint for re-enrolling edge router")
+	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, "")
+
+	log.Info("closing existing connections for re-enrolling edge router")
+	connectedRouter := handler.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
+	if connectedRouter.Control != nil && !connectedRouter.Control.IsClosed() {
+		log = log.WithField("channel", connectedRouter.Control.Id())
+		log.Info("closing channel, router is flagged for re-enrollment and an existing open channel was found")
+		if err := connectedRouter.Control.Close(); err != nil {
+			log.Warnf("unexpected error closing channel for router flagged for re-enrollment: %v", err)
+		}
+	}
+
+	return nil
+}
+
 type ExtendedCerts struct {
 	RawClientCert []byte
 	RawServerCert []byte

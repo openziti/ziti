@@ -18,8 +18,10 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router"
 	"github.com/openziti/fabric/controller/api"
@@ -66,6 +68,11 @@ func (r *EdgeRouterRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.EdgeRouterPatchEdgeRouterHandler = edge_router.PatchEdgeRouterHandlerFunc(func(params edge_router.PatchEdgeRouterParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	//special actions
+	ae.ManagementApi.EdgeRouterReEnrollEdgeRouterHandler = edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.ReEnroll, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
 	// additional lists
@@ -145,4 +152,28 @@ func (r *EdgeRouterRouter) listIdentities(ae *env.AppEnv, rc *response.RequestCo
 func (r *EdgeRouterRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(routers) = "%v")`
 	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeService, MapServiceToRestEntity)
+}
+
+func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext) {
+	id, _ := rc.GetEntityId()
+
+	var router *model.EdgeRouter
+	var err error
+
+	if router, err = ae.GetHandlers().EdgeRouter.Read(id); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if router == nil {
+		rc.RespondWithNotFound()
+		return
+	}
+
+	if err := ae.GetHandlers().EdgeRouter.ReEnroll(router); err != nil {
+		rc.RespondWithApiError(apierror.NewEdgeRouterFailedReEnrollment(err))
+		return
+	}
+
+	rc.RespondWithEmptyOk()
 }

@@ -311,3 +311,13 @@ func NewInvalidMfaTokenError() *errorz.ApiError {
 		Status:  MfaInvalidTokenStatus,
 	}
 }
+
+func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError{
+	return &errorz.ApiError{
+		Code:        EdgeRouterFailedReEnrollmentCode,
+		Message:     EdgeRouterFailedReEnrollmentMessage,
+		Status: EdgeRouterFailedReEnrollmentStatus,
+		Cause:       cause,
+		AppendCause: true,
+	}
+}
