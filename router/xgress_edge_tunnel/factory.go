@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ const (
 )
 
 type Factory struct {
+	id                 identity.Identity
 	ctrl               channel2.Channel
 	routerConfig       *router.Config
 	stateManager       fabric.StateManager
@@ -84,6 +86,7 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
 func NewFactory(routerConfig *router.Config, stateManager fabric.StateManager) *Factory {
 	factory := &Factory{
+		id:           routerConfig.Id,
 		routerConfig: routerConfig,
 		stateManager: stateManager,
 	}
