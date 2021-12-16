@@ -55,14 +55,14 @@ function cleanZitiController {
   initializeController
 }
 function initializeController {
-  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${ZITI_HOME_OS_SPECIFIC}/controller-init.log"
-  echo -e "ziti-controller initialized. see $(BLUE "${ZITI_HOME-}/controller-init.log") for details"
+"${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${ZITI_HOME_OS_SPECIFIC}/controller-init.log"
+  echo -e "ziti-controller initialized. see $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log") for details"
 }
 function startZitiController {
   # shellcheck disable=SC2034
-  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/controller.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
+  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
   pid=$!
-  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/ziti-edge-controller.log")"
+  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
   return $pid
 }
 
@@ -356,15 +356,15 @@ function ziti_expressConfiguration {
   echo "           |||                                        /--------"
   echo "-----------'''---------------------------------------'"
   echo ""
-  if [[ "${ZITI_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_RAWNAME OVERIDDEN: $ZITI_CONTROLLER_RAWNAME"; fi
-  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_HOSTNAME OVERIDDEN: $ZITI_CONTROLLER_HOSTNAME"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_RAWNAME OVERIDDEN: $ZITI_EDGE_CONTROLLER_RAWNAME"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_HOSTNAME OVERIDDEN: $ZITI_EDGE_CONTROLLER_HOSTNAME"; fi
-  if [[ "${ZITI_ZAC_RAWNAME-}" != "" ]]; then echo "ZITI_ZAC_RAWNAME OVERIDDEN: $ZITI_ZAC_RAWNAME"; fi
-  if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERIDDEN: $ZITI_ZAC_HOSTNAME"; fi
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_RAWNAME OVERIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"; fi
-  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
+  if [[ "${ZITI_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_RAWNAME OVERRIDDEN: $ZITI_CONTROLLER_RAWNAME"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_HOSTNAME OVERRIDDEN: $ZITI_CONTROLLER_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_RAWNAME OVERRIDDEN: $ZITI_EDGE_CONTROLLER_RAWNAME"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_CONTROLLER_HOSTNAME"; fi
+  if [[ "${ZITI_ZAC_RAWNAME-}" != "" ]]; then echo "ZITI_ZAC_RAWNAME OVERRIDDEN: $ZITI_ZAC_RAWNAME"; fi
+  if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERRIDDEN: $ZITI_ZAC_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERRIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
 
   echo " "
   echo " "
@@ -397,8 +397,8 @@ function ziti_expressConfiguration {
   echo " "
   echo " "
   echo -e "******** Setting Up Controller ********"
-  createControllerConfig "controller"
-  #createControllerSystemdFile controller
+  createControllerConfig
+  #createControllerSystemdFile
   initializeController
   startZitiController
   echo "waiting for the controller to come online to allow the edge router to enroll"
@@ -765,7 +765,7 @@ function createFabricRouterConfig {
   if [[ "${router_name}" == "" ]]; then
 
     # If router name is not passed as arg, prompt user for input
-    echo -e "$(YELLOW "createEdgeRouterWssConfig requires a router name to be supplied") "
+    echo -e "$(YELLOW "createFabricRouterConfig requires a router name to be supplied") "
     default_router_name="${ZITI_EDGE_ROUTER_RAWNAME}"
     echo -en "Enter router name (${default_router_name}):"
     read -r router_name
@@ -1082,27 +1082,24 @@ IdentitiesJsonHereDoc
 echo -e "identities file written to: $(BLUE "${output_file}")"
 }
 
+# shellcheck disable=SC2120
 function createControllerConfig {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
-  if [[ "${controller_name}" == "" ]]; then
+  # If no controller name provided and env var is not set, prompt user for a controller name
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+        echo -e "$(YELLOW "createControllerConfig requires a controller name to be supplied") "
+        echo -en "Enter controller name: "
+        read -r controller_name
 
-    # If controller name is not passed as arg, prompt user for input
-    echo -e "$(YELLOW "createControllerConfig requires a controller name to be supplied") "
-    default_controller_name="controller"
-    echo -en "Enter controller name (${default_controller_name}):"
-    read -r controller_name
-
-    # Accept the default if no name provided
-    if [[ "${controller_name}" == "" ]]; then
-      # Check for overwrite of default file
-      controller_name="${default_controller_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${controller_name}.yaml"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
-    fi
+        # Quit if no name is provided
+        if [[ "${controller_name}" == "" ]]; then
+          echo -e "$(RED "  --- Invalid controller name provided ---")"
+          return 1
+        fi
+  # If no controller name provided and env var is set, use env var
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
   fi
 
   # Make sure necessary env variables are set
@@ -1400,23 +1397,20 @@ function waitForController {
 function createControllerSystemdFile {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
-  if [[ "${controller_name}" == "" ]]; then
-    # If controller name is not passed as arg, prompt user for input
-    echo -e "$(YELLOW "createRouterSystemdFile requires a controller name to be supplied") "
-    default_controller_name="controller"
-    echo -en "Enter controller name (${default_controller_name}):"
-    read -r controller_name
+  # If no controller name provided and env var is not set, prompt user for a controller name
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+        echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
+        echo -en "Enter controller name:"
+        read -r controller_name
 
-    # Accept the default if no name provided
-    if [[ "${controller_name}" == "" ]]; then
-      # Check for overwrite of default file
-      controller_name="${default_controller_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/ziti-controller-${controller_name}.service"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
-    fi
+        # Quit if no name is provided
+        if [[ "${controller_name}" == "" ]]; then
+          echo -e "$(RED "  --- Invalid controller name provided ---")"
+          return 1
+        fi
+  # If no controller name provided and env var is set, use env var
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
   fi
 
   # Make sure necessary env variables are set
@@ -1426,7 +1420,7 @@ function createControllerSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/ziti-controller-${controller_name}.service"
+output_file="${ZITI_HOME}/${controller_name}.service"
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Controller
@@ -1500,24 +1494,20 @@ HeredocForSystemd
 function createControllerLaunchdFile {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
-  if [[ "${controller_name}" == "" ]]; then
+  # If no controller name provided and env var is not set, prompt user for a controller name
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+        echo -e "$(YELLOW "createControllerLaunchdFile requires a controller name to be supplied") "
+        echo -en "Enter controller name: "
+        read -r controller_name
 
-    # If controller name is not passed as arg, prompt user for input
-    echo -e "$(YELLOW "createRouterLaunchdFile requires a controller name to be supplied") "
-    default_controller_name="controller"
-    echo -en "Enter controller name (${default_controller_name}):"
-    read -r controller_name
-
-    # Accept the default if no name provided
-    if [[ "${controller_name}" == "" ]]; then
-      # Check for overwrite of default file
-      controller_name="${default_controller_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/ziti-controller-${controller_name}.plist"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
-    fi
+        # Quit if no name is provided
+        if [[ "${controller_name}" == "" ]]; then
+          echo -e "$(RED "  --- Invalid controller name provided ---")"
+          return 1
+        fi
+  # If no controller name provided and env var is set, use env var
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
   fi
 
   # Make sure necessary env variables are set
@@ -1527,7 +1517,7 @@ function createControllerLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/ziti-controller-${controller_name}.plist"
+output_file="${ZITI_HOME}/${controller_name}.plist"
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
