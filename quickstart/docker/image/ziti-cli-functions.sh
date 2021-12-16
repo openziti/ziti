@@ -214,7 +214,7 @@ function checkPrereqs {
   do
       # checking all commands are on the path before continuing...
       if ! [[ -x "$(command -v "${cmd}")" ]]; then
-          missing_requirements="${missing_requirements}    * ${cmd}\n"
+          missing_requirements="${missing_requirements}    * ${cmd}"
       fi
   done
   # are requirements ? if yes, stop here and help 'em out
@@ -222,7 +222,7 @@ function checkPrereqs {
       echo " "
       echo "You're missing one or more commands that are used in this script."
       echo "Please ensure the commands listed are on the path and then try again."
-      printf "%s\n", "${missing_requirements}"
+      echo "${missing_requirements}"
       echo " "
       echo " "
       return 1
@@ -513,7 +513,10 @@ function expressInstall {
 
   #make sure the user has all the necessary commands to be successful
   checkPrereqs
-
+  retval=$?
+  if [ $retval -ne 0 ]; then
+    return 1
+  fi
   echo "Let's get started creating your local development network!"
   echo ""
   echo ""
