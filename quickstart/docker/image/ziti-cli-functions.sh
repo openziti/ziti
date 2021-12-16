@@ -377,7 +377,7 @@ function ziti_expressConfiguration {
 
   setupZitiNetwork "${nw}"
   setupZitiHome
-  echo "ZITI HOME SET TO: $(BLUE "${ZITI_HOME}")"
+  echo -e "ZITI HOME SET TO: $(BLUE "${ZITI_HOME}")"
 
   if ! getLatestZiti "no"; then
     echo -e "$(RED "getLatestZiti failed")"
@@ -1111,7 +1111,7 @@ function createControllerConfig {
 
 cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem" > "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
 cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert" >> "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-echo "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
+echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
 
 output_file="${ZITI_HOME}/${controller_name}.yaml"
 cat > "${output_file}" <<HereDocForEdgeConfiguration
@@ -1456,7 +1456,7 @@ function createRouterSystemdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/ziti-router-${router_name}.service"
+      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.service"
       retVal=$?
       if [[ "${retVal}" != 0 ]]; then
         return 1
@@ -1470,7 +1470,7 @@ function createRouterSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/ziti-router-${router_name}.service"
+output_file="${ZITI_HOME}/${router_name}.service"
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Router for ${router_name}
@@ -1542,9 +1542,9 @@ cat > "${output_file}" <<HeredocForLaunchd
         </dict>
       </dict>
       <key>StandardOutPath</key>
-      <string>${ZITI_HOME}/Logs/ziti-router-$ZITI_BINARIES_VERSION.log</string>
+      <string>${ZITI_HOME}/Logs/${controller_name}-{ZITI_BINARIES_VERSION}.log</string>
       <key>StandardErrorPath</key>
-      <string>${ZITI_HOME}/Logs/ziti-router-$ZITI_BINARIES_VERSION.log</string>
+      <string>${ZITI_HOME}/Logs/${controller_name}-{ZITI_BINARIES_VERSION}.log</string>
     </dict>
   </plist>
 HeredocForLaunchd
@@ -1568,7 +1568,7 @@ function createRouterLaunchdFile {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/ziti-router-${router_name}.plist"
+      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.plist"
       retVal=$?
       if [[ "${retVal}" != 0 ]]; then
         return 1
@@ -1583,14 +1583,14 @@ function createRouterLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME-}/ziti-router-${router_name}.plist"
+output_file="${ZITI_HOME-}/${router_name}.plist"
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
   <plist version="1.0">
     <dict>
       <key>Label</key>
-      <string>ziti-router-$router_name</string>
+      <string>$router_name</string>
       <key>ProgramArguments</key>
       <array>
         <string>$ZITI_BIN_DIR/ziti-router</string>
@@ -1609,9 +1609,9 @@ cat > "${output_file}" <<HeredocForLaunchd
         </dict>
       </dict>
       <key>StandardOutPath</key>
-      <string>${ZITI_HOME}/Logs/ziti-router-$ZITI_BINARIES_VERSION.log</string>
+      <string>${ZITI_HOME}/Logs/${router_name}-${ZITI_BINARIES_VERSION}.log</string>
       <key>StandardErrorPath</key>
-      <string>${ZITI_HOME}/Logs/ziti-router-$ZITI_BINARIES_VERSION.log</string>
+      <string>${ZITI_HOME}/Logs/${router_name}-${ZITI_BINARIES_VERSION}.log</string>
     </dict>
   </plist>
 HeredocForLaunchd
