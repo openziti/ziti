@@ -523,6 +523,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		RouterPatchTransitRouterHandler: router.PatchTransitRouterHandlerFunc(func(params router.PatchTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation router.PatchTransitRouter has not yet been implemented")
 		}),
+		EdgeRouterReEnrollEdgeRouterHandler: edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation edge_router.ReEnrollEdgeRouter has not yet been implemented")
+		}),
 		IdentityRemoveIdentityMfaHandler: identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")
 		}),
@@ -926,6 +929,8 @@ type ZitiEdgeManagementAPI struct {
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
 	// RouterPatchTransitRouterHandler sets the operation handler for the patch transit router operation
 	RouterPatchTransitRouterHandler router.PatchTransitRouterHandler
+	// EdgeRouterReEnrollEdgeRouterHandler sets the operation handler for the re enroll edge router operation
+	EdgeRouterReEnrollEdgeRouterHandler edge_router.ReEnrollEdgeRouterHandler
 	// IdentityRemoveIdentityMfaHandler sets the operation handler for the remove identity mfa operation
 	IdentityRemoveIdentityMfaHandler identity.RemoveIdentityMfaHandler
 	// AuthenticatorUpdateAuthenticatorHandler sets the operation handler for the update authenticator operation
@@ -1482,6 +1487,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.RouterPatchTransitRouterHandler == nil {
 		unregistered = append(unregistered, "router.PatchTransitRouterHandler")
+	}
+	if o.EdgeRouterReEnrollEdgeRouterHandler == nil {
+		unregistered = append(unregistered, "edge_router.ReEnrollEdgeRouterHandler")
 	}
 	if o.IdentityRemoveIdentityMfaHandler == nil {
 		unregistered = append(unregistered, "identity.RemoveIdentityMfaHandler")
@@ -2213,6 +2221,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/transit-routers/{id}"] = router.NewPatchTransitRouter(o.context, o.RouterPatchTransitRouterHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/edge-routers/{id}/re-enroll"] = edge_router.NewReEnrollEdgeRouter(o.context, o.EdgeRouterReEnrollEdgeRouterHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}

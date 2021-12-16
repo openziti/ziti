@@ -203,7 +203,30 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  edge-routers-id-re-enroll:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    post:
+      summary: Re-enroll an edge router
+      description: |
+        Removes current certificate based authentication mechanisms and reverts the edge router into a state where enrollment must be performed.
+        The router retains all other properties and associations. If the router is currently connected, it will be disconnected and any
+        attemps to reconnect will fail until the enrollment process is completed with the newly generated JWT.
 
+        If the edge router has an existing outstanding enrollment JWT it will be replaced. The previous JWT will no longer be usable to
+        complete the enrollment process.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Edge Router
+      operationId: reEnrollEdgeRouter
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
   listEdgeRouters:
     description: A list of edge routers
