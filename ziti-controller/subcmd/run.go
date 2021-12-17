@@ -42,42 +42,45 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
-	logrus.WithField("version", version.GetVersion()).
-		WithField("go-version", version.GetGoVersion()).
-		WithField("os", version.GetOS()).
-		WithField("arch", version.GetArchitecture()).
-		WithField("build-date", version.GetBuildDate()).
-		WithField("revision", version.GetRevision()).
-		Info("starting ziti-controller")
+	startLogger :=
+		logrus.WithField("version", version.GetVersion()).
+			WithField("go-version", version.GetGoVersion()).
+			WithField("os", version.GetOS()).
+			WithField("arch", version.GetArchitecture()).
+			WithField("build-date", version.GetBuildDate()).
+			WithField("revision", version.GetRevision())
 
-	if config, err := controller.LoadConfig(args[0]); err == nil {
-		if cliAgentEnabled {
-			if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
-				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-			}
+	config, err := controller.LoadConfig(args[0])
+	if err != nil {
+		startLogger.WithError(err).Error("error starting ziti-controller")
+		panic(err)
+	}
+
+	startLogger = startLogger.WithField("nodeId", config.Id.Token)
+	startLogger.Info("starting ziti-controller")
+
+	if cliAgentEnabled {
+		if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
+	}
 
-		var fabricController *controller.Controller
-		if fabricController, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
-			fmt.Printf("unable to create fabric controller %+v\n", err)
-			panic(err)
-		}
+	var fabricController *controller.Controller
+	if fabricController, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
+		fmt.Printf("unable to create fabric controller %+v\n", err)
+		panic(err)
+	}
 
-		edgeController, err := server.NewController(config, fabricController)
+	edgeController, err := server.NewController(config, fabricController)
 
-		if err != nil {
-			panic(err)
-		}
+	if err != nil {
+		panic(err)
+	}
 
-		edgeController.Initialize()
-		go waitForShutdown(fabricController, edgeController)
-		edgeController.Run()
-		if err := fabricController.Run(); err != nil {
-			panic(err)
-		}
-
-
-	} else {
+	edgeController.Initialize()
+	go waitForShutdown(fabricController, edgeController)
+	edgeController.Run()
+	if err := fabricController.Run(); err != nil {
 		panic(err)
 	}
 }
