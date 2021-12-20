@@ -28,10 +28,12 @@ import (
 
 type TransitRouter struct {
 	models.BaseEntity
-	Name        string
-	Fingerprint *string
-	IsVerified  bool
-	IsBase      bool
+	Name                  string
+	Fingerprint           *string
+	IsVerified            bool
+	IsBase                bool
+	UnverifiedFingerprint *string
+	UnverifiedCertPem     *string
 }
 
 func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
@@ -55,6 +57,8 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.En
 			Fingerprint:   entity.Fingerprint,
 		},
 		IsVerified: entity.IsVerified,
+		UnverifiedFingerprint: entity.UnverifiedFingerprint,
+		UnverifiedCertPem: entity.UnverifiedCertPem,
 	}
 
 	return ret, nil
@@ -74,6 +78,8 @@ func (entity *TransitRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.E
 	entity.IsVerified = boltTransitRouter.IsVerified
 	entity.IsBase = boltTransitRouter.IsBase
 	entity.Fingerprint = boltTransitRouter.Fingerprint
+	entity.UnverifiedFingerprint = boltTransitRouter.UnverifiedFingerprint
+	entity.UnverifiedCertPem = boltTransitRouter.UnverifiedCertPem
 
 	return nil
 }

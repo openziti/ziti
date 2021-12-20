@@ -306,6 +306,8 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 		Identity:    terminator.context.ListenOptions().Identity,
 	}
 
+	request.GetContentType()
+
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{}
 	responseMsg, err := self.factory.Channel().SendForReply(request, self.factory.DefaultRequestTimeout())
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {

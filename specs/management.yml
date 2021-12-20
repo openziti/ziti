@@ -11996,6 +11996,10 @@ definitions:
       - revision
       - isTunnelerEnabled
       properties:
+        certPem:
+          type: string
+          x-nullable: true
+          x-omitempty: false
         enrollmentCreatedAt:
           type: string
           format: date-time
@@ -12018,6 +12022,14 @@ definitions:
           type: boolean
         roleAttributes:
           $ref: '#/definitions/attributes'
+        unverifiedCertPem:
+          type: string
+          x-nullable: true
+          x-omitempty: false
+        unverifiedFingerprint:
+          type: string
+          x-nullable: true
+          x-omitempty: false
         versionInfo:
           $ref: '#/definitions/versionInfo'
     example:
@@ -13738,6 +13750,14 @@ definitions:
           type: boolean
         name:
           type: string
+        unverifiedCertPem:
+          type: string
+          x-nullable: true
+          x-omitempty: false
+        unverifiedFingerprint:
+          type: string
+          x-nullable: true
+          x-omitempty: false
   routerEntityRef:
     type: object
     allOf:

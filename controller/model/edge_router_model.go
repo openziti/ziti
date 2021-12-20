@@ -29,16 +29,18 @@ import (
 
 type EdgeRouter struct {
 	models.BaseEntity
-	Name                string
-	RoleAttributes      []string
-	IsVerified          bool
-	Fingerprint         *string
-	CertPem             *string
-	Hostname            *string
-	EdgeRouterProtocols map[string]string
-	VersionInfo         *common.VersionInfo
-	IsTunnelerEnabled   bool
-	AppData             map[string]interface{}
+	Name                  string
+	RoleAttributes        []string
+	IsVerified            bool
+	Fingerprint           *string
+	CertPem               *string
+	Hostname              *string
+	EdgeRouterProtocols   map[string]string
+	VersionInfo           *common.VersionInfo
+	IsTunnelerEnabled     bool
+	AppData               map[string]interface{}
+	UnverifiedFingerprint *string
+	UnverifiedCertPem     *string
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
@@ -63,13 +65,15 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 		},
-		RoleAttributes:      entity.RoleAttributes,
-		IsVerified:          entity.IsVerified,
-		CertPem:             entity.CertPem,
-		Hostname:            entity.Hostname,
-		EdgeRouterProtocols: entity.EdgeRouterProtocols,
-		IsTunnelerEnabled:   entity.IsTunnelerEnabled,
-		AppData:             entity.AppData,
+		RoleAttributes:        entity.RoleAttributes,
+		IsVerified:            entity.IsVerified,
+		CertPem:               entity.CertPem,
+		Hostname:              entity.Hostname,
+		EdgeRouterProtocols:   entity.EdgeRouterProtocols,
+		IsTunnelerEnabled:     entity.IsTunnelerEnabled,
+		AppData:               entity.AppData,
+		UnverifiedFingerprint: entity.UnverifiedFingerprint,
+		UnverifiedCertPem:     entity.UnverifiedCertPem,
 	}, nil
 }
 
@@ -93,6 +97,8 @@ func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 	entity.IsTunnelerEnabled = boltEdgeRouter.IsTunnelerEnabled
 	entity.AppData = boltEdgeRouter.AppData
+	entity.UnverifiedFingerprint = boltEdgeRouter.UnverifiedFingerprint
+	entity.UnverifiedCertPem = boltEdgeRouter.UnverifiedCertPem
 
 	return nil
 }

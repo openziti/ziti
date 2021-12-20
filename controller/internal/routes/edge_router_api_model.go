@@ -162,6 +162,10 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
 		VersionInfo:         MapVersionInfoToRestModel(routerState.VersionInfo),
 		IsTunnelerEnabled:   &router.IsTunnelerEnabled,
+		CertPem: router.CertPem,
+		UnverifiedFingerprint: router.UnverifiedFingerprint,
+		UnverifiedCertPem: router.UnverifiedCertPem,
+
 	}
 
 	if !router.IsVerified {

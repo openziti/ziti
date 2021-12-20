@@ -30,7 +30,7 @@ type extendEnrollmentHandler struct {
 	appEnv *env.AppEnv
 }
 
-func NewextendEnrollmentHandler(appEnv *env.AppEnv) *extendEnrollmentHandler {
+func NewExtendEnrollmentHandler(appEnv *env.AppEnv) *extendEnrollmentHandler {
 	return &extendEnrollmentHandler{
 		appEnv: appEnv,
 	}
@@ -45,57 +45,72 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 		req := &edge_ctrl_pb.EnrollmentExtendRouterRequest{}
 		certs := ch.Underlay().Certificates()
 
-		if err := proto.Unmarshal(msg.Body, req); err == nil {
-			fingerprint := ""
+		fingerprint := "none"
 
-			if len(certs) > 0 {
-				cert := certs[0]
-				fingerprint = h.appEnv.FingerprintGenerator.FromCert(cert)
-			} else {
-				pfxlog.Logger().Errorf("request to extend the enrollment without certificate on channel [%s - %s]", fingerprint, ch.LogicalName())
-			}
+		if len(certs) > 0 {
+			fingerprint = h.appEnv.FingerprintGenerator.FromCert(certs[0])
+		}
+
+		log := pfxlog.Logger().WithFields(map[string]interface{}{
+			"channel":     ch.LogicalName(),
+			"fingerprint": fingerprint,
+		})
+
+		if fingerprint == "" || fingerprint == "none" {
+			log.Errorf("request to extend the enrollment without certificate")
+			return
+		}
+
+		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
 			var clientPem []byte
 			var serverPem []byte
 			var newCerts *model.ExtendedCerts
-			routerId := ""
-			routerName := ""
 
 			if router, _ := h.appEnv.Handlers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
-				routerId = router.Id
-				routerName = router.Name
 
-				newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				log = log.WithFields(map[string]interface{}{
+					"routerId":   router.Id,
+					"routerName": router.Name,
+				})
+
+				if req.RequireVerification {
+					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				} else {
+					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				}
 
 				if err != nil {
-					pfxlog.Logger().Errorf("request to extend the enrollment for an edge router [%s - %s] errored: %s", routerId, routerName, err)
+					log.WithError(err).Error("request to extend edge router enrollment failed")
 					return
 				}
 
 			} else if router, _ := h.appEnv.Handlers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
-				routerId = router.Id
-				routerName = router.Name
 
-				newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				if req.RequireVerification {
+					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				} else {
+					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+				}
 
 				if err != nil {
-					pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] errored: %s", routerId, routerName, err)
+					log.WithError(err).Error("request to extend router enrollment failed")
 					return
 				}
 			} else {
-				pfxlog.Logger().Errorf("request to extend the enrollment for a router that was not found by fingerprint [%s] on channel [%s]", fingerprint, ch.LogicalName())
+				log.WithError(err).Errorf("request to extend route enrollment failed, router not found by fingerprint")
 				return
 			}
 
 			clientPem, err = cert.RawToPem(newCerts.RawClientCert)
 
 			if err != nil {
-				pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] errored encoding client raw to pem: %s", routerId, routerName, err)
+				log.WithError(err).Error("request to extend router enrollment failed to marshal client certificate to PEM format")
 				return
 			}
 			serverPem, err = cert.RawToPem(newCerts.RawServerCert)
 			if err != nil {
-				pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] errored encoding server raw to pem: %s", routerId, routerName, err)
+				log.WithError(err).Error("request to extend router enrollment failed to marshal server certificate to PEM format")
 				return
 			}
 
@@ -107,18 +122,21 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 			body, err := proto.Marshal(data)
 
 			if err != nil {
-				pfxlog.Logger().Errorf("request to extend the enrollment for a router [%s - %s] errored marshaling message: %s", routerId, routerName, err)
+				log.WithError(err).Error("request to extend router enrollment failed to marshal enrollment certificate response message")
 				return
 			}
 
 			msg := channel2.NewMessage(env.EnrollmentCertsResponseType, body)
 
-			ch.Send(msg)
+			if err := ch.Send(msg); err != nil {
+				log.WithError(err).Errorf("request to extend router enrollment failed to send enrollment certificate response")
+				return
+			}
 
-			pfxlog.Logger().Infof("request to extend the enrollment for a router [%s - %s] sent", routerId, routerName)
+			log.Infof("enrollment certificate response sent")
 
 		} else {
-			pfxlog.Logger().Error("could not convert message as enroll extend")
+			log.Error("could not convert message as enroll extend")
 		}
 	}()
 }

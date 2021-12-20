@@ -30,14 +30,16 @@ import (
 )
 
 const (
-	FieldEdgeRouters                 = "edgeRouters"
-	FieldEdgeRouterCertPEM           = "certPem"
-	FieldEdgeRouterIsVerified        = "isVerified"
-	FieldEdgeRouterHostname          = "hostname"
-	FieldEdgeRouterProtocols         = "protocols"
-	FieldEdgeRouterEnrollments       = "enrollments"
-	FieldEdgeRouterIsTunnelerEnabled = "isTunnelerEnabled"
-	FieldEdgeRouterAppData           = "appData"
+	FieldEdgeRouters                     = "edgeRouters"
+	FieldEdgeRouterCertPEM               = "certPem"
+	FieldEdgeRouterUnverifiedCertPEM     = "unverifiedCertPem"
+	FieldEdgeRouterUnverifiedFingerprint = "unverifiedFingerprint"
+	FieldEdgeRouterIsVerified            = "isVerified"
+	FieldEdgeRouterHostname              = "hostname"
+	FieldEdgeRouterProtocols             = "protocols"
+	FieldEdgeRouterEnrollments           = "enrollments"
+	FieldEdgeRouterIsTunnelerEnabled     = "isTunnelerEnabled"
+	FieldEdgeRouterAppData               = "appData"
 )
 
 func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
@@ -52,14 +54,16 @@ func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
 
 type EdgeRouter struct {
 	db.Router
-	IsVerified          bool
-	CertPem             *string
-	Hostname            *string
-	EdgeRouterProtocols map[string]string
-	RoleAttributes      []string
-	Enrollments         []string
-	IsTunnelerEnabled   bool
-	AppData             map[string]interface{}
+	IsVerified            bool
+	CertPem               *string
+	UnverifiedCertPem     *string
+	UnverifiedFingerprint *string
+	Hostname              *string
+	EdgeRouterProtocols   map[string]string
+	RoleAttributes        []string
+	Enrollments           []string
+	IsTunnelerEnabled     bool
+	AppData               map[string]interface{}
 }
 
 func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -69,6 +73,10 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
 	entity.IsTunnelerEnabled = bucket.GetBoolWithDefault(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
+
+	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
+	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
+
 	//old v4, migrations only
 	entity.Enrollments = bucket.GetStringList(FieldEdgeRouterEnrollments)
 	entity.Hostname = bucket.GetString(FieldEdgeRouterHostname)
@@ -89,6 +97,9 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
 	ctx.Bucket.PutMap(FieldEdgeRouterAppData, entity.AppData, ctx.FieldChecker, false)
+
+	ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
+	ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {

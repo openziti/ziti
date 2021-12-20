@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -245,4 +246,73 @@ func (handler *TransitRouterHandler) ExtendEnrollment(router *TransitRouter, cli
 		RawClientCert: clientCertRaw,
 		RawServerCert: serverCertRaw,
 	}, nil
+}
+
+func (handler *TransitRouterHandler) ExtendEnrollmentWithVerify(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+
+	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	serverCertRaw, err := enrollmentModule.ProcessServerCsrPem(serverCertCsrPem)
+
+	if err != nil {
+		apiErr := apierror.NewCouldNotProcessCsr()
+		apiErr.Cause = err
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+
+	pfxlog.Logger().Debugf("extending enrollment for router %s, old fingerprint: %s new fingerprint: %s", router.Id, *router.Fingerprint, fingerprint)
+
+	router.UnverifiedFingerprint = &fingerprint
+
+	err = handler.Patch(router, &boltz.MapFieldChecker{
+		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+	}, true)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &ExtendedCerts{
+		RawClientCert: clientCertRaw,
+		RawServerCert: serverCertRaw,
+	}, nil
+}
+
+func (handler *TransitRouterHandler) ReadOneByUnverifiedFingerprint(fingerprint string) (*TransitRouter, error) {
+	return handler.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
+}
+
+func (handler *TransitRouterHandler) ExtendEnrollmentVerify(router *TransitRouter) error {
+	if router.UnverifiedFingerprint != nil && router.UnverifiedCertPem != nil {
+		router.Fingerprint = router.UnverifiedFingerprint
+
+		router.UnverifiedFingerprint = nil
+		router.UnverifiedCertPem = nil
+
+		if err := handler.Patch(router, boltz.MapFieldChecker{
+			db.FieldRouterFingerprint:                        struct{}{},
+			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
+			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
+		}, true); err == nil {
+			//Otherwise, the controller will continue to use old fingerprint if the router is cached
+			handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, *router.Fingerprint)
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	return errors.New("no outstanding verification necessary")
 }

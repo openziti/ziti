@@ -31,9 +31,11 @@ const (
 
 type TransitRouter struct {
 	db.Router
-	IsVerified  bool
-	Enrollments []string
-	IsBase      bool
+	IsVerified            bool
+	Enrollments           []string
+	IsBase                bool
+	UnverifiedCertPem     *string
+	UnverifiedFingerprint *string
 }
 
 func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -45,14 +47,19 @@ func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.Typ
 		entity.IsBase = true
 		return
 	}
+
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldTransitRouterIsVerified, false)
 	entity.Enrollments = bucket.GetStringList(FieldTransitRouterEnrollments)
+	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
+	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
 }
 
 func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
 	entity.Router.SetValues(ctx.GetParentContext())
 	if ctx.Bucket != nil {
 		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)
+		ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
+		ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
 	}
 }
 

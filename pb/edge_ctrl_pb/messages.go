@@ -17,6 +17,9 @@ func (request *CreateTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_CreateTerminatorRequestType)
 }
 
+func (request *Error) GetContentType() int32 {
+	return int32(ContentType_ErrorType)
+}
 func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
 	if request.GetPrecedence() == TerminatorPrecedence_Failed {
 		return xt.Precedences.Failed
@@ -65,6 +68,10 @@ func (m *ServicesList) GetContentType() int32 {
 
 func (request *CreateTunnelTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_CreateTunnelTerminatorRequestType)
+}
+
+func (request *EnrollmentExtendRouterVerifyRequest) GetContentType() int32{
+	return int32(ContentType_EnrollmentExtendRouterVerifyRequestType)
 }
 
 func (request *CreateTunnelTerminatorRequest) GetXtPrecedence() xt.Precedence {

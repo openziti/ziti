@@ -73,6 +73,12 @@ type RouterDetail struct {
 	// name
 	// Required: true
 	Name *string `json:"name"`
+
+	// unverified cert pem
+	UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+	// unverified fingerprint
+	UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -101,6 +107,10 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 		IsVerified *bool `json:"isVerified"`
 
 		Name *string `json:"name"`
+
+		UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
@@ -121,6 +131,10 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	m.IsVerified = dataAO1.IsVerified
 
 	m.Name = dataAO1.Name
+
+	m.UnverifiedCertPem = dataAO1.UnverifiedCertPem
+
+	m.UnverifiedFingerprint = dataAO1.UnverifiedFingerprint
 
 	return nil
 }
@@ -150,6 +164,10 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 		IsVerified *bool `json:"isVerified"`
 
 		Name *string `json:"name"`
+
+		UnverifiedCertPem *string `json:"unverifiedCertPem"`
+
+		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
 	}
 
 	dataAO1.EnrollmentCreatedAt = m.EnrollmentCreatedAt
@@ -167,6 +185,10 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IsVerified = m.IsVerified
 
 	dataAO1.Name = m.Name
+
+	dataAO1.UnverifiedCertPem = m.UnverifiedCertPem
+
+	dataAO1.UnverifiedFingerprint = m.UnverifiedFingerprint
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
