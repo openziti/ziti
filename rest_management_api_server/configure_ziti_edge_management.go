@@ -814,6 +814,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation router.PatchTransitRouter has not yet been implemented")
 		})
 	}
+	if api.EdgeRouterReEnrollEdgeRouterHandler == nil {
+		api.EdgeRouterReEnrollEdgeRouterHandler = edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation edge_router.ReEnrollEdgeRouter has not yet been implemented")
+		})
+	}
 	if api.IdentityRemoveIdentityMfaHandler == nil {
 		api.IdentityRemoveIdentityMfaHandler = identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")

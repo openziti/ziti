@@ -72,6 +72,8 @@ type ClientService interface {
 
 	PatchEdgeRouter(params *PatchEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchEdgeRouterOK, error)
 
+	ReEnrollEdgeRouter(params *ReEnrollEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReEnrollEdgeRouterOK, error)
+
 	UpdateEdgeRouter(params *UpdateEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UpdateEdgeRouterOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
@@ -446,6 +448,53 @@ func (a *Client) PatchEdgeRouter(params *PatchEdgeRouterParams, authInfo runtime
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for patchEdgeRouter: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ReEnrollEdgeRouter res enroll an edge router
+
+  Removes current certificate based authentication mechanisms and reverts the edge router into a state where enrollment must be performed.
+The router retains all other properties and associations. If the router is currently connected, it will be disconnected and any
+attemps to reconnect will fail until the enrollment process is completed with the newly generated JWT.
+
+If the edge router has an existing outstanding enrollment JWT it will be replaced. The previous JWT will no longer be usable to
+complete the enrollment process.
+
+*/
+func (a *Client) ReEnrollEdgeRouter(params *ReEnrollEdgeRouterParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReEnrollEdgeRouterOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewReEnrollEdgeRouterParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "reEnrollEdgeRouter",
+		Method:             "POST",
+		PathPattern:        "/edge-routers/{id}/re-enroll",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ReEnrollEdgeRouterReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ReEnrollEdgeRouterOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for reEnrollEdgeRouter: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

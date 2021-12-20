@@ -103,6 +103,8 @@ paths:
     $ref: 'management/edge-routers.yml#/paths/edge-routers-id-service-edge-router-policies'
   '/edge-routers/{id}/services':
     $ref: 'management/edge-routers.yml#/paths/edge-routers-id-services'
+  '/edge-routers/{id}/re-enroll':
+    $ref: 'management/edge-routers.yml#/paths/edge-routers-id-re-enroll'
 
   '/edge-router-policies':
     $ref: 'management/edge-router-policies.yml#/paths/edge-router-policies'
