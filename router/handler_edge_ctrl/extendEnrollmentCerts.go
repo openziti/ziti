@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
@@ -47,28 +48,41 @@ func (h *extendEnrollmentCertsHandler) ContentType() int32 {
 
 func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	go func() {
+		certs := ch.Underlay().Certificates()
+
+		fingerprint := "none"
+
+		if len(certs) > 0 {
+			fingerprint = cert.NewFingerprintGenerator().FromCert(certs[0])
+		}
+
+		log := pfxlog.Logger().WithFields(map[string]interface{}{
+			"channel":     ch.LogicalName(),
+			"fingerprint": fingerprint,
+		})
+
 		enrollmentCerts := &edge_ctrl_pb.EnrollmentCertsResponse{}
 		if err := proto.Unmarshal(msg.Body, enrollmentCerts); err == nil {
 
 			if enrollmentCerts.ClientCertPem == "" {
-				pfxlog.Logger().Error("expected enrollment certs response to contain a client cert")
+				log.Error("expected enrollment certs response to contain a client cert")
 				return
 			}
 
 			if enrollmentCerts.ServerCertPem == "" {
-				pfxlog.Logger().Error("expected enrollment certs response to contain a server cert")
+				log.Error("expected enrollment certs response to contain a server cert")
 				return
 			}
 
 			certs := nfpem.PemToX509(enrollmentCerts.ClientCertPem)
 
 			if len(certs) == 0 {
-				pfxlog.Logger().Error("could not parse client certificate during enrollment extension")
+				log.Error("could not parse client certificate during enrollment extension")
 				return
 			}
 
 			if err != nil {
-				pfxlog.Logger().Errorf("error during enrollment extension, could not sign client cert: %v", err)
+				log.WithError(err).Error("error during enrollment extension, could not sign client certificate")
 				return
 			}
 
@@ -79,34 +93,37 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel2.Message, ch c
 			err := ch.SendForReplyAndDecode(verifyRequest, 30*time.Second, reply)
 
 			if err != nil {
-				pfxlog.Logger().Errorf("error during enrollment extension, verification reply produced an error: %v", err)
+				log.WithError(err).Errorf("error during enrollment extension, verification reply produced an error")
 				return
 			}
 
 			if reply.Code != "" {
-				pfxlog.Logger().Errorf("error during enrollment extension, verification resulted in an error: %s - %s", reply.Code, reply.Message)
+				log.WithError(err).WithFields(map[string]interface{}{
+					"replyCode":    reply.Code,
+					"replyMessage": reply.Message,
+				}).Errorf("error during enrollment extension, verification reply resulted in an error")
 				return
 			}
 
 			if err := h.id.SetCert(enrollmentCerts.ClientCertPem); err != nil {
-				pfxlog.Logger().Errorf("enrollment certs could not set client pem: %v", err)
+				log.WithError(err).Error("enrollment extension could not set client pem")
 			}
 
 			if err := h.id.SetServerCert(enrollmentCerts.ServerCertPem); err != nil {
-				pfxlog.Logger().Errorf("enrollment certs could not set server pem: %v", err)
+				pfxlog.Logger().WithError(err).Error("enrollment extension could not set server pem")
 			}
 
 			if err := h.id.Reload(); err == nil {
 				h.notifyCertUpdate()
 			} else {
-				pfxlog.Logger().Errorf("could not reload new enrollment certs, please manually restart the router: %v", err)
+				log.WithError(err).Errorf("could not reload extended certificates, please manually restart the router")
 			}
 
-			fingerprint := fmt.Sprintf("%x", sha1.Sum(h.id.Cert().Certificate[0]))
+			newFingerprint := fmt.Sprintf("%x", sha1.Sum(h.id.Cert().Certificate[0]))
 
-			pfxlog.Logger().Infof("enrollment extension done, new client certificate fingerprint (%s)", fingerprint)
+			log.WithField("newFingerprint", newFingerprint).Info("enrollment extension done")
 		} else {
-			pfxlog.Logger().Panic("could not convert message as enrollment certs response")
+			log.Error("could not convert message as enrollment certs response")
 		}
 	}()
 }
