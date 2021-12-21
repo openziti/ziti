@@ -80,12 +80,13 @@ func apiSessionDeleted(args ...interface{}) {
 	}
 
 	event := &ApiSessionEvent{
-		Namespace: ApiSessionEventNS,
-		EventType: ApiSessionEventTypeDeleted,
-		Id:        apiSession.Id,
-		Timestamp: time.Now(),
-		Token:     apiSession.Token,
-		IpAddress: apiSession.IPAddress,
+		Namespace:  ApiSessionEventNS,
+		EventType:  ApiSessionEventTypeDeleted,
+		Id:         apiSession.Id,
+		Timestamp:  time.Now(),
+		Token:      apiSession.Token,
+		IdentityId: apiSession.IdentityId,
+		IpAddress:  apiSession.IPAddress,
 	}
 
 	for _, handler := range getApiSessionEventHandlers() {
