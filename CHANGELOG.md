@@ -1,3 +1,9 @@
+# Release 0.24.3
+
+* Enhancement: API Session delete events now include the related identity id
+* Enhancement: controller and router start up messages now include the component id
+
+
 # Release 0.24.2
 
 ## What's New
