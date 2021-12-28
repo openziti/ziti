@@ -43,7 +43,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.9
 	github.com/openziti/foundation v0.16.9
-	github.com/openziti/sdk-golang v0.15.123
+	github.com/openziti/sdk-golang v0.15.124
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -59,7 +59,6 @@ require (
 	golang.org/x/net v0.0.0-20211029224645-99673261e6eb
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d
-	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -119,5 +118,6 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.6-0.20210726203631-07bc1bf47fb2 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
