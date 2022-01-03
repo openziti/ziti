@@ -329,6 +329,12 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 }
 
 func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
+	ctx.requireCreateEdgeRouter(tunneler, roleAttributes...)
+	ctx.requireEnrollEdgeRouter(tunneler, ctx.edgeRouterEntity.id)
+	return ctx.edgeRouterEntity
+}
+
+func (ctx *TestContext) requireCreateEdgeRouter(tunneler bool, roleAttributes ...string) *edgeRouter {
 	// If an edge router has already been created, delete it and create a new one
 	if ctx.edgeRouterEntity != nil {
 		ctx.AdminManagementSession.requireDeleteEntity(ctx.edgeRouterEntity)
@@ -342,7 +348,12 @@ func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes 
 	} else {
 		ctx.edgeRouterEntity = ctx.AdminManagementSession.requireNewEdgeRouter(roleAttributes...)
 	}
-	jwt := ctx.AdminManagementSession.getEdgeRouterJwt(ctx.edgeRouterEntity.id)
+
+	return ctx.edgeRouterEntity
+}
+
+func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) {
+	jwt := ctx.AdminManagementSession.getEdgeRouterJwt(routerId)
 
 	configFile := EdgeRouterConfFile
 	if tunneler {
@@ -356,8 +367,6 @@ func (ctx *TestContext) createAndEnrollEdgeRouter(tunneler bool, roleAttributes 
 	var keyAlg sdkConfig.KeyAlgVar
 	_ = keyAlg.Set("RSA")
 	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, "", keyAlg))
-
-	return ctx.edgeRouterEntity
 }
 
 func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {

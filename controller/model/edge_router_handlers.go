@@ -288,20 +288,21 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 		router.CertPem = nil
 		router.IsVerified = false
 
-		if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
-			db.FieldRouterFingerprint:             struct{}{},
-			persistence.FieldEdgeRouterCertPEM:    struct{}{},
-			persistence.FieldEdgeRouterIsVerified: struct{}{},
-		}); err != nil {
-			err = fmt.Errorf("unable to patch re-enrolling edge router: %v", err)
-			log.Error(err)
-			return err
-		}
 		return nil
 	})
 
 	if err != nil {
 		return fmt.Errorf("unabled to alter db for re-enrolling edge router: %v", err)
+	}
+
+	if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+		db.FieldRouterFingerprint:             struct{}{},
+		persistence.FieldEdgeRouterCertPEM:    struct{}{},
+		persistence.FieldEdgeRouterIsVerified: struct{}{},
+	}); err != nil {
+		err = fmt.Errorf("unable to patch re-enrolling edge router: %v", err)
+		log.Error(err)
+		return err
 	}
 
 	log.Info("clearing cached fingerprint for re-enrolling edge router")

@@ -153,19 +153,18 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			SyncStatus:         &syncStatusStr,
 			AppData:            &appData,
 		},
-		RoleAttributes:      &roleAttributes,
-		EnrollmentToken:     nil,
-		EnrollmentCreatedAt: nil,
-		EnrollmentExpiresAt: nil,
-		EnrollmentJwt:       nil,
-		IsVerified:          &router.IsVerified,
-		Fingerprint:         stringz.OrEmpty(router.Fingerprint),
-		VersionInfo:         MapVersionInfoToRestModel(routerState.VersionInfo),
-		IsTunnelerEnabled:   &router.IsTunnelerEnabled,
-		CertPem: router.CertPem,
+		RoleAttributes:        &roleAttributes,
+		EnrollmentToken:       nil,
+		EnrollmentCreatedAt:   nil,
+		EnrollmentExpiresAt:   nil,
+		EnrollmentJwt:         nil,
+		IsVerified:            &router.IsVerified,
+		Fingerprint:           stringz.OrEmpty(router.Fingerprint),
+		VersionInfo:           MapVersionInfoToRestModel(routerState.VersionInfo),
+		IsTunnelerEnabled:     &router.IsTunnelerEnabled,
+		CertPem:               router.CertPem,
 		UnverifiedFingerprint: router.UnverifiedFingerprint,
-		UnverifiedCertPem: router.UnverifiedCertPem,
-
+		UnverifiedCertPem:     router.UnverifiedCertPem,
 	}
 
 	if !router.IsVerified {
@@ -180,18 +179,17 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			return nil, err
 		}
 
-		if len(enrollments) != 1 {
-			return nil, fmt.Errorf("expected enrollment not found for unverified edge router %s", router.Id)
+		if len(enrollments) > 0 {
+			enrollment := enrollments[0]
+
+			createdAt := strfmt.DateTime(enrollment.CreatedAt)
+			expiresAt := strfmt.DateTime(*enrollment.ExpiresAt)
+
+			ret.EnrollmentExpiresAt = &expiresAt
+			ret.EnrollmentCreatedAt = &createdAt
+			ret.EnrollmentJwt = &enrollment.Jwt
+			ret.EnrollmentToken = &enrollment.Token
 		}
-		enrollment := enrollments[0]
-
-		createdAt := strfmt.DateTime(enrollment.CreatedAt)
-		expiresAt := strfmt.DateTime(*enrollment.ExpiresAt)
-
-		ret.EnrollmentExpiresAt = &expiresAt
-		ret.EnrollmentCreatedAt = &createdAt
-		ret.EnrollmentJwt = &enrollment.Jwt
-		ret.EnrollmentToken = &enrollment.Token
 	}
 
 	return ret, nil
