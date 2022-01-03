@@ -17,74 +17,55 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
+	"io"
 )
 
 const (
-	optionCtrlAddress  = "ctrlAddress"
-	defaultCtrlAddress = "quic:0.0.0.0:6262"
-)
-
-var (
-	createConfigRouterLong = templates.LongDesc(`
-		Creates the router config
-`)
-
-	createConfigRouterExample = templates.Examples(`
-		# Create the router config 
-		ziti create config router
-
-		# Create the router config with a particular ctrlListener
-		ziti create config router -ctrlListener quic:0.0.0.0:6262
-	`)
+	optionRouterName = "routerName"
 )
 
 // CreateConfigRouterOptions the options for the create spring command
 type CreateConfigRouterOptions struct {
 	CreateConfigOptions
 
-	CtrlAddress string
+	RouterName string
 }
 
-// NewCmdCreateConfigRouter creates a command object for the "create" command
-func NewCmdCreateConfigRouter(p common.OptionsProvider) *cobra.Command {
+// NewCmdCreateConfigRouter creates a command object for the "router" command
+func NewCmdCreateConfigRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &CreateConfigRouterOptions{
 		CreateConfigOptions: CreateConfigOptions{
-			CommonOptions: p(),
+			CommonOptions: common.CommonOptions{
+				Factory: f,
+				Out:     out,
+				Err:     errOut,
+			},
 		},
 	}
 
 	cmd := &cobra.Command{
 		Use:     "router",
-		Short:   "Create a router config",
+		Short:   "Creates a config file for specified Router type",
 		Aliases: []string{"rtr"},
-		Long:    createConfigRouterLong,
-		Example: createConfigRouterExample,
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			cmdhelper.CheckErr(cmd.Help())
 		},
 	}
 
-	options.addFlags(cmd, "", defaultCtrlListener)
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge(common.NewOptionsProvider(out, errOut)))
 
+	options.addFlags(cmd)
 	return cmd
 }
 
-// Run implements the command
-func (o *CreateConfigRouterOptions) Run() error {
-	if o.CtrlAddress == "" {
-		return util.MissingOption(optionCtrlAddress)
+func (options *CreateConfigRouterOptions) addFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVar(&options.RouterName, optionRouterName, "", "name of the router")
+	err := cmd.MarkPersistentFlagRequired(optionRouterName)
+	if err != nil {
+		return
 	}
-
-	return fmt.Errorf("UNIMPLEMENTED: '%s'", "create config router")
-
-	// return nil
 }
