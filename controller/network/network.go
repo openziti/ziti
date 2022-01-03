@@ -312,19 +312,19 @@ func (network *Network) DisconnectRouter(r *Router) {
 }
 
 func (network *Network) LinkConnected(id string, connected bool) error {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("linkId", id)
 
 	if l, found := network.linkController.get(id); found {
 		if connected {
 			l.addState(newLinkState(Connected))
-			log.Infof("link [l/%s] connected", id)
+			log.Info("link connected")
 			return nil
 		}
 		l.addState(newLinkState(Failed))
-		log.Infof("link [l/%s] failed", id)
+		log.Info("link failed")
 		return nil
 	}
-	return fmt.Errorf("no such link [l/%s]", id)
+	return errors.Errorf("no such link [l/%s]", id)
 }
 
 func (network *Network) VerifyLinkSource(targetRouter *Router, linkId string, fingerprints []string) error {
@@ -703,7 +703,7 @@ func (network *Network) Run() {
 	for {
 		select {
 		case r := <-network.routerChanged:
-			logrus.Infof("changed router [r/%s]", r.Id)
+			logrus.WithField("routerId", r.Id).Info("changed router")
 			network.assemble()
 			network.clean()
 
@@ -728,9 +728,10 @@ func (network *Network) Run() {
 }
 
 func (network *Network) handleLinkChanged(l *Link) {
-	logrus.Infof("changed link [l/%s]", l.Id)
+	log := logrus.WithField("linkId", l.Id)
+	log.Info("changed link")
 	if err := network.rerouteLink(l); err != nil {
-		logrus.Errorf("unexpected error rerouting link (%s)", err)
+		log.WithError(err).Error("unexpected error rerouting link")
 	}
 }
 
@@ -751,16 +752,16 @@ func (network *Network) GetCapabilities() []string {
 }
 
 func (network *Network) rerouteLink(l *Link) error {
-	logrus.Infof("link [l/%s] changed", l.Id)
-
 	circuits := network.circuitController.all()
-	for _, s := range circuits {
-		if s.Path.usesLink(l) {
-			logrus.Infof("circuit [s/%s] uses link [l/%s]", s.Id, l.Id)
-			if err := network.rerouteCircuit(s); err != nil {
-				logrus.Errorf("error rerouting circuit [s/%s], removing", s.Id)
-				if err := network.RemoveCircuit(s.Id, true); err != nil {
-					logrus.Errorf("error removing circuit [s/%s] (%s)", s.Id, err)
+	for _, circuit := range circuits {
+		if circuit.Path.usesLink(l) {
+			log := logrus.WithField("linkId", l.Id).
+				WithField("circuitId", circuit.Id)
+			log.Info("circuit uses link")
+			if err := network.rerouteCircuit(circuit); err != nil {
+				log.WithError(err).Error("error rerouting circuit, removing")
+				if err := network.RemoveCircuit(circuit.Id, true); err != nil {
+					log.WithError(err).Error("error removing circuit after reroute failure")
 				}
 			}
 		}

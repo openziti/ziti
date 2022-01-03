@@ -81,7 +81,7 @@ func (self *channelAccepter) verifyLink(l xlink.Xlink, ch channel2.Channel) erro
 	}
 	result := channel2.UnmarshalResult(reply)
 	if result.Success {
-		logrus.Infof("successfully verify link %v", l.Id().Token)
+		logrus.WithField("linkId", l.Id().Token).Info("successfully verified link")
 		return nil
 	}
 	return errors.Errorf("unable to verify link [%v]", result.Message)

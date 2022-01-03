@@ -19,7 +19,6 @@ package handler_ctrl
 import (
 	"crypto/sha1"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
@@ -27,6 +26,8 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/pkg/errors"
 )
 
 type ConnectHandler struct {
@@ -44,50 +45,13 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, xct
 }
 
 func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
-	log := pfxlog.ContextLogger(hello.IdToken)
-
 	id := hello.IdToken
 
-	/*
-	 * Control channel connections dump the client-supplied certificate details. We'll
-	 * soon be using these certificates for router enrollment.
-	 */
-	fingerprint := ""
-	if certificates != nil {
-		log.Debugf("peer has [%d] certificates", len(certificates))
-		for i, c := range certificates {
-			fingerprint = fmt.Sprintf("%x", sha1.Sum(c.Raw))
-			log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
-			log.Debugf("%d): peer common name [%s]", i, c.Subject.CommonName)
-		}
-	} else {
-		log.Warnf("peer has no certificates")
-	}
-	/* */
-
-	if self.network.ConnectedRouter(id) {
-		router := self.network.GetConnectedRouter(id)
-		name := "unknown"
-		if router != nil {
-			name = router.Name
-		}
-		return fmt.Errorf("router already connected id: %s, name: %s", id, name)
-	}
-
-	if r, err := self.network.GetRouter(id); err == nil {
-		if r.Fingerprint == nil {
-			return errors.New("router enrollment incomplete")
-		}
-		if *r.Fingerprint != fingerprint {
-			return errors.New("unenrolled router")
-		}
-	} else {
-		return errors.New("unenrolled router")
-	}
+	log := pfxlog.Logger().WithField("routerId", id)
 
 	// verify cert chain
 	if len(certificates) == 0 {
-		return errors.New("no certificates provided, unable to verify dialer")
+		return errors.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
 	}
 
 	config := self.identity.ServerTLSConfig()
@@ -98,16 +62,49 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
+	var validFingerPrints []string
 	var errorList errorz.MultipleErrors
 
-	for _, cert := range certificates {
+	for i, cert := range certificates {
 		if _, err := cert.Verify(opts); err == nil {
-			return nil
+			fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+			validFingerPrints = append(validFingerPrints, fingerprint)
+			log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
+			log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)
 		} else {
 			errorList = append(errorList, err)
 		}
 	}
 
-	//goland:noinspection GoNilness
-	return errorList.ToError()
+	if len(validFingerPrints) == 0 && len(errorList) > 0 {
+		return errorList.ToError()
+	}
+
+	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
+
+	if self.network.ConnectedRouter(id) {
+		router := self.network.GetConnectedRouter(id)
+		name := "unknown"
+		if router != nil {
+			name = router.Name
+		}
+		log.WithField("routerName", name).Error("router already connected")
+		return fmt.Errorf("router already connected id: %s, name: %s", id, name)
+	}
+
+	if r, err := self.network.GetRouter(id); err == nil {
+		if r.Fingerprint == nil {
+			log.Error("router enrollment incomplete")
+			return errors.Errorf("router enrollment incomplete, routerId: %v", id)
+		}
+		if !stringz.Contains(validFingerPrints, *r.Fingerprint) {
+			log.WithField("fp", *r.Fingerprint).WithField("givenFps", validFingerPrints).Error("router fingerprint mismatch")
+			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
+		}
+	} else {
+		log.Error("unknown/unenrolled router")
+		return errors.Errorf("unknown/unenrolled router, routerId: %v", id)
+	}
+
+	return nil
 }

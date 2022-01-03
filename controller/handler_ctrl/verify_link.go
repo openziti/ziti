@@ -39,7 +39,7 @@ func (h *verifyLinkHandler) ContentType() int32 {
 }
 
 func (h *verifyLinkHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
+	log := pfxlog.ContextLogger(ch.Label()).Entry
 
 	verifyLink := &ctrl_pb.VerifyLink{}
 	if err := proto.Unmarshal(msg.Body, verifyLink); err != nil {
@@ -47,9 +47,11 @@ func (h *verifyLinkHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		return
 	}
 
+	log = log.WithField("linkId", verifyLink.LinkId)
+
 	if err := h.network.VerifyLinkSource(h.r, verifyLink.LinkId, verifyLink.Fingerprints); err == nil {
 		go handler_common.SendSuccess(msg, ch, "link verified")
-		log.Debugf("link verification successful [l/%s]", verifyLink.LinkId)
+		log.Debug("link verification successful")
 	} else {
 		go handler_common.SendFailure(msg, ch, err.Error())
 		log.WithError(err).Error("link verification failed")

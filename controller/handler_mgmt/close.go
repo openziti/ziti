@@ -30,6 +30,6 @@ func newXmgmtCloseHandler(done chan struct{}) channel2.CloseHandler {
 }
 
 func (h *xmgmtCloseHandler) HandleClose(ch channel2.Channel) {
-	pfxlog.Logger().Infof("closing Xmgmt instances for [%s]", ch.Label())
+	pfxlog.ContextLogger(ch.Label()).Debug("closing Xmgmt instances")
 	close(h.done)
 }

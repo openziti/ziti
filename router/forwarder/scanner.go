@@ -79,7 +79,10 @@ func (self *Scanner) scan() {
 		idleTime := time.Since(ft.(*forwardTable).last)
 		if idleTime > self.timeout {
 			idleCircuitIds = append(idleCircuitIds, circuitId)
-			logrus.Warnf("[s/%s] idle for [%v], idle threshold [%v]", circuitId, idleTime, self.timeout)
+			logrus.WithField("circuitId", circuitId).
+				WithField("idleTime", idleTime).
+				WithField("idleThreshold", self.timeout).
+				Warn("circuit exceeds idle threshold")
 		}
 	}
 

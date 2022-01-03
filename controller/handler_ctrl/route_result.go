@@ -49,6 +49,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 }
 
 func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
+	log := logrus.WithField("routerId", self.r.Id)
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
 		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
 		rerrv, _ := msg.Headers[ctrl_msg.RouteResultErrorHeader]
@@ -70,16 +71,18 @@ func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
 			}
 
 		} else {
-			logrus.Errorf("error reading attempt number from route result (%v)", err)
+			log.WithError(err).Error("error reading attempt number from route result")
 			return
 		}
 	} else {
-		logrus.Errorf("missing attempt header in route result from [r/%s]", self.r.Id)
+		log.Error("missing attempt header in route result")
 	}
 }
 
 func (self *routeResultHandler) notRoutingCircuit(circuitId string) {
-	logrus.Warnf("not routing circuit [s/%s] for router [r/%s] (and not smart re-route), sending unroute", circuitId, self.r.Id)
+	log := logrus.WithField("circuitId", circuitId).
+		WithField("routerId", self.r.Id)
+	log.Warn("not routing circuit (and not smart re-route), sending unroute")
 	unroute := &ctrl_pb.Unroute{
 		CircuitId: circuitId,
 		Now:       true,
@@ -87,9 +90,9 @@ func (self *routeResultHandler) notRoutingCircuit(circuitId string) {
 	if body, err := proto.Marshal(unroute); err == nil {
 		unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err := self.r.Control.Send(unrouteMsg); err != nil {
-			logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", circuitId, self.r.Id, err)
+			log.WithError(err).Error("error sending unroute message to router")
 		}
 	} else {
-		logrus.Errorf("error sending unroute message for [s/%s] to [r/%s] (%v)", circuitId, self.r.Id, err)
+		log.WithError(err).Error("error sending unroute message to router")
 	}
 }

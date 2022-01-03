@@ -69,7 +69,7 @@ func (network *Network) clean() {
 		}
 	}
 	for _, lr := range lRemove {
-		log.Infof("removing [l/%s]", lr.Id)
+		log.WithField("linkId", lr.Id).Info("removing failed link", lr.Id)
 		network.linkController.remove(lr)
 	}
 }
