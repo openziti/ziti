@@ -365,8 +365,8 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		return nil, err
 	}
 	ctx.WithField("circuitId", circuitId)
-	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
-
+	ctx.WithField("attemptNumber", 1)
+	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	attempt := uint32(0)
@@ -407,33 +407,34 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 5: Routing
-		logger.Debugf("route attempt [#%d] for [s/%s]", attempt+1, circuitId)
+		logger.Debug("route attempt for circuit")
 		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator, ctx)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
-			logger.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, circuitId, err)
+			logger.WithError(err).Warn("route attempt for circuit failed")
 			attempt++
+			ctx.WithField("attemptNumber", attempt+1)
+			logger = logger.WithField("attemptNumber", attempt+1)
 			if attempt < network.options.CreateCircuitRetries {
 				continue
-
 			} else {
 				// revert successful routes
-				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateCircuitRetries, circuitId)
+				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes", network.options.CreateCircuitRetries)
 				for cleanupRId := range allCleanups {
 					if r, err := network.GetRouter(cleanupRId); err == nil {
 						if err := sendUnroute(r, circuitId, true); err == nil {
-							logger.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.WithField("routerId", cleanupRId).Debug("sent cleanup unroute for circuit")
 						} else {
-							logger.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.WithField("routerId", cleanupRId).Error("error sending cleanup unroute for circuit")
 						}
 					} else {
-						logger.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, circuitId)
+						logger.WithField("routerId", cleanupRId).Error("missing router for circuit cleanup")
 					}
 				}
 
-				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [s/%s]", network.options.CreateCircuitRetries, circuitId)
+				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [c/%s]", network.options.CreateCircuitRetries, circuitId)
 			}
 		}
 
@@ -448,16 +449,16 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 				cleanupCount++
 				if r, err := network.GetRouter(cleanupRId); err == nil {
 					if err := sendUnroute(r, circuitId, true); err == nil {
-						logger.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.WithField("routerId", cleanupRId).Debug("sent abandoned cleanup unroute for circuit to router")
 					} else {
-						logger.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.WithField("routerId", cleanupRId).WithError(err).Error("error sending abandoned cleanup unroute for circuit to router")
 					}
 				} else {
-					logger.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, circuitId)
+					logger.WithField("routerId", cleanupRId).Error("missing router for circuit, abandoned cleanup")
 				}
 			}
 		}
-		logger.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
+		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
 
 		// 6: Create Circuit Object
 		circuit := &Circuit{
@@ -471,7 +472,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		network.circuitController.add(circuit)
 		network.CircuitCreated(circuit.Id, circuit.ClientId, circuit.Service.Id, circuit.Path)
 
-		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, circuit.Path)
+		logger.WithField("path", circuit.Path).Debug("created circuit")
 		return circuit, nil
 	}
 }
