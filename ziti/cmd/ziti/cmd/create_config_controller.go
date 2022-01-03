@@ -19,15 +19,11 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"io"
 	"os"
 	"strings"
 	"text/template"
@@ -64,7 +60,7 @@ var controllerConfigTemplate string
 
 // CreateConfigControllerOptions the options for the create spring command
 type CreateConfigControllerOptions struct {
-	CreateConfigOptions
+	ParentOpts *CreateConfigOptions
 
 	ZitiHome                     string
 	Hostname                     string
@@ -80,20 +76,14 @@ type CreateConfigControllerOptions struct {
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreateConfigController(p *CreateConfigOptions) *cobra.Command {
 	//options := &CreateConfigControllerOptions{
 	//	CreateConfigOptions: p,
 	//}
 
-	options := &CreateConfigControllerOptions{
-		CreateConfigOptions: CreateConfigOptions{
-			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
-		},
-	}
+	options := &CreateConfigControllerOptions{}
+
+	options.ParentOpts = p
 
 	cmd := &cobra.Command{
 		Use:     "controller",
@@ -105,8 +95,8 @@ func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Wr
 			// TODO: Might not use this
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
+			options.ParentOpts.Cmd = cmd
+			options.ParentOpts.Args = args
 			err := run(options)
 			cmdhelper.CheckErr(err)
 		},
@@ -123,23 +113,23 @@ func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Wr
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "tls:0.0.0.0:6262", "address of the config controller listener")
-	cmd.Flags().StringVar(&options.DatabaseFile, optionsDatabaseFile, "ctrl.db", "location of the database file")
+	cmd.Flags().StringVar(&options.ParentOpts.DatabaseFile, optionsDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "tls:127.0.0.1:10000", "address of the config management listener")
 }
 
 // run implements the command
 func run(options *CreateConfigControllerOptions) error {
-	outputFile := options.Output
+	outputFile := options.ParentOpts.Output
 	//outputFile := viper.GetString(optionOutput)
-	isVerbose := viper.GetBool(optionVerbose)
+	//isVerbose := viper.GetBool(optionVerbose)
 	fmt.Printf("###run() output is: `%s`\n", outputFile)
 
 	// Setup logging
 	var logOut *os.File
-	if isVerbose {
+	if options.ParentOpts.Zerbose {
 		logrus.SetLevel(logrus.DebugLevel)
 		// Only print log to stdout if not printing config to stdout
-		if strings.ToLower(options.Output) != "stdout" {
+		if strings.ToLower(options.ParentOpts.Output) != "stdout" {
 			logOut = os.Stdout
 		} else {
 			logOut = os.Stderr
@@ -162,11 +152,11 @@ func run(options *CreateConfigControllerOptions) error {
 	populateEnvVars(options)
 
 	var f *os.File
-	if strings.ToLower(options.Output) != "stdout" {
+	if strings.ToLower(options.ParentOpts.Output) != "stdout" {
 		f, err = os.Create(outputFile)
-		logrus.Debugf("Created output file: %s", options.Output)
+		logrus.Debugf("Created output file: %s", options.ParentOpts.Output)
 		if err != nil {
-			return errors.Wrapf(err, "unable to create config file: %s", options.Output)
+			return errors.Wrapf(err, "unable to create config file: %s", options.ParentOpts.Output)
 		}
 	} else {
 		f = os.Stdout
@@ -182,7 +172,7 @@ func run(options *CreateConfigControllerOptions) error {
 		return errors.Wrap(err, "unable to execute template")
 	}
 
-	logrus.Debugf("Controller configuration generated successfully and written to: %s", options.Output)
+	logrus.Debugf("Controller configuration generated successfully and written to: %s", options.ParentOpts.Output)
 
 	return nil
 }
@@ -243,10 +233,10 @@ func populateEnvVars(options *CreateConfigControllerOptions) {
 
 	options.ZitiHome = zitiHome
 	options.Hostname = hostname
-	options.ZitiPKI = zitiPKI
-	options.ZitiFabCtrlPort = zitiFabCtrlPort
-	options.ZitiCtrlIntermediateName = zitiCtrlIntName
-	options.ZitiCtrlHostname = zitiCtrlHostname
+	options.ParentOpts.ZitiPKI = zitiPKI
+	options.ParentOpts.ZitiFabCtrlPort = zitiFabCtrlPort
+	options.ParentOpts.ZitiCtrlIntermediateName = zitiCtrlIntName
+	options.ParentOpts.ZitiCtrlHostname = zitiCtrlHostname
 	options.ZitiFabMgmtPort = zitiFabMgmtPort
 	options.ZitiEdgeCtrlAPI = zitiEdgeCtrlAPI
 	options.ZitiSigningIntermediateName = zitiSigningIntermediateName
