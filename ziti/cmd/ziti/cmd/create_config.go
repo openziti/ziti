@@ -17,10 +17,11 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
+	"io"
 )
 
 const (
@@ -39,18 +40,14 @@ type CreateConfigOptions struct {
 	Output                   string
 	DatabaseFile             string
 	ZitiPKI                  string
-	Zerbose                  bool
+	Verbose                  bool
 	ZitiCtrlIntermediateName string
 	ZitiCtrlHostname         string
 	ZitiFabCtrlPort          string
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
-func NewCmdCreateConfig(p common.OptionsProvider) *cobra.Command {
-	options := &CreateConfigOptions{
-		CommonOptions: p(),
-	}
-
+func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "config",
 		Short:   "Creates a config file for specified Ziti component",
@@ -60,21 +57,15 @@ func NewCmdCreateConfig(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	fmt.Printf("2#### output is: `%s`\n", options.Output)
-
-	cmd.AddCommand(NewCmdCreateConfigController(options))
+	cmd.AddCommand(NewCmdCreateConfigController(f, out, errOut))
 	//cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
-	cmd.AddCommand(NewCmdCreateConfigRouter(options.Factory, options.Out, options.Err))
-
-	options.addCreateFlags(cmd)
+	//cmd.AddCommand(NewCmdCreateConfigRouter(options.Factory, options.Out, options.Err))
 
 	return cmd
 }
 
 // Add flags that are global to all "create config" commands
 func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().BoolP(optionVerbose, "z", defaultVerbose, verboseDescription)
+	cmd.PersistentFlags().BoolVarP(&options.Verbose, "verbose", "v", false, "verbose logging")
 	cmd.PersistentFlags().StringVarP(&options.Output, "output", "q", defaultOutput, outputDescription)
-	//viper.BindPFlag(optionVerbose, cmd.PersistentFlags().Lookup(optionVerbose))
-	//viper.BindPFlag(optionOutput, cmd.PersistentFlags().Lookup(optionOutput))
 }
