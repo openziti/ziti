@@ -19,6 +19,10 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/foundation/util/term"
@@ -27,9 +31,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"os"
-	"strings"
 )
 
 // global state used by all subcommands are located here for easy discovery

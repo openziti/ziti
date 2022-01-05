@@ -18,12 +18,13 @@ package edge
 
 import (
 	"fmt"
+	"io"
+
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 // versionOptions are the flags for version commands
