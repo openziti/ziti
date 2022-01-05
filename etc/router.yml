@@ -5,69 +5,116 @@
 # an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
 # documentation.
 #
-v: 3
+v: 2
 
+# Identity
+#
+# Define all of the paths to the certificates and key required to establish the router's identity.
+#
 identity:
-  cert:                 "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-server.cert"
-  key:                  "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-cas.cert"
+  cert:                 etc/ca/intermediate/certs/001-client.cert.pem
+  server_cert:          etc/ca/intermediate/certs/001-server.cert.pem
+  key:                  etc/ca/intermediate/private/001.key.pem
+  ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
-ctrl:
-  endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
-
-link:
-  listeners:
-    - binding:          transport
-      bind:             tls:0.0.0.0:10080
-      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
-      options:
-        outQueueSize:   16
-  dialers:
-    - binding: transport
-
-listeners:
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
-  - binding: edge
-    address: tls:0.0.0.0:{{ .ZitiEdgeRouterPort }}
-    options:
-      advertise: {{ .ZitiEdgeRouterHostname }}:{{ .ZitiEdgeRouterPort }}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-
-edge:
-  csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
-    sans:
-      dns:
-        - {{ .ZitiEdgeRouterHostname }}
-        - localhost
-      ip:
-        - "127.0.0.1"
-
-#transport:
-#  ws:
-#    writeTimeout:      10
-#    readTimeout:       5
-#    idleTimeout:       5
-#    pongTimeout:       60
-#    pingInterval:      54
-#    handshakeTimeout:  10
-#    readBufferSize:    4096
-#    writeBufferSize:   4096
-#    enableCompression: true
-#    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .ZitiEdgeWSSRouterName }}-router-server.cert
-#    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .ZitiEdgeWSSRouterName }}-router-server.key
-
+# Forwarder Configuration
+#
 forwarder:
+  #
+  # How frequently does the forwarder probe the link latency. This will ultimately determine the resolution of the
+  # responsiveness available to smart routing. This resolution comes at the expense of bandwidth utilization for the
+  # probes, control plane utilization, and CPU utilization processing the results.
+  #
   latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
+
+# Tracing
+#
+# Record message traces of all messages captured on any channel (`ctrl` or `link`) in "dump" format to the
+# specified path. The `ziti-fabric trace dump` utility will convert this binary dump file into a human-readable
+# explanation of the messages that were sent and received by the router.
+#
+#trace:
+#  path:                 ctrl.trace
+
+# Profiling
+#
+# Enable and configure memory and CPU profiling for the router. See `go tool pprof` for information on how 
+# to work with this profile data.
+#
+#profile:
+  #memory:
+    #path:                ctrl.memprof
+    #
+    # Defines the interval at which memory profiling snapshots will be recorded.
+    #
+    #intervalMs:          15 
+  #cpu:
+    #path:                ctrl.cpuprof
+
+# Control Channel Configuration
+#
+# Define the endpoint address for the control ('ctrl') channel.
+#
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+
+healthCheck:
+  # Specifies the health check port. If not present, the health check will be disabled
+  #port: 8081
+  # Specifies what address to bind to. Default to blank, which will bind to all available addresses
+  bindAddress: ""
+  # How often to ping the controller over the control channel. Defaults to 30 seconds
+  ctrlPingInterval: 30s
+  # When to timeout the ping. Defaults to 15 seconds
+  ctrlPingTimeout: 15s
+  # How long to wait before pinging the controller. Defaults to 15 seconds
+  initialDelay: 15s
+
+# Listener Configuration
+#
+# Define the Xgress listeners to start up, and their configuration.
+#
+listeners:
+  # basic ssh proxy
+  - binding:            proxy
+    address:            tcp:0.0.0.0:1122
+    service:            ssh
+
+  # for iperf_tcp (iperf3)
+  - binding:            proxy
+    address:            tcp:0.0.0.0:7001
+    service:            iperf
+
+  # for iperf_udp (iperf3)
+  - binding:            proxy_udp
+    address:            udp:0.0.0.0:7001
+    service:            iperf_udp
+
+  # example xgress_transport
+  - binding:            transport
+    address:            tls:0.0.0.0:7002
+    #
+    # Every Xgress listener will accept at least the following options.
+    #
+    options:
+      #
+      # `retransmission` should always be enabled. Disabling this disables retransmission support across
+      # the overlay for this router. This should either be on, or off for all routers in a network.
+      #
+      retransmission:   true
+      #
+      # `randomDrops` enables random payload discarding, which is useful for testing retransmission functions.
+      #
+      randomDrops:      true
+      #
+      # `drop1InN` controls how frequently payloads will be randomly dropped.
+      #
+      drop1InN:         5000
+
+  # example xgress_udp
+  - binding:            udp
+    address:            udp:0.0.0.0:7003
+    options:
+      retransmission:   true
+      randomDrops:      true
+      drop1InN:         5000
