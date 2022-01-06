@@ -360,7 +360,7 @@ link:
 * Bug fix: Fix router panic which can happen on link bind
 * Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
 * Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
-* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Change default dial retries to 3 from 2
 * Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
 * Change: Support for link types removed
 

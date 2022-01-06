@@ -48,6 +48,8 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 
 	agentCmd.AddCommand(ctrlCmd)
 	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
+	ctrlCmd.AddCommand(NewAgentCtrlRaftJoin(p))
+	ctrlCmd.AddCommand(NewAgentCtrlRaftList(p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",
