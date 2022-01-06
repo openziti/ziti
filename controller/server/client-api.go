@@ -143,7 +143,6 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 	innerClientHandler := ae.ClientApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(fmt.Sprintf("%s.%s", r.URL.Path, r.Method))
 		start := time.Now()
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
@@ -177,6 +176,7 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		response.AddHeaders(rc)
 
 		innerClientHandler.ServeHTTP(rw, r)
+		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(r))
 		timer.UpdateSince(start)
 	})
 
