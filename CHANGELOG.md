@@ -1,8 +1,11 @@
 # Release 0.24.3
 
+## What's New
+
 * Enhancement: API Session delete events now include the related identity id
 * Enhancement: controller and router start up messages now include the component id
-
+* Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
+* Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
 
 # Release 0.24.2
 
