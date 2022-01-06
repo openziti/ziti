@@ -831,8 +831,6 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openzipkin/zipkin-go v0.1.6/go.mod h1:QgAqvLzwWbR/WpD4A3cGpPtJrZXNIiJc5AZX7/PBEpw=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.21.30 h1:ZN05kqjMRkMb1WpojxUO+Viz2iUrSRVY+GqYCLTEzwM=
-github.com/openziti/edge v0.21.30/go.mod h1:C3L5JIijYGc54qX7Jw17WCz8bO9cM9hoMSxdBW00sjk=
 github.com/openziti/edge v0.21.31 h1:ylh8juSAwITYccp6qmDD3mO6vinzfRC9rUgYnoZSt9w=
 github.com/openziti/edge v0.21.31/go.mod h1:C3L5JIijYGc54qX7Jw17WCz8bO9cM9hoMSxdBW00sjk=
 github.com/openziti/fabric v0.17.12 h1:/sUR7Kdy+UCPD3a66u8YW86h73TfAbISaWfcYUjNckY=
