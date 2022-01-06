@@ -1,11 +1,14 @@
 package api
 
 import (
+	"bytes"
+	"fmt"
 	"github.com/go-openapi/runtime"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/util/errorz"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -67,15 +70,42 @@ func (responder *ResponderImpl) Respond(data interface{}, httpStatus int) {
 
 func (responder *ResponderImpl) RespondWithProducer(producer runtime.Producer, data interface{}, httpStatus int) {
 	w := responder.rc.GetResponseWriter()
-	w.WriteHeader(httpStatus)
-
-	err := producer.Produce(w, data)
+	buff := &bytes.Buffer{}
+	err := producer.Produce(buff, data)
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).
 			WithField("requestId", responder.rc.GetId()).
 			WithField("path", responder.rc.GetRequest().URL.Path).
-			Debug("could not respond, producer errored, possible timeout")
+			WithError(err).
+			Error("could not respond, producer errored")
+
+		w.Header().Set("Content-Type", "text/plain")
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte(fmt.Errorf("could not respond, producer errored: %v", err).Error()))
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).
+				WithField("requestId", responder.rc.GetId()).
+				WithField("path", responder.rc.GetRequest().URL.Path).
+				WithError(err).
+				Error("could not respond with producer error")
+		}
+
+		return
+	}
+
+	w.Header().Set("Content-Length", strconv.Itoa(buff.Len()))
+	w.WriteHeader(httpStatus)
+
+	_, err = w.Write(buff.Bytes())
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).
+			WithField("requestId", responder.rc.GetId()).
+			WithField("path", responder.rc.GetRequest().URL.Path).
+			WithError(err).
+			Error("could not respond, writing to response failed")
 	}
 }
 
