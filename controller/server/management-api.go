@@ -108,7 +108,7 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 	innerManagementHandler := ae.ManagementApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(fmt.Sprintf("%s[%s]", r.URL.Path, r.Method))
+		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(fmt.Sprintf("%s.%s", r.URL.Path, r.Method))
 		start := time.Now()
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
