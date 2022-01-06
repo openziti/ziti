@@ -18,14 +18,11 @@ package cmd
 
 import (
 	_ "embed"
-	"fmt"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"strings"
 	"text/template"
@@ -64,23 +61,33 @@ var controllerConfigTemplate string
 type CreateConfigControllerOptions struct {
 	CreateConfigOptions
 
-	ZitiHome                     string
-	Hostname                     string
-	CtrlListener                 string
-	MgmtListener                 string
-	ZitiFabMgmtPort              string
-	ZitiEdgeCtrlAPI              string
-	ZitiSigningIntermediateName  string
-	ZitiEdgeCtrlPort             string
-	ZitiCtrlRawname              string
-	ZitiEdgeCtrlIntermediateName string
-	ZitiEdgeCtrlHostname         string
-	Zerbose                      bool
+	CtrlListener string
+	MgmtListener string
 }
 
+//type ControllerConfigValues struct {
+//	*ConfigValues
+//
+//	CtrlListener                 string
+//	MgmtListener                 string
+//	ZitiHome                     string
+//	Hostname                     string
+//	ZitiFabMgmtPort              string
+//	ZitiEdgeCtrlAPI              string
+//	ZitiSigningIntermediateName  string
+//	ZitiEdgeCtrlPort             string
+//	ZitiCtrlRawname              string
+//	ZitiEdgeCtrlIntermediateNameVarName string
+//	ZitiEdgeCtrlHostname         string
+//}
+
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &CreateConfigControllerOptions{}
+func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
+	controllerOptions := &CreateConfigControllerOptions{}
+
+	// controllerOptions := &CreateConfigControllerOptions{
+	// 	CreateConfigOptions: configOptions,
+	// }
 
 	cmd := &cobra.Command{
 		Use:     "controller",
@@ -89,12 +96,27 @@ func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Wr
 		Long:    createConfigControllerLong,
 		Example: createConfigControllerExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
-			// TODO: Might not use this
+			// Setup logging
+			var logOut *os.File
+			if controllerOptions.Verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+				// Only print log to stdout if not printing config to stdout
+				if strings.ToLower(controllerOptions.Output) != "stdout" {
+					logOut = os.Stdout
+				} else {
+					logOut = os.Stderr
+				}
+				logrus.SetOutput(logOut)
+			}
+
+			// Update controller specific values with configOptions passed in
+			// data.CtrlListener = controllerOptions.CtrlListener
+			// data.MgmtListener = controllerOptions.MgmtListener
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := run(options)
+			controllerOptions.Cmd = cmd
+			controllerOptions.Args = args
+			err := controllerOptions.run(data)
 			cmdhelper.CheckErr(err)
 		},
 		PostRun: func(cmd *cobra.Command, args []string) {
@@ -102,43 +124,27 @@ func NewCmdCreateConfigController(f cmdutil.Factory, out io.Writer, errOut io.Wr
 			logrus.SetOutput(os.Stdout)
 		},
 	}
-	options.addCreateFlags(cmd)
-	options.addFlags(cmd)
+	controllerOptions.addCreateFlags(cmd)
+	controllerOptions.addFlags(cmd)
 
 	return cmd
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().BoolVarP(&options.Zerbose, "zerbose", "z", false, "zerbose logging")
-
 	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "tls:0.0.0.0:6262", "address of the config controller listener")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionsDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "tls:127.0.0.1:10000", "address of the config management listener")
 }
 
 // run implements the command
-func run(options *CreateConfigControllerOptions) error {
-	outputFile := options.Output
-	fmt.Printf("###run() output is: `%s`\n", outputFile)
-
-	// Setup logging
-	var logOut *os.File
-	if options.Zerbose {
-		logrus.SetLevel(logrus.DebugLevel)
-		// Only print log to stdout if not printing config to stdout
-		if strings.ToLower(options.Output) != "stdout" {
-			logOut = os.Stdout
-		} else {
-			logOut = os.Stderr
-		}
-		logrus.SetOutput(logOut)
-	}
+func (options *CreateConfigControllerOptions) run(data *ConfigTemplateValues) error {
 
 	tmpl, err := template.New("controller-config").Parse(controllerConfigTemplate)
 	if err != nil {
 		return err
 	}
 
+	// TODO: Do we want to create the path if it doesn't exist?
 	//baseDir := filepath.Dir(options.Output)
 	//if baseDir != "." {
 	//	if err := os.MkdirAll(baseDir, 0700); err != nil {
@@ -146,11 +152,9 @@ func run(options *CreateConfigControllerOptions) error {
 	//	}
 	//}
 
-	populateEnvVars(options)
-
 	var f *os.File
 	if strings.ToLower(options.Output) != "stdout" {
-		f, err = os.Create(outputFile)
+		f, err = os.Create(options.Output)
 		logrus.Debugf("Created output file: %s", options.Output)
 		if err != nil {
 			return errors.Wrapf(err, "unable to create config file: %s", options.Output)
@@ -160,91 +164,11 @@ func run(options *CreateConfigControllerOptions) error {
 	}
 	defer func() { _ = f.Close() }()
 
-	//// If using stdout for config, send logs to stderr
-	//if strings.ToLower(options.Output) == "stdout" {
-	//	logrus.SetOutput(os.Stderr)
-	//}
-
-	if err := tmpl.Execute(f, options); err != nil {
+	if err := tmpl.Execute(f, data); err != nil {
 		return errors.Wrap(err, "unable to execute template")
 	}
 
 	logrus.Debugf("Controller configuration generated successfully and written to: %s", options.Output)
 
 	return nil
-}
-
-func populateEnvVars(options *CreateConfigControllerOptions) {
-
-	// Get and add hostname to the params
-	hostname, err := os.Hostname()
-	handleVariableError(err, "hostname")
-
-	// Get and add ziti home to the params
-	zitiHome, err := cmdhelper.GetZitiHome()
-	handleVariableError(err, cmdhelper.ZitiHomeVarName)
-
-	// Get Ziti Controller Rawname
-	zitiCtrlRawname, err := cmdhelper.GetZitiCtrlRawname()
-	handleVariableError(err, cmdhelper.ZitiCtrlRawnameVarName)
-
-	// Get Ziti fabric ctrl port
-	zitiFabCtrlPort, err := cmdhelper.GetZitiFabCtrlPort()
-	handleVariableError(err, cmdhelper.ZitiFabCtrlPortVarName)
-
-	// Get Ziti PKI path
-	zitiPKI, err := cmdhelper.GetZitiPKI()
-	handleVariableError(err, cmdhelper.ZitiPKIVarName)
-
-	// Get Ziti Controller Intermediate Name
-	zitiCtrlIntName, err := cmdhelper.GetZitiCtrlIntermediateName()
-	handleVariableError(err, cmdhelper.ZitiCtrlIntermediateNameVarName)
-
-	// Get Ziti Controller Hostname
-	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlHostname()
-	handleVariableError(err, cmdhelper.ZitiCtrlHostnameVarName)
-
-	// Get Ziti Fabric Management Port
-	zitiFabMgmtPort, err := cmdhelper.GetZitiFabMgmtPort()
-	handleVariableError(err, cmdhelper.ZitiFabMgmtPortVarName)
-
-	// Get Ziti Edge Controller API
-	zitiEdgeCtrlAPI, err := cmdhelper.GetZitiEdgeControllerAPI()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlAPIVarName)
-
-	// Get Ziti Signing Intermediate Name
-	zitiSigningIntermediateName, err := cmdhelper.GetZitiSigningIntermediateName()
-	handleVariableError(err, cmdhelper.ZitiSigningIntermediateNameVarName)
-
-	// Get Ziti Edge Controller Port
-	zitiEdgeCtrlPort, err := cmdhelper.GetZitiEdgeCtrlPort()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlPortVarName)
-
-	// Get Ziti Edge Intermediate Name
-	zitiEdgeIntermediateName, err := cmdhelper.GetZitiEdgeCtrlIntermediateName()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlPortVarName)
-
-	// Get Ziti Edge Controller Hostname
-	zitiEdgeCtrlHostname, err := cmdhelper.GetZitiEdgeCtrlHostname()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlHostnameVarName)
-
-	options.ZitiHome = zitiHome
-	options.Hostname = hostname
-	options.ZitiPKI = zitiPKI
-	options.ZitiFabCtrlPort = zitiFabCtrlPort
-	options.ZitiCtrlIntermediateName = zitiCtrlIntName
-	options.ZitiCtrlHostname = zitiCtrlHostname
-	options.ZitiFabMgmtPort = zitiFabMgmtPort
-	options.ZitiEdgeCtrlAPI = zitiEdgeCtrlAPI
-	options.ZitiSigningIntermediateName = zitiSigningIntermediateName
-	options.ZitiEdgeCtrlPort = zitiEdgeCtrlPort
-	options.ZitiCtrlRawname = zitiCtrlRawname
-	options.ZitiEdgeCtrlIntermediateName = zitiEdgeIntermediateName
-	options.ZitiEdgeCtrlHostname = zitiEdgeCtrlHostname
-}
-
-func handleVariableError(err error, varName string) {
-	if err != nil {
-		logrus.Errorf("Unable to get %s", varName)
-	}
 }

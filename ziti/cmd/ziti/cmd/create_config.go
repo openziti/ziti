@@ -20,12 +20,14 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
+	"os"
 )
 
 const (
-	optionVerbose      = "Zerbose"
+	optionVerbose      = "verbose"
 	defaultVerbose     = false
 	verboseDescription = "Enable verbose logging. Logging will be sent to stdout if the config output is sent to a file. If output is sent to stdout, logging will be sent to stderr"
 	optionOutput       = "output"
@@ -37,13 +39,35 @@ const (
 type CreateConfigOptions struct {
 	common.CommonOptions
 
-	Output                   string
-	DatabaseFile             string
+	Output       string
+	DatabaseFile string
+}
+
+type ConfigTemplateValues struct {
 	ZitiPKI                  string
-	Verbose                  bool
 	ZitiCtrlIntermediateName string
 	ZitiCtrlHostname         string
 	ZitiFabCtrlPort          string
+
+	// Controller specific
+	CtrlListener                 string
+	MgmtListener                 string
+	ZitiHome                     string
+	Hostname                     string
+	ZitiFabMgmtPort              string
+	ZitiEdgeCtrlAPI              string
+	ZitiSigningIntermediateName  string
+	ZitiEdgeCtrlPort             string
+	ZitiCtrlRawname              string
+	ZitiEdgeCtrlIntermediateName string
+	ZitiEdgeCtrlHostname         string
+
+	// Router specific
+	EdgeRouterName         string
+	ZitiEdgeRouterHostname string
+	ZitiEdgeRouterPort     string
+	ZitiEdgeWSSRouterName  string
+	WssEnabled             bool
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
@@ -57,15 +81,104 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigController(f, out, errOut))
-	//cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
-	//cmd.AddCommand(NewCmdCreateConfigRouter(options.Factory, options.Out, options.Err))
+	// Get env variable data global to all config files
+	templateData := &ConfigTemplateValues{}
+	templateData.populateEnvVars()
+
+	cmd.AddCommand(NewCmdCreateConfigController(templateData))
+	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
+	cmd.AddCommand(NewCmdCreateConfigRouter(templateData))
 
 	return cmd
 }
 
 // Add flags that are global to all "create config" commands
 func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().BoolVarP(&options.Verbose, "verbose", "v", false, "verbose logging")
-	cmd.PersistentFlags().StringVarP(&options.Output, "output", "q", defaultOutput, outputDescription)
+	cmd.PersistentFlags().BoolVarP(&options.Verbose, optionVerbose, "v", defaultVerbose, verboseDescription)
+	cmd.PersistentFlags().StringVarP(&options.Output, optionOutput, "o", defaultOutput, outputDescription)
+}
+
+func (data *ConfigTemplateValues) populateEnvVars() {
+
+	// Get and add hostname to the params
+	hostname, err := os.Hostname()
+	handleVariableError(err, "hostname")
+
+	// Get and add ziti home to the params
+	zitiHome, err := cmdhelper.GetZitiHome()
+	handleVariableError(err, cmdhelper.ZitiHomeVarName)
+
+	// Get Ziti Controller Rawname
+	zitiCtrlRawname, err := cmdhelper.GetZitiCtrlRawname()
+	handleVariableError(err, cmdhelper.ZitiCtrlRawnameVarName)
+
+	// Get Ziti Fabric Management Port
+	zitiFabMgmtPort, err := cmdhelper.GetZitiFabMgmtPort()
+	handleVariableError(err, cmdhelper.ZitiFabMgmtPortVarName)
+
+	// Get Ziti Edge Controller API
+	zitiEdgeCtrlAPI, err := cmdhelper.GetZitiEdgeControllerAPI()
+	handleVariableError(err, cmdhelper.ZitiEdgeCtrlAPIVarName)
+
+	// Get Ziti Signing Intermediate Name
+	zitiSigningIntermediateName, err := cmdhelper.GetZitiSigningIntermediateName()
+	handleVariableError(err, cmdhelper.ZitiSigningIntermediateNameVarName)
+
+	// Get Ziti Edge Controller Port
+	zitiEdgeCtrlPort, err := cmdhelper.GetZitiEdgeCtrlPort()
+	handleVariableError(err, cmdhelper.ZitiEdgeCtrlPortVarName)
+
+	// Get Ziti Edge Intermediate Name
+	zitiEdgeIntermediateName, err := cmdhelper.GetZitiEdgeCtrlIntermediateName()
+	handleVariableError(err, cmdhelper.ZitiEdgeCtrlPortVarName)
+
+	// Get Ziti Edge Controller Hostname
+	zitiEdgeCtrlHostname, err := cmdhelper.GetZitiEdgeCtrlHostname()
+	handleVariableError(err, cmdhelper.ZitiEdgeCtrlHostnameVarName)
+
+	// Get Ziti Controller Intermediate Name
+	zitiCtrlIntName, err := cmdhelper.GetZitiCtrlIntermediateName()
+	handleVariableError(err, cmdhelper.ZitiCtrlIntermediateNameVarName)
+
+	// Get Ziti Controller Hostname
+	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlHostname()
+	handleVariableError(err, cmdhelper.ZitiCtrlHostnameVarName)
+
+	// Get Ziti fabric ctrl port
+	zitiFabCtrlPort, err := cmdhelper.GetZitiFabCtrlPort()
+	handleVariableError(err, cmdhelper.ZitiFabCtrlPortVarName)
+
+	// Get Ziti PKI path
+	zitiPKI, err := cmdhelper.GetZitiPKI()
+	handleVariableError(err, cmdhelper.ZitiPKIVarName)
+
+	// Get Ziti Edge Router Hostname
+	zitiEdgeRouterHostName, err := cmdhelper.GetZitiEdgeRouterHostname()
+	handleVariableError(err, cmdhelper.ZitiEdgeRouterHostnameVarName)
+
+	// Get Ziti Edge Router Port
+	zitiEdgeRouterPort, err := cmdhelper.GetZitiEdgeRouterPort()
+	handleVariableError(err, cmdhelper.ZitiEdgeRouterPortVarName)
+
+	data.ZitiPKI = zitiPKI
+	data.ZitiCtrlIntermediateName = zitiCtrlIntName
+	data.ZitiCtrlHostname = zitiCtrlHostname
+	data.ZitiFabCtrlPort = zitiFabCtrlPort
+	data.ZitiHome = zitiHome
+	data.Hostname = hostname
+	data.ZitiFabMgmtPort = zitiFabMgmtPort
+	data.ZitiEdgeCtrlAPI = zitiEdgeCtrlAPI
+	data.ZitiSigningIntermediateName = zitiSigningIntermediateName
+	data.ZitiEdgeCtrlPort = zitiEdgeCtrlPort
+	data.ZitiCtrlRawname = zitiCtrlRawname
+	data.ZitiEdgeCtrlIntermediateName = zitiEdgeIntermediateName
+	data.ZitiEdgeCtrlHostname = zitiEdgeCtrlHostname
+	data.ZitiEdgeRouterHostname = zitiEdgeRouterHostName
+	data.ZitiEdgeRouterPort = zitiEdgeRouterPort
+}
+
+func handleVariableError(err error, varName string) {
+	if err != nil {
+		logrus.Errorf("Unable to get %s", varName)
+	}
 }

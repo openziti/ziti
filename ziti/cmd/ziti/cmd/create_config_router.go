@@ -17,18 +17,19 @@
 package cmd
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
+	"os"
+	"strings"
 )
 
 const (
 	optionRouterName = "routerName"
 )
 
-// CreateConfigRouterOptions the options for the create spring command
+// CreateConfigRouterOptions the options for the router command
 type CreateConfigRouterOptions struct {
 	CreateConfigOptions
 
@@ -36,34 +37,41 @@ type CreateConfigRouterOptions struct {
 }
 
 // NewCmdCreateConfigRouter creates a command object for the "router" command
-func NewCmdCreateConfigRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &CreateConfigRouterOptions{
-		CreateConfigOptions: CreateConfigOptions{
-			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
-		},
-	}
+func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
+	options := &CreateConfigRouterOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "router",
-		Short:   "Creates a config file for specified Router type",
+		Short:   "Creates a config file for specified Router name",
 		Aliases: []string{"rtr"},
+		PreRun: func(cmd *cobra.Command, args []string) {
+			// Setup logging
+			var logOut *os.File
+			if options.Verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+				// Only print log to stdout if not printing config to stdout
+				if strings.ToLower(options.Output) != "stdout" {
+					logOut = os.Stdout
+				} else {
+					logOut = os.Stderr
+				}
+				logrus.SetOutput(logOut)
+			}
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigRouterEdge(common.NewOptionsProvider(out, errOut)))
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge(data))
 
+	options.addCreateFlags(cmd)
 	options.addFlags(cmd)
 	return cmd
 }
 
 func (options *CreateConfigRouterOptions) addFlags(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVar(&options.RouterName, optionRouterName, "", "name of the router")
+	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
 		return

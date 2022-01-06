@@ -1,0 +1,88 @@
+# Config Format Version
+#
+# Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+# expected by the router will be incremented. When the controller tries to load a configuration file with
+# an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+# documentation.
+#
+v: 3
+
+identity:
+  cert:                 "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-client.cert"
+  server_cert:          "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-server.cert"
+  key:                  "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-server.key"
+  ca:                   "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-cas.cert"
+
+ctrl:
+  endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
+
+link:
+  listeners:
+    - binding:          transport
+      bind:             tls:0.0.0.0:10080
+      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
+      options:
+        outQueueSize:   16
+  dialers:
+    - binding: transport
+
+listeners:
+  - binding: tunnel
+    options:
+      mode: host #tproxy|tun|host
+  - binding: edge
+    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+    options:
+      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+      connectTimeoutMs: 5000
+      getSessionTimeout: 60s
+
+edge:
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+    sans:
+      dns:
+        - {{ .ZitiEdgeRouterHostname }}
+        - localhost
+      ip:
+        - "127.0.0.1"
+
+  {{if .WssEnabled }}
+transport:
+  ws:
+    writeTimeout: 10
+    readTimeout: 5
+    idleTimeout: 5
+    pongTimeout: 60
+    pingInterval: 54
+    handshakeTimeout: 10
+    readBufferSize: 4096
+    writeBufferSize: 4096
+    enableCompression: true
+    server_cert: { { .ZitiPKI } }/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
+    key: { { .ZitiPKI } }/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
+  {{else}}
+#transport:
+#  ws:
+#    writeTimeout:      10
+#    readTimeout:       5
+#    idleTimeout:       5
+#    pongTimeout:       60
+#    pingInterval:      54
+#    handshakeTimeout:  10
+#    readBufferSize:    4096
+#    writeBufferSize:   4096
+#    enableCompression: true
+#    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
+#    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
+  {{end}}
+forwarder:
+  latencyProbeInterval: 1000
+  xgressDialQueueLength: 1000
+  xgressDialWorkerCount: 128
+  linkDialQueueLength: 1000
+  linkDialWorkerCount: 10
