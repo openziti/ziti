@@ -108,6 +108,8 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 	innerManagementHandler := ae.ManagementApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(fmt.Sprintf("%s[%s]", r.URL.Path, r.Method))
+		start := time.Now()
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
 		if r.URL.Path == controller.ManagementRestApiSpecUrl {
@@ -131,6 +133,7 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		response.AddHeaders(rc)
 
 		innerManagementHandler.ServeHTTP(rw, r)
+		timer.UpdateSince(start)
 	})
 
 	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
