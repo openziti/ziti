@@ -83,6 +83,7 @@ type AppEnv struct {
 	ManagementApi            *managementOperations.ZitiEdgeManagementAPI
 	ClientApi                *clientOperations.ZitiEdgeClientAPI
 	IdentityRefreshMap       cmap.ConcurrentMap
+	identityRefreshMeter     metrics.Meter
 	StartupTime              time.Time
 	InstanceId               string
 	findEnrollmentSignerOnce sync.Once
@@ -319,6 +320,8 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 		StartupTime:        time.Now().UTC(),
 	}
 
+	ae.identityRefreshMeter = ae.GetHostController().GetNetwork().GetMetricsRegistry().Meter("identity.refresh")
+
 	clientApi.APIAuthorizer = authorizer{}
 	managementApi.APIAuthorizer = authorizer{}
 
@@ -491,6 +494,7 @@ func (ae *AppEnv) HandleServiceEvent(event *persistence.ServiceEvent) {
 
 func (ae *AppEnv) HandleServiceUpdatedEventForIdentityId(identityId string) {
 	ae.IdentityRefreshMap.Set(identityId, time.Now().UTC())
+	ae.identityRefreshMeter.Mark(1)
 }
 
 func (ae *AppEnv) SetEnrollmentSigningCert(serverCert *tls.Certificate) {
