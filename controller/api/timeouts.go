@@ -89,6 +89,12 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case <-ctx.Done():
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
+
+		pfxlog.Logger().WithFields(map[string]interface{}{
+			"url":    r.URL,
+			"method": r.Method,
+		}).Errorf("timeout for request hit, returning Service Unavailable 503")
+
 		w.Header().Set("content-type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)
 		_ = h.errorBody(w, r)
