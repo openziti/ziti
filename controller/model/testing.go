@@ -120,10 +120,6 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
-	return NewTestContextWithDb(t, "")
-}
-
-func NewTestContextWithDb(t *testing.T, dbPath string) *TestContext {
 	context := &TestContext{
 		TestContext:     persistence.NewTestContext(t),
 		metricsRegistry: metrics.NewRegistry("test", nil),
@@ -131,8 +127,10 @@ func NewTestContextWithDb(t *testing.T, dbPath string) *TestContext {
 			closeNotify: make(chan struct{}),
 		},
 	}
-	context.InitWithDbFile(dbPath)
 	return context
+}
+func (ctx *TestContext) Init() {
+	ctx.InitWithDbFile("")
 }
 
 func (ctx *TestContext) InitWithDbFile(dbPath string) {

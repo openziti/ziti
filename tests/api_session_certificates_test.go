@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -206,4 +207,3 @@ func generateCsr() ([]byte, crypto.PrivateKey, error) {
 
 	return csr, privateKey, nil
 }
-

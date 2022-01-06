@@ -247,6 +247,10 @@ func (c *Controller) Initialize() {
 
 	}
 
+	if err := c.AppEnv.GetStores().EventualEventer.Start(c.AppEnv.GetHostController().GetCloseNotifyChannel()); err != nil {
+		log.WithError(err).Panic("could not start EventualEventer")
+	}
+
 	c.initialized = true
 }
 

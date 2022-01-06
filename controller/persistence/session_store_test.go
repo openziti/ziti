@@ -135,7 +135,21 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.RequireReload(session)
 	ctx.RequireReload(session2)
 
-	ctx.RequireDelete(apiSession)
+	err := ctx.Delete(apiSession)
+	ctx.NoError(err)
+
+	done, err := ctx.GetStores().EventualEventer.Trigger()
+	ctx.NoError(err)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		ctx.Fail("did not receive done notification from eventual eventer")
+
+	}
+
+	ctx.ValidateDeleted(apiSession.GetId())
+
 	ctx.ValidateDeleted(session.Id)
 	ctx.ValidateDeleted(session2.Id)
 
