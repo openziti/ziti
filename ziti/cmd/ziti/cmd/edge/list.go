@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -46,8 +47,8 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	newOptions := func() *edgeOptions {
-		return &edgeOptions{
+	newOptions := func() *api.Options {
+		return &api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		}
 	}
@@ -145,7 +146,7 @@ func newPagingInfo(meta *rest_model.Meta) paging {
 	return paging{}
 }
 
-func (p *paging) output(o *edgeOptions) {
+func (p *paging) output(o *api.Options) {
 	if p.HasError() {
 		_, _ = fmt.Fprintf(o.Out, "unable to retrieve paging information: %v\n", p.Err)
 	} else if p.count == 0 {
@@ -160,9 +161,9 @@ func (p *paging) output(o *edgeOptions) {
 	}
 }
 
-type listCommandRunner func(*edgeOptions) error
+type listCommandRunner func(*api.Options) error
 
-type outputFunction func(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error
+type outputFunction func(o *api.Options, children []*gabs.Container, pagingInfo *paging) error
 
 func newEntityListRootCmd(entityType string, aliases ...string) *cobra.Command {
 	desc := fmt.Sprintf("list entities related to a %v instance managed by the Ziti Edge Controller", entityType)
@@ -179,7 +180,7 @@ func newEntityListRootCmd(entityType string, aliases ...string) *cobra.Command {
 }
 
 // newListCmdForEntityType creates the list command for the given entity type
-func newListCmdForEntityType(entityType string, command listCommandRunner, options *edgeOptions, aliases ...string) *cobra.Command {
+func newListCmdForEntityType(entityType string, command listCommandRunner, options *api.Options, aliases ...string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     entityType + " <filter>?",
 		Short:   "lists " + entityType + " managed by the Ziti Edge Controller",
@@ -203,7 +204,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 }
 
 // newListServicesCmd creates the list command for the given entity type
-func newListServicesCmd(options *edgeOptions) *cobra.Command {
+func newListServicesCmd(options *api.Options) *cobra.Command {
 	var asIdentity string
 	var configTypes []string
 	var roleFilters []string
@@ -235,7 +236,7 @@ func newListServicesCmd(options *edgeOptions) *cobra.Command {
 }
 
 // newListEdgeRoutersCmd creates the list command for the given entity type
-func newListEdgeRoutersCmd(options *edgeOptions) *cobra.Command {
+func newListEdgeRoutersCmd(options *api.Options) *cobra.Command {
 	var roleFilters []string
 	var roleSemantic string
 
@@ -264,7 +265,7 @@ func newListEdgeRoutersCmd(options *edgeOptions) *cobra.Command {
 }
 
 // newListEdgeRoutersCmd creates the list command for the given entity type
-func newListIdentitiesCmd(options *edgeOptions) *cobra.Command {
+func newListIdentitiesCmd(options *api.Options) *cobra.Command {
 	var roleFilters []string
 	var roleSemantic string
 
@@ -292,7 +293,7 @@ func newListIdentitiesCmd(options *edgeOptions) *cobra.Command {
 }
 
 // newSubListCmdForEntityType creates the list command for the given entity type
-func newSubListCmdForEntityType(entityType string, subType string, outputF outputFunction, options *edgeOptions) *cobra.Command {
+func newSubListCmdForEntityType(entityType string, subType string, outputF outputFunction, options *api.Options) *cobra.Command {
 	desc := fmt.Sprintf("lists %v related to a %v instanced managed by the Ziti Edge Controller", subType, entityType)
 	cmd := &cobra.Command{
 		Use:   fmt.Sprintf("%v <id or name>", subType),
@@ -316,7 +317,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesWithOptions(entityType string, options *edgeOptions) ([]*gabs.Container, *paging, error) {
+func listEntitiesWithOptions(entityType string, options *api.Options) ([]*gabs.Container, *paging, error) {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -377,7 +378,7 @@ func getPaging(c *gabs.Container) *paging {
 }
 
 // listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *edgeOptions) ([]*gabs.Container, *paging, error) {
+func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *api.Options) ([]*gabs.Container, *paging, error) {
 	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 
 	if err != nil {
@@ -391,7 +392,7 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *ed
 	return children, getPaging(jsonParsed), err
 }
 
-func runListEdgeRouters(roleFilters []string, roleSemantic string, options *edgeOptions) error {
+func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.Options) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -410,7 +411,7 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *edge
 	return outputEdgeRouters(options, children, paging)
 }
 
-func outputEdgeRouters(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputEdgeRouters(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -428,7 +429,7 @@ func outputEdgeRouters(o *edgeOptions, children []*gabs.Container, pagingInfo *p
 	return nil
 }
 
-func runListEdgeRouterPolicies(o *edgeOptions) error {
+func runListEdgeRouterPolicies(o *api.Options) error {
 	children, paging, err := listEntitiesWithOptions("edge-router-policies", o)
 	if err != nil {
 		return err
@@ -436,7 +437,7 @@ func runListEdgeRouterPolicies(o *edgeOptions) error {
 	return outputEdgeRouterPolicies(o, children, paging)
 }
 
-func outputEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -464,7 +465,7 @@ func outputEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container, paging
 	return nil
 }
 
-func runListTerminators(o *edgeOptions) error {
+func runListTerminators(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("terminators", o)
 	if err != nil {
 		return err
@@ -472,7 +473,7 @@ func runListTerminators(o *edgeOptions) error {
 	return outputTerminators(o, children, pagingInfo)
 }
 
-func outputTerminators(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -497,7 +498,7 @@ func outputTerminators(o *edgeOptions, children []*gabs.Container, pagingInfo *p
 	return nil
 }
 
-func runListServices(asIdentity string, configTypes []string, roleFilters []string, roleSemantic string, options *edgeOptions) error {
+func runListServices(asIdentity string, configTypes []string, roleFilters []string, roleSemantic string, options *api.Options) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -530,7 +531,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	return outputServices(options, children, pagingInfo)
 }
 
-func outputServices(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -551,7 +552,7 @@ func outputServices(o *edgeOptions, children []*gabs.Container, pagingInfo *pagi
 	return nil
 }
 
-func outputServiceConfigs(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputServiceConfigs(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -570,7 +571,7 @@ func outputServiceConfigs(o *edgeOptions, children []*gabs.Container, pagingInfo
 	return nil
 }
 
-func runListServiceEdgeRouterPolices(o *edgeOptions) error {
+func runListServiceEdgeRouterPolices(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("service-edge-router-policies", o)
 	if err != nil {
 		return err
@@ -578,7 +579,7 @@ func runListServiceEdgeRouterPolices(o *edgeOptions) error {
 	return outputServiceEdgeRouterPolicies(o, children, pagingInfo)
 }
 
-func outputServiceEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputServiceEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -603,7 +604,7 @@ func outputServiceEdgeRouterPolicies(o *edgeOptions, children []*gabs.Container,
 	return nil
 }
 
-func runListServicePolices(o *edgeOptions) error {
+func runListServicePolices(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("service-policies", o)
 	if err != nil {
 		return err
@@ -611,7 +612,7 @@ func runListServicePolices(o *edgeOptions) error {
 	return outputServicePolicies(o, children, pagingInfo)
 }
 
-func outputServicePolicies(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -681,7 +682,7 @@ func mapRoleIdsToNames(c *gabs.Container, path string) ([]string, error) {
 }
 
 // runListIdentities implements the command to list identities
-func runListIdentities(roleFilters []string, roleSemantic string, options *edgeOptions) error {
+func runListIdentities(roleFilters []string, roleSemantic string, options *api.Options) error {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
@@ -700,7 +701,7 @@ func runListIdentities(roleFilters []string, roleSemantic string, options *edgeO
 }
 
 // outputIdentities implements the command to list identities
-func outputIdentities(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -719,7 +720,7 @@ func outputIdentities(o *edgeOptions, children []*gabs.Container, pagingInfo *pa
 	return nil
 }
 
-func outputPostureCheck(o *edgeOptions, entity *gabs.Container) error {
+func outputPostureCheck(o *api.Options, entity *gabs.Container) error {
 	id, _ := entity.Path("id").Data().(string)
 	typeId, _ := entity.Path("typeId").Data().(string)
 	name, _ := entity.Path("name").Data().(string)
@@ -819,7 +820,7 @@ func getEllipsesStrings(values []string, lead, lag int) []string {
 	return ret
 }
 
-func outputPostureChecks(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputPostureChecks(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -834,7 +835,7 @@ func outputPostureChecks(o *edgeOptions, children []*gabs.Container, pagingInfo 
 	return nil
 }
 
-func runListCAs(o *edgeOptions) error {
+func runListCAs(o *api.Options) error {
 	client, err := util.NewEdgeManagementClient(o)
 
 	if err != nil {
@@ -924,7 +925,7 @@ func runListCAs(o *edgeOptions) error {
 	return nil
 }
 
-func runListConfigTypes(o *edgeOptions) error {
+func runListConfigTypes(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("config-types", o)
 	if err != nil {
 		return err
@@ -945,7 +946,7 @@ func runListConfigTypes(o *edgeOptions) error {
 	return nil
 }
 
-func runListConfigs(o *edgeOptions) error {
+func runListConfigs(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("configs", o)
 	if err != nil {
 		return err
@@ -953,7 +954,7 @@ func runListConfigs(o *edgeOptions) error {
 	return outputConfigs(o, children, pagingInfo)
 }
 
-func outputConfigs(o *edgeOptions, children []*gabs.Container, pagingInfo *paging) error {
+func outputConfigs(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -975,7 +976,7 @@ func outputConfigs(o *edgeOptions, children []*gabs.Container, pagingInfo *pagin
 	return nil
 }
 
-func runListApiSessions(o *edgeOptions) error {
+func runListApiSessions(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("api-sessions", o)
 	if err != nil {
 		return err
@@ -997,7 +998,7 @@ func runListApiSessions(o *edgeOptions) error {
 	return err
 }
 
-func runListSessions(o *edgeOptions) error {
+func runListSessions(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("sessions", o)
 
 	if err != nil {
@@ -1021,7 +1022,7 @@ func runListSessions(o *edgeOptions) error {
 	return err
 }
 
-func runListTransitRouters(o *edgeOptions) error {
+func runListTransitRouters(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("transit-routers", o)
 
 	if err != nil {
@@ -1043,19 +1044,19 @@ func runListTransitRouters(o *edgeOptions) error {
 	return err
 }
 
-func runListEdgeRouterRoleAttributes(o *edgeOptions) error {
+func runListEdgeRouterRoleAttributes(o *api.Options) error {
 	return runListRoleAttributes("edge-router", o)
 }
 
-func runListIdentityRoleAttributes(o *edgeOptions) error {
+func runListIdentityRoleAttributes(o *api.Options) error {
 	return runListRoleAttributes("identity", o)
 }
 
-func runListServiceRoleAttributes(o *edgeOptions) error {
+func runListServiceRoleAttributes(o *api.Options) error {
 	return runListRoleAttributes("service", o)
 }
 
-func runListRoleAttributes(entityType string, o *edgeOptions) error {
+func runListRoleAttributes(entityType string, o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions(entityType+"-role-attributes", o)
 
 	if err != nil {
@@ -1075,7 +1076,7 @@ func runListRoleAttributes(entityType string, o *edgeOptions) error {
 	return err
 }
 
-func runListChilden(parentType, childType string, o *edgeOptions, outputF outputFunction) error {
+func runListChilden(parentType, childType string, o *api.Options, outputF outputFunction) error {
 	idOrName := o.Args[0]
 	parentId, err := mapNameToID(parentType, idOrName, *o)
 	if err != nil {
@@ -1099,7 +1100,7 @@ func runListChilden(parentType, childType string, o *edgeOptions, outputF output
 	return outputF(o, children, pagingInfo)
 }
 
-func runListPostureChecks(o *edgeOptions) error {
+func runListPostureChecks(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("posture-checks", o)
 
 	if err != nil {
@@ -1113,7 +1114,7 @@ func runListPostureChecks(o *edgeOptions) error {
 	return err
 }
 
-func runListSummary(o *edgeOptions) error {
+func runListSummary(o *api.Options) error {
 	jsonParsed, err := util.EdgeControllerList("summary", url.Values{}, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 
 	if o.OutputJSONResponse {
@@ -1150,7 +1151,7 @@ func containerArrayToString(containers []*gabs.Container, limit int) string {
 	return strings.Join(values, ",")
 }
 
-func runListPostureCheckTypes(o *edgeOptions) error {
+func runListPostureCheckTypes(o *api.Options) error {
 	children, pagingInfo, err := listEntitiesWithOptions("posture-check-types", o)
 
 	if err != nil {

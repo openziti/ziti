@@ -1,0 +1,41 @@
+FROM debian:buster-slim as fetch-ziti-artifacts
+
+# This build stage grabs artifacts that are copied into the final image.
+# It uses the same base as the final image to maximize docker cache hits.
+
+ARG ARTIFACTS_DIR=./release
+# e.g. linux
+ARG TARGETOS
+# e.g. arm
+ARG TARGETARCH
+# e.g. v7 (OS variant)
+# TARGETVARIANT
+
+WORKDIR /tmp
+
+RUN apt-get -q update && apt-get -q install -y --no-install-recommends curl ca-certificates
+# workaround for `openssl rehash` not working on arm.
+RUN /bin/bash -c "if ! compgen -G '/etc/ssl/certs/*.[0-9]' > /dev/null; then c_rehash /etc/ssl/certs; fi"
+
+COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti-tunnel .
+
+################
+#
+#  Main Image
+#
+################
+
+FROM debian:buster-slim
+
+ARG DOCKER_BUILD_DIR=.
+ARG ZITI_TUNNELER_BIN=ziti-tunnel
+
+RUN mkdir -p /usr/local/bin /etc/ssl/certs
+RUN apt-get -q update && apt-get -q install -y --no-install-recommends iptables
+COPY --from=fetch-ziti-artifacts /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs
+COPY --from=fetch-ziti-artifacts /tmp/${ZITI_TUNNELER_BIN} /usr/local/bin
+COPY ${DOCKER_BUILD_DIR}/docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
+
+ENTRYPOINT [ "/docker-entrypoint.sh" ]
+CMD [ "run" ]

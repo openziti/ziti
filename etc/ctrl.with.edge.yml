@@ -66,6 +66,7 @@ mgmt:
 #      - type: edge.sessions
 #        include:
 #          - created
+#      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
 #      - type: fabric.usage
@@ -197,6 +198,7 @@ web:
       #   - fabric-management
       - binding: health-checks
         options: { }
+      - binding: fabric
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.

@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ import (
 )
 
 type updateServiceEdgeRouterPolicyOptions struct {
-	edgeOptions
+	api.Options
 	name            string
 	edgeRouterRoles []string
 	serviceRoles    []string
@@ -38,7 +39,7 @@ type updateServiceEdgeRouterPolicyOptions struct {
 
 func newUpdateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServiceEdgeRouterPolicyOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -69,17 +70,17 @@ func newUpdateServiceEdgeRouterPolicyCmd(f cmdutil.Factory, out io.Writer, errOu
 }
 
 func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) error {
-	id, err := mapNameToID("service-edge-router-policies", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("service-edge-router-policies", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
 
-	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.edgeOptions)
+	edgeRouterRoles, err := convertNamesToIds(o.edgeRouterRoles, "edge-routers", o.Options)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.Options)
 	if err != nil {
 		return err
 	}
@@ -88,17 +89,17 @@ func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) e
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("edge-router-roles") {
-		setJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
+		api.SetJSONValue(entityData, edgeRouterRoles, "edgeRouterRoles")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("service-roles") {
-		setJSONValue(entityData, serviceRoles, "serviceRoles")
+		api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
 		change = true
 	}
 
@@ -106,6 +107,6 @@ func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) e
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("service-edge-router-policies/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("service-edge-router-policies/%v", id), entityData.String(), &o.Options)
 	return err
 }

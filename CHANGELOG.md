@@ -1,3 +1,216 @@
+# Release 0.24.3
+
+## What's New
+
+* Enhancement: API Session delete events now include the related identity id
+* Enhancement: controller and router start up messages now include the component id
+* Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
+* Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
+* Enhancement: Edge REST API calls will now show in metrics in the format of <path>.<method>
+
+# Release 0.24.2
+
+## What's New
+
+* Bug fix: link verification could panic if link was established before control was finished establishing
+* Bug fix: When checking edge terminator validity in the router, check terminator id as well the address
+* Enhancement: Improve logging around links in routers. Ensure we close both channels when closing a split link
+* Enhancement: Add support for inspect in `ziti fabric`. Works the same as `ziti-fabric inspect`
+
+# Release 0.24.1
+
+## What's New
+
+* Bug Fix: Very first time using ziti cli to login with `ziti edge login` would panic
+* Security: When using new fabric REST API in fabric only mode, certs weren't being properly checked. Regression exists only in 0.24.0
+
+# Release 0.24.0
+
+## Breaking Changes
+
+* ziti-fabric-gw has been removed since the fabric now has its own REST API
+* ziti-fabric-test is no longer being built by default and won't be included in future release bundles. Use `go build --tags all ./...` to build it
+* ziti-fabric has been deprecated. Most of its features are now available in the `ziti` CLI under `ziti fabric`
+
+## What's New
+
+* Feature: Fabric REST API
+* Performance: Additional route selection work
+* Bug Fix: Fix controller deadlock which can happen if a control channel is closed while controller is responding
+* Bug fix: Fix panic for UDP-only tproxy intercepts
+
+## Fabric REST API
+
+The fabric now has a REST API in addition to the channel2 management API. To enable it, add the fabric binding to the apis section off the xweb config, as follows:
+
+```
+    apis:
+      # binding - required
+      # Specifies an API to bind to this webListener. Built-in APIs are
+      #   - health-checks
+      - binding: fabric
+```
+
+If running without the edge, the fabric API uses client certificates for authorization, much like the existing channel2 mgmt based API does. If running with the edge, the edge provides authentication/authorization for the fabric REST APIs.
+
+### Supported Operations
+
+These operations are supported in the REST API. The ziti CLI has been updated to use this in the new `ziti fabric` sub-command.
+
+* Services: create/read/update/delete
+* Routers: create/read/update/delete
+* Terminators: create/read/update/delete
+* Links: read/update
+* Circuits: read/delete
+
+### Unsupported Operations
+
+Some operations from ziti-fabric aren't get supported:
+
+* Stream metrics/traces/circuits
+    * This feature may be re-implemented in terms of websockets, or may be left as-is, or may be dropped
+* Inspect (get stackdumps)
+    * This will be ported to `ziti fabric`
+* Decode trace files
+    * This may be ported to `ziti-ops`
+
+# Release 0.23.1
+
+## What's New
+
+* Performance: Improve route selection cpu and memory use.
+* Bug fix: Fix controller panic in routes.MapApiSessionToRestModel caused by missing return
+
+# Release 0.23.0
+
+## What's New
+
+* Bug fix: Fix panic in router when router is shutdown before control channel is established
+* Enhancement: Add source/target router ids on link metrics. 
+* Security: Fabric management channel wasn't properly validating certs against the server cert chain
+* Security: Router link listeners weren't properly validating certs against the server cert chain
+* Security: Link listeners now validate incoming links to ensure that the link was requested by the controller and the correct router dialed
+* Security: Don't allow link forwarding entries to be overriden, as link ids should be unique
+* Security: Validate ctrl channel clients against controller cert chain in addition to checking cert fingerprint
+
+## Breaking Changes
+
+The link validation required a controller side and router side component. The controller will continue to work with earlier routers, but the routers with version >= 0.23.0 will need a controller with version >= 0.23.0.
+
+## Link Metrics Router Ids
+
+The link router ids will now be included as tags on the metrics.
+
+```
+{
+  "metric": "link.latency",
+  "metrics": {
+    "link.latency.count": 322,
+    "link.latency.max": 844083,
+    "link.latency.mean": 236462.8671875,
+    "link.latency.min": 100560,
+    "link.latency.p50": 212710.5,
+    "link.latency.p75": 260137.75,
+    "link.latency.p95": 491181.89999999997,
+    "link.latency.p99": 820171.6299999995,
+    "link.latency.p999": 844083,
+    "link.latency.p9999": 844083,
+    "link.latency.std_dev": 118676.24663550049,
+    "link.latency.variance": 14084051515.49014
+  },
+  "namespace": "metrics",
+  "source_entity_id": "lDWL",
+  "source_event_id": "52f9de3e-4293-4d4f-9dc8-5c4f40b04d12",
+  "source_id": "4ecTdw8lG6",
+  "tags": {
+    "sourceRouterId": "CorTdA8l7",
+    "targetRouterId": "4ecTdw8lG6"
+  },
+  "timestamp": "2021-11-10T18:04:32.087107445Z"
+}
+```
+
+Note that this information is injected into the metric in the controller. If the controller doesn't know about the link, because of a controller restart, the information can't be added.
+
+# Release 0.22.11
+
+## What's New
+
+* Feature: API Session Events
+
+## API Session Events
+
+API Session events can now be configured by adding `edge.apiSessions` under event subscriptions. The events may be of type `created` and `deleted`. The event type can be filtered by adding an `include:` block, similar to edge sessions.
+
+The JSON output looks like:
+
+```
+{
+  "namespace": "edge.apiSessions",
+  "event_type": "created",
+  "id": "ckvr2r4fs0001oigd6si4akc8",
+  "timestamp": "2021-11-08T14:45:45.785561479-05:00",
+  "token": "77cffde5-f68e-4ef0-bbb5-731db36145f5",
+  "identity_id": "76BB.shC0",
+  "ip_address": "127.0.0.1"
+}
+```
+
+# Release 0.22.10
+
+# What's New
+* Bug fix: address client certificate changes altered by library changes
+* Bug fix: fixes a panic on session read in some situations
+* Enhancement: Certificate Authentication Extension provides the ability to extend certificate expiration dates in the Edge Client and Management APIs
+
+
+## Certificate Authentication Extension
+
+The Edge Client and Management APIs have had the following endpoint added:
+
+- `POST /current-identity/authenticators/{id}/extend`
+
+It is documented as:
+
+```
+Allows an identity to extend its certificate's expiration date by
+using its current and valid client certificate to submit a CSR. This CSR may
+be passed in using a new private key, thus allowing private key rotation.
+
+After completion any new connections must be made with certificates returned from a 200 OK
+response. The previous client certificate is rendered invalid for use with the controller even if it
+has not expired.
+
+This request must be made using the existing, valid, client certificate.
+```
+
+An example input is:
+
+```
+{
+    "clientCertCsr": "...<csr>..."
+}
+```
+
+Output responses include:
+
+- `200 OK` w/ empty object payloads: `{}`
+- `401 UNAUTHORIZED` w/ standard error messaging
+- `400 BAD REQUESET` w/ standard error messaging for field errors or CSR processing errors
+
+# Release 0.22.9
+
+# What's New
+* Build: This release adds an arm64 build and improved docker build process
+
+# Release 0.22.8
+
+# What's New
+* Bug fix: Workaround bbolt bug where cursor next sometimes skip when current is deleted. Use skip instead of next. Fixes orphan session issue.
+* Bug fix: If read fails on reconnecting channel, close peer before trying to reconnect
+* Bug fix: Don't log every UDP datagram at info level in tunneler
+* Change: Build with -trimpath to aid in plugin compatibility
+
 # Release 0.22.7
 
 # What's New

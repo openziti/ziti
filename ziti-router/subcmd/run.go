@@ -55,60 +55,62 @@ var runCmd = &cobra.Command{
 }
 
 func run(cmd *cobra.Command, args []string) {
-	logrus.WithField("version", version.GetVersion()).
+	startLogger := logrus.WithField("version", version.GetVersion()).
 		WithField("go-version", version.GetGoVersion()).
 		WithField("os", version.GetOS()).
 		WithField("arch", version.GetArchitecture()).
 		WithField("build-date", version.GetBuildDate()).
-		WithField("revision", version.GetRevision()).
-		Info("starting ziti-router")
+		WithField("revision", version.GetRevision())
 
-	if config, err := router.LoadConfig(args[0]); err == nil {
-		config.SetFlags(getFlags(cmd))
+	config, err := router.LoadConfig(args[0])
+	if err != nil {
+		startLogger.WithError(err).Error("error loading ziti-router config")
+		panic(err)
+	}
+	config.SetFlags(getFlags(cmd))
 
-		r := router.Create(config, version.GetCmdBuildInfo())
+	startLogger = startLogger.WithField("routerId", config.Id.Token)
+	startLogger.Info("starting ziti-router")
 
-		config.SetFlags(getFlags(cmd))
+	r := router.Create(config, version.GetCmdBuildInfo())
 
-		stateManager := fabric.NewStateManager()
+	config.SetFlags(getFlags(cmd))
 
-		xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.MetricsRegistry())
-		xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
-		if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
-			logrus.Panicf("error registering edge in framework (%v)", err)
-		}
+	stateManager := fabric.NewStateManager()
 
-		xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(r)
-		xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
+	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.MetricsRegistry())
+	xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
+	if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
+		logrus.WithError(err).Panic("error registering edge in framework")
+	}
 
-		xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
-		xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
-		if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
-			logrus.Panicf("error registering edge tunnel in framework (%v)", err)
-		}
+	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory(r)
+	xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
-		if cliAgentEnabled {
-			options := agent.Options{Addr: cliAgentAddr}
-			if debugOpsEnabled {
-				r.RegisterDefaultDebugOps()
-				debugops.RegisterEdgeRouterDebugOps(r, stateManager)
-				options.CustomOps = map[byte]func(conn io.ReadWriter) error{
-					agent.CustomOp: r.HandleDebug,
-				}
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
+	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
+	if err := r.RegisterXctrl(xgressEdgeTunnelFactory); err != nil {
+		logrus.WithError(err).Panic("error registering edge tunnel in framework")
+	}
+
+	if cliAgentEnabled {
+		options := agent.Options{Addr: cliAgentAddr}
+		if debugOpsEnabled {
+			r.RegisterDefaultDebugOps()
+			debugops.RegisterEdgeRouterDebugOps(r, stateManager)
+			options.CustomOps = map[byte]func(conn io.ReadWriter) error{
+				agent.CustomOp: r.HandleDebug,
 			}
-			if err := agent.Listen(options); err != nil {
-				pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-			}
 		}
-
-		go waitForShutdown(r, config)
-
-		if err := r.Run(); err != nil {
-			logrus.WithError(err).Fatal("error starting")
+		if err := agent.Listen(options); err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}
+	}
 
-	} else {
-		logrus.WithError(err).Fatal("error loading configuration")
+	go waitForShutdown(r, config)
+
+	if err := r.Run(); err != nil {
+		logrus.WithError(err).Fatal("error starting")
 	}
 }
 
@@ -135,6 +137,6 @@ func waitForShutdown(r *router.Router, config *router.Config) {
 	pfxlog.Logger().Info("shutting down ziti-router")
 
 	if err := r.Shutdown(); err != nil {
-		pfxlog.Logger().Info("error encountered during shutdown: %v", err)
+		pfxlog.Logger().WithError(err).Info("error encountered during shutdown")
 	}
 }

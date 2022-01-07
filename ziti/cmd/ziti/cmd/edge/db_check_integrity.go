@@ -3,6 +3,7 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -13,13 +14,13 @@ import (
 )
 
 type dbCheckIntegrityOptions struct {
-	edgeOptions
+	api.Options
 	fix bool
 }
 
 func newDbCheckIntegrityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -53,7 +54,7 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 		target = "database/check-data-integrity"
 	}
 
-	if _, err := util.EdgeControllerUpdate(target, "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse, o.edgeOptions.Timeout, o.edgeOptions.Verbose); err != nil {
+	if _, err := util.ControllerUpdate("edge", target, "", o.Out, http.MethodPost, o.OutputJSONRequest, o.OutputJSONResponse, o.Options.Timeout, o.Options.Verbose); err != nil {
 		return err
 	}
 
@@ -63,7 +64,7 @@ func runCheckIntegrityDb(o *dbCheckIntegrityOptions) error {
 
 func newDbCheckIntegrityStatusCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbCheckIntegrityOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -89,7 +90,7 @@ func newDbCheckIntegrityStatusCmd(out io.Writer, errOut io.Writer) *cobra.Comman
 }
 
 func runCheckIntegrityStatus(o *dbCheckIntegrityOptions) error {
-	body, err := util.EdgeControllerList("database/data-integrity-results", nil, o.OutputJSONResponse, o.Out, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+	body, err := util.EdgeControllerList("database/data-integrity-results", nil, o.OutputJSONResponse, o.Out, o.Options.Timeout, o.Options.Verbose)
 	if err != nil {
 		return err
 	}

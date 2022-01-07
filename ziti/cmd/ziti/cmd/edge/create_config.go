@@ -19,6 +19,7 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"io/ioutil"
 
@@ -32,14 +33,14 @@ import (
 )
 
 type createConfigOptions struct {
-	edgeOptions
+	api.Options
 	jsonFile string
 }
 
 // newCreateConfigCmd creates the 'edge controller create service-policy' command
 func newCreateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createConfigOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -95,15 +96,15 @@ func runCreateConfig(o *createConfigOptions) error {
 		return errors.Errorf("unable to parse data as json: %v", err)
 	}
 
-	configTypeId, err := mapNameToID("config-types", o.Args[1], o.edgeOptions)
+	configTypeId, err := mapNameToID("config-types", o.Args[1], o.Options)
 	if err != nil {
 		return err
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, configTypeId, "configTypeId")
-	setJSONValue(entityData, dataMap, "data")
-	result, err := createEntityOfType("configs", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("config", result, err)
+	api.SetJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, configTypeId, "configTypeId")
+	api.SetJSONValue(entityData, dataMap, "data")
+	result, err := CreateEntityOfType("configs", entityData.String(), &o.Options)
+	return o.LogCreateResult("config", result, err)
 }

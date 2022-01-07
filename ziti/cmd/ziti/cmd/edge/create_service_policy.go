@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"strings"
 
@@ -29,7 +30,7 @@ import (
 )
 
 type createServicePolicyOptions struct {
-	edgeOptions
+	api.Options
 	serviceRoles      []string
 	identityRoles     []string
 	postureCheckRoles []string
@@ -39,7 +40,7 @@ type createServicePolicyOptions struct {
 // newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
 func newCreateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServicePolicyOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -77,36 +78,36 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 		return errors.Errorf("Invalid policy type '%v'. Valid values: [Bind, Dial]", policyType)
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.Options)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.Options)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.edgeOptions)
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.Options)
 	if err != nil {
 		return err
 	}
 
 	entityData := gabs.New()
-	setJSONValue(entityData, o.Args[0], "name")
-	setJSONValue(entityData, o.Args[1], "type")
-	setJSONValue(entityData, serviceRoles, "serviceRoles")
-	setJSONValue(entityData, identityRoles, "identityRoles")
-	setJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
+	api.SetJSONValue(entityData, o.Args[0], "name")
+	api.SetJSONValue(entityData, o.Args[1], "type")
+	api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
+	api.SetJSONValue(entityData, identityRoles, "identityRoles")
+	api.SetJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
 
 	if o.semantic != "" {
-		setJSONValue(entityData, o.semantic, "semantic")
+		api.SetJSONValue(entityData, o.semantic, "semantic")
 	}
-	result, err := createEntityOfType("service-policies", entityData.String(), &o.edgeOptions)
-	return o.logCreateResult("service policy", result, err)
+	result, err := CreateEntityOfType("service-policies", entityData.String(), &o.Options)
+	return o.LogCreateResult("service policy", result, err)
 }
 
-func convertNamesToIds(roles []string, entityType string, o edgeOptions) ([]string, error) {
+func convertNamesToIds(roles []string, entityType string, o api.Options) ([]string, error) {
 	var result []string
 	for _, val := range roles {
 		if strings.HasPrefix(val, "@") {

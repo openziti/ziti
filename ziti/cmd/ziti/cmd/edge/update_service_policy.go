@@ -18,6 +18,7 @@ package edge
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 
 	"github.com/pkg/errors"
@@ -30,7 +31,7 @@ import (
 )
 
 type updateServicePolicyOptions struct {
-	edgeOptions
+	api.Options
 	name              string
 	serviceRoles      []string
 	identityRoles     []string
@@ -39,7 +40,7 @@ type updateServicePolicyOptions struct {
 
 func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServicePolicyOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
 		},
 	}
@@ -71,22 +72,22 @@ func newUpdateServicePolicyCmd(f cmdutil.Factory, out io.Writer, errOut io.Write
 }
 
 func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
-	id, err := mapNameToID("service-policies", o.Args[0], o.edgeOptions)
+	id, err := mapNameToID("service-policies", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
 
-	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.edgeOptions)
+	serviceRoles, err := convertNamesToIds(o.serviceRoles, "services", o.Options)
 	if err != nil {
 		return err
 	}
 
-	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.edgeOptions)
+	identityRoles, err := convertNamesToIds(o.identityRoles, "identities", o.Options)
 	if err != nil {
 		return err
 	}
 
-	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.edgeOptions)
+	postureCheckRoles, err := convertNamesToIds(o.postureCheckRoles, "posture-checks", o.Options)
 	if err != nil {
 		return err
 	}
@@ -95,22 +96,22 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 	change := false
 
 	if o.Cmd.Flags().Changed("name") {
-		setJSONValue(entityData, o.name, "name")
+		api.SetJSONValue(entityData, o.name, "name")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("service-roles") {
-		setJSONValue(entityData, serviceRoles, "serviceRoles")
+		api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("identity-roles") {
-		setJSONValue(entityData, identityRoles, "identityRoles")
+		api.SetJSONValue(entityData, identityRoles, "identityRoles")
 		change = true
 	}
 
 	if o.Cmd.Flags().Changed("posture-check-roles") {
-		setJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
+		api.SetJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
 		change = true
 	}
 
@@ -118,6 +119,6 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("service-policies/%v", id), entityData.String(), &o.edgeOptions)
+	_, err = patchEntityOfType(fmt.Sprintf("service-policies/%v", id), entityData.String(), &o.Options)
 	return err
 }

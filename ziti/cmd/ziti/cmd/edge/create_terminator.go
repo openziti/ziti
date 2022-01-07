@@ -21,6 +21,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -30,7 +31,7 @@ import (
 )
 
 type createTerminatorOptions struct {
-	edgeOptions
+	api.Options
 	binding    string
 	cost       int32
 	precedence string
@@ -40,7 +41,7 @@ type createTerminatorOptions struct {
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
 func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createTerminatorOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Factory: f,
 				Out:     out,
@@ -77,21 +78,21 @@ func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 // runCreateTerminator implements the command to create a Terminator
 func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	entityData := gabs.New()
-	service, err := mapNameToID("services", o.Args[0], o.edgeOptions)
+	service, err := mapNameToID("services", o.Args[0], o.Options)
 	if err != nil {
 		return err
 	}
 
-	router, err := mapNameToID("edge-routers", o.Args[1], o.edgeOptions)
+	router, err := mapNameToID("edge-routers", o.Args[1], o.Options)
 	if err != nil {
 		router = o.Args[1] // might be a pure fabric router, id might not be UUID
 	}
 
-	setJSONValue(entityData, service, "service")
-	setJSONValue(entityData, router, "router")
-	setJSONValue(entityData, o.binding, "binding")
-	setJSONValue(entityData, o.Args[2], "address")
-	setJSONValue(entityData, o.identity, "identity")
+	api.SetJSONValue(entityData, service, "service")
+	api.SetJSONValue(entityData, router, "router")
+	api.SetJSONValue(entityData, o.binding, "binding")
+	api.SetJSONValue(entityData, o.Args[2], "address")
+	api.SetJSONValue(entityData, o.identity, "identity")
 	if o.cost > 0 {
 		if o.cost > math.MaxUint16 {
 			if _, err = fmt.Fprintf(o.Out, "Invalid cost %v. Must be positive number less than or equal to %v\n", o.cost, math.MaxUint16); err != nil {
@@ -99,7 +100,7 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 			}
 			return
 		}
-		setJSONValue(entityData, o.cost, "cost")
+		api.SetJSONValue(entityData, o.cost, "cost")
 	}
 	if o.precedence != "" {
 		validValues := []string{"default", "required", "failed"}
@@ -109,10 +110,10 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 			}
 			return
 		}
-		setJSONValue(entityData, o.precedence, "precedence")
+		api.SetJSONValue(entityData, o.precedence, "precedence")
 	}
 
-	result, err := createEntityOfType("terminators", entityData.String(), &o.edgeOptions)
+	result, err := CreateEntityOfType("terminators", entityData.String(), &o.Options)
 	if err != nil {
 		return err
 	}

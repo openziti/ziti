@@ -1,0 +1,56 @@
+version: '2.4'
+services:
+  ziti-controller:
+    image: openziti/quickstart:latest
+    env_file:
+      - ./default.env
+    ports:
+      - "1280:1280"
+    networks:
+      zitiblue:
+        aliases:
+          - ziti-edge-controller
+      zitired:
+        aliases:
+          - ziti-edge-controller
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint:
+      - "/openziti/scripts/run-controller.sh"
+
+  ziti-edge-router:
+    image: openziti/quickstart:latest
+    environment:
+      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+    ports:
+      - "3022:3022"
+    networks:
+      - zitiblue
+      - zitired
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint: /bin/bash
+    command: "/openziti/scripts/run-edge-router.sh edge"
+
+  ziti-console:
+    image: openziti/zac
+    environment:
+      - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
+      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key -it
+    ports:
+      - "1408:1408"
+      - "8443:8443"
+    volumes:
+      - ziti-fs:/openziti
+
+    networks:
+      - zitiblue
+      - zitired
+
+networks:
+  zitired:
+  zitiblue:
+
+volumes:
+  ziti-fs:
+

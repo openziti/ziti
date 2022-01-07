@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -26,12 +27,12 @@ import (
 )
 
 type dbSnapshotOptions struct {
-	edgeOptions
+	api.Options
 }
 
 func newDbSnapshotCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &dbSnapshotOptions{
-		edgeOptions: edgeOptions{
+		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
@@ -57,6 +58,6 @@ func newDbSnapshotCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func runSnapshotDb(o *dbSnapshotOptions) error {
-	_, err := util.EdgeControllerUpdate("database/snapshot", "", o.Out, http.MethodPost, false, false, o.edgeOptions.Timeout, o.edgeOptions.Verbose)
+	_, err := util.ControllerUpdate("edge", "database/snapshot", "", o.Out, http.MethodPost, false, false, o.Options.Timeout, o.Options.Verbose)
 	return err
 }

@@ -29,10 +29,7 @@ import (
 var ZITI_COMPONENTS = []string{
 	c.ZITI,
 	c.ZITI_CONTROLLER,
-	c.ZITI_ENROLLER,
 	c.ZITI_FABRIC,
-	c.ZITI_FABRIC_GW,
-	c.ZITI_FABRIC_TEST,
 	c.ZITI_PROX_C,
 	c.ZITI_ROUTER,
 	c.ZITI_TUNNEL,
@@ -161,58 +158,6 @@ func (o *CommonOptions) createInitialControllerConfig() error {
 	viper.SetDefault("ctrlListener", "quic:0.0.0.0:6262")
 	viper.SetDefault("mgmtListener", "tls:0.0.0.0:10000")
 	viper.SetDefault("dbPath", "ctrl.db")
-
-	err = viper.WriteConfig()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (o *CommonOptions) createInitialMgmtGwConfig() error {
-
-	configDir, err := util.ConfigDir()
-	if err != nil {
-		return err
-	}
-
-	gwConfigDir, err := util.ZitiAppConfigDir(c.ZITI_FABRIC_GW)
-	if err != nil {
-		return err
-	}
-
-	fileName := filepath.Join(gwConfigDir, c.CONFIGFILENAME) + ".json"
-
-	_, err = os.Stat(fileName)
-	if err == nil {
-		return fmt.Errorf("config file (%s) already exists", fileName)
-	}
-
-	cfgfile, err := os.OpenFile(fileName, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		return err
-	}
-	if err := cfgfile.Close(); err != nil {
-		return err
-	}
-
-	viper.SetConfigType("json")
-	viper.SetConfigName(c.CONFIGFILENAME)
-	viper.AddConfigPath(gwConfigDir)
-
-	// Set some default values
-	viper.SetDefault("listenAddress", "localhost:10080")
-	viper.SetDefault("mgmt", "tls:0.0.0.0:10000")
-	viper.SetDefault("identity.default.description", "This identity is used if one is not specified at execution time")
-	viper.SetDefault("identity.default.mgmtGwCertPath", configDir+"/fabric/ca/intermediate/certs/mgmt-gw.cert.pem")
-	viper.SetDefault("identity.default.mgmtGwKeyPath", configDir+"/fabric/ca/intermediate/private/mgmt-gw.key.pem")
-	viper.SetDefault("identity.default.mgmtCertPath", configDir+"/fabric/ca/intermediate/certs/mgmt-gw.cert.pem")
-	viper.SetDefault("identity.default.mgmtKeyPath", configDir+"/fabric/ca/intermediate/private/mgmt-gw.key.pem")
-	viper.SetDefault("identity.default.mgmtCaCertPath", configDir+"/fabric/ca/intermediate/certs/ca-chain.cert.pem")
-
-	viper.SetDefault("identity.a.description", "This identity is just demonstrating that multiple identities can exist (you need to fill out remaining fields)")
-	viper.SetDefault("identity.b.description", "This identity is just demonstrating that multiple identities can exist (you need to fill out remaining fields)")
 
 	err = viper.WriteConfig()
 	if err != nil {

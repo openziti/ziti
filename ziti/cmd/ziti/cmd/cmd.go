@@ -19,6 +19,8 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/fabric"
 	"io"
 	"os"
 	"path/filepath"
@@ -123,12 +125,15 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	// defaultClusterName := os.Getenv("ZITI_CLUSTER_NAME")
 	// cmd.PersistentFlags().StringVarP(&rootCommand.clusterName, "name", "", defaultClusterName, "Name of cluster. Overrides ZITI_CLUSTER_NAME environment variable")
 
+	p := common.NewOptionsProvider(out, err)
+
 	initCommands := NewCmdInit(f, out, err)
 	createCommands := NewCmdCreate(f, out, err)
 	updateCommands := NewCmdUpdate(f, out, err)
 	executeCommands := NewCmdExecute(f, out, err)
 	psCommands := NewCmdPs(f, out, err)
 	pkiCommands := NewCmdPKI(f, out, err)
+	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(f, out, err)
 	logFilter := NewCmdLogFormat(f, out, err)
 	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(f, out, err)
@@ -162,8 +167,9 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 			},
 		},
 		{
-			Message: "Interacting with Ziti edge components",
+			Message: "Interacting with the Ziti controller",
 			Commands: []*cobra.Command{
+				fabricCommand,
 				edgeCommand,
 			},
 		},
