@@ -24,6 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -113,16 +114,15 @@ func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) er
 		return err
 	}
 
-	// TODO: Do we want to create the path if it doesn't exist?
-	//baseDir := filepath.Dir(options.Output)
-	//if baseDir != "." {
-	//	if err := os.MkdirAll(baseDir, 0700); err != nil {
-	//		return errors.Wrapf(err, "unable to create directory to house config file: %v", options.Output)
-	//	}
-	//}
-
 	var f *os.File
 	if strings.ToLower(options.Output) != "stdout" {
+		// Check if the path exists, fail if it doesn't
+		basePath := filepath.Dir(options.Output) + "/"
+		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
+			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
+			return err
+		}
+
 		f, err = os.Create(options.Output)
 		logrus.Debugf("Created output file: %s", options.Output)
 		if err != nil {

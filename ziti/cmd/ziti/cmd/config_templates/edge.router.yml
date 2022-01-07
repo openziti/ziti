@@ -1,10 +1,10 @@
-# Config Format Version
-#
-# Whenever a breaking change is made to the semantics of this configuration file, the configuration version
-# expected by the router will be incremented. When the controller tries to load a configuration file with
-# an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
-# documentation.
-#
+{{/*
+ Config Format Version
+
+ Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+ expected by the router will be incremented. When the controller tries to load a configuration file with
+ an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+ documentation.*/}}
 v: 3
 
 identity:
@@ -51,7 +51,7 @@ edge:
       ip:
         - "127.0.0.1"
 
-  {{if .WssEnabled }}
+{{if .WssEnabled }}
 transport:
   ws:
     writeTimeout: 10
@@ -63,9 +63,9 @@ transport:
     readBufferSize: 4096
     writeBufferSize: 4096
     enableCompression: true
-    server_cert: { { .ZitiPKI } }/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
-    key: { { .ZitiPKI } }/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
-  {{else}}
+    server_cert: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
+    key: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
+{{else}}
 #transport:
 #  ws:
 #    writeTimeout:      10
@@ -79,7 +79,7 @@ transport:
 #    enableCompression: true
 #    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
 #    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
-  {{end}}
+{{end}}
 forwarder:
   latencyProbeInterval: 1000
   xgressDialQueueLength: 1000

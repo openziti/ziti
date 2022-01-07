@@ -35,7 +35,7 @@ const (
 	outputDescription  = "designated output destination for config, use \"stdout\" or a filepath."
 )
 
-// CreateConfigOptions the options for the create spring command
+// CreateConfigOptions the options for the create config command
 type CreateConfigOptions struct {
 	common.CommonOptions
 

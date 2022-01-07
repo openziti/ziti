@@ -24,6 +24,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
 )
@@ -65,22 +66,6 @@ type CreateConfigControllerOptions struct {
 	MgmtListener string
 }
 
-//type ControllerConfigValues struct {
-//	*ConfigValues
-//
-//	CtrlListener                 string
-//	MgmtListener                 string
-//	ZitiHome                     string
-//	Hostname                     string
-//	ZitiFabMgmtPort              string
-//	ZitiEdgeCtrlAPI              string
-//	ZitiSigningIntermediateName  string
-//	ZitiEdgeCtrlPort             string
-//	ZitiCtrlRawname              string
-//	ZitiEdgeCtrlIntermediateNameVarName string
-//	ZitiEdgeCtrlHostname         string
-//}
-
 // NewCmdCreateConfigController creates a command object for the "create" command
 func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 	controllerOptions := &CreateConfigControllerOptions{}
@@ -110,8 +95,8 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update controller specific values with configOptions passed in
-			// data.CtrlListener = controllerOptions.CtrlListener
-			// data.MgmtListener = controllerOptions.MgmtListener
+			data.CtrlListener = controllerOptions.CtrlListener
+			data.MgmtListener = controllerOptions.MgmtListener
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd
@@ -131,9 +116,9 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "tls:0.0.0.0:6262", "address of the config controller listener")
+	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "", "address of the config controller listener")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionsDatabaseFile, "ctrl.db", "location of the database file")
-	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "tls:127.0.0.1:10000", "address of the config management listener")
+	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "", "address of the config management listener")
 }
 
 // run implements the command
@@ -144,16 +129,15 @@ func (options *CreateConfigControllerOptions) run(data *ConfigTemplateValues) er
 		return err
 	}
 
-	// TODO: Do we want to create the path if it doesn't exist?
-	//baseDir := filepath.Dir(options.Output)
-	//if baseDir != "." {
-	//	if err := os.MkdirAll(baseDir, 0700); err != nil {
-	//		return errors.Wrapf(err, "unable to create directory to house config file: %v", options.Output)
-	//	}
-	//}
-
 	var f *os.File
 	if strings.ToLower(options.Output) != "stdout" {
+		// Check if the path exists, fail if it doesn't
+		basePath := filepath.Dir(options.Output) + "/"
+		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
+			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
+			return err
+		}
+
 		f, err = os.Create(options.Output)
 		logrus.Debugf("Created output file: %s", options.Output)
 		if err != nil {

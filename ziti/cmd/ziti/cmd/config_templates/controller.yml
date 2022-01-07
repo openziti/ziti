@@ -16,10 +16,10 @@ identity:
   ca:                   "{{ .ZitiPKI }}/cas.pem"
 
 ctrl:
-  listener:             tls:0.0.0.0:{{ .ZitiFabCtrlPort }}
+  listener:             {{if .CtrlListener}}{{ .CtrlListener }}{{else}}tls:0.0.0.0:{{ .ZitiFabCtrlPort }} {{end}}
 
 mgmt:
-  listener:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabMgmtPort }}
+  listener:             {{if .MgmtListener}}{{ .MgmtListener }}{{else}}tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabMgmtPort }}{{end}}
 
 #metrics:
 #  influxdb:
