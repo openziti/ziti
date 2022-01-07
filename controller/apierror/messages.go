@@ -166,4 +166,8 @@ const (
 	MfaNotEnrolledCode    string = "MFA_NOT_ENROLLED"
 	MfaNotEnrolledMessage string = "The current identity is not enrolled in MFA"
 	MfaNotEnrolledStatus  int    = http.StatusConflict
+
+	EdgeRouterFailedReEnrollmentCode        = "FAILED_ER_REENROLLMENT"
+	EdgeRouterFailedReEnrollmentMessage     = "the edge router failed to be re-enrolled, see cause"
+	EdgeRouterFailedReEnrollmentStatus  int = http.StatusInternalServerError
 )
