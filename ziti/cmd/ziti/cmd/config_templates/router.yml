@@ -8,10 +8,10 @@
 v: 3
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-server.cert"
-  key:                  "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-cas.cert"
+  cert:                 "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-client.cert"
+  server_cert:          "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-server.cert"
+  key:                  "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-server.key"
+  ca:                   "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-cas.cert"
 
 ctrl:
   endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
@@ -36,29 +36,39 @@ link:
     - binding: transport
 
 listeners:
-{{- if .IsPrivate }}
+{{- if or .IsFabricRouter .IsPrivate }}
 #  - binding: tunnel
 #    options:
 #      mode: host #tproxy|tun|host
+{{- else }}
+  - binding: tunnel
+    options:
+      mode: host #tproxy|tun|host
+{{- end }}
+{{- if .IsPrivate }}
 #  - binding: transport
 #    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
 #    options:
 #      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
 #      connectTimeoutMs: 5000
 #      getSessionTimeout: 60s
-{{- else }}
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
+{{- else if .WssEnabled }}
   - binding: edge
     address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
     options:
       advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
       connectTimeoutMs: 5000
       getSessionTimeout: 60s
+{{- else if .IsFabricRouter }}
+  - binding: transport
+    address: tls:0.0.0.0:{{ .ZitiEdgeRouterPort }}
+    options:
+      advertise: {{ .ZitiEdgeRouterHostname }}:{{ .ZitiEdgeRouterPort }}
+      connectTimeoutMs: 5000
+      getSessionTimeout: 60s
 {{ end }}
 
-{{ if .IsPrivate }}
+{{- if or .IsPrivate .IsFabricRouter }}
 #edge:
 csr:
   country: US
@@ -88,7 +98,7 @@ edge:
         - "127.0.0.1"
 {{ end }}
 
-{{ if .WssEnabled }}
+{{- if .WssEnabled }}
 transport:
   ws:
     writeTimeout: 10
@@ -100,9 +110,9 @@ transport:
     readBufferSize: 4096
     writeBufferSize: 4096
     enableCompression: true
-    server_cert: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
-    key: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
-{{ else }}
+    server_cert: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-router-server.cert
+    key: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-router-server.key
+{{- else if or .IsPrivate .IsFabricRouter }}
 #transport:
 #  ws:
 #    writeTimeout:      10
@@ -114,8 +124,8 @@ transport:
 #    readBufferSize:    4096
 #    writeBufferSize:   4096
 #    enableCompression: true
-#    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
-#    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
+#    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-router-server.cert
+#    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-router-server.key
 {{- end }}
 
 forwarder:

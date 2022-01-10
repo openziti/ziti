@@ -64,6 +64,7 @@ func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdCreateConfigRouterEdge(data))
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric(data))
 
 	options.addCreateFlags(cmd)
 	options.addFlags(cmd)

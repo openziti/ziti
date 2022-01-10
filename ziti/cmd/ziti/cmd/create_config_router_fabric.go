@@ -29,47 +29,35 @@ import (
 	"text/template"
 )
 
-const (
-	optionWSS          = "wss"
-	defaultWSS         = false
-	wssDescription     = "Create an edge router config with wss enabled"
-	optionPrivate      = "private"
-	defaultPrivate     = false
-	privateDescription = "Create a private router config"
-)
-
 var (
-	createConfigRouterEdgeLong = templates.LongDesc(`
-		Creates the edge router config
+	createConfigRouterFabricLong = templates.LongDesc(`
+		Creates the fabric router config
 `)
 
-	createConfigRouterEdgeExample = templates.Examples(`
-		# Create the edge router config for a router named my_router
-		ziti create config router edge --routerName my_router
+	createConfigRouterFabricExample = templates.Examples(`
+		# Create the fabric router config for a router named my_router
+		ziti create config router fabric --routerName my_router
 	`)
 )
 
-// CreateConfigRouterEdgeOptions the options for the edge command
-type CreateConfigRouterEdgeOptions struct {
+// CreateConfigRouterFabricOptions the options for the fabric command
+type CreateConfigRouterFabricOptions struct {
 	CreateConfigRouterOptions
-
-	WssEnabled bool
-	IsPrivate  bool
 }
 
 //go:embed config_templates/router.yml
-var routerConfigEdgeTemplate string
+var routerConfigFabricTemplate string
 
-// NewCmdCreateConfigRouterEdge creates a command object for the "edge" command
-func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
-	options := &CreateConfigRouterEdgeOptions{}
+// NewCmdCreateConfigRouterFabric creates a command object for the "fabric" command
+func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
+	options := &CreateConfigRouterFabricOptions{}
 
 	cmd := &cobra.Command{
-		Use:     "edge",
-		Short:   "Create an edge router config",
-		Aliases: []string{"edge"},
-		Long:    createConfigRouterEdgeLong,
-		Example: createConfigRouterEdgeExample,
+		Use:     "fabric",
+		Short:   "Create a fabric router config",
+		Aliases: []string{"fabric"},
+		Long:    createConfigRouterFabricLong,
+		Example: createConfigRouterFabricExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			// Setup logging
 			var logOut *os.File
@@ -84,10 +72,9 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 				logrus.SetOutput(logOut)
 			}
 
-			// Update edge router specific values with options passed in
+			// Update fabric router specific values with options passed in
 			data.RouterName = options.RouterName
-			data.WssEnabled = options.WssEnabled
-			data.IsPrivate = options.IsPrivate
+			data.IsFabricRouter = true
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -103,9 +90,7 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 	return cmd
 }
 
-func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
-	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
+func (options *CreateConfigRouterFabricOptions) addFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -114,14 +99,9 @@ func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
 }
 
 // run implements the command
-func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) error {
-	// Ensure private and wss are not both used
-	if options.IsPrivate && options.WssEnabled {
-		logrus.Fatal("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
-		return errors.New("Flags for private and wss configs are mutually exclusive.")
-	}
+func (options *CreateConfigRouterFabricOptions) run(data *ConfigTemplateValues) error {
 
-	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
+	tmpl, err := template.New("fabric-router-config").Parse(routerConfigFabricTemplate)
 	if err != nil {
 		return err
 	}
@@ -149,7 +129,7 @@ func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) er
 		return errors.Wrap(err, "unable to execute template")
 	}
 
-	logrus.Debugf("Edge Router configuration generated successfully and written to: %s", options.Output)
+	logrus.Debugf("Fabric Router configuration generated successfully and written to: %s", options.Output)
 
 	return nil
 }

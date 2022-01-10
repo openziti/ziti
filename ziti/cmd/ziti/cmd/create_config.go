@@ -63,12 +63,13 @@ type ConfigTemplateValues struct {
 	ZitiEdgeCtrlHostname         string
 
 	// Router specific
-	EdgeRouterName         string
+	RouterName             string
 	ZitiEdgeRouterHostname string
 	ZitiEdgeRouterPort     string
 	ZitiEdgeWSSRouterName  string
 	WssEnabled             bool
 	IsPrivate              bool
+	IsFabricRouter         bool
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
