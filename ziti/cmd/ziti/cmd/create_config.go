@@ -68,6 +68,7 @@ type ConfigTemplateValues struct {
 	ZitiEdgeRouterPort     string
 	ZitiEdgeWSSRouterName  string
 	WssEnabled             bool
+	IsPrivate              bool
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command

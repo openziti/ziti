@@ -30,9 +30,12 @@ import (
 )
 
 const (
-	optionWSS      = "wss"
-	defaultWSS     = false
-	wssDescription = "Create an edge router config with wss enabled"
+	optionWSS          = "wss"
+	defaultWSS         = false
+	wssDescription     = "Create an edge router config with wss enabled"
+	optionPrivate      = "private"
+	defaultPrivate     = false
+	privateDescription = "Create a private router config"
 )
 
 var (
@@ -51,6 +54,7 @@ type CreateConfigRouterEdgeOptions struct {
 	CreateConfigRouterOptions
 
 	WssEnabled bool
+	IsPrivate  bool
 }
 
 //go:embed config_templates/edge.router.yml
@@ -83,6 +87,7 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 			// Update edge router specific values with options passed in
 			data.EdgeRouterName = options.RouterName
 			data.WssEnabled = options.WssEnabled
+			data.IsPrivate = options.IsPrivate
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -100,6 +105,7 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 
 func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
+	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -109,6 +115,12 @@ func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
 
 // run implements the command
 func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) error {
+	// Ensure private and wss are not both used
+	if options.IsPrivate && options.WssEnabled {
+		logrus.Fatal("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
+		return errors.New("Flags for private and wss configs are mutually exclusive.")
+	}
+
 	tmpl, err := template.New("router-config").Parse(routerConfigEdgeTemplate)
 	if err != nil {
 		return err

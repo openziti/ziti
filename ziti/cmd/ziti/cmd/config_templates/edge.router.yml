@@ -17,16 +17,36 @@ ctrl:
   endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
 
 link:
+{{- if .IsPrivate }}
+#  listeners:
+#    - binding:          transport
+#      bind:             tls:0.0.0.0:10080
+#      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
+#      options:
+#        outQueueSize:   16
+{{- else }}
   listeners:
     - binding:          transport
       bind:             tls:0.0.0.0:10080
       advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
       options:
         outQueueSize:   16
+{{- end }}
   dialers:
     - binding: transport
 
 listeners:
+{{- if .IsPrivate }}
+#  - binding: tunnel
+#    options:
+#      mode: host #tproxy|tun|host
+#  - binding: transport
+#    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+#    options:
+#      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+#      connectTimeoutMs: 5000
+#      getSessionTimeout: 60s
+{{- else }}
   - binding: tunnel
     options:
       mode: host #tproxy|tun|host
@@ -36,7 +56,23 @@ listeners:
       advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
       connectTimeoutMs: 5000
       getSessionTimeout: 60s
+{{ end }}
 
+{{ if .IsPrivate }}
+#edge:
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - {{ .ZitiEdgeRouterHostname }}
+      - localhost
+    ip:
+      - "127.0.0.1"
+{{- else }}
 edge:
   csr:
     country: US
@@ -50,8 +86,9 @@ edge:
         - localhost
       ip:
         - "127.0.0.1"
+{{ end }}
 
-{{if .WssEnabled }}
+{{ if .WssEnabled }}
 transport:
   ws:
     writeTimeout: 10
@@ -65,7 +102,7 @@ transport:
     enableCompression: true
     server_cert: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
     key: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
-{{else}}
+{{ else }}
 #transport:
 #  ws:
 #    writeTimeout:      10
@@ -79,7 +116,8 @@ transport:
 #    enableCompression: true
 #    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .EdgeRouterName }}-router-server.cert
 #    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .EdgeRouterName }}-router-server.key
-{{end}}
+{{- end }}
+
 forwarder:
   latencyProbeInterval: 1000
   xgressDialQueueLength: 1000
