@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/google/uuid"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -15,10 +16,18 @@ import (
 	"time"
 )
 
+func NewTunnelState() *TunnelState {
+	sessionCache, _ := lru.New(256)
+	return &TunnelState{
+		sessionCache: sessionCache,
+	}
+}
+
 type TunnelState struct {
 	configTypes          []string
 	currentApiSessionId  atomic.Value
 	createApiSessionLock sync.Mutex
+	sessionCache         *lru.Cache
 }
 
 func (self *TunnelState) getCurrentApiSessionId() string {
@@ -172,30 +181,58 @@ func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 	}
 }
 
+func (self *baseTunnelRequestContext) isSessionValid(sessionId, sessionType string) bool {
+	logger := logrus.
+		WithField("operation", self.handler.Label()).
+		WithField("router", self.sourceRouter.Name)
+
+	if sessionId != "" {
+		session, err := self.handler.getAppEnv().Handlers.Session.Read(sessionId)
+		if err != nil {
+			if !boltz.IsErrNotFoundErr(err) {
+				self.err = internalError(err)
+				return false
+			}
+		}
+		if session != nil {
+			if session.ServiceId == self.service.Id && session.ApiSessionId == self.apiSession.Id && session.Type == sessionType {
+				self.session = session
+				return true
+			}
+			logger.Errorf("required session did not match service or api session. "+
+				"session.id=%v session.type=%v session.serviceId=%v session.apiSessionId=%v "+
+				"requested type=%v serviceId=%v apiSessionId=%v",
+				session.Id, session.Type, session.ServiceId, session.ApiSessionId, sessionType, self.service.Id, self.apiSession.Id)
+		}
+	}
+	return false
+}
+
 func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, sessionType string) {
 	if self.err == nil {
 		logger := logrus.
 			WithField("operation", self.handler.Label()).
-			WithField("router", self.sourceRouter.Name)
+			WithField("router", self.sourceRouter.Name).
+			WithField("sessionType", sessionType)
 
-		if sessionId != "" {
-			session, err := self.handler.getAppEnv().Handlers.Session.Read(sessionId)
-			if err != nil {
-				if !boltz.IsErrNotFoundErr(err) {
-					self.err = internalError(err)
-					return
+		if self.isSessionValid(sessionId, sessionType) {
+			logger.WithField("sessionId", sessionId).Debug("session valid")
+			return
+		}
+
+		cacheKey := self.service.Id + "." + sessionType
+
+		if val, found := self.getTunnelState().sessionCache.Get(cacheKey); found {
+			sessionId = val.(string)
+			if self.isSessionValid(sessionId, sessionType) {
+				logger.WithField("sessionId", sessionId).Debug("found valid cached session")
+				self.newSession = true
+				if self.logContext != nil {
+					self.logContext.WithField("sessionId", self.session.Id)
 				}
+				return
 			}
-			if session != nil {
-				if session.ServiceId == self.service.Id && session.ApiSessionId == self.apiSession.Id && session.Type == sessionType {
-					self.session = session
-					return
-				}
-				logger.Errorf("required session did not match service or api session. "+
-					"session.id=%v session.type=%v session.serviceId=%v session.apiSessionId=%v "+
-					"requested type=%v serviceId=%v apiSessionId=%v",
-					session.Id, session.Type, session.ServiceId, session.ApiSessionId, sessionType, self.service.Id, self.apiSession.Id)
-			}
+			logger.WithField("sessionId", sessionId).Debug("found invalid cached session")
 		}
 
 		session := &model.Session{
@@ -221,6 +258,9 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 		if self.logContext != nil {
 			self.logContext.WithField("sessionId", self.session.Id)
 		}
+
+		self.getTunnelState().sessionCache.Add(cacheKey, self.session.Id)
+		logger.WithField("sessionId", sessionId).Debug("created new session")
 	}
 }
 

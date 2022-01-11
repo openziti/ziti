@@ -142,7 +142,8 @@ func (c *Controller) SetHostController(h env.HostController) {
 }
 
 func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHandler {
-	tunnelState := &handler_edge_ctrl.TunnelState{}
+	tunnelState := handler_edge_ctrl.NewTunnelState()
+
 	return []channel2.ReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
