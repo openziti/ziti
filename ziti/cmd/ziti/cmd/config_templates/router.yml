@@ -52,18 +52,18 @@ listeners:
 #      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
 #      connectTimeoutMs: 5000
 #      getSessionTimeout: 60s
-{{- else if .WssEnabled }}
-  - binding: edge
-    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-    options:
-      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
 {{- else if .IsFabricRouter }}
   - binding: transport
     address: tls:0.0.0.0:{{ .ZitiEdgeRouterPort }}
     options:
       advertise: {{ .ZitiEdgeRouterHostname }}:{{ .ZitiEdgeRouterPort }}
+      connectTimeoutMs: 5000
+      getSessionTimeout: 60s
+{{- else }}
+  - binding: edge
+    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+    options:
+      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
       connectTimeoutMs: 5000
       getSessionTimeout: 60s
 {{ end }}
