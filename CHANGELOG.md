@@ -7,6 +7,7 @@
 * Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
 * Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
 * Enhancement: Edge REST API calls will now show in metrics in the format of <path>.<method>
+* Bug fix: fix controller panic during circuit creation if router is unexpectedly deleted during routing
 
 # Release 0.24.2
 
