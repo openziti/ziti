@@ -22,6 +22,8 @@ import (
 )
 
 const (
+	PathSeparator = "/"
+
 	ZitiHomeVarName = "ZITI_HOME"
 
 	ZitiPKIVarName = "ZITI_PKI"
@@ -84,8 +86,7 @@ func GetZitiHome() (string, error) {
 
 	homePath := HomeDir()
 
-	pathSep := string(os.PathSeparator)
-	err = os.Setenv(ZitiHomeVarName, homePath+pathSep+".ziti"+pathSep+"quickstart"+pathSep+hostname)
+	err = os.Setenv(ZitiHomeVarName, homePath+PathSeparator+".ziti"+PathSeparator+"quickstart"+PathSeparator+hostname)
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +104,7 @@ func GetZitiPKI() (string, error) {
 			return "", err
 		}
 	}
-	return getOrSetEnvVar(ZitiPKIVarName, zitiHome+string(os.PathSeparator)+"pki")
+	return getOrSetEnvVar(ZitiPKIVarName, zitiHome+PathSeparator+"pki")
 }
 
 func GetZitiCtrlIntermediateName() (string, error) {
