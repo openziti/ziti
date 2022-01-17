@@ -38,8 +38,8 @@ const (
 	ServerHelloType = int32(edge_ctrl_pb.ContentType_ServerHelloType)
 	ClientHelloType = int32(edge_ctrl_pb.ContentType_ClientHelloType)
 
-	EnrollmentCertsResponseType       = int32(edge_ctrl_pb.ContentType_EnrollmentCertsResponseType)
-	EnrollmentExtendRouterRequestType = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterRequestType)
+	EnrollmentCertsResponseType             = int32(edge_ctrl_pb.ContentType_EnrollmentCertsResponseType)
+	EnrollmentExtendRouterRequestType       = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterRequestType)
 	EnrollmentExtendRouterVerifyRequestType = int32(edge_ctrl_pb.ContentType_EnrollmentExtendRouterVerifyRequestType)
 )
 
@@ -126,7 +126,7 @@ func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
 		pfxlog.Logger().Error("during broker apiSessionFullyAuthenticated could not cast arg[0] to *persistence.ApiSession")
 		return
 	}
-	broker.routerSyncStrategy.ApiSessionAdded(apiSession)
+	go broker.routerSyncStrategy.ApiSessionAdded(apiSession)
 }
 
 func (broker *Broker) apiSessionDeleted(args ...interface{}) {
@@ -140,7 +140,7 @@ func (broker *Broker) apiSessionDeleted(args ...interface{}) {
 		return
 	}
 
-	broker.routerSyncStrategy.ApiSessionDeleted(apiSession)
+	go broker.routerSyncStrategy.ApiSessionDeleted(apiSession)
 }
 
 func (broker *Broker) sessionDeleted(args ...interface{}) {
@@ -154,15 +154,15 @@ func (broker *Broker) sessionDeleted(args ...interface{}) {
 		return
 	}
 
-	broker.routerSyncStrategy.SessionDeleted(session)
+	go broker.routerSyncStrategy.SessionDeleted(session)
 }
 
 func (broker *Broker) apiSessionCertificateCreated(args ...interface{}) {
-	broker.apiSessionCertificateHandler(false, args...)
+	go broker.apiSessionCertificateHandler(false, args...)
 }
 
 func (broker *Broker) apiSessionCertificateDeleted(args ...interface{}) {
-	broker.apiSessionCertificateHandler(true, args...)
+	go broker.apiSessionCertificateHandler(true, args...)
 }
 
 func (broker *Broker) apiSessionCertificateHandler(delete bool, args ...interface{}) {
@@ -190,7 +190,7 @@ func (broker *Broker) apiSessionCertificateHandler(delete bool, args ...interfac
 		return
 	}
 
-	broker.routerSyncStrategy.ApiSessionUpdated(apiSession, apiSessionCert)
+	go broker.routerSyncStrategy.ApiSessionUpdated(apiSession, apiSessionCert)
 }
 
 func (broker *Broker) IsEdgeRouterOnline(id string) bool {
