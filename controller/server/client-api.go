@@ -143,7 +143,6 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 	innerClientHandler := ae.ClientApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		start := time.Now()
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
 		//if not /edge prefix and not /fabric, translate to "/edge/client/v<latest>", this is a hack
@@ -176,8 +175,6 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		response.AddHeaders(rc)
 
 		innerClientHandler.ServeHTTP(rw, r)
-		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(r))
-		timer.UpdateSince(start)
 	})
 
 	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})

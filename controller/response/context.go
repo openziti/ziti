@@ -20,6 +20,7 @@ import (
 	"errors"
 	"github.com/openziti/edge/controller/model"
 	"net/http"
+	"time"
 )
 
 const (
@@ -39,6 +40,7 @@ type RequestContext struct {
 	entityId          string
 	entitySubId       string
 	Body              []byte
+	StartTime         time.Time
 }
 
 func (rc *RequestContext) GetId() string {
