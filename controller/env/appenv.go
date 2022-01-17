@@ -509,8 +509,14 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 
 		responderFunc(ae, rc)
 
-		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(rc.Request))
-		timer.UpdateSince(rc.StartTime)
+		if !rc.StartTime.IsZero() {
+			timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(rc.Request))
+			timer.UpdateSince(rc.StartTime)
+		} else {
+			pfxlog.Logger().WithFields(map[string]interface{}{
+				"url": request.URL,
+			}).Warn("could not mark metrics for REST API endpoint, request context start time is zero")
+		}
 	})
 }
 
