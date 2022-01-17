@@ -22,7 +22,7 @@ import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -58,12 +58,12 @@ func (example *example) Enabled() bool {
 	return example.enabled
 }
 
-func (example *example) BindChannel(ch channel2.Channel) error {
+func (example *example) BindChannel(ch channel.Channel) error {
 	ch.AddReceiveHandler(newReceiveHandler())
 	return nil
 }
 
-func (example *example) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{}) error {
+func (example *example) Run(ctrl channel.Channel, _ boltz.Db, done chan struct{}) error {
 	go func() {
 		for {
 			select {
@@ -76,7 +76,7 @@ func (example *example) Run(ctrl channel2.Channel, _ boltz.Db, done chan struct{
 				if err := binary.Write(body, binary.LittleEndian, example.count); err != nil {
 					pfxlog.Logger().Errorf("unexpected error marshaling (%s)", err)
 				}
-				msg := channel2.NewMessage(contentType, body.Bytes())
+				msg := channel.NewMessage(contentType, body.Bytes())
 				if err := ctrl.Send(msg); err != nil {
 					pfxlog.Logger().Errorf("unexpected error sending (%s)", err)
 				}
@@ -92,7 +92,7 @@ func (example *example) NotifyOfReconnect() {
 	logrus.Info("control channel reconnected")
 }
 
-func (example *example) GetTraceDecoders() []channel2.TraceMessageDecoder {
+func (example *example) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 

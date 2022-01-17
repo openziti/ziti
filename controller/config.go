@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
@@ -41,7 +42,7 @@ type Config struct {
 	Network *network.Options
 	Db      *db.Db
 	Trace   struct {
-		Handler *channel2.TraceHandler
+		Handler *channel.TraceHandler
 	}
 	Profile struct {
 		Memory struct {
@@ -54,7 +55,7 @@ type Config struct {
 	}
 	Ctrl struct {
 		Listener transport.Address
-		Options  *channel2.Options
+		Options  *channel.Options
 	}
 	Mgmt struct {
 		Listener transport.Address
@@ -143,11 +144,11 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["path"]; found {
-				handler, err := channel2.NewTraceHandler(value.(string), controllerConfig.Id.Token)
+				handler, err := channel.NewTraceHandler(value.(string), controllerConfig.Id.Token)
 				if err != nil {
 					return nil, err
 				}
-				handler.AddDecoder(&channel2.Decoder{})
+				handler.AddDecoder(&channel.Decoder{})
 				handler.AddDecoder(&ctrl_pb.Decoder{})
 				handler.AddDecoder(&xgress.Decoder{})
 				handler.AddDecoder(&mgmt_pb.Decoder{})
@@ -192,10 +193,14 @@ func LoadConfig(path string) (*Config, error) {
 				panic("controllerConfig must provide [ctrl/listener]")
 			}
 
-			controllerConfig.Ctrl.Options = channel2.DefaultOptions()
+			controllerConfig.Ctrl.Options = channel.DefaultOptions()
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					controllerConfig.Ctrl.Options = channel2.LoadOptions(submap)
+					options, err := channel.LoadOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+					controllerConfig.Ctrl.Options = options
 					if err := controllerConfig.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}

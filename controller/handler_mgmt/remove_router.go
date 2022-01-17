@@ -42,20 +42,20 @@ func (h *removeRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 
 	request := &mgmt_pb.RemoveRouterRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	_, err := h.network.Routers.Read(request.RouterId)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	if err := h.network.Routers.Delete(request.RouterId); err == nil {
 		log.Infof("removed router [r/%v]", request.RouterId)
-		handler_common.SendSuccess(msg, ch, "")
+		handler_common.SendChannel2Success(msg, ch, "")
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

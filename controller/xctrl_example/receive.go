@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type receiveHandler struct{}
 
-func newReceiveHandler() channel2.ReceiveHandler {
+func newReceiveHandler() channel.ReceiveHandler {
 	return &receiveHandler{}
 }
 
@@ -33,7 +33,7 @@ func (h *receiveHandler) ContentType() int32 {
 	return contentType
 }
 
-func (h *receiveHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *receiveHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	if len(msg.Body) == 4 {
 		buf := bytes.NewBuffer(msg.Body)
 		var count int32

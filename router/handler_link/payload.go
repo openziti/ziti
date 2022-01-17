@@ -45,7 +45,7 @@ func (self *payloadHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		WithField("linkId", self.link.Id().Token).
 		WithField("routerId", self.link.DestinationId())
 
-	payload, err := xgress.UnmarshallPayload(msg)
+	payload, err := xgress.UnmarshallChannel2Payload(msg)
 	if err == nil {
 		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
 			log.WithError(err).Debug("unable to forward")

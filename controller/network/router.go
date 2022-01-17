@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -38,7 +38,7 @@ type Router struct {
 	Name               string
 	Fingerprint        *string
 	AdvertisedListener string
-	Control            channel2.Channel
+	Control            channel.Channel
 	Connected          concurrenz.AtomicBoolean
 	VersionInfo        *common.VersionInfo
 	routerLinks        RouterLinks

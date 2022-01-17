@@ -52,7 +52,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 				router, ok := entity.(*network.Router)
 				if !ok {
 					errorMsg := fmt.Sprintf("unexpected result in router list of type: %v", reflect.TypeOf(entity))
-					handler_common.SendFailure(msg, ch, errorMsg)
+					handler_common.SendChannel2Failure(msg, ch, errorMsg)
 					return
 				}
 
@@ -83,11 +83,11 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 				}
 
 			} else {
-				handler_common.SendFailure(msg, ch, err.Error())
+				handler_common.SendChannel2Failure(msg, ch, err.Error())
 			}
 
 		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	}
 }

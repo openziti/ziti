@@ -40,7 +40,7 @@ func (h *listCircuitsHandler) ContentType() int32 {
 func (h *listCircuitsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	list := &mgmt_pb.ListCircuitsRequest{}
 	if err := proto.Unmarshal(msg.Body, list); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *listCircuitsHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 	}
 	body, err := proto.Marshal(response)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 

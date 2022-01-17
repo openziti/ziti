@@ -21,18 +21,15 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/ctrl_msg"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"strconv"
 	"strings"
 )
 
-type Decoder struct{}
+type Channel2Decoder struct{}
 
-const DECODER = "ctrl"
-
-func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
+func (d Channel2Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	switch msg.ContentType {
 	case int32(ContentType_CircuitRequestType):
 		circuitRequest := &CircuitRequest{}
@@ -299,8 +296,4 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 	}
 
 	return nil, false
-}
-
-func terminatorToString(request *CreateTerminatorRequest) string {
-	return fmt.Sprintf("{serviceId=[%s], binding=[%s], address=[%v]}", request.ServiceId, request.Binding, request.Address)
 }

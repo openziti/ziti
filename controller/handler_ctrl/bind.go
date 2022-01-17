@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/metrics"
 	"time"
 )
@@ -36,7 +36,7 @@ func newBindHandler(router *network.Router, network *network.Network, xctrls []x
 	return &bindHandler{router: router, network: network, xctrls: xctrls}
 }
 
-func (self *bindHandler) BindChannel(ch channel2.Channel) error {
+func (self *bindHandler) BindChannel(ch channel.Channel) error {
 	traceDispatchWrapper := trace.NewDispatchWrapper(self.network.GetEventDispatcher().Dispatch)
 	ch.SetLogicalName(self.router.Id)
 	ch.AddReceiveHandler(newCircuitRequestHandler(self.router, self.network))

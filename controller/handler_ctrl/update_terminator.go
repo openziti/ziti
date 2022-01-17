@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/boltz"
 	log "github.com/sirupsen/logrus"
 	"math"
@@ -42,7 +42,7 @@ func (h *updateTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_UpdateTerminatorRequestType)
 }
 
-func (h *updateTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *updateTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &ctrl_pb.UpdateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		log.WithError(err).Error("failed to unmarshal update terminator message")
@@ -52,7 +52,7 @@ func (h *updateTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	go h.handleUpdateTerminator(msg, ch, request)
 }
 
-func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel2.Message, ch channel2.Channel, request *ctrl_pb.UpdateTerminatorRequest) {
+func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.UpdateTerminatorRequest) {
 	terminator, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())

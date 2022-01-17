@@ -19,6 +19,7 @@ package xgress
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/uuidz"
@@ -112,6 +113,26 @@ func (header *Header) unmarshallHeader(msg *channel2.Message) error {
 	return nil
 }
 
+func (header *Header) unmarshallChannelHeader(msg *channel.Message) error {
+	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
+	if !ok {
+		return fmt.Errorf("no circuitId found in xgress payload message")
+	}
+
+	// If no flags are present, it just means no flags have been set
+	flags, _ := msg.GetUint32Header(HeaderKeyFlags)
+
+	header.CircuitId = string(circuitId)
+	header.Flags = flags
+	if header.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
+		header.RecvBufferSize = math.MaxUint32
+	}
+
+	header.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
+
+	return nil
+}
+
 func (header *Header) marshallHeader(msg *channel2.Message) {
 	msg.Headers[HeaderKeyCircuitId] = []byte(header.CircuitId)
 	if header.Flags != 0 {
@@ -180,10 +201,23 @@ func (ack *Acknowledgement) Marshall() *channel2.Message {
 	return msg
 }
 
-func UnmarshallAcknowledgement(msg *channel2.Message) (*Acknowledgement, error) {
+func UnmarshallChannel2Acknowledgement(msg *channel2.Message) (*Acknowledgement, error) {
 	ack := &Acknowledgement{}
 
 	if err := ack.unmarshallHeader(msg); err != nil {
+		return nil, err
+	}
+	if err := ack.unmarshallSequence(msg.Body); err != nil {
+		return nil, err
+	}
+
+	return ack, nil
+}
+
+func UnmarshallAcknowledgement(msg *channel.Message) (*Acknowledgement, error) {
+	ack := &Acknowledgement{}
+
+	if err := ack.unmarshallChannelHeader(msg); err != nil {
 		return nil, err
 	}
 	if err := ack.unmarshallSequence(msg.Body); err != nil {
@@ -226,7 +260,7 @@ func (payload *Payload) Marshall() *channel2.Message {
 	return msg
 }
 
-func UnmarshallPayload(msg *channel2.Message) (*Payload, error) {
+func UnmarshallChannel2Payload(msg *channel2.Message) (*Payload, error) {
 	var headers map[uint8][]byte
 	for key, val := range msg.Headers {
 		if key >= MinHeaderKey && key <= MaxHeaderKey {
@@ -244,6 +278,36 @@ func UnmarshallPayload(msg *channel2.Message) (*Payload, error) {
 	}
 
 	if err := payload.unmarshallHeader(msg); err != nil {
+		return nil, err
+	}
+
+	sequence, ok := msg.GetUint64Header(HeaderKeySequence)
+	if !ok {
+		return nil, fmt.Errorf("no sequence found in xgress payload message")
+	}
+	payload.Sequence = int32(sequence)
+
+	return payload, nil
+}
+
+func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
+	var headers map[uint8][]byte
+	for key, val := range msg.Headers {
+		if key >= MinHeaderKey && key <= MaxHeaderKey {
+			if headers == nil {
+				headers = make(map[uint8][]byte)
+			}
+			xgressHeaderKey := uint8(key - MinHeaderKey)
+			headers[xgressHeaderKey] = val
+		}
+	}
+
+	payload := &Payload{
+		Headers: headers,
+		Data:    msg.Body,
+	}
+
+	if err := payload.unmarshallChannelHeader(msg); err != nil {
 		return nil, err
 	}
 

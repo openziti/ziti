@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 	"sync"
@@ -46,7 +47,7 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 	request := &trace_pb.TogglePipeTracesRequest{}
 
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
@@ -80,15 +81,8 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 
 	for _, router := range handler.network.AllConnectedRouters() {
 		if checkMatch(router.Id, matchers, verbosity, result) {
-			msg := channel2.NewMessage(int32(ctrl_pb.ContentType_TogglePipeTracesRequestType), msg.Body)
-			respCh, err := router.Control.SendAndWait(msg)
-			if err != nil {
-				result.Success = false
-				result.Append(fmt.Sprintf("Trace enable of Router %v failed with: %v", router.Id, err))
-			} else {
-				waitGroup.Add(1)
-				go handleResponse(router.Id, respCh, remoteResultChan, waitGroup)
-			}
+			waitGroup.Add(1)
+			go handleResponse(router, msg, remoteResultChan, waitGroup)
 		}
 	}
 
@@ -110,9 +104,9 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 
 func (handler *traceTogglePipeHandler) complete(msg *channel2.Message, ch channel2.Channel, result *trace.ToggleResult) {
 	if result.Success {
-		handler_common.SendSuccess(msg, ch, result.Message.String())
+		handler_common.SendChannel2Success(msg, ch, result.Message.String())
 	} else {
-		handler_common.SendFailure(msg, ch, result.Message.String())
+		handler_common.SendChannel2Failure(msg, ch, result.Message.String())
 	}
 }
 
@@ -143,25 +137,19 @@ func getApplyResults(resultChan chan trace.ToggleApplyResult, verbosity trace.To
 	}
 }
 
-func handleResponse(targetId string, respCh <-chan *channel2.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
+func handleResponse(router *network.Router, mgmtReq *channel2.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 
-	timeout := time.After(time.Second * 5)
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_TogglePipeTracesRequestType), mgmtReq.Body)
+	response, err := msg.WithTimeout(5 * time.Second).SendForReply(router.Control)
 
-	select {
-	case response, ok := <-respCh:
-		if !ok {
-			msg := fmt.Sprintf("No response from router %v\n", targetId)
-			msgsCh <- &remoteToggleResult{false, msg}
-		} else if response.ContentType == channel2.ContentTypeResultType {
-			result := channel2.UnmarshalResult(response)
-			msgsCh <- &remoteToggleResult{result.Success, result.Message}
-		} else {
-			msg := fmt.Sprintf("Unexpected response type from router %v: %v\n", targetId, response.ContentType)
-			msgsCh <- &remoteToggleResult{false, msg}
-		}
-	case <-timeout:
-		msg := fmt.Sprintf("Timed out waiting for response from router %v\n", targetId)
+	if err != nil {
+		msgsCh <- &remoteToggleResult{false, err.Error()}
+	} else if response.ContentType == channel2.ContentTypeResultType {
+		result := channel.UnmarshalResult(response)
+		msgsCh <- &remoteToggleResult{result.Success, result.Message}
+	} else {
+		msg := fmt.Sprintf("Unexpected response type from router %v: %v\n", router.Id, response.ContentType)
 		msgsCh <- &remoteToggleResult{false, msg}
 	}
 }

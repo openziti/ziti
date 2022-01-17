@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"time"
 )
@@ -41,7 +41,7 @@ func (h *circuitRequestHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_CircuitRequestType)
 }
 
-func (h *circuitRequestHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	request := &ctrl_pb.CircuitRequest{}
@@ -66,7 +66,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 					responseMsg.Headers[int32(k)] = v
 				}
 
-				if err := h.r.Control.SendWithTimeout(responseMsg, time.Second*10); err != nil {
+				if err := h.r.Control.Send(responseMsg.WithTimeout(10 * time.Second)); err != nil {
 					log.Errorf("unable to respond with success to create circuit request for circuit %v (%s)", circuit.Id, err)
 					if err := h.network.RemoveCircuit(circuit.Id, true); err != nil {
 						log.Errorf("unable to remove circuit %v (%v)", circuit.Id, err)

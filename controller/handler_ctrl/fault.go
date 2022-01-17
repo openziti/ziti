@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"strings"
 )
 
@@ -39,7 +39,7 @@ func (h *faultHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_FaultType)
 }
 
-func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *faultHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	fault := &ctrl_pb.Fault{}
@@ -51,7 +51,7 @@ func (h *faultHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel)
 	go h.handleFault(msg, ch, fault)
 }
 
-func (h *faultHandler) handleFault(msg *channel2.Message, ch channel2.Channel, fault *ctrl_pb.Fault) {
+func (h *faultHandler) handleFault(msg *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	switch fault.Subject {

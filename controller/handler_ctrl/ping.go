@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/fabric/controller/handler_common"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type pingHandler struct{}
@@ -28,9 +28,9 @@ func newPingHandler() *pingHandler {
 }
 
 func (h *pingHandler) ContentType() int32 {
-	return channel2.ContentTypePingType
+	return channel.ContentTypePingType
 }
 
-func (h *pingHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *pingHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go handler_common.SendResult(msg, ch, "ok", true)
 }

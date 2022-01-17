@@ -5,7 +5,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 )
 
@@ -21,7 +21,7 @@ func (*traceHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_TraceEventType)
 }
 
-func (handler *traceHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (handler *traceHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	event := &trace_pb.ChannelMessage{}
 	if err := proto.Unmarshal(msg.Body, event); err == nil {
 		go handler.dispatcher.Accept(event)

@@ -108,7 +108,7 @@ func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
 	h.appRxMsgSizeHistogram.Update(msgSize)
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
-		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
+		if payload, err := xgress.UnmarshallChannel2Payload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
 			h.usageRxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
@@ -126,7 +126,7 @@ func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
 	h.appTxMsgSizeHistogram.Update(msgSize)
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
-		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
+		if payload, err := xgress.UnmarshallChannel2Payload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
 			h.usageTxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))

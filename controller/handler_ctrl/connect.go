@@ -23,7 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
@@ -44,7 +44,7 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, xct
 	}
 }
 
-func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
+func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	id := hello.IdToken
 
 	log := pfxlog.Logger().WithField("routerId", id)

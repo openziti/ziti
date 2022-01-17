@@ -41,6 +41,7 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/xweb"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
@@ -60,13 +61,13 @@ import (
 type Router struct {
 	config          *Config
 	ctrl            channel2.Channel
-	ctrlOptions     *channel2.Options
+	ctrlOptions     *channel.Options
 	linkOptions     *channel2.Options
 	linkListener    channel2.UnderlayListener
 	faulter         *forwarder.Faulter
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
-	xctrls          []xctrl.Xctrl
+	xctrls          []xctrl.Channel2Xctrl
 	xctrlDone       chan struct{}
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
@@ -133,7 +134,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	}
 }
 
-func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
+func (self *Router) RegisterXctrl(x xctrl.Channel2Xctrl) error {
 	if err := self.config.Configure(x); err != nil {
 		return err
 	}

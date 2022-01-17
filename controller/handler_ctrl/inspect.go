@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type inspectHandler struct {
@@ -36,7 +36,7 @@ func (h *inspectHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_InspectRequestType)
 }
 
-func (h *inspectHandler) HandleReceive(request *channel2.Message, ch channel2.Channel) {
+func (h *inspectHandler) HandleReceive(request *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	inspectRequest := &ctrl_pb.InspectRequest{}
@@ -48,7 +48,7 @@ func (h *inspectHandler) HandleReceive(request *channel2.Message, ch channel2.Ch
 	go h.handleInspect(request, ch, inspectRequest)
 }
 
-func (h *inspectHandler) handleInspect(request *channel2.Message, ch channel2.Channel, inspectRequest *ctrl_pb.InspectRequest) {
+func (h *inspectHandler) handleInspect(request *channel.Message, ch channel.Channel, inspectRequest *ctrl_pb.InspectRequest) {
 	response := &ctrl_pb.InspectResponse{Success: true}
 	for _, value := range inspectRequest.RequestedValues {
 		if value == "capability" {
@@ -60,16 +60,16 @@ func (h *inspectHandler) handleInspect(request *channel2.Message, ch channel2.Ch
 	h.respond(ch, request, response)
 }
 
-func (h *inspectHandler) respondWithError(ch channel2.Channel, request *channel2.Message, errs ...string) {
+func (h *inspectHandler) respondWithError(ch channel.Channel, request *channel.Message, errs ...string) {
 	response := &ctrl_pb.InspectResponse{Success: false, Errors: errs}
 	h.respond(ch, request, response)
 }
 
-func (h *inspectHandler) respond(ch channel2.Channel, request *channel2.Message, response *ctrl_pb.InspectResponse) {
+func (h *inspectHandler) respond(ch channel.Channel, request *channel.Message, response *ctrl_pb.InspectResponse) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if body, err := proto.Marshal(response); err == nil {
-		responseMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
+		responseMsg := channel.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
 		responseMsg.ReplyTo(request)
 		if err := ch.Send(responseMsg); err != nil {
 			log.Errorf("unable to respond to inspect request(%s)", err)

@@ -157,9 +157,9 @@ func LoadConfig(path string) (*Config, error) {
 			if err != nil {
 				return nil, err
 			}
-			handler.AddDecoder(&channel2.Decoder{})
-			handler.AddDecoder(&xgress.Decoder{})
-			handler.AddDecoder(&ctrl_pb.Decoder{})
+			handler.AddDecoder(channel2.Decoder{})
+			handler.AddDecoder(xgress.Channel2Decoder{})
+			handler.AddDecoder(ctrl_pb.Channel2Decoder{})
 			cfg.Trace.Handler = handler
 		}
 	}

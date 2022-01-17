@@ -61,7 +61,7 @@ func (self *queuingAckHandler) ContentType() int32 {
 }
 
 func (self *queuingAckHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
+	if ack, err := xgress.UnmarshallChannel2Acknowledgement(msg); err == nil {
 		select {
 		case self.ackIngest <- ack:
 		case <-self.closeNotify:

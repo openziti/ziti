@@ -46,13 +46,13 @@ func (*streamMetricsHandler) ContentType() int32 {
 func (handler *streamMetricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	request := &mgmt_pb.StreamMetricsRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	filters, err := parseFilters(request)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 

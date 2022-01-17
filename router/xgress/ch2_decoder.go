@@ -19,25 +19,22 @@ package xgress
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 )
 
-type Decoder struct{}
+type Channel2Decoder struct{}
 
-const DECODER = "data"
-
-func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
+func (d Channel2Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	switch msg.ContentType {
 	case int32(ContentTypePayloadType):
-		if payload, err := UnmarshallPayload(msg); err == nil {
+		if payload, err := UnmarshallChannel2Payload(msg); err == nil {
 			return DecodePayload(payload)
 		} else {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 		}
 
 	case int32(ContentTypeAcknowledgementType):
-		if ack, err := UnmarshallAcknowledgement(msg); err == nil {
+		if ack, err := UnmarshallChannel2Acknowledgement(msg); err == nil {
 			meta := channel2.NewTraceMessageDecode(DECODER, "Acknowledgement")
 			meta["circuitId"] = ack.CircuitId
 			meta["sequence"] = fmt.Sprintf("len(%d)", len(ack.Sequence))
@@ -61,27 +58,4 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 	}
 
 	return nil, false
-}
-
-func DecodePayload(payload *Payload) ([]byte, bool) {
-	meta := channel2.NewTraceMessageDecode(DECODER, "Payload")
-	meta["circuitId"] = payload.CircuitId
-	meta["sequence"] = payload.Sequence
-	switch payload.GetOriginator() {
-	case Initiator:
-		meta["originator"] = "i"
-	case Terminator:
-		meta["originator"] = "e"
-	}
-	if payload.Flags != 0 {
-		meta["flags"] = payload.Flags
-	}
-	meta["length"] = len(payload.Data)
-
-	data, err := meta.MarshalTraceMessageDecode()
-	if err != nil {
-		return nil, true
-	}
-
-	return data, true
 }

@@ -45,11 +45,11 @@ func (h *createRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 		r := network.NewRouter(create.Router.Id, create.Router.Name, create.Router.Fingerprint)
 		if err := h.network.CreateRouter(r); err == nil {
 			log.Infof("created router [r/%s] with fingerprint [%s]", r.Id, create.Router.Fingerprint)
-			handler_common.SendSuccess(msg, ch, "")
+			handler_common.SendChannel2Success(msg, ch, "")
 		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

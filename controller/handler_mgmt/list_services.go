@@ -50,7 +50,7 @@ func (h *listServicesHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 				service, ok := entity.(*network.Service)
 				if !ok {
 					errorMsg := fmt.Sprintf("unexpected result in service list of type: %v", reflect.TypeOf(entity))
-					handler_common.SendFailure(msg, ch, errorMsg)
+					handler_common.SendChannel2Failure(msg, ch, errorMsg)
 					return
 				}
 				response.Services = append(response.Services, toApiService(service))
@@ -65,12 +65,12 @@ func (h *listServicesHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 				}
 
 			} else {
-				handler_common.SendFailure(msg, ch, err.Error())
+				handler_common.SendChannel2Failure(msg, ch, err.Error())
 			}
 		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }
