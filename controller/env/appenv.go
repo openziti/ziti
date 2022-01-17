@@ -58,6 +58,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -436,6 +437,7 @@ func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) 
 		Identity:          nil,
 		ApiSession:        nil,
 		ActivePermissions: []string{},
+		StartTime:         time.Now(),
 	}
 
 	requestContext.Responder = response.NewResponder(requestContext)
@@ -456,6 +458,27 @@ func GetRequestContextFromHttpContext(r *http.Request) (*response.RequestContext
 	}
 
 	return requestContext, nil
+}
+
+// getMetricTimerName returns a metric timer name based on the incoming HTTP request's URL and method.
+// Unique ids are removed from the URL and replaced with :id and :subid to group metrics from the same
+// endpoint that happen to be working on different ids.
+func getMetricTimerName(r *http.Request) string {
+	cleanUrl := r.URL.Path
+
+	rc, _ := api.GetRequestContextFromHttpContext(r)
+
+	if rc != nil {
+		if id, err := rc.GetEntityId(); err == nil && id != "" {
+			cleanUrl = strings.Replace(cleanUrl, id, ":id", -1)
+		}
+
+		if subid, err := rc.GetEntitySubId(); err == nil && subid != "" {
+			cleanUrl = strings.Replace(cleanUrl, subid, ":subid", -1)
+		}
+	}
+
+	return fmt.Sprintf("%s.%s", cleanUrl, r.Method)
 }
 
 func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestContext), request *http.Request, entityId string, entitySubId string, permissions ...permissions.Resolver) openApiMiddleware.Responder {
@@ -485,6 +508,15 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 		}
 
 		responderFunc(ae, rc)
+
+		if !rc.StartTime.IsZero() {
+			timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(rc.Request))
+			timer.UpdateSince(rc.StartTime)
+		} else {
+			pfxlog.Logger().WithFields(map[string]interface{}{
+				"url": request.URL,
+			}).Warn("could not mark metrics for REST API endpoint, request context start time is zero")
+		}
 	})
 }
 

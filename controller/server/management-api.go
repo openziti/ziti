@@ -108,7 +108,6 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 	innerManagementHandler := ae.ManagementApi.Serve(nil)
 
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		start := time.Now()
 		rw.Header().Set(ZitiInstanceId, ae.InstanceId)
 
 		if r.URL.Path == controller.ManagementRestApiSpecUrl {
@@ -132,30 +131,7 @@ func (managementApi ManagementApiHandler) newHandler(ae *env.AppEnv) http.Handle
 		response.AddHeaders(rc)
 
 		innerManagementHandler.ServeHTTP(rw, r)
-		timer := ae.GetHostController().GetNetwork().GetMetricsRegistry().Timer(getMetricTimerName(r))
-		timer.UpdateSince(start)
 	})
 
 	return api.TimeoutHandler(api.WrapCorsHandler(handler), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
-}
-
-// getMetricTimerName returns a metric timer name based on the incoming HTTP request's URL and method.
-// Unique ids are removed from the URL and replaced with :id and :subid to group metrics from the same
-// endpoint that happen to be working on different ids.
-func getMetricTimerName(r *http.Request) string {
-	cleanUrl := r.URL.Path
-
-	rc, _ := api.GetRequestContextFromHttpContext(r)
-
-	if rc != nil {
-		if id, err := rc.GetEntityId(); err == nil && id != "" {
-			cleanUrl = strings.Replace(cleanUrl, id, ":id", -1)
-		}
-
-		if subid, err := rc.GetEntitySubId(); err == nil && subid != "" {
-			cleanUrl = strings.Replace(cleanUrl, subid, ":subid", -1)
-		}
-	}
-
-	return fmt.Sprintf("%s.%s", cleanUrl, r.Method)
 }
