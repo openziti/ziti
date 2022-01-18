@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,7 +28,7 @@ type removeTunnelTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel2.Channel) channel2.ReceiveHandler {
+func NewRemoveTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
 	return &removeTunnelTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,
@@ -45,7 +45,7 @@ func (self *removeTunnelTerminatorHandler) Label() string {
 	return "tunnel.remove.terminator"
 }
 
-func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	ctx := &RemoveTunnelTerminatorRequestContext{
 		baseSessionRequestContext: baseSessionRequestContext{handler: self, msg: msg},
 		terminatorId:              string(msg.Body),
@@ -77,7 +77,7 @@ func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTer
 
 	logger.Info("removed terminator")
 
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType), nil)
+	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType), nil)
 	responseMsg.ReplyTo(ctx.msg)
 	if err := self.ch.Send(responseMsg); err != nil {
 		logger.WithError(err).Error("failed to send remove tunnel terminator response")

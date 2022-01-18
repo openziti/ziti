@@ -22,6 +22,7 @@ import (
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/api_impl"
+	"github.com/openziti/foundation/channel"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -141,10 +142,10 @@ func (c *Controller) SetHostController(h env.HostController) {
 	}
 }
 
-func (c *Controller) GetCtrlHandlers(ch channel2.Channel) []channel2.ReceiveHandler {
+func (c *Controller) GetCtrlHandlers(ch channel.Channel) []channel.ReceiveHandler {
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
-	return []channel2.ReceiveHandler{
+	return []channel.ReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTerminatorHandler(c.AppEnv, ch),
@@ -321,12 +322,12 @@ func (c *Controller) Shutdown() {
 
 type subctrl struct {
 	parent  *Controller
-	channel channel2.Channel
+	channel channel.Channel
 }
 
-func (c *subctrl) GetTraceDecoders() []channel2.TraceMessageDecoder {
-	return []channel2.TraceMessageDecoder{
-		&edge_ctrl_pb.Decoder{},
+func (c *subctrl) GetTraceDecoders() []channel.TraceMessageDecoder {
+	return []channel.TraceMessageDecoder{
+		edge_ctrl_pb.Decoder{},
 	}
 }
 
@@ -341,7 +342,7 @@ func (c *subctrl) Enabled() bool {
 	return c.parent.Enabled()
 }
 
-func (c *subctrl) BindChannel(ch channel2.Channel) error {
+func (c *subctrl) BindChannel(ch channel.Channel) error {
 	for _, h := range c.parent.GetCtrlHandlers(ch) {
 		ch.AddReceiveHandler(h)
 	}
@@ -349,7 +350,7 @@ func (c *subctrl) BindChannel(ch channel2.Channel) error {
 	return nil
 }
 
-func (c *subctrl) Run(channel2.Channel, boltz.Db, chan struct{}) error {
+func (c *subctrl) Run(channel.Channel, boltz.Db, chan struct{}) error {
 	return nil
 }
 

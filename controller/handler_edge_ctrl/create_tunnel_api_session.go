@@ -4,7 +4,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,7 +13,7 @@ type createApiSessionHandler struct {
 	*TunnelState
 }
 
-func NewCreateApiSessionHandler(appEnv *env.AppEnv, ch channel2.Channel, tunnelState *TunnelState) channel2.ReceiveHandler {
+func NewCreateApiSessionHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
 	return &createApiSessionHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,
@@ -32,7 +32,7 @@ func (self *createApiSessionHandler) Label() string {
 	return "tunnel.create.api_session"
 }
 
-func (self *createApiSessionHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *createApiSessionHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	req := &edge_ctrl_pb.CreateApiSessionRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		logrus.WithField("router", self.ch.Id().Token).WithError(err).Error("could not unmarshal CreateApiSessionRequest")
@@ -77,7 +77,7 @@ func (self *createApiSessionHandler) createApiSession(ctx *createApiSessionReque
 		return
 	}
 
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_CreateApiSessionResponseType), body)
+	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_CreateApiSessionResponseType), body)
 	responseMsg.ReplyTo(ctx.msg)
 	if err = self.ch.Send(responseMsg); err != nil {
 		logrus.WithError(err).Error("failed to send response")

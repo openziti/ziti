@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type extendEnrollmentHandler struct {
@@ -40,7 +40,7 @@ func (h *extendEnrollmentHandler) ContentType() int32 {
 	return env.EnrollmentExtendRouterRequestType
 }
 
-func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.EnrollmentExtendRouterRequest{}
 		certs := ch.Underlay().Certificates()
@@ -126,7 +126,7 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel2.Message, ch channe
 				return
 			}
 
-			msg := channel2.NewMessage(env.EnrollmentCertsResponseType, body)
+			msg := channel.NewMessage(env.EnrollmentCertsResponseType, body)
 
 			if err := ch.Send(msg); err != nil {
 				log.WithError(err).Errorf("request to extend router enrollment failed to send enrollment certificate response")

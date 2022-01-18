@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type createCircuitForServiceHandler struct {
@@ -30,7 +30,7 @@ type createCircuitForServiceHandler struct {
 	*TunnelState
 }
 
-func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel2.Channel, tunnelState *TunnelState) channel2.ReceiveHandler {
+func NewCreateCircuitForTunnelHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
 	return &createCircuitForServiceHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,
@@ -58,14 +58,14 @@ func (self *createCircuitForServiceHandler) sendResponse(ctx *CreateCircuitForSe
 		return
 	}
 
-	responseMsg := channel2.NewMessage(response.GetContentType(), body)
+	responseMsg := channel.NewMessage(response.GetContentType(), body)
 	responseMsg.ReplyTo(ctx.msg)
 	if err = self.ch.Send(responseMsg); err != nil {
 		log.WithError(err).WithField("service", ctx.req.ServiceName).Error("failed to send CreateCircuitForServiceResponse")
 	}
 }
 
-func (self *createCircuitForServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *createCircuitForServiceHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.CreateCircuitForServiceRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateCircuitForServiceRequest")

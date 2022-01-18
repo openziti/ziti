@@ -12,7 +12,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -28,7 +28,7 @@ import (
 type requestHandler interface {
 	getAppEnv() *env.AppEnv
 	getNetwork() *network.Network
-	getChannel() channel2.Channel
+	getChannel() channel.Channel
 	ContentType() int32
 	Label() string
 }
@@ -41,7 +41,7 @@ type UpdateTerminatorRequest interface {
 }
 
 type baseRequestHandler struct {
-	ch     channel2.Channel
+	ch     channel.Channel
 	appEnv *env.AppEnv
 }
 
@@ -53,13 +53,13 @@ func (self *baseRequestHandler) getAppEnv() *env.AppEnv {
 	return self.appEnv
 }
 
-func (self *baseRequestHandler) getChannel() channel2.Channel {
+func (self *baseRequestHandler) getChannel() channel.Channel {
 	return self.ch
 }
 
 func (self *baseRequestHandler) returnError(ctx requestContext, err controllerError) {
 	ctx.CleanupOnError()
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), []byte(err.Error()))
+	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), []byte(err.Error()))
 	responseMsg.PutUint32Header(edge.ErrorCodeHeader, err.ErrorCode())
 	responseMsg.ReplyTo(ctx.GetMessage())
 	logger := pfxlog.
@@ -97,7 +97,7 @@ func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 
 type requestContext interface {
 	GetHandler() requestHandler
-	GetMessage() *channel2.Message
+	GetMessage() *channel.Message
 	CleanupOnError()
 }
 
@@ -108,7 +108,7 @@ type sessionRequestContext interface {
 
 type baseSessionRequestContext struct {
 	handler      requestHandler
-	msg          *channel2.Message
+	msg          *channel.Message
 	err          controllerError
 	sourceRouter *network.Router
 	session      *model.Session
@@ -129,7 +129,7 @@ func (self *baseSessionRequestContext) CleanupOnError() {
 	}
 }
 
-func (self *baseSessionRequestContext) GetMessage() *channel2.Message {
+func (self *baseSessionRequestContext) GetMessage() *channel.Message {
 	return self.msg
 }
 

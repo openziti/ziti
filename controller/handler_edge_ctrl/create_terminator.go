@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"math"
@@ -35,7 +35,7 @@ type createTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewCreateTerminatorHandler(appEnv *env.AppEnv, ch channel2.Channel) channel2.ReceiveHandler {
+func NewCreateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
 	return &createTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,
@@ -52,7 +52,7 @@ func (self *createTerminatorHandler) Label() string {
 	return "create.terminator"
 }
 
-func (self *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *createTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorRequest")
@@ -123,7 +123,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 
 	log.WithField("terminator", id).Info("created terminator")
 
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_CreateTerminatorResponseType), []byte(id))
+	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_CreateTerminatorResponseType), []byte(id))
 	responseMsg.ReplyTo(ctx.msg)
 	if err := self.ch.Send(responseMsg); err != nil {
 		log.WithError(err).Error("failed to send create terminator response")
