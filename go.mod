@@ -37,7 +37,6 @@ require (
 	github.com/jinzhu/copier v0.3.4
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
 	github.com/lucsky/cuid v1.2.1
-	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mdlayher/netlink v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/miekg/dns v1.1.45
@@ -45,7 +44,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.15
 	github.com/openziti/foundation v0.16.11
-	github.com/openziti/sdk-golang v0.15.127
+	github.com/openziti/sdk-golang v0.15.128
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -70,7 +69,6 @@ require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
-	github.com/StackExchange/wmi v0.0.0-20210224194228-fe8f1750fd46 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
@@ -81,7 +79,7 @@ require (
 	github.com/emirpasic/gods v1.12.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
-	github.com/go-ole/go-ole v1.2.5 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.20.1 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
@@ -93,6 +91,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/lucas-clemente/quic-go v0.23.0 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.4 // indirect
 	github.com/marten-seemann/qtls-go1-17 v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -108,10 +107,13 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20210416104105-e2d188152601 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/shirou/gopsutil v2.20.9+incompatible // indirect
+	github.com/shirou/gopsutil v2.21.11+incompatible // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
+	github.com/tklauser/go-sysconf v0.3.9 // indirect
+	github.com/tklauser/numcpus v0.3.0 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
+	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.7.5 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	golang.org/x/mod v0.5.1 // indirect
