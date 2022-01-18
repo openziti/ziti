@@ -205,10 +205,12 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorIden
 	}
 
 	if response.ApiSession != nil {
+		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new apiSession")
 		self.updateApiSession(response.ApiSession)
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
+		log.WithField("sessionId", response.Session.SessionId).Info("received new session")
 		self.dialSessions.Set(service.GetName(), response.Session.SessionId)
 	}
 
@@ -246,15 +248,15 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 }
 
 func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTerminator) {
-	logger := logrus.WithField("service", terminator.context.ServiceName())
+	log := logrus.WithField("service", terminator.context.ServiceName())
 
 	if terminator.closed.Get() {
-		logger.Info("not attempting to establish terminator, service not hostable")
+		log.Info("not attempting to establish terminator, service not hostable")
 		return
 	}
 
 	operation := func() error {
-		logger.Info("attempting to establish terminator")
+		log.Info("attempting to establish terminator")
 		err := self.establishTerminator(terminator)
 		if err != nil && terminator.closed.Get() {
 			return backoff.Permanent(err)
@@ -266,14 +268,14 @@ func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTermi
 	expBackoff.MaxInterval = 1 * time.Minute
 
 	if err := backoff.Retry(operation, expBackoff); err != nil {
-		logger.WithError(err).Error("stopping attempts to establish terminator, service not hostable")
+		log.WithError(err).Error("stopping attempts to establish terminator, service not hostable")
 	}
 }
 
 func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) error {
 	terminator.address = uuid.NewString() // grab new id each time we retry
 
-	logger := pfxlog.Logger().
+	log := pfxlog.Logger().
 		WithField("routerId", self.factory.id).
 		WithField("service", terminator.context.ServiceName()).
 		WithField("address", terminator.address)
@@ -311,26 +313,28 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{}
 	responseMsg, err := self.factory.Channel().SendForReply(request, self.factory.DefaultRequestTimeout())
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
-		logger.WithError(err).Error("error creating terminator")
+		log.WithError(err).Error("error creating terminator")
 		return err
 	}
 
 	if response.ApiSession != nil {
+		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new api-session")
 		self.updateApiSession(response.ApiSession)
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
+		log.WithField("sessionId", response.Session.SessionId).Info("received new session")
 		self.bindSessions.Set(terminator.context.ServiceName(), response.Session.SessionId)
 	}
 
 	terminator.closeCallback = self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
 		if err := self.removeTerminator(terminator); err != nil {
-			logger.WithError(err).Error("failed to remove terminator after edge session was removed")
+			log.WithError(err).Error("failed to remove terminator after edge session was removed")
 		}
 		go self.establishTerminatorWithRetry(terminator)
 	})
 
-	logger.WithField("terminatorId", response.TerminatorId).Info("created terminator")
+	log.WithField("terminatorId", response.TerminatorId).Info("created terminator")
 
 	terminator.terminatorId = response.TerminatorId
 	return nil
@@ -362,21 +366,21 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 		}
 	}
 
-	logger := logrus.WithField("terminator", terminatorId).
+	log := logrus.WithField("terminator", terminatorId).
 		WithField("precedence", request.Precedence).
 		WithField("cost", request.Cost).
 		WithField("updatingPrecedence", request.UpdatePrecedence).
 		WithField("updatingCost", request.UpdateCost)
 
-	logger.Debug("updating terminator")
+	log.Debug("updating terminator")
 
 	responseMsg, err := self.factory.Channel().SendForReply(request, self.factory.DefaultRequestTimeout())
 	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTunnelTerminatorResponseType); err != nil {
-		logger.WithError(err).Error("terminator update failed")
+		log.WithError(err).Error("terminator update failed")
 		return err
 	}
 
-	logger.Debug("terminator updated successfully")
+	log.Debug("terminator updated successfully")
 	return nil
 }
 

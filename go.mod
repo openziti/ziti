@@ -30,7 +30,9 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
+	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.0
+	github.com/hashicorp/golang-lru v0.5.4
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/jinzhu/copier v0.3.4
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
@@ -63,8 +65,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 )
-
-require github.com/google/gopacket v1.1.19
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
