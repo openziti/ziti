@@ -207,6 +207,10 @@ type AppMiddleware func(*AppEnv, http.Handler) http.Handler
 type authorizer struct {
 }
 
+const (
+	EventualEventsGauge = "eventual.events"
+)
+
 func (a authorizer) Authorize(request *http.Request, principal interface{}) error {
 	//principal is an API Session
 	_, ok := principal.(*model.ApiSession)
@@ -377,6 +381,33 @@ func (ae *AppEnv) InitPersistence() error {
 	if err = persistence.RunMigrations(ae.GetDbProvider().GetDb(), ae.BoltStores); err != nil {
 		return err
 	}
+
+	ae.BoltStores.EventualEventer.AddListener(persistence.EventualEventAddedName, func(i ...interface{}) {
+		if len(i) == 0 {
+			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument length was 0", EventualEventsGauge)
+			return
+		}
+
+		if event, ok := i[0].(*persistence.EventualEventAdded); ok {
+			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
+			gauge.Update(event.Total)
+		} else {
+			pfxlog.Logger().Errorf("could not update metrics for %s gauge on add, event argument was %T expected *EventualEventAdded", EventualEventsGauge, i[0])
+		}
+	})
+	ae.BoltStores.EventualEventer.AddListener(persistence.EventualEventRemovedName, func(i ...interface{}) {
+		if len(i) == 0 {
+			pfxlog.Logger().Errorf("could not update metrics for %s gauge on remove, event argument length was 0", EventualEventsGauge)
+			return
+		}
+
+		if event, ok := i[0].(*persistence.EventualEventRemoved); ok {
+			gauge := ae.GetHostController().GetNetwork().GetMetricsRegistry().Gauge(EventualEventsGauge)
+			gauge.Update(event.Total)
+		} else {
+			pfxlog.Logger().Errorf("could not update metrics for %s gauge on remove, event argument was %T expected *EventualEventRemoved", EventualEventsGauge, i[0])
+		}
+	})
 
 	ae.Handlers = model.InitHandlers(ae)
 	events.Init(ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())

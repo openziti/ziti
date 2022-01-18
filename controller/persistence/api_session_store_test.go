@@ -39,7 +39,8 @@ func Test_ApiSessionStore(t *testing.T) {
 	t.Run("test delete api sessions", ctx.testDeleteApiSessions)
 }
 
-func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
+func (ctx *TestContext) testCreateInvalidApiSessions(t *testing.T) {
+	ctx.BaseTestContext.NextTest(t)
 	defer ctx.CleanupAll()
 
 	apiSession := NewApiSession(eid.New())
@@ -64,7 +65,8 @@ func (ctx *TestContext) testCreateInvalidApiSessions(_ *testing.T) {
 	ctx.EqualError(err, fmt.Sprintf("an entity of type apiSession already exists with id %v", apiSession.GetId()))
 }
 
-func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
+func (ctx *TestContext) testCreateApiSessions(t *testing.T) {
+	ctx.BaseTestContext.NextTest(t)
 	ctx.CleanupAll()
 
 	identity := ctx.RequireNewIdentity("Jojo", false)
@@ -80,9 +82,20 @@ func (ctx *TestContext) testCreateApiSessions(_ *testing.T) {
 
 	ctx.ValidateBaseline(apiSession2)
 
-	ctx.RequireDelete(apiSession)
-
+	err := ctx.Delete(apiSession)
+	ctx.NoError(err)
 	ctx.RequireDelete(identity)
+
+	done, err := ctx.GetStores().EventualEventer.Trigger()
+	ctx.NoError(err)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		ctx.Fail("did not receive done notification from eventual eventer")
+
+	}
+
 	ctx.ValidateDeleted(apiSession.Id)
 	ctx.ValidateDeleted(apiSession2.Id)
 }
@@ -130,7 +143,8 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 	}
 }
 
-func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
+func (ctx *TestContext) testLoadQueryApiSessions(t *testing.T) {
+	ctx.BaseTestContext.NextTest(t)
 	ctx.CleanupAll()
 
 	entities := ctx.createApiSessionTestEntities()
@@ -159,11 +173,11 @@ func (ctx *TestContext) testLoadQueryApiSessions(_ *testing.T) {
 	ctx.NoError(err)
 }
 
-func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
+func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
+	ctx.BaseTestContext.NextTest(t)
 	ctx.CleanupAll()
 	entities := ctx.createApiSessionTestEntities()
 	earlier := time.Now()
-	time.Sleep(time.Millisecond * 50)
 
 	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
 		original, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
@@ -197,10 +211,31 @@ func (ctx *TestContext) testUpdateApiSessions(_ *testing.T) {
 	ctx.NoError(err)
 }
 
-func (ctx *TestContext) testDeleteApiSessions(_ *testing.T) {
+func (ctx *TestContext) testDeleteApiSessions(t *testing.T) {
+	ctx.BaseTestContext.NextTest(t)
 	ctx.CleanupAll()
 	entities := ctx.createApiSessionTestEntities()
-	ctx.RequireDelete(entities.apiSession1)
-	ctx.RequireDelete(entities.apiSession2)
-	ctx.RequireDelete(entities.apiSession3)
+
+	err := ctx.Delete(entities.apiSession1)
+	ctx.NoError(err)
+
+	err = ctx.Delete(entities.apiSession2)
+	ctx.NoError(err)
+
+	err = ctx.Delete(entities.apiSession3)
+	ctx.NoError(err)
+
+	done, err := ctx.GetStores().EventualEventer.Trigger()
+	ctx.NoError(err)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		ctx.Fail("did not receive done notification from eventual eventer")
+
+	}
+
+	ctx.ValidateDeleted(entities.apiSession1.GetId())
+	ctx.ValidateDeleted(entities.apiSession2.GetId())
+	ctx.ValidateDeleted(entities.apiSession3.GetId())
 }

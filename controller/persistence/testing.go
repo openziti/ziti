@@ -60,6 +60,7 @@ type TestContext struct {
 	fabricStores *db.Stores
 	stores       *Stores
 	controllers  *network.Controllers
+	closeNotify  chan struct{}
 }
 
 func NewTestContext(t *testing.T) *TestContext {
@@ -67,9 +68,15 @@ func NewTestContext(t *testing.T) *TestContext {
 
 	result := &TestContext{
 		BaseTestContext: *boltz.NewTestContext(t),
+		closeNotify:     make(chan struct{}, 1),
 	}
 	result.Impl = result
 	return result
+}
+
+func (ctx *TestContext) Cleanup() {
+	close(ctx.closeNotify)
+	ctx.BaseTestContext.Cleanup()
 }
 
 func (ctx *TestContext) GetStores() *Stores {
@@ -116,6 +123,9 @@ func (ctx *TestContext) InitWithDbFile(path string) {
 	ctx.NoError(err)
 
 	ctx.NoError(RunMigrations(ctx.GetDb(), ctx.stores))
+
+	ctx.NoError(ctx.stores.EventualEventer.Start(ctx.closeNotify))
+
 }
 
 func (ctx *TestContext) requireNewServicePolicy(policyType PolicyType, identityRoles []string, serviceRoles []string) *ServicePolicy {

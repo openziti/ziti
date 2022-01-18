@@ -25,10 +25,12 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"time"
 )
 
 type Stores struct {
-	DbProvider DbProvider
+	DbProvider      DbProvider
+	EventualEventer EventualEventer
 
 	// fabric stores
 	Router     db.RouterStore
@@ -37,6 +39,7 @@ type Stores struct {
 
 	ApiSession              ApiSessionStore
 	ApiSessionCertificate   ApiSessionCertificateStore
+	EventualEvent           EventualEventStore
 	Ca                      CaStore
 	Config                  ConfigStore
 	ConfigType              ConfigTypeStore
@@ -116,7 +119,8 @@ func (stores *Stores) CheckIntegrityInTx(tx *bbolt.Tx, fix bool, errorHandler fu
 }
 
 type stores struct {
-	DbProvider DbProvider
+	DbProvider      DbProvider
+	EventualEventer EventualEventer
 
 	// fabric stores
 	Router     db.RouterStore
@@ -124,6 +128,7 @@ type stores struct {
 	Terminator db.TerminatorStore
 
 	apiSession              *apiSessionStoreImpl
+	eventualEvent           *eventualEventStoreImpl
 	ca                      *caStoreImpl
 	config                  *configStoreImpl
 	configType              *configTypeStoreImpl
@@ -153,10 +158,12 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		DbProvider: dbProvider,
 	}
 
+	internalStores.eventualEvent = newEventualEventStore(internalStores)
+	internalStores.EventualEventer = NewEventualEventerBbolt(dbProvider, internalStores.eventualEvent, 2*time.Second, 1000)
+
 	internalStores.Terminator = dbProvider.GetStores().Terminator
 	internalStores.Router = dbProvider.GetStores().Router
 	internalStores.Service = dbProvider.GetStores().Service
-
 	internalStores.apiSession = newApiSessionStore(internalStores)
 	internalStores.apiSessionCertificate = newApiSessionCertificateStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
@@ -188,6 +195,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 		ApiSession:              internalStores.apiSession,
 		ApiSessionCertificate:   internalStores.apiSessionCertificate,
+		EventualEvent:           internalStores.eventualEvent,
 		Ca:                      internalStores.ca,
 		Config:                  internalStores.config,
 		ConfigType:              internalStores.configType,
@@ -210,6 +218,8 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 		storeMap: make(map[reflect.Type]boltz.CrudStore),
 	}
+
+	externalStores.EventualEventer = internalStores.EventualEventer
 
 	// The Index store is used for querying indexes. It's a convenient store with only a single value (id), which
 	// is only ever queried using an index set cursor

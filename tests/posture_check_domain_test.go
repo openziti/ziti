@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -127,7 +128,6 @@ func Test_PostureChecks_Domain(t *testing.T) {
 			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
 		})
 
-
 		t.Run("service has the posture check in its queries", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			code, body := enrolledIdentitySession.query("/services/" + service.Id)
@@ -144,7 +144,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 			if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
 				dialSet = querySet[0]
 				bindSet = querySet[1]
-			}  else {
+			} else {
 				dialSet = querySet[1]
 				bindSet = querySet[0]
 			}
@@ -158,7 +158,6 @@ func Test_PostureChecks_Domain(t *testing.T) {
 
 			ctx.Req.Equal(postureCheck.id, postureQueries[0].Path("id").Data().(string))
 			ctx.Req.Equal(postureCheck.typeId, postureQueries[0].Path("queryType").Data().(string))
-
 
 			t.Run("query is currently failing", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -205,7 +204,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 				if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
 					dialSet = querySet[0]
 					bindSet = querySet[1]
-				}  else {
+				} else {
 					dialSet = querySet[1]
 					bindSet = querySet[0]
 				}
@@ -264,7 +263,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 					if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
 						dialSet = querySet[0]
 						bindSet = querySet[1]
-					}  else {
+					} else {
 						dialSet = querySet[1]
 						bindSet = querySet[0]
 					}
@@ -328,7 +327,7 @@ func Test_PostureChecks_Domain(t *testing.T) {
 				if querySet[0].Path("policyId").Data().(string) == dialPolicy.id {
 					dialSet = querySet[0]
 					bindSet = querySet[1]
-				}  else {
+				} else {
 					dialSet = querySet[1]
 					bindSet = querySet[0]
 				}
@@ -394,7 +393,6 @@ func Test_PostureChecks_Domain(t *testing.T) {
 			ctx.testContextChanged(t)
 			ctx.Req.True(enrolledIdentitySession.isServiceVisibleToUser(service.Id))
 		})
-
 
 		t.Run("can create session with failing queries via one service policy by having another service policy with no checks", func(t *testing.T) {
 			ctx.testContextChanged(t)

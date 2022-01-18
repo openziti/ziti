@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -47,7 +48,7 @@ func Test_UpdbEnrollment(t *testing.T) {
 			"updb": updbUsername,
 		}, "enrollment")
 		updbCreate.Set(false, "isAdmin")
-		
+
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(updbCreate.String()).Post("identities")
 		ctx.Req.NoError(err)
 

@@ -179,7 +179,7 @@ func (store *sessionStoreImpl) initializeLocal() {
 	store.symbolServicePolicies = store.AddFkSetSymbol(FieldSessionServicePolicies, store.stores.servicePolicy)
 	store.AddSymbol(FieldSessionType, ast.NodeTypeString)
 
-	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeDelete)
+	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeCreateUpdate)
 	store.AddFkConstraint(store.symbolService, false, boltz.CascadeDelete)
 }
 

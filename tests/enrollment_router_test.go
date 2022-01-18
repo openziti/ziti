@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -371,7 +372,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 						ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
 
-						defer func(){
+						defer func() {
 							if ch != nil {
 								_ = ch.Close()
 							}
@@ -383,7 +384,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 					t.Run("requesting enrollment extension with", func(t *testing.T) {
 						ctx.testContextChanged(t)
-						
+
 						t.Run("no existing router client certificate fails", func(t *testing.T) {
 							ctx.testContextChanged(t)
 							body := gabs.New()
@@ -534,7 +535,6 @@ func Test_RouterEnrollment(t *testing.T) {
 								extensionClientCerts[0].NotBefore.Before(time.Now())
 							})
 
-
 							t.Run("the new server cert has its NotAfter date increased", func(t *testing.T) {
 								ctx.testContextChanged(t)
 								extensionServerCert[0].NotAfter.After(serverCerts[0].NotAfter)
@@ -553,7 +553,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 								ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
 
-								defer func(){
+								defer func() {
 									if ch != nil {
 										_ = ch.Close()
 									}
@@ -570,7 +570,7 @@ func Test_RouterEnrollment(t *testing.T) {
 
 								ch, err := channel2.NewChannel("apitestextension", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
 
-								defer func(){
+								defer func() {
 									if ch != nil {
 										_ = ch.Close()
 									}

@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -89,7 +90,6 @@ func Test_Api_Errors(t *testing.T) {
 
 		resp, err := ctx.newAnonymousClientApiRequest().
 			SetHeader("accept", "appliaction/x-pem-file, application/json").
-
 			Post("enroll?token=" + madeUpToken)
 
 		ctx.Req.NoError(err)

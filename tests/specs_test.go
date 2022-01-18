@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*

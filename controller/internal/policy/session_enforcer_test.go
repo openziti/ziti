@@ -31,9 +31,8 @@ func Test_SessionEnforcer(t *testing.T) {
 	ctx := &enforcerTestContext{
 		TestContext: model.NewTestContext(t),
 	}
-
-	defer ctx.Cleanup()
 	ctx.Init()
+	defer ctx.Cleanup()
 
 	ctx.testSessionsCleanup()
 }
@@ -75,6 +74,16 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	}
 
 	ctx.NoError(enforcer.Run())
+
+	done, err := ctx.GetStores().EventualEventer.Trigger()
+	ctx.NoError(err)
+
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		ctx.Fail("did not receive done notification from eventual eventer")
+	}
+
 	ctx.ValidateDeleted(apiSession.Id)
 	ctx.ValidateDeleted(session.Id)
 	ctx.ValidateDeleted(session2.Id)

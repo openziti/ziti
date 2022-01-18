@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -435,7 +436,6 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 	_, certNonAdminUserAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
 	certNonAdminUserSession, err := certNonAdminUserAuthenticator.AuthenticateClientApi(ctx)
 	ctx.Req.NoError(err, "expected no error during non-admin cert authentication")
-
 
 	t.Run("can access their authenticators", func(t *testing.T) {
 		req := require.New(t)
