@@ -95,6 +95,9 @@ type EventualEventRemoved struct {
 type EventualEventProcessingStart struct {
 	// Id is a unique id for processing run
 	Id string
+
+	// StartTime is the time the processing began
+	StartTime time.Time
 }
 
 type EventualEventProcessingBatchStart struct {
@@ -109,6 +112,9 @@ type EventualEventProcessingBatchStart struct {
 
 	// BatchSize is the batch size for the current batch (the maximum value of Count)
 	BatchSize int
+
+	// StartTime the time when the batch started processing
+	StartTime time.Time
 }
 
 type EventualEventProcessingListenerStart struct {
@@ -129,6 +135,12 @@ type EventualEventProcessingListenerStart struct {
 
 	// TotalEventIndex is the total index across all batches of the currently executing event
 	TotalEventIndex int64
+
+	// EventType is the typeof the event that is triggering the listener
+	EventType string
+
+	// StartTime is the time when the listener was started
+	StartTime time.Time
 }
 
 type EventualEventProcessingListenerDone struct {
@@ -152,6 +164,15 @@ type EventualEventProcessingListenerDone struct {
 
 	// Error is nil if no error occurred during execution, otherwise an error value
 	Error error
+
+	// EventType is the typeof the event that triggered the listener
+	EventType string
+
+	// StartTime is the time when the listener started execution
+	StartTime time.Time
+
+	// EndTime is the time when the listener ended execution
+	EndTime time.Time
 }
 
 type EventualEventProcessingBatchDone struct {
@@ -166,6 +187,12 @@ type EventualEventProcessingBatchDone struct {
 
 	// BatchSize is the batch size for the current batch (the maximum value of Count)
 	BatchSize int
+
+	// StartTime the time the batch was started
+	StartTime time.Time
+
+	// EndTime the time the batch ended
+	EndTime time.Time
 }
 
 type EventualEventProcessingDone struct {
@@ -180,6 +207,12 @@ type EventualEventProcessingDone struct {
 
 	// TotalListenersExecuted is the total number of listeners executed during processing
 	TotalListenersExecuted int64
+
+	// StartTime is the time when the processing began
+	StartTime time.Time
+
+	// EndTime is the time when the processing ended
+	EndTime time.Time
 }
 
 const (
@@ -509,8 +542,11 @@ func (a *EventualEventerBbolt) process() {
 		processId: cuid.New(),
 	}
 
+	startTime := time.Now()
+
 	a.Emit(EventualEventProcessingStartName, &EventualEventProcessingStart{
-		Id: info.processId,
+		Id:        info.processId,
+		StartTime: startTime,
 	})
 
 	defer func() {
@@ -521,6 +557,8 @@ func (a *EventualEventerBbolt) process() {
 			TotalBatches:           info.totalBatches,
 			TotalEvents:            info.totalEvents,
 			TotalListenersExecuted: info.totalListenersExecuted,
+			StartTime:              startTime,
+			EndTime:                time.Now(),
 		})
 	}()
 
@@ -553,11 +591,13 @@ func (a *EventualEventerBbolt) process() {
 
 func (a *EventualEventerBbolt) processBatch(info *runInfo, eventualEvents []*EventualEvent) {
 	info.totalBatches++
+	startTime := time.Now()
 	a.Emit(EventualEventProcessingBatchStartName, &EventualEventProcessingBatchStart{
 		Id:        info.batchId,
 		ProcessId: info.processId,
 		Count:     info.numIds,
 		BatchSize: a.batchSize,
+		StartTime: startTime,
 	})
 
 	info.batchEventIndex = 0
@@ -585,6 +625,8 @@ func (a *EventualEventerBbolt) processBatch(info *runInfo, eventualEvents []*Eve
 		ProcessId: info.processId,
 		Count:     info.numIds,
 		BatchSize: a.batchSize,
+		StartTime: startTime,
+		EndTime:   time.Now(),
 	})
 }
 
@@ -602,16 +644,12 @@ func (a *EventualEventerBbolt) executeHandler(info *runInfo, eventualEvent *Even
 	listenerExecId := cuid.New()
 	info.totalListenersExecuted++
 
-	a.Emit(EventualEventProcessingListenerStartName, &EventualEventProcessingListenerStart{
-		Id:              listenerExecId,
-		BatchId:         info.batchId,
-		ProcessId:       info.processId,
-		ListenerFunc:    handler,
-		BatchEventIndex: info.batchEventIndex,
-		TotalEventIndex: info.totalEventIndex,
-	})
+	var startTime time.Time
+	var endTime time.Time
 
 	defer func() {
+		endTime = time.Now()
+
 		var err error
 		if r := recover(); r != nil {
 
@@ -634,9 +672,25 @@ func (a *EventualEventerBbolt) executeHandler(info *runInfo, eventualEvent *Even
 			ListenerFunc:    handler,
 			BatchEventIndex: info.batchEventIndex,
 			TotalEventIndex: info.totalEventIndex,
+			EventType:       eventualEvent.Type,
 			Error:           err,
+			StartTime:       startTime,
+			EndTime:         endTime,
 		})
 	}()
+
+	startTime = time.Now()
+
+	a.Emit(EventualEventProcessingListenerStartName, &EventualEventProcessingListenerStart{
+		Id:              listenerExecId,
+		BatchId:         info.batchId,
+		ProcessId:       info.processId,
+		ListenerFunc:    handler,
+		BatchEventIndex: info.batchEventIndex,
+		TotalEventIndex: info.totalEventIndex,
+		EventType:       eventualEvent.Type,
+		StartTime:       startTime,
+	})
 
 	handler(eventualEvent.Type, eventualEvent.Data)
 }
