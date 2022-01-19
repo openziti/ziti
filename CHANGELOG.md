@@ -5,6 +5,8 @@
 * Enhancement: Cache sessions for the router/tunneler, to minimize the creation of unnecessary sessions
 * Enhancement: Add send timeouts for route messages
 * Enhancement: Add write timeout configuration for control channel
+* Enhancement: API Session and Session deletes are now separate and eventually consistent
+* Enhancement: API Session synchronization with routers no longer blocks database transactions
 
 ## Control Channel Timeouts
 
