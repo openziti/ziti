@@ -106,6 +106,9 @@ ctrl:
       #maxOutstandingConnects: 100
       # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
       #connectTimeoutMs:       3000
+      # Sets the control channel write timeout. A write timeout will close the control channel, so the router will reconnect
+      #writeTimeout: 15s
+
 
 # Management Channel Configuration
 #

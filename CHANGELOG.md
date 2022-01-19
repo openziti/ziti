@@ -1,3 +1,26 @@
+# Release 0.24.4
+
+## What's New
+
+* Enhancement: Cache sessions for the router/tunneler, to minimize the creation of unnecessary sessions
+* Enhancement: Add send timeouts for route messages
+* Enhancement: Add write timeout configuration for control channel
+* Enhancement: API Session and Session deletes are now separate and eventually consistent
+* Enhancement: API Session synchronization with routers no longer blocks database transactions
+* Bug fix: fix message priority sorting
+
+## Control Channel Timeouts
+
+The controller config file now allows setting a write timeout for control channel connections. If a control channel write times out, because the connection is in a bad state or because a router is in a bad state, the control channel will be closed. This will allow the router to reconnect.
+
+```
+ctrl:
+  listener:             tls:127.0.0.1:6262
+    options:
+      # Sets the control channel write timeout. A write timeout will close the control channel, so the router will reconnect
+      writeTimeout: 15s
+``` 
+
 # Release 0.24.3
 
 ## What's New
@@ -15,8 +38,10 @@
 
 * Bug fix: link verification could panic if link was established before control was finished establishing
 * Bug fix: When checking edge terminator validity in the router, check terminator id as well the address
+* Bug fix: xweb uses idleTimeout correctly, was previously using writeTimeout instead
 * Enhancement: Improve logging around links in routers. Ensure we close both channels when closing a split link
 * Enhancement: Add support for inspect in `ziti fabric`. Works the same as `ziti-fabric inspect`
+
 
 # Release 0.24.1
 
