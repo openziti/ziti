@@ -650,7 +650,6 @@ github.com/miekg/dns v1.1.26/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKju
 github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJysuI=
 github.com/miekg/dns v1.1.45 h1:g5fRIhm9nx7g8osrAvgb16QJfmyMsyOCb+J7LSv+Qzk=
 github.com/miekg/dns v1.1.45/go.mod h1:e3IlAVfNqAllflbibAZEWOXOQ+Ynzk/dDozDxY7XnME=
-github.com/miekg/pkcs11 v1.0.3/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
 github.com/miekg/pkcs11 v1.1.1 h1:Ugu9pdy6vAYku5DEpVWVFPYnzV+bxB+iRdbuFSu7TvU=
 github.com/miekg/pkcs11 v1.1.1/go.mod h1:XsNlhZGX73bx86s2hdc/FuaLm2CPZJemRLMA+WTFxgs=
 github.com/mitchellh/cli v1.0.0/go.mod h1:hNIlj7HEI86fIcpObd7a0FcrxTWetlwJDGcceTlRvqc=
@@ -706,9 +705,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.16 h1:Ixha+oCN3kgaCZl+WWfQdK/pc9nvtKrxGiT7ZDSqHIU=
-github.com/openziti/fabric v0.17.16/go.mod h1:akbl0Fs15ORXVNpzKye2WobyC1EGStGJelEASS1RTIo=
-github.com/openziti/foundation v0.16.12/go.mod h1:su2ohs4NFxazA4GC3dIi4Z1RpROPHn8nij5iiJlCaIg=
+github.com/openziti/fabric v0.17.17 h1:sjAQqmYoC3cF1Sh6RsSkKtNBDkO/NiLqqS1n8Is7Jbw=
+github.com/openziti/fabric v0.17.17/go.mod h1:n1ysT2vSj1CFFXCsLB+LpzaVwPnuHUelSC8Q4n5knws=
 github.com/openziti/foundation v0.16.13 h1:LvZ6pzTE9NayzqWBfW2J/bGv4X/67iJ3H5cqsB3DYI4=
 github.com/openziti/foundation v0.16.13/go.mod h1:SHG4x9kLP+M7sn0BJpoc/RbSIh1Hm1BxwBPHFmCf7qE=
 github.com/openziti/sdk-golang v0.15.130 h1:XnkWlUZEVJb1qusSyNFUiQc8Bc/IAJbv+W/va0O6MLg=
