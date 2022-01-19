@@ -1,16 +1,10 @@
-# Release 0.24.3
+# Release 0.24.4
 
 ## What's New
 
-* Enhancement: API Session delete events now include the related identity id
-* Enhancement: controller and router start up messages now include the component id
-* Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
-* Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
-* Enhancement: Edge REST API calls will now show in metrics in the format of <path>.<method>
 * Enhancement: Cache sessions for the router/tunneler, to minimize the creation of unnecessary sessions
 * Enhancement: Add send timeouts for route messages
 * Enhancement: Add write timeout configuration for control channel
-* Bug fix: fix controller panic during circuit creation if router is unexpectedly deleted during routing
 
 ## Control Channel Timeouts
 
@@ -23,6 +17,17 @@ ctrl:
       # Sets the control channel write timeout. A write timeout will close the control channel, so the router will reconnect
       writeTimeout: 15s
 ``` 
+
+# Release 0.24.3
+
+## What's New
+
+* Enhancement: API Session delete events now include the related identity id
+* Enhancement: controller and router start up messages now include the component id
+* Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
+* Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
+* Enhancement: Edge REST API calls will now show in metrics in the format of <path>.<method>
+* Bug fix: fix controller panic during circuit creation if router is unexpectedly deleted during routing
 
 # Release 0.24.2
 
