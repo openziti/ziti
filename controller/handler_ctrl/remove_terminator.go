@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type removeTerminatorHandler struct {
@@ -37,7 +37,7 @@ func (h *removeTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_RemoveTerminatorRequestType)
 }
 
-func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	request := &ctrl_pb.RemoveTerminatorRequest{}
@@ -49,7 +49,7 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	go h.handleRemoveTerminator(msg, ch, request)
 }
 
-func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel2.Message, ch channel2.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
+func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	_, err := h.network.Terminators.Read(request.TerminatorId)

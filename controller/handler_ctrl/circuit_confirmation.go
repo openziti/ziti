@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -38,7 +38,7 @@ func (self *circuitConfirmationHandler) ContentType() int32 {
 	return int32(ctrl_msg.CircuitConfirmationType)
 }
 
-func (self *circuitConfirmationHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	logrus.Infof("received circuit confirmation request from [r/%s]", self.r.Id)
 	confirm := &ctrl_pb.CircuitConfirmation{}
 	if err := proto.Unmarshal(msg.Body, confirm); err == nil {
@@ -59,7 +59,7 @@ func (self *circuitConfirmationHandler) sendUnroute(circuitId string) {
 	unroute.CircuitId = circuitId
 	unroute.Now = true
 	if body, err := proto.Marshal(unroute); err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err := self.r.Control.Send(msg); err == nil {
 			logrus.Infof("sent unroute to [r/%s] for [s/%s]", self.r.Id, circuitId)
 		} else {

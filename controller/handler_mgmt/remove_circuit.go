@@ -41,12 +41,12 @@ func (handler *removeCircuitHandler) HandleReceive(msg *channel2.Message, ch cha
 	request := &mgmt_pb.RemoveCircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
 		if err := handler.network.RemoveCircuit(request.CircuitId, request.Now); err == nil {
-			handler_common.SendSuccess(msg, ch, "")
+			handler_common.SendChannel2Success(msg, ch, "")
 		} else {
 			pfxlog.Logger().WithError(err).WithField("circuitId", request.CircuitId).Error("unexpected error removing circuit")
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

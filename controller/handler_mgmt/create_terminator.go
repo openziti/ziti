@@ -43,18 +43,18 @@ func (h *createTerminatorHandler) ContentType() int32 {
 func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	cs := &mgmt_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, cs); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 	terminator, err := toModelTerminator(h.network, cs.Terminator)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 	if id, err := h.network.Terminators.Create(terminator); err == nil {
-		handler_common.SendSuccess(msg, ch, id)
+		handler_common.SendChannel2Success(msg, ch, id)
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }
 

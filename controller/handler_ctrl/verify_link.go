@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type verifyLinkHandler struct {
@@ -38,7 +38,7 @@ func (h *verifyLinkHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_VerifyLinkType)
 }
 
-func (h *verifyLinkHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *verifyLinkHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).Entry
 
 	verifyLink := &ctrl_pb.VerifyLink{}

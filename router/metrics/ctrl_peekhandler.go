@@ -1,12 +1,12 @@
 package metrics
 
 import (
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/metrics"
 )
 
 // NewCtrlChannelPeekHandler creates a channel PeekHandler which tracks message rate and message size distribution
-func NewCtrlChannelPeekHandler(routerId string, registry metrics.Registry) channel2.PeekHandler {
+func NewCtrlChannelPeekHandler(routerId string, registry metrics.Registry) channel.PeekHandler {
 	txBytesMeter := registry.Meter("ctrl." + routerId + ".tx.bytesrate")
 	txMsgMeter := registry.Meter("ctrl." + routerId + ".tx.msgrate")
 	txMsgSizeHistogram := registry.Histogram("ctrl." + routerId + ".tx.msgsize")
@@ -45,24 +45,24 @@ type ctrlChannelPeekHandler struct {
 	closeHook func()
 }
 
-func (h *ctrlChannelPeekHandler) Connect(channel2.Channel, string) {
+func (h *ctrlChannelPeekHandler) Connect(channel.Channel, string) {
 }
 
-func (h *ctrlChannelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
+func (h *ctrlChannelPeekHandler) Rx(msg *channel.Message, _ channel.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.rxBytesMeter.Mark(msgSize)
 	h.rxMsgMeter.Mark(1)
 	h.rxMsgSizeHistogram.Update(msgSize)
 }
 
-func (h *ctrlChannelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
+func (h *ctrlChannelPeekHandler) Tx(msg *channel.Message, _ channel.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.txBytesMeter.Mark(msgSize)
 	h.txMsgMeter.Mark(1)
 	h.txMsgSizeHistogram.Update(msgSize)
 }
 
-func (h *ctrlChannelPeekHandler) Close(channel2.Channel) {
+func (h *ctrlChannelPeekHandler) Close(channel.Channel) {
 	if h.closeHook != nil {
 		h.closeHook()
 	}

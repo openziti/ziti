@@ -17,18 +17,14 @@
 package mgmt_pb
 
 import (
-	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 )
 
-type Decoder struct{}
+type Channel2Decoder struct{}
 
-const DECODER = "mgmt"
-
-func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
+func (d Channel2Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	switch msg.ContentType {
 	case int32(ContentType_ListServicesRequestType):
 		data, err := channel2.NewTraceMessageDecode(DECODER, "List Services Request").MarshalTraceMessageDecode()
@@ -426,31 +422,4 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 	}
 
 	return nil, false
-}
-
-func serviceToString(service *Service) string {
-	return fmt.Sprintf("{id=[%s]}", service.Id)
-}
-
-func terminatorToString(terminator *Terminator) string {
-	return fmt.Sprintf("{id=[%s]}", terminator.Id)
-}
-
-func routerToString(router *Router) string {
-	return fmt.Sprintf("{id=[%s] fingerprint=[%s] listener=[%s] connected=[%t]}", router.Id, router.Fingerprint, router.ListenerAddress, router.Connected)
-}
-
-func (self *Path) CalculateDisplayPath() string {
-	if self == nil {
-		return ""
-	}
-	out := ""
-	for i := 0; i < len(self.Nodes); i++ {
-		if i < len(self.Links) {
-			out += fmt.Sprintf("[r/%s]->{l/%s}->", self.Nodes[i], self.Links[i])
-		} else {
-			out += fmt.Sprintf("[r/%s]\n", self.Nodes[i])
-		}
-	}
-	return out
 }

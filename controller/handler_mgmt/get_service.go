@@ -42,14 +42,14 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	err := proto.Unmarshal(msg.Body, rs)
 
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	response := &mgmt_pb.GetServiceResponse{}
 	svc, err := h.network.Services.Read(rs.ServiceId)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 

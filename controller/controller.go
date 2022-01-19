@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/fabric/controller/xctrl_example"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_random"
@@ -34,6 +33,7 @@ import (
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
 	"github.com/openziti/fabric/xweb"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
@@ -53,7 +53,7 @@ type Controller struct {
 	xwebs               []xweb.Xweb
 	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
 
-	ctrlListener channel2.UnderlayListener
+	ctrlListener channel.UnderlayListener
 	mgmtListener channel2.UnderlayListener
 
 	shutdownC  chan struct{}
@@ -122,7 +122,7 @@ func (c *Controller) Run() error {
 	/**
 	 * ctrl listener/accepter.
 	 */
-	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
+	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
@@ -244,10 +244,6 @@ func (c *Controller) registerComponents() error {
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
 	c.config.Mgmt.Options.BindHandlers = []channel2.BindHandler{handler_mgmt.NewBindHandler(c.network, c.xmgmts)}
-
-	if err := c.RegisterXctrl(xctrl_example.NewExample()); err != nil {
-		return err
-	}
 
 	//add default REST XWeb
 	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {

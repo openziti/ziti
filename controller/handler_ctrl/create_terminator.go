@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"math"
 )
 
@@ -43,7 +43,7 @@ func (h *createTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_CreateTerminatorRequestType)
 }
 
-func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *createTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 	request := &ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
@@ -53,7 +53,7 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	go h.handleCreateTerminator(msg, ch, request)
 }
 
-func (h *createTerminatorHandler) handleCreateTerminator(msg *channel2.Message, ch channel2.Channel, request *ctrl_pb.CreateTerminatorRequest) {
+func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.CreateTerminatorRequest) {
 	if request.Cost > math.MaxUint16 {
 		handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", request.Cost, math.MaxUint16))
 		return

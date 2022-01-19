@@ -24,8 +24,8 @@ func (h *snapshotDbHandler) ContentType() int32 {
 
 func (h *snapshotDbHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	if err := h.network.SnapshotDatabase(); err == nil {
-		handler_common.SendSuccess(msg, ch, "")
+		handler_common.SendChannel2Success(msg, ch, "")
 	} else {
-		handler_common.SendFailure(msg, ch, fmt.Sprintf("error snapshotting db: (%v)", err))
+		handler_common.SendChannel2Failure(msg, ch, fmt.Sprintf("error snapshotting db: (%v)", err))
 	}
 }

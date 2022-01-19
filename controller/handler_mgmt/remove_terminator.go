@@ -42,20 +42,20 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 
 	request := &mgmt_pb.RemoveTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	_, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
 		log.Infof("removed terminator [e/%s]", request.TerminatorId)
-		handler_common.SendSuccess(msg, ch, "")
+		handler_common.SendChannel2Success(msg, ch, "")
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

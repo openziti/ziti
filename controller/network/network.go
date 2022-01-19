@@ -19,7 +19,6 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
@@ -27,7 +26,7 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/event"
 	"github.com/openziti/foundation/events"
@@ -284,15 +283,8 @@ func (network *Network) ValidateTerminators(r *Router) {
 		Terminators: terminators,
 	}
 
-	body, err := proto.Marshal(req)
-	if err != nil {
-		pfxlog.Logger().Errorf("unexpected error serializing ValidateTerminatorsRequest (%s)", err)
-		return
-	}
-
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_ValidateTerminatorsRequestType), body)
-	if err := r.Control.Send(msg); err != nil {
-		pfxlog.Logger().Errorf("unexpected error sending ValidateTerminatorsRequest (%s)", err)
+	if err = r.Control.Send(channel.MarshalTyped(req)); err != nil {
+		pfxlog.Logger().WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
 	}
 }
 
@@ -856,45 +848,37 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 }
 
 func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.PeerData, error) {
-	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.CircuitId)
+	log := pfxlog.Logger().WithField("routerId", r.Id).
+		WithField("circuitId", createMsg.CircuitId)
 
-	body, err := proto.Marshal(createMsg)
+	log.Debug("sending create route message")
+
+	msg, err := channel.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control)
 	if err != nil {
+		log.WithError(err).WithField("timeout", timeout).Error("error sending route message")
 		return nil, err
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body)
-	waitCh, err := r.Control.SendAndWait(msg)
-	if err != nil {
-		return nil, err
-	}
-	select {
-	case msg := <-waitCh:
-		if msg.ContentType == ctrl_msg.RouteResultType {
-			_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
-			if !success {
-				message := ""
-				if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
-					message = string(errMsg)
-				}
-				return nil, errors.New(message)
+	if msg.ContentType == ctrl_msg.RouteResultType {
+		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+		if !success {
+			message := "route error, but no error message from router"
+			if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
+				message = string(errMsg)
 			}
-
-			peerData := xt.PeerData{}
-			for k, v := range msg.Headers {
-				if k > 0 {
-					peerData[uint32(k)] = v
-				}
-			}
-
-			return peerData, nil
+			return nil, errors.New(message)
 		}
-		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
-	case <-time.After(timeout):
-		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.CircuitId)
-		return nil, errors.New("timeout")
+		peerData := xt.PeerData{}
+		for k, v := range msg.Headers {
+			if k > 0 {
+				peerData[uint32(k)] = v
+			}
+		}
+
+		return peerData, nil
 	}
+	return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 }
 
 func sendUnroute(r *Router, circuitId string, now bool) error {
@@ -902,15 +886,7 @@ func sendUnroute(r *Router, circuitId string, now bool) error {
 		CircuitId: circuitId,
 		Now:       now,
 	}
-	body, err := proto.Marshal(unroute)
-	if err != nil {
-		return err
-	}
-	unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-	if err := r.Control.Send(unrouteMsg); err != nil {
-		return err
-	}
-	return nil
+	return r.Control.Send(channel.MarshalTyped(unroute))
 }
 
 func (network *Network) showOptions() {

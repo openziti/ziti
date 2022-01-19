@@ -33,7 +33,7 @@ type bindHandler struct {
 	xlinkDialers []xlink.Dialer
 	ctrl         xgress.CtrlChannel
 	forwarder    *forwarder.Forwarder
-	xctrls       []xctrl.Xctrl
+	xctrls       []xctrl.Channel2Xctrl
 	closeNotify  chan struct{}
 }
 
@@ -42,7 +42,7 @@ func NewBindHandler(id *identity.TokenId,
 	xlinkDialers []xlink.Dialer,
 	ctrl xgress.CtrlChannel,
 	forwarder *forwarder.Forwarder,
-	xctrls []xctrl.Xctrl,
+	xctrls []xctrl.Channel2Xctrl,
 	closeNotify chan struct{}) channel2.BindHandler {
 	return &bindHandler{
 		id:           id,
@@ -62,7 +62,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
 	ch.AddReceiveHandler(newInspectHandler(self.id))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
+	ch.AddPeekHandler(trace.NewChannel2PeekHandler(self.id.Token, ch, self.forwarder.TraceController(), trace.NewChannel2Sink(ch)))
 	metrics.AddLatencyProbeResponder(ch)
 
 	for _, x := range self.xctrls {

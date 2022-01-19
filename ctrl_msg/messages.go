@@ -17,6 +17,7 @@
 package ctrl_msg
 
 import (
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 )
 
@@ -32,14 +33,14 @@ const (
 	RouteResultErrorHeader      = 1103
 )
 
-func NewCircuitSuccessMsg(sessionId, address string) *channel2.Message {
-	msg := channel2.NewMessage(CircuitSuccessType, []byte(sessionId))
+func NewCircuitSuccessMsg(sessionId, address string) *channel.Message {
+	msg := channel.NewMessage(CircuitSuccessType, []byte(sessionId))
 	msg.Headers[CircuitSuccessAddressHeader] = []byte(address)
 	return msg
 }
 
-func NewCircuitFailedMsg(message string) *channel2.Message {
-	return channel2.NewMessage(CircuitFailedType, []byte(message))
+func NewCircuitFailedMsg(message string) *channel.Message {
+	return channel.NewMessage(CircuitFailedType, []byte(message))
 }
 
 func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel2.Message {

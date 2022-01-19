@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/util/concurrenz"
 	"regexp"
 	"sync"
@@ -145,7 +146,7 @@ func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}
 	resp := &ctrl_pb.InspectResponse{}
-	err := router.Control.SendForReplyAndDecode(request, ctx.timeout, resp)
+	err := channel.MarshalTyped(request).WithTimeout(ctx.timeout).SendForTypedReply(router.Control, resp)
 	if err != nil {
 		ctx.appendError(router.Id, err.Error())
 		return

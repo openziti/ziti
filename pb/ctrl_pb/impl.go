@@ -18,6 +18,34 @@ package ctrl_pb
 
 import "github.com/openziti/fabric/controller/xt"
 
+func (request *Fault) GetContentType() int32 {
+	return int32(ContentType_FaultType)
+}
+
+func (request *Route) GetContentType() int32 {
+	return int32(ContentType_RouteType)
+}
+
+func (request *Unroute) GetContentType() int32 {
+	return int32(ContentType_UnrouteType)
+}
+
+func (request *ValidateTerminatorsRequest) GetContentType() int32 {
+	return int32(ContentType_ValidateTerminatorsRequestType)
+}
+
+func (request *Dial) GetContentType() int32 {
+	return int32(ContentType_DialType)
+}
+
+func (request *CircuitRequest) GetContentType() int32 {
+	return int32(ContentType_CircuitRequestType)
+}
+
+func (request *RemoveTerminatorRequest) GetContentType() int32 {
+	return int32(ContentType_RemoveTerminatorRequestType)
+}
+
 func (request *InspectRequest) GetContentType() int32 {
 	return int32(ContentType_InspectRequestType)
 }

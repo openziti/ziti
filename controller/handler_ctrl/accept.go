@@ -20,20 +20,20 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type CtrlAccepter struct {
 	network  *network.Network
 	xctrls   []xctrl.Xctrl
-	listener channel2.UnderlayListener
-	options  *channel2.Options
+	listener channel.UnderlayListener
+	options  *channel.Options
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
-	listener channel2.UnderlayListener,
-	options *channel2.Options) *CtrlAccepter {
+	listener channel.UnderlayListener,
+	options *channel.Options) *CtrlAccepter {
 	return &CtrlAccepter{
 		network:  network,
 		xctrls:   xctrls,
@@ -48,11 +48,11 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 	defer log.Warn("exited")
 
 	for {
-		ch, err := channel2.NewChannel("ctrl", ctrlAccepter.listener, ctrlAccepter.options)
+		ch, err := channel.NewChannel("ctrl", ctrlAccepter.listener, ctrlAccepter.options)
 		if err == nil {
 			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
 				if ch.Underlay().Headers() != nil {
-					if versionValue, found := ch.Underlay().Headers()[channel2.HelloVersionHeader]; found {
+					if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 						if versionInfo, err := ctrlAccepter.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
 							r.VersionInfo = versionInfo
 						} else {
@@ -66,7 +66,7 @@ func (ctrlAccepter *CtrlAccepter) Run() {
 						return
 					}
 
-					if listenerValue, found := ch.Underlay().Headers()[channel2.HelloRouterAdvertisementsHeader]; found {
+					if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
 						listenerString := string(listenerValue)
 						r.AdvertisedListener = listenerString
 					} else {

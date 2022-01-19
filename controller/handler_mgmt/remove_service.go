@@ -42,20 +42,20 @@ func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 
 	request := &mgmt_pb.RemoveServiceRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	_, err := h.network.Services.Read(request.ServiceId)
 	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 
 	if err := h.network.Services.Delete(request.ServiceId); err == nil {
 		log.Infof("removed service [s/%v]", request.ServiceId)
-		handler_common.SendSuccess(msg, ch, "")
+		handler_common.SendChannel2Success(msg, ch, "")
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

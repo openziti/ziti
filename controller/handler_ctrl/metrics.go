@@ -20,7 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 )
@@ -37,7 +37,7 @@ func (h *metricsHandler) ContentType() int32 {
 	return int32(metrics_pb.ContentType_MetricsType)
 }
 
-func (h *metricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *metricsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	metricsMsg := &metrics_pb.MetricsMessage{}
 	if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
 		go h.AcceptMetrics(metricsMsg)

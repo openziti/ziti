@@ -18,12 +18,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -149,17 +148,13 @@ attendance:
 }
 
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
-	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
+	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).WithField("routerId", r.Id)
 
-	body, err := proto.Marshal(routeMsg)
-	if err != nil {
-		logger.Errorf("error marshalling route message to [r/%s] (%v)", r.Id, err)
-		return
-	}
-	if err := r.Control.Send(channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body)); err != nil {
-		logger.WithError(err).Errorf("failure sending route message to [r/%s]", r.Id)
+	sendCtx := channel.MarshalTyped(routeMsg).WithTimeout(3 * time.Second)
+	if err := sendCtx.SendAndWaitForWire(r.Control); err != nil {
+		logger.WithError(err).Error("failure sending route message")
 	} else {
-		logger.Debugf("sent route message to [r/%s]", r.Id)
+		logger.Debug("sent route message")
 	}
 }
 

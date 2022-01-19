@@ -42,7 +42,7 @@ func (h *listTerminatorsHandler) ContentType() int32 {
 func (h *listTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	ls := &mgmt_pb.ListTerminatorsRequest{}
 	if err := proto.Unmarshal(msg.Body, ls); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 		return
 	}
 	response := &mgmt_pb.ListTerminatorsResponse{Terminators: make([]*mgmt_pb.Terminator, 0)}
@@ -53,7 +53,7 @@ func (h *listTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel
 			terminator, ok := entity.(*network.Terminator)
 			if !ok {
 				errorMsg := fmt.Sprintf("unexpected result in terminator list of type: %v", reflect.TypeOf(entity))
-				handler_common.SendFailure(msg, ch, errorMsg)
+				handler_common.SendChannel2Failure(msg, ch, errorMsg)
 				return
 			}
 			response.Terminators = append(response.Terminators, toApiTerminator(terminator))
@@ -67,9 +67,9 @@ func (h *listTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel
 				pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error sending response (%s)", err)
 			}
 		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }

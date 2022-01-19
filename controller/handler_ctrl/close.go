@@ -19,7 +19,7 @@ package handler_ctrl
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type closeHandler struct {
@@ -31,9 +31,8 @@ func newCloseHandler(r *network.Router, network *network.Network) *closeHandler 
 	return &closeHandler{r: r, network: network}
 }
 
-func (h *closeHandler) HandleClose(ch channel2.Channel) {
-	log := pfxlog.ContextLogger("r/" + h.r.Id)
-	log.Warn("disconnected")
+func (h *closeHandler) HandleClose(channel.Channel) {
+	pfxlog.Logger().WithField("routerId", h.r.Id).Warn("disconnected")
 	h.network.DisconnectRouter(h.r)
 }
 
@@ -41,11 +40,11 @@ type xctrlCloseHandler struct {
 	done chan struct{}
 }
 
-func newXctrlCloseHandler(done chan struct{}) channel2.CloseHandler {
+func newXctrlCloseHandler(done chan struct{}) channel.CloseHandler {
 	return &xctrlCloseHandler{done: done}
 }
 
-func (h *xctrlCloseHandler) HandleClose(ch channel2.Channel) {
+func (h *xctrlCloseHandler) HandleClose(ch channel.Channel) {
 	pfxlog.ContextLogger(ch.Label()).Info("closing Xctrl instances")
 	close(h.done)
 }

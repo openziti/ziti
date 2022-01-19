@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,11 +44,11 @@ func (self *routeResultHandler) ContentType() int32 {
 	return ctrl_msg.RouteResultType
 }
 
-func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *routeResultHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	go self.handleRouteResult(msg)
 }
 
-func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
+func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 	log := logrus.WithField("routerId", self.r.Id)
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
 		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
@@ -88,7 +88,7 @@ func (self *routeResultHandler) notRoutingCircuit(circuitId string) {
 		Now:       true,
 	}
 	if body, err := proto.Marshal(unroute); err == nil {
-		unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+		unrouteMsg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err := self.r.Control.Send(unrouteMsg); err != nil {
 			log.WithError(err).Error("error sending unroute message to router")
 		}

@@ -45,7 +45,7 @@ func (self *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 		WithField("linkId", self.link.Id().Token).
 		WithField("routerId", self.link.DestinationId())
 
-	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
+	if ack, err := xgress.UnmarshallChannel2Acknowledgement(msg); err == nil {
 		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
 			log.WithError(err).Debug("unable to forward acknowledgement")
 		}

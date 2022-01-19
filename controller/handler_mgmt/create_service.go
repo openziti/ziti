@@ -52,17 +52,17 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 		for _, terminator := range cs.Service.Terminators {
 			modelTerminator, err := toModelTerminator(h.network, terminator)
 			if err != nil {
-				handler_common.SendFailure(msg, ch, err.Error())
+				handler_common.SendChannel2Failure(msg, ch, err.Error())
 				return
 			}
 			service.Terminators = append(service.Terminators, modelTerminator)
 		}
 		if err = h.network.Services.Create(service); err == nil {
-			handler_common.SendSuccess(msg, ch, "")
+			handler_common.SendChannel2Success(msg, ch, "")
 		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
+			handler_common.SendChannel2Failure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendFailure(msg, ch, err.Error())
+		handler_common.SendChannel2Failure(msg, ch, err.Error())
 	}
 }
