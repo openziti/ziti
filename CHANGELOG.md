@@ -7,6 +7,7 @@
 * Enhancement: Add write timeout configuration for control channel
 * Enhancement: API Session and Session deletes are now separate and eventually consistent
 * Enhancement: API Session synchronization with routers no longer blocks database transactions
+* Bug fix: fix message priority sorting
 
 ## Control Channel Timeouts
 
