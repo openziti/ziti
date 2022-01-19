@@ -156,6 +156,10 @@ func (*traceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	if event.ReplyFor != -1 {
 		replyFor = fmt.Sprintf(">%d", event.ReplyFor)
 	}
+	meta := channel2.DecodeTraceAndFormat(event.Decode)
+	if meta == "" {
+		meta = fmt.Sprintf("missing decode, content-type=%v", event.ContentType)
+	}
 	fmt.Printf("%8d: %-16s %8s %s #%-5d %5s | %s\n",
-		event.Timestamp, event.Identity, event.Channel, flow, event.Sequence, replyFor, channel2.DecodeTraceAndFormat(event.Decode))
+		event.Timestamp, event.Identity, event.Channel, flow, event.Sequence, replyFor, meta)
 }
