@@ -43,8 +43,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.16
-	github.com/openziti/foundation v0.16.12
-	github.com/openziti/sdk-golang v0.15.129
+	github.com/openziti/foundation v0.16.13
+	github.com/openziti/sdk-golang v0.15.130
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -98,7 +98,7 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mdlayher/socket v0.1.0 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/miekg/pkcs11 v1.0.3 // indirect
+	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/nxadm/tail v1.4.8 // indirect
