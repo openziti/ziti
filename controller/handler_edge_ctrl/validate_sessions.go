@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"go.etcd.io/bbolt"
 )
 
@@ -29,7 +29,7 @@ type validateSessionsHandler struct {
 	baseRequestHandler
 }
 
-func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel2.Channel) channel2.ReceiveHandler {
+func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
 	return &validateSessionsHandler{
 		baseRequestHandler{
 			ch:     ch,
@@ -46,7 +46,7 @@ func (self *validateSessionsHandler) Label() string {
 	return "validate.sessions"
 }
 
-func (self *validateSessionsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *validateSessionsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.ValidateSessionsRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal ValidateSessionsRequest")
@@ -86,7 +86,7 @@ func (self *validateSessionsHandler) validateSessions(req *edge_ctrl_pb.Validate
 			return
 		}
 
-		msg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_SessionRemovedType), body)
+		msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_SessionRemovedType), body)
 		if err := self.ch.Send(msg); err != nil {
 			pfxlog.ContextLogger(self.ch.Label()).WithError(err).Error("failed to send validate sessions request")
 			return

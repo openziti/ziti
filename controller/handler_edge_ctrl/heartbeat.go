@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type sessionHeartbeatHandler struct {
@@ -38,7 +38,7 @@ func (h *sessionHeartbeatHandler) ContentType() int32 {
 	return env.ApiSessionHeartbeatType
 }
 
-func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *sessionHeartbeatHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionHeartbeat{}
 		routerId := ch.Id().Token
@@ -63,7 +63,7 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel2.Message, ch channe
 				}
 
 				msgBytes, _ := proto.Marshal(msgStruct)
-				msg := channel2.NewMessage(env.ApiSessionRemovedType, msgBytes)
+				msg := channel.NewMessage(env.ApiSessionRemovedType, msgBytes)
 
 				_ = ch.Send(msg)
 			}

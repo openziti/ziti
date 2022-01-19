@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type extendEnrollmentVerifyHandler struct {
@@ -39,16 +39,16 @@ func (h *extendEnrollmentVerifyHandler) ContentType() int32 {
 	return env.EnrollmentExtendRouterVerifyRequestType
 }
 
-func (h *extendEnrollmentVerifyHandler) respond(respErr *edge_ctrl_pb.Error, msg *channel2.Message, ch channel2.Channel) {
+func (h *extendEnrollmentVerifyHandler) respond(respErr *edge_ctrl_pb.Error, msg *channel.Message, ch channel.Channel) {
 	respErrBody, _ := proto.Marshal(respErr)
-	respMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), respErrBody)
+	respMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), respErrBody)
 	respMsg.ReplyTo(msg)
 
 	if err := ch.Send(respMsg); err != nil {
 		pfxlog.Logger().Errorf("could not send enrollment verification response, channel error: %v", err)
 	}
 }
-func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 
 		verifyMsg := &edge_ctrl_pb.EnrollmentExtendRouterVerifyRequest{}

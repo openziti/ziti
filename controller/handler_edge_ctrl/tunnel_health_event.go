@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/metrics"
 	"time"
 )
@@ -31,7 +31,7 @@ type tunnelHealthEventHandler struct {
 	serviceHealthCheckFailedCounter metrics.IntervalCounter
 }
 
-func NewTunnelHealthEventHandler(appEnv *env.AppEnv, ch channel2.Channel) channel2.ReceiveHandler {
+func NewTunnelHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
 	serviceEventMetrics := appEnv.GetHostController().GetNetwork().GetServiceEventsMetricsRegistry()
 	return &tunnelHealthEventHandler{
 		baseRequestHandler: baseRequestHandler{
@@ -51,7 +51,7 @@ func (self *tunnelHealthEventHandler) Label() string {
 	return "tunnel.health.event"
 }
 
-func (self *tunnelHealthEventHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *tunnelHealthEventHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	terminatorId, _ := msg.GetStringHeader(int32(edge_ctrl_pb.Header_TerminatorId))
 	checkPassed, _ := msg.GetBoolHeader(int32(edge_ctrl_pb.Header_CheckPassed))
 

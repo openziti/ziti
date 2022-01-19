@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 	"math"
 )
@@ -35,7 +35,7 @@ type createTunnelTerminatorHandler struct {
 	*TunnelState
 }
 
-func NewCreateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel2.Channel, tunnelState *TunnelState) channel2.ReceiveHandler {
+func NewCreateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
 	return &createTunnelTerminatorHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,
@@ -54,7 +54,7 @@ func (self *createTunnelTerminatorHandler) Label() string {
 	return "tunnel.create.terminator"
 }
 
-func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.CreateTunnelTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorRequest")
@@ -139,7 +139,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		return
 	}
 
-	responseMsg := channel2.NewMessage(response.GetContentType(), body)
+	responseMsg := channel.NewMessage(response.GetContentType(), body)
 	responseMsg.ReplyTo(ctx.msg)
 	if err = self.ch.Send(responseMsg); err != nil {
 		logger.WithError(err).Error("failed to send CreateTunnelTerminatorResponse")

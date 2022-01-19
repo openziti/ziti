@@ -5,7 +5,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -16,7 +16,7 @@ type listTunnelServicesHandler struct {
 	*TunnelState
 }
 
-func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel2.Channel, tunnelState *TunnelState) channel2.ReceiveHandler {
+func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
 	return &listTunnelServicesHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,
@@ -35,7 +35,7 @@ func (self *listTunnelServicesHandler) Label() string {
 	return "tunnel.list.services"
 }
 
-func (self *listTunnelServicesHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (self *listTunnelServicesHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	logger := logrus.WithField("router", self.ch.Id().Token)
 
 	ctx := &listTunnelServicesRequestContext{
@@ -134,7 +134,7 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 		return
 	}
 
-	serviceListMsg := channel2.NewMessage(serviceList.GetContentType(), body)
+	serviceListMsg := channel.NewMessage(serviceList.GetContentType(), body)
 	if err = self.ch.Send(serviceListMsg); err != nil {
 		logger.Error("failed to send services list")
 	}

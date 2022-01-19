@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 )
 
 type helloHandler struct {
@@ -41,7 +41,7 @@ func (h *helloHandler) ContentType() int32 {
 	return env.ClientHelloType
 }
 
-func (h *helloHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	respHello := &edge_ctrl_pb.ClientHello{}
 	if err := proto.Unmarshal(msg.Body, respHello); err != nil {
 		pfxlog.Logger().WithError(err).Error("could not unmarshal clientHello after serverHello")

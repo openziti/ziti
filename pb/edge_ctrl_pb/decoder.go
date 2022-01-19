@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"strings"
 )
@@ -28,7 +29,7 @@ type Decoder struct{}
 
 const DECODER = "edge_ctrl"
 
-func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
+func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 	switch msg.ContentType {
 	case int32(ContentType_ServerHelloType):
 		request := &ServerHello{}

@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,7 +31,7 @@ type removeTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel2.Channel) channel2.ReceiveHandler {
+func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
 	return &removeTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,
@@ -51,14 +51,14 @@ func (self *removeTerminatorHandler) Label() string {
 func (self *removeTerminatorHandler) sendResponse(ctx *RemoveTerminatorRequestContext) {
 	log := pfxlog.ContextLogger(self.ch.Label())
 
-	responseMsg := channel2.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTerminatorResponseType), nil)
+	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTerminatorResponseType), nil)
 	responseMsg.ReplyTo(ctx.msg)
 	if err := self.ch.Send(responseMsg); err != nil {
 		log.WithError(err).WithField("token", ctx.req.SessionToken).Error("failed to send remove terminator response")
 	}
 }
 
-func (self *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	req := &edge_ctrl_pb.RemoveTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal RemoveTerminator")
