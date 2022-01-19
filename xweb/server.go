@@ -121,7 +121,7 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 				Addr:         bindPoint.InterfaceAddress,
 				WriteTimeout: webListener.Options.WriteTimeout,
 				ReadTimeout:  webListener.Options.ReadTimeout,
-				IdleTimeout:  webListener.Options.WriteTimeout,
+				IdleTimeout:  webListener.Options.IdleTimeout,
 				Handler:      server.wrapPanicRecovery(demuxWebHandler),
 				TLSConfig:    tlsConfig,
 				ErrorLog:     log.New(logWriter, "", 0),
