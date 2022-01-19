@@ -7,7 +7,22 @@
 * Enhancement: New metric `identity.refresh` which counts how often an identity should have to refresh the service list because of a service, config or policy change
 * Enhancement: Edge REST services will now set the content-length on response, which will prevent response from being chunked
 * Enhancement: Edge REST API calls will now show in metrics in the format of <path>.<method>
+* Enhancement: Cache sessions for the router/tunneler, to minimize the creation of unnecessary sessions
+* Enhancement: Add send timeouts for route messages
+* Enhancement: Add write timeout configuration for control channel
 * Bug fix: fix controller panic during circuit creation if router is unexpectedly deleted during routing
+
+## Control Channel Timeouts
+
+The controller config file now allows setting a write timeout for control channel connections. If a control channel write times out, because the connection is in a bad state or because a router is in a bad state, the control channel will be closed. This will allow the router to reconnect.
+
+```
+ctrl:
+  listener:             tls:127.0.0.1:6262
+    options:
+      # Sets the control channel write timeout. A write timeout will close the control channel, so the router will reconnect
+      writeTimeout: 15s
+``` 
 
 # Release 0.24.2
 
