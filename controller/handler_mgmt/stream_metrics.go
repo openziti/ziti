@@ -22,9 +22,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"regexp"
@@ -62,12 +62,12 @@ func (handler *streamMetricsHandler) HandleReceive(msg *channel2.Message, ch cha
 	}
 
 	handler.streamHandlers = append(handler.streamHandlers, metricsStreamHandler)
-	events.AddMetricsEventHandler(metricsStreamHandler)
+	fabricMetrics.AddMetricsEventHandler(metricsStreamHandler)
 }
 
 func (handler *streamMetricsHandler) HandleClose(channel2.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
-		events.RemoveMetricsEventHandler(streamHandler)
+		fabricMetrics.RemoveMetricsEventHandler(streamHandler)
 	}
 }
 
@@ -253,5 +253,5 @@ func (handler *MetricsStreamHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure while closing handler")
 	}
-	events.RemoveMetricsEventHandler(handler)
+	fabricMetrics.RemoveMetricsEventHandler(handler)
 }

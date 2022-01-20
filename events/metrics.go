@@ -4,7 +4,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/events"
+	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -114,7 +114,7 @@ func registerMetricsEventHandler(val interface{}, config map[interface{}]interfa
 		handler:      handler,
 	}
 
-	events.AddMetricsEventHandler(adapter)
+	metrics.AddMetricsEventHandler(adapter)
 	return nil
 }
 
