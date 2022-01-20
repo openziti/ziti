@@ -27,7 +27,9 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/health"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
@@ -44,7 +46,6 @@ import (
 	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/event"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -426,7 +427,7 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
+	self.metricsReporter = fabricMetrics.NewChannelReporter(self.ctrl)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil

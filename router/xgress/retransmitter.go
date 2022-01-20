@@ -151,7 +151,6 @@ func (retransmitter *Retransmitter) retransmitSender() {
 						logger.WithError(err).Errorf("unexpected error while retransmitting payload from [@/%v]", retransmit.x.address)
 						retransmissionFailures.Mark(1)
 						retransmitter.faultReporter.ReportForwardingFault(retransmit.payload.CircuitId)
-
 					} else {
 						logger.WithError(err).Tracef("unexpected error while retransmitting payload from [@/%v] (already closed)", retransmit.x.address)
 					}

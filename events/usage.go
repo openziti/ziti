@@ -2,7 +2,7 @@ package events
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/events"
+	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -14,7 +14,7 @@ func registerUsageEventHandler(val interface{}, _ map[interface{}]interface{}) e
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/events/UsageEventHandler interface.", reflect.TypeOf(val))
 	}
 
-	events.AddMetricsEventHandler(&usageAdapter{handler: handler})
+	metrics.AddMetricsEventHandler(&usageAdapter{handler: handler})
 	return nil
 }
 
@@ -23,9 +23,9 @@ func RegisterUsageEventHandler(handler UsageEventHandler) func() {
 		handler: handler,
 	}
 
-	events.AddMetricsEventHandler(result)
+	metrics.AddMetricsEventHandler(result)
 	return func() {
-		events.RemoveMetricsEventHandler(result)
+		metrics.RemoveMetricsEventHandler(result)
 	}
 }
 

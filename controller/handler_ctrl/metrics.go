@@ -20,13 +20,13 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/channel"
-	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 )
 
 type metricsHandler struct {
-	metrics.Handler
+	metrics.MessageHandler
 }
 
 func newMetricsHandler(network *network.Network) *metricsHandler {

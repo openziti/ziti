@@ -23,13 +23,13 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/logcontext"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/event"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
@@ -115,8 +115,8 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 
 	network.Controllers.Inspections.network = network
 
-	metrics.Init(metricsCfg)
-	events.AddMetricsEventHandler(network)
+	fabricMetrics.InitMetricHandlers(metricsCfg)
+	fabricMetrics.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics(metricsCfg)
@@ -132,7 +132,7 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 		timer := time.NewTicker(reportInterval)
 		defer timer.Stop()
 
-		dispatcher := metrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
+		dispatcher := fabricMetrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
 		for {
 			select {
 			case <-timer.C:
@@ -713,7 +713,7 @@ func (network *Network) Run() {
 			network.smart()
 
 		case <-network.closeNotify:
-			events.RemoveMetricsEventHandler(network)
+			fabricMetrics.RemoveMetricsEventHandler(network)
 			network.metricsRegistry.DisposeAll()
 			return
 		}
