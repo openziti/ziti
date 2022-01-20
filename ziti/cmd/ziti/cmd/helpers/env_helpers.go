@@ -17,8 +17,10 @@
 package helpers
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
+	"strconv"
 )
 
 const (
@@ -132,7 +134,7 @@ func GetZitiEdgeCtrlHostname() (string, error) {
 }
 
 func GetZitiEdgeCtrlPort() (string, error) {
-	return getOrSetEnvVar(ZitiEdgeCtrlPortVarName, "1280")
+	return getOrSetEnvVar(ZitiEdgeCtrlPortVarName, strconv.Itoa(constants.DefaultZitiEdgeControllerPort))
 }
 
 func GetZitiEdgeControllerAPI() (string, error) {
@@ -180,7 +182,7 @@ func GetZitiSigningIntermediateName() (string, error) {
 }
 
 func GetZitiFabCtrlPort() (string, error) {
-	return getOrSetEnvVar(ZitiFabCtrlPortVarName, "6262")
+	return getOrSetEnvVar(ZitiFabCtrlPortVarName, strconv.Itoa(constants.DefaultZitiFabricControllerPort))
 }
 
 func GetZitiCtrlHostname() (string, error) {
@@ -221,7 +223,7 @@ func GetZitiNetwork() (string, error) {
 }
 
 func GetZitiFabMgmtPort() (string, error) {
-	return getOrSetEnvVar(ZitiFabMgmtPortVarName, "10000")
+	return getOrSetEnvVar(ZitiFabMgmtPortVarName, strconv.Itoa(constants.DefaultZitiFabricManagementPort))
 }
 
 func GetZitiEdgeCtrlIntermediateName() (string, error) {
@@ -248,7 +250,7 @@ func GetZitiEdgeRouterHostname() (string, error) {
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
-	return getOrSetEnvVar(ZitiEdgeRouterPortVarName, "3022")
+	return getOrSetEnvVar(ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
 }
 
 func getOrSetEnvVar(envVarName string, defaultValue string) (string, error) {

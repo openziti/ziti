@@ -30,9 +30,9 @@ import (
 )
 
 const (
-	optionCtrlListener  = "ctrlListener"
-	optionMgmtListener  = "mgmtListener"
-	optionsDatabaseFile = "databaseFile"
+	optionCtrlListener = "ctrlListener"
+	optionMgmtListener = "mgmtListener"
+	optionDatabaseFile = "databaseFile"
 )
 
 var (
@@ -64,15 +64,12 @@ type CreateConfigControllerOptions struct {
 
 	CtrlListener string
 	MgmtListener string
+	PKIPath      string
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
 func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 	controllerOptions := &CreateConfigControllerOptions{}
-
-	// controllerOptions := &CreateConfigControllerOptions{
-	// 	CreateConfigOptions: configOptions,
-	// }
 
 	cmd := &cobra.Command{
 		Use:     "controller",
@@ -97,6 +94,7 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			// Update controller specific values with configOptions passed in
 			data.CtrlListener = controllerOptions.CtrlListener
 			data.MgmtListener = controllerOptions.MgmtListener
+			data.ZitiPKI = controllerOptions.PKIPath
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd
@@ -117,7 +115,7 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "", "address of the config controller listener")
-	cmd.Flags().StringVar(&options.DatabaseFile, optionsDatabaseFile, "ctrl.db", "location of the database file")
+	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "", "address of the config management listener")
 }
 

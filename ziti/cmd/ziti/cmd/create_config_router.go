@@ -57,6 +57,10 @@ func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
 				}
 				logrus.SetOutput(logOut)
 			}
+
+			// Update router data with options passed in
+			data.RouterName = options.RouterName
+			data.ZitiPKI = options.PKIPath
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())

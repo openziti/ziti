@@ -85,7 +85,6 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update edge router specific values with options passed in
-			data.RouterName = options.RouterName
 			data.WssEnabled = options.WssEnabled
 			data.IsPrivate = options.IsPrivate
 		},

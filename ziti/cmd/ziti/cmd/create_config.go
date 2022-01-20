@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -33,6 +34,8 @@ const (
 	optionOutput       = "output"
 	defaultOutput      = "stdout"
 	outputDescription  = "designated output destination for config, use \"stdout\" or a filepath."
+	optionPKI          = "pkiPath"
+	pkiDescription     = "Location of the public key infrastructure"
 )
 
 // CreateConfigOptions the options for the create config command
@@ -41,6 +44,7 @@ type CreateConfigOptions struct {
 
 	Output       string
 	DatabaseFile string
+	PKIPath      string
 }
 
 type ConfigTemplateValues struct {
@@ -70,6 +74,45 @@ type ConfigTemplateValues struct {
 	WssEnabled             bool
 	IsPrivate              bool
 	IsFabricRouter         bool
+
+	// Default values
+	ListenerBindPort             int
+	OutQueueSize                 int
+	EdgeAPISessionTimeoutMinutes int
+	WebListenerIdleTimeoutMS     int
+	WebListenerReadTimeoutMS     int
+	WebListenerWriteTimeoutMS    int
+	WebListenerMinTLSVersion     string
+	WebListenerMaxTLSVersion     string
+	WssWriteTimeout              int
+	WssReadTimeout               int
+	WssIdleTimeout               int
+	WssPongTimeout               int
+	WssPingInterval              int
+	WssHandshakeTimeout          int
+	WssReadBufferSize            int
+	WssWriteBufferSize           int
+	LatencyProbeInterval         int
+	XgressDialQueueLength        int
+	XgressDialWorkerCount        int
+	LinkDialQueueLength          int
+	LinkDialWorkerCount          int
+	ConnectTimeoutMs             int
+	GetSessionTimeoutS           int
+}
+
+type ControllerConfigValues struct {
+	CtrlListener                 string
+	MgmtListener                 string
+	ZitiHome                     string
+	Hostname                     string
+	ZitiFabMgmtPort              string
+	ZitiEdgeCtrlAPI              string
+	ZitiSigningIntermediateName  string
+	ZitiEdgeCtrlPort             string
+	ZitiCtrlRawname              string
+	ZitiEdgeCtrlIntermediateName string
+	ZitiEdgeCtrlHostname         string
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
@@ -86,6 +129,7 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 	// Get env variable data global to all config files
 	templateData := &ConfigTemplateValues{}
 	templateData.populateEnvVars()
+	templateData.populateDefaults()
 
 	cmd.AddCommand(NewCmdCreateConfigController(templateData))
 	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
@@ -96,8 +140,13 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 // Add flags that are global to all "create config" commands
 func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
+	// Obtain the default PKI location which may be different if the env variable was set
+	defaultPKI, err := cmdhelper.GetZitiPKI()
+	handleVariableError(err, cmdhelper.ZitiPKIVarName)
+
 	cmd.PersistentFlags().BoolVarP(&options.Verbose, optionVerbose, "v", defaultVerbose, verboseDescription)
 	cmd.PersistentFlags().StringVarP(&options.Output, optionOutput, "o", defaultOutput, outputDescription)
+	cmd.PersistentFlags().StringVarP(&options.PKIPath, optionPKI, "", defaultPKI, pkiDescription)
 }
 
 func (data *ConfigTemplateValues) populateEnvVars() {
@@ -177,6 +226,32 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.ZitiEdgeCtrlHostname = zitiEdgeCtrlHostname
 	data.ZitiEdgeRouterHostname = zitiEdgeRouterHostName
 	data.ZitiEdgeRouterPort = zitiEdgeRouterPort
+}
+
+func (data *ConfigTemplateValues) populateDefaults() {
+	data.ListenerBindPort = constants.DefaultListenerBindPort
+	data.OutQueueSize = constants.DefaultOutQueueSize
+	data.EdgeAPISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
+	data.WebListenerIdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
+	data.WebListenerReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
+	data.WebListenerWriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
+	data.WebListenerMinTLSVersion = constants.DefaultWebListenerMinTLSVersion
+	data.WebListenerMaxTLSVersion = constants.DefaultWebListenerMaxTLSVersion
+	data.WssWriteTimeout = constants.DefaultWSSWriteTimeout
+	data.WssReadTimeout = constants.DefaultWSSReadTimeout
+	data.WssIdleTimeout = constants.DefaultWSSIdleTimeout
+	data.WssPongTimeout = constants.DefaultWSSPongTimeout
+	data.WssPingInterval = constants.DefaultWSSPingInterval
+	data.WssHandshakeTimeout = constants.DefaultWSSHandshakeTimeout
+	data.WssReadBufferSize = constants.DefaultWSSReadBufferSize
+	data.WssWriteBufferSize = constants.DefaultWSSWriteBufferSize
+	data.LatencyProbeInterval = constants.DefaultLatencyProbeInterval
+	data.XgressDialQueueLength = constants.DefaultXgressDialQueueLength
+	data.XgressDialWorkerCount = constants.DefaultXgressDialWorkerCount
+	data.LinkDialQueueLength = constants.DefaultLinkDialQueueLength
+	data.LinkDialWorkerCount = constants.DefaultLinkDialWorkerCount
+	data.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
+	data.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
 }
 
 func handleVariableError(err error, varName string) {

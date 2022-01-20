@@ -32,3 +32,42 @@ const (
 
 	CONFIGFILENAME = "config"
 )
+
+// Config Template Constants
+const (
+	DefaultListenerBindPort   = 10080
+	DefaultOutQueueSize       = 16
+	DefaultConnectTimeoutMs   = 5000
+	DefaultGetSessionTimeoutS = 60
+
+	// Router defaults
+	DefaultZitiEdgeRouterPort = "3022"
+
+	// Controller defaults
+	DefaultEdgeAPISessionTimeoutMinutes = 30
+	DefaultWebListenerIdleTimeoutMs     = 5000
+	DefaultWebListenerReadTimeoutMs     = 5000
+	DefaultWebListenerWriteTimeoutMs    = 100000
+	DefaultWebListenerMinTLSVersion     = "TLS1.2"
+	DefaultWebListenerMaxTLSVersion     = "TLS1.3"
+	DefaultZitiEdgeControllerPort       = 1280
+	DefaultZitiFabricControllerPort     = 6262
+	DefaultZitiFabricManagementPort     = 10000
+
+	// WSS defaults
+	DefaultWSSWriteTimeout     = 10
+	DefaultWSSReadTimeout      = 5
+	DefaultWSSIdleTimeout      = 5
+	DefaultWSSPongTimeout      = 60
+	DefaultWSSPingInterval     = 54
+	DefaultWSSHandshakeTimeout = 10
+	DefaultWSSReadBufferSize   = 4096
+	DefaultWSSWriteBufferSize  = 4096
+
+	// Forwarder defaults
+	DefaultLatencyProbeInterval  = 1000
+	DefaultXgressDialQueueLength = 1000
+	DefaultXgressDialWorkerCount = 128
+	DefaultLinkDialQueueLength   = 1000
+	DefaultLinkDialWorkerCount   = 10
+)

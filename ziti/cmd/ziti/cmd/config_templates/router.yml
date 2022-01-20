@@ -8,65 +8,35 @@
 v: 3
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-server.cert"
-  key:                  "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-cas.cert"
+  cert:                 "{{ .ZitiPKI }}/certs/{{ .RouterName }}-client.cert"
+  server_cert:          "{{ .ZitiPKI }}/certs/{{ .RouterName }}-server.cert"
+  key:                  "{{ .ZitiPKI }}/keys/{{ .RouterName }}-server.key"
+  ca:                   "{{ .ZitiPKI }}/certs/{{ .RouterName }}-cas.cert"
 
 ctrl:
   endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
 
 link:
-{{- if .IsPrivate }}
-#  listeners:
-#    - binding:          transport
-#      bind:             tls:0.0.0.0:10080
-#      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
-#      options:
-#        outQueueSize:   16
-{{- else }}
-  listeners:
-    - binding:          transport
-      bind:             tls:0.0.0.0:10080
-      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:10080
-      options:
-        outQueueSize:   16
-{{- end }}
+{{ if .IsPrivate }}#{{ end }}  listeners:
+{{ if .IsPrivate }}#{{ end }}    - binding:          transport
+{{ if .IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .ListenerBindPort }}
+{{ if .IsPrivate }}#{{ end }}      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:{{ .ListenerBindPort }}
+{{ if .IsPrivate }}#{{ end }}      options:
+{{ if .IsPrivate }}#{{ end }}        outQueueSize:   {{ .OutQueueSize }}
   dialers:
     - binding: transport
 
 listeners:
-{{- if or .IsFabricRouter .IsPrivate }}
-#  - binding: tunnel
-#    options:
-#      mode: host #tproxy|tun|host
-{{- else }}
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
-{{- end }}
-{{- if .IsPrivate }}
-#  - binding: transport
-#    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-#    options:
-#      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-#      connectTimeoutMs: 5000
-#      getSessionTimeout: 60s
-{{- else if .IsFabricRouter }}
-  - binding: transport
-    address: tls:0.0.0.0:{{ .ZitiEdgeRouterPort }}
-    options:
-      advertise: {{ .ZitiEdgeRouterHostname }}:{{ .ZitiEdgeRouterPort }}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-{{- else }}
-  - binding: edge
-    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-    options:
-      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-{{ end }}
+{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}  - binding: tunnel
+{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}    options:
+{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
+{{ if .IsPrivate }}#{{ end }}  - binding: {{- if or .IsFabricRouter .IsPrivate }}transport{{ else }}edge{{ end }}
+{{ if .IsPrivate }}#{{ end }}    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+{{ if .IsPrivate }}#{{ end }}    options:
+{{ if .IsPrivate }}#{{ end }}      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
+{{ if .IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .ConnectTimeoutMs }}
+{{ if .IsPrivate }}#{{ end }}      getSessionTimeout: {{ .GetSessionTimeoutS }}s
+
 
 {{- if or .IsPrivate .IsFabricRouter }}
 #edge:
@@ -98,39 +68,23 @@ edge:
         - "127.0.0.1"
 {{ end }}
 
-{{- if .WssEnabled }}
-transport:
-  ws:
-    writeTimeout: 10
-    readTimeout: 5
-    idleTimeout: 5
-    pongTimeout: 60
-    pingInterval: 54
-    handshakeTimeout: 10
-    readBufferSize: 4096
-    writeBufferSize: 4096
-    enableCompression: true
-    server_cert: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-router-server.cert
-    key: {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-router-server.key
-{{- else if or .IsPrivate .IsFabricRouter }}
-#transport:
-#  ws:
-#    writeTimeout:      10
-#    readTimeout:       5
-#    idleTimeout:       5
-#    pongTimeout:       60
-#    pingInterval:      54
-#    handshakeTimeout:  10
-#    readBufferSize:    4096
-#    writeBufferSize:   4096
-#    enableCompression: true
-#    server_cert:       {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/certs/{{ .RouterName }}-router-server.cert
-#    key:               {{ .ZitiPKI }}/{{ .ZitiCtrlIntermediateName }}/keys/{{ .RouterName }}-router-server.key
-{{- end }}
+{{ if not .WssEnabled }}#{{ end }}transport:
+{{ if not .WssEnabled }}#{{ end }}  ws:
+{{ if not .WssEnabled }}#{{ end }}    writeTimeout: {{ .WssWriteTimeout }}
+{{ if not .WssEnabled }}#{{ end }}    readTimeout: {{ .WssReadTimeout }}
+{{ if not .WssEnabled }}#{{ end }}    idleTimeout: {{ .WssIdleTimeout }}
+{{ if not .WssEnabled }}#{{ end }}    pongTimeout: {{ .WssPongTimeout }}
+{{ if not .WssEnabled }}#{{ end }}    pingInterval: {{ .WssPingInterval }}
+{{ if not .WssEnabled }}#{{ end }}    handshakeTimeout: {{ .WssHandshakeTimeout }}
+{{ if not .WssEnabled }}#{{ end }}    readBufferSize: {{ .WssReadBufferSize }}
+{{ if not .WssEnabled }}#{{ end }}    writeBufferSize: {{ .WssWriteBufferSize }}
+{{ if not .WssEnabled }}#{{ end }}    enableCompression: true
+{{ if not .WssEnabled }}#{{ end }}    server_cert: {{ .ZitiPKI }}/certs/{{ .RouterName }}-router-server.cert
+{{ if not .WssEnabled }}#{{ end }}    key: {{ .ZitiPKI }}/keys/{{ .RouterName }}-router-server.key
 
 forwarder:
-  latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
+  latencyProbeInterval: {{ .LatencyProbeInterval }}
+  xgressDialQueueLength: {{ .XgressDialQueueLength }}
+  xgressDialWorkerCount: {{ .XgressDialWorkerCount }}
+  linkDialQueueLength: {{ .LinkDialQueueLength }}
+  linkDialWorkerCount: {{ .LinkDialWorkerCount }}
