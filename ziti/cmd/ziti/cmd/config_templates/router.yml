@@ -8,37 +8,37 @@
 v: 3
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/certs/{{ .RouterName }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/certs/{{ .RouterName }}-server.cert"
-  key:                  "{{ .ZitiPKI }}/keys/{{ .RouterName }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/certs/{{ .RouterName }}-cas.cert"
+  cert:                 "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-client.cert"
+  server_cert:          "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-server.cert"
+  key:                  "{{ .ZitiPKI }}/keys/{{ .Router.Name }}-server.key"
+  ca:                   "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-cas.cert"
 
 ctrl:
-  endpoint:             tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabCtrlPort }}
+  endpoint:             tls:{{ .Controller.Hostname }}:{{ .Controller.FabCtrlPort }}
 
 link:
-{{ if .IsPrivate }}#{{ end }}  listeners:
-{{ if .IsPrivate }}#{{ end }}    - binding:          transport
-{{ if .IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .ListenerBindPort }}
-{{ if .IsPrivate }}#{{ end }}      advertise:        tls:{{ .ZitiEdgeRouterHostname }}:{{ .ListenerBindPort }}
-{{ if .IsPrivate }}#{{ end }}      options:
-{{ if .IsPrivate }}#{{ end }}        outQueueSize:   {{ .OutQueueSize }}
+{{ if .Router.IsPrivate }}#{{ end }}  listeners:
+{{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      options:
+{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
   dialers:
     - binding: transport
 
 listeners:
-{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}  - binding: tunnel
-{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}    options:
-{{ if or .IsFabricRouter .IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
-{{ if .IsPrivate }}#{{ end }}  - binding: {{- if or .IsFabricRouter .IsPrivate }}transport{{ else }}edge{{ end }}
-{{ if .IsPrivate }}#{{ end }}    address: {{if .WssEnabled}}ws{{else}}tls{{end}}:0.0.0.0:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-{{ if .IsPrivate }}#{{ end }}    options:
-{{ if .IsPrivate }}#{{ end }}      advertise: {{ .ZitiEdgeRouterHostname }}:{{if .WssEnabled}}3023{{else}}{{ .ZitiEdgeRouterPort }}{{end}}
-{{ if .IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .ConnectTimeoutMs }}
-{{ if .IsPrivate }}#{{ end }}      getSessionTimeout: {{ .GetSessionTimeoutS }}s
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: tunnel
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    options:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
+{{ if .Router.IsPrivate }}#{{ end }}  - binding: {{ if or .Router.IsFabric .Router.IsPrivate }}transport{{ else }}edge{{ end }}
+{{ if .Router.IsPrivate }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsPrivate }}#{{ end }}    options:
+{{ if .Router.IsPrivate }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
+{{ if .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
 
 
-{{- if or .IsPrivate .IsFabricRouter }}
+{{- if or .Router.IsPrivate .Router.IsFabric }}
 #edge:
 csr:
   country: US
@@ -48,7 +48,7 @@ csr:
   organizationalUnit: Ziti
   sans:
     dns:
-      - {{ .ZitiEdgeRouterHostname }}
+      - {{ .Router.Edge.Hostname }}
       - localhost
     ip:
       - "127.0.0.1"
@@ -62,29 +62,29 @@ edge:
     organizationalUnit: Ziti
     sans:
       dns:
-        - {{ .ZitiEdgeRouterHostname }}
+        - {{ .Router.Edge.Hostname }}
         - localhost
       ip:
         - "127.0.0.1"
 {{ end }}
 
-{{ if not .WssEnabled }}#{{ end }}transport:
-{{ if not .WssEnabled }}#{{ end }}  ws:
-{{ if not .WssEnabled }}#{{ end }}    writeTimeout: {{ .WssWriteTimeout }}
-{{ if not .WssEnabled }}#{{ end }}    readTimeout: {{ .WssReadTimeout }}
-{{ if not .WssEnabled }}#{{ end }}    idleTimeout: {{ .WssIdleTimeout }}
-{{ if not .WssEnabled }}#{{ end }}    pongTimeout: {{ .WssPongTimeout }}
-{{ if not .WssEnabled }}#{{ end }}    pingInterval: {{ .WssPingInterval }}
-{{ if not .WssEnabled }}#{{ end }}    handshakeTimeout: {{ .WssHandshakeTimeout }}
-{{ if not .WssEnabled }}#{{ end }}    readBufferSize: {{ .WssReadBufferSize }}
-{{ if not .WssEnabled }}#{{ end }}    writeBufferSize: {{ .WssWriteBufferSize }}
-{{ if not .WssEnabled }}#{{ end }}    enableCompression: true
-{{ if not .WssEnabled }}#{{ end }}    server_cert: {{ .ZitiPKI }}/certs/{{ .RouterName }}-router-server.cert
-{{ if not .WssEnabled }}#{{ end }}    key: {{ .ZitiPKI }}/keys/{{ .RouterName }}-router-server.key
+{{ if not .Router.IsWss }}#{{ end }}transport:
+{{ if not .Router.IsWss }}#{{ end }}  ws:
+{{ if not .Router.IsWss }}#{{ end }}    writeTimeout: {{ .Router.Wss.WriteTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    readTimeout: {{ .Router.Wss.ReadTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    idleTimeout: {{ .Router.Wss.IdleTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    pongTimeout: {{ .Router.Wss.PongTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    pingInterval: {{ .Router.Wss.PingInterval }}
+{{ if not .Router.IsWss }}#{{ end }}    handshakeTimeout: {{ .Router.Wss.HandshakeTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    enableCompression: true
+{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .ZitiPKI }}/certs/{{ .Router.Name }}-router-server.cert
+{{ if not .Router.IsWss }}#{{ end }}    key: {{ .ZitiPKI }}/keys/{{ .Router.Name }}-router-server.key
 
 forwarder:
-  latencyProbeInterval: {{ .LatencyProbeInterval }}
-  xgressDialQueueLength: {{ .XgressDialQueueLength }}
-  xgressDialWorkerCount: {{ .XgressDialWorkerCount }}
-  linkDialQueueLength: {{ .LinkDialQueueLength }}
-  linkDialWorkerCount: {{ .LinkDialWorkerCount }}
+  latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval }}
+  xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}
+  xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
+  linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
+  linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}

@@ -48,71 +48,79 @@ type CreateConfigOptions struct {
 }
 
 type ConfigTemplateValues struct {
-	ZitiPKI                  string
-	ZitiCtrlIntermediateName string
-	ZitiCtrlHostname         string
-	ZitiFabCtrlPort          string
-
-	// Controller specific
-	CtrlListener                 string
-	MgmtListener                 string
+	ZitiPKI                      string
 	ZitiHome                     string
 	Hostname                     string
 	ZitiFabMgmtPort              string
-	ZitiEdgeCtrlAPI              string
 	ZitiSigningIntermediateName  string
-	ZitiEdgeCtrlPort             string
 	ZitiCtrlRawname              string
 	ZitiEdgeCtrlIntermediateName string
 	ZitiEdgeCtrlHostname         string
 
-	// Router specific
-	RouterName             string
-	ZitiEdgeRouterHostname string
-	ZitiEdgeRouterPort     string
-	ZitiEdgeWSSRouterName  string
-	WssEnabled             bool
-	IsPrivate              bool
-	IsFabricRouter         bool
-
-	// Default values
-	ListenerBindPort             int
-	OutQueueSize                 int
-	EdgeAPISessionTimeoutMinutes int
-	WebListenerIdleTimeoutMS     int
-	WebListenerReadTimeoutMS     int
-	WebListenerWriteTimeoutMS    int
-	WebListenerMinTLSVersion     string
-	WebListenerMaxTLSVersion     string
-	WssWriteTimeout              int
-	WssReadTimeout               int
-	WssIdleTimeout               int
-	WssPongTimeout               int
-	WssPingInterval              int
-	WssHandshakeTimeout          int
-	WssReadBufferSize            int
-	WssWriteBufferSize           int
-	LatencyProbeInterval         int
-	XgressDialQueueLength        int
-	XgressDialWorkerCount        int
-	LinkDialQueueLength          int
-	LinkDialWorkerCount          int
-	ConnectTimeoutMs             int
-	GetSessionTimeoutS           int
+	Controller ControllerTemplateValues
+	Router     RouterTemplateValues
 }
 
-type ControllerConfigValues struct {
-	CtrlListener                 string
-	MgmtListener                 string
-	ZitiHome                     string
+type ControllerTemplateValues struct {
 	Hostname                     string
-	ZitiFabMgmtPort              string
-	ZitiEdgeCtrlAPI              string
-	ZitiSigningIntermediateName  string
-	ZitiEdgeCtrlPort             string
-	ZitiCtrlRawname              string
-	ZitiEdgeCtrlIntermediateName string
-	ZitiEdgeCtrlHostname         string
+	FabCtrlPort                  string
+	EdgeCtrlAPI                  string
+	EdgeCtrlPort                 string
+	Listener                     string
+	MgmtListener                 string
+	Rawname                      string
+	EdgeAPISessionTimeoutMinutes int
+	WebListener                  ControllerWebListenerValues
+}
+
+type ControllerWebListenerValues struct {
+	IdleTimeoutMS  int
+	ReadTimeoutMS  int
+	WriteTimeoutMS int
+	MinTLSVersion  string
+	MaxTLSVersion  string
+}
+
+type RouterTemplateValues struct {
+	Name      string
+	IsPrivate bool
+	IsFabric  bool
+	IsWss     bool
+	Edge      EdgeRouterTemplateValues
+	Wss       WSSRouterTemplateValues
+	Forwarder RouterForwarderTemplateValues
+	Listener  RouterListenerTemplateValues
+}
+
+type EdgeRouterTemplateValues struct {
+	Hostname string
+	Port     string
+}
+
+type WSSRouterTemplateValues struct {
+	WriteTimeout     int
+	ReadTimeout      int
+	IdleTimeout      int
+	PongTimeout      int
+	PingInterval     int
+	HandshakeTimeout int
+	ReadBufferSize   int
+	WriteBufferSize  int
+}
+
+type RouterForwarderTemplateValues struct {
+	LatencyProbeInterval  int
+	XgressDialQueueLength int
+	XgressDialWorkerCount int
+	LinkDialQueueLength   int
+	LinkDialWorkerCount   int
+}
+
+type RouterListenerTemplateValues struct {
+	ConnectTimeoutMs   int
+	GetSessionTimeoutS int
+	BindPort           int
+	OutQueueSize       int
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
@@ -187,10 +195,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiEdgeCtrlHostname, err := cmdhelper.GetZitiEdgeCtrlHostname()
 	handleVariableError(err, cmdhelper.ZitiEdgeCtrlHostnameVarName)
 
-	// Get Ziti Controller Intermediate Name
-	zitiCtrlIntName, err := cmdhelper.GetZitiCtrlIntermediateName()
-	handleVariableError(err, cmdhelper.ZitiCtrlIntermediateNameVarName)
-
 	// Get Ziti Controller Hostname
 	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlHostname()
 	handleVariableError(err, cmdhelper.ZitiCtrlHostnameVarName)
@@ -212,46 +216,45 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	handleVariableError(err, cmdhelper.ZitiEdgeRouterPortVarName)
 
 	data.ZitiPKI = zitiPKI
-	data.ZitiCtrlIntermediateName = zitiCtrlIntName
-	data.ZitiCtrlHostname = zitiCtrlHostname
-	data.ZitiFabCtrlPort = zitiFabCtrlPort
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
 	data.ZitiFabMgmtPort = zitiFabMgmtPort
-	data.ZitiEdgeCtrlAPI = zitiEdgeCtrlAPI
 	data.ZitiSigningIntermediateName = zitiSigningIntermediateName
-	data.ZitiEdgeCtrlPort = zitiEdgeCtrlPort
 	data.ZitiCtrlRawname = zitiCtrlRawname
 	data.ZitiEdgeCtrlIntermediateName = zitiEdgeIntermediateName
 	data.ZitiEdgeCtrlHostname = zitiEdgeCtrlHostname
-	data.ZitiEdgeRouterHostname = zitiEdgeRouterHostName
-	data.ZitiEdgeRouterPort = zitiEdgeRouterPort
+	data.Controller.EdgeCtrlAPI = zitiEdgeCtrlAPI
+	data.Controller.EdgeCtrlPort = zitiEdgeCtrlPort
+	data.Controller.Hostname = zitiCtrlHostname
+	data.Controller.FabCtrlPort = zitiFabCtrlPort
+	data.Router.Edge.Hostname = zitiEdgeRouterHostName
+	data.Router.Edge.Port = zitiEdgeRouterPort
 }
 
 func (data *ConfigTemplateValues) populateDefaults() {
-	data.ListenerBindPort = constants.DefaultListenerBindPort
-	data.OutQueueSize = constants.DefaultOutQueueSize
-	data.EdgeAPISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
-	data.WebListenerIdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
-	data.WebListenerReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
-	data.WebListenerWriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
-	data.WebListenerMinTLSVersion = constants.DefaultWebListenerMinTLSVersion
-	data.WebListenerMaxTLSVersion = constants.DefaultWebListenerMaxTLSVersion
-	data.WssWriteTimeout = constants.DefaultWSSWriteTimeout
-	data.WssReadTimeout = constants.DefaultWSSReadTimeout
-	data.WssIdleTimeout = constants.DefaultWSSIdleTimeout
-	data.WssPongTimeout = constants.DefaultWSSPongTimeout
-	data.WssPingInterval = constants.DefaultWSSPingInterval
-	data.WssHandshakeTimeout = constants.DefaultWSSHandshakeTimeout
-	data.WssReadBufferSize = constants.DefaultWSSReadBufferSize
-	data.WssWriteBufferSize = constants.DefaultWSSWriteBufferSize
-	data.LatencyProbeInterval = constants.DefaultLatencyProbeInterval
-	data.XgressDialQueueLength = constants.DefaultXgressDialQueueLength
-	data.XgressDialWorkerCount = constants.DefaultXgressDialWorkerCount
-	data.LinkDialQueueLength = constants.DefaultLinkDialQueueLength
-	data.LinkDialWorkerCount = constants.DefaultLinkDialWorkerCount
-	data.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
-	data.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
+	data.Router.Listener.BindPort = constants.DefaultListenerBindPort
+	data.Router.Listener.OutQueueSize = constants.DefaultOutQueueSize
+	data.Router.Listener.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
+	data.Router.Listener.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
+	data.Controller.EdgeAPISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
+	data.Controller.WebListener.IdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
+	data.Controller.WebListener.ReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
+	data.Controller.WebListener.WriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
+	data.Controller.WebListener.MinTLSVersion = constants.DefaultWebListenerMinTLSVersion
+	data.Controller.WebListener.MaxTLSVersion = constants.DefaultWebListenerMaxTLSVersion
+	data.Router.Wss.WriteTimeout = constants.DefaultWSSWriteTimeout
+	data.Router.Wss.ReadTimeout = constants.DefaultWSSReadTimeout
+	data.Router.Wss.IdleTimeout = constants.DefaultWSSIdleTimeout
+	data.Router.Wss.PongTimeout = constants.DefaultWSSPongTimeout
+	data.Router.Wss.PingInterval = constants.DefaultWSSPingInterval
+	data.Router.Wss.HandshakeTimeout = constants.DefaultWSSHandshakeTimeout
+	data.Router.Wss.ReadBufferSize = constants.DefaultWSSReadBufferSize
+	data.Router.Wss.WriteBufferSize = constants.DefaultWSSWriteBufferSize
+	data.Router.Forwarder.LatencyProbeInterval = constants.DefaultLatencyProbeInterval
+	data.Router.Forwarder.XgressDialQueueLength = constants.DefaultXgressDialQueueLength
+	data.Router.Forwarder.XgressDialWorkerCount = constants.DefaultXgressDialWorkerCount
+	data.Router.Forwarder.LinkDialQueueLength = constants.DefaultLinkDialQueueLength
+	data.Router.Forwarder.LinkDialWorkerCount = constants.DefaultLinkDialWorkerCount
 }
 
 func handleVariableError(err error, varName string) {

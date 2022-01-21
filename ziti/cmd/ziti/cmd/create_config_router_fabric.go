@@ -73,8 +73,8 @@ func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update fabric router specific values with options passed in
-			data.RouterName = options.RouterName
-			data.IsFabricRouter = true
+			data.Router.Name = options.RouterName
+			data.Router.IsFabric = true
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd

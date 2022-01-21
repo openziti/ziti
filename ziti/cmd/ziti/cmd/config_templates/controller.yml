@@ -1,7 +1,7 @@
 v: 3
 
 #trace:
-#  path: "{{ .ZitiCtrlRawname }}.trace"
+#  path: "{{ .Controller.Rawname }}.trace"
 
 #profile:
 #  memory:
@@ -10,16 +10,16 @@ v: 3
 db:                     "{{ .ZitiHome }}/db/ctrl.db"
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/certs/{{ .ZitiCtrlHostname }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/certs/{{ .ZitiCtrlHostname }}-server.chain.pem"
-  key:                  "{{ .ZitiPKI }}/keys/{{ .ZitiCtrlHostname }}-server.key"
+  cert:                 "{{ .ZitiPKI }}/certs/{{ .Controller.Hostname }}-client.cert"
+  server_cert:          "{{ .ZitiPKI }}/certs/{{ .Controller.Hostname }}-server.chain.pem"
+  key:                  "{{ .ZitiPKI }}/keys/{{ .Controller.Hostname }}-server.key"
   ca:                   "{{ .ZitiPKI }}/cas.pem"
 
 ctrl:
-  listener:             {{if .CtrlListener}}{{ .CtrlListener }}{{else}}tls:0.0.0.0:{{ .ZitiFabCtrlPort }} {{end}}
+  listener:             {{ if .Controller.Listener }}{{ Controller.Listener }}{{ else }}tls:0.0.0.0:{{ .ZitiFabCtrlPort }}{{ end }}
 
 mgmt:
-  listener:             {{if .MgmtListener}}{{ .MgmtListener }}{{else}}tls:{{ .ZitiCtrlHostname }}:{{ .ZitiFabMgmtPort }}{{end}}
+  listener:             {{ if .MgmtListener }}{{ .MgmtListener }}{{ else }}tls:{{ .Controller.Hostname }}:{{ .ZitiFabMgmtPort }}{{ end }}
 
 #metrics:
 #  influxdb:
@@ -44,11 +44,11 @@ edge:
     # sessionTimeout - optional, default 10m
     # The number of minutes before an Edge API session will time out. Timeouts are reset by
     # API requests and connections that are maintained to Edge Routers
-    sessionTimeout: 30m
+    sessionTimeout: {{ .Controller.EdgeAPISessionTimeoutMinutes }}m
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
-    # defined in this webListener's bindPoints.
-    address: {{ .ZitiEdgeCtrlAPI }}
+    # defined in this Controller.WebListener.'s bindPoints.
+    address: {{ .Controller.EdgeCtrlAPI }}
   # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
   enrollment:
     # signingCert - required
@@ -88,11 +88,11 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 0.0.0.0:{{ .ZitiEdgeCtrlPort }}
+      - interface: 0.0.0.0:{{ .Controller.EdgeCtrlPort }}
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: {{ .ZitiEdgeCtrlAPI }}
+        address: {{ .Controller.EdgeCtrlAPI }}
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
     identity:
@@ -108,23 +108,23 @@ web:
       # The maximum amount of idle time in milliseconds allowed for pipelined HTTP requests. Setting this too high
       # can cause resources on the host to be consumed as clients remain connected and idle. Lowering this value
       # will cause clients to reconnect on subsequent HTTPs requests.
-      idleTimeout: {{ .WebListenerIdleTimeoutMS }}ms  #http timeouts, new
+      idleTimeout: {{ .Controller.WebListener.IdleTimeoutMS }}ms  #http timeouts, new
       # readTimeoutMs - optional, default 5000ms
       # The maximum amount of time in milliseconds http servers will wait to read the first incoming requests. A higher
       # value risks consuming resources on the host with clients that are acting bad faith or suffering from high latency
       # or packet loss. A lower value can risk losing connections to high latency/packet loss clients.
-      readTimeout: {{ .WebListenerReadTimeoutMS }}ms
+      readTimeout: {{ .Controller.WebListener.ReadTimeoutMS }}ms
       # writeTimeoutMs - optional, default 10000ms
       # The total maximum time in milliseconds that the http server will wait for a single requests to be received and
       # responded too. A higher value can allow long running requests to consume resources on the host. A lower value
       # can risk ending requests before the server has a chance to respond.
-      writeTimeout: {{ .WebListenerWriteTimeoutMS }}ms
+      writeTimeout: {{ .Controller.WebListener.WriteTimeoutMS }}ms
       # minTLSVersion - optional, default TSL1.2
       # The minimum version of TSL to support
-      minTLSVersion: {{ .WebListenerMinTLSVersion }}
+      minTLSVersion: {{ .Controller.WebListener.MinTLSVersion }}
       # maxTLSVersion - optional, default TSL1.3
       # The maximum version of TSL to support
-      maxTLSVersion: {{ .WebListenerMaxTLSVersion }}
+      maxTLSVersion: {{ .Controller.WebListener.MaxTLSVersion }}
     # apis - required
     # Allows one or more APIs to be bound to this webListener
     apis:

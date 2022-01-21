@@ -92,8 +92,8 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update controller specific values with configOptions passed in
-			data.CtrlListener = controllerOptions.CtrlListener
-			data.MgmtListener = controllerOptions.MgmtListener
+			data.Controller.Listener = controllerOptions.CtrlListener
+			data.Controller.MgmtListener = controllerOptions.MgmtListener
 			data.ZitiPKI = controllerOptions.PKIPath
 		},
 		Run: func(cmd *cobra.Command, args []string) {
