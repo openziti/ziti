@@ -5,7 +5,12 @@ configuration files that are maintained with the source code as well as Docker t
 
 ## Dependencies
 
-- Go 1.12+
+You may verify the currently-required version of Go with this command, or by peeking inside the file named `go.mod`.
+
+```bash
+$ /bin/grep -Po '^go\s+\K\d+\.\d+$' go.mod
+1.17
+```
 
 ## Debugging
 
@@ -19,8 +24,86 @@ This guide can be used to run all of the Ziti applications via command line or i
     - `git clone https://github.com/openziti/ziti.git`
 2. Change into the `ziti` dirrectory
     - `cd ziti`
-3. Build
+3. Build all commands
     - `go install ./...`
+4. Build one command
+
+    ```bash
+    ZITI_CMD=ziti-tunnel
+    rm -f ./build/${ZITI_CMD} \
+        && mkdir -p ./build \
+        && go build -o ./build/${ZITI_CMD} ./${ZITI_CMD}/cmd/${ZITI_CMD}/ \
+        && ls -lARh ./build/${ZITI_CMD}
+    ```
+
+### Multi-Platform Linux Builder Container
+
+The purpose of this container is to document the process of building locally the Linux executables in the same way as the GitHub Actions workflow (CI) which automation is not accessible to downstream contributors. By default, this produces three executables for each Ziti component, one for each platform architecture: amd64, arm, arm64. You may instead build for one or more of these by specifying the architecture as a parameter to the `docker run` command as shown below.
+
+#### Build the Container Image
+
+You only need to build the container image once unless you change the Dockerfile or `./linux-build.sh` (the container's entrypoint).
+
+```bash
+# find the latest Go distribution's semver
+LATEST_GOLANG=$(curl -sSfL "https://go.dev/VERSION?m=text" | /bin/grep -Po '^go(\s+)?\K\d+\.\d+\.\d+$')
+# build a container image named "zitibuilder" with the Dockerfile in the top-level of this repo
+docker build \
+    --tag=zitibuilder \
+    --file=Dockerfile.linux-build \
+    --build-arg latest_golang=${LATEST_GOLANG} \
+    --build-arg uid=$UID \
+    --build-arg gid=$GID .
+```
+
+#### Run the Container to Build Executables for the Desired Architectures
+
+Executing the following `docker run` command will:
+1. Mount the top-level of this repo on the container's `/mnt`
+2. Run `./linux-build.sh ${@}` inside the container
+3. Deposit built executables in `./release`
+
+```bash
+# build for all three architectures: amd64 arm arm64
+docker run \
+    --rm \
+    --name=zitibuilder \
+    --volume=$PWD:/mnt \
+    zitibuilder
+
+# build only amd64 
+docker run \
+    --rm \
+    --name=zitibuilder \
+    --volume=$PWD:/mnt \
+    zitibuilder \
+        amd64
+```
+
+You will find the built artifacts in `./release`.
+
+```bash
+$ tree ./release
+./release
+├── amd64
+│   └── linux
+│       ├── ziti
+│       ├── ziti-controller
+│       ├── ziti-router
+│       └── ziti-tunnel
+├── arm
+│   └── linux
+│       ├── ziti
+│       ├── ziti-controller
+│       ├── ziti-router
+│       └── ziti-tunnel
+└── arm64
+    └── linux
+        ├── ziti
+        ├── ziti-controller
+        ├── ziti-router
+        └── ziti-tunnel
+```
 
 ### Initializing the Controller
 Before you can run the controller you have to initialize it's database with an administrative user. Assuming you want to run with the edge enabled, this can be done using as follows:

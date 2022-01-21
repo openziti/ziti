@@ -19,6 +19,8 @@
 package main
 
 import (
+	"math/rand"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/quic"
@@ -33,7 +35,6 @@ import (
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3"
 	"github.com/sirupsen/logrus"
-	"math/rand"
 )
 
 func init() {
