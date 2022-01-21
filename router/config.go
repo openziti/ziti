@@ -30,13 +30,33 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
+	"os"
 	"time"
 )
 
 const (
+	// FlagsCfgMapKey is used as a key in the source configuration map to pass flags from
+	// higher levels (i.e. CLI arguments) down through the stack w/o colliding w/ file
+	// based configuration values
 	FlagsCfgMapKey = "@flags"
+
+	// PathMapKey is used to store a loaded configuration file's source path
+	PathMapKey = "@file"
+
+	// CtrlMapKey is the string key for the ctrl section
+	CtrlMapKey = "ctrl"
+
+	// CtrlEndpointMapKey is the string key for the ctrl.endpoint section
+	CtrlEndpointMapKey = "endpoint"
 )
+
+// internalConfigKeys is used to distinguish internally defined configuration vs file configuration
+var internalConfigKeys = []string{
+	PathMapKey,
+	FlagsCfgMapKey,
+}
 
 func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 	yamlBytes, err := ioutil.ReadFile(path)
@@ -50,6 +70,8 @@ func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 	}
 
 	config.InjectEnv(cfgmap)
+
+	cfgmap[PathMapKey] = path
 
 	return cfgmap, nil
 }
@@ -98,6 +120,7 @@ type Config struct {
 	}
 	Plugins []string
 	src     map[interface{}]interface{}
+	path    string
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -106,6 +129,112 @@ func (config *Config) Configure(sub config.Subconfig) error {
 
 func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
 	SetConfigMapFlags(config.src, flags)
+}
+
+// CreateBackup will attempt to use the current path value to create a backup of
+// the file on disk. The resulting file path is returned.
+func (config *Config) CreateBackup() (string, error) {
+	source, err := os.Open(config.path)
+	if err != nil {
+		return "", fmt.Errorf("could not open path %s: %v", config.path, err)
+	}
+	defer func() { _ = source.Close() }()
+
+	destPath := config.path + ".backup." + time.Now().Format("20060102150405")
+	destination, err := os.Create(destPath)
+	if err != nil {
+		return "", fmt.Errorf("could not create backup file: %v", err)
+	}
+	defer func() { _ = destination.Close() }()
+
+	if _, err := io.Copy(destination, source); err != nil {
+		return "", fmt.Errorf("could not copy to backup file: %v", err)
+	}
+
+	return destPath, nil
+}
+
+func deepCopyMap(src map[interface{}]interface{}, dest map[interface{}]interface{}) {
+	for key, value := range src {
+		switch src[key].(type) {
+		case map[interface{}]interface{}:
+			dest[key] = map[interface{}]interface{}{}
+			deepCopyMap(src[key].(map[interface{}]interface{}), dest[key].(map[interface{}]interface{}))
+		default:
+			dest[key] = value
+		}
+	}
+}
+
+// cleanSrcCopy returns a copy of the current src map[interface{}]interface{} without internal
+// keys like @FlagsCfgMapKey and @PathMapKey.
+func (config *Config) cleanSrcCopy() map[interface{}]interface{} {
+	out := map[interface{}]interface{}{}
+	deepCopyMap(config.src, out)
+
+	for _, internalKey := range internalConfigKeys {
+		delete(out, internalKey)
+	}
+
+	return out
+}
+
+// Save attempts to take the current config's src attribute and Save it as
+// yaml to the path value.
+func (config *Config) Save() error {
+	if config.path == "" {
+		return errors.New("no path provided in configuration, cannot save")
+	}
+
+	if _, err := os.Stat(config.path); err != nil {
+		return fmt.Errorf("invalid path %s: %v", config.path, err)
+	}
+
+	outSrc := config.cleanSrcCopy()
+	out, err := yaml.Marshal(outSrc)
+
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(config.path)
+
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = file.Close() }()
+
+	_, err = file.Write(out)
+
+	return err
+}
+
+// UpdateControllerEndpoint updates the runtime configuration address of the controller and the
+// internal map configuration.
+func (config *Config) UpdateControllerEndpoint(address string) error {
+	if parsedAddress, err := transport.ParseAddress(address); parsedAddress != nil && err == nil {
+		if config.Ctrl.Endpoint.String() != address {
+			//config file update
+			if ctrlVal, ok := config.src[CtrlMapKey]; ok {
+				if ctrlMap, ok := ctrlVal.(map[interface{}]interface{}); ok {
+					ctrlMap[CtrlEndpointMapKey] = address
+				} else {
+					return errors.New("source ctrl found but not map[interface{}]interface{}")
+				}
+			} else {
+				return errors.New("source ctrl key not found")
+			}
+
+			//runtime update
+			config.Ctrl.Endpoint = parsedAddress
+
+		}
+	} else {
+		return fmt.Errorf("could not parse address: %v", err)
+	}
+
+	return nil
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -135,6 +264,10 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to load identity (%w)", err)
 	} else {
 		cfg.Id = identity.NewIdentity(id)
+	}
+
+	if value, found := cfgmap[PathMapKey]; found {
+		cfg.path = value.(string)
 	}
 
 	cfg.Forwarder = forwarder.DefaultOptions()
@@ -190,9 +323,9 @@ func LoadConfig(path string) (*Config, error) {
 
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel2.DefaultOptions()
-	if value, found := cfgmap["ctrl"]; found {
+	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["endpoint"]; found {
+			if value, found := submap[CtrlEndpointMapKey]; found {
 				address, err := transport.ParseAddress(value.(string))
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
