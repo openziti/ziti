@@ -523,7 +523,11 @@ func (self *Xgress) rx() {
 			remaining -= length
 			payloads++
 
-			self.forwardPayload(payload)
+			// if the payload buffer is closed, we can't forward any more data, so might as well exit the rx loop
+			// The txer will still have a chance to flush any already received data
+			if !self.forwardPayload(payload) {
+				return
+			}
 			payloadLogger := log.WithFields(payload.GetLoggerFields())
 			payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
 
