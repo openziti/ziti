@@ -100,12 +100,13 @@ func (s *ApiSessionEnforcer) Run() error {
 		if err = s.appEnv.GetHandlers().ApiSession.DeleteBatch(ids); err != nil {
 			logrus.WithError(err).Error("failure while batch deleting expired api sessions")
 
+			s.appEnv.GetMetricsRegistry().Gauge(ApiSessionEnforcerDelete).Update(int64(len(ids)))
 			for _, id := range ids {
 				if err = s.appEnv.GetHandlers().ApiSession.Delete(id); err != nil {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}
-			s.appEnv.GetMetricsRegistry().Gauge(ApiSessionEnforcerDelete).Update(int64(len(ids)))
+			s.appEnv.GetMetricsRegistry().Gauge(ApiSessionEnforcerDelete).Update(0)
 		}
 	}
 
