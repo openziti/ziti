@@ -131,6 +131,16 @@ func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
 	SetConfigMapFlags(config.src, flags)
 }
 
+const (
+	TimeFormatYear    = "2006"
+	TimeFormatMonth   = "01"
+	TimeFormatDay     = "02"
+	TimeFormatHour    = "15"
+	TimeFormatMinute  = "04"
+	TimeFormatSeconds = "05"
+	TimestampFormat   = TimeFormatYear + TimeFormatMonth + TimeFormatDay + TimeFormatHour + TimeFormatMinute + TimeFormatSeconds
+)
+
 // CreateBackup will attempt to use the current path value to create a backup of
 // the file on disk. The resulting file path is returned.
 func (config *Config) CreateBackup() (string, error) {
@@ -140,7 +150,7 @@ func (config *Config) CreateBackup() (string, error) {
 	}
 	defer func() { _ = source.Close() }()
 
-	destPath := config.path + ".backup." + time.Now().Format("20060102150405")
+	destPath := config.path + ".backup." + time.Now().Format(TimestampFormat)
 	destination, err := os.Create(destPath)
 	if err != nil {
 		return "", fmt.Errorf("could not create backup file: %v", err)
