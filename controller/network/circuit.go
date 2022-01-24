@@ -42,6 +42,18 @@ func (self *Circuit) latency() int64 {
 	return latency
 }
 
+func (self *Circuit) HasRouter(r *Router) bool {
+	if self == nil || self.Path == nil {
+		return false
+	}
+	for _, node := range self.Path.Nodes {
+		if node.Id == r.Id {
+			return true
+		}
+	}
+	return false
+}
+
 type circuitController struct {
 	circuits    cmap.ConcurrentMap // map[string]*Circuit
 	idGenerator idgen.Generator

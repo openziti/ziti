@@ -39,18 +39,19 @@ func (self *circuitConfirmationHandler) ContentType() int32 {
 }
 
 func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
-	logrus.Infof("received circuit confirmation request from [r/%s]", self.r.Id)
+	log := logrus.WithField("routerId", self.r.Id)
+	log.Info("received circuit confirmation request")
 	confirm := &ctrl_pb.CircuitConfirmation{}
 	if err := proto.Unmarshal(msg.Body, confirm); err == nil {
 		for _, circuitId := range confirm.CircuitIds {
-			if _, found := self.n.GetCircuit(circuitId); !found {
-				go self.sendUnroute(circuitId)
+			if circuit, found := self.n.GetCircuit(circuitId); found && circuit.HasRouter(self.r) {
+				log.WithField("circuitId", circuitId).Debug("circuit found, ignoring")
 			} else {
-				logrus.Debugf("[s/%s] found, ignoring", circuitId)
+				go self.sendUnroute(circuitId)
 			}
 		}
 	} else {
-		logrus.Errorf("error unmarshaling circuit confirmation from [r/%s] (%v)", self.r.Id, err)
+		log.WithError(err).Error("error unmarshalling circuit confirmation")
 	}
 }
 
