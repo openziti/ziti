@@ -7,7 +7,6 @@ db/
 *.dll
 *.so
 *.dylib
-/ziti/cmd/ziti/ziti
 
 # Test binary, built with `go test -c`
 *.test
