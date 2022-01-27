@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 	"math"
@@ -35,7 +35,7 @@ type createTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewCreateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
+func NewCreateTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	return &createTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

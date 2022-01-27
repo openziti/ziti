@@ -19,17 +19,17 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel"
 )
 
 type createCircuitHandler struct {
 	baseRequestHandler
 }
 
-func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
+func NewCreateCircuitHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	return &createCircuitHandler{
 		baseRequestHandler: baseRequestHandler{
 			ch:     ch,

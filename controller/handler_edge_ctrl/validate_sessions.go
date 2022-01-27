@@ -19,9 +19,9 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"go.etcd.io/bbolt"
 )
 
@@ -29,7 +29,7 @@ type validateSessionsHandler struct {
 	baseRequestHandler
 }
 
-func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
+func NewValidateSessionsHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	return &validateSessionsHandler{
 		baseRequestHandler{
 			ch:     ch,

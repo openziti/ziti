@@ -19,6 +19,7 @@ package env
 import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
@@ -72,6 +73,10 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 
 	return broker
+}
+
+func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
+	return broker.routerSyncStrategy.GetReceiveHandlers()
 }
 
 func (broker *Broker) RouterConnected(router *network.Router) {

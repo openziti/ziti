@@ -259,8 +259,8 @@ func Test_CertExpirationChecker(t *testing.T) {
 			extender := &stubExtender{
 				done: func() error {
 					invoked = true
-					certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(1,0,0)
-					certChecker.id.ServerCert().Leaf.NotAfter = time.Now().AddDate(1,0,0)
+					certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
+					certChecker.id.ServerCert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					return errors.New("test")
 				},
 			}
@@ -576,7 +576,7 @@ func (ch *simpleTestChannel) AddTransformHandler(channel2.TransformHandler) {
 }
 
 func (ch *simpleTestChannel) AddReceiveHandler(channel2.ReceiveHandler) {
-	panic("implement AddReceiveHandler")
+	panic("implement AddTypedReceiveHandler")
 }
 
 func (ch *simpleTestChannel) AddErrorHandler(channel2.ErrorHandler) {
@@ -663,7 +663,7 @@ func (ch *simpleTestChannel) GetTimeSinceLastRead() time.Duration {
 
 type stubExtender struct {
 	isRequesting concurrenz.AtomicBoolean
-	done func() error
+	done         func() error
 }
 
 func (s stubExtender) IsRequestingCompareAndSwap(expected bool, value bool) bool {
