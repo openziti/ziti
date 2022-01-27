@@ -55,7 +55,7 @@ type Config struct {
 	}
 	Ctrl struct {
 		Listener transport.Address
-		Options  *channel.Options
+		Options  *CtrlOptions
 	}
 	Mgmt struct {
 		Listener transport.Address
@@ -70,6 +70,11 @@ type Config struct {
 		}
 	}
 	src map[interface{}]interface{}
+}
+
+type CtrlOptions struct {
+	*channel.Options
+	NewListener *transport.Address
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -193,14 +198,33 @@ func LoadConfig(path string) (*Config, error) {
 				panic("controllerConfig must provide [ctrl/listener]")
 			}
 
-			controllerConfig.Ctrl.Options = channel.DefaultOptions()
+			controllerConfig.Ctrl.Options = &CtrlOptions{
+				Options: channel.DefaultOptions(),
+			}
+
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					options, err := channel.LoadOptions(submap)
 					if err != nil {
 						return nil, err
 					}
-					controllerConfig.Ctrl.Options = options
+
+					controllerConfig.Ctrl.Options.Options = options
+
+					if val, found := submap["newListener"]; found {
+						if newListener, ok := val.(string); ok {
+							if newListener != "" {
+								if addr, err := transport.ParseAddress(newListener); err == nil {
+									controllerConfig.Ctrl.Options.NewListener = &addr
+								} else {
+									return nil, fmt.Errorf("error loading newListener for [ctrl/options] (%v)", err)
+								}
+							}
+						} else {
+							return nil, errors.New("error loading newAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
 					if err := controllerConfig.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
