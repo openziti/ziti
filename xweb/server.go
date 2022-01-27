@@ -138,7 +138,7 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 	return server, nil
 }
 
-func (server *Server) wrapHandler(listener *WebListener, point *BindPoint, handler http.Handler) http.Handler {
+func (server *Server) wrapHandler(_ *WebListener, point *BindPoint, handler http.Handler) http.Handler {
 	handler = server.wrapPanicRecovery(handler)
 	handler = server.wrapSetCtrlAddressHeader(point, handler)
 

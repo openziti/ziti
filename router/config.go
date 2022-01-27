@@ -123,6 +123,10 @@ type Config struct {
 	path    string
 }
 
+func (config *Config) CurrentCtrlAddress() string {
+	return config.Ctrl.Endpoint.String()
+}
+
 func (config *Config) Configure(sub config.Subconfig) error {
 	return sub.LoadConfig(config.src)
 }
