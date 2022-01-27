@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	"github.com/sirupsen/logrus"
 )
 

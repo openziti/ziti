@@ -19,13 +19,12 @@ package handler_mgmt
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel"
-	"github.com/openziti/foundation/channel2"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 	"sync"
 	"time"
@@ -43,11 +42,11 @@ func (*traceTogglePipeHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_TogglePipeTracesRequestType)
 }
 
-func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *traceTogglePipeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &trace_pb.TogglePipeTracesRequest{}
 
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -102,11 +101,11 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel2.Message, ch c
 	handler.complete(msg, ch, result)
 }
 
-func (handler *traceTogglePipeHandler) complete(msg *channel2.Message, ch channel2.Channel, result *trace.ToggleResult) {
+func (handler *traceTogglePipeHandler) complete(msg *channel.Message, ch channel.Channel, result *trace.ToggleResult) {
 	if result.Success {
-		handler_common.SendChannel2Success(msg, ch, result.Message.String())
+		handler_common.SendSuccess(msg, ch, result.Message.String())
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, result.Message.String())
+		handler_common.SendFailure(msg, ch, result.Message.String())
 	}
 }
 
@@ -137,7 +136,7 @@ func getApplyResults(resultChan chan trace.ToggleApplyResult, verbosity trace.To
 	}
 }
 
-func handleResponse(router *network.Router, mgmtReq *channel2.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
+func handleResponse(router *network.Router, mgmtReq *channel.Message, msgsCh chan<- *remoteToggleResult, waitGroup *sync.WaitGroup) {
 	defer waitGroup.Done()
 
 	msg := channel.NewMessage(int32(ctrl_pb.ContentType_TogglePipeTracesRequestType), mgmtReq.Body)
@@ -145,7 +144,7 @@ func handleResponse(router *network.Router, mgmtReq *channel2.Message, msgsCh ch
 
 	if err != nil {
 		msgsCh <- &remoteToggleResult{false, err.Error()}
-	} else if response.ContentType == channel2.ContentTypeResultType {
+	} else if response.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(response)
 		msgsCh <- &remoteToggleResult{result.Success, result.Message}
 	} else {

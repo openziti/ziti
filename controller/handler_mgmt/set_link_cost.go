@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type setLinkCostHandler struct {
@@ -38,7 +38,7 @@ func (h *setLinkCostHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_SetLinkCostRequestType)
 }
 
-func (h *setLinkCostHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *setLinkCostHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	set := &mgmt_pb.SetLinkCostRequest{}
@@ -47,11 +47,11 @@ func (h *setLinkCostHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 			l.SetStaticCost(set.Cost)
 			h.network.LinkChanged(l)
 			log.Infof("set cost of link [l/%s] to [%d]", set.LinkId, set.Cost)
-			handler_common.SendChannel2Success(msg, ch, "")
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
-			handler_common.SendChannel2Failure(msg, ch, fmt.Sprintf("unknown link [l/%s]", set.LinkId))
+			handler_common.SendFailure(msg, ch, fmt.Sprintf("unknown link [l/%s]", set.LinkId))
 		}
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

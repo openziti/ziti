@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/fabric/controller/handler_common"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 )
 
 type pingHandler struct{}

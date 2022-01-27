@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/handler_mgmt"
@@ -33,8 +34,6 @@ import (
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
 	"github.com/openziti/fabric/xweb"
-	"github.com/openziti/foundation/channel"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/profiler"
@@ -54,7 +53,7 @@ type Controller struct {
 	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
 
 	ctrlListener channel.UnderlayListener
-	mgmtListener channel2.UnderlayListener
+	mgmtListener channel.UnderlayListener
 
 	shutdownC  chan struct{}
 	isShutdown concurrenz.AtomicBoolean
@@ -116,7 +115,7 @@ func (c *Controller) Run() error {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
 	headers := map[int32][]byte{
-		channel2.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader: versionHeader,
 	}
 
 	/**
@@ -127,14 +126,14 @@ func (c *Controller) Run() error {
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
 	}
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options)
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options, c.config.Trace.Handler)
 	go ctrlAccepter.Run()
 	/* */
 
 	/**
 	 * mgmt listener/accepter.
 	 */
-	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
+	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
 	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
@@ -243,7 +242,7 @@ func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.xctrls)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
-	c.config.Mgmt.Options.BindHandlers = []channel2.BindHandler{handler_mgmt.NewBindHandler(c.network, c.xmgmts)}
+	c.config.Mgmt.Options.BindHandler = handler_mgmt.NewBindHandler(c.network, c.xmgmts)
 
 	//add default REST XWeb
 	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {

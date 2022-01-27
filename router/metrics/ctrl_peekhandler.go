@@ -1,18 +1,18 @@
 package metrics
 
 import (
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/metrics"
 )
 
 // NewCtrlChannelPeekHandler creates a channel PeekHandler which tracks message rate and message size distribution
 func NewCtrlChannelPeekHandler(routerId string, registry metrics.Registry) channel.PeekHandler {
-	txBytesMeter := registry.Meter("ctrl." + routerId + ".tx.bytesrate")
-	txMsgMeter := registry.Meter("ctrl." + routerId + ".tx.msgrate")
-	txMsgSizeHistogram := registry.Histogram("ctrl." + routerId + ".tx.msgsize")
-	rxBytesMeter := registry.Meter("ctrl." + routerId + ".rx.bytesrate")
-	rxMsgMeter := registry.Meter("ctrl." + routerId + ".rx.msgrate")
-	rxMsgSizeHistogram := registry.Histogram("ctrl." + routerId + ".rx.msgsize")
+	txBytesMeter := registry.Meter("ctrl.tx.bytesrate:" + routerId)
+	txMsgMeter := registry.Meter("ctrl.tx.msgrate:" + routerId)
+	txMsgSizeHistogram := registry.Histogram("ctrl.tx.msgsize:" + routerId)
+	rxBytesMeter := registry.Meter("ctrl.rx.bytesrate:" + routerId)
+	rxMsgMeter := registry.Meter("ctrl.rx.msgrate:" + routerId)
+	rxMsgSizeHistogram := registry.Histogram("ctrl.rx.msgsize:" + routerId)
 
 	closeHook := func() {
 		txBytesMeter.Dispose()

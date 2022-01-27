@@ -18,9 +18,9 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"

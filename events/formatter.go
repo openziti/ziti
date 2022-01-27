@@ -54,6 +54,7 @@ func (event *JsonMetricsEvent) WriteTo(output io.WriteCloser) error {
 	jsonRep["metric"] = event.Metric
 	jsonRep["source_id"] = event.SourceAppId
 	jsonRep["source_event_id"] = event.SourceEventId
+	jsonRep["version"] = event.Version
 	if event.SourceEntityId != "" {
 		jsonRep["source_entity_id"] = event.SourceEntityId
 	}

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
@@ -28,7 +29,6 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
@@ -283,7 +283,7 @@ func (network *Network) ValidateTerminators(r *Router) {
 		Terminators: terminators,
 	}
 
-	if err = r.Control.Send(channel.MarshalTyped(req)); err != nil {
+	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
 		pfxlog.Logger().WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
 	}
 }
@@ -853,7 +853,7 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.P
 
 	log.Debug("sending create route message")
 
-	msg, err := channel.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control)
+	msg, err := protobufs.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control)
 	if err != nil {
 		log.WithError(err).WithField("timeout", timeout).Error("error sending route message")
 		return nil, err
@@ -886,7 +886,7 @@ func sendUnroute(r *Router, circuitId string, now bool) error {
 		CircuitId: circuitId,
 		Now:       now,
 	}
-	return r.Control.Send(channel.MarshalTyped(unroute))
+	return protobufs.MarshalTyped(unroute).Send(r.Control)
 }
 
 func (network *Network) showOptions() {

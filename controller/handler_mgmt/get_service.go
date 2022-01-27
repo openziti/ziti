@@ -19,10 +19,10 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type getServiceHandler struct {
@@ -37,26 +37,26 @@ func (h *getServiceHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_GetServiceRequestType)
 }
 
-func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *getServiceHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	rs := &mgmt_pb.GetServiceRequest{}
 	err := proto.Unmarshal(msg.Body, rs)
 
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	response := &mgmt_pb.GetServiceResponse{}
 	svc, err := h.network.Services.Read(rs.ServiceId)
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	response.Service = toApiService(svc)
 	body, err := proto.Marshal(response)
 	if err == nil {
-		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
+		responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
 		responseMsg.ReplyTo(msg)
 		ch.Send(responseMsg)
 	} else {

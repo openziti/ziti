@@ -21,8 +21,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -58,8 +58,8 @@ func (example *example) Enabled() bool {
 	return example.enabled
 }
 
-func (example *example) BindChannel(ch channel.Channel) error {
-	ch.AddReceiveHandler(newReceiveHandler())
+func (example *example) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(newReceiveHandler())
 	return nil
 }
 

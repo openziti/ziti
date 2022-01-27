@@ -20,11 +20,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"regexp"
@@ -43,16 +43,16 @@ func (*streamMetricsHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamMetricsRequestType)
 }
 
-func (handler *streamMetricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *streamMetricsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &mgmt_pb.StreamMetricsRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	filters, err := parseFilters(request)
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -65,7 +65,7 @@ func (handler *streamMetricsHandler) HandleReceive(msg *channel2.Message, ch cha
 	fabricMetrics.AddMetricsEventHandler(metricsStreamHandler)
 }
 
-func (handler *streamMetricsHandler) HandleClose(channel2.Channel) {
+func (handler *streamMetricsHandler) HandleClose(channel.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
 		fabricMetrics.RemoveMetricsEventHandler(streamHandler)
 	}
@@ -103,7 +103,7 @@ type metricsFilter struct {
 }
 
 type MetricsStreamHandler struct {
-	ch      channel2.Channel
+	ch      channel.Channel
 	filters []*metricsFilter
 }
 
@@ -242,7 +242,7 @@ func (handler *MetricsStreamHandler) send(msg *mgmt_pb.StreamMetricsEvent) {
 		return
 	}
 
-	responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_StreamMetricsEventType), body)
+	responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamMetricsEventType), body)
 	if err := handler.ch.Send(responseMsg); err != nil {
 		pfxlog.Logger().Errorf("unexpected error sending StreamMetricsEvent (%s)", err)
 		handler.close()

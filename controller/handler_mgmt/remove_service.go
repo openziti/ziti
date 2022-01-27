@@ -19,10 +19,10 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type removeServiceHandler struct {
@@ -37,25 +37,25 @@ func (h *removeServiceHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_RemoveServiceRequestType)
 }
 
-func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *removeServiceHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	request := &mgmt_pb.RemoveServiceRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	_, err := h.network.Services.Read(request.ServiceId)
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	if err := h.network.Services.Delete(request.ServiceId); err == nil {
 		log.Infof("removed service [s/%v]", request.ServiceId)
-		handler_common.SendChannel2Success(msg, ch, "")
+		handler_common.SendSuccess(msg, ch, "")
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

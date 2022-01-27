@@ -18,16 +18,16 @@ package handler_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 )
 
 type MgmtAccepter struct {
-	listener channel2.UnderlayListener
-	options  *channel2.Options
+	listener channel.UnderlayListener
+	options  *channel.Options
 }
 
-func NewMgmtAccepter(listener channel2.UnderlayListener,
-	options *channel2.Options) *MgmtAccepter {
+func NewMgmtAccepter(listener channel.UnderlayListener,
+	options *channel.Options) *MgmtAccepter {
 	return &MgmtAccepter{
 		listener: listener,
 		options:  options,
@@ -40,7 +40,7 @@ func (mgmtAccepter *MgmtAccepter) Run() {
 	defer log.Warn("exited")
 
 	for {
-		ch, err := channel2.NewChannel("mgmt", mgmtAccepter.listener, mgmtAccepter.options)
+		ch, err := channel.NewChannel("mgmt", mgmtAccepter.listener, mgmtAccepter.options)
 		if err == nil {
 			log.Debugf("accepted mgmt connection [%s]", ch.Id().Token)
 

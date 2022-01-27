@@ -19,12 +19,12 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/trace/pb"
 )
 
@@ -41,10 +41,10 @@ func (*streamTracesHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamTracesRequestType)
 }
 
-func (handler *streamTracesHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *streamTracesHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &mgmt_pb.StreamTracesRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -55,7 +55,7 @@ func (handler *streamTracesHandler) HandleReceive(msg *channel2.Message, ch chan
 	events.AddTraceEventHandler(eventHandler)
 }
 
-func (handler *streamTracesHandler) HandleClose(channel2.Channel) {
+func (handler *streamTracesHandler) HandleClose(channel.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
 		events.RemoveTraceEventHandler(streamHandler)
 	}
@@ -72,7 +72,7 @@ func createFilter(request *mgmt_pb.StreamTracesRequest) trace.Filter {
 }
 
 type traceEventsHandler struct {
-	ch     channel2.Channel
+	ch     channel.Channel
 	filter trace.Filter
 }
 
@@ -86,7 +86,7 @@ func (handler *traceEventsHandler) Accept(event *trace_pb.ChannelMessage) {
 		return
 	}
 
-	responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_StreamTracesEventType), body)
+	responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamTracesEventType), body)
 	if err := handler.ch.Send(responseMsg); err != nil {
 		pfxlog.Logger().Errorf("unexpected error sending ChannelMessage (%s)", err)
 		handler.close()

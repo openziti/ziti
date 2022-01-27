@@ -3,7 +3,7 @@
 package tests
 
 import (
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"testing"
@@ -22,8 +22,8 @@ func Test_MgmtChannelInvalidClient(t *testing.T) {
 	ctx.Req.NoError(err)
 	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
 	ctx.Req.NoError(err)
-	dialer := channel2.NewClassicDialer(badId, mgmtAddress, nil)
-	_, err = channel2.NewChannel("mgmt", dialer, nil)
+	dialer := channel.NewClassicDialer(badId, mgmtAddress, nil)
+	_, err = channel.NewChannel("mgmt", dialer, nil)
 	ctx.Req.Error(err)
 }
 

@@ -19,8 +19,8 @@ package network
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/util/concurrenz"
 	"regexp"
 	"sync"
@@ -146,7 +146,8 @@ func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}
 	resp := &ctrl_pb.InspectResponse{}
-	err := channel.MarshalTyped(request).WithTimeout(ctx.timeout).SendForTypedReply(router.Control, resp)
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctx.timeout).SendForReply(router.Control)
+	err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err)
 	if err != nil {
 		ctx.appendError(router.Id, err.Error())
 		return

@@ -5,7 +5,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 )
 

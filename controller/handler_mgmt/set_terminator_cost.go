@@ -19,12 +19,12 @@ package handler_mgmt
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/storage/boltz"
 	"math"
 )
@@ -41,16 +41,16 @@ func (h *setTerminatorCostHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_SetTerminatorCostRequestType)
 }
 
-func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *setTerminatorCostHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &mgmt_pb.SetTerminatorCostRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	terminator, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -63,7 +63,7 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 		} else if request.Precedence == mgmt_pb.TerminatorPrecedence_Failed {
 			precedence = xt.Precedences.Failed
 		} else {
-			handler_common.SendChannel2Failure(msg, ch, fmt.Sprintf("invalid precedence: %v", request.Precedence))
+			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid precedence: %v", request.Precedence))
 			return
 		}
 	}
@@ -71,7 +71,7 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 	var staticCost uint16
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_StaticCost) != 0 {
 		if request.StaticCost > math.MaxUint16 {
-			handler_common.SendChannel2Failure(msg, ch, fmt.Sprintf("invalid static cost %v. Must be less than %v", request.StaticCost, math.MaxUint16))
+			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid static cost %v. Must be less than %v", request.StaticCost, math.MaxUint16))
 			return
 		}
 		staticCost = uint16(request.StaticCost)
@@ -80,7 +80,7 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 	var dynamicCost uint16
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_DynamicCost) != 0 {
 		if request.DynamicCost > math.MaxUint16 {
-			handler_common.SendChannel2Failure(msg, ch, fmt.Sprintf("invalid dynamic cost %v. Must be less than %v", request.DynamicCost, math.MaxUint16))
+			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid dynamic cost %v. Must be less than %v", request.DynamicCost, math.MaxUint16))
 			return
 		}
 		dynamicCost = uint16(request.DynamicCost)
@@ -103,7 +103,7 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 		}
 
 		if err := h.network.Terminators.Patch(terminator, checker); err != nil {
-			handler_common.SendChannel2Failure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 			return
 		}
 	}
@@ -112,5 +112,5 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 		xt.GlobalCosts().SetDynamicCost(request.TerminatorId, dynamicCost)
 	}
 
-	handler_common.SendChannel2Success(msg, ch, "")
+	handler_common.SendSuccess(msg, ch, "")
 }

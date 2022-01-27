@@ -18,12 +18,12 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/pkg/errors"
 	"math"
 )
@@ -40,21 +40,21 @@ func (h *createTerminatorHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_CreateTerminatorRequestType)
 }
 
-func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *createTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	cs := &mgmt_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, cs); err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 	terminator, err := toModelTerminator(h.network, cs.Terminator)
 	if err != nil {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 	if id, err := h.network.Terminators.Create(terminator); err == nil {
-		handler_common.SendChannel2Success(msg, ch, id)
+		handler_common.SendSuccess(msg, ch, id)
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }
 
