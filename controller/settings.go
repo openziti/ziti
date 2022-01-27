@@ -8,12 +8,17 @@ import (
 	"github.com/openziti/foundation/channel"
 )
 
+// OnConnectSettingsHandler sends a ctrl_pb.ContentType_SettingsType message when routers connect if necessary
+// Settings are a map of  int32 -> []byte data. The type should be used to determine how the setting's []byte
+// array is consumed.
 type OnConnectSettingsHandler struct {
 	config   *Config
 	settings map[int32][]byte
 }
 
-func (o *OnConnectSettingsHandler) RouterDisconnected(r *network.Router) {}
+func (o *OnConnectSettingsHandler) RouterDisconnected(r *network.Router) {
+	//do nothing, satisfy interface
+}
 
 func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 	if len(o.settings) > 0 {

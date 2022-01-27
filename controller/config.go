@@ -72,6 +72,8 @@ type Config struct {
 	src map[interface{}]interface{}
 }
 
+// CtrlOptions extends channel.Options to include support for additional, non-channel specific options
+// (e.g. NewListener)
 type CtrlOptions struct {
 	*channel.Options
 	NewListener *transport.Address

@@ -24,6 +24,8 @@ import (
 	"strings"
 )
 
+// CtrlAddressChanger provides indirect access to underlying configuration without creating
+// import loops w/ *router.Config.
 type CtrlAddressChanger interface {
 	CreateBackup() (string, error)
 	UpdateControllerEndpoint(address string) error
@@ -31,6 +33,7 @@ type CtrlAddressChanger interface {
 	CurrentCtrlAddress() string
 }
 
+// settingsHandler is a catch-all handler for all settings message (currently only sent on router connect).
 type settingsHandler struct {
 	config CtrlAddressChanger
 }
@@ -67,6 +70,9 @@ func newSettingsHandler(config CtrlAddressChanger) channel2.ReceiveHandler {
 	}
 }
 
+// newCtrlAddress interrogates teh current configuration for controller ctrl address updates.
+// If necessary it will create a backup of the current config, alter the runtime ctrl address,
+// and save a new version of the router configuration in place.
 func (handler *settingsHandler) newCtrlAddress(newAddress string) {
 	currentAddress := strings.TrimSpace(handler.config.CurrentCtrlAddress())
 	newAddress = strings.TrimSpace(newAddress)
