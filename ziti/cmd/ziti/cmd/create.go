@@ -43,7 +43,7 @@ func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfig(f, out, errOut))
+	cmd.AddCommand(NewCmdCreateConfig())
 	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
 
 	cmd.AddCommand(NewCmdPKICreateCA(f, out, errOut))

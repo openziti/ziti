@@ -18,12 +18,10 @@ package cmd
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
@@ -34,8 +32,6 @@ const (
 	optionOutput       = "output"
 	defaultOutput      = "stdout"
 	outputDescription  = "designated output destination for config, use \"stdout\" or a filepath."
-	optionPKI          = "pkiPath"
-	pkiDescription     = "Location of the public key infrastructure"
 )
 
 // CreateConfigOptions the options for the create config command
@@ -44,14 +40,12 @@ type CreateConfigOptions struct {
 
 	Output       string
 	DatabaseFile string
-	PKIPath      string
 }
 
 type ConfigTemplateValues struct {
 	ZitiPKI                      string
 	ZitiHome                     string
 	Hostname                     string
-	ZitiFabMgmtPort              string
 	ZitiSigningIntermediateName  string
 	ZitiCtrlRawname              string
 	ZitiEdgeCtrlIntermediateName string
@@ -64,6 +58,7 @@ type ConfigTemplateValues struct {
 type ControllerTemplateValues struct {
 	Hostname                     string
 	FabCtrlPort                  string
+	FabMgmtPort                  string
 	EdgeCtrlAPI                  string
 	EdgeCtrlPort                 string
 	Listener                     string
@@ -71,6 +66,7 @@ type ControllerTemplateValues struct {
 	Rawname                      string
 	EdgeAPISessionTimeoutMinutes int
 	WebListener                  ControllerWebListenerValues
+	HealthCheck                  ControllerHealthCheckValues
 }
 
 type ControllerWebListenerValues struct {
@@ -79,6 +75,12 @@ type ControllerWebListenerValues struct {
 	WriteTimeoutMS int
 	MinTLSVersion  string
 	MaxTLSVersion  string
+}
+
+type ControllerHealthCheckValues struct {
+	IntervalSec     int
+	TimeoutSec      int
+	InitialDelaySec int
 }
 
 type RouterTemplateValues struct {
@@ -124,10 +126,10 @@ type RouterListenerTemplateValues struct {
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
-func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreateConfig() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "config",
-		Short:   "Creates a config file for specified Ziti component",
+		Short:   "Creates a config file for specified Ziti component using environment variables",
 		Aliases: []string{"cfg"},
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())
@@ -140,7 +142,6 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 	templateData.populateDefaults()
 
 	cmd.AddCommand(NewCmdCreateConfigController(templateData))
-	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
 	cmd.AddCommand(NewCmdCreateConfigRouter(templateData))
 
 	return cmd
@@ -148,13 +149,8 @@ func NewCmdCreateConfig(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cob
 
 // Add flags that are global to all "create config" commands
 func (options *CreateConfigOptions) addCreateFlags(cmd *cobra.Command) {
-	// Obtain the default PKI location which may be different if the env variable was set
-	defaultPKI, err := cmdhelper.GetZitiPKI()
-	handleVariableError(err, cmdhelper.ZitiPKIVarName)
-
 	cmd.PersistentFlags().BoolVarP(&options.Verbose, optionVerbose, "v", defaultVerbose, verboseDescription)
 	cmd.PersistentFlags().StringVarP(&options.Output, optionOutput, "o", defaultOutput, outputDescription)
-	cmd.PersistentFlags().StringVarP(&options.PKIPath, optionPKI, "", defaultPKI, pkiDescription)
 }
 
 func (data *ConfigTemplateValues) populateEnvVars() {
@@ -218,7 +214,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.ZitiPKI = zitiPKI
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
-	data.ZitiFabMgmtPort = zitiFabMgmtPort
 	data.ZitiSigningIntermediateName = zitiSigningIntermediateName
 	data.ZitiCtrlRawname = zitiCtrlRawname
 	data.ZitiEdgeCtrlIntermediateName = zitiEdgeIntermediateName
@@ -227,6 +222,7 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.EdgeCtrlPort = zitiEdgeCtrlPort
 	data.Controller.Hostname = zitiCtrlHostname
 	data.Controller.FabCtrlPort = zitiFabCtrlPort
+	data.Controller.FabMgmtPort = zitiFabMgmtPort
 	data.Router.Edge.Hostname = zitiEdgeRouterHostName
 	data.Router.Edge.Port = zitiEdgeRouterPort
 }
@@ -242,6 +238,9 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Controller.WebListener.WriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
 	data.Controller.WebListener.MinTLSVersion = constants.DefaultWebListenerMinTLSVersion
 	data.Controller.WebListener.MaxTLSVersion = constants.DefaultWebListenerMaxTLSVersion
+	data.Controller.HealthCheck.TimeoutSec = constants.DefaultControllerHealthCheckTimeoutSec
+	data.Controller.HealthCheck.IntervalSec = constants.DefaultControllerHealthCheckIntervalSec
+	data.Controller.HealthCheck.InitialDelaySec = constants.DefaultControllerHealthCheckDelaySec
 	data.Router.Wss.WriteTimeout = constants.DefaultWSSWriteTimeout
 	data.Router.Wss.ReadTimeout = constants.DefaultWSSReadTimeout
 	data.Router.Wss.IdleTimeout = constants.DefaultWSSIdleTimeout

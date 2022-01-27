@@ -21,6 +21,7 @@ import (
 	"github.com/pkg/errors"
 	"os"
 	"strconv"
+	"strings"
 )
 
 const (
@@ -37,10 +38,6 @@ const (
 	ZitiCtrlRawnameVarName = "ZITI_CONTROLLER_RAWNAME"
 
 	ZitiNetworkVarName = "ZITI_NETWORK"
-
-	ZitiDomainSuffixVarName = "ZITI_DOMAIN_SUFFIX"
-
-	ZitiCtrlIntermediateNameVarName = "ZITI_CONTROLLER_INTERMEDIATE_NAME"
 
 	ZitiEdgeCtrlAPIVarName = "ZITI_EDGE_CONTROLLER_API"
 
@@ -69,7 +66,16 @@ func HomeDir() string {
 	if h == "" {
 		h = "."
 	}
-	return h
+	return strings.ReplaceAll(h, "\\", PathSeparator)
+}
+
+func WorkingDir() (string, error) {
+	wd, err := os.Getwd()
+	if wd == "" || err != nil {
+		return "", err
+	}
+
+	return strings.ReplaceAll(wd, "\\", PathSeparator), nil
 }
 
 func GetZitiHome() (string, error) {
@@ -80,15 +86,13 @@ func GetZitiHome() (string, error) {
 		return retVal, nil
 	}
 
-	// If not set, create a default path
-	hostname, err := os.Hostname()
+	// If not set, create a default path of the current working directory
+	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
 	}
 
-	homePath := HomeDir()
-
-	err = os.Setenv(ZitiHomeVarName, homePath+PathSeparator+".ziti"+PathSeparator+"quickstart"+PathSeparator+hostname)
+	err = os.Setenv(ZitiHomeVarName, workingDir)
 	if err != nil {
 		return "", err
 	}
@@ -99,26 +103,18 @@ func GetZitiHome() (string, error) {
 }
 
 func GetZitiPKI() (string, error) {
-	zitiHome, err := GetZitiHome()
+	// If not set, create a default path of the current working directory
+	workingDir, err := WorkingDir()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiHomeVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-	return getOrSetEnvVar(ZitiPKIVarName, zitiHome+PathSeparator+"pki")
-}
-
-func GetZitiCtrlIntermediateName() (string, error) {
-	zitiCtrlHostname, err := GetZitiCtrlHostname()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiCtrlHostnameVarName)
-		if err != nil {
-			return "", err
-		}
+		return "", err
 	}
 
-	return getOrSetEnvVar(ZitiCtrlIntermediateNameVarName, zitiCtrlHostname+"-intermediate")
+	err = os.Setenv(ZitiHomeVarName, workingDir)
+	if err != nil {
+		return "", err
+	}
+
+	return getOrSetEnvVar(ZitiPKIVarName, workingDir+PathSeparator+"pki")
 }
 
 func GetZitiEdgeCtrlHostname() (string, error) {

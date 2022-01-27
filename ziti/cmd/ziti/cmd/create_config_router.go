@@ -60,7 +60,6 @@ func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
 
 			// Update router data with options passed in
 			data.Router.Name = options.RouterName
-			data.ZitiPKI = options.PKIPath
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())

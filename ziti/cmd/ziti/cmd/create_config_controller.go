@@ -64,7 +64,6 @@ type CreateConfigControllerOptions struct {
 
 	CtrlListener string
 	MgmtListener string
-	PKIPath      string
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
@@ -94,7 +93,6 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			// Update controller specific values with configOptions passed in
 			data.Controller.Listener = controllerOptions.CtrlListener
 			data.Controller.MgmtListener = controllerOptions.MgmtListener
-			data.ZitiPKI = controllerOptions.PKIPath
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd

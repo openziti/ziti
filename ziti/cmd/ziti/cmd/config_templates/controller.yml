@@ -15,11 +15,29 @@ identity:
   key:                  "{{ .ZitiPKI }}/keys/{{ .Controller.Hostname }}-server.key"
   ca:                   "{{ .ZitiPKI }}/cas.pem"
 
+# the endpoint that routers will connect to the controller over.
 ctrl:
+  #options:
+  # (optional) settings
+  # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+  #maxQueuedConnects:      50
+  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+  #maxOutstandingConnects: 100
+  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+  #connectTimeoutMs:       3000
   listener:             {{ if .Controller.Listener }}{{ .Controller.Listener }}{{ else }}tls:0.0.0.0:{{ .Controller.FabCtrlPort }}{{ end }}
 
+# the endpoint that management tools connect to the controller over.
 mgmt:
-  listener:             {{ if .Controller.MgmtListener }}{{ .Controller.MgmtListener }}{{ else }}tls:{{ .Controller.Hostname }}:{{ .ZitiFabMgmtPort }}{{ end }}
+  #options:
+  # (optional) settings
+  # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+  #maxQueuedConnects:      50
+  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+  #maxOutstandingConnects: 100
+  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+  #connectTimeoutMs:       3000
+  listener:             {{ if .Controller.MgmtListener }}{{ .Controller.MgmtListener }}{{ else }}tls:{{ .Controller.Hostname }}:{{ .Controller.FabMgmtPort }}{{ end }}
 
 #metrics:
 #  influxdb:
@@ -31,6 +49,15 @@ mgmt:
 #example:
 #  enabled:              false
 #  delay:                5s
+
+healthChecks:
+  boltCheck:
+    # How often to try entering a bolt read tx. Defaults to 30 seconds
+    interval: {{ .Controller.HealthCheck.IntervalSec }}s
+    # When to time out the check. Defaults to 15 seconds
+    timeout: {{ .Controller.HealthCheck.TimeoutSec }}s
+    # How long to wait before starting the check. Defaults to 15 seconds
+    initialDelay: {{ .Controller.HealthCheck.InitialDelaySec }}s
 
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
