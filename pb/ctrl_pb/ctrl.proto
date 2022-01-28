@@ -26,6 +26,21 @@ enum ContentType {
   ValidateTerminatorsRequestType = 1017;
   UpdateTerminatorRequestType = 1018;
   VerifyLinkType = 1019;
+  SettingsType = 1020;
+}
+
+// SettingTypes are used with the Settings message send arbitrary settings to routers.
+// SettingTypes default to int32 which can be used seamlessly for keys in the Settings.data field
+enum SettingTypes {
+  //unused, consume to avoid zero value accidents
+  UnusedSetting = 0;
+  //Sent to routers to notify them of a controller IP/hostname move
+  NewCtrlAddress = 1;
+}
+
+// Settings are sent to to routers to configure arbitrary runtime settings.
+message Settings {
+  map<int32, bytes> data = 1;
 }
 
 message CircuitRequest {

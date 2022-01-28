@@ -33,6 +33,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sync/atomic"
 	"time"
 )
 
@@ -96,7 +97,7 @@ type Config struct {
 		}
 	}
 	Ctrl struct {
-		Endpoint              transport.Address
+		Endpoint              *UpdatableAddress
 		DefaultRequestTimeout time.Duration
 		Options               *channel2.Options
 	}
@@ -121,6 +122,10 @@ type Config struct {
 	Plugins []string
 	src     map[interface{}]interface{}
 	path    string
+}
+
+func (config *Config) CurrentCtrlAddress() string {
+	return config.Ctrl.Endpoint.String()
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -237,7 +242,7 @@ func (config *Config) UpdateControllerEndpoint(address string) error {
 			}
 
 			//runtime update
-			config.Ctrl.Endpoint = parsedAddress
+			config.Ctrl.Endpoint.Store(parsedAddress)
 
 		}
 	} else {
@@ -245,6 +250,53 @@ func (config *Config) UpdateControllerEndpoint(address string) error {
 	}
 
 	return nil
+}
+
+// UpdatableAddress allows a single address to be passed to multiple channel implementations and be centrally updated
+// in a thread safe manner.
+type UpdatableAddress struct {
+	wrapped atomic.Value
+}
+
+// UpdatableAddress implements transport.Address
+var _ transport.Address = &UpdatableAddress{}
+
+// NewUpdatableAddress create a new *UpdatableAddress which implements transport.Address and allow
+// thread safe updating of the internal address
+func NewUpdatableAddress(address transport.Address) *UpdatableAddress {
+	ret := &UpdatableAddress{}
+	ret.wrapped.Store(address)
+	return ret
+}
+
+// Listen implements transport.Address.Listen
+func (c *UpdatableAddress) Listen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) (io.Closer, error) {
+	return c.getWrapped().Listen(name, i, incoming, tcfg)
+}
+
+// MustListen implements transport.Address.MustListen
+func (c *UpdatableAddress) MustListen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) io.Closer {
+	return c.getWrapped().MustListen(name, i, incoming, tcfg)
+}
+
+// String implements transport.Address.String
+func (c *UpdatableAddress) String() string {
+	return c.getWrapped().String()
+}
+
+// Dial implements transport.Address.Dial
+func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+	return c.getWrapped().Dial(name, i, timeout, tcfg)
+}
+
+// getWrapped loads the current transport.Address
+func (c *UpdatableAddress) getWrapped() transport.Address {
+	return c.wrapped.Load().(transport.Address)
+}
+
+// Store updates the address currently used by this configuration instance
+func (c *UpdatableAddress) Store(address transport.Address) {
+	c.wrapped.Store(address)
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -340,7 +392,7 @@ func LoadConfig(path string) (*Config, error) {
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
 				}
-				cfg.Ctrl.Endpoint = address
+				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
