@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/edge/router/internal/apiproxy"
@@ -37,7 +38,7 @@ import (
 
 type Factory struct {
 	id               *identity.TokenId
-	ctrl             channel2.Channel
+	ctrl             channel.Channel
 	enabled          bool
 	routerConfig     *router.Config
 	edgeRouterConfig *edgerouter.Config
@@ -48,7 +49,7 @@ type Factory struct {
 	metricsRegistry  metrics.Registry
 }
 
-func (factory *Factory) Channel() channel2.Channel {
+func (factory *Factory) Channel() channel.Channel {
 	return factory.ctrl
 }
 
@@ -60,8 +61,8 @@ func (factory *Factory) Enabled() bool {
 	return factory.enabled
 }
 
-func (factory *Factory) BindChannel(ch channel2.Channel) error {
-	factory.ctrl = ch
+func (factory *Factory) BindChannel(binding channel.Binding) error {
+	factory.ctrl = binding.GetChannel()
 
 	var parts []string
 	var hostname string
@@ -88,15 +89,15 @@ func (factory *Factory) BindChannel(ch channel2.Channel) error {
 		protocolPorts = append(protocolPorts, "ws:"+parts[1])
 		pfxlog.Logger().Debugf("HelloHandler will contain hostname=[%s] supportedProtocols=%v protocolPorts=%v", hostname, supportedProtocols, protocolPorts)
 	}
-	ch.AddReceiveHandler(handler_edge_ctrl.NewHelloHandler(hostname, supportedProtocols, protocolPorts))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(hostname, supportedProtocols, protocolPorts))
 
-	ch.AddReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
 
-	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, ch))
-	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
-	ch.AddReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionAddedHandler(factory.stateManager, binding))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionRemovedHandler(factory.stateManager))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewApiSessionUpdatedHandler(factory.stateManager))
 
-	ch.AddReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewExtendEnrollmentCertsHandler(factory.routerConfig.Id, func() {
 		factory.certChecker.CertsUpdated()
 	}))
 
@@ -107,11 +108,11 @@ func (factory *Factory) NotifyOfReconnect() {
 	go factory.stateManager.ValidateSessions(factory.Channel(), factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
 }
 
-func (factory *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
+func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (factory *Factory) Run(ctrl channel2.Channel, _ boltz.Db, closeNotify chan struct{}) error {
+func (factory *Factory) Run(ctrl channel.Channel, _ boltz.Db, closeNotify chan struct{}) error {
 	factory.ctrl = ctrl
 	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, ctrl, closeNotify)

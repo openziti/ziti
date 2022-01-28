@@ -3,8 +3,8 @@ package handler_edge_ctrl
 import (
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 )
@@ -23,7 +23,7 @@ func (self *ServiceListHandler) ContentType() int32 {
 	return int32(edge_ctrl_pb.ContentType_ServiceListType)
 }
 
-func (self *ServiceListHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *ServiceListHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	serviceList := &edge_ctrl_pb.ServicesList{}
 	if err := proto.Unmarshal(msg.Body, serviceList); err == nil {
 		logrus.Debugf("received services list with %v entries", len(serviceList.Services))

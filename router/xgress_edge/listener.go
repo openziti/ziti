@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/xgress_common"
@@ -28,7 +30,6 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/util/protobufs"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"time"
@@ -154,7 +155,7 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{}
 	timeout := self.listener.options.Options.GetCircuitTimeout
-	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
 
 	if err = getResultOrFailure(responseMsg, err, response); err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
@@ -242,7 +243,7 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 	}
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
 	if err = xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
 		log.WithError(err).Warn("error creating terminator")
 		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
@@ -294,7 +295,7 @@ func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
 	}
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
@@ -340,7 +341,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2
 	log.Debug("updating terminator")
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := self.listener.factory.Channel().SendForReply(request, timeout)
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
 	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
 		log.WithError(err).Error("terminator update failed")
 	} else {
@@ -372,7 +373,7 @@ func (self *edgeClientConn) processHealthEvent(req *channel2.Message, ch channel
 		WithField("checkPassed", checkPassed)
 	log.Debug("sending health event")
 
-	if err := protobufs.Send(self.listener.factory.Channel(), request); err != nil {
+	if err := protobufs.MarshalTyped(request).Send(self.listener.factory.Channel()); err != nil {
 		log.WithError(err).Error("send failed")
 	}
 }
@@ -449,7 +450,7 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.M
 	}
 }
 
-func getResultOrFailure(msg *channel2.Message, err error, result channel2.TypedMessage) error {
+func getResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
 	if err != nil {
 		return err
 	}

@@ -19,10 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/channel2"
 )
 
 type apiSessionRemovedHandler struct {
@@ -39,7 +39,7 @@ func (h *apiSessionRemovedHandler) ContentType() int32 {
 	return env.ApiSessionRemovedType
 }
 
-func (h *apiSessionRemovedHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *apiSessionRemovedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionRemoved{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
