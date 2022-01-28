@@ -18,81 +18,93 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/foundation/channel"
+	"github.com/pkg/errors"
 )
 
 type CtrlAccepter struct {
-	network  *network.Network
-	xctrls   []xctrl.Xctrl
-	listener channel.UnderlayListener
-	options  *channel.Options
+	network      *network.Network
+	xctrls       []xctrl.Xctrl
+	listener     channel.UnderlayListener
+	options      *channel.Options
+	traceHandler *channel.TraceHandler
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
 	listener channel.UnderlayListener,
-	options *channel.Options) *CtrlAccepter {
+	options *channel.Options,
+	traceHandler *channel.TraceHandler) *CtrlAccepter {
 	return &CtrlAccepter{
-		network:  network,
-		xctrls:   xctrls,
-		listener: listener,
-		options:  options,
+		network:      network,
+		xctrls:       xctrls,
+		listener:     listener,
+		options:      options,
+		traceHandler: traceHandler,
 	}
 }
 
-func (ctrlAccepter *CtrlAccepter) Run() {
+func (self *CtrlAccepter) Run() {
 	log := pfxlog.Logger()
 	log.Info("started")
 	defer log.Warn("exited")
 
+	self.options.SetBindHandlerF(self.Bind)
+
 	for {
-		ch, err := channel.NewChannel("ctrl", ctrlAccepter.listener, ctrlAccepter.options)
-		if err == nil {
-			if r, err := ctrlAccepter.network.GetRouter(ch.Id().Token); err == nil {
-				if ch.Underlay().Headers() != nil {
-					if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
-						if versionInfo, err := ctrlAccepter.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
-							r.VersionInfo = versionInfo
-						} else {
-							log.WithError(err).Warn("could not parse version info from router hello, closing router connection")
-							_ = ch.Close()
-							return
-						}
-					} else {
-						log.Warn("no version info header, closing router connection")
-						_ = ch.Close()
-						return
-					}
-
-					if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
-						listenerString := string(listenerValue)
-						r.AdvertisedListener = listenerString
-					} else {
-						log.Warn("no advertised listeners")
-					}
-				} else {
-					log.Warn("no attributes provided")
-				}
-
-				r.Control = ch
-				if err := r.Control.Bind(newBindHandler(r, ctrlAccepter.network, ctrlAccepter.xctrls)); err != nil {
-					log.Errorf("error binding router (%s)", err)
-					_ = ch.Close()
-					continue
-				}
-				ctrlAccepter.network.ConnectRouter(r)
-				ctrlAccepter.network.ValidateTerminators(r)
-
-				log.Infof("accepted new router connection [r/%s]", r.Id)
-			}
-
-		} else {
-			log.Errorf("error accepting (%s)", err)
+		_, err := channel.NewChannel("ctrl", self.listener, self.options)
+		if err != nil {
+			log.WithError(err).Error("error accepting control channel connection")
 			if err.Error() == "closed" {
 				return
 			}
 		}
 	}
+}
+
+func (self *CtrlAccepter) Bind(binding channel.Binding) error {
+	log := pfxlog.Logger()
+
+	binding.GetChannel().SetLogicalName(binding.GetChannel().Id().Token)
+	ch := binding.GetChannel()
+
+	if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
+		if ch.Underlay().Headers() != nil {
+			if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
+				if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
+					r.VersionInfo = versionInfo
+				} else {
+					return errors.Wrap(err, "could not parse version info from router hello, closing router connection")
+				}
+			} else {
+				return errors.New("no version info header, closing router connection")
+			}
+
+			if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
+				listenerString := string(listenerValue)
+				r.AdvertisedListener = listenerString
+			} else {
+				log.Warn("no advertised listeners")
+			}
+		} else {
+			log.Warn("no attributes provided")
+		}
+
+		r.Control = ch
+		if err := binding.Bind(newBindHandler(r, self.network, self.xctrls)); err != nil {
+			return errors.Wrap(err, "error binding router")
+		}
+
+		if self.traceHandler != nil {
+			binding.AddPeekHandler(self.traceHandler)
+		}
+
+		self.network.ConnectRouter(r)
+		self.network.ValidateTerminators(r)
+
+		log.Infof("accepted new router connection [r/%s]", r.Id)
+	}
+	return nil
 }

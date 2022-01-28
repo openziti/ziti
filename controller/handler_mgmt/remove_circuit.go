@@ -19,10 +19,10 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type removeCircuitHandler struct {
@@ -37,16 +37,16 @@ func (handler *removeCircuitHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_RemoveCircuitRequestType)
 }
 
-func (handler *removeCircuitHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *removeCircuitHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &mgmt_pb.RemoveCircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
 		if err := handler.network.RemoveCircuit(request.CircuitId, request.Now); err == nil {
-			handler_common.SendChannel2Success(msg, ch, "")
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
 			pfxlog.Logger().WithError(err).WithField("circuitId", request.CircuitId).Error("unexpected error removing circuit")
-			handler_common.SendChannel2Failure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

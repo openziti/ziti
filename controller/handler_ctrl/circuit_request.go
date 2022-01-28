@@ -19,11 +19,11 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"time"
 )
@@ -66,7 +66,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 					responseMsg.Headers[int32(k)] = v
 				}
 
-				if err := h.r.Control.Send(responseMsg.WithTimeout(10 * time.Second)); err != nil {
+				if err := responseMsg.WithTimeout(10 * time.Second).Send(h.r.Control); err != nil {
 					log.Errorf("unable to respond with success to create circuit request for circuit %v (%s)", circuit.Id, err)
 					if err := h.network.RemoveCircuit(circuit.Id, true); err != nil {
 						log.Errorf("unable to remove circuit %v (%v)", circuit.Id, err)

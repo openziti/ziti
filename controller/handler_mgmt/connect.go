@@ -18,8 +18,8 @@ package handler_mgmt
 
 import (
 	"crypto/x509"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
@@ -37,7 +37,7 @@ func NewConnectHandler(identity identity.Identity, network *network.Network) *Co
 	}
 }
 
-func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
+func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates []*x509.Certificate) error {
 	if len(certificates) == 0 {
 		return errors.New("no certificates provided, unable to verify dialer")
 	}

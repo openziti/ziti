@@ -18,11 +18,11 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type createServiceHandler struct {
@@ -37,7 +37,7 @@ func (h *createServiceHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_CreateServiceRequestType)
 }
 
-func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *createServiceHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	cs := &mgmt_pb.CreateServiceRequest{}
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
@@ -52,17 +52,17 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 		for _, terminator := range cs.Service.Terminators {
 			modelTerminator, err := toModelTerminator(h.network, terminator)
 			if err != nil {
-				handler_common.SendChannel2Failure(msg, ch, err.Error())
+				handler_common.SendFailure(msg, ch, err.Error())
 				return
 			}
 			service.Terminators = append(service.Terminators, modelTerminator)
 		}
 		if err = h.network.Services.Create(service); err == nil {
-			handler_common.SendChannel2Success(msg, ch, "")
+			handler_common.SendSuccess(msg, ch, "")
 		} else {
-			handler_common.SendChannel2Failure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		handler_common.SendChannel2Failure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

@@ -17,19 +17,21 @@
 package xctrl
 
 import (
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"time"
 )
 
 type Capabilities struct {
-	channel2.Channel
+	channel.Channel
 }
 
 func (capabilities *Capabilities) Get(timeout time.Duration) ([]string, error) {
 	request := &ctrl_pb.InspectRequest{RequestedValues: []string{"capability"}}
 	response := &ctrl_pb.InspectResponse{}
-	if err := capabilities.Channel.SendForReplyAndDecode(request, timeout, response); err != nil {
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(capabilities.Channel)
+	if err = protobufs.TypedResponse(response).Unmarshall(respMsg, err); err != nil {
 		return nil, err
 	}
 	var result []string

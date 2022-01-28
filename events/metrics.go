@@ -19,15 +19,9 @@ func init() {
 
 func mapCtrlIds(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "ctrl.") {
-		if strings.HasSuffix(event.Metric, "latency") {
-			name, routerId := ExtractId(event.Metric, "ctrl.", 1)
-			event.Metric = name
-			event.SourceEntityId = routerId
-		} else {
-			name, routerId := ExtractId(event.Metric, "ctrl.", 2)
-			event.Metric = name
-			event.SourceEntityId = routerId
-		}
+		parts := strings.Split(event.Metric, ":")
+		event.Metric = parts[0]
+		event.SourceEntityId = parts[1]
 	}
 }
 
@@ -132,6 +126,7 @@ func (adapter *metricsAdapter) newMetricEvent(msg *metrics_pb.MetricsMessage, na
 		Metric:        name,
 		Tags:          msg.Tags,
 		SourceEventId: id,
+		Version:       2,
 	}
 
 	for _, mapper := range metricsMappers {
@@ -168,62 +163,66 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 
 	for name, value := range msg.Meters {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
-		adapter.filterMetric(".mean_rate", value.MeanRate, event)
-		adapter.filterMetric(".m1_rate", value.M1Rate, event)
-		adapter.filterMetric(".m5_rate", value.M5Rate, event)
-		adapter.filterMetric(".m15_rate", value.M15Rate, event)
+		adapter.filterMetric("count", value.Count, event)
+		adapter.filterMetric("mean_rate", value.MeanRate, event)
+		adapter.filterMetric("m1_rate", value.M1Rate, event)
+		adapter.filterMetric("m5_rate", value.M5Rate, event)
+		adapter.filterMetric("m15_rate", value.M15Rate, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.Histograms {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
-		adapter.filterMetric(".min", value.Min, event)
-		adapter.filterMetric(".max", value.Max, event)
-		adapter.filterMetric(".mean", value.Mean, event)
-		adapter.filterMetric(".std_dev", value.StdDev, event)
-		adapter.filterMetric(".variance", value.Variance, event)
-		adapter.filterMetric(".p50", value.P50, event)
-		adapter.filterMetric(".p75", value.P75, event)
-		adapter.filterMetric(".p95", value.P95, event)
-		adapter.filterMetric(".p99", value.P99, event)
-		adapter.filterMetric(".p999", value.P999, event)
-		adapter.filterMetric(".p9999", value.P9999, event)
+		adapter.filterMetric("count", value.Count, event)
+		adapter.filterMetric("min", value.Min, event)
+		adapter.filterMetric("max", value.Max, event)
+		adapter.filterMetric("mean", value.Mean, event)
+		adapter.filterMetric("std_dev", value.StdDev, event)
+		adapter.filterMetric("variance", value.Variance, event)
+		adapter.filterMetric("p50", value.P50, event)
+		adapter.filterMetric("p75", value.P75, event)
+		adapter.filterMetric("p95", value.P95, event)
+		adapter.filterMetric("p99", value.P99, event)
+		adapter.filterMetric("p999", value.P999, event)
+		adapter.filterMetric("p9999", value.P9999, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.Timers {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
+		adapter.filterMetric("count", value.Count, event)
 
-		adapter.filterMetric(".mean_rate", value.MeanRate, event)
-		adapter.filterMetric(".m1_rate", value.M1Rate, event)
-		adapter.filterMetric(".m5_rate", value.M5Rate, event)
-		adapter.filterMetric(".m15_rate", value.M15Rate, event)
+		adapter.filterMetric("mean_rate", value.MeanRate, event)
+		adapter.filterMetric("m1_rate", value.M1Rate, event)
+		adapter.filterMetric("m5_rate", value.M5Rate, event)
+		adapter.filterMetric("m15_rate", value.M15Rate, event)
 
-		adapter.filterMetric(".min", value.Min, event)
-		adapter.filterMetric(".max", value.Max, event)
-		adapter.filterMetric(".mean", value.Mean, event)
-		adapter.filterMetric(".std_dev", value.StdDev, event)
-		adapter.filterMetric(".variance", value.Variance, event)
-		adapter.filterMetric(".p50", value.P50, event)
-		adapter.filterMetric(".p75", value.P75, event)
-		adapter.filterMetric(".p95", value.P95, event)
-		adapter.filterMetric(".p99", value.P99, event)
-		adapter.filterMetric(".p999", value.P999, event)
-		adapter.filterMetric(".p9999", value.P9999, event)
+		adapter.filterMetric("min", value.Min, event)
+		adapter.filterMetric("max", value.Max, event)
+		adapter.filterMetric("mean", value.Mean, event)
+		adapter.filterMetric("std_dev", value.StdDev, event)
+		adapter.filterMetric("variance", value.Variance, event)
+		adapter.filterMetric("p50", value.P50, event)
+		adapter.filterMetric("p75", value.P75, event)
+		adapter.filterMetric("p95", value.P95, event)
+		adapter.filterMetric("p99", value.P99, event)
+		adapter.filterMetric("p999", value.P999, event)
+		adapter.filterMetric("p9999", value.P9999, event)
 		adapter.finishEvent(event)
 	}
 }
 
-func (adapter *metricsAdapter) filterMetric(suffix string, value interface{}, event *MetricsEvent) {
-	name := event.Metric + suffix
+func (adapter *metricsAdapter) filterMetric(key string, value interface{}, event *MetricsEvent) {
+	name := event.Metric + key
 	if adapter.nameMatches(name) {
 		if event.Metrics == nil {
 			event.Metrics = make(map[string]interface{})
 		}
-		event.Metrics[name] = value
+		if key == "" {
+			event.Metrics["value"] = value
+		} else {
+			event.Metrics[key] = value
+		}
 	}
 }
 
@@ -235,6 +234,7 @@ type MetricsEvent struct {
 	Namespace      string
 	SourceAppId    string
 	SourceEntityId string
+	Version        uint32
 	Timestamp      *timestamp.Timestamp
 	Metric         string
 	Metrics        map[string]interface{}

@@ -17,13 +17,13 @@
 package xmgmt
 
 import (
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/config"
 )
 
 type Xmgmt interface {
 	config.Subconfig
-	channel2.BindHandler
+	channel.BindHandler
 	Enabled() bool
-	Run(mgmt channel2.Channel, done chan struct{}) error
+	Run(mgmt channel.Channel, done chan struct{}) error
 }

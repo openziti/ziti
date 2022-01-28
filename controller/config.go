@@ -20,13 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
@@ -60,7 +59,7 @@ type Config struct {
 	}
 	Mgmt struct {
 		Listener transport.Address
-		Options  *channel2.Options
+		Options  *channel.Options
 	}
 	Metrics      *metrics.Config
 	HealthChecks struct {
@@ -238,10 +237,6 @@ func LoadConfig(path string) (*Config, error) {
 					}
 				}
 			}
-
-			if controllerConfig.Trace.Handler != nil {
-				controllerConfig.Ctrl.Options.PeekHandlers = append(controllerConfig.Ctrl.Options.PeekHandlers, controllerConfig.Trace.Handler)
-			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")
 		}
@@ -261,10 +256,14 @@ func LoadConfig(path string) (*Config, error) {
 				panic("controllerConfig must provide [mgmt/listener]")
 			}
 
-			controllerConfig.Mgmt.Options = channel2.DefaultOptions()
+			controllerConfig.Mgmt.Options = channel.DefaultOptions()
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					controllerConfig.Mgmt.Options = channel2.LoadOptions(submap)
+					options, err := channel.LoadOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+					controllerConfig.Mgmt.Options = options
 					if err := controllerConfig.Mgmt.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
 					}

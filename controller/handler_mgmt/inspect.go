@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type inspectHandler struct {
@@ -37,7 +37,7 @@ func (*inspectHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_InspectRequestType)
 }
 
-func (handler *inspectHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		response := &mgmt_pb.InspectResponse{}
 		request := &mgmt_pb.InspectRequest{}
@@ -63,7 +63,7 @@ func (handler *inspectHandler) HandleReceive(msg *channel2.Message, ch channel2.
 			return
 		}
 
-		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_InspectResponseType), body)
+		responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_InspectResponseType), body)
 		responseMsg.ReplyTo(msg)
 		if err := ch.Send(responseMsg); err != nil {
 			pfxlog.Logger().Errorf("unexpected error sending InspectResponse (%s)", err)

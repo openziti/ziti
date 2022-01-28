@@ -18,8 +18,8 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/util/info"
 )
 
@@ -40,7 +40,7 @@ func (network *Network) assemble() {
 					RouterId: missingLink.Dst.Id,
 				}
 
-				if err := missingLink.Src.Control.Send(channel.MarshalTyped(dial)); err != nil {
+				if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
 					log.WithError(err).Error("unexpected error sending dial")
 				}
 			}

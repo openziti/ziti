@@ -17,10 +17,10 @@
 package handler_mgmt
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
 )
 
 type BindHandler struct {
@@ -28,62 +28,62 @@ type BindHandler struct {
 	xmgmts  []xmgmt.Xmgmt
 }
 
-func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) *BindHandler {
+func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.BindHandler {
 	return &BindHandler{network: network, xmgmts: xmgmts}
 }
 
-func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
+func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	network := bindHandler.network
-	ch.AddReceiveHandler(newCreateRouterHandler(network))
-	ch.AddReceiveHandler(newCreateServiceHandler(network))
-	ch.AddReceiveHandler(newGetServiceHandler(network))
-	ch.AddReceiveHandler(newInspectHandler(network))
-	ch.AddReceiveHandler(newListLinksHandler(network))
-	ch.AddReceiveHandler(newListRoutersHandler(network))
-	ch.AddReceiveHandler(newListServicesHandler(network))
-	ch.AddReceiveHandler(newListCircuitsHandler(network))
-	ch.AddReceiveHandler(newRemoveRouterHandler(network))
-	ch.AddReceiveHandler(newRemoveServiceHandler(network))
-	ch.AddReceiveHandler(newRemoveCircuitHandler(network))
-	ch.AddReceiveHandler(newSetLinkCostHandler(network))
-	ch.AddReceiveHandler(newSetLinkDownHandler(network))
+	binding.AddTypedReceiveHandler(newCreateRouterHandler(network))
+	binding.AddTypedReceiveHandler(newCreateServiceHandler(network))
+	binding.AddTypedReceiveHandler(newGetServiceHandler(network))
+	binding.AddTypedReceiveHandler(newInspectHandler(network))
+	binding.AddTypedReceiveHandler(newListLinksHandler(network))
+	binding.AddTypedReceiveHandler(newListRoutersHandler(network))
+	binding.AddTypedReceiveHandler(newListServicesHandler(network))
+	binding.AddTypedReceiveHandler(newListCircuitsHandler(network))
+	binding.AddTypedReceiveHandler(newRemoveRouterHandler(network))
+	binding.AddTypedReceiveHandler(newRemoveServiceHandler(network))
+	binding.AddTypedReceiveHandler(newRemoveCircuitHandler(network))
+	binding.AddTypedReceiveHandler(newSetLinkCostHandler(network))
+	binding.AddTypedReceiveHandler(newSetLinkDownHandler(network))
 
-	ch.AddReceiveHandler(newCreateTerminatorHandler(network))
-	ch.AddReceiveHandler(newRemoveTerminatorHandler(network))
-	ch.AddReceiveHandler(newGetTerminatorHandler(network))
-	ch.AddReceiveHandler(newListTerminatorsHandler(network))
-	ch.AddReceiveHandler(newSetTerminatorCostHandler(network))
+	binding.AddTypedReceiveHandler(newCreateTerminatorHandler(network))
+	binding.AddTypedReceiveHandler(newRemoveTerminatorHandler(network))
+	binding.AddTypedReceiveHandler(newGetTerminatorHandler(network))
+	binding.AddTypedReceiveHandler(newListTerminatorsHandler(network))
+	binding.AddTypedReceiveHandler(newSetTerminatorCostHandler(network))
 
 	streamMetricHandler := newStreamMetricsHandler(network)
-	ch.AddReceiveHandler(streamMetricHandler)
-	ch.AddCloseHandler(streamMetricHandler)
+	binding.AddTypedReceiveHandler(streamMetricHandler)
+	binding.AddCloseHandler(streamMetricHandler)
 
 	streamCircuitsHandler := newStreamCircuitsHandler(network)
-	ch.AddReceiveHandler(streamCircuitsHandler)
-	ch.AddCloseHandler(streamCircuitsHandler)
+	binding.AddTypedReceiveHandler(streamCircuitsHandler)
+	binding.AddCloseHandler(streamCircuitsHandler)
 
 	streamTracesHandler := newStreamTracesHandler(network)
-	ch.AddReceiveHandler(streamTracesHandler)
-	ch.AddCloseHandler(streamTracesHandler)
+	binding.AddTypedReceiveHandler(streamTracesHandler)
+	binding.AddCloseHandler(streamTracesHandler)
 
-	ch.AddReceiveHandler(newTogglePipeTracesHandler(network))
+	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(network))
 
 	traceDispatchWrapper := trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)
-	ch.AddPeekHandler(trace.NewChannel2PeekHandler(network.GetAppId(), ch, network.GetTraceController(), traceDispatchWrapper))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), binding.GetChannel(), network.GetTraceController(), traceDispatchWrapper))
 
-	ch.AddReceiveHandler(newSnapshotDbHandler(network))
+	binding.AddTypedReceiveHandler(newSnapshotDbHandler(network))
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts {
-		if err := ch.Bind(x); err != nil {
+		if err := binding.Bind(x); err != nil {
 			return err
 		}
-		if err := x.Run(ch, xmgmtDone); err != nil {
+		if err := x.Run(binding.GetChannel(), xmgmtDone); err != nil {
 			return err
 		}
 	}
 	if len(bindHandler.xmgmts) > 0 {
-		ch.AddCloseHandler(newXmgmtCloseHandler(xmgmtDone))
+		binding.AddCloseHandler(newXmgmtCloseHandler(xmgmtDone))
 	}
 
 	return nil

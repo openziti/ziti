@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/stringz"
 	"reflect"
 )
@@ -40,7 +40,7 @@ func (h *listRoutersHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_ListRoutersRequestType)
 }
 
-func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *listRoutersHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	list := &mgmt_pb.ListRoutersRequest{}
@@ -52,7 +52,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 				router, ok := entity.(*network.Router)
 				if !ok {
 					errorMsg := fmt.Sprintf("unexpected result in router list of type: %v", reflect.TypeOf(entity))
-					handler_common.SendChannel2Failure(msg, ch, errorMsg)
+					handler_common.SendFailure(msg, ch, errorMsg)
 					return
 				}
 
@@ -76,18 +76,18 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 			}
 
 			if body, err := proto.Marshal(response); err == nil {
-				responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListRoutersResponseType), body)
+				responseMsg := channel.NewMessage(int32(mgmt_pb.ContentType_ListRoutersResponseType), body)
 				responseMsg.ReplyTo(msg)
 				if err := ch.Send(responseMsg); err != nil {
 					pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error sending response (%s)", err)
 				}
 
 			} else {
-				handler_common.SendChannel2Failure(msg, ch, err.Error())
+				handler_common.SendFailure(msg, ch, err.Error())
 			}
 
 		} else {
-			handler_common.SendChannel2Failure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	}
 }

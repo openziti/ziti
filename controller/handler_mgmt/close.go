@@ -18,18 +18,18 @@ package handler_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 )
 
 type xmgmtCloseHandler struct {
 	done chan struct{}
 }
 
-func newXmgmtCloseHandler(done chan struct{}) channel2.CloseHandler {
+func newXmgmtCloseHandler(done chan struct{}) channel.CloseHandler {
 	return &xmgmtCloseHandler{done: done}
 }
 
-func (h *xmgmtCloseHandler) HandleClose(ch channel2.Channel) {
+func (h *xmgmtCloseHandler) HandleClose(ch channel.Channel) {
 	pfxlog.ContextLogger(ch.Label()).Debug("closing Xmgmt instances")
 	close(h.done)
 }

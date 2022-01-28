@@ -19,7 +19,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/tcp"

@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	"math"
 )
 

@@ -19,10 +19,10 @@ package network
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -150,8 +150,8 @@ attendance:
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).WithField("routerId", r.Id)
 
-	sendCtx := channel.MarshalTyped(routeMsg).WithTimeout(3 * time.Second)
-	if err := sendCtx.SendAndWaitForWire(r.Control); err != nil {
+	envelope := protobufs.MarshalTyped(routeMsg).WithTimeout(3 * time.Second)
+	if err := envelope.SendAndWaitForWire(r.Control); err != nil {
 		logger.WithError(err).Error("failure sending route message")
 	} else {
 		logger.Debug("sent route message")
