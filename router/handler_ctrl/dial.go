@@ -19,11 +19,12 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -55,13 +56,13 @@ func (self *dialHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_DialType)
 }
 
-func (self *dialHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	self.pool.Queue(func() {
 		self.handle(msg, ch)
 	})
 }
 
-func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
+func (self *dialHandler) handle(msg *channel.Message, _ channel.Channel) {
 	dial := &ctrl_pb.Dial{}
 	if err := proto.Unmarshal(msg.Body, dial); err == nil {
 		log := pfxlog.ChannelLogger("link", "linkDialer").
@@ -94,28 +95,16 @@ func (self *dialHandler) handle(msg *channel2.Message, _ channel2.Channel) {
 
 func (self *dialHandler) sendLinkMessage(linkId string) error {
 	linkMsg := &ctrl_pb.Link{Id: linkId}
-	body, err := proto.Marshal(linkMsg)
-	if err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_LinkType), body)
-		if err := self.ctrl.Channel().Send(msg); err != nil {
-			return errors.Wrap(err, "error sending link message")
-		}
-	} else {
-		return errors.Wrap(err, "error marshaling link message")
+	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrl.Channel()); err != nil {
+		return errors.Wrap(err, "error sending link message")
 	}
 	return nil
 }
 
 func (self *dialHandler) sendLinkFault(linkId string) error {
 	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
-	body, err := proto.Marshal(fault)
-	if err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		if err := self.ctrl.Channel().Send(msg); err != nil {
-			return errors.Wrap(err, "error sending fault")
-		}
-	} else {
-		return errors.Wrapf(err, "error marshaling fault")
+	if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err != nil {
+		return errors.Wrap(err, "error sending fault")
 	}
 	return nil
 }

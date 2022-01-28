@@ -19,9 +19,9 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/foundation/channel2"
 )
 
 type unrouteHandler struct {
@@ -36,7 +36,7 @@ func (h *unrouteHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_UnrouteType)
 }
 
-func (h *unrouteHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *unrouteHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	removeRoute := &ctrl_pb.Unroute{}
 	if err := proto.Unmarshal(msg.Body, removeRoute); err == nil {
 		pfxlog.ContextLogger(ch.Label()).Debugf("received unroute for [s/%v]", removeRoute.CircuitId)

@@ -19,8 +19,8 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"strings"
 )
 
@@ -42,7 +42,7 @@ func (handler *settingsHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_SettingsType)
 }
 
-func (handler *settingsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	settings := &ctrl_pb.Settings{}
 	if err := proto.Unmarshal(msg.Body, settings); err == nil {
 		for settingType, settingValue := range settings.Data {
@@ -64,7 +64,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel2.Message, ch channel2
 	}
 }
 
-func newSettingsHandler(config CtrlAddressChanger) channel2.ReceiveHandler {
+func newSettingsHandler(config CtrlAddressChanger) channel.TypedReceiveHandler {
 	return &settingsHandler{
 		config: config,
 	}

@@ -17,12 +17,11 @@
 package handler_xgress
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 )
 
 type closeHandler struct {
@@ -60,13 +59,9 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 	} else if x.Originator() == xgress.Terminator {
 		fault.Subject = ctrl_pb.FaultSubject_EgressFault
 	}
-	if body, err := proto.Marshal(fault); err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-		log.Debug("notifying controller of fault")
-		if err := txc.ctrl.Channel().Send(msg); err != nil {
-			log.Errorf("error sending fault (%s)", err)
-		}
-	} else {
-		log.Errorf("error marshalling (%s)", err)
+
+	log.Debug("notifying controller of fault")
+	if err := protobufs.MarshalTyped(fault).Send(txc.ctrl.Channel()); err != nil {
+		log.WithError(err).Error("error sending fault")
 	}
 }

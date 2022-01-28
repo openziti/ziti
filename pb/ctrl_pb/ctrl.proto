@@ -27,6 +27,7 @@ enum ContentType {
   UpdateTerminatorRequestType = 1018;
   VerifyLinkType = 1019;
   SettingsType = 1020;
+  CircuitConfirmationType = 1034;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.

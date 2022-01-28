@@ -18,8 +18,9 @@ package xgress
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/channel2"
@@ -130,14 +131,14 @@ func ReceiveResponse(peer transport.Connection) (*Response, error) {
 type CircuitInfo struct {
 	CircuitId   *identity.TokenId
 	Address     Address
-	ResponseMsg *channel2.Message
+	ResponseMsg *channel.Message
 	ctrl        CtrlChannel
 }
 
 var circuitError = errors.New("error connecting circuit")
 
 func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
-	if ctrl == nil || ctrl.Channel() == channel2.Channel(nil) {
+	if ctrl == nil || ctrl.Channel() == channel.Channel(nil) {
 		return nil, errors.New("ctrl not ready")
 	}
 
@@ -147,14 +148,7 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 		ServiceId: serviceId,
 		PeerData:  peerData,
 	}
-	bytes, err := proto.Marshal(circuitRequest)
-	if err != nil {
-		log.Errorf("failed to marshal CircuitRequest message (%v)", err)
-		return nil, circuitError
-	}
-
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CircuitRequestType), bytes)
-	reply, err := ctrl.Channel().SendAndWaitWithTimeout(msg, timeout)
+	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ctrl.Channel())
 	if err != nil {
 		log.Errorf("failed to send CircuitRequest message (%v)", err)
 		return nil, circuitError
@@ -173,7 +167,7 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 			}
 		}
 
-		log.Debugf("created new circuit [s/%s]", circuitId.Token)
+		log.WithField("circuitId", circuitId.Token).Debug("created new circuit")
 		return &CircuitInfo{
 			CircuitId:   circuitId,
 			Address:     Address(address),
@@ -182,11 +176,11 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 
 	} else if reply.ContentType == ctrl_msg.CircuitFailedType {
 		errMsg := string(reply.Body)
-		log.Errorf("failure creating circuit (%v)", errMsg)
+		log.WithError(err).Error("failure creating circuit")
 		return nil, errors.New(errMsg)
 
 	} else {
-		log.Errorf("unexpected controller response, ContentType [%v]", msg.ContentType)
+		log.Errorf("unexpected controller response to circuit request, response content type [%v]", reply.ContentType)
 		return nil, circuitError
 	}
 
@@ -210,21 +204,14 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 	request := &ctrl_pb.RemoveTerminatorRequest{
 		TerminatorId: terminatorId,
 	}
-	bytes, err := proto.Marshal(request)
-	if err != nil {
-		log.WithError(err).Errorf("failed to marshal RemoveTerminatorRequest message")
-		return err
-	}
-
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveTerminatorRequestType), bytes)
-	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, ctrl.DefaultRequestTimeout())
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctrl.DefaultRequestTimeout()).SendForReply(ctrl.Channel())
 	if err != nil {
 		log.WithError(err).Errorf("failed to send RemoveTerminatorRequest message")
 		return err
 	}
 
 	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
-		result := channel2.UnmarshalResult(responseMsg)
+		result := channel.UnmarshalResult(responseMsg)
 		if result.Success {
 			log.Debugf("successfully removed service terminator [s/%s]", terminatorId)
 			return nil
