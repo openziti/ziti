@@ -20,6 +20,7 @@ import (
 	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -44,8 +45,8 @@ var (
 		# Create the controller config 
 		ziti create config controller
 
-		# Create the controller config with a particular ctrlListener
-		ziti create config controller --ctrlListener tls:0.0.0.0:6262
+		# Create the controller config with a particular ctrlListener host and port
+		ziti create config controller --ctrlListener 0.0.0.0:6262
 
 		# Print the controller config to the console
 		ziti create config controller --output stdout
@@ -91,8 +92,8 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update controller specific values with configOptions passed in
-			data.Controller.Listener = controllerOptions.CtrlListener
-			data.Controller.MgmtListener = controllerOptions.MgmtListener
+			data.Controller.ListenerHostPort = controllerOptions.CtrlListener
+			data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd
@@ -112,9 +113,9 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, "", "address of the config controller listener")
+	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, constants.DefaultZitiControllerListenerHostPort, "address and port of the config controller listener")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
-	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, "", "address of the config management listener")
+	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, constants.DefaultZitiMgmtControllerListenerHostPort, "address and port of the config management listener")
 }
 
 // run implements the command

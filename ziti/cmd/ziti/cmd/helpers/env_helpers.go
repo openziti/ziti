@@ -17,10 +17,10 @@
 package helpers
 
 import (
+	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -29,33 +29,33 @@ const (
 
 	ZitiHomeVarName = "ZITI_HOME"
 
-	ZitiPKIVarName = "ZITI_PKI"
-
-	ZitiFabCtrlPortVarName = "ZITI_FAB_CTRL_PORT"
-
 	ZitiCtrlHostnameVarName = "ZITI_CONTROLLER_HOSTNAME"
 
 	ZitiCtrlRawnameVarName = "ZITI_CONTROLLER_RAWNAME"
 
-	ZitiNetworkVarName = "ZITI_NETWORK"
-
-	ZitiEdgeCtrlAPIVarName = "ZITI_EDGE_CONTROLLER_API"
-
-	ZitiEdgeCtrlHostnameVarName = "ZITI_EDGE_CONTROLLER_HOSTNAME"
-
-	ZitiEdgeCtrlPortVarName = "ZITI_EDGE_CONTROLLER_PORT"
-
-	ZitiSigningIntermediateNameVarName = "ZITI_SIGNING_INTERMEDIATE_NAME"
-
-	ZitiSigningCertNameVarName = "ZITI_SIGNING_CERT_NAME"
-
-	ZitiFabMgmtPortVarName = "ZITI_FAB_MGMT_PORT"
-
-	ZitiEdgeCtrlIntermediateNameVarName = "ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME"
-
 	ZitiEdgeRouterHostnameVarName = "ZITI_EDGE_ROUTER_HOSTNAME"
 
 	ZitiEdgeRouterPortVarName = "ZITI_EDGE_ROUTER_PORT"
+
+	ZitiCtrlIdentityCertVarName = "ZITI_CTRL_IDENTITY_CERT"
+
+	ZitiCtrlIdentityServerCertVarName = "ZITI_CTRL_IDENTITY_SERVER_CERT"
+
+	ZitiCtrlIdentityKeyVarName = "ZITI_CTRL_IDENTITY_KEY"
+
+	ZitiCtrlIdentityCAVarName = "ZITI_CTRL_IDENTITY_CA"
+
+	ZitiSigningCertVarName = "ZITI_SIGNING_CERT"
+
+	ZitiSigningKeyVarName = "ZITI_SIGNING_KEY"
+
+	ZitiCtrlListenerHostPortVarName = "ZITI_CTRL_LISTENER_HOST_PORT"
+
+	ZitiCtrlMgmtListenerHostPortVarName = "ZITI_CTRL_MGMT_HOST_PORT"
+
+	ZitiEdgeCtrlListenerHostPortVarName = "ZITI_CTRL_EDGE_LISTENER_HOST_PORT"
+
+	ZitiEdgeCtrlAdvertisedVarName = "ZITI_EDGE_CTRL_ADVERTISED"
 )
 
 func HomeDir() string {
@@ -102,111 +102,7 @@ func GetZitiHome() (string, error) {
 	return retVal, nil
 }
 
-func GetZitiPKI() (string, error) {
-	// If not set, create a default path of the current working directory
-	workingDir, err := WorkingDir()
-	if err != nil {
-		return "", err
-	}
-
-	err = os.Setenv(ZitiHomeVarName, workingDir)
-	if err != nil {
-		return "", err
-	}
-
-	return getOrSetEnvVar(ZitiPKIVarName, workingDir+PathSeparator+"pki")
-}
-
-func GetZitiEdgeCtrlHostname() (string, error) {
-	zitiNetwork, err := GetZitiNetwork()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiNetworkVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getOrSetEnvVar(ZitiEdgeCtrlHostnameVarName, zitiNetwork)
-}
-
-func GetZitiEdgeCtrlPort() (string, error) {
-	return getOrSetEnvVar(ZitiEdgeCtrlPortVarName, strconv.Itoa(constants.DefaultZitiEdgeControllerPort))
-}
-
-func GetZitiEdgeControllerAPI() (string, error) {
-	zitiEdgeCtrlHostname, err := GetZitiEdgeCtrlHostname()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiCtrlHostnameVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	zitiEdgeCtrlPort, err := GetZitiEdgeCtrlPort()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiEdgeCtrlPortVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getOrSetEnvVar(ZitiEdgeCtrlAPIVarName, zitiEdgeCtrlHostname+":"+zitiEdgeCtrlPort)
-}
-
-func GetZitiSigningCertName() (string, error) {
-	zitiNetwork, err := GetZitiNetwork()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiNetworkVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getOrSetEnvVar(ZitiSigningCertNameVarName, zitiNetwork+"-signing")
-}
-
-func GetZitiSigningIntermediateName() (string, error) {
-	zitiSigningCertName, err := GetZitiSigningCertName()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiSigningCertNameVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getOrSetEnvVar(ZitiSigningIntermediateNameVarName, zitiSigningCertName+"-intermediate")
-}
-
-func GetZitiFabCtrlPort() (string, error) {
-	return getOrSetEnvVar(ZitiFabCtrlPortVarName, strconv.Itoa(constants.DefaultZitiFabricControllerPort))
-}
-
-func GetZitiCtrlHostname() (string, error) {
-	zitiNetwork, err := GetZitiNetwork()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiNetworkVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getOrSetEnvVar(ZitiCtrlHostnameVarName, zitiNetwork)
-}
-
-func GetZitiCtrlRawname() (string, error) {
-	zitiNetwork, err := GetZitiNetwork()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiNetworkVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	defaultZitiCtrlRawName := zitiNetwork + "-controller"
-	return getOrSetEnvVar(ZitiCtrlRawnameVarName, defaultZitiCtrlRawName)
-}
-
-func GetZitiNetwork() (string, error) {
+func GetZitiIdentityCert() (string, error) {
 	hostName, err := os.Hostname()
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get hostname")
@@ -215,38 +111,107 @@ func GetZitiNetwork() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(ZitiNetworkVarName, hostName)
+	return getOrSetEnvVar(ZitiCtrlIdentityCertVarName, fmt.Sprintf("./%s-client.cert", hostName))
 }
 
-func GetZitiFabMgmtPort() (string, error) {
-	return getOrSetEnvVar(ZitiFabMgmtPortVarName, strconv.Itoa(constants.DefaultZitiFabricManagementPort))
-}
-
-func GetZitiEdgeCtrlIntermediateName() (string, error) {
-	zitiEdgeCtrlHostname, err := GetZitiEdgeCtrlHostname()
+func GetZitiIdentityServerCert() (string, error) {
+	hostName, err := os.Hostname()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiEdgeCtrlHostnameVarName)
+		err := errors.Wrap(err, "Unable to get hostname")
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return getOrSetEnvVar(ZitiEdgeCtrlIntermediateNameVarName, zitiEdgeCtrlHostname+"-intermediate")
+	return getOrSetEnvVar(ZitiCtrlIdentityServerCertVarName, fmt.Sprintf("./%s-server.pem", hostName))
+}
+
+func GetZitiIdentityKey() (string, error) {
+	hostName, err := os.Hostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get hostname")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getOrSetEnvVar(ZitiCtrlIdentityKeyVarName, fmt.Sprintf("./%s-server.key", hostName))
+}
+
+func GetZitiIdentityCA() (string, error) {
+	hostName, err := os.Hostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get hostname")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getOrSetEnvVar(ZitiCtrlIdentityCAVarName, fmt.Sprintf("./%s-cas.pem", hostName))
+}
+
+func GetZitiCtrlListenerHostPort() (string, error) {
+	return getOrSetEnvVar(ZitiCtrlListenerHostPortVarName, constants.DefaultZitiControllerListenerHostPort)
+}
+
+func GetZitiCtrlMgmtListenerHostPort() (string, error) {
+	return getOrSetEnvVar(ZitiCtrlMgmtListenerHostPortVarName, constants.DefaultZitiMgmtControllerListenerHostPort)
+}
+
+func GetZitiCtrlHostname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get hostname")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getOrSetEnvVar(ZitiCtrlHostnameVarName, hostname)
+}
+
+func GetZitiCtrlRawname() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get hostname")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	defaultZitiCtrlRawName := hostname + "-controller"
+	return getOrSetEnvVar(ZitiCtrlRawnameVarName, defaultZitiCtrlRawName)
 }
 
 func GetZitiEdgeRouterHostname() (string, error) {
-	zitiNetwork, err := GetZitiNetwork()
+	hostname, err := os.Hostname()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+ZitiNetworkVarName)
+		err := errors.Wrap(err, "Unable to get hostname")
 		if err != nil {
 			return "", err
 		}
 	}
-	return getOrSetEnvVar(ZitiEdgeRouterHostnameVarName, zitiNetwork)
+	return getOrSetEnvVar(ZitiEdgeRouterHostnameVarName, hostname)
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
 	return getOrSetEnvVar(ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
+}
+
+func GetZitiSigningCert() (string, error) {
+	return getOrSetEnvVar(ZitiSigningCertVarName, "./signingCert.cert")
+}
+
+func GetZitiSigningKey() (string, error) {
+	return getOrSetEnvVar(ZitiSigningKeyVarName, "./signingKey.key")
+}
+
+func GetZitiEdgeCtrlListenerHostPort() (string, error) {
+	return getOrSetEnvVar(ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHostPort)
+}
+
+func GetZitiEdgeCtrlAdvertised() (string, error) {
+	return getOrSetEnvVar(ZitiEdgeCtrlAdvertisedVarName, "")
 }
 
 func getOrSetEnvVar(envVarName string, defaultValue string) (string, error) {

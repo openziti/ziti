@@ -10,10 +10,10 @@ v: 3
 db:                     "{{ .ZitiHome }}/db/ctrl.db"
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/certs/{{ .Controller.Hostname }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/certs/{{ .Controller.Hostname }}-server.chain.pem"
-  key:                  "{{ .ZitiPKI }}/keys/{{ .Controller.Hostname }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/cas.pem"
+  cert:                 "{{ .Controller.IdentityCert }}"
+  server_cert:          "{{ .Controller.IdentityServerCert }}"
+  key:                  "{{ .Controller.IdentityKey }}"
+  ca:                   "{{ .Controller.IdentityCA }}"
 
 # the endpoint that routers will connect to the controller over.
 ctrl:
@@ -25,7 +25,7 @@ ctrl:
   #maxOutstandingConnects: 100
   # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
   #connectTimeoutMs:       3000
-  listener:             {{ if .Controller.Listener }}{{ .Controller.Listener }}{{ else }}tls:0.0.0.0:{{ .Controller.FabCtrlPort }}{{ end }}
+  listener:             tls:{{ .Controller.ListenerHostPort }}
 
 # the endpoint that management tools connect to the controller over.
 mgmt:
@@ -37,7 +37,7 @@ mgmt:
   #maxOutstandingConnects: 100
   # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
   #connectTimeoutMs:       3000
-  listener:             {{ if .Controller.MgmtListener }}{{ .Controller.MgmtListener }}{{ else }}tls:{{ .Controller.Hostname }}:{{ .Controller.FabMgmtPort }}{{ end }}
+  listener:             tls:{{ .Controller.MgmtListenerHostPort }}
 
 #metrics:
 #  influxdb:
@@ -75,7 +75,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in this Controller.WebListener.'s bindPoints.
-    address: {{ .Controller.EdgeCtrlAPI }}
+    address: {{ .Controller.EdgeCtrlAdvertised }}
   # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
   enrollment:
     # signingCert - required
@@ -83,8 +83,8 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: {{ .ZitiPKI }}/{{ .ZitiSigningIntermediateName }}/certs/{{ .ZitiSigningIntermediateName }}.cert
-      key:  {{ .ZitiPKI }}/{{ .ZitiSigningIntermediateName }}/keys/{{ .ZitiSigningIntermediateName }}.key
+      cert: {{ .ZitiSigningCert }}
+      key:  {{ .ZitiSigningKey }}
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
@@ -115,18 +115,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 0.0.0.0:{{ .Controller.EdgeCtrlPort }}
+      - interface: {{ .Controller.EdgeCtrlListenerHostPort }}
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: {{ .Controller.EdgeCtrlAPI }}
+        address: {{ .Controller.EdgeCtrlAdvertised }}
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
     identity:
-      ca:          "{{ .ZitiPKI }}/certs/{{ .ZitiEdgeCtrlIntermediateName }}.cert"
-      key:         "{{ .ZitiPKI }}/keys/{{ .ZitiEdgeCtrlHostname }}-server.key"
-      server_cert: "{{ .ZitiPKI }}/certs/{{ .ZitiEdgeCtrlHostname }}-server.chain.pem"
-      cert:        "{{ .ZitiPKI }}/certs/{{ .ZitiEdgeCtrlHostname }}-client.cert"
+      ca:          "{{ .Controller.IdentityCA }}"
+      key:         "{{ .Controller.IdentityKey }}"
+      server_cert: "{{ .Controller.IdentityServerCert }}"
+      cert:        "{{ .Controller.IdentityCert }}"
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
