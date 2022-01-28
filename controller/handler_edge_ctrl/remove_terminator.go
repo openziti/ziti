@@ -19,11 +19,11 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,7 +31,7 @@ type removeTerminatorHandler struct {
 	baseRequestHandler
 }
 
-func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
+func NewRemoveTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	return &removeTerminatorHandler{
 		baseRequestHandler{
 			ch:     ch,

@@ -12,7 +12,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/channel"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"

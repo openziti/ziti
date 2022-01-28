@@ -42,7 +42,7 @@ require (
 	github.com/miekg/dns v1.1.45
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.17.26
+	github.com/openziti/fabric v0.17.27
 	github.com/openziti/foundation v0.16.17
 	github.com/openziti/sdk-golang v0.15.135
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -56,10 +56,10 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
-	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
+	golang.org/x/crypto v0.0.0-20220126234351-aa10faf2a1f8
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20211210111614-af8b64212486
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -91,7 +91,6 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/lucas-clemente/quic-go v0.23.0 // indirect
-	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.4 // indirect
 	github.com/marten-seemann/qtls-go1-17 v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -105,7 +104,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/parallaxsecond/parsec-client-go v0.0.0-20210416104105-e2d188152601 // indirect
+	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shirou/gopsutil v2.21.11+incompatible // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -117,11 +116,16 @@ require (
 	go.mongodb.org/mongo-driver v1.7.5 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1 // indirect
+	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	honnef.co/go/tools v0.2.2 // indirect
+)
+
+require (
+	github.com/mailru/easyjson v0.7.7 // indirect
+	github.com/openziti/channel v0.18.0
 )

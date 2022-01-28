@@ -3,9 +3,9 @@ package handler_edge_ctrl
 import (
 	"encoding/json"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -16,7 +16,7 @@ type listTunnelServicesHandler struct {
 	*TunnelState
 }
 
-func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
+func NewListTunnelServicesHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
 	return &listTunnelServicesHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel"
 	"github.com/sirupsen/logrus"
 	"math"
 )
@@ -35,7 +35,7 @@ type createTunnelTerminatorHandler struct {
 	*TunnelState
 }
 
-func NewCreateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.ReceiveHandler {
+func NewCreateTunnelTerminatorHandler(appEnv *env.AppEnv, ch channel.Channel, tunnelState *TunnelState) channel.TypedReceiveHandler {
 	return &createTunnelTerminatorHandler{
 		baseRequestHandler: baseRequestHandler{ch: ch, appEnv: appEnv},
 		TunnelState:        tunnelState,

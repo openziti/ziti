@@ -19,10 +19,10 @@ package handler_edge_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel"
 	"github.com/openziti/foundation/metrics"
 	"time"
 )
@@ -33,7 +33,7 @@ type healthEventHandler struct {
 	serviceHealthCheckFailedCounter metrics.IntervalCounter
 }
 
-func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.ReceiveHandler {
+func NewHealthEventHandler(appEnv *env.AppEnv, ch channel.Channel) channel.TypedReceiveHandler {
 	serviceEventMetrics := appEnv.GetHostController().GetNetwork().GetServiceEventsMetricsRegistry()
 	return &healthEventHandler{
 		baseRequestHandler: baseRequestHandler{

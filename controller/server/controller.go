@@ -19,10 +19,10 @@ package server
 import "C"
 import (
 	"fmt"
+	"github.com/openziti/channel"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/api_impl"
-	"github.com/openziti/foundation/channel"
 	"io/ioutil"
 	"sync"
 	"time"
@@ -36,7 +36,6 @@ import (
 	_ "github.com/openziti/edge/controller/internal/routes"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/storage/boltz"
 )
@@ -142,10 +141,11 @@ func (c *Controller) SetHostController(h env.HostController) {
 	}
 }
 
-func (c *Controller) GetCtrlHandlers(ch channel.Channel) []channel.ReceiveHandler {
+func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedReceiveHandler {
+	ch := binding.GetChannel()
 	tunnelState := handler_edge_ctrl.NewTunnelState()
 
-	return []channel.ReceiveHandler{
+	result := []channel.TypedReceiveHandler{
 		handler_edge_ctrl.NewSessionHeartbeatHandler(c.AppEnv),
 		handler_edge_ctrl.NewCreateCircuitHandler(c.AppEnv, ch),
 		handler_edge_ctrl.NewCreateTerminatorHandler(c.AppEnv, ch),
@@ -164,10 +164,14 @@ func (c *Controller) GetCtrlHandlers(ch channel.Channel) []channel.ReceiveHandle
 		handler_edge_ctrl.NewExtendEnrollmentHandler(c.AppEnv),
 		handler_edge_ctrl.NewExtendEnrollmentVerifyHandler(c.AppEnv),
 	}
+
+	result = append(result, c.AppEnv.Broker.GetReceiveHandlers()...)
+
+	return result
 }
 
-func (c *Controller) GetMgmtHandlers() []channel2.ReceiveHandler {
-	return []channel2.ReceiveHandler{}
+func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
+	return []channel.TypedReceiveHandler{}
 }
 
 func (c *Controller) LoadConfig(cfgmap map[interface{}]interface{}) error {
@@ -321,8 +325,7 @@ func (c *Controller) Shutdown() {
 }
 
 type subctrl struct {
-	parent  *Controller
-	channel channel.Channel
+	parent *Controller
 }
 
 func (c *subctrl) GetTraceDecoders() []channel.TraceMessageDecoder {
@@ -342,11 +345,10 @@ func (c *subctrl) Enabled() bool {
 	return c.parent.Enabled()
 }
 
-func (c *subctrl) BindChannel(ch channel.Channel) error {
-	for _, h := range c.parent.GetCtrlHandlers(ch) {
-		ch.AddReceiveHandler(h)
+func (c *subctrl) BindChannel(binding channel.Binding) error {
+	for _, h := range c.parent.GetCtrlHandlers(binding) {
+		binding.AddTypedReceiveHandler(h)
 	}
-	c.channel = ch
 	return nil
 }
 
@@ -355,8 +357,7 @@ func (c *subctrl) Run(channel.Channel, boltz.Db, chan struct{}) error {
 }
 
 type submgmt struct {
-	parent  *Controller
-	channel channel2.Channel
+	parent *Controller
 }
 
 func (m *submgmt) LoadConfig(map[interface{}]interface{}) error {
@@ -367,14 +368,13 @@ func (m *submgmt) Enabled() bool {
 	return m.parent.Enabled()
 }
 
-func (m *submgmt) BindChannel(ch channel2.Channel) error {
+func (m *submgmt) BindChannel(binding channel.Binding) error {
 	for _, h := range m.parent.GetMgmtHandlers() {
-		ch.AddReceiveHandler(h)
+		binding.AddTypedReceiveHandler(h)
 	}
-	m.channel = ch
 	return nil
 }
 
-func (m *submgmt) Run(channel2.Channel, chan struct{}) error {
+func (m *submgmt) Run(channel.Channel, chan struct{}) error {
 	return nil
 }
