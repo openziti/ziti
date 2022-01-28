@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
@@ -218,6 +219,11 @@ func LoadConfig(path string) (*Config, error) {
 							if newListener != "" {
 								if addr, err := transport.ParseAddress(newListener); err == nil {
 									controllerConfig.Ctrl.Options.NewListener = &addr
+
+									if err := verifyNewListenerInServerCert(controllerConfig, addr); err != nil {
+										return nil, err
+									}
+
 								} else {
 									return nil, fmt.Errorf("error loading newListener for [ctrl/options] (%v)", err)
 								}
@@ -324,4 +330,43 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return controllerConfig, nil
+}
+
+// verifyNewListenerInServerCert verifies that the hostname (ip/dns) for addr is present as an IP/DNS SAN in the first
+// certificate provided in the controller's identity server certificate field. This is to avoid scenarios where
+// newListener propagated to routers who will never be able to verify the controller's certificates due to SAN issues.
+func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Address) error {
+	addrSplits := strings.Split(addr.String(), ":")
+	if len(addrSplits) < 3 {
+		return errors.New("could not determine newListener's host value, expected at least three segments")
+	}
+
+	host := addrSplits[1]
+	serverCert := controllerConfig.Id.Identity.ServerCert().Leaf
+	if serverCert == nil {
+		return errors.New("could not verify newListener value, server certificate for identity contains no certificates")
+	}
+
+	hostFound := false
+	for _, dnsName := range serverCert.DNSNames {
+		if dnsName == host {
+			hostFound = true
+			break
+		}
+	}
+
+	if !hostFound {
+		for _, ipAddresses := range serverCert.IPAddresses {
+			if host == ipAddresses.String() {
+				hostFound = true
+				break
+			}
+		}
+	}
+
+	if !hostFound {
+		return fmt.Errorf("could not find newListener [%s] host value [%s] in first certificate for controller identity", addr.String(), host)
+	}
+
+	return nil
 }
