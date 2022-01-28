@@ -647,8 +647,6 @@ github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d/go.mod h1:01TrycV0kFyex
 github.com/michaelquigley/pfxlog v0.3.1/go.mod h1:pwJmJ9nN787xk9U+0z8/5nP2GMhU6GGCTfgBWGpiXaQ=
 github.com/michaelquigley/pfxlog v0.6.3 h1:/od363CtyX4z03vhzyJnfzOevXEYihGHVnLVI64a/e0=
 github.com/michaelquigley/pfxlog v0.6.3/go.mod h1:D2vg1tPyPdSXWWkSnGk6Fomwh5b3clwVJDUh71tq8Sk=
-github.com/michaelquigley/pfxlog v0.6.9 h1:K/weH6ARu58aEDQi0ccinItvV958CeO6Ri4jqeFwd/w=
-github.com/michaelquigley/pfxlog v0.6.9/go.mod h1:D2vg1tPyPdSXWWkSnGk6Fomwh5b3clwVJDUh71tq8Sk=
 github.com/microcosm-cc/bluemonday v1.0.1/go.mod h1:hsXNsILzKxV+sX77C5b8FSuKF00vh2OMYv+xgHpAMF4=
 github.com/miekg/dns v1.0.14/go.mod h1:W1PPwlIAgtquWBMBEV9nkV9Cazfe8ScdGz/Lj7v3Nrg=
 github.com/miekg/dns v1.1.26/go.mod h1:bPDLeHnStXmXAq1m/Ch/hvfNHr14JKNPMBo3VZKjuso=
@@ -709,12 +707,11 @@ github.com/onsi/gomega v1.13.0/go.mod h1:lRk9szgn8TxENtWd0Tp4c3wjlRfMTMH27I+3Je4
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
-github.com/openziti/channel v0.17.1-0.20220127192458-59ffac7bb5d0/go.mod h1:wmpGSNQranDE7jsiT+Cv31UzOO3z+m69JxE2tzYwkyY=
-github.com/openziti/channel v0.18.0 h1:31Sh7/lBAx78jeYNyhm9zrxVjBxR0pun+XHJ4C0qy90=
-github.com/openziti/channel v0.18.0/go.mod h1:wmpGSNQranDE7jsiT+Cv31UzOO3z+m69JxE2tzYwkyY=
+github.com/openziti/channel v0.18.1 h1:HLh/TRBiR5t6U6jWKeCGaaGwUBzUoB8Tdmu3vUWPaAM=
+github.com/openziti/channel v0.18.1/go.mod h1:wmpGSNQranDE7jsiT+Cv31UzOO3z+m69JxE2tzYwkyY=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.27 h1:7RRvxUVYeLDVMrAXtiDesDws6WUPmY9x4r6j8BXa0+Q=
-github.com/openziti/fabric v0.17.27/go.mod h1:XjZ6x5eEoW2OE3allkoWJ/IxkiVtSBhxibXHCnrmLB4=
+github.com/openziti/fabric v0.17.28 h1:BfTrt0fbYN/zmBCMV0Iu/lZOUlcE6nrKvrHG/KtkZlI=
+github.com/openziti/fabric v0.17.28/go.mod h1:VJMHiZ+FebYCidFHr0hyidworoAzHRZE1t/6F6GPl50=
 github.com/openziti/foundation v0.16.17 h1:EusJpSV+STGJSbfnQAcZVz8jbVZomSmc00UhTzx3dTc=
 github.com/openziti/foundation v0.16.17/go.mod h1:D8IchItaO2SvK/fc/JpX9yF0vNymmOw2gzeNqwHz4+g=
 github.com/openziti/sdk-golang v0.15.135 h1:4sLhEvJ9YY9v/vRq5eqXjqAuVcvcKe8+nOqIA0zoQqI=
