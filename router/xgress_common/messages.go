@@ -2,8 +2,9 @@ package xgress_common
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/pkg/errors"
 )
 
@@ -11,7 +12,7 @@ const (
 	PayloadFlagsHeader uint8 = 0x10
 )
 
-func GetResultOrFailure(msg *channel2.Message, err error, result channel2.TypedMessage) error {
+func GetResultOrFailure(msg *channel.Message, err error, result protobufs.TypedMessage) error {
 	if err != nil {
 		return err
 	}
@@ -31,7 +32,7 @@ func GetResultOrFailure(msg *channel2.Message, err error, result channel2.TypedM
 	return proto.Unmarshal(msg.Body, result)
 }
 
-func CheckForFailureResult(msg *channel2.Message, err error, successType edge_ctrl_pb.ContentType) error {
+func CheckForFailureResult(msg *channel.Message, err error, successType edge_ctrl_pb.ContentType) error {
 	if err != nil {
 		return err
 	}

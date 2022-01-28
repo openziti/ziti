@@ -17,11 +17,11 @@
 package xgress_edge_tunnel
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
@@ -38,7 +38,7 @@ const (
 
 type Factory struct {
 	id                 identity.Identity
-	ctrl               channel2.Channel
+	ctrl               channel.Channel
 	routerConfig       *router.Config
 	stateManager       fabric.StateManager
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
@@ -48,11 +48,11 @@ type Factory struct {
 func (self *Factory) NotifyOfReconnect() {
 }
 
-func (self *Factory) GetTraceDecoders() []channel2.TraceMessageDecoder {
+func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *Factory) Channel() channel2.Channel {
+func (self *Factory) Channel() channel.Channel {
 	return self.ctrl
 }
 
@@ -60,14 +60,14 @@ func (self *Factory) Enabled() bool {
 	return true
 }
 
-func (self *Factory) BindChannel(ch channel2.Channel) error {
-	self.ctrl = ch
+func (self *Factory) BindChannel(binding channel.Binding) error {
+	self.ctrl = binding.GetChannel()
 	self.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(self.tunneler.servicePoller.handleServiceListUpdate)
-	ch.AddReceiveHandler(self.serviceListHandler)
+	binding.AddTypedReceiveHandler(self.serviceListHandler)
 	return nil
 }
 
-func (self *Factory) Run(ctrl channel2.Channel, _ boltz.Db, notifyClose chan struct{}) error {
+func (self *Factory) Run(ctrl channel.Channel, _ boltz.Db, notifyClose chan struct{}) error {
 	self.ctrl = ctrl
 	if self.tunneler.listenOptions != nil {
 		return self.tunneler.Start(notifyClose)

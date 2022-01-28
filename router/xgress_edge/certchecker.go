@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
@@ -44,7 +44,7 @@ type CertExtender interface {
 type CertExpirationChecker struct {
 	id           *identity.TokenId
 	closeNotify  chan struct{}
-	ctrl         channel2.Channel
+	ctrl         channel.Channel
 	edgeConfig   *edgerouter.Config
 	certsUpdated chan struct{}
 
@@ -57,7 +57,7 @@ type CertExpirationChecker struct {
 	extender CertExtender
 }
 
-func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *edgerouter.Config, ctrl channel2.Channel, closeNotify chan struct{}) *CertExpirationChecker {
+func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *edgerouter.Config, ctrl channel.Channel, closeNotify chan struct{}) *CertExpirationChecker {
 	ret := &CertExpirationChecker{
 		id:              id,
 		closeNotify:     closeNotify,
@@ -164,7 +164,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 		return fmt.Errorf("could not marshal enrollment extension request: %v", err)
 	}
 
-	msg := channel2.NewMessage(env.EnrollmentExtendRouterRequestType, body)
+	msg := channel.NewMessage(env.EnrollmentExtendRouterRequestType, body)
 
 	if err = self.ctrl.Send(msg); err != nil {
 		return fmt.Errorf("could not send enrollment extension request, error: %v", err)

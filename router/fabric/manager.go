@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/foundation/channel2"
@@ -62,8 +63,8 @@ type StateManager interface {
 	RemoveConnectedApiSessionWithChannel(token string, underlay channel2.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
-	StartHeartbeat(channel channel2.Channel, seconds int, closeNotify <-chan struct{})
-	ValidateSessions(ch channel2.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
+	StartHeartbeat(channel channel.Channel, seconds int, closeNotify <-chan struct{})
+	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
 
 	DumpApiSessions(c *bufio.ReadWriter) error
 	MarkSyncInProgress(trackerId string)
@@ -294,7 +295,7 @@ func (sm *StateManagerImpl) getApiSessionRemovedEventName(token string) events.E
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) StartHeartbeat(ctrl channel2.Channel, intervalSeconds int, closeNotify <-chan struct{}) {
+func (sm *StateManagerImpl) StartHeartbeat(ctrl channel.Channel, intervalSeconds int, closeNotify <-chan struct{}) {
 	sm.heartbeatOperation = newHeartbeatOperation(ctrl, time.Duration(intervalSeconds)*time.Second, sm)
 
 	var err error
@@ -455,7 +456,7 @@ func (self *MapWithMutex) Put(ch channel2.Channel, f func()) {
 	self.m[ch] = f
 }
 
-func (sm *StateManagerImpl) ValidateSessions(ch channel2.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
+func (sm *StateManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration) {
 	sessionTokens := sm.sessions.Keys()
 
 	for len(sessionTokens) > 0 {
@@ -481,7 +482,7 @@ func (sm *StateManagerImpl) ValidateSessions(ch channel2.Channel, chunkSize uint
 			return
 		}
 
-		msg := channel2.NewMessage(request.GetContentType(), body)
+		msg := channel.NewMessage(request.GetContentType(), body)
 		if err := ch.Send(msg); err != nil {
 			logrus.WithError(err).Error("failed to send validate sessions request")
 			return

@@ -19,17 +19,17 @@ package fabric
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
-	"github.com/openziti/foundation/channel2"
 	"time"
 )
 
 const maxTokensPerMessage = 10000
 
 type heartbeatOperation struct {
-	ctrl channel2.Channel
+	ctrl channel.Channel
 	*runner.BaseOperation
 	tokenProvider TokenProvider
 }
@@ -39,7 +39,7 @@ type TokenProvider interface {
 	flushRecentlyRemoved()
 }
 
-func newHeartbeatOperation(ctrl channel2.Channel, frequency time.Duration, tokenProvider TokenProvider) *heartbeatOperation {
+func newHeartbeatOperation(ctrl channel.Channel, frequency time.Duration, tokenProvider TokenProvider) *heartbeatOperation {
 	return &heartbeatOperation{
 		ctrl:          ctrl,
 		tokenProvider: tokenProvider,
@@ -56,7 +56,7 @@ func (operation *heartbeatOperation) Run() error {
 }
 
 func (operation *heartbeatOperation) beat(tokens []string) {
-	var msgs []*channel2.Message
+	var msgs []*channel.Message
 
 	pfxlog.Logger().Tracef("heartbeat tokens: %d", len(tokens))
 
@@ -72,7 +72,7 @@ func (operation *heartbeatOperation) beat(tokens []string) {
 				pfxlog.Logger().Panic("could not marshal SessionHeartbeat type (1)")
 			}
 
-			msgs = append(msgs, channel2.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
+			msgs = append(msgs, channel.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
 
 			tokens = nil
 		} else {
@@ -87,7 +87,7 @@ func (operation *heartbeatOperation) beat(tokens []string) {
 			}
 
 			tokens = tokens[maxTokensPerMessage:]
-			msgs = append(msgs, channel2.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
+			msgs = append(msgs, channel.NewMessage(env.ApiSessionHeartbeatType, bodyBytes))
 		}
 	}
 

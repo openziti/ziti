@@ -22,11 +22,12 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/sirupsen/logrus"
 	"sync"
@@ -34,7 +35,7 @@ import (
 )
 
 type apiSessionAddedHandler struct {
-	control     channel2.Channel
+	control     channel.Channel
 	sm          fabric.StateManager
 	syncTracker *apiSessionSyncTracker
 
@@ -45,9 +46,9 @@ type apiSessionAddedHandler struct {
 	trackerLock sync.Mutex
 }
 
-func NewApiSessionAddedHandler(sm fabric.StateManager, control channel2.Channel) *apiSessionAddedHandler {
+func NewApiSessionAddedHandler(sm fabric.StateManager, binding channel.Binding) *apiSessionAddedHandler {
 	handler := &apiSessionAddedHandler{
-		control: control,
+		control: binding.GetChannel(),
 		sm:      sm,
 		reqChan: make(chan *apiSessionAddedWithState, 100),
 		stop:    make(chan struct{}, 0),
@@ -55,12 +56,12 @@ func NewApiSessionAddedHandler(sm fabric.StateManager, control channel2.Channel)
 
 	go handler.startReceiveSync()
 
-	control.AddCloseHandler(handler)
+	binding.AddCloseHandler(handler)
 
 	return handler
 }
 
-func (h *apiSessionAddedHandler) HandleClose(_ channel2.Channel) {
+func (h *apiSessionAddedHandler) HandleClose(_ channel.Channel) {
 	if h.stopped.CompareAndSwap(false, true) {
 		close(h.stop)
 	}
@@ -70,7 +71,7 @@ func (h *apiSessionAddedHandler) ContentType() int32 {
 	return env.ApiSessionAddedType
 }
 
-func (h *apiSessionAddedHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
@@ -138,11 +139,9 @@ func (h *apiSessionAddedHandler) syncFailed(err error) {
 	resync := &edge_ctrl_pb.RequestClientReSync{
 		Reason: fmt.Sprintf("error during api session sync: %v", err),
 	}
-
-	resyncProto, _ := proto.Marshal(resync)
-
-	resyncMsg := channel2.NewMessage(env.RequestClientReSyncType, resyncProto)
-	_ = h.control.Send(resyncMsg)
+	if err := protobufs.MarshalTyped(resync).Send(h.control); err != nil {
+		logrus.WithError(err).Error("failed to send request client re-sync message")
+	}
 }
 
 func (h *apiSessionAddedHandler) legacySync(reqWithState *apiSessionAddedWithState) {
@@ -355,7 +354,7 @@ type apiSessionAddedWithState struct {
 	*edge_ctrl_pb.ApiSessionAdded
 }
 
-func parseInstantSyncHeaders(msg *channel2.Message) (string, *sync_strats.InstantSyncState, error) {
+func parseInstantSyncHeaders(msg *channel.Message) (string, *sync_strats.InstantSyncState, error) {
 	if syncStrategyType, ok := msg.Headers[env.SyncStrategyTypeHeader]; ok {
 		if syncStrategyState, ok := msg.Headers[env.SyncStrategyStateHeader]; ok {
 			state := &sync_strats.InstantSyncState{}

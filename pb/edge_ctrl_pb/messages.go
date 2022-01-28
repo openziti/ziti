@@ -5,6 +5,18 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 )
 
+func (m *ClientHello) GetContentType() int32 {
+	return int32(ContentType_ClientHelloType)
+}
+
+func (m *ServerHello) GetContentType() int32 {
+	return int32(ContentType_ServerHelloType)
+}
+
+func (m *RequestClientReSync) GetContentType() int32 {
+	return int32(ContentType_RequestClientReSyncType)
+}
+
 func (m *CreateCircuitRequest) GetContentType() int32 {
 	return int32(ContentType_CreateCircuitRequestType)
 }
@@ -70,7 +82,7 @@ func (request *CreateTunnelTerminatorRequest) GetContentType() int32 {
 	return int32(ContentType_CreateTunnelTerminatorRequestType)
 }
 
-func (request *EnrollmentExtendRouterVerifyRequest) GetContentType() int32{
+func (request *EnrollmentExtendRouterVerifyRequest) GetContentType() int32 {
 	return int32(ContentType_EnrollmentExtendRouterVerifyRequestType)
 }
 

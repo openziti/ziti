@@ -21,10 +21,11 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"time"
@@ -46,7 +47,7 @@ func (h *extendEnrollmentCertsHandler) ContentType() int32 {
 	return env.EnrollmentCertsResponseType
 }
 
-func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		certs := ch.Underlay().Certificates()
 
@@ -89,8 +90,9 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel2.Message, ch c
 			verifyRequest := &edge_ctrl_pb.EnrollmentExtendRouterVerifyRequest{
 				ClientCertPem: enrollmentCerts.ClientCertPem,
 			}
+			replyMsg, err := protobufs.MarshalTyped(verifyRequest).WithTimeout(30 * time.Second).SendForReply(ch)
 			reply := &edge_ctrl_pb.Error{}
-			err := ch.SendForReplyAndDecode(verifyRequest, 30*time.Second, reply)
+			err = protobufs.TypedResponse(reply).Unmarshall(replyMsg, err)
 
 			if err != nil {
 				log.WithError(err).Errorf("error during enrollment extension, verification reply produced an error")

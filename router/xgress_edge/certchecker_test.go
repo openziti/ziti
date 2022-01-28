@@ -7,9 +7,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/tlz"
@@ -536,6 +536,16 @@ type simpleTestChannel struct {
 	isClosed bool
 }
 
+func (ch *simpleTestChannel) Send(s channel.Sendable) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ch *simpleTestChannel) Underlay() channel.Underlay {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (ch *simpleTestChannel) StartRx() {
 }
 
@@ -563,98 +573,12 @@ func (ch *simpleTestChannel) SetLogicalName(string) {
 	panic("implement SetLogicalName")
 }
 
-func (ch *simpleTestChannel) Bind(channel2.BindHandler) error {
-	panic("implement Bind")
-}
-
-func (ch *simpleTestChannel) AddPeekHandler(channel2.PeekHandler) {
-	panic("implement AddPeekHandler")
-}
-
-func (ch *simpleTestChannel) AddTransformHandler(channel2.TransformHandler) {
-	panic("implement AddTransformHandler")
-}
-
-func (ch *simpleTestChannel) AddReceiveHandler(channel2.ReceiveHandler) {
-	panic("implement AddTypedReceiveHandler")
-}
-
-func (ch *simpleTestChannel) AddErrorHandler(channel2.ErrorHandler) {
-	panic("implement me")
-}
-
-func (ch *simpleTestChannel) AddCloseHandler(channel2.CloseHandler) {
-	panic("implement AddErrorHandler")
-}
-
-func (ch *simpleTestChannel) SetUserData(interface{}) {
-	panic("implement SetUserData")
-}
-
-func (ch *simpleTestChannel) GetUserData() interface{} {
-	panic("implement GetUserData")
-}
-
-func (ch *simpleTestChannel) Send(*channel2.Message) error {
-	return nil
-}
-
-func (ch *simpleTestChannel) SendWithPriority(*channel2.Message, channel2.Priority) error {
-	return nil
-}
-
-func (ch *simpleTestChannel) SendAndSync(m *channel2.Message) (chan error, error) {
-	return ch.SendAndSyncWithPriority(m, channel2.Standard)
-}
-
-func (ch *simpleTestChannel) SendAndSyncWithPriority(*channel2.Message, channel2.Priority) (chan error, error) {
-	result := make(chan error, 1)
-	result <- nil
-	return result, nil
-}
-
-func (ch *simpleTestChannel) SendWithTimeout(*channel2.Message, time.Duration) error {
-	return nil
-}
-
-func (ch *simpleTestChannel) SendPrioritizedWithTimeout(*channel2.Message, channel2.Priority, time.Duration) error {
-	return nil
-}
-
-func (ch *simpleTestChannel) SendAndWaitWithTimeout(*channel2.Message, time.Duration) (*channel2.Message, error) {
-	panic("implement SendAndWaitWithTimeout")
-}
-
-func (ch *simpleTestChannel) SendPrioritizedAndWaitWithTimeout(*channel2.Message, channel2.Priority, time.Duration) (*channel2.Message, error) {
-	panic("implement SendPrioritizedAndWaitWithTimeout")
-}
-
-func (ch *simpleTestChannel) SendAndWait(*channel2.Message) (chan *channel2.Message, error) {
-	panic("implement SendAndWait")
-}
-
-func (ch *simpleTestChannel) SendAndWaitWithPriority(*channel2.Message, channel2.Priority) (chan *channel2.Message, error) {
-	panic("implement SendAndWaitWithPriority")
-}
-
-func (ch *simpleTestChannel) SendForReply(channel2.TypedMessage, time.Duration) (*channel2.Message, error) {
-	panic("implement SendForReply")
-}
-
-func (ch *simpleTestChannel) SendForReplyAndDecode(channel2.TypedMessage, time.Duration, channel2.TypedMessage) error {
-	return nil
-}
-
 func (ch *simpleTestChannel) Close() error {
 	panic("implement Close")
 }
 
 func (ch *simpleTestChannel) IsClosed() bool {
 	return ch.isClosed
-}
-
-func (ch *simpleTestChannel) Underlay() channel2.Underlay {
-	panic("implement Underlay")
 }
 
 func (ch *simpleTestChannel) GetTimeSinceLastRead() time.Duration {
