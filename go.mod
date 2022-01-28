@@ -43,8 +43,8 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.29
-	github.com/openziti/foundation v0.16.17
-	github.com/openziti/sdk-golang v0.15.135
+	github.com/openziti/foundation v0.16.18
+	github.com/openziti/sdk-golang v0.15.136
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
