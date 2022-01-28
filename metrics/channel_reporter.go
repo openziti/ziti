@@ -19,12 +19,12 @@ package metrics
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 )
 
 type channelReporter struct {
-	ch channel2.Channel
+	ch channel.Channel
 }
 
 func (reporter *channelReporter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
@@ -36,18 +36,17 @@ func (reporter *channelReporter) AcceptMetrics(message *metrics_pb.MetricsMessag
 		return
 	}
 
-	chMsg := channel2.NewMessage(int32(metrics_pb.ContentType_MetricsType), bytes)
+	chMsg := channel.NewMessage(int32(metrics_pb.ContentType_MetricsType), bytes)
 
-	err = reporter.ch.Send(chMsg)
-	if err != nil {
-		log.Errorf("Failed to send metrics message: %v", err)
+	if err = reporter.ch.Send(chMsg); err != nil {
+		log.WithError(err).Error("failed to send metrics message")
 	} else {
-		log.Trace("Reported metrics to fabric controller")
+		log.Trace("reported metrics to fabric controller")
 	}
 }
 
 // NewChannelReporter creates a metrics handler which sends metrics messages out on the given channel
-func NewChannelReporter(ch channel2.Channel) MessageHandler {
+func NewChannelReporter(ch channel.Channel) MessageHandler {
 	return &channelReporter{
 		ch: ch,
 	}

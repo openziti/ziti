@@ -19,8 +19,8 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/debugz"
 	"strings"
@@ -38,7 +38,7 @@ func (*inspectHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_InspectRequestType)
 }
 
-func (handler *inspectHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	context := &inspectRequestContext{
 		handler:  handler,
 		msg:      msg,
@@ -63,8 +63,8 @@ func (handler *inspectHandler) HandleReceive(msg *channel2.Message, ch channel2.
 
 type inspectRequestContext struct {
 	handler  *inspectHandler
-	msg      *channel2.Message
-	ch       channel2.Channel
+	msg      *channel.Message
+	ch       channel.Channel
 	request  *ctrl_pb.InspectRequest
 	response *ctrl_pb.InspectResponse
 }
@@ -72,7 +72,7 @@ type inspectRequestContext struct {
 func (context *inspectRequestContext) processLocal() {
 	for _, requested := range context.request.RequestedValues {
 		if strings.ToLower(requested) == "stackdump" {
-			context.appendValue(context.handler.id, requested, debugz.GenerateStack())
+			context.appendValue(requested, debugz.GenerateStack())
 		}
 	}
 }
@@ -80,18 +80,18 @@ func (context *inspectRequestContext) processLocal() {
 func (context *inspectRequestContext) sendResponse() {
 	body, err := proto.Marshal(context.response)
 	if err != nil {
-		pfxlog.Logger().Errorf("unexpected error serializing InspectResponse (%s)", err)
+		pfxlog.Logger().WithError(err).Error("unexpected error serializing InspectResponse")
 		return
 	}
 
-	responseMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
+	responseMsg := channel.NewMessage(int32(ctrl_pb.ContentType_InspectResponseType), body)
 	responseMsg.ReplyTo(context.msg)
 	if err := context.ch.Send(responseMsg); err != nil {
-		pfxlog.Logger().Errorf("unexpected error sending InspectResponse (%s)", err)
+		pfxlog.Logger().WithError(err).Error("unexpected error sending InspectResponse")
 	}
 }
 
-func (context *inspectRequestContext) appendValue(appId *identity.TokenId, name string, value string) {
+func (context *inspectRequestContext) appendValue(name string, value string) {
 	context.response.Values = append(context.response.Values, &ctrl_pb.InspectResponse_InspectValue{
 		Name:  name,
 		Value: value,

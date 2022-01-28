@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
@@ -26,7 +27,6 @@ import (
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -62,7 +62,7 @@ func (rh *routeHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_RouteType)
 }
 
-func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	route := &ctrl_pb.Route{}
 	if err := proto.Unmarshal(msg.Body, route); err == nil {
 		var ctx logcontext.Context
@@ -99,7 +99,7 @@ func (rh *routeHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel
 	}
 }
 
-func (rh *routeHandler) success(msg *channel2.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
+func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
 	rh.forwarder.Route(route)
 	log.Debug("forwarder updated with route")
 
@@ -118,7 +118,7 @@ func (rh *routeHandler) success(msg *channel2.Message, attempt int, route *ctrl_
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel2.Message, attempt int, route *ctrl_pb.Route, err error, log *logrus.Entry) {
+func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, log *logrus.Entry) {
 	log.WithError(err).Error("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
@@ -128,7 +128,7 @@ func (rh *routeHandler) fail(msg *channel2.Message, attempt int, route *ctrl_pb.
 	}
 }
 
-func (rh *routeHandler) connectEgress(msg *channel2.Message, attempt int, ch channel2.Channel, route *ctrl_pb.Route, ctx logcontext.Context) {
+func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch channel.Channel, route *ctrl_pb.Route, ctx logcontext.Context) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("context", ch.Label()).
 		WithField("circuitId", route.CircuitId).

@@ -18,10 +18,9 @@ package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/ctrl_msg"
-	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,7 +34,7 @@ func newCircuitConfirmationHandler(n *network.Network, r *network.Router) *circu
 }
 
 func (self *circuitConfirmationHandler) ContentType() int32 {
-	return int32(ctrl_msg.CircuitConfirmationType)
+	return int32(ctrl_pb.ContentType_CircuitConfirmationType)
 }
 
 func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {

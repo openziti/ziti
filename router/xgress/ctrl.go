@@ -17,11 +17,11 @@
 package xgress
 
 import (
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"time"
 )
 
 type CtrlChannel interface {
-	Channel() channel2.Channel
+	Channel() channel.Channel
 	DefaultRequestTimeout() time.Duration
 }

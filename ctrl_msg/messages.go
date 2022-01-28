@@ -18,14 +18,12 @@ package ctrl_msg
 
 import (
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/channel2"
 )
 
 const (
-	CircuitSuccessType      = 1001
-	CircuitFailedType       = 1016
-	RouteResultType         = 1022
-	CircuitConfirmationType = 1034
+	CircuitSuccessType = 1001
+	CircuitFailedType  = 1016
+	RouteResultType    = 1022
 
 	CircuitSuccessAddressHeader = 1100
 	RouteResultAttemptHeader    = 1101
@@ -43,16 +41,16 @@ func NewCircuitFailedMsg(message string) *channel.Message {
 	return channel.NewMessage(CircuitFailedType, []byte(message))
 }
 
-func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel2.Message {
-	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+func NewRouteResultSuccessMsg(sessionId string, attempt int) *channel.Message {
+	msg := channel.NewMessage(RouteResultType, []byte(sessionId))
 	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.PutBoolHeader(RouteResultSuccessHeader, true)
 	return msg
 }
 
-func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *channel2.Message {
-	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *channel.Message {
+	msg := channel.NewMessage(RouteResultType, []byte(sessionId))
 	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.Headers[RouteResultErrorHeader] = []byte(rerr)
 	return msg

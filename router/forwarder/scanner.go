@@ -17,16 +17,15 @@
 package forwarder
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
 type Scanner struct {
-	ctrl        channel2.Channel
+	ctrl        channel.Channel
 	circuits    *circuitTable
 	interval    time.Duration
 	timeout     time.Duration
@@ -47,7 +46,7 @@ func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
 	return s
 }
 
-func (self *Scanner) SetCtrl(ch channel2.Channel) {
+func (self *Scanner) SetCtrl(ch channel.Channel) {
 	self.ctrl = ch
 }
 
@@ -91,14 +90,10 @@ func (self *Scanner) scan() {
 
 		if self.ctrl != nil {
 			confirm := &ctrl_pb.CircuitConfirmation{CircuitIds: idleCircuitIds}
-			body, err := proto.Marshal(confirm)
-			if err == nil {
-				msg := channel2.NewMessage(ctrl_msg.CircuitConfirmationType, body)
-				if err := self.ctrl.Send(msg); err == nil {
-					logrus.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
-				} else {
-					logrus.Errorf("error sending confirmation request (%v)", err)
-				}
+			if err := protobufs.MarshalTyped(confirm).Send(self.ctrl); err == nil {
+				logrus.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
+			} else {
+				logrus.WithError(err).Error("error sending confirmation request")
 			}
 		} else {
 			logrus.Errorf("no ctrl channel, cannot request circuit confirmations")

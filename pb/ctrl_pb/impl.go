@@ -18,6 +18,18 @@ package ctrl_pb
 
 import "github.com/openziti/fabric/controller/xt"
 
+func (request *CircuitConfirmation) GetContentType() int32 {
+	return int32(ContentType_CircuitConfirmationType)
+}
+
+func (request *Link) GetContentType() int32 {
+	return int32(ContentType_LinkType)
+}
+
+func (request *VerifyLink) GetContentType() int32 {
+	return int32(ContentType_VerifyLinkType)
+}
+
 func (request *Fault) GetContentType() int32 {
 	return int32(ContentType_FaultType)
 }

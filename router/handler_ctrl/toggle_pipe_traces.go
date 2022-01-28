@@ -19,9 +19,9 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 )
@@ -44,11 +44,11 @@ func (*traceHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_TogglePipeTracesRequestType)
 }
 
-func (handler *traceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *traceHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &trace_pb.TogglePipeTracesRequest{}
 
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		sendFailure(msg, ch, err.Error())
+		handler.sendFailure(msg, ch, err.Error())
 		return
 	}
 
@@ -72,28 +72,31 @@ func (handler *traceHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 	}
 
 	if result.Success {
-		sendSuccess(msg, ch, result.Message.String())
+		handler.sendSuccess(msg, ch, result.Message.String())
 	} else {
-		sendFailure(msg, ch, result.Message.String())
+		handler.sendFailure(msg, ch, result.Message.String())
 	}
 }
 
-func sendSuccess(request *channel2.Message, ch channel2.Channel, message string) {
-	sendResult(request, ch, message, true)
+func (handler *traceHandler) sendSuccess(request *channel.Message, ch channel.Channel, message string) {
+	handler.sendResult(request, ch, message, true)
 }
 
-func sendFailure(request *channel2.Message, ch channel2.Channel, message string) {
-	sendResult(request, ch, message, false)
+func (handler *traceHandler) sendFailure(request *channel.Message, ch channel.Channel, message string) {
+	handler.sendResult(request, ch, message, false)
 }
 
-func sendResult(request *channel2.Message, ch channel2.Channel, message string, success bool) {
-	log := pfxlog.ContextLogger(ch.Label())
+func (handler *traceHandler) sendResult(request *channel.Message, ch channel.Channel, message string, success bool) {
+	log := pfxlog.ContextLogger(ch.Label()).WithField("operation", "togglePipeTraces")
 	if !success {
 		log.Errorf("ctrl error (%s)", message)
 	}
 
-	response := channel2.NewResult(success, message)
+	response := channel.NewResult(success, message)
 	response.ReplyTo(request)
-	ch.Send(response)
-	log.Debug("success")
+	if err := ch.Send(response); err != nil {
+		log.Error("failed to send response to toggle pipe traces")
+	} else {
+		log.Debug("sent response to toggle pipe traces")
+	}
 }

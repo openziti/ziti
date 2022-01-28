@@ -20,10 +20,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -85,7 +85,7 @@ type Config struct {
 	Id        *identity.TokenId
 	Forwarder *forwarder.Options
 	Trace     struct {
-		Handler *channel2.TraceHandler
+		Handler *channel.TraceHandler
 	}
 	Profile struct {
 		Memory struct {
@@ -99,7 +99,7 @@ type Config struct {
 	Ctrl struct {
 		Endpoint              *UpdatableAddress
 		DefaultRequestTimeout time.Duration
-		Options               *channel2.Options
+		Options               *channel.Options
 	}
 	Link struct {
 		Listeners []map[interface{}]interface{}
@@ -348,13 +348,13 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		submap := value.(map[interface{}]interface{})
 		if value, found := submap["path"]; found {
-			handler, err := channel2.NewTraceHandler(value.(string), cfg.Id.Token)
+			handler, err := channel.NewTraceHandler(value.(string), cfg.Id.Token)
 			if err != nil {
 				return nil, err
 			}
-			handler.AddDecoder(channel2.Decoder{})
-			handler.AddDecoder(xgress.Channel2Decoder{})
-			handler.AddDecoder(ctrl_pb.Channel2Decoder{})
+			handler.AddDecoder(channel.Decoder{})
+			handler.AddDecoder(xgress.Decoder{})
+			handler.AddDecoder(ctrl_pb.Decoder{})
 			cfg.Trace.Handler = handler
 		}
 	}
@@ -384,7 +384,7 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
-	cfg.Ctrl.Options = channel2.DefaultOptions()
+	cfg.Ctrl.Options = channel.DefaultOptions()
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap[CtrlEndpointMapKey]; found {
@@ -396,7 +396,11 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
-					cfg.Ctrl.Options = channel2.LoadOptions(optionsMap)
+					options, err := channel.LoadOptions(optionsMap)
+					if err != nil {
+						return nil, errors.Wrap(err, "unable to load control channel options")
+					}
+					cfg.Ctrl.Options = options
 					if err := cfg.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
@@ -407,9 +411,6 @@ func LoadConfig(path string) (*Config, error) {
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
 				}
-			}
-			if cfg.Trace.Handler != nil {
-				cfg.Ctrl.Options.PeekHandlers = append(cfg.Ctrl.Options.PeekHandlers, cfg.Trace.Handler)
 			}
 		}
 	}

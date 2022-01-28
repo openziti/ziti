@@ -17,9 +17,9 @@
 package forwarder
 
 import (
-	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -27,7 +27,7 @@ import (
 )
 
 type Faulter struct {
-	ctrl        channel2.Channel
+	ctrl        channel.Channel
 	interval    time.Duration
 	circuitIds  cmap.ConcurrentMap // map[circuitId]struct{}
 	closeNotify chan struct{}
@@ -41,7 +41,7 @@ func NewFaulter(interval time.Duration, closeNotify chan struct{}) *Faulter {
 	return f
 }
 
-func (self *Faulter) SetCtrl(ch channel2.Channel) {
+func (self *Faulter) SetCtrl(ch channel.Channel) {
 	self.ctrl = ch
 }
 
@@ -67,14 +67,10 @@ func (self *Faulter) run() {
 
 				circuitIds := strings.Join(workload, " ")
 				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
-				body, err := proto.Marshal(fault)
-				if err == nil {
-					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-					if err := self.ctrl.Send(msg); err == nil {
-						logrus.Warnf("reported [%d] forwarding faults", len(workload))
-					} else {
-						logrus.Errorf("error sending fault report (%v)", err)
-					}
+				if err := protobufs.MarshalTyped(fault).Send(self.ctrl); err == nil {
+					logrus.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+				} else {
+					logrus.WithError(err).Error("error sending fault report")
 				}
 			}
 

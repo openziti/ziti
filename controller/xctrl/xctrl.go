@@ -18,7 +18,6 @@ package xctrl
 
 import (
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/storage/boltz"
 )
@@ -30,13 +29,4 @@ type Xctrl interface {
 	Run(ctrl channel.Channel, db boltz.Db, done chan struct{}) error
 	NotifyOfReconnect()
 	GetTraceDecoders() []channel.TraceMessageDecoder
-}
-
-type Channel2Xctrl interface {
-	config.Subconfig
-	channel2.BindHandler
-	Enabled() bool
-	Run(ctrl channel2.Channel, db boltz.Db, done chan struct{}) error
-	NotifyOfReconnect()
-	GetTraceDecoders() []channel2.TraceMessageDecoder
 }

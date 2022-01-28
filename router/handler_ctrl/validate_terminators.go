@@ -19,9 +19,9 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 )
 
 type validateTerminatorsHandler struct {
@@ -40,7 +40,7 @@ func (handler *validateTerminatorsHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_ValidateTerminatorsRequestType)
 }
 
-func (handler *validateTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (handler *validateTerminatorsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	req := &ctrl_pb.ValidateTerminatorsRequest{}

@@ -3,7 +3,8 @@ package handler_link
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
@@ -45,7 +46,7 @@ func (self *channelAccepter) AcceptChannel(xlink xlink.Xlink, ch channel2.Channe
 	ch.AddReceiveHandler(&channel2.LatencyHandler{})
 	ch.AddReceiveHandler(newControlHandler(xlink, ch, self.forwarder, closeNotify))
 	ch.AddPeekHandler(metrics2.NewChannelPeekHandler(xlink.Id().Token, self.forwarder.MetricsRegistry()))
-	ch.AddPeekHandler(trace.NewChannel2PeekHandler(xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannel2Sink(self.ctrl.Channel())))
+	ch.AddPeekHandler(trace.NewChannel2PeekHandler(xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 
 	if trackLatency {
 		go metrics.ProbeLatency(
@@ -67,19 +68,14 @@ func (self *channelAccepter) verifyLink(l xlink.Xlink, ch channel2.Channel) erro
 		fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
 		verifyLink.Fingerprints = append(verifyLink.Fingerprints, fingerprint)
 	}
-	b, err := proto.Marshal(verifyLink)
-	if err != nil {
-		return errors.Wrap(err, "unable to marshal verify link payload")
-	}
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_VerifyLinkType), b)
-	reply, err := self.ctrl.Channel().SendAndWaitWithTimeout(msg, 10*time.Second)
+	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.Channel())
 	if err != nil {
 		return errors.Wrapf(err, "unable to verify link %v", l.Id().Token)
 	}
-	if reply.ContentType != channel2.ContentTypeResultType {
+	if reply.ContentType != channel.ContentTypeResultType {
 		return errors.Errorf("unexpected response type to verify link: %v", reply.ContentType)
 	}
-	result := channel2.UnmarshalResult(reply)
+	result := channel.UnmarshalResult(reply)
 	if result.Success {
 		logrus.WithField("linkId", l.Id().Token).Info("successfully verified link")
 		return nil

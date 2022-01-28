@@ -17,8 +17,8 @@
 package handler_link
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
@@ -56,15 +56,10 @@ func (self *closeHandler) HandleClose(ch channel2.Channel) {
 		log.Info("link closed")
 
 		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
-		if body, err := proto.Marshal(fault); err == nil {
-			msg := channel2.NewMessage(int32(ctrl_pb.ContentType_FaultType), body)
-			if err := self.ctrl.Channel().Send(msg); err == nil {
-				log.Debug("transmitted link fault")
-			} else {
-				log.WithError(err).Error("unexpected error transmitting link fault")
-			}
+		if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err == nil {
+			log.Debug("transmitted link fault")
 		} else {
-			log.WithError(err).Error("unexpected error")
+			log.WithError(err).Error("unexpected error transmitting link fault")
 		}
 
 		self.forwarder.UnregisterLink(self.link)

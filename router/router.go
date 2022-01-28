@@ -61,14 +61,14 @@ import (
 
 type Router struct {
 	config          *Config
-	ctrl            channel2.Channel
+	ctrl            channel.Channel
 	ctrlOptions     *channel.Options
 	linkOptions     *channel2.Options
 	linkListener    channel2.UnderlayListener
 	faulter         *forwarder.Faulter
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
-	xctrls          []xctrl.Channel2Xctrl
+	xctrls          []xctrl.Xctrl
 	xctrlDone       chan struct{}
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
@@ -91,7 +91,7 @@ func (self *Router) MetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
-func (self *Router) Channel() channel2.Channel {
+func (self *Router) Channel() channel.Channel {
 	// if we're just starting up, we may be nil. wait till initialized
 	// The initial control channel connect has a timeout, so if that timeouts the process will exit
 	// Once connected the control channel will never get set back to nil. Reconnects happen under the hood
@@ -135,7 +135,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	}
 }
 
-func (self *Router) RegisterXctrl(x xctrl.Channel2Xctrl) error {
+func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
 	if err := self.config.Configure(x); err != nil {
 		return err
 	}
@@ -397,7 +397,7 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	dialer := channel2.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
+	dialer := channel.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
 
 	bindHandler := handler_ctrl.NewBindHandler(
 		self.config.Id,
@@ -407,12 +407,13 @@ func (self *Router) startControlPlane() error {
 		self.forwarder,
 		self.xctrls,
 		self.config,
+		self.config.Trace.Handler,
 		self.shutdownC,
 	)
 
-	self.config.Ctrl.Options.BindHandlers = append(self.config.Ctrl.Options.BindHandlers, bindHandler)
+	self.config.Ctrl.Options.BindHandler = bindHandler
 
-	ch, err := channel2.NewChannel("ctrl", dialer, self.config.Ctrl.Options)
+	ch, err := channel.NewChannel("ctrl", dialer, self.config.Ctrl.Options)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
@@ -593,12 +594,11 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 		return errors.Errorf("control channel not yet established")
 	}
 
-	msg := channel2.NewMessage(channel2.ContentTypePingType, nil)
+	msg := channel.NewMessage(channel2.ContentTypePingType, nil)
 	deadline, ok := ctx.Deadline()
 	if !ok {
 		deadline = time.Now().Add(30 * time.Second)
 	}
 	timeout := deadline.Sub(time.Now())
-	_, err := self.router.ctrl.SendAndWaitWithTimeout(msg, timeout)
-	return err
+	return msg.WithTimeout(timeout).SendAndWaitForWire(self.router.ctrl)
 }
