@@ -33,6 +33,8 @@ type ContextKey string
 const (
 	WebHandlerContextKey = ContextKey("XWebHandlerContextKey")
 	WebContextKey        = ContextKey("XWebContext")
+
+	ZitiCtrlAddressHeader = "ziti-ctrl-address"
 )
 
 type XWebContext struct {
@@ -122,7 +124,7 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 				WriteTimeout: webListener.Options.WriteTimeout,
 				ReadTimeout:  webListener.Options.ReadTimeout,
 				IdleTimeout:  webListener.Options.IdleTimeout,
-				Handler:      server.wrapPanicRecovery(demuxWebHandler),
+				Handler:      server.wrapHandler(webListener, bindPoint, demuxWebHandler),
 				TLSConfig:    tlsConfig,
 				ErrorLog:     log.New(logWriter, "", 0),
 			},
@@ -136,9 +138,15 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 	return server, nil
 }
 
+func (server *Server) wrapHandler(_ *WebListener, point *BindPoint, handler http.Handler) http.Handler {
+	handler = server.wrapPanicRecovery(handler)
+	handler = server.wrapSetCtrlAddressHeader(point, handler)
+
+	return handler
+}
+
 // wrapPanicRecovery wraps a http.Handler with another http.Handler that provides recovery.
 func (server *Server) wrapPanicRecovery(handler http.Handler) http.Handler {
-
 	wrappedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		defer func() {
 			if panicVal := recover(); panicVal != nil {
@@ -149,6 +157,24 @@ func (server *Server) wrapPanicRecovery(handler http.Handler) http.Handler {
 				pfxlog.Logger().Errorf("panic caught by server handler: %v\n%v", panicVal, debugz.GenerateLocalStack())
 			}
 		}()
+
+		handler.ServeHTTP(writer, request)
+	})
+
+	return wrappedHandler
+}
+
+// wrapSetCtrlAddressHeader will check to see if the bindPoint is configured to advertise a "new address". If so
+// the value is added to the ZitiCtrlAddressHeader which will be sent out on every response. Clients can check this
+// header to be notified that the controller is or will be moving from one ip/hostname to another. When the
+// new address value is set, both the old and new addresses should be valid as the clients will begin using the
+// new address on their next connect.
+func (server *Server) wrapSetCtrlAddressHeader(point *BindPoint, handler http.Handler) http.Handler {
+	wrappedHandler := http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if point.NewAddress != "" {
+			address := "https://" + point.NewAddress
+			writer.Header().Set(ZitiCtrlAddressHeader, address)
+		}
 
 		handler.ServeHTTP(writer, request)
 	})

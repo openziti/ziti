@@ -406,6 +406,7 @@ func (self *Router) startControlPlane() error {
 		self,
 		self.forwarder,
 		self.xctrls,
+		self.config,
 		self.shutdownC,
 	)
 

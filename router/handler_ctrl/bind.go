@@ -28,13 +28,14 @@ import (
 )
 
 type bindHandler struct {
-	id           *identity.TokenId
-	dialerCfg    map[string]xgress.OptionsData
-	xlinkDialers []xlink.Dialer
-	ctrl         xgress.CtrlChannel
-	forwarder    *forwarder.Forwarder
-	xctrls       []xctrl.Channel2Xctrl
-	closeNotify  chan struct{}
+	id                 *identity.TokenId
+	dialerCfg          map[string]xgress.OptionsData
+	xlinkDialers       []xlink.Dialer
+	ctrl               xgress.CtrlChannel
+	forwarder          *forwarder.Forwarder
+	xctrls             []xctrl.Channel2Xctrl
+	closeNotify        chan struct{}
+	ctrlAddressChanger CtrlAddressChanger
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -43,15 +44,17 @@ func NewBindHandler(id *identity.TokenId,
 	ctrl xgress.CtrlChannel,
 	forwarder *forwarder.Forwarder,
 	xctrls []xctrl.Channel2Xctrl,
+	ctrlAddressChanger CtrlAddressChanger,
 	closeNotify chan struct{}) channel2.BindHandler {
 	return &bindHandler{
-		id:           id,
-		dialerCfg:    dialerCfg,
-		xlinkDialers: xlinkDialers,
-		ctrl:         ctrl,
-		forwarder:    forwarder,
-		xctrls:       xctrls,
-		closeNotify:  closeNotify,
+		id:                 id,
+		dialerCfg:          dialerCfg,
+		xlinkDialers:       xlinkDialers,
+		ctrl:               ctrl,
+		forwarder:          forwarder,
+		xctrls:             xctrls,
+		closeNotify:        closeNotify,
+		ctrlAddressChanger: ctrlAddressChanger,
 	}
 }
 
@@ -62,6 +65,7 @@ func (self *bindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
 	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
 	ch.AddReceiveHandler(newInspectHandler(self.id))
+	ch.AddReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
 	ch.AddPeekHandler(trace.NewChannel2PeekHandler(self.id.Token, ch, self.forwarder.TraceController(), trace.NewChannel2Sink(ch)))
 	metrics.AddLatencyProbeResponder(ch)
 

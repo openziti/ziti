@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
@@ -77,6 +78,15 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 
 	events.InitTerminatorEventRouter(c.network)
 	events.InitRouterEventRouter(c.network)
+
+	if cfg.Ctrl.Options.NewListener != nil {
+		c.network.AddRouterPresenceHandler(&OnConnectSettingsHandler{
+			config: cfg,
+			settings: map[int32][]byte{
+				int32(ctrl_pb.SettingTypes_NewCtrlAddress): []byte((*cfg.Ctrl.Options.NewListener).String()),
+			},
+		})
+	}
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -126,7 +136,8 @@ func (c *Controller) Run() error {
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
 	}
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options, c.config.Trace.Handler)
+
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
 	go ctrlAccepter.Run()
 	/* */
 
