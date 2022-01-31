@@ -1,6 +1,28 @@
 # Release 0.24.5
 
+* Enhancement: Durable Eventual Events
+* Enhancement: API Session/Service Policy Enforcer Metrics
 * Enhancement: Support Controller Address Changes
+
+## Durable Eventual Events
+
+The controller now supports internal events to delay the processing cost of operations that do not need to resolve
+immediately, but must resolve at some point. Events in the controller may pile up at increased load time and that load
+level can be seen in a new gauge metric `eventual.events`.
+
+- `eventual.events` - The count of outstanding eventual events
+
+## API Session/Service Policy Enforcer Metrics
+
+New metrics have been added to track internal processes of the controller that enforces API Sessions and Service
+Policies.
+
+- `api.session.enforcer.run` - a timer metric of run time of the API Session enforcer
+- `api.session.enforcer.delete` - a meter metric of the number of API Sessions deleted
+- `service.policy.enforcer.run` - a timer metric of run time of the Service Policy enforcer
+- `service.policy.enforcer.event` - a timer metric of the run time for discrete enforcer events
+- `service.policy.enforcer.event.deletes` - a meter of the number of signaling delete events processed
+- `service.policy.enforcer.run.deletes` - a meter of the number of actual session deletes processed
 
 ## Support Controller Address Changes
 
