@@ -18,7 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 	"reflect"
@@ -56,12 +56,16 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			config.options = channel2.LoadOptions(submap)
+			options, err := channel.LoadOptions(submap)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to parse link listener options")
+			}
+			config.options = options
 		} else {
 			return nil, fmt.Errorf("invalid 'options' in listener config (%s)", reflect.TypeOf(value))
 		}
 	} else {
-		config.options = channel2.DefaultOptions()
+		config.options = channel.DefaultOptions()
 	}
 
 	return config, nil
@@ -70,7 +74,7 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 type listenerConfig struct {
 	bind      transport.Address
 	advertise transport.Address
-	options   *channel2.Options
+	options   *channel.Options
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
@@ -86,7 +90,11 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			config.options = channel2.LoadOptions(submap)
+			options, err := channel.LoadOptions(submap)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to parse link dialer options")
+			}
+			config.options = options
 		} else {
 			return nil, fmt.Errorf("invalid 'options' in dialer config (%s)", reflect.TypeOf(value))
 		}
@@ -97,5 +105,5 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 
 type dialerConfig struct {
 	split   bool
-	options *channel2.Options
+	options *channel.Options
 }

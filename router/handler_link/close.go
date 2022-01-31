@@ -18,12 +18,12 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 )
 
@@ -44,7 +44,7 @@ func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwa
 	}
 }
 
-func (self *closeHandler) HandleClose(ch channel2.Channel) {
+func (self *closeHandler) HandleClose(ch channel.Channel) {
 	if self.closed.CompareAndSwap(false, true) {
 		log := pfxlog.ContextLogger(ch.Label()).
 			WithField("linkId", self.link.Id().Token).

@@ -17,8 +17,8 @@
 package xgress_proxy
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 )
@@ -45,7 +45,7 @@ func (c *proxyXgressConnection) WritePayload(p []byte, headers map[uint8][]byte)
 	return c.Writer().Write(p)
 }
 
-func (self *proxyXgressConnection) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+func (self *proxyXgressConnection) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
 		xgress.RespondToTraceRequest(headers, "xgress/proxy", "", responder)
 		return nil

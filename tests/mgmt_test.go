@@ -23,7 +23,7 @@ func Test_MgmtChannelInvalidClient(t *testing.T) {
 	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
 	ctx.Req.NoError(err)
 	dialer := channel.NewClassicDialer(badId, mgmtAddress, nil)
-	_, err = channel.NewChannel("mgmt", dialer, nil)
+	_, err = channel.NewChannel("mgmt", dialer, nil, nil)
 	ctx.Req.Error(err)
 }
 

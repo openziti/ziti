@@ -18,14 +18,14 @@ package metrics
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics"
 	"time"
 )
 
 // NewChannelPeekHandler creates a channel PeekHandler which tracks latency, message rate and message size distribution
-func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channel2.PeekHandler {
+func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channel.PeekHandler {
 	appTxBytesMeter := registry.Meter("fabric.tx.bytesrate")
 	appTxMsgMeter := registry.Meter("fabric.tx.msgrate")
 	appTxMsgSizeHistogram := registry.Histogram("fabric.tx.msgsize")
@@ -95,10 +95,10 @@ type channelPeekHandler struct {
 	closeHook func()
 }
 
-func (h *channelPeekHandler) Connect(channel2.Channel, string) {
+func (h *channelPeekHandler) Connect(channel.Channel, string) {
 }
 
-func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
+func (h *channelPeekHandler) Rx(msg *channel.Message, _ channel.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.linkRxBytesMeter.Mark(msgSize)
 	h.linkRxMsgMeter.Mark(1)
@@ -108,7 +108,7 @@ func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
 	h.appRxMsgSizeHistogram.Update(msgSize)
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
-		if payload, err := xgress.UnmarshallChannel2Payload(msg); err != nil {
+		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
 			h.usageRxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
@@ -116,7 +116,7 @@ func (h *channelPeekHandler) Rx(msg *channel2.Message, _ channel2.Channel) {
 	}
 }
 
-func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
+func (h *channelPeekHandler) Tx(msg *channel.Message, _ channel.Channel) {
 	msgSize := int64(len(msg.Body))
 	h.linkTxBytesMeter.Mark(msgSize)
 	h.linkTxMsgMeter.Mark(1)
@@ -126,7 +126,7 @@ func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
 	h.appTxMsgSizeHistogram.Update(msgSize)
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
-		if payload, err := xgress.UnmarshallChannel2Payload(msg); err != nil {
+		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
 			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
 		} else {
 			h.usageTxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
@@ -134,7 +134,7 @@ func (h *channelPeekHandler) Tx(msg *channel2.Message, _ channel2.Channel) {
 	}
 }
 
-func (h *channelPeekHandler) Close(channel2.Channel) {
+func (h *channelPeekHandler) Close(channel.Channel) {
 	if h.closeHook != nil {
 		h.closeHook()
 	}

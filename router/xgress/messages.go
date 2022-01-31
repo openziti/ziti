@@ -20,7 +20,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/uuidz"
 	"github.com/pkg/errors"
@@ -93,7 +92,7 @@ func (header *Header) GetOriginator() Originator {
 	return Initiator
 }
 
-func (header *Header) unmarshallHeader(msg *channel2.Message) error {
+func (header *Header) unmarshallHeader(msg *channel.Message) error {
 	circuitId, ok := msg.Headers[HeaderKeyCircuitId]
 	if !ok {
 		return fmt.Errorf("no circuitId found in xgress payload message")
@@ -133,7 +132,7 @@ func (header *Header) unmarshallChannelHeader(msg *channel.Message) error {
 	return nil
 }
 
-func (header *Header) marshallHeader(msg *channel2.Message) {
+func (header *Header) marshallHeader(msg *channel.Message) {
 	msg.Headers[HeaderKeyCircuitId] = []byte(header.CircuitId)
 	if header.Flags != 0 {
 		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
@@ -195,23 +194,10 @@ func (ack *Acknowledgement) unmarshallSequence(data []byte) error {
 	return nil
 }
 
-func (ack *Acknowledgement) Marshall() *channel2.Message {
-	msg := channel2.NewMessage(ContentTypeAcknowledgementType, ack.marshallSequence())
+func (ack *Acknowledgement) Marshall() *channel.Message {
+	msg := channel.NewMessage(ContentTypeAcknowledgementType, ack.marshallSequence())
 	ack.marshallHeader(msg)
 	return msg
-}
-
-func UnmarshallChannel2Acknowledgement(msg *channel2.Message) (*Acknowledgement, error) {
-	ack := &Acknowledgement{}
-
-	if err := ack.unmarshallHeader(msg); err != nil {
-		return nil, err
-	}
-	if err := ack.unmarshallSequence(msg.Body); err != nil {
-		return nil, err
-	}
-
-	return ack, nil
 }
 
 func UnmarshallAcknowledgement(msg *channel.Message) (*Acknowledgement, error) {
@@ -247,9 +233,9 @@ func (payload *Payload) GetSequence() int32 {
 	return payload.Sequence
 }
 
-func (payload *Payload) Marshall() *channel2.Message {
+func (payload *Payload) Marshall() *channel.Message {
 	payload.RTT = uint16(info.NowInMilliseconds())
-	msg := channel2.NewMessage(ContentTypePayloadType, payload.Data)
+	msg := channel.NewMessage(ContentTypePayloadType, payload.Data)
 	for key, value := range payload.Headers {
 		msgHeaderKey := MinHeaderKey + int32(key)
 		msg.Headers[msgHeaderKey] = value
@@ -258,36 +244,6 @@ func (payload *Payload) Marshall() *channel2.Message {
 	msg.PutUint64Header(HeaderKeySequence, uint64(payload.Sequence))
 
 	return msg
-}
-
-func UnmarshallChannel2Payload(msg *channel2.Message) (*Payload, error) {
-	var headers map[uint8][]byte
-	for key, val := range msg.Headers {
-		if key >= MinHeaderKey && key <= MaxHeaderKey {
-			if headers == nil {
-				headers = make(map[uint8][]byte)
-			}
-			xgressHeaderKey := uint8(key - MinHeaderKey)
-			headers[xgressHeaderKey] = val
-		}
-	}
-
-	payload := &Payload{
-		Headers: headers,
-		Data:    msg.Body,
-	}
-
-	if err := payload.unmarshallHeader(msg); err != nil {
-		return nil, err
-	}
-
-	sequence, ok := msg.GetUint64Header(HeaderKeySequence)
-	if !ok {
-		return nil, fmt.Errorf("no sequence found in xgress payload message")
-	}
-	payload.Sequence = int32(sequence)
-
-	return payload, nil
 }
 
 func UnmarshallPayload(msg *channel.Message) (*Payload, error) {
@@ -367,16 +323,16 @@ const (
 type Control struct {
 	Type      ControlType
 	CircuitId string
-	Headers   channel2.Headers
+	Headers   channel.Headers
 }
 
-func (self *Control) Marshall() *channel2.Message {
-	msg := channel2.NewMessage(ContentTypeControlType, append([]byte{byte(self.Type)}, self.CircuitId...))
+func (self *Control) Marshall() *channel.Message {
+	msg := channel.NewMessage(ContentTypeControlType, append([]byte{byte(self.Type)}, self.CircuitId...))
 	msg.Headers = self.Headers
 	return msg
 }
 
-func UnmarshallControl(msg *channel2.Message) (*Control, error) {
+func UnmarshallControl(msg *channel.Message) (*Control, error) {
 	if len(msg.Body) < 2 {
 		return nil, errors.New("control message body too short")
 	}
@@ -424,7 +380,7 @@ func (self *Control) GetLoggerFields() logrus.Fields {
 	}
 }
 
-func RespondToTraceRequest(headers channel2.Headers, hopType, hopId string, response ControlReceiver) {
+func RespondToTraceRequest(headers channel.Headers, hopType, hopId string, response ControlReceiver) {
 	resp := &Control{Headers: headers}
 	resp.DecrementAndGetHop()
 	resp.Headers.PutStringHeader(ControlHopType, hopType)

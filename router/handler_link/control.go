@@ -18,25 +18,22 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 )
 
 type controlHandler struct {
 	link      xlink.Xlink
 	forwarder *forwarder.Forwarder
-	ctrls     chan *xgress.Control
 }
 
-func newControlHandler(link xlink.Xlink, ch channel2.Channel, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *controlHandler {
+func newControlHandler(link xlink.Xlink, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *controlHandler {
 	result := &controlHandler{
 		link:      link,
 		forwarder: forwarder,
-		ctrls:     make(chan *xgress.Control, 4),
 	}
-	go result.run(ch.Label(), closeNotify)
 	return result
 }
 
@@ -44,7 +41,7 @@ func (self *controlHandler) ContentType() int32 {
 	return xgress.ContentTypeControlType
 }
 
-func (self *controlHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *controlHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	control, err := xgress.UnmarshallControl(msg)
@@ -54,25 +51,5 @@ func (self *controlHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		}
 	} else {
 		log.Errorf("unexpected error (%v)", err)
-	}
-}
-
-func (self *controlHandler) run(label string, closeNotify <-chan struct{}) {
-	log := pfxlog.ContextLogger(label).
-		WithField("linkId", self.link.Id().Token).
-		WithField("routerId", self.link.DestinationId())
-
-	log.Info("starting")
-	defer log.Info("exiting")
-
-	for {
-		select {
-		case control := <-self.ctrls:
-			if err := self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
-				log.WithError(err).Debug("unable to forward")
-			}
-		case <-closeNotify:
-			return
-		}
 	}
 }

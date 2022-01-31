@@ -17,8 +17,8 @@
 package xgress_udp
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/pkg/errors"
 	"io"
 	"net"
@@ -66,7 +66,7 @@ func (s *PacketSession) WritePayload(p []byte, _ map[uint8][]byte) (n int, err e
 	return s.Write(p)
 }
 
-func (s *PacketSession) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+func (s *PacketSession) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
 		xgress.RespondToTraceRequest(headers, "xgress/udp", "", responder)
 		return nil

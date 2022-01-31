@@ -17,19 +17,31 @@
 package xlink_transport
 
 import (
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"sync"
 	"time"
 )
 
+type listener struct {
+	id                 *identity.TokenId
+	config             *listenerConfig
+	listener           channel.UnderlayListener
+	accepter           xlink.Acceptor
+	bindHandlerFactory BindHandlerFactory
+	tcfg               transport.Configuration
+	pendingLinks       map[string]*pendingLink
+	lock               sync.Mutex
+}
+
 func (self *listener) Listen() error {
-	listener := channel2.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg, nil)
+	listener := channel.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg, nil)
 
 	self.listener = listener
 	connectionHandler := &ConnectionHandler{self.id}
@@ -37,7 +49,7 @@ func (self *listener) Listen() error {
 		return fmt.Errorf("error listening (%w)", err)
 	}
 	go self.acceptLoop()
-	go self.handleEvents()
+	go self.cleanupExpiredPartialLinks()
 	return nil
 }
 
@@ -51,177 +63,163 @@ func (self *listener) Close() error {
 
 func (self *listener) acceptLoop() {
 	for {
-		ch, err := channel2.NewChannelWithTransportConfiguration("link", self.listener, self.config.options, self.tcfg)
-		if err != nil && errors.Is(err, channel2.ListenerClosedError) {
+		_, err := channel.NewChannelWithTransportConfiguration("link", self.listener, self, self.config.options, self.tcfg)
+		if err != nil && errors.Is(err, channel.ListenerClosedError) {
 			logrus.Errorf("link underlay acceptor closed")
 			return
 		} else if err != nil {
 			logrus.Errorf("error creating link underlay (%v)", err)
 			continue
 		}
+	}
+}
 
-		log := pfxlog.ChannelLogger("link", "linkListener").WithField("linkId", ch.Id().Token)
+func (self *listener) BindChannel(binding channel.Binding) error {
+	log := pfxlog.ChannelLogger("link", "linkListener").
+		WithField("linkId", binding.GetChannel().Id().Token)
 
-		headers := ch.Underlay().Headers()
-		channelType := byte(0)
-		routerId := ""
-		if headers != nil {
-			if v, ok := headers[LinkHeaderRouterId]; ok {
-				routerId = string(v)
-				log = log.WithField("routerId", routerId)
-				log.Info("accepting link")
-			}
-			if val, ok := headers[LinkHeaderType]; ok {
-				channelType = val[0]
-			}
+	headers := binding.GetChannel().Underlay().Headers()
+	var chanType channelType
+	routerId := ""
+
+	if headers != nil {
+		if v, ok := headers[LinkHeaderRouterId]; ok {
+			routerId = string(v)
+			log = log.WithField("routerId", routerId)
+			log.Info("accepting link")
 		}
-		if channelType != 0 {
-			id, ok := headers[LinkHeaderConnId]
-			if !ok {
-				log.Error("split conn received but missing connection id. closing")
-				_ = ch.Close()
-				continue
-			}
-
-			log.Infof("accepted %v part of split conn", channelType)
-
-			event := &newChannelEvent{
-				ch:          ch,
-				channelType: channelType,
-				id:          string(id),
-				eventTime:   time.Now(),
-				routerId:    routerId,
-			}
-			self.eventC <- event
-			continue
+		if val, ok := headers[LinkHeaderType]; ok {
+			chanType = channelType(val[0])
 		}
+	}
 
-		xli := &impl{
-			id:       ch.Id(),
-			ch:       ch,
-			routerId: routerId,
-		}
+	if chanType != 0 {
+		log = log.WithField("channelType", chanType)
+		return self.bindSplitChannel(binding, chanType, routerId, log)
+	}
 
-		log.Info("accepting link")
+	return self.bindNonSplitChannel(binding, routerId, log)
+}
 
-		if self.chAccepter != nil {
-			if err := self.chAccepter.AcceptChannel(xli, ch, true, true); err != nil {
-				log.WithError(err).Error("error accepting incoming channel")
-				if err := xli.Close(); err != nil {
-					log.WithError(err).Debugf("error closing link")
-				}
-			}
-		}
+func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, routerId string, log *logrus.Entry) error {
+	headers := binding.GetChannel().Underlay().Headers()
+	id, ok := headers[LinkHeaderConnId]
+	if !ok {
+		return errors.New("split conn received but missing connection id. closing")
+	}
 
+	log.Info("accepted part of split conn")
+
+	xli, err := self.getOrCreateSplitLink(string(id), routerId, binding, chanType)
+	if err != nil {
+		log.WithError(err).Error("erroring binding link channel")
+	}
+
+	latencyPing := chanType == PayloadChannel
+	if err := self.bindHandlerFactory.NewBindHandler(xli, latencyPing, true).BindChannel(binding); err != nil {
+		return err
+	}
+
+	if xli.payloadCh != nil && xli.ackCh != nil {
 		if err := self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
-			if err := xli.Close(); err != nil {
-				log.WithError(err).Debugf("error closing link")
-			}
 		}
 
 		log.Info("accepted link")
 	}
+
+	return nil
 }
 
-func (self *listener) handleEvents() {
-	ticker := time.NewTicker(time.Minute)
-	for {
-		select {
-		case event := <-self.eventC:
-			event.handle(self)
-		case <-ticker.C:
-			now := time.Now()
-			for k, v := range self.pendingChannels {
-				if now.Sub(v.eventTime) > (30 * time.Second) {
-					_ = v.ch.Close()
-					delete(self.pendingChannels, k)
-				}
-			}
+func (self *listener) getOrCreateSplitLink(id, routerId string, binding channel.Binding, chanType channelType) (*splitImpl, error) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	var link *splitImpl
+
+	if pending, found := self.pendingLinks[id]; found {
+		delete(self.pendingLinks, id)
+		link = pending.link
+	} else {
+		pending = &pendingLink{
+			link: &splitImpl{
+				id:       binding.GetChannel().Id(),
+				routerId: routerId,
+			},
+			eventTime: time.Now(),
 		}
-	}
-}
-
-type listener struct {
-	id              *identity.TokenId
-	config          *listenerConfig
-	listener        channel2.UnderlayListener
-	accepter        xlink.Accepter
-	chAccepter      ChannelAccepter
-	tcfg            transport.Configuration
-	eventC          chan linkEvent
-	pendingChannels map[string]*newChannelEvent
-}
-
-type linkEvent interface {
-	handle(l *listener)
-}
-
-type newChannelEvent struct {
-	ch          channel2.Channel
-	channelType byte
-	id          string
-	eventTime   time.Time
-	routerId    string
-}
-
-func (event *newChannelEvent) handle(l *listener) {
-	log := pfxlog.ChannelLogger("link", "linkListener").
-		WithField("linkId", event.ch.Id().Token).
-		WithField("routerId", event.routerId)
-
-	partner, ok := l.pendingChannels[event.id]
-	if !ok {
-		l.pendingChannels[event.id] = event
-		return
-	}
-	delete(l.pendingChannels, event.id)
-
-	var payloadCh channel2.Channel
-
-	if partner.channelType == PayloadChannel {
-		payloadCh = partner.ch
-	} else if event.channelType == PayloadChannel {
-		payloadCh = event.ch
+		self.pendingLinks[id] = pending
+		link = pending.link
 	}
 
-	var ackCh channel2.Channel
-
-	if partner.channelType == AckChannel {
-		ackCh = partner.ch
-	} else if event.channelType == AckChannel {
-		ackCh = event.ch
-	}
-
-	if payloadCh == nil || ackCh == nil {
-		log.Errorf("got two link channels, but types aren't correct. %v %v", partner.channelType, event.channelType)
-		return
-	}
-
-	xli := &splitImpl{
-		id:        event.ch.Id(),
-		payloadCh: payloadCh,
-		ackCh:     ackCh,
-		routerId:  event.routerId,
-	}
-
-	log.Info("accepting split link")
-
-	if l.chAccepter != nil {
-		if err := l.chAccepter.AcceptChannel(xli, xli.payloadCh, true, true); err != nil {
-			log.WithError(err).Error("error accepting incoming channel")
-			_ = xli.Close()
+	if chanType == PayloadChannel {
+		if link.payloadCh == nil {
+			link.payloadCh = binding.GetChannel()
+		} else {
+			return nil, errors.Errorf("got two payload channels for link %v", binding.GetChannel().Id())
 		}
-
-		if err := l.chAccepter.AcceptChannel(xli, xli.ackCh, true, true); err != nil {
-			log.WithError(err).Error("error accepting incoming channel")
-			_ = xli.Close()
+	} else if chanType == AckChannel {
+		if link.ackCh == nil {
+			link.ackCh = binding.GetChannel()
+		} else {
+			return nil, errors.Errorf("got two ack channels for link %v", binding.GetChannel().Id())
 		}
+	} else {
+		return nil, errors.Errorf("invalid channel type %v", chanType)
 	}
 
-	if err := l.accepter.Accept(xli); err != nil {
+	return link, nil
+}
+
+func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId string, log *logrus.Entry) error {
+	xli := &impl{
+		id:       binding.GetChannel().Id(),
+		ch:       binding.GetChannel(),
+		routerId: routerId,
+	}
+
+	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
+	if err := bindHandler.BindChannel(binding); err != nil {
+		return errors.Wrapf(err, "error binding channel for link [l/%v]", binding.GetChannel().Id())
+	}
+
+	log.Info("accepting link")
+
+	if err := self.accepter.Accept(xli); err != nil {
 		log.WithError(err).Error("error accepting incoming Xlink")
+		if err := xli.Close(); err != nil {
+			log.WithError(err).Debugf("error closing link")
+		}
+		return err
 	}
 
 	log.Info("accepted link")
+	return nil
+}
+
+func (self *listener) cleanupExpiredPartialLinks() {
+	ticker := time.NewTicker(time.Minute)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			func() {
+				self.lock.Lock()
+				defer self.lock.Unlock()
+				now := time.Now()
+				for k, v := range self.pendingLinks {
+					if now.Sub(v.eventTime) > (30 * time.Second) {
+						_ = v.link.Close()
+						delete(self.pendingLinks, k)
+					}
+				}
+			}()
+		}
+	}
+}
+
+type pendingLink struct {
+	link      *splitImpl
+	eventTime time.Time
 }

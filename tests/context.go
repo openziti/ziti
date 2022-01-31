@@ -303,7 +303,7 @@ func (ctx *TestContext) createMgmtClient() *MgmtClient {
 	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
 	ctx.Req.NoError(err)
 	dialer := channel.NewClassicDialer(id, mgmtAddress, nil)
-	ch, err := channel.NewChannel("mgmt", dialer, nil)
+	ch, err := channel.NewChannel("mgmt", dialer, nil, nil)
 	ctx.Req.NoError(err)
 
 	return &MgmtClient{

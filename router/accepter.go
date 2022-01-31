@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func newXlinkAccepter(f *forwarder2.Forwarder) xlink.Accepter {
+func newXlinkAccepter(f *forwarder2.Forwarder) xlink.Acceptor {
 	return &xlinkAccepter{forwarder: f}
 }
 

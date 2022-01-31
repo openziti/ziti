@@ -2,7 +2,7 @@ package xlink_transport
 
 import (
 	"crypto/x509"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
@@ -12,7 +12,7 @@ type ConnectionHandler struct {
 	routerId identity.Identity
 }
 
-func (self *ConnectionHandler) HandleConnection(_ *channel2.Hello, certificates []*x509.Certificate) error {
+func (self *ConnectionHandler) HandleConnection(_ *channel.Hello, certificates []*x509.Certificate) error {
 	if len(certificates) == 0 {
 		return errors.New("no certificates provided, unable to verify dialer")
 	}

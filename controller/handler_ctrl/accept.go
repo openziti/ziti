@@ -51,10 +51,8 @@ func (self *CtrlAccepter) Run() {
 	log.Info("started")
 	defer log.Warn("exited")
 
-	self.options.SetBindHandlerF(self.Bind)
-
 	for {
-		_, err := channel.NewChannel("ctrl", self.listener, self.options)
+		_, err := channel.NewChannel("ctrl", self.listener, channel.BindHandlerF(self.Bind), self.options)
 		if err != nil {
 			log.WithError(err).Error("error accepting control channel connection")
 			if err.Error() == "closed" {
