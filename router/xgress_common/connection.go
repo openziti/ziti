@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/secretstream"
 	"github.com/netfoundry/secretstream/kx"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/impl"
@@ -253,7 +253,7 @@ func (self *XgressConn) Close() error {
 	return nil
 }
 
-func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+func (self *XgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRoute {
 		hopType := "xgress/edge_transport"
 		if !self.flags.IsSet(xgressTypeFlag) {

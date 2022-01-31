@@ -2,6 +2,8 @@ module github.com/openziti/edge
 
 go 1.17
 
+//replace github.com/openziti/channel => ../channel
+
 //replace github.com/openziti/foundation => ../foundation
 
 //replace github.com/openziti/fabric => ../fabric
@@ -42,7 +44,7 @@ require (
 	github.com/miekg/dns v1.1.45
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.17.31
+	github.com/openziti/fabric v0.17.32-0.20220131205210-94147b1c07bb
 	github.com/openziti/foundation v0.16.18
 	github.com/openziti/sdk-golang v0.15.136
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -127,5 +129,5 @@ require (
 
 require (
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/openziti/channel v0.18.2
+	github.com/openziti/channel v0.18.3-0.20220131195247-7a717c4eb31c
 )

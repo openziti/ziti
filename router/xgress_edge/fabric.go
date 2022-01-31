@@ -18,6 +18,7 @@ package xgress_edge
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/channel2"
@@ -111,7 +112,7 @@ type edgeXgressConn struct {
 	ctrlRx  xgress.ControlReceiver
 }
 
-func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel2.Headers, responder xgress.ControlReceiver) error {
+func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {
 	if controlType == xgress.ControlTypeTraceRouteResponse {
 		ts, _ := headers.GetUint64Header(xgress.ControlTimestamp)
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
@@ -132,7 +133,7 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
 		if hop == 1 {
 			// TODO: find a way to get terminator id for hopId
-			xgress.RespondToTraceRequest(headers, "xgress/edge", "", responder)
+			xgress.RespondToTraceRequest(channel.Headers(headers), "xgress/edge", "", responder)
 			return nil
 		}
 
@@ -272,7 +273,7 @@ func (self *edgeXgressConn) Accept(msg *channel2.Message) {
 
 		headers.PutUint32Header(xgress.ControlCustom1, uint32(msg.Sequence()))
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
+		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, channel.Headers(headers))
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
 		headers := channel2.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
@@ -287,7 +288,7 @@ func (self *edgeXgressConn) Accept(msg *channel2.Message) {
 		headers.PutStringHeader(xgress.ControlHopId, hopId)
 		headers.PutUint32Header(xgress.ControlCustom1, sourceRequestId)
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
+		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, channel.Headers(headers))
 	} else {
 		if err := self.seq.Push(msg); err != nil {
 			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)

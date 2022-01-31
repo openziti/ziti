@@ -2,6 +2,7 @@ package xgress_edge
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
@@ -172,7 +173,7 @@ func (conn *simpleTestXgConn) WritePayload([]byte, map[uint8][]byte) (int, error
 	panic("implement me")
 }
 
-func (conn *simpleTestXgConn) HandleControlMsg(xgress.ControlType, channel2.Headers, xgress.ControlReceiver) error {
+func (conn *simpleTestXgConn) HandleControlMsg(xgress.ControlType, channel.Headers, xgress.ControlReceiver) error {
 	return nil
 }
 
