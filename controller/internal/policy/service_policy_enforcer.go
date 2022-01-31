@@ -27,6 +27,13 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+const (
+	SessionPolicyEnforcerRun          = "service.policy.enforcer.run"
+	SessionPolicyEnforcerEvent        = "service.policy.enforcer.event"
+	SessionPolicyEnforcerEventDeletes = "service.policy.enforcer.event.deletes"
+	SessionPolicyEnforcerRunDeletes   = "service.policy.enforcer.run.deletes"
+)
+
 type ServicePolicyEnforcer struct {
 	appEnv *env.AppEnv
 	*runner.BaseOperation
@@ -58,6 +65,11 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 	if policyType == "" {
 		return
 	}
+
+	startTime := time.Now()
+	defer func() {
+		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerEvent).UpdateSince(startTime)
+	}()
 
 	log := pfxlog.Logger().WithField("event", event.String())
 	log.Debug("event received")
@@ -95,6 +107,8 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
 		log.Debugf("session %v deleted", sessionId)
 	}
+
+	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerEventDeletes).Mark(int64(len(sessionsToDelete)))
 }
 
 func (enforcer *ServicePolicyEnforcer) Run() error {
@@ -104,6 +118,12 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	default:
 		return nil
 	}
+
+	starTime := time.Now()
+
+	defer func() {
+		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerRun).UpdateSince(starTime)
+	}()
 
 	result, err := enforcer.appEnv.GetHandlers().Session.Query("")
 
@@ -155,6 +175,8 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	for _, sessionId := range sessionsToRemove {
 		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
 	}
+
+	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes).Mark(int64(len(sessionsToRemove)))
 
 	return nil
 }

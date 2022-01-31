@@ -29,6 +29,9 @@ import (
 const (
 	maxIterations         = 1000
 	maxDeletePerIteration = 500
+
+	ApiSessionEnforcerRun    = "api.session.enforcer.run"
+	ApiSessionEnforcerDelete = "api.session.enforcer.delete"
 )
 
 type ApiSessionEnforcer struct {
@@ -55,6 +58,12 @@ func NewSessionEnforcer(appEnv *env.AppEnv, frequency time.Duration, sessionTime
 }
 
 func (s *ApiSessionEnforcer) Run() error {
+	startTime := time.Now()
+
+	defer func() {
+		s.appEnv.GetMetricsRegistry().Timer(ApiSessionEnforcerRun).UpdateSince(startTime)
+	}()
+
 	oldest := time.Now().Add(s.sessionTimeout * -1)
 	query := fmt.Sprintf("lastActivityAt < datetime(%s) limit %d", oldest.UTC().Format(time.RFC3339), maxDeletePerIteration)
 
@@ -96,6 +105,7 @@ func (s *ApiSessionEnforcer) Run() error {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}
+			s.appEnv.GetMetricsRegistry().Meter(ApiSessionEnforcerDelete).Mark(int64(len(ids)))
 		}
 	}
 
