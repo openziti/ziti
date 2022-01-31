@@ -1,8 +1,6 @@
 package handler_link
 
 import (
-	"crypto/sha1"
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/latency"
@@ -14,6 +12,7 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/metrics"
+	nfpem "github.com/openziti/foundation/util/pem"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -99,8 +98,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 func (self *bindHandler) verifyLink(l xlink.Xlink, ch channel.Channel) error {
 	var fingerprints []string
 	for _, cert := range ch.Certificates() {
-		fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
-		fingerprints = append(fingerprints, fingerprint)
+		fingerprints = append(fingerprints, nfpem.FingerprintFromX509(cert))
 	}
 
 	verifyLink := &ctrl_pb.VerifyLink{
