@@ -149,7 +149,7 @@ func (c *Controller) Run() error {
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
 	}
-	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.mgmtListener, c.config.Mgmt.Options)
+	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.network, c.xmgmts, c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
 
 	/*
@@ -252,8 +252,6 @@ func (c *Controller) registerXts() {
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.xctrls)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
-
-	c.config.Mgmt.Options.BindHandler = handler_mgmt.NewBindHandler(c.network, c.xmgmts)
 
 	//add default REST XWeb
 	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {

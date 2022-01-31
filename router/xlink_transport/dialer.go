@@ -18,13 +18,21 @@ package xlink_transport
 
 import (
 	"github.com/google/uuid"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
+
+type dialer struct {
+	id                 *identity.TokenId
+	config             *dialerConfig
+	bindHandlerFactory BindHandlerFactory
+	acceptor           xlink.Acceptor
+	transportConfig    transport.Configuration
+}
 
 func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerId string) error {
 	address, err := transport.ParseAddress(addressString)
@@ -44,7 +52,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerI
 		return errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
 	}
 
-	if err := self.accepter.Accept(xli); err != nil {
+	if err := self.acceptor.Accept(xli); err != nil {
 		return errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
 	}
 
@@ -55,81 +63,91 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerI
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
-	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
 		LinkHeaderRouterId: []byte(routerId),
 		LinkHeaderConnId:   []byte(connId),
-		LinkHeaderType:     {PayloadChannel},
+		LinkHeaderType:     {byte(PayloadChannel)},
 	})
 
 	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
 
-	payloadCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, self.config.options, self.tcfg)
+	bindHandler := &splitDialBindHandler{
+		dialer: self,
+		link:   &splitImpl{id: linkId, routerId: routerId},
+	}
+
+	payloadCh, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options, self.transportConfig)
 	if err != nil {
 		return nil, errors.Wrapf(err, "error dialing payload channel for [l/%s]", linkId.Token)
 	}
 
-	ackDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
-		LinkHeaderConnId: []byte(connId),
-		LinkHeaderType:   {AckChannel},
-	})
-
 	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
-	ackCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, self.config.options, self.tcfg)
+	ackDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+		LinkHeaderConnId: []byte(connId),
+		LinkHeaderType:   {byte(AckChannel)},
+	})
+
+	_, err = channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options, self.transportConfig)
 	if err != nil {
 		_ = payloadCh.Close()
 		return nil, errors.Wrapf(err, "error dialing ack channel for [l/%s]", linkId.Token)
 	}
 
-	xli := &splitImpl{id: linkId, payloadCh: payloadCh, ackCh: ackCh}
-
-	if self.chAccepter != nil {
-		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true, false); err != nil {
-			_ = xli.Close()
-			return nil, errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", linkId.Token)
-		}
-		if err := self.chAccepter.AcceptChannel(xli, ackCh, false, false); err != nil {
-			_ = xli.Close()
-			return nil, errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", linkId.Token)
-		}
-	}
-
-	return xli, nil
+	return bindHandler.link, nil
 }
 
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
-	payloadDialer := channel2.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
 		LinkHeaderRouterId: []byte(routerId),
 		LinkHeaderConnId:   []byte(connId),
 	})
 
-	payloadCh, err := channel2.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, self.config.options, self.tcfg)
+	bindHandler := &dialBindHandler{
+		dialer: self,
+		link:   &impl{id: linkId, routerId: routerId},
+	}
+
+	_, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options, self.transportConfig)
 	if err != nil {
-		return nil, errors.Wrapf(err, "dialing link [l/%s] for payload", linkId.Token)
+		return nil, errors.Wrapf(err, "error dialing link [l/%s]", linkId.Token)
 	}
 
-	xli := &impl{
-		id:       linkId,
-		ch:       payloadCh,
-		routerId: routerId,
-	}
-
-	if self.chAccepter != nil {
-		if err := self.chAccepter.AcceptChannel(xli, payloadCh, true, false); err != nil {
-			_ = xli.Close()
-			return nil, errors.Wrapf(err, "error accepting outgoing channel for [l/%s]", linkId.Token)
-		}
-	}
-
-	return xli, nil
+	return bindHandler.link, nil
 }
 
-type dialer struct {
-	id         *identity.TokenId
-	config     *dialerConfig
-	accepter   xlink.Accepter
-	chAccepter ChannelAccepter
-	tcfg       transport.Configuration
+type dialBindHandler struct {
+	dialer *dialer
+	link   *impl
+}
+
+func (self *dialBindHandler) BindChannel(binding channel.Binding) error {
+	self.link.ch = binding.GetChannel()
+	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
+	return bindHandler.BindChannel(binding)
+}
+
+type splitDialBindHandler struct {
+	link   *splitImpl
+	dialer *dialer
+}
+
+func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) error {
+	self.link.payloadCh = binding.GetChannel()
+	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
+	if err := bindHandler.BindChannel(binding); err != nil {
+		return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id.Token)
+	}
+	return nil
+}
+
+func (self *splitDialBindHandler) bindAckChannel(binding channel.Binding) error {
+	self.link.ackCh = binding.GetChannel()
+	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
+	if err := bindHandler.BindChannel(binding); err != nil {
+		return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id.Token)
+	}
+	return nil
 }

@@ -3,10 +3,10 @@
 package tests
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/sirupsen/logrus"
@@ -30,10 +30,14 @@ func (self *testXlinkAcceptor) getLink() xlink.Xlink {
 	return self.link
 }
 
-type testChannelAcceptor struct{}
+type testBindHandlerFactory struct{}
 
-func (t testChannelAcceptor) AcceptChannel(xlink xlink.Xlink, payloadCh channel2.Channel, latency bool, listenerSide bool) error {
+func (t testBindHandlerFactory) BindChannel(binding channel.Binding) error {
 	return nil
+}
+
+func (t testBindHandlerFactory) NewBindHandler(xlink xlink.Xlink, latency bool, listenerSide bool) channel.BindHandler {
+	return t
 }
 
 func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
@@ -55,7 +59,7 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	tcfg := transport.Configuration{
 		"split": false,
 	}
-	factory := xlink_transport.NewFactory(xla, testChannelAcceptor{}, tcfg)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg)
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
 	linkId := badId.ShallowCloneWithNewToken("testLinkId")
@@ -84,7 +88,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	tcfg := transport.Configuration{
 		"split": false,
 	}
-	factory := xlink_transport.NewFactory(xla, testChannelAcceptor{}, tcfg)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg)
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
 	linkId := router2Id.ShallowCloneWithNewToken("testLinkId")
@@ -92,15 +96,17 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	if err != nil {
 		ctx.Req.ErrorIs(err, io.EOF, "unexpected error: %v", err)
 	} else {
-		payload := &xgress.Payload{
-			Header: xgress.Header{
-				CircuitId: "hello",
-			},
-			Sequence: 0,
-			Headers:  nil,
-			Data:     []byte{1, 2, 3, 4},
+		for i := int32(0); i < 100 && err == nil; i++ {
+			payload := &xgress.Payload{
+				Header: xgress.Header{
+					CircuitId: "hello",
+				},
+				Sequence: i,
+				Headers:  nil,
+				Data:     []byte{1, 2, 3, 4},
+			}
+			err = xla.getLink().SendPayload(payload)
 		}
-		err = xla.getLink().SendPayload(payload)
 		ctx.Req.Error(err)
 		ctx.Req.EqualError(err, "channel closed", "unexpected error: %v", err)
 	}

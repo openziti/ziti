@@ -23,17 +23,29 @@ import (
 	"github.com/openziti/foundation/transport"
 )
 
+type channelType byte
+
 const (
 	LinkHeaderConnId   = 0
 	LinkHeaderType     = 1
 	LinkHeaderRouterId = 2
 
-	PayloadChannel = 1
-	AckChannel     = 2
+	PayloadChannel channelType = 1
+	AckChannel     channelType = 2
 )
 
-func NewFactory(accepter xlink.Accepter, chAccepter ChannelAccepter, c transport.Configuration) xlink.Factory {
-	return &factory{accepter: accepter, chAccepter: chAccepter, tcfg: c}
+func (self channelType) String() string {
+	if self == PayloadChannel {
+		return "payload"
+	}
+	if self == AckChannel {
+		return "ack"
+	}
+	return "invalid"
+}
+
+func NewFactory(accepter xlink.Acceptor, bindHandlerFactory BindHandlerFactory, c transport.Configuration) xlink.Factory {
+	return &factory{acceptor: accepter, bindHandlerFactory: bindHandlerFactory, transportConfig: c}
 }
 
 func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, configData transport.Configuration) (xlink.Listener, error) {
@@ -42,13 +54,12 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 		return nil, fmt.Errorf("error loading listener configuration (%w)", err)
 	}
 	return &listener{
-		id:              id,
-		config:          config,
-		accepter:        self.accepter,
-		chAccepter:      self.chAccepter,
-		tcfg:            self.tcfg,
-		eventC:          make(chan linkEvent, 2),
-		pendingChannels: map[string]*newChannelEvent{},
+		id:                 id,
+		config:             config,
+		accepter:           self.acceptor,
+		bindHandlerFactory: self.bindHandlerFactory,
+		tcfg:               self.transportConfig,
+		pendingLinks:       map[string]*pendingLink{},
 	}, nil
 }
 
@@ -58,16 +69,16 @@ func (self *factory) CreateDialer(id *identity.TokenId, _ xlink.Forwarder, confi
 		return nil, fmt.Errorf("error loading dialer configuration (%w)", err)
 	}
 	return &dialer{
-		id:         id,
-		config:     config,
-		accepter:   self.accepter,
-		chAccepter: self.chAccepter,
-		tcfg:       self.tcfg,
+		id:                 id,
+		config:             config,
+		acceptor:           self.acceptor,
+		bindHandlerFactory: self.bindHandlerFactory,
+		transportConfig:    self.transportConfig,
 	}, nil
 }
 
 type factory struct {
-	accepter   xlink.Accepter
-	chAccepter ChannelAccepter
-	tcfg       transport.Configuration
+	acceptor           xlink.Acceptor
+	bindHandlerFactory BindHandlerFactory
+	transportConfig    transport.Configuration
 }

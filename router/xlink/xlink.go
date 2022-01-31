@@ -33,7 +33,7 @@ type Listener interface {
 	Close() error
 }
 
-type Accepter interface {
+type Acceptor interface {
 	Accept(xlink Xlink) error
 }
 

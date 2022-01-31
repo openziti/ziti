@@ -18,8 +18,8 @@ package trace
 
 import (
 	"fmt"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	trace_pb "github.com/openziti/foundation/trace/pb"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -30,7 +30,7 @@ type XgressPeekHandler struct {
 	appId      *identity.TokenId
 	enabled    concurrenz.AtomicBoolean
 	controller Controller
-	decoders   []channel2.TraceMessageDecoder
+	decoders   []channel.TraceMessageDecoder
 	eventSink  EventHandler
 }
 
@@ -69,11 +69,10 @@ func (handler *XgressPeekHandler) Close(x *xgress.Xgress) {
 }
 
 func NewXgressPeekHandler(appId *identity.TokenId, controller Controller, eventSink EventHandler) *XgressPeekHandler {
-
 	handler := &XgressPeekHandler{
 		appId:      appId,
 		controller: controller,
-		decoders:   channel2decoders,
+		decoders:   decoders,
 		eventSink:  eventSink,
 	}
 	controller.AddSource(handler)
@@ -89,7 +88,6 @@ func (handler *XgressPeekHandler) IsEnabled() bool {
 }
 
 func (handler *XgressPeekHandler) trace(x *xgress.Xgress, payload *xgress.Payload, rx bool) {
-
 	decode, _ := xgress.DecodePayload(payload)
 
 	traceMsg := &trace_pb.ChannelMessage{

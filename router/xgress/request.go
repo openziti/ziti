@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
@@ -210,7 +209,7 @@ func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 		return err
 	}
 
-	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
+	if responseMsg != nil && responseMsg.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(responseMsg)
 		if result.Success {
 			log.Debugf("successfully removed service terminator [s/%s]", terminatorId)

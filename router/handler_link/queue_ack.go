@@ -19,10 +19,10 @@ package handler_link
 import (
 	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 	"sync/atomic"
 )
 
@@ -60,8 +60,8 @@ func (self *queuingAckHandler) ContentType() int32 {
 	return xgress.ContentTypeAcknowledgementType
 }
 
-func (self *queuingAckHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	if ack, err := xgress.UnmarshallChannel2Acknowledgement(msg); err == nil {
+func (self *queuingAckHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
 		select {
 		case self.ackIngest <- ack:
 		case <-self.closeNotify:

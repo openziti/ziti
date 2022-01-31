@@ -17,8 +17,8 @@
 package xlink_transport
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 )
@@ -40,8 +40,14 @@ func (self *splitImpl) SendAcknowledgement(acknowledgement *xgress.Acknowledgeme
 }
 
 func (self *splitImpl) Close() error {
-	err := self.payloadCh.Close()
-	err2 := self.ackCh.Close()
+	var err, err2 error
+	if self.payloadCh != nil {
+		err = self.payloadCh.Close()
+	}
+
+	if self.ackCh != nil {
+		err2 = self.ackCh.Close()
+	}
 	if err == nil {
 		return err2
 	}
@@ -57,7 +63,7 @@ func (self *splitImpl) DestinationId() string {
 
 type splitImpl struct {
 	id        *identity.TokenId
-	payloadCh channel2.Channel
-	ackCh     channel2.Channel
+	payloadCh channel.Channel
+	ackCh     channel.Channel
 	routerId  string
 }

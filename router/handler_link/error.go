@@ -18,9 +18,9 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 )
 
 type errorHandler struct {
@@ -32,7 +32,7 @@ func newErrorHandler(link xlink.Xlink, ctrl xgress.CtrlChannel) *errorHandler {
 	return &errorHandler{link: link, ctrl: ctrl}
 }
 
-func (self *errorHandler) HandleError(err error, ch channel2.Channel) {
+func (self *errorHandler) HandleError(err error, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("linkId", self.link.Id().Token).
 		WithField("routerId", self.link.DestinationId())

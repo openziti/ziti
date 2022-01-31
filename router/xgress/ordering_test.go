@@ -2,7 +2,7 @@ package xgress
 
 import (
 	"encoding/binary"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
@@ -41,7 +41,7 @@ func (conn *testConn) WritePayload(bytes []byte, _ map[uint8][]byte) (int, error
 	return len(bytes), nil
 }
 
-func (conn *testConn) HandleControlMsg(ControlType, channel2.Headers, ControlReceiver) error {
+func (conn *testConn) HandleControlMsg(ControlType, channel.Headers, ControlReceiver) error {
 	return nil
 }
 

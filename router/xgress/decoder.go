@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/channel2"
 )
 
 type Decoder struct{}
@@ -38,7 +37,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 
 	case int32(ContentTypeAcknowledgementType):
 		if ack, err := UnmarshallAcknowledgement(msg); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Acknowledgement")
+			meta := channel.NewTraceMessageDecode(DECODER, "Acknowledgement")
 			meta["circuitId"] = ack.CircuitId
 			meta["sequence"] = fmt.Sprintf("len(%d)", len(ack.Sequence))
 			switch ack.GetOriginator() {
@@ -64,7 +63,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 }
 
 func DecodePayload(payload *Payload) ([]byte, bool) {
-	meta := channel2.NewTraceMessageDecode(DECODER, "Payload")
+	meta := channel.NewTraceMessageDecode(DECODER, "Payload")
 	meta["circuitId"] = payload.CircuitId
 	meta["sequence"] = payload.Sequence
 	switch payload.GetOriginator() {

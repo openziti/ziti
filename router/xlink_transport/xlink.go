@@ -17,8 +17,8 @@
 package xlink_transport
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 )
 
@@ -48,6 +48,6 @@ func (self *impl) DestinationId() string {
 
 type impl struct {
 	id       *identity.TokenId
-	ch       channel2.Channel
+	ch       channel.Channel
 	routerId string
 }
