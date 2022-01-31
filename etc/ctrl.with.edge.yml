@@ -183,11 +183,6 @@ web:
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
     options:
-      # allowCompression - optional, default true
-      # Allows compressed HTTP responses if the client provides supported Accept-Encoding headers for br or gzip.
-      # If br and gzip are supplied, br is preferred.
-      # allowCompression: true
-
       # idleTimeout - optional, default 5000ms
       # The maximum amount of idle time in milliseconds allowed for pipelined HTTP requests. Setting this too high
       # can cause resources on the host to be consumed as clients remain connected and idle. Lowering this value
