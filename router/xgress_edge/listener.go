@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -40,7 +39,7 @@ type listener struct {
 	factory          *Factory
 	options          *Options
 	bindHandler      xgress.BindHandler
-	underlayListener channel2.UnderlayListener
+	underlayListener channel.UnderlayListener
 	headers          map[int32][]byte
 }
 
@@ -67,13 +66,13 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
-	listener.underlayListener = channel2.NewClassicListenerWithTransportConfiguration(
+	listener.underlayListener = channel.NewClassicListenerWithTransportConfiguration(
 		listener.id, addr, listener.options.channelOptions.ConnectOptions, listener.factory.edgeRouterConfig.Tcfg, listener.headers)
 
 	if err := listener.underlayListener.Listen(); err != nil {
 		return err
 	}
-	accepter := NewAccepter(listener, listener.underlayListener, nil)
+	accepter := NewAcceptor(listener, listener.underlayListener, nil)
 	go accepter.Run()
 
 	return nil
@@ -87,11 +86,11 @@ type edgeClientConn struct {
 	msgMux       edge.MsgMux
 	listener     *listener
 	fingerprints cert.Fingerprints
-	ch           channel2.Channel
+	ch           channel.Channel
 	idSeq        uint32
 }
 
-func (self *edgeClientConn) HandleClose(_ channel2.Channel) {
+func (self *edgeClientConn) HandleClose(_ channel.Channel) {
 	log := pfxlog.ContextLogger(self.ch.Label())
 	log.Debugf("closing")
 	terminators := self.listener.factory.hostedServices.cleanupServices(self)
@@ -107,7 +106,7 @@ func (self *edgeClientConn) ContentType() int32 {
 	return edge.ContentTypeData
 }
 
-func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("token", token).WithFields(edge.GetLoggerFields(req))
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
@@ -172,7 +171,7 @@ func (self *edgeClientConn) processConnect(req *channel2.Message, ch channel2.Ch
 	x.Start()
 }
 
-func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 
 	log := pfxlog.ContextLogger(ch.Label()).
@@ -261,7 +260,7 @@ func (self *edgeClientConn) processBind(req *channel2.Message, ch channel2.Chann
 		WithField("terminatorId", messageSink.terminatorId).Info("created terminator")
 }
 
-func (self *edgeClientConn) processUnbind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("sessionId", token).
@@ -299,7 +298,7 @@ func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
-func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
@@ -349,7 +348,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel2.Message, ch channel2
 	}
 }
 
-func (self *edgeClientConn) processHealthEvent(req *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
 
@@ -378,7 +377,7 @@ func (self *edgeClientConn) processHealthEvent(req *channel2.Message, ch channel
 	}
 }
 
-func (self *edgeClientConn) processTraceRoute(msg *channel2.Message, ch channel2.Channel) {
+func (self *edgeClientConn) processTraceRoute(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).WithFields(edge.GetLoggerFields(msg))
 
 	hops, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
@@ -405,7 +404,7 @@ func (self *edgeClientConn) processTraceRoute(msg *channel2.Message, ch channel2
 	}
 }
 
-func (self *edgeClientConn) sendStateConnectedReply(req *channel2.Message, hostData map[uint32][]byte) {
+func (self *edgeClientConn) sendStateConnectedReply(req *channel.Message, hostData map[uint32][]byte) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateConnectedMsg(connId)
 
@@ -418,14 +417,14 @@ func (self *edgeClientConn) sendStateConnectedReply(req *channel2.Message, hostD
 	}
 	msg.ReplyTo(req)
 
-	err := self.ch.SendPrioritizedWithTimeout(msg, channel2.High, time.Second*5)
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
 		return
 	}
 }
 
-func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.Message) {
+func (self *edgeClientConn) sendStateClosedReply(message string, req *channel.Message) {
 	connId, _ := req.GetUint32Header(edge.ConnIdHeader)
 	msg := edge.NewStateClosedMsg(connId, message)
 	msg.ReplyTo(req)
@@ -434,19 +433,9 @@ func (self *edgeClientConn) sendStateClosedReply(message string, req *channel2.M
 		msg.PutUint32Header(edge.ErrorCodeHeader, errorCode)
 	}
 
-	syncC, err := self.ch.SendAndSyncWithPriority(msg, channel2.High)
+	err := msg.WithPriority(channel.High).WithTimeout(5 * time.Second).SendAndWaitForWire(self.ch)
 	if err != nil {
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
-		return
-	}
-
-	select {
-	case err = <-syncC:
-		if err != nil {
-			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("failed to send state response")
-		}
-	case <-time.After(time.Second * 5):
-		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).WithError(err).Error("timed out sending state response")
 	}
 }
 

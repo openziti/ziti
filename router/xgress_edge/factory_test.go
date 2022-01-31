@@ -3,7 +3,7 @@ package xgress_edge
 import (
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -50,7 +50,7 @@ func Test_load(t *testing.T) {
 
 	t.Run("config without connect options", func(t *testing.T) {
 		options := &Options{}
-		defaults := channel2.DefaultConnectOptions()
+		defaults := channel.DefaultConnectOptions()
 		testConfigWithoutConnectOptions := newTestConfigWithoutConnectOptions()
 		err := options.load(testConfigWithoutConnectOptions)
 

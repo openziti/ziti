@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
@@ -121,7 +120,7 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		requestSeq, _ := headers.GetUint32Header(xgress.ControlCustom1)
 
 		msg := edge.NewTraceRouteResponseMsg(self.Id(), hop, ts, hopType, hopId)
-		msg.PutUint32Header(channel2.ReplyForHeader, requestSeq)
+		msg.PutUint32Header(channel.ReplyForHeader, requestSeq)
 
 		self.TraceMsg("write", msg)
 		pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Trace("writing trace response")
@@ -262,9 +261,9 @@ func (self *edgeXgressConn) close(notify bool, reason string) {
 	}
 }
 
-func (self *edgeXgressConn) Accept(msg *channel2.Message) {
+func (self *edgeXgressConn) Accept(msg *channel.Message) {
 	if msg.ContentType == edge.ContentTypeTraceRoute {
-		headers := channel2.Headers{}
+		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
 		hops, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
 
@@ -275,7 +274,7 @@ func (self *edgeXgressConn) Accept(msg *channel2.Message) {
 
 		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, channel.Headers(headers))
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
-		headers := channel2.Headers{}
+		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
 		hopCount, _ := msg.GetUint32Header(edge.TraceHopCountHeader)
 		hopType, _ := msg.GetStringHeader(edge.TraceHopTypeHeader)
@@ -296,7 +295,7 @@ func (self *edgeXgressConn) Accept(msg *channel2.Message) {
 	}
 }
 
-func (self *edgeXgressConn) getHeaderMap(message *channel2.Message) map[uint8][]byte {
+func (self *edgeXgressConn) getHeaderMap(message *channel.Message) map[uint8][]byte {
 	headers := make(map[uint8][]byte)
 	msgUUID, found := message.Headers[edge.UUIDHeader]
 	if found {

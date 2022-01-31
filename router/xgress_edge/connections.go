@@ -20,9 +20,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
@@ -43,8 +43,9 @@ func newSessionConnectHandler(stateManager fabric.StateManager, options *Options
 	}
 }
 
-func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error {
-	ch.AddCloseHandler(handler)
+func (handler *sessionConnectionHandler) BindChannel(binding channel.Binding) error {
+	ch := binding.GetChannel()
+	binding.AddCloseHandler(handler)
 
 	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
 		token := string(byteToken)
@@ -99,7 +100,7 @@ func (handler *sessionConnectionHandler) BindChannel(ch channel2.Channel) error 
 	return errors.New("no token attribute provided")
 }
 
-func (handler *sessionConnectionHandler) HandleClose(ch channel2.Channel) {
+func (handler *sessionConnectionHandler) HandleClose(ch channel.Channel) {
 	token := ""
 	if byteToken, ok := ch.Underlay().Headers()[edge.SessionTokenHeader]; ok {
 		token = string(byteToken)
@@ -110,5 +111,4 @@ func (handler *sessionConnectionHandler) HandleClose(ch channel2.Channel) {
 			WithField("id", ch.Id()).
 			Error("session connection handler encountered a HandleClose that did not have a SessionTokenHeader")
 	}
-
 }

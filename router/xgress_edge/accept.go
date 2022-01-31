@@ -19,116 +19,101 @@ package xgress_edge
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/latency"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"math"
 )
 
-type Accepter struct {
-	uListener channel2.UnderlayListener
-	listener  *listener
-	options   *channel2.Options
+type Acceptor struct {
+	uListener          channel.UnderlayListener
+	listener           *listener
+	options            *channel.Options
+	sessionBindHandler channel.BindHandler
 }
 
-type edgeBindHandler struct {
-	listener *listener
-}
-
-func (handler edgeBindHandler) BindChannel(ch channel2.Channel) error {
+func (self *Acceptor) BindChannel(binding channel.Binding) error {
 	log := pfxlog.Logger()
-	log.WithField("token", ch.Id()).Debug("accepting edge connection")
+	log.WithField("token", binding.GetChannel().Id()).Debug("accepting edge connection")
 
 	fpg := cert.NewFingerprintGenerator()
 	proxy := &edgeClientConn{
 		msgMux:       edge.NewCowMapMsgMux(),
-		listener:     handler.listener,
-		fingerprints: fpg.FromCerts(ch.Certificates()),
-		ch:           ch,
+		listener:     self.listener,
+		fingerprints: fpg.FromCerts(binding.GetChannel().Certificates()),
+		ch:           binding.GetChannel(),
 		idSeq:        math.MaxUint32 / 2,
 	}
 
 	log.Debug("peer fingerprints ", proxy.fingerprints)
 
-	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeConnect,
 		Handler: proxy.processConnect,
 	})
 
-	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeBind,
 		Handler: proxy.processBind,
 	})
 
-	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeUnbind,
 		Handler: proxy.processUnbind,
 	})
 
-	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeUpdateBind,
 		Handler: proxy.processUpdateBind,
 	})
 
-	ch.AddReceiveHandler(&edge.AsyncFunctionReceiveAdapter{
+	binding.AddTypedReceiveHandler(&channel.AsyncFunctionReceiveAdapter{
 		Type:    edge.ContentTypeHealthEvent,
 		Handler: proxy.processHealthEvent,
 	})
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
-		Type:    edge.ContentTypeStateClosed,
-		Handler: proxy.msgMux.HandleReceive,
-	})
+	binding.AddReceiveHandlerF(edge.ContentTypeStateClosed, proxy.msgMux.HandleReceive)
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
-		Type:    edge.ContentTypeTraceRoute,
-		Handler: proxy.processTraceRoute,
-	})
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRoute, proxy.processTraceRoute)
 
-	ch.AddReceiveHandler(&edge.FunctionReceiveAdapter{
-		Type:    edge.ContentTypeTraceRouteResponse,
-		Handler: proxy.msgMux.HandleReceive,
-	})
-
-	ch.AddReceiveHandler(&channel2.LatencyHandler{})
+	binding.AddReceiveHandlerF(edge.ContentTypeTraceRouteResponse, proxy.msgMux.HandleReceive)
+	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 
 	// Since data is most common type, it gets to dispatch directly
-	ch.AddReceiveHandler(proxy.msgMux)
-	ch.AddCloseHandler(proxy)
+	binding.AddTypedReceiveHandler(proxy.msgMux)
+	binding.AddCloseHandler(proxy)
 
-	return nil
+	return self.sessionBindHandler.BindChannel(binding)
 }
 
-func NewAccepter(listener *listener, uListener channel2.UnderlayListener, options *channel2.Options) *Accepter {
-	edgeBindHandler := &edgeBindHandler{listener: listener}
+func NewAcceptor(listener *listener, uListener channel.UnderlayListener, options *channel.Options) *Acceptor {
 	sessionHandler := newSessionConnectHandler(listener.factory.stateManager, listener.options, listener.factory.metricsRegistry)
 
 	optionsWithBind := options
 	if optionsWithBind == nil {
-		optionsWithBind = channel2.DefaultOptions()
+		optionsWithBind = channel.DefaultOptions()
 	}
 
-	optionsWithBind.BindHandlers = append(optionsWithBind.BindHandlers, edgeBindHandler, sessionHandler)
-
-	return &Accepter{
-		listener:  listener,
-		uListener: uListener,
-		options:   optionsWithBind,
+	return &Acceptor{
+		listener:           listener,
+		uListener:          uListener,
+		options:            optionsWithBind,
+		sessionBindHandler: sessionHandler,
 	}
 }
 
-func (accepter *Accepter) Run() {
+func (self *Acceptor) Run() {
 	log := pfxlog.Logger()
 	log.Info("starting")
 	defer log.Warn("exiting")
 
 	for {
-		if err := channel2.AcceptNextChannel("edge", accepter.uListener, accepter.options, nil); err != nil {
+		if err := channel.AcceptNextChannel("edge", self.uListener, self, self.options, nil); err != nil {
 			log.Errorf("error accepting (%v)", err)
-			if errors.Is(err, channel2.ListenerClosedError) {
+			if errors.Is(err, channel.ListenerClosedError) {
 				return
 			}
 		}
 	}
-
 }

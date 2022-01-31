@@ -2,7 +2,7 @@ package xgress_edge
 
 import (
 	"context"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -10,30 +10,30 @@ import (
 )
 
 type MsgQueue interface {
-	Push(msg *channel2.Message) error
-	Pop() *channel2.Message
+	Push(msg *channel.Message) error
+	Pop() *channel.Message
 	Close()
 }
 
 type BoundedMsgQueue interface {
 	MsgQueue
-	TryPopMax(size int) *channel2.Message
+	TryPopMax(size int) *channel.Message
 }
 
 func NewMsgQueue(queueDepth int) *baseMsgQ {
 	return &baseMsgQ{
-		ch:          make(chan *channel2.Message, queueDepth),
+		ch:          make(chan *channel.Message, queueDepth),
 		closeNotify: make(chan struct{}),
 	}
 }
 
 type baseMsgQ struct {
-	ch          chan *channel2.Message
+	ch          chan *channel.Message
 	closeNotify chan struct{}
 	closed      concurrenz.AtomicBoolean
 }
 
-func (mq *baseMsgQ) Push(msg *channel2.Message) error {
+func (mq *baseMsgQ) Push(msg *channel.Message) error {
 	select {
 	case mq.ch <- msg:
 		return nil
@@ -42,7 +42,7 @@ func (mq *baseMsgQ) Push(msg *channel2.Message) error {
 	}
 }
 
-func (mq *baseMsgQ) Pop() *channel2.Message {
+func (mq *baseMsgQ) Pop() *channel.Message {
 	select {
 	case msg := <-mq.ch:
 		return msg
@@ -65,21 +65,21 @@ func (mq *baseMsgQ) Close() {
 
 func NewSizeLimitedMsgQueue(size int32) *sizeLimitedMsgQ {
 	return &sizeLimitedMsgQ{
-		ch:          make(chan *channel2.Message, 16),
+		ch:          make(chan *channel.Message, 16),
 		closeNotify: make(chan struct{}),
 		sizeSem:     *semaphore.NewWeighted(int64(size)),
 	}
 }
 
 type sizeLimitedMsgQ struct {
-	ch          chan *channel2.Message
+	ch          chan *channel.Message
 	closeNotify chan struct{}
 	closed      concurrenz.AtomicBoolean
 	sizeSem     semaphore.Weighted
-	next        *channel2.Message
+	next        *channel.Message
 }
 
-func (mq *sizeLimitedMsgQ) Push(msg *channel2.Message) error {
+func (mq *sizeLimitedMsgQ) Push(msg *channel.Message) error {
 	if size := len(msg.Body); size > 0 {
 		// TODO: Handle if size > mtu
 		if err := mq.sizeSem.Acquire(context.Background(), int64(size)); err != nil {
@@ -94,8 +94,8 @@ func (mq *sizeLimitedMsgQ) Push(msg *channel2.Message) error {
 	}
 }
 
-func (mq *sizeLimitedMsgQ) Pop() *channel2.Message {
-	var msg *channel2.Message
+func (mq *sizeLimitedMsgQ) Pop() *channel.Message {
+	var msg *channel.Message
 
 	if mq.next != nil {
 		msg = mq.next
@@ -122,8 +122,8 @@ func (mq *sizeLimitedMsgQ) Pop() *channel2.Message {
 	return msg
 }
 
-func (mq *sizeLimitedMsgQ) TryPopMax(size int) *channel2.Message {
-	var msg *channel2.Message
+func (mq *sizeLimitedMsgQ) TryPopMax(size int) *channel.Message {
+	var msg *channel.Message
 
 	if mq.next == nil {
 		select {
