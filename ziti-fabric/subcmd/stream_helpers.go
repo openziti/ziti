@@ -17,25 +17,28 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"sync"
 )
 
-func waitForChannelClose(ch channel2.Channel) {
+func newCloseWatcher() *closeWatcher {
 	waitGroup := &sync.WaitGroup{}
 	waitGroup.Add(1)
-
-	ch.AddCloseHandler(&closeWatcher{waitGroup})
-
-	waitGroup.Wait()
+	return &closeWatcher{
+		waitGroup: waitGroup,
+	}
 }
 
 type closeWatcher struct {
 	waitGroup *sync.WaitGroup
 }
 
-func (watcher *closeWatcher) HandleClose(ch channel2.Channel) {
+func (self *closeWatcher) HandleClose(ch channel.Channel) {
 	pfxlog.Logger().Info("Management channel to controller closed. Shutting down.")
-	watcher.waitGroup.Done()
+	self.waitGroup.Done()
+}
+
+func (self *closeWatcher) waitForChannelClose() {
+	self.waitGroup.Wait()
 }

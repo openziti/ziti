@@ -19,8 +19,8 @@ package subcmd
 import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/spf13/cobra"
 	"time"
@@ -81,13 +81,13 @@ var createTerminator = &cobra.Command{
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_CreateTerminatorRequestType), body)
-			responseMsg, err := ch.SendAndWaitWithTimeout(requestMsg, 5*time.Second)
+			requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_CreateTerminatorRequestType), body)
+			responseMsg, err := requestMsg.WithTimeout(5 * time.Second).SendForReply(ch)
 			if err != nil {
 				panic(err)
 			}
-			if responseMsg.ContentType == channel2.ContentTypeResultType {
-				result := channel2.UnmarshalResult(responseMsg)
+			if responseMsg.ContentType == channel.ContentTypeResultType {
+				result := channel.UnmarshalResult(responseMsg)
 				if result.Success {
 					fmt.Printf("\nsuccess\n\n")
 				} else {
