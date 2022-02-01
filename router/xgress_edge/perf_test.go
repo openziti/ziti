@@ -1,6 +1,7 @@
 package xgress_edge
 
 import (
+	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -8,13 +9,13 @@ import (
 	"github.com/openziti/fabric/router/handler_xgress"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 type noopMetricsHandler struct{}
@@ -90,7 +91,7 @@ func Benchmark_CowMapWritePerf(b *testing.B) {
 }
 
 func writePerf(b *testing.B, mux edge.MsgMux) {
-	testChannel := &channel2.NoopTestChannel{}
+	testChannel := &NoopTestChannel{}
 
 	listener := &listener{}
 
@@ -219,4 +220,55 @@ func Benchmark_BaselinePerf(b *testing.B) {
 		conn.write(data)
 		b.SetBytes(1024)
 	}
+}
+
+type NoopTestChannel struct {
+}
+
+func (ch *NoopTestChannel) Underlay() channel.Underlay {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (ch *NoopTestChannel) StartRx() {
+}
+
+func (ch *NoopTestChannel) Id() *identity.TokenId {
+	panic("implement Id()")
+}
+
+func (ch *NoopTestChannel) LogicalName() string {
+	panic("implement LogicalName()")
+}
+
+func (ch *NoopTestChannel) ConnectionId() string {
+	panic("implement ConnectionId()")
+}
+
+func (ch *NoopTestChannel) Certificates() []*x509.Certificate {
+	panic("implement Certificates()")
+}
+
+func (ch *NoopTestChannel) Label() string {
+	return "testchannel"
+}
+
+func (ch *NoopTestChannel) SetLogicalName(string) {
+	panic("implement SetLogicalName")
+}
+
+func (ch *NoopTestChannel) Send(channel.Sendable) error {
+	return nil
+}
+
+func (ch *NoopTestChannel) Close() error {
+	panic("implement Close")
+}
+
+func (ch *NoopTestChannel) IsClosed() bool {
+	panic("implement IsClosed")
+}
+
+func (ch *NoopTestChannel) GetTimeSinceLastRead() time.Duration {
+	return 0
 }

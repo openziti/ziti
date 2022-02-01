@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -161,19 +160,4 @@ func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
 	for _, rtx := range rtxs {
 		callback(rtx)
 	}
-}
-
-var _ channel2.ReceiveHandler = &receiveHandlerFunc{}
-
-type receiveHandlerFunc struct {
-	contentType int32
-	handler     func(m *channel2.Message, ch channel2.Channel)
-}
-
-func (r receiveHandlerFunc) ContentType() int32 {
-	return r.contentType
-}
-
-func (r receiveHandlerFunc) HandleReceive(m *channel2.Message, ch channel2.Channel) {
-	r.handler(m, ch)
 }

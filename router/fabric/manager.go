@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
-	"github.com/openziti/foundation/channel2"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/sirupsen/logrus"
 	"math/rand"
@@ -59,8 +58,8 @@ type StateManager interface {
 	RemoveMissingApiSessions(knownSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string)
 	AddConnectedApiSession(token string)
 	RemoveConnectedApiSession(token string)
-	AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel2.Channel)
-	RemoveConnectedApiSessionWithChannel(token string, underlay channel2.Channel)
+	AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel)
+	RemoveConnectedApiSessionWithChannel(token string, underlay channel.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
 	StartHeartbeat(channel channel.Channel, seconds int, closeNotify <-chan struct{})
@@ -331,7 +330,7 @@ func (sm *StateManagerImpl) RemoveConnectedApiSession(token string) {
 	sm.activeApiSessions.Remove(token)
 }
 
-func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel2.Channel) {
+func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel) {
 	var sessions *MapWithMutex
 
 	for sessions == nil {
@@ -350,7 +349,7 @@ func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, remo
 	}
 }
 
-func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel2.Channel) {
+func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel.Channel) {
 	if val, ok := sm.activeApiSessions.Get(token); ok {
 		sessions, ok := val.(*MapWithMutex)
 
@@ -441,16 +440,16 @@ func (sm *StateManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 
 func newMapWithMutex() *MapWithMutex {
 	return &MapWithMutex{
-		m: map[channel2.Channel]func(){},
+		m: map[channel.Channel]func(){},
 	}
 }
 
 type MapWithMutex struct {
 	sync.Mutex
-	m map[channel2.Channel]func()
+	m map[channel.Channel]func()
 }
 
-func (self *MapWithMutex) Put(ch channel2.Channel, f func()) {
+func (self *MapWithMutex) Put(ch channel.Channel, f func()) {
 	self.Lock()
 	defer self.Unlock()
 	self.m[ch] = f

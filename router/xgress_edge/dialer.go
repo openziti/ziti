@@ -19,10 +19,10 @@ package xgress_edge
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
@@ -120,7 +120,7 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 		x.Start()
 
 		log.Debug("xgress start, sending dial to SDK")
-		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(listenConn.Channel)
 		if err != nil {
 			conn.close(false, err.Error())
 			x.Close()
@@ -145,7 +145,7 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 		return nil, nil
 	} else {
 		log.Debug("router not assigning connId for dial")
-		reply, err := listenConn.SendPrioritizedAndWaitWithTimeout(dialRequest, channel2.Highest, 5*time.Second)
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(listenConn.Channel)
 		if err != nil {
 			return nil, err
 		}

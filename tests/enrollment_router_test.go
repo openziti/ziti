@@ -30,7 +30,8 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
+
 	identity2 "github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"math/big"
@@ -84,7 +85,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
 				ctx.Req.NotNil(id)
 
-				ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+				ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 				ctx.Req.Nil(ch)
 				ctx.Req.Error(err, "expected remote error bad TLS certificate")
 			})
@@ -108,7 +109,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
 				ctx.Req.NotNil(id)
 
-				ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+				ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 				ctx.Req.Nil(ch)
 				ctx.Req.Error(err, "expected remote error bad TLS certificate")
 			})
@@ -335,7 +336,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
 						ctx.Req.NotNil(id)
 
-						ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+						ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 						ctx.Req.Nil(ch)
 						ctx.Req.Error(err, "expected remote error bad TLS certificate")
 					})
@@ -359,7 +360,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
 						ctx.Req.NotNil(id)
 
-						ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+						ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 						ctx.Req.Nil(ch)
 						ctx.Req.Error(err, "expected remote error bad TLS certificate")
 					})
@@ -370,7 +371,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						id := identity2.NewClientTokenIdentity(cert, privateKey, caCerts)
 						ctx.Req.NotNil(id)
 
-						ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+						ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 
 						defer func() {
 							if ch != nil {
@@ -551,7 +552,7 @@ func Test_RouterEnrollment(t *testing.T) {
 								id := identity2.NewClientTokenIdentity(cert, privateKey, caCerts)
 								ctx.Req.NotNil(id)
 
-								ch, err := channel2.NewChannel("apitest", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+								ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 
 								defer func() {
 									if ch != nil {
@@ -568,7 +569,7 @@ func Test_RouterEnrollment(t *testing.T) {
 								id := identity2.NewClientTokenIdentity(extensionCert, extensionPrivateKey, caCerts)
 								ctx.Req.NotNil(id)
 
-								ch, err := channel2.NewChannel("apitestextension", channel2.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil)
+								ch, err := channel.NewChannel("apitestextension", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
 
 								defer func() {
 									if ch != nil {

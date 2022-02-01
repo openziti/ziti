@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
@@ -176,7 +175,7 @@ func (factory *Factory) CreateListener(optionsData xgress.OptionsData) (xgress.L
 	}
 
 	headers := map[int32][]byte{
-		channel2.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader: versionHeader,
 	}
 
 	return newListener(factory.id, factory, options, headers), nil
@@ -198,7 +197,7 @@ func (factory *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type Options struct {
 	xgress.Options
-	channelOptions          *channel2.Options
+	channelOptions          *channel.Options
 	lookupApiSessionTimeout time.Duration
 	lookupSessionTimeout    time.Duration
 }
@@ -248,7 +247,11 @@ func (options *Options) load(data xgress.OptionsData) error {
 	if value, found := data["options"]; found {
 		data = value.(map[interface{}]interface{})
 
-		options.channelOptions = channel2.LoadOptions(data)
+		var err error
+		options.channelOptions, err = channel.LoadOptions(data)
+		if err != nil {
+			return err
+		}
 		if err := options.channelOptions.Validate(); err != nil {
 			return fmt.Errorf("error loading options for [edge/options]: %v", err)
 		}
@@ -269,7 +272,7 @@ func (options *Options) load(data xgress.OptionsData) error {
 			options.lookupApiSessionTimeout = timeout
 		}
 	} else {
-		options.channelOptions = channel2.DefaultOptions()
+		options.channelOptions = channel.DefaultOptions()
 	}
 	return nil
 }
