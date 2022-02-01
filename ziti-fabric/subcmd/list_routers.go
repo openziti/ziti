@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -47,42 +47,36 @@ var listRouters = &cobra.Command{
 			if err != nil {
 				panic(err)
 			}
-			requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListRoutersRequestType), body)
-			waitCh, err := ch.SendAndWait(requestMsg)
+			requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_ListRoutersRequestType), body)
+			responseMsg, err := requestMsg.WithTimeout(5 * time.Second).SendForReply(ch)
 			if err != nil {
 				panic(err)
 			}
-			select {
-			case responseMsg := <-waitCh:
-				if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListRoutersResponseType) {
-					response := &mgmt_pb.ListRoutersResponse{}
-					err := proto.Unmarshal(responseMsg.Body, response)
-					if err == nil {
-						out := fmt.Sprintf("\nRouters: (%d)\n\n", len(response.Routers))
-						out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", "Id", "Name", "Fingerprint", "Status", "Version")
-						for _, r := range response.Routers {
-							status := ""
-							if r.Connected {
-								status += "Connected"
-							}
-							if r.ListenerAddress != "" {
-								status += " (" + r.ListenerAddress + ")"
-							}
-							out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", r.Id, r.Name, r.Fingerprint, status, r.Version)
+			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListRoutersResponseType) {
+				response := &mgmt_pb.ListRoutersResponse{}
+				err := proto.Unmarshal(responseMsg.Body, response)
+				if err == nil {
+					out := fmt.Sprintf("\nRouters: (%d)\n\n", len(response.Routers))
+					out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", "Id", "Name", "Fingerprint", "Status", "Version")
+					for _, r := range response.Routers {
+						status := ""
+						if r.Connected {
+							status += "Connected"
 						}
-						out += "\n"
-						fmt.Print(out)
-
-					} else {
-						panic(err)
+						if r.ListenerAddress != "" {
+							status += " (" + r.ListenerAddress + ")"
+						}
+						out += fmt.Sprintf("%-12s | %-30s | %-40s | %-9s | %s\n", r.Id, r.Name, r.Fingerprint, status, r.Version)
 					}
-				} else {
-					panic(errors.New("unexpected response"))
-				}
-			case <-time.After(5 * time.Second):
-				panic(errors.New("timeout"))
-			}
+					out += "\n"
+					fmt.Print(out)
 
+				} else {
+					panic(err)
+				}
+			} else {
+				panic(errors.New("unexpected response"))
+			}
 		} else {
 			panic(err)
 		}

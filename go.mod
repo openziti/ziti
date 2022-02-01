@@ -33,10 +33,10 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.3
-	github.com/openziti/edge v0.21.68
-	github.com/openziti/fabric v0.17.31
-	github.com/openziti/foundation v0.16.18
-	github.com/openziti/sdk-golang v0.15.136
+	github.com/openziti/edge v0.21.70
+	github.com/openziti/fabric v0.17.34
+	github.com/openziti/foundation v0.17.0
+	github.com/openziti/sdk-golang v0.16.0
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -56,6 +56,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	rsc.io/goversion v1.2.0
 )
+
+require github.com/openziti/channel v0.18.4
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0 // indirect
@@ -106,6 +108,7 @@ require (
 	github.com/josharian/native v0.0.0-20200817173448-b6b71def0850 // indirect
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
+	github.com/kr/pty v1.1.8 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.8 // indirect
 	github.com/lucas-clemente/quic-go v0.23.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
@@ -130,7 +133,6 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/onsi/ginkgo v1.16.4 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/openziti/channel v0.18.2 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
@@ -152,11 +154,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.7.5 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
-	golang.org/x/crypto v0.0.0-20220128200615-198e4374d7ed // indirect
+	golang.org/x/crypto v0.0.0-20220131195533-30dcbda58838 // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
+	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect

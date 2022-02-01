@@ -3,6 +3,9 @@
 * Enhancement: Durable Eventual Events
 * Enhancement: API Session/Service Policy Enforcer Metrics
 * Enhancement: Support Controller Address Changes
+* Enhancement: Control Channel Metrics Split
+* Enhancement: Metrics Output Size Reduction
+* Enhancement: Channel Library Updates
 
 ## Durable Eventual Events
 
@@ -128,6 +131,96 @@ web:
         # connections. The value of newAddress must be resolvable both via DNS and validate via certificates
         newAddress: localhost:1280
 ```
+
+## Control Channel Latency Metrics Changes
+
+The control channel metrics have been broken into two separate metrics. Previously the metric measured how long it took for the message to be enqueued, sent and a reply received. Now the time to write to wire has been broken out.
+
+* `ctrl.latency` - This now measures the time from wire send to response received
+* `ctrl.queue_time` - This measure the time from when the send is requested to when it actually is written to the wire
+
+## Metrics Output Size Reduction
+
+If using the JSON metrics events output, the output has changed.
+
+A metrics entry which previously would have looked like:
+
+```
+{
+  "metric": "ctrl.tx.bytesrate",
+  "metrics": {
+    "ctrl.tx.bytesrate.count": 222,
+    "ctrl.tx.bytesrate.m15_rate": 0.37625904063382576,
+    "ctrl.tx.bytesrate.m1_rate": 0.12238911649077193,
+    "ctrl.tx.bytesrate.m5_rate": 0.13784280219782497,
+    "ctrl.tx.bytesrate.mean_rate": 0.1373326200238093
+  },
+  "namespace": "metrics",
+  "source_entity_id": "z7ZmJux8a7",
+  "source_event_id": "7b77ac53-c017-409e-afcc-fd0e1878a301",
+  "source_id": "ctrl_client",
+  "timestamp": "2022-01-26T21:46:45.866133131Z"
+}
+```
+
+will now look like:
+
+```
+{
+  "metric": "ctrl.tx.bytesrate",
+  "metrics": {
+    "count": 222,
+    "m15_rate": 0.37625904063382576,
+    "m1_rate": 0.12238911649077193,
+    "m5_rate": 0.13784280219782497,
+    "mean_rate": 0.1373326200238093
+  },
+  "namespace": "metrics",
+  "source_entity_id": "z7ZmJux8a7",
+  "source_event_id": "7b77ac53-c017-409e-afcc-fd0e1878a301",
+  "source_id": "ctrl_client",
+  "timestamp": "2022-01-26T21:46:45.866133131Z",
+  "version" : 2
+}
+```
+
+Note that the metric keys no longer have the metric name as a prefix. Also, the emitted metric has a new `version` field which is set to 2. 
+
+Metrics with a single key, which previously looked like:
+
+```
+{
+  "metric": "xgress.acks.queue_size",
+  "metrics": {
+    "xgress.acks.queue_size": 0
+  },
+  "namespace": "metrics",
+  "source_event_id": "6eb30de2-55de-49d5-828f-4268a3707512",
+  "source_id": "z7ZmJux8a7",
+  "timestamp": "2022-01-26T22:06:33.242933687Z",
+  "version": 2
+}
+```
+
+now look like:
+
+```
+{
+  "metric": "xgress.acks.queue_size",
+  "metrics": {
+    "value": 0
+  },
+  "namespace": "metrics",
+  "source_event_id": "6eb30de2-55de-49d5-828f-4268a3707512",
+  "source_id": "z7ZmJux8a7",
+  "timestamp": "2022-01-26T22:06:33.242933687Z",
+  "version": 2
+}
+```
+
+## Channel Library Updates
+
+The channel library, which is used by edge communications, control channel, links and management channel, has been refactored. It now does a better job handling canceled messaged through the send process. If a message send times out before it is sent, the message will now no longer be sent when it gets to the head of the queue. Channels can now be instrumented to allow better metrics gathering, as seen above the the split out control channel latency metrics. Channel internals have also been refactored so that initialization is better defined, leading to better concurrency characteristics. 
 
 # Release 0.24.4
 

@@ -17,7 +17,7 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
@@ -37,7 +37,11 @@ func NewMgmtClient(cmd *cobra.Command) *mgmtClient {
 	return client
 }
 
-func (c *mgmtClient) Connect() (channel2.Channel, error) {
+func (c *mgmtClient) Connect() (channel.Channel, error) {
+	return c.ConnectAndBind(nil)
+}
+
+func (c *mgmtClient) ConnectAndBind(bindHandler channel.BindHandler) (channel.Channel, error) {
 	if endpoint, id, err := dotziti.LoadIdentity(c.idName); err == nil {
 		c.id = id
 		endpointStr := endpoint
@@ -45,8 +49,8 @@ func (c *mgmtClient) Connect() (channel2.Channel, error) {
 			endpointStr = c.mgmtEndpoint
 		}
 		if mgmtAddress, err := transport.ParseAddress(endpointStr); err == nil {
-			dialer := channel2.NewClassicDialer(c.id, mgmtAddress, nil)
-			if ch, err := channel2.NewChannel("mgmt", dialer, nil); err == nil {
+			dialer := channel.NewClassicDialer(c.id, mgmtAddress, nil)
+			if ch, err := channel.NewChannel("mgmt", dialer, bindHandler, nil); err == nil {
 				return ch, nil
 			} else {
 				return nil, err

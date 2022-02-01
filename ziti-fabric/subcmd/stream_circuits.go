@@ -17,11 +17,10 @@
 package subcmd
 
 import (
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -39,7 +38,16 @@ var streamCircuitsCmd = &cobra.Command{
 var streamCircuitsClient *mgmtClient
 
 func streamCircuits(*cobra.Command, []string) {
-	ch, err := streamCircuitsClient.Connect()
+	cw := newCloseWatcher()
+
+	bindHandler := func(binding channel.Binding) error {
+		binding.AddTypedReceiveHandler(&circuitsHandler{})
+		binding.AddCloseHandler(cw)
+		return nil
+	}
+
+	ch, err := streamCircuitsClient.ConnectAndBind(channel.BindHandlerF(bindHandler))
+
 	if err != nil {
 		panic(err)
 	}
@@ -50,23 +58,12 @@ func streamCircuits(*cobra.Command, []string) {
 		panic(err)
 	}
 
-	ch.AddReceiveHandler(&circuitsHandler{})
-	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_StreamCircuitsRequestType), body)
-
-	waitCh, err := ch.SendAndSync(requestMsg)
-	if err != nil {
+	requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamCircuitsRequestType), body)
+	if err = requestMsg.WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 		panic(err)
 	}
-	select {
-	case err := <-waitCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-time.After(5 * time.Second):
-		panic(errors.New("timeout"))
-	}
 
-	waitForChannelClose(ch)
+	cw.waitForChannelClose()
 }
 
 type circuitsHandler struct{}
@@ -75,7 +72,7 @@ func (*circuitsHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamCircuitsEventType)
 }
 
-func (*circuitsHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
+func (*circuitsHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	event := &mgmt_pb.StreamCircuitsEvent{}
 	err := proto.Unmarshal(msg.Body, event)
 	if err != nil {
