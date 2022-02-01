@@ -60,7 +60,8 @@ func run(cmd *cobra.Command, args []string) {
 		WithField("os", version.GetOS()).
 		WithField("arch", version.GetArchitecture()).
 		WithField("build-date", version.GetBuildDate()).
-		WithField("revision", version.GetRevision())
+		WithField("revision", version.GetRevision()).
+		WithField("configFile", args[0])
 
 	config, err := router.LoadConfig(args[0])
 	if err != nil {
