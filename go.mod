@@ -33,10 +33,10 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.3
-	github.com/openziti/edge v0.21.70
-	github.com/openziti/fabric v0.17.34
-	github.com/openziti/foundation v0.17.0
-	github.com/openziti/sdk-golang v0.16.0
+	github.com/openziti/edge v0.21.71
+	github.com/openziti/fabric v0.17.35
+	github.com/openziti/foundation v0.17.1
+	github.com/openziti/sdk-golang v0.16.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -48,7 +48,7 @@ require (
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.7.0
 	github.com/valyala/fasttemplate v1.2.1
-	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
+	go.etcd.io/bbolt v1.3.6
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63
 	google.golang.org/grpc v1.42.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
