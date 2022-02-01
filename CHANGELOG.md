@@ -1,3 +1,7 @@
+# Release 0.24.6
+
+* Update bbolt library to v1.3.6 
+
 # Release 0.24.5
 
 * Enhancement: Durable Eventual Events
