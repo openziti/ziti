@@ -91,9 +91,13 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 				logrus.SetOutput(logOut)
 			}
 
-			// Update controller specific values with configOptions passed in
-			data.Controller.ListenerHostPort = controllerOptions.CtrlListener
-			data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
+			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
+			if data.Controller.ListenerHostPort == "" || controllerOptions.CtrlListener != constants.DefaultZitiEdgeListenerHostPort {
+				data.Controller.ListenerHostPort = controllerOptions.CtrlListener
+			}
+			if data.Controller.MgmtListenerHostPort == "" || controllerOptions.MgmtListener != constants.DefaultZitiMgmtControllerListenerHostPort {
+				data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
+			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd

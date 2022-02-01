@@ -37,13 +37,13 @@ const (
 
 	ZitiEdgeRouterPortVarName = "ZITI_EDGE_ROUTER_PORT"
 
-	ZitiCtrlIdentityCertVarName = "ZITI_CTRL_IDENTITY_CERT"
+	ZitiCtrlIdentityCertVarName = "ZITI_EDGE_CTRL_IDENTITY_CERT"
 
-	ZitiCtrlIdentityServerCertVarName = "ZITI_CTRL_IDENTITY_SERVER_CERT"
+	ZitiCtrlIdentityServerCertVarName = "ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT"
 
-	ZitiCtrlIdentityKeyVarName = "ZITI_CTRL_IDENTITY_KEY"
+	ZitiCtrlIdentityKeyVarName = "ZITI_EDGE_CTRL_IDENTITY_KEY"
 
-	ZitiCtrlIdentityCAVarName = "ZITI_CTRL_IDENTITY_CA"
+	ZitiCtrlIdentityCAVarName = "ZITI_EDGE_CTRL_IDENTITY_CA"
 
 	ZitiSigningCertVarName = "ZITI_SIGNING_CERT"
 

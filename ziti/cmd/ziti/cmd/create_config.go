@@ -143,30 +143,26 @@ func NewCmdCreateConfig() *cobra.Command {
 
 	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
 		"The following environment variables can be set to override config values (current value is displayed):\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s\n"+
-		"%-33s %s",
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s",
 		cmdhelper.ZitiHomeVarName, templateData.ZitiHome,
 		cmdhelper.ZitiCtrlListenerHostPortVarName, templateData.Controller.ListenerHostPort,
 		cmdhelper.ZitiCtrlMgmtListenerHostPortVarName, templateData.Controller.MgmtListenerHostPort,
 		cmdhelper.ZitiCtrlHostnameVarName, templateData.Controller.Hostname,
 		cmdhelper.ZitiCtrlRawnameVarName, templateData.Controller.Rawname,
-		cmdhelper.ZitiCtrlListenerHostPortVarName, templateData.Controller.ListenerHostPort,
-		cmdhelper.ZitiCtrlMgmtListenerHostPortVarName, templateData.Controller.MgmtListenerHostPort,
 		cmdhelper.ZitiEdgeCtrlListenerHostPortVarName, templateData.Controller.EdgeCtrlListenerHostPort,
 		cmdhelper.ZitiEdgeCtrlAdvertisedVarName, templateData.Controller.EdgeCtrlAdvertised,
 		cmdhelper.ZitiEdgeRouterHostnameVarName, templateData.Router.Edge.Hostname,
@@ -236,7 +232,7 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 
 	// Get Ziti Controller Listener Host and Port
 	zitiCtrlListenerHostPort, err := cmdhelper.GetZitiCtrlListenerHostPort()
-	handleVariableError(err, cmdhelper.ZitiCtrlMgmtListenerHostPortVarName)
+	handleVariableError(err, cmdhelper.ZitiCtrlListenerHostPortVarName)
 
 	// Get Ziti Controller Management Host and Port
 	zitiCtrlMgmtListenerHostPort, err := cmdhelper.GetZitiCtrlMgmtListenerHostPort()
