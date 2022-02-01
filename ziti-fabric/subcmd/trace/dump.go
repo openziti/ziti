@@ -17,12 +17,13 @@
 package trace
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/trace"
-	"github.com/openziti/foundation/trace/pb"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/openziti/channel"
+	"github.com/openziti/foundation/trace"
+	"github.com/openziti/foundation/trace/pb"
+	"github.com/openziti/ziti/ziti-fabric/subcmd"
 	"github.com/spf13/cobra"
 )
 
@@ -80,7 +81,7 @@ func (h *dumpHandler) Handle(msg interface{}) error {
 			if t.ReplyFor != -1 {
 				replyFor = fmt.Sprintf(">%d", t.ReplyFor)
 			}
-			fmt.Printf("%8s: %-16s %8s %s #%-5d %5s | %s\n", h.formatTimestamp(t.Timestamp), t.Identity, t.Channel, flow, t.Sequence, replyFor, channel2.DecodeTraceAndFormat(t.Decode))
+			fmt.Printf("%8s: %-16s %8s %s #%-5d %5s | %s\n", h.formatTimestamp(t.Timestamp), t.Identity, t.Channel, flow, t.Sequence, replyFor, subcmd.DecodeTraceAndFormat(t.Decode))
 
 		} else {
 			h.formatTimestamp(t.Timestamp)
@@ -99,7 +100,7 @@ func (h *dumpHandler) formatTimestamp(timestamp int64) string {
 			h.lastTimestamp = timestamp
 			return "0"
 		}
-		out := fmt.Sprintf("%d", (timestamp - h.lastTimestamp) / 1000)
+		out := fmt.Sprintf("%d", (timestamp-h.lastTimestamp)/1000)
 		h.lastTimestamp = timestamp
 		return out
 	}
@@ -115,12 +116,12 @@ func filterMatch(trace *trace_pb.ChannelMessage) (bool, error) {
 
 	channelMatch := true
 	if dumpCmdDecoderFilter != "" {
-		channelMatch = dumpCmdDecoderFilter == meta[channel2.DecoderFieldName]
+		channelMatch = dumpCmdDecoderFilter == meta[channel.DecoderFieldName]
 	}
 
 	messageMatch := true
 	if dumpCmdMessageFilter != "" {
-		messageMatch = dumpCmdMessageFilter == meta[channel2.MessageFieldName]
+		messageMatch = dumpCmdMessageFilter == meta[channel.MessageFieldName]
 	}
 
 	return channelMatch && messageMatch, nil
