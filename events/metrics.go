@@ -112,6 +112,19 @@ func registerMetricsEventHandler(val interface{}, config map[interface{}]interfa
 	return nil
 }
 
+func AddFilteredMetricsEventHandler(sourceFilter *regexp.Regexp, metricFilter *regexp.Regexp, handler MetricsEventHandler) func() {
+	adapter := &metricsAdapter{
+		sourceFilter: sourceFilter,
+		metricFilter: metricFilter,
+		handler:      handler,
+	}
+
+	metrics.AddMetricsEventHandler(adapter)
+	return func() {
+		metrics.RemoveMetricsEventHandler(adapter)
+	}
+}
+
 type metricsAdapter struct {
 	sourceFilter *regexp.Regexp
 	metricFilter *regexp.Regexp
@@ -213,7 +226,7 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 }
 
 func (adapter *metricsAdapter) filterMetric(key string, value interface{}, event *MetricsEvent) {
-	name := event.Metric + key
+	name := event.Metric + "." + key
 	if adapter.nameMatches(name) {
 		if event.Metrics == nil {
 			event.Metrics = make(map[string]interface{})
@@ -244,6 +257,12 @@ type MetricsEvent struct {
 
 type MetricsEventHandler interface {
 	AcceptMetricsEvent(event *MetricsEvent)
+}
+
+type MetricsHandlerF func(event *MetricsEvent)
+
+func (self MetricsHandlerF) AcceptMetricsEvent(event *MetricsEvent) {
+	self(event)
 }
 
 func ExtractId(name string, prefix string, suffixLen int) (string, string) {
