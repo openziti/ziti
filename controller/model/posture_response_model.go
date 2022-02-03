@@ -97,7 +97,7 @@ func (pc *PostureCache) evaluate() {
 	}()
 
 	var lastId []byte
-	const maxToDeletePerTx = 1000
+	const maxScanPerTx = 1000
 	var toDeleteSessionIds []string
 
 	newIdentityServiceUpdates := map[string]struct{}{}       //tracks the current loops identityIds that have had updates
@@ -108,6 +108,7 @@ func (pc *PostureCache) evaluate() {
 	// Chunk data in maxToDelete bunches to limit how many sessions we are deleting in a transaction.
 	// Requires tracking of which session was last evaluated, kept in lastId.
 	for !done {
+		var sessions []*persistence.Session
 		_ = pc.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 			cursor := pc.env.GetStores().Session.IterateIds(tx, ast.BoolNodeTrue)
 
@@ -121,32 +122,35 @@ func (pc *PostureCache) evaluate() {
 				}
 			}
 
-			done = !cursor.IsValid()
-
-			for cursor.IsValid() && len(toDeleteSessionIds) < maxToDeletePerTx {
-				lastId = cursor.Current()
-				session, err := pc.env.GetStores().Session.LoadOneById(tx, string(cursor.Current()))
-
-				if err == nil && session != nil {
-					result := pc.env.GetHandlers().Session.EvaluatePostureForService(session.IdentityId, session.ApiSessionId, session.Type, session.ServiceId, "")
-
-					if !result.Passed {
-						log.WithFields(map[string]interface{}{
-							"apiSessionId": session.ApiSessionId,
-							"identityId":   session.IdentityId,
-							"sessionId":    session.Id,
-						}).Tracef("session [%s] failed posture checks, removing", session.Id)
-
-						toDeleteSessionIds = append(toDeleteSessionIds, session.Id)
-						newIdentityServiceUpdates[session.IdentityId] = struct{}{}
-					}
+			for cursor.IsValid() && len(sessions) < maxScanPerTx {
+				if session, _ := pc.env.GetStores().Session.LoadOneById(tx, string(cursor.Current())); session != nil {
+					sessions = append(sessions, session)
 				}
-
+				lastId = cursor.Current()
 				cursor.Next()
+			}
+
+			if !cursor.IsValid() {
+				done = true
 			}
 
 			return nil
 		})
+
+		for _, session := range sessions {
+			result := pc.env.GetHandlers().Session.EvaluatePostureForService(session.IdentityId, session.ApiSessionId, session.Type, session.ServiceId, "")
+
+			if !result.Passed {
+				log.WithFields(map[string]interface{}{
+					"apiSessionId": session.ApiSessionId,
+					"identityId":   session.IdentityId,
+					"sessionId":    session.Id,
+				}).Tracef("session [%s] failed posture checks, removing", session.Id)
+
+				toDeleteSessionIds = append(toDeleteSessionIds, session.Id)
+				newIdentityServiceUpdates[session.IdentityId] = struct{}{}
+			}
+		}
 
 		//delete sessions that failed pc checks, clear list
 		for _, sessionId := range toDeleteSessionIds {
