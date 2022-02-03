@@ -1,7 +1,7 @@
 v: 3
 
 #trace:
-#  path: "{{ .Controller.Rawname }}.trace"
+#  path: "{{ .Controller.Name }}.trace"
 
 #profile:
 #  memory:
@@ -71,11 +71,11 @@ edge:
     # sessionTimeout - optional, default 10m
     # The number of minutes before an Edge API session will time out. Timeouts are reset by
     # API requests and connections that are maintained to Edge Routers
-    sessionTimeout: {{ .Controller.EdgeAPISessionTimeoutMinutes }}m
+    sessionTimeout: {{ .Controller.Edge.APISessionTimeoutMinutes }}m
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in this Controller.WebListener.'s bindPoints.
-    address: {{ .Controller.EdgeCtrlAdvertised }}
+    address: {{ .Controller.Edge.AdvertisedHostPort }}
   # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
   enrollment:
     # signingCert - required
@@ -115,18 +115,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: {{ .Controller.EdgeCtrlListenerHostPort }}
+      - interface: {{ .Controller.Edge.ListenerHostPort }}
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: {{ .Controller.EdgeCtrlAdvertised }}
+        address: {{ .Controller.Edge.AdvertisedHostPort }}
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
     identity:
-      ca:          "{{ .Controller.IdentityCA }}"
-      key:         "{{ .Controller.IdentityKey }}"
-      server_cert: "{{ .Controller.IdentityServerCert }}"
-      cert:        "{{ .Controller.IdentityCert }}"
+      ca:          "{{ .Controller.Edge.IdentityCA }}"
+      key:         "{{ .Controller.Edge.IdentityKey }}"
+      server_cert: "{{ .Controller.Edge.IdentityServerCert }}"
+      cert:        "{{ .Controller.Edge.IdentityCert }}"
     # options - optional
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.

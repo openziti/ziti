@@ -44,6 +44,7 @@ const (
 	DefaultZitiEdgeRouterPort = "3022"
 
 	// Controller defaults
+	DefaultZitiControllerName                 = "controller"
 	DefaultEdgeAPISessionTimeoutMinutes       = 30
 	DefaultWebListenerIdleTimeoutMs           = 5000
 	DefaultWebListenerReadTimeoutMs           = 5000

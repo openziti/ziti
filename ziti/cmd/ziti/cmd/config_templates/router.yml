@@ -8,13 +8,13 @@
 v: 3
 
 identity:
-  cert:                 "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-client.cert"
-  server_cert:          "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-server.cert"
-  key:                  "{{ .ZitiPKI }}/keys/{{ .Router.Name }}-server.key"
-  ca:                   "{{ .ZitiPKI }}/certs/{{ .Router.Name }}-cas.cert"
+  cert:                 "{{ .Controller.IdentityCert }}"
+  server_cert:          "{{ .Controller.IdentityServerCert }}"
+  key:                  "{{ .Controller.IdentityKey }}"
+  ca:                   "{{ .Controller.IdentityCA }}"
 
 ctrl:
-  endpoint:             tls:{{ .Controller.Hostname }}:{{ .Controller.FabCtrlPort }}
+  endpoint:             tls:{{ .Controller.ListenerHostPort }}
 
 link:
 {{ if .Router.IsPrivate }}#{{ end }}  listeners:
@@ -79,8 +79,8 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: true
-{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .ZitiPKI }}/certs/{{ .Router.Name }}-router-server.cert
-{{ if not .Router.IsWss }}#{{ end }}    key: {{ .ZitiPKI }}/keys/{{ .Router.Name }}-router-server.key
+{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .ZitiHome }}/certs/{{ .Router.Name }}-router-server.cert
+{{ if not .Router.IsWss }}#{{ end }}    key: {{ .ZitiHome }}/keys/{{ .Router.Name }}-router-server.key
 
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval }}

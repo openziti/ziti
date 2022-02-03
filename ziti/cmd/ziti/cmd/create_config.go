@@ -54,19 +54,26 @@ type ConfigTemplateValues struct {
 }
 
 type ControllerTemplateValues struct {
-	Hostname                     string
-	EdgeCtrlListenerHostPort     string
-	EdgeCtrlAdvertised           string
-	ListenerHostPort             string
-	MgmtListenerHostPort         string
-	Rawname                      string
-	EdgeAPISessionTimeoutMinutes int
-	IdentityCert                 string
-	IdentityServerCert           string
-	IdentityKey                  string
-	IdentityCA                   string
-	WebListener                  ControllerWebListenerValues
-	HealthCheck                  ControllerHealthCheckValues
+	Name                 string
+	ListenerHostPort     string
+	MgmtListenerHostPort string
+	IdentityCert         string
+	IdentityServerCert   string
+	IdentityKey          string
+	IdentityCA           string
+	Edge                 EdgeControllerValues
+	WebListener          ControllerWebListenerValues
+	HealthCheck          ControllerHealthCheckValues
+}
+
+type EdgeControllerValues struct {
+	APISessionTimeoutMinutes int
+	ListenerHostPort         string
+	AdvertisedHostPort       string
+	IdentityCert             string
+	IdentityServerCert       string
+	IdentityKey              string
+	IdentityCA               string
 }
 
 type ControllerWebListenerValues struct {
@@ -157,20 +164,26 @@ func NewCmdCreateConfig() *cobra.Command {
 		"%-36s %s\n"+
 		"%-36s %s\n"+
 		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
+		"%-36s %s\n"+
 		"%-36s %s",
 		cmdhelper.ZitiHomeVarName, templateData.ZitiHome,
 		cmdhelper.ZitiCtrlListenerHostPortVarName, templateData.Controller.ListenerHostPort,
 		cmdhelper.ZitiCtrlMgmtListenerHostPortVarName, templateData.Controller.MgmtListenerHostPort,
-		cmdhelper.ZitiCtrlHostnameVarName, templateData.Controller.Hostname,
-		cmdhelper.ZitiCtrlRawnameVarName, templateData.Controller.Rawname,
-		cmdhelper.ZitiEdgeCtrlListenerHostPortVarName, templateData.Controller.EdgeCtrlListenerHostPort,
-		cmdhelper.ZitiEdgeCtrlAdvertisedVarName, templateData.Controller.EdgeCtrlAdvertised,
+		cmdhelper.ZitiCtrlNameVarName, templateData.Controller.Name,
+		cmdhelper.ZitiEdgeCtrlListenerHostPortVarName, templateData.Controller.Edge.ListenerHostPort,
+		cmdhelper.ZitiEdgeCtrlAdvertisedHostPortVarName, templateData.Controller.Edge.AdvertisedHostPort,
 		cmdhelper.ZitiEdgeRouterHostnameVarName, templateData.Router.Edge.Hostname,
 		cmdhelper.ZitiEdgeRouterPortVarName, templateData.Router.Edge.Port,
 		cmdhelper.ZitiCtrlIdentityCertVarName, templateData.Controller.IdentityCert,
 		cmdhelper.ZitiCtrlIdentityServerCertVarName, templateData.Controller.IdentityServerCert,
 		cmdhelper.ZitiCtrlIdentityKeyVarName, templateData.Controller.IdentityKey,
 		cmdhelper.ZitiCtrlIdentityCAVarName, templateData.Controller.IdentityCA,
+		cmdhelper.ZitiEdgeCtrlIdentityCertVarName, templateData.Controller.Edge.IdentityCert,
+		cmdhelper.ZitiEdgeCtrlIdentityServerCertVarName, templateData.Controller.Edge.IdentityServerCert,
+		cmdhelper.ZitiEdgeCtrlIdentityKeyVarName, templateData.Controller.Edge.IdentityKey,
+		cmdhelper.ZitiEdgeCtrlIdentityCAVarName, templateData.Controller.Edge.IdentityCA,
 		cmdhelper.ZitiSigningCertVarName, templateData.ZitiSigningCert,
 		cmdhelper.ZitiSigningKeyVarName, templateData.ZitiSigningKey)
 
@@ -198,13 +211,9 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiHome, err := cmdhelper.GetZitiHome()
 	handleVariableError(err, cmdhelper.ZitiHomeVarName)
 
-	// Get Ziti Controller Rawname
-	zitiCtrlRawname, err := cmdhelper.GetZitiCtrlRawname()
-	handleVariableError(err, cmdhelper.ZitiCtrlRawnameVarName)
-
-	// Get Ziti Controller Hostname
-	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlHostname()
-	handleVariableError(err, cmdhelper.ZitiCtrlHostnameVarName)
+	// Get Ziti Controller Name
+	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlName()
+	handleVariableError(err, cmdhelper.ZitiCtrlNameVarName)
 
 	// Get Ziti Edge Router Hostname
 	zitiEdgeRouterHostName, err := cmdhelper.GetZitiEdgeRouterHostname()
@@ -218,16 +227,32 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiCtrlIdentityCert, err := cmdhelper.GetZitiIdentityCert()
 	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCertVarName)
 
-	// Get Ziti Controller Identity Cert
+	// Get Ziti Controller Identity Server Cert
 	zitiCtrlIdentityServerCert, err := cmdhelper.GetZitiIdentityServerCert()
 	handleVariableError(err, cmdhelper.ZitiCtrlIdentityServerCertVarName)
 
-	// Get Ziti Controller Identity Cert
+	// Get Ziti Controller Identity Key
 	zitiCtrlIdentityKey, err := cmdhelper.GetZitiIdentityKey()
 	handleVariableError(err, cmdhelper.ZitiCtrlIdentityKeyVarName)
 
-	// Get Ziti Controller Identity Cert
+	// Get Ziti Controller Identity CA
 	zitiCtrlIdentityCA, err := cmdhelper.GetZitiIdentityCA()
+	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCAVarName)
+
+	// Get Ziti Edge Controller Identity Cert
+	zitiEdgeCtrlIdentityCert, err := cmdhelper.GetZitiEdgeIdentityCert()
+	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCertVarName)
+
+	// Get Ziti Edge Controller Identity Server Cert
+	zitiEdgeCtrlIdentityServerCert, err := cmdhelper.GetZitiEdgeIdentityServerCert()
+	handleVariableError(err, cmdhelper.ZitiCtrlIdentityServerCertVarName)
+
+	// Get Ziti Edge Controller Identity Key
+	zitiEdgeCtrlIdentityKey, err := cmdhelper.GetZitiEdgeIdentityKey()
+	handleVariableError(err, cmdhelper.ZitiCtrlIdentityKeyVarName)
+
+	// Get Ziti Edge Controller Identity CA
+	zitiEdgeCtrlIdentityCA, err := cmdhelper.GetZitiEdgeIdentityCA()
 	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Controller Listener Host and Port
@@ -251,24 +276,27 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	handleVariableError(err, cmdhelper.ZitiEdgeCtrlListenerHostPortVarName)
 
 	// Get Ziti Edge Controller Advertised Host and Port
-	zitiEdgeCtrlAdvertised, err := cmdhelper.GetZitiEdgeCtrlAdvertised()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlAdvertisedVarName)
+	zitiEdgeCtrlAdvertisedHostPort, err := cmdhelper.GetZitiEdgeCtrlAdvertisedHostPort()
+	handleVariableError(err, cmdhelper.ZitiEdgeCtrlAdvertisedHostPortVarName)
 
 	// data.ZitiPKI = zitiPKI
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
 	data.ZitiSigningCert = zitiSigningCert
 	data.ZitiSigningKey = zitiSigningKey
-	data.Controller.Rawname = zitiCtrlRawname
-	data.Controller.Hostname = zitiCtrlHostname
+	data.Controller.Name = zitiCtrlHostname
 	data.Controller.ListenerHostPort = zitiCtrlListenerHostPort
 	data.Controller.MgmtListenerHostPort = zitiCtrlMgmtListenerHostPort
-	data.Controller.EdgeCtrlListenerHostPort = zitiEdgeCtrlListenerHostPort
-	data.Controller.EdgeCtrlAdvertised = zitiEdgeCtrlAdvertised
+	data.Controller.Edge.ListenerHostPort = zitiEdgeCtrlListenerHostPort
+	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort
 	data.Controller.IdentityCert = zitiCtrlIdentityCert
 	data.Controller.IdentityServerCert = zitiCtrlIdentityServerCert
 	data.Controller.IdentityKey = zitiCtrlIdentityKey
 	data.Controller.IdentityCA = zitiCtrlIdentityCA
+	data.Controller.Edge.IdentityCert = zitiEdgeCtrlIdentityCert
+	data.Controller.Edge.IdentityServerCert = zitiEdgeCtrlIdentityServerCert
+	data.Controller.Edge.IdentityKey = zitiEdgeCtrlIdentityKey
+	data.Controller.Edge.IdentityCA = zitiEdgeCtrlIdentityCA
 	data.Router.Edge.Hostname = zitiEdgeRouterHostName
 	data.Router.Edge.Port = zitiEdgeRouterPort
 }
@@ -278,7 +306,7 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Router.Listener.OutQueueSize = constants.DefaultOutQueueSize
 	data.Router.Listener.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
 	data.Router.Listener.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
-	data.Controller.EdgeAPISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
+	data.Controller.Edge.APISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
 	data.Controller.WebListener.IdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
 	data.Controller.WebListener.ReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
 	data.Controller.WebListener.WriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
