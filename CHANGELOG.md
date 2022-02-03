@@ -1,3 +1,10 @@
+# Release 0.24.7
+
+* Bug fix: bbolt deadlock that could happen if posture cache evaluation coincided with a bbolt mmap operation
+    * regression introduced in v0.22.1
+* Bug fix: metrics event filtering 
+    * regression introduced in 0.24.5 with the metrics name change
+
 # Release 0.24.6
 
 * Update bbolt library to v1.3.6 
