@@ -52,6 +52,10 @@ type PostureCheckFailureMfa struct {
 	// Required: true
 	ActualValue *PostureChecksFailureMfaValues `json:"actualValue"`
 
+	// criteria
+	// Required: true
+	Criteria *PostureChecksFailureMfaCriteria `json:"criteria"`
+
 	// expected value
 	// Required: true
 	ExpectedValue *PostureChecksFailureMfaValues `json:"expectedValue"`
@@ -94,6 +98,10 @@ func (m *PostureCheckFailureMfa) UnmarshalJSON(raw []byte) error {
 		// Required: true
 		ActualValue *PostureChecksFailureMfaValues `json:"actualValue"`
 
+		// criteria
+		// Required: true
+		Criteria *PostureChecksFailureMfaCriteria `json:"criteria"`
+
 		// expected value
 		// Required: true
 		ExpectedValue *PostureChecksFailureMfaValues `json:"expectedValue"`
@@ -135,6 +143,7 @@ func (m *PostureCheckFailureMfa) UnmarshalJSON(raw []byte) error {
 	}
 
 	result.ActualValue = data.ActualValue
+	result.Criteria = data.Criteria
 	result.ExpectedValue = data.ExpectedValue
 
 	*m = result
@@ -152,12 +161,18 @@ func (m PostureCheckFailureMfa) MarshalJSON() ([]byte, error) {
 		// Required: true
 		ActualValue *PostureChecksFailureMfaValues `json:"actualValue"`
 
+		// criteria
+		// Required: true
+		Criteria *PostureChecksFailureMfaCriteria `json:"criteria"`
+
 		// expected value
 		// Required: true
 		ExpectedValue *PostureChecksFailureMfaValues `json:"expectedValue"`
 	}{
 
 		ActualValue: m.ActualValue,
+
+		Criteria: m.Criteria,
 
 		ExpectedValue: m.ExpectedValue,
 	})
@@ -198,6 +213,10 @@ func (m *PostureCheckFailureMfa) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateActualValue(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCriteria(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -249,6 +268,26 @@ func (m *PostureCheckFailureMfa) validateActualValue(formats strfmt.Registry) er
 	return nil
 }
 
+func (m *PostureCheckFailureMfa) validateCriteria(formats strfmt.Registry) error {
+
+	if err := validate.Required("criteria", "body", m.Criteria); err != nil {
+		return err
+	}
+
+	if m.Criteria != nil {
+		if err := m.Criteria.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("criteria")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("criteria")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (m *PostureCheckFailureMfa) validateExpectedValue(formats strfmt.Registry) error {
 
 	if err := validate.Required("expectedValue", "body", m.ExpectedValue); err != nil {
@@ -277,6 +316,10 @@ func (m *PostureCheckFailureMfa) ContextValidate(ctx context.Context, formats st
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateCriteria(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateExpectedValue(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -295,6 +338,22 @@ func (m *PostureCheckFailureMfa) contextValidateActualValue(ctx context.Context,
 				return ve.ValidateName("actualValue")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
 				return ce.ValidateName("actualValue")
+			}
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *PostureCheckFailureMfa) contextValidateCriteria(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Criteria != nil {
+		if err := m.Criteria.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("criteria")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("criteria")
 			}
 			return err
 		}

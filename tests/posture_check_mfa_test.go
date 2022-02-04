@@ -20,6 +20,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
@@ -121,6 +122,18 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+
+			t.Run("failed service request exist", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentitySession.identityId + "/failed-service-requests")
+				ctx.Req.NoError(err)
+
+				listEnvelop := rest_model.FailedServiceRequestEnvelope{}
+				ctx.Req.NoError(json.Unmarshal(resp.Body(), &listEnvelop))
+
+				ctx.Req.NotEmpty(listEnvelop.Data)
+			})
 		})
 
 		t.Run("providing valid posture data", func(t *testing.T) {
@@ -345,6 +358,18 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			ctx.Req.NoError(err)
 
 			ctx.Req.Equal(http.StatusConflict, resp.StatusCode())
+
+			t.Run("failed service request exist", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentitySession.identityId + "/failed-service-requests")
+				ctx.Req.NoError(err)
+
+				listEnvelop := rest_model.FailedServiceRequestEnvelope{}
+				ctx.Req.NoError(json.Unmarshal(resp.Body(), &listEnvelop))
+
+				ctx.Req.NotEmpty(listEnvelop.Data)
+			})
 		})
 
 		t.Run("providing posture data", func(t *testing.T) {

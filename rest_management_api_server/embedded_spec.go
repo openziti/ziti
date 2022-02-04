@@ -18357,11 +18357,15 @@ func init() {
           "type": "object",
           "required": [
             "actualValue",
-            "expectedValue"
+            "expectedValue",
+            "criteria"
           ],
           "properties": {
             "actualValue": {
               "$ref": "#/definitions/postureChecksFailureMfaValues"
+            },
+            "criteria": {
+              "$ref": "#/definitions/postureChecksFailureMfaCriteria"
             },
             "expectedValue": {
               "$ref": "#/definitions/postureChecksFailureMfaValues"
@@ -19021,20 +19025,54 @@ func init() {
       },
       "discriminator": "typeId"
     },
+    "postureChecksFailureMfaCriteria": {
+      "type": "object",
+      "required": [
+        "passedMfaAt",
+        "wokenAt",
+        "unlockedAt",
+        "timeoutSeconds",
+        "timeoutRemainingSeconds"
+      ],
+      "properties": {
+        "passedMfaAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeoutRemainingSeconds": {
+          "type": "integer"
+        },
+        "timeoutSeconds": {
+          "type": "integer"
+        },
+        "unlockedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "wokenAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "postureChecksFailureMfaValues": {
       "type": "object",
       "properties": {
         "passedMfa": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnUnlock": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnWake": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "timedOut": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         }
       }
     },
@@ -19170,20 +19208,29 @@ func init() {
         "apiSessionId",
         "passedMfa",
         "passedOnWake",
-        "passedOnUnlock"
+        "passedOnUnlock",
+        "passedAt"
       ],
       "properties": {
         "apiSessionId": {
           "type": "string"
         },
+        "passedAt": {
+          "type": "string",
+          "format": "date-time",
+          "x-omitempty": false
+        },
         "passedMfa": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnUnlock": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnWake": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         }
       }
     },
@@ -38889,11 +38936,15 @@ func init() {
           "type": "object",
           "required": [
             "actualValue",
-            "expectedValue"
+            "expectedValue",
+            "criteria"
           ],
           "properties": {
             "actualValue": {
               "$ref": "#/definitions/postureChecksFailureMfaValues"
+            },
+            "criteria": {
+              "$ref": "#/definitions/postureChecksFailureMfaCriteria"
             },
             "expectedValue": {
               "$ref": "#/definitions/postureChecksFailureMfaValues"
@@ -39553,20 +39604,54 @@ func init() {
       },
       "discriminator": "typeId"
     },
+    "postureChecksFailureMfaCriteria": {
+      "type": "object",
+      "required": [
+        "passedMfaAt",
+        "wokenAt",
+        "unlockedAt",
+        "timeoutSeconds",
+        "timeoutRemainingSeconds"
+      ],
+      "properties": {
+        "passedMfaAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "timeoutRemainingSeconds": {
+          "type": "integer"
+        },
+        "timeoutSeconds": {
+          "type": "integer"
+        },
+        "unlockedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "wokenAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "postureChecksFailureMfaValues": {
       "type": "object",
       "properties": {
         "passedMfa": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnUnlock": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnWake": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "timedOut": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         }
       }
     },
@@ -39702,20 +39787,29 @@ func init() {
         "apiSessionId",
         "passedMfa",
         "passedOnWake",
-        "passedOnUnlock"
+        "passedOnUnlock",
+        "passedAt"
       ],
       "properties": {
         "apiSessionId": {
           "type": "string"
         },
+        "passedAt": {
+          "type": "string",
+          "format": "date-time",
+          "x-omitempty": false
+        },
         "passedMfa": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnUnlock": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         },
         "passedOnWake": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-omitempty": false
         }
       }
     },

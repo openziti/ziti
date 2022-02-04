@@ -42,16 +42,16 @@ import (
 type PostureChecksFailureMfaValues struct {
 
 	// passed mfa
-	PassedMfa bool `json:"passedMfa,omitempty"`
+	PassedMfa bool `json:"passedMfa"`
 
 	// passed on unlock
-	PassedOnUnlock bool `json:"passedOnUnlock,omitempty"`
+	PassedOnUnlock bool `json:"passedOnUnlock"`
 
 	// passed on wake
-	PassedOnWake bool `json:"passedOnWake,omitempty"`
+	PassedOnWake bool `json:"passedOnWake"`
 
 	// timed out
-	TimedOut bool `json:"timedOut,omitempty"`
+	TimedOut bool `json:"timedOut"`
 }
 
 // Validate validates this posture checks failure mfa values

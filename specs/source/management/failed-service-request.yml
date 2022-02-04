@@ -183,20 +183,51 @@ definitions:
         required:
           - actualValue
           - expectedValue
+          - criteria
         properties:
           actualValue:
             $ref: '#/definitions/postureChecksFailureMfaValues'
           expectedValue:
             $ref: '#/definitions/postureChecksFailureMfaValues'
+          criteria:
+            $ref: '#/definitions/postureChecksFailureMfaCriteria'
+
 
   postureChecksFailureMfaValues:
     type: object
     properties:
       passedMfa:
         type: boolean
+        x-omitempty: false
       passedOnWake:
         type: boolean
+        x-omitempty: false
       passedOnUnlock:
         type: boolean
+        x-omitempty: false
       timedOut:
         type: boolean
+        x-omitempty: false
+
+  postureChecksFailureMfaCriteria:
+    type: object
+    required:
+      - passedMfaAt
+      - wokenAt
+      - unlockedAt
+      - timeoutSeconds
+      - timeoutRemainingSeconds
+    properties:
+        passedMfaAt:
+          type: string
+          format: date-time
+        wokenAt:
+          type: string
+          format: date-time
+        unlockedAt:
+          type: string
+          format: date-time
+        timeoutSeconds:
+          type: integer
+        timeoutRemainingSeconds:
+          type: integer
