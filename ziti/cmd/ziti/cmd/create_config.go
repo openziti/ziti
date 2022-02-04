@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -148,49 +147,9 @@ func NewCmdCreateConfig() *cobra.Command {
 	templateData.populateEnvVars()
 	templateData.populateDefaults()
 
-	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
-		"The following environment variables can be set to override config values (current value is displayed):\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s",
-		cmdhelper.ZitiHomeVarName, templateData.ZitiHome,
-		cmdhelper.ZitiCtrlListenerHostPortVarName, templateData.Controller.ListenerHostPort,
-		cmdhelper.ZitiCtrlMgmtListenerHostPortVarName, templateData.Controller.MgmtListenerHostPort,
-		cmdhelper.ZitiCtrlNameVarName, templateData.Controller.Name,
-		cmdhelper.ZitiEdgeCtrlListenerHostPortVarName, templateData.Controller.Edge.ListenerHostPort,
-		cmdhelper.ZitiEdgeCtrlAdvertisedHostPortVarName, templateData.Controller.Edge.AdvertisedHostPort,
-		cmdhelper.ZitiEdgeRouterHostnameVarName, templateData.Router.Edge.Hostname,
-		cmdhelper.ZitiEdgeRouterPortVarName, templateData.Router.Edge.Port,
-		cmdhelper.ZitiCtrlIdentityCertVarName, templateData.Controller.IdentityCert,
-		cmdhelper.ZitiCtrlIdentityServerCertVarName, templateData.Controller.IdentityServerCert,
-		cmdhelper.ZitiCtrlIdentityKeyVarName, templateData.Controller.IdentityKey,
-		cmdhelper.ZitiCtrlIdentityCAVarName, templateData.Controller.IdentityCA,
-		cmdhelper.ZitiEdgeCtrlIdentityCertVarName, templateData.Controller.Edge.IdentityCert,
-		cmdhelper.ZitiEdgeCtrlIdentityServerCertVarName, templateData.Controller.Edge.IdentityServerCert,
-		cmdhelper.ZitiEdgeCtrlIdentityKeyVarName, templateData.Controller.Edge.IdentityKey,
-		cmdhelper.ZitiEdgeCtrlIdentityCAVarName, templateData.Controller.Edge.IdentityCA,
-		cmdhelper.ZitiSigningCertVarName, templateData.ZitiSigningCert,
-		cmdhelper.ZitiSigningKeyVarName, templateData.ZitiSigningKey)
-
-	cmd.Long = createConfigLong
-
 	cmd.AddCommand(NewCmdCreateConfigController(templateData))
 	cmd.AddCommand(NewCmdCreateConfigRouter(templateData))
+	cmd.AddCommand(NewCmdCreateConfigEnvironment(templateData))
 
 	return cmd
 }
@@ -209,75 +168,75 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 
 	// Get and add ziti home to the params
 	zitiHome, err := cmdhelper.GetZitiHome()
-	handleVariableError(err, cmdhelper.ZitiHomeVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiHomeVarName)
 
 	// Get Ziti Controller Name
 	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlName()
-	handleVariableError(err, cmdhelper.ZitiCtrlNameVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlNameVarName)
 
 	// Get Ziti Edge Router Hostname
 	zitiEdgeRouterHostName, err := cmdhelper.GetZitiEdgeRouterHostname()
-	handleVariableError(err, cmdhelper.ZitiEdgeRouterHostnameVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiEdgeRouterHostnameVarName)
 
 	// Get Ziti Edge Router Port
 	zitiEdgeRouterPort, err := cmdhelper.GetZitiEdgeRouterPort()
-	handleVariableError(err, cmdhelper.ZitiEdgeRouterPortVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiEdgeRouterPortVarName)
 
 	// Get Ziti Controller Identity Cert
 	zitiCtrlIdentityCert, err := cmdhelper.GetZitiIdentityCert()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCertVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityCertVarName)
 
 	// Get Ziti Controller Identity Server Cert
 	zitiCtrlIdentityServerCert, err := cmdhelper.GetZitiIdentityServerCert()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityServerCertVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityServerCertVarName)
 
 	// Get Ziti Controller Identity Key
 	zitiCtrlIdentityKey, err := cmdhelper.GetZitiIdentityKey()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityKeyVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityKeyVarName)
 
 	// Get Ziti Controller Identity CA
 	zitiCtrlIdentityCA, err := cmdhelper.GetZitiIdentityCA()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCAVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Edge Controller Identity Cert
 	zitiEdgeCtrlIdentityCert, err := cmdhelper.GetZitiEdgeIdentityCert()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCertVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityCertVarName)
 
 	// Get Ziti Edge Controller Identity Server Cert
 	zitiEdgeCtrlIdentityServerCert, err := cmdhelper.GetZitiEdgeIdentityServerCert()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityServerCertVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityServerCertVarName)
 
 	// Get Ziti Edge Controller Identity Key
 	zitiEdgeCtrlIdentityKey, err := cmdhelper.GetZitiEdgeIdentityKey()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityKeyVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityKeyVarName)
 
 	// Get Ziti Edge Controller Identity CA
 	zitiEdgeCtrlIdentityCA, err := cmdhelper.GetZitiEdgeIdentityCA()
-	handleVariableError(err, cmdhelper.ZitiCtrlIdentityCAVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Controller Listener Host and Port
 	zitiCtrlListenerHostPort, err := cmdhelper.GetZitiCtrlListenerHostPort()
-	handleVariableError(err, cmdhelper.ZitiCtrlListenerHostPortVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlListenerHostPortVarName)
 
 	// Get Ziti Controller Management Host and Port
 	zitiCtrlMgmtListenerHostPort, err := cmdhelper.GetZitiCtrlMgmtListenerHostPort()
-	handleVariableError(err, cmdhelper.ZitiCtrlMgmtListenerHostPortVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiCtrlMgmtListenerHostPortVarName)
 
 	// Get Ziti Signing Cert
 	zitiSigningCert, err := cmdhelper.GetZitiSigningCert()
-	handleVariableError(err, cmdhelper.ZitiSigningCertVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiSigningCertVarName)
 
 	// Get Ziti Signing Key
 	zitiSigningKey, err := cmdhelper.GetZitiSigningKey()
-	handleVariableError(err, cmdhelper.ZitiSigningKeyVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiSigningKeyVarName)
 
 	// Get Ziti Edge Controller Listener Host and Port
 	zitiEdgeCtrlListenerHostPort, err := cmdhelper.GetZitiEdgeCtrlListenerHostPort()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlListenerHostPortVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiEdgeCtrlListenerHostPortVarName)
 
 	// Get Ziti Edge Controller Advertised Host and Port
 	zitiEdgeCtrlAdvertisedHostPort, err := cmdhelper.GetZitiEdgeCtrlAdvertisedHostPort()
-	handleVariableError(err, cmdhelper.ZitiEdgeCtrlAdvertisedHostPortVarName)
+	handleVariableError(err, cmdhelper.EnvVariableNames.ZitiEdgeCtrlAdvertisedHostPortVarName)
 
 	// data.ZitiPKI = zitiPKI
 	data.ZitiHome = zitiHome
