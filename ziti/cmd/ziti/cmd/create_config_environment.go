@@ -52,7 +52,7 @@ var environmentConfigTemplate string
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
 	ConfigTemplateValues
-	cmdhelper.EnvVariables
+	cmdhelper.EnvVariableMetaData
 	output string
 }
 
@@ -60,7 +60,7 @@ type CreateConfigEnvironmentOptions struct {
 func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 	environmentOptions := &CreateConfigEnvironmentOptions{
 		ConfigTemplateValues: *data,
-		EnvVariables:         cmdhelper.EnvVariableNames,
+		EnvVariableMetaData:  cmdhelper.EnvVariableDetails,
 	}
 
 	cmd := &cobra.Command{
@@ -98,42 +98,42 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 
 	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
 		"The following environment variables can be set to override config values (current value is displayed):\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s\n"+
-		"%-36s %s",
-		cmdhelper.EnvVariableNames.ZitiHomeVarName, data.ZitiHome,
-		cmdhelper.EnvVariableNames.ZitiCtrlListenerHostPortVarName, data.Controller.ListenerHostPort,
-		cmdhelper.EnvVariableNames.ZitiCtrlMgmtListenerHostPortVarName, data.Controller.MgmtListenerHostPort,
-		cmdhelper.EnvVariableNames.ZitiCtrlNameVarName, data.Controller.Name,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlListenerHostPortVarName, data.Controller.Edge.ListenerHostPort,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlAdvertisedHostPortVarName, data.Controller.Edge.AdvertisedHostPort,
-		cmdhelper.EnvVariableNames.ZitiEdgeRouterHostnameVarName, data.Router.Edge.Hostname,
-		cmdhelper.EnvVariableNames.ZitiEdgeRouterPortVarName, data.Router.Edge.Port,
-		cmdhelper.EnvVariableNames.ZitiCtrlIdentityCertVarName, data.Controller.IdentityCert,
-		cmdhelper.EnvVariableNames.ZitiCtrlIdentityServerCertVarName, data.Controller.IdentityServerCert,
-		cmdhelper.EnvVariableNames.ZitiCtrlIdentityKeyVarName, data.Controller.IdentityKey,
-		cmdhelper.EnvVariableNames.ZitiCtrlIdentityCAVarName, data.Controller.IdentityCA,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlIdentityCertVarName, data.Controller.Edge.IdentityCert,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlIdentityServerCertVarName, data.Controller.Edge.IdentityServerCert,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlIdentityKeyVarName, data.Controller.Edge.IdentityKey,
-		cmdhelper.EnvVariableNames.ZitiEdgeCtrlIdentityCAVarName, data.Controller.Edge.IdentityCA,
-		cmdhelper.EnvVariableNames.ZitiSigningCertVarName, data.ZitiSigningCert,
-		cmdhelper.EnvVariableNames.ZitiSigningKeyVarName, data.ZitiSigningKey)
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s",
+		cmdhelper.EnvVariableDetails.ZitiHomeVarName, cmdhelper.EnvVariableDetails.ZitiHomeVarDescription, data.ZitiHome,
+		cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarDescription, data.Controller.ListenerHostPort,
+		cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarDescription, data.Controller.MgmtListenerHostPort,
+		cmdhelper.EnvVariableDetails.ZitiCtrlNameVarName, cmdhelper.EnvVariableDetails.ZitiCtrlNameVarDescription, data.Controller.Name,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
+		cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname,
+		cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
+		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
+		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
+		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,
+		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarDescription, data.Controller.IdentityCA,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarDescription, data.Controller.Edge.IdentityCert,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey,
+		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
+		cmdhelper.EnvVariableDetails.ZitiSigningCertVarName, cmdhelper.EnvVariableDetails.ZitiSigningCertVarDescription, data.ZitiSigningCert,
+		cmdhelper.EnvVariableDetails.ZitiSigningKeyVarName, cmdhelper.EnvVariableDetails.ZitiSigningKeyVarDescription, data.ZitiSigningKey)
 
 	cmd.Long = createConfigLong
 
