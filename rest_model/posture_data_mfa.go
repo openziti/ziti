@@ -47,6 +47,11 @@ type PostureDataMfa struct {
 	// Required: true
 	APISessionID *string `json:"apiSessionId"`
 
+	// passed at
+	// Required: true
+	// Format: date-time
+	PassedAt *strfmt.DateTime `json:"passedAt"`
+
 	// passed mfa
 	// Required: true
 	PassedMfa *bool `json:"passedMfa"`
@@ -65,6 +70,10 @@ func (m *PostureDataMfa) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAPISessionID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePassedAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -89,6 +98,19 @@ func (m *PostureDataMfa) Validate(formats strfmt.Registry) error {
 func (m *PostureDataMfa) validateAPISessionID(formats strfmt.Registry) error {
 
 	if err := validate.Required("apiSessionId", "body", m.APISessionID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *PostureDataMfa) validatePassedAt(formats strfmt.Registry) error {
+
+	if err := validate.Required("passedAt", "body", m.PassedAt); err != nil {
+		return err
+	}
+
+	if err := validate.FormatOf("passedAt", "body", "date-time", m.PassedAt.String(), formats); err != nil {
 		return err
 	}
 

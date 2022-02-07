@@ -324,6 +324,14 @@ func MapPostureCheckFailureMfaToRestModel(failure *model.PostureCheckFailure) *r
 			PassedOnWake:   val.ExpectedValue.PassedOnWake,
 			TimedOut:       val.ExpectedValue.TimedOutSeconds,
 		}
+
+		ret.Criteria = &rest_model.PostureChecksFailureMfaCriteria{
+			PassedMfaAt:             DateTimePtrOrNil(val.Criteria.PassedMfaAt),
+			TimeoutSeconds:          &val.Criteria.TimeoutSeconds,
+			TimeoutRemainingSeconds: &val.Criteria.TimeoutRemainingSeconds,
+			UnlockedAt:              DateTimePtrOrNil(val.Criteria.UnlockedAt),
+			WokenAt:                 DateTimePtrOrNil(val.Criteria.WokenAt),
+		}
 	} else {
 		pfxlog.Logger().Errorf("could not convert failure values of %T for posture check %s, expected mfa", failure.PostureCheckFailureValues, failure.PostureCheckId)
 	}

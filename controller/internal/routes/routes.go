@@ -17,6 +17,7 @@
 package routes
 
 import (
+	"github.com/go-openapi/strfmt"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
@@ -24,6 +25,7 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type ModelToApiMapper func(*env.AppEnv, *response.RequestContext, models.Entity) (interface{}, error)
@@ -123,4 +125,12 @@ func Int64OrDefault(val *int64) int64 {
 	}
 
 	return *val
+}
+
+func DateTimePtrOrNil(time *time.Time) *strfmt.DateTime {
+	if time == nil {
+		return nil
+	}
+	dateTime := strfmt.DateTime(*time)
+	return &dateTime
 }

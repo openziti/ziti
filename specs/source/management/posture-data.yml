@@ -107,15 +107,23 @@ definitions:
       - passedMfa
       - passedOnWake
       - passedOnUnlock
+      - passedAt
     properties:
       apiSessionId:
         type: string
+      passedAt:
+        type: string
+        format: date-time
+        x-omitempty: false
       passedMfa:
         type: boolean
+        x-omitempty: false
       passedOnWake:
         type: boolean
+        x-omitempty: false
       passedOnUnlock:
         type: boolean
+        x-omitempty: false
   postureDataEndpointState:
     type: object
     required:
