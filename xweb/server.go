@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/xweb/middleware"
 	"github.com/openziti/foundation/util/debugz"
 	"io"
 	"log"
@@ -139,9 +140,10 @@ func NewServer(webListener *WebListener, demuxFactory DemuxFactory, handlerFacto
 }
 
 func (server *Server) wrapHandler(_ *WebListener, point *BindPoint, handler http.Handler) http.Handler {
-	handler = server.wrapPanicRecovery(handler)
+	//innermost/bottom -> outermost/top
 	handler = server.wrapSetCtrlAddressHeader(point, handler)
-
+	handler = server.wrapPanicRecovery(handler)
+	handler = middleware.NewCompressionHandler(handler)
 	return handler
 }
 
