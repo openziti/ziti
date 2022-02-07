@@ -20,8 +20,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/spf13/cobra"
 	"sort"
 	"time"
@@ -46,40 +46,34 @@ func listCircuits(cmd *cobra.Command, args []string) {
 		if err != nil {
 			panic(err)
 		}
-		requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListCircuitsRequestType), body)
-		waitCh, err := ch.SendAndWait(requestMsg)
+		requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_ListCircuitsRequestType), body)
+		responseMsg, err := requestMsg.WithTimeout(5 * time.Second).SendForReply(ch)
 		if err != nil {
 			panic(err)
 		}
-		select {
-		case responseMsg := <-waitCh:
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListCircuitsResponseType) {
-				response := &mgmt_pb.ListCircuitsResponse{}
-				err := proto.Unmarshal(responseMsg.Body, response)
-				if err == nil {
-					out := fmt.Sprintf("\nCircuits: (%d)\n\n", len(response.Circuits))
-					out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", "Id", "Client", "Service", "Path")
-					sort.Slice(response.Circuits, func(i, j int) bool {
-						if response.Circuits[i].ServiceId == response.Circuits[j].ServiceId {
-							return response.Circuits[i].Id < response.Circuits[j].Id
-						}
-						return response.Circuits[i].ServiceId < response.Circuits[j].ServiceId
-					})
-					for _, s := range response.Circuits {
-						out += fmt.Sprintf("%-12s | %-12s | %-12s | %s", s.Id, s.ClientId, s.ServiceId, s.Path.CalculateDisplayPath())
+		if responseMsg.ContentType == int32(mgmt_pb.ContentType_ListCircuitsResponseType) {
+			response := &mgmt_pb.ListCircuitsResponse{}
+			err := proto.Unmarshal(responseMsg.Body, response)
+			if err == nil {
+				out := fmt.Sprintf("\nCircuits: (%d)\n\n", len(response.Circuits))
+				out += fmt.Sprintf("%-12s | %-12s | %-12s | %s\n", "Id", "Client", "Service", "Path")
+				sort.Slice(response.Circuits, func(i, j int) bool {
+					if response.Circuits[i].ServiceId == response.Circuits[j].ServiceId {
+						return response.Circuits[i].Id < response.Circuits[j].Id
 					}
-					out += "\n"
-					fmt.Print(out)
-
-				} else {
-					panic(err)
+					return response.Circuits[i].ServiceId < response.Circuits[j].ServiceId
+				})
+				for _, s := range response.Circuits {
+					out += fmt.Sprintf("%-12s | %-12s | %-12s | %s", s.Id, s.ClientId, s.ServiceId, s.Path.CalculateDisplayPath())
 				}
-			} else {
-				panic(errors.New("unexpected response"))
-			}
+				out += "\n"
+				fmt.Print(out)
 
-		case <-time.After(5 * time.Second):
-			panic(errors.New("timeout"))
+			} else {
+				panic(err)
+			}
+		} else {
+			panic(errors.New("unexpected response"))
 		}
 	} else {
 		panic(err)
