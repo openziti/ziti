@@ -78,6 +78,8 @@ github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuy
 github.com/alecthomas/units v0.0.0-20151022065526-2efee857e7cf/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/alecthomas/units v0.0.0-20190717042225-c3de453c63f4/go.mod h1:ybxpYRFXyAe+OPACYpWeL0wqObRcbAqCMya13uyzqw0=
 github.com/andreyvit/diff v0.0.0-20170406064948-c7f18ee00883/go.mod h1:rCTlJbsFo29Kk6CurOXKm700vrz8f0KW0JNfpkRJY/8=
+github.com/andybalholm/brotli v1.0.4 h1:V7DdXeJtZscaqfNuAdSRuRFzuiKlHSC/Zh3zl9qY3JY=
+github.com/andybalholm/brotli v1.0.4/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd h1:fjJY1LimH0wVCvOHLX35SCX/MbWomAglET1H2kvz7xc=
@@ -682,8 +684,8 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/channel v0.18.5 h1:XRsFOozgW6pbCsmEyKBPISKdc4QxttZOKnKVsCHiRHY=
 github.com/openziti/channel v0.18.5/go.mod h1:pjoD6e9QgDGnaiakRA+s8YT/FzUHWDhJJF573oOJkXg=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.37 h1:a+Sr0QCdSPBmelR5PUWZL+LYKfqXmCZiVT5MKnRpc4A=
-github.com/openziti/fabric v0.17.37/go.mod h1:27CHB+/72lh2IkD20mO6G6ipyMCwUGCD+QlUmVMxSoA=
+github.com/openziti/fabric v0.17.38 h1:IGXizzsrIH9vU/PxZ6v6TsPxxwW5D9Ddm+laW0KIgFQ=
+github.com/openziti/fabric v0.17.38/go.mod h1:OxhJHlIF1LWk7nX7khIqso4wYQkIz+Hen3tilhyeVag=
 github.com/openziti/foundation v0.17.1 h1:SC0AJq8AfmvNObBX+avzITp1mMh2jnPy19menT7Pe7g=
 github.com/openziti/foundation v0.17.1/go.mod h1:qzctNeCrOrPDQDr9g70IPHw+awal87qPqRe3UJLwNXw=
 github.com/openziti/sdk-golang v0.16.2 h1:0j38N8x8m7AnG2dt9hoJBtdRVWdTT/HWg7NGhyNBZUE=
