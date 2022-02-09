@@ -44,8 +44,12 @@ import (
 type Semantic string
 
 func NewSemantic(value Semantic) *Semantic {
-	v := value
-	return &v
+	return &value
+}
+
+// Pointer returns a pointer to a freshly-allocated Semantic.
+func (m Semantic) Pointer() *Semantic {
+	return &m
 }
 
 const (

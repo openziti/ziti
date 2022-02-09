@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"time"
 )
 
 type PostureCheck struct {
@@ -44,6 +45,11 @@ type PostureCheckSubType interface {
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
 	GetTimeoutSeconds() int64
 	GetTimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64
+
+	// LastUpdatedAt returns the last time the posture check changed state. Triggers endpoint clients to inspect
+	// the posture query for relevant information (timeouts, passing state, etc.). If not supported or no current
+	// mutation is known, nil is returned
+	LastUpdatedAt(id string, pd *PostureData) *time.Time
 }
 
 type PostureCheckFailureValues interface {
@@ -148,4 +154,8 @@ func (entity *PostureCheck) TimeoutSeconds() int64 {
 
 func (entity *PostureCheck) TimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64 {
 	return entity.SubType.GetTimeoutRemainingSeconds(apiSessionId, pd)
+}
+
+func (entity *PostureCheck) LastUpdateAt(apiSessionId string, pd *PostureData) *time.Time {
+	return entity.SubType.LastUpdatedAt(apiSessionId, pd)
 }

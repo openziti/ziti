@@ -11870,9 +11870,9 @@ definitions:
     type: object
     required:
     - meta
-    - error
+    - data
     properties:
-      error:
+      data:
         $ref: '#/definitions/detailMfa'
       meta:
         $ref: '#/definitions/meta'

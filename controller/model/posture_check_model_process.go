@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
 	"strings"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckProcess{}
@@ -31,6 +32,10 @@ type PostureCheckProcess struct {
 	Path           string
 	Hashes         []string
 	Fingerprint    string
+}
+
+func (p *PostureCheckProcess) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+	return nil
 }
 
 func (p *PostureCheckProcess) GetTimeoutSeconds() int64 {

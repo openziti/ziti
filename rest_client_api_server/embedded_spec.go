@@ -4293,10 +4293,10 @@ func init() {
       "type": "object",
       "required": [
         "meta",
-        "error"
+        "data"
       ],
       "properties": {
-        "error": {
+        "data": {
           "$ref": "#/definitions/detailMfa"
         },
         "meta": {
@@ -10006,10 +10006,10 @@ func init() {
       "type": "object",
       "required": [
         "meta",
-        "error"
+        "data"
       ],
       "properties": {
-        "error": {
+        "data": {
           "$ref": "#/definitions/detailMfa"
         },
         "meta": {

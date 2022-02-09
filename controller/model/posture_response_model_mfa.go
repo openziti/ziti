@@ -24,7 +24,7 @@ const (
 
 type PostureResponseMfa struct {
 	*PostureResponse
-	ApiSessionId string    `json:"-"`
+	ApiSessionId string     `json:"-"`
 	PassedMfaAt  *time.Time `json:"passedMfaAt"`
 }
 

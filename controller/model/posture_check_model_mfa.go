@@ -41,6 +41,29 @@ type PostureCheckMfa struct {
 	IgnoreLegacyEndpoints bool
 }
 
+func (p *PostureCheckMfa) LastUpdatedAt(apiSessionId string, pd *PostureData) *time.Time {
+	apiSessionData := pd.ApiSessions[apiSessionId]
+
+	//not enough data yet
+	if apiSessionData == nil || apiSessionData.Mfa == nil || apiSessionData.EndpointState == nil {
+		return nil
+	}
+
+	var ret *time.Time = nil
+
+	if p.PromptOnWake && apiSessionData.EndpointState.WokenAt != nil {
+		ret = apiSessionData.EndpointState.WokenAt
+	}
+
+	if p.PromptOnUnlock && apiSessionData.EndpointState.UnlockedAt != nil {
+		if ret == nil || apiSessionData.EndpointState.UnlockedAt.After(*ret) {
+			ret = apiSessionData.EndpointState.UnlockedAt
+		}
+	}
+
+	return ret
+}
+
 func (p *PostureCheckMfa) IsLegacyClient(apiSessionData *ApiSessionPostureData) bool {
 	if apiSessionData.SdkInfo == nil {
 		return true // don't know what it is
@@ -154,7 +177,7 @@ func (p *PostureCheckMfa) FailureValues(apiSessionId string, pd *PostureData) Po
 	}
 
 	ret.Criteria.TimeoutSeconds = p.GetTimeoutSeconds()
-	
+
 	if apiSessionData, ok := pd.ApiSessions[apiSessionId]; ok {
 		if apiSessionData.Mfa != nil {
 			ret.ActualValue.TimedOutSeconds = apiSessionData.Mfa.TimedOut

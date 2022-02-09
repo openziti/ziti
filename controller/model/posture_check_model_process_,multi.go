@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckProcessMulti{}
@@ -30,6 +31,10 @@ type PostureCheckProcessMulti struct {
 	PostureCheckId string
 	Semantic       string
 	Processes      []*ProcessMulti
+}
+
+func (p *PostureCheckProcessMulti) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+	return nil
 }
 
 func (p *PostureCheckProcessMulti) GetTimeoutSeconds() int64 {

@@ -24,12 +24,17 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 	"strings"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckOperatingSystem{}
 
 type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
+}
+
+func (p *PostureCheckOperatingSystem) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+	return nil
 }
 
 func (p *PostureCheckOperatingSystem) GetTimeoutRemainingSeconds(_ string, _ *PostureData) int64 {
@@ -42,7 +47,7 @@ func (p *PostureCheckOperatingSystem) GetTimeoutSeconds() int64 {
 
 func (p *PostureCheckOperatingSystem) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	return &PostureCheckFailureValuesOperatingSystem{
-		ActualValue: pd.Os,
+		ActualValue:   pd.Os,
 		ExpectedValue: p.OperatingSystems,
 	}
 }
