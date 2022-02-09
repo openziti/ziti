@@ -253,8 +253,9 @@ func (network *Network) ConnectRouter(r *Router) {
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
-		h.RouterConnected(r)
+		go h.RouterConnected(r)
 	}
+	go network.ValidateTerminators(r)
 }
 
 func (network *Network) ValidateTerminators(r *Router) {

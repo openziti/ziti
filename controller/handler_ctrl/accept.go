@@ -52,12 +52,16 @@ func (self *CtrlAccepter) Run() {
 	defer log.Warn("exited")
 
 	for {
-		_, err := channel.NewChannel("ctrl", self.listener, channel.BindHandlerF(self.Bind), self.options)
+		ch, err := channel.NewChannel("ctrl", self.listener, channel.BindHandlerF(self.Bind), self.options)
 		if err != nil {
 			log.WithError(err).Error("error accepting control channel connection")
 			if err.Error() == "closed" {
 				return
 			}
+		} else if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
+			go self.network.ConnectRouter(r)
+		} else {
+			log.WithError(err).Error("error getting router for control channel")
 		}
 	}
 }
@@ -98,9 +102,6 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		if self.traceHandler != nil {
 			binding.AddPeekHandler(self.traceHandler)
 		}
-
-		self.network.ConnectRouter(r)
-		self.network.ValidateTerminators(r)
 
 		log.Infof("accepted new router connection [r/%s]", r.Id)
 	}
