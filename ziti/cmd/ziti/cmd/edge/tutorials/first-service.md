@@ -22,6 +22,8 @@ you can use the quick-start script found [here](https://github.com/openziti/ziti
 
 Let's make sure we can connect with the controller. We're going to log in with the Ziti CLI, which will then let us run the rest of our operations.
 
+NOTE: If you've used the quickstart, then your username and password can be found in `$HOME/.ziti/quickstart/$(hostname)/$(hostname).env`
+
 ```action:ziti-login allowRetry=true
 ziti edge login
 ```
@@ -44,14 +46,14 @@ Pick the name of an edge router to use. It will be referenced in this tutorial a
 
 ### Cleanup Tutorial Entities
 
-Finally, in case you've run this tutorial before or have done other experimentation with this sytem the tutorial may not run cleanly. To ensure a clean run we're going to clean up any entities that would conflict with entities created as part of this tutorial.
+Finally, in case you've run this tutorial before or have done other experimentation with this system the tutorial may not run cleanly. To ensure a clean run we're going to clean up any entities that would conflict with entities created as part of this tutorial.
 
 ```action:ziti
 ziti edge delete service echo
 ziti edge delete identities founder-laptop echo-server
-ziti edge delete service-policies echo-clients echo-servers
-ziti edge delete edge-router-policies echo-clients echo-servers
-ziti edge delete service-edge-router-policy echo 
+ziti edge delete service-policies where true
+ziti edge delete edge-router-policies where true
+ziti edge delete service-edge-router-policies where true 
 ```
 
 # Setting up the Echo Service
@@ -138,7 +140,7 @@ ziti edge list terminators 'service.name="echo"'
 
 # Client Application
 
-In order to use the echo service, we need a client application. Our application could embed a Ziti SDK, but unmodified applications can also access Ziti services using a tunneler application. See [Tunnelers](https://openziti.github.io/ziti/clients/tunneler.html) for more information. Even though we're not covering tunnelers here, they are built with the Ziti SDKS. Therefore, all the following setup and configuration applies to them.
+In order to use the echo service, we need a client application. Our application could embed a Ziti SDK, but unmodified applications can also access Ziti services using a tunneler application. See [Tunnelers](https://openziti.github.io/ziti/clients/tunneler.html) for more information. Even though we're not covering tunnelers here, they are built with the Ziti SDKs. Therefore, all the following setup and configuration applies to them.
 
 <!---action:pause -->
 
@@ -329,7 +331,7 @@ We should now finally be able to run the client and get some validation.
 ziti edge tutorial ziti-echo-client --identity founder-laptop.json trees are tall
 ```
 
-We have our first successful connecton through Ziti! **\o/**
+We have our first successful connection through Ziti! **\o/**
 
 <!---action:pause-->
 
@@ -339,7 +341,7 @@ Now that we’ve gotten our end-to-end test working let’s replace our plain se
 
 ## Clean up plain server
 
-Before configuring and running our ziti-embedded server, we're going to stop the plain server and remove any related configurion.
+Before configuring and running our ziti-embedded server, we're going to stop the plain server and remove any related configuration.
 
 ```action:stop-plain-echo-server
 Stop the plain echo server
