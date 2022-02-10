@@ -171,7 +171,7 @@ function getLatestZiti {
     return 1
   fi
 
-  export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"
+  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"; else echo "Using ZITI_BIN_DIR: ${ZITI_BIN_DIR}"; fi
 
   ZITI_BINARIES_FILE_ABSPATH="${ZITI_HOME-}/ziti-bin/${ZITI_BINARIES_FILE}"
   if ! test -f "${ZITI_BINARIES_FILE_ABSPATH}"; then
@@ -855,7 +855,7 @@ cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGN
 echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
 
 output_file="${ZITI_HOME}/${controller_name}.yaml"
-"${ZITI_BIN_DIR}/ziti" create config controller > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config controller --ctrlListener 0.0.0.0:1280 > "${output_file}"
 
 echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
