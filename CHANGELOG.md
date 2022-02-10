@@ -1,3 +1,7 @@
+# Release 0.24.8
+
+* Bug fix: Move control change presence handler notification out of bind handler
+
 # Release 0.24.7
 
 * Bug fix: bbolt deadlock that could happen if posture cache evaluation coincided with a bbolt mmap operation
