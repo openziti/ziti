@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	optionCtrlListener = "ctrlListener"
+	optionCtrlPort     = "ctrlPort"
 	optionMgmtListener = "mgmtListener"
 	optionDatabaseFile = "databaseFile"
 )
@@ -46,7 +46,7 @@ var (
 		ziti create config controller
 
 		# Create the controller config with a particular ctrlListener host and port
-		ziti create config controller --ctrlListener 0.0.0.0:6262
+		ziti create config controller --ctrlPort 6262
 
 		# Print the controller config to the console
 		ziti create config controller --output stdout
@@ -63,7 +63,7 @@ var controllerConfigTemplate string
 type CreateConfigControllerOptions struct {
 	CreateConfigOptions
 
-	CtrlListener string
+	CtrlPort     string
 	MgmtListener string
 }
 
@@ -92,8 +92,8 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
-			if data.Controller.ListenerHostPort == "" || controllerOptions.CtrlListener != constants.DefaultZitiEdgeListenerHostPort {
-				data.Controller.ListenerHostPort = controllerOptions.CtrlListener
+			if data.Controller.Port == "" || controllerOptions.CtrlPort != constants.DefaultZitiControllerPort {
+				data.Controller.Port = controllerOptions.CtrlPort
 			}
 			if data.Controller.MgmtListenerHostPort == "" || controllerOptions.MgmtListener != constants.DefaultZitiMgmtControllerListenerHostPort {
 				data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
@@ -117,7 +117,7 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, constants.DefaultZitiControllerListenerHostPort, "address and port of the config controller listener")
+	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultZitiControllerPort, "port to use for the config controller")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
 	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, constants.DefaultZitiMgmtControllerListenerHostPort, "address and port of the config management listener")
 }

@@ -54,7 +54,9 @@ type ConfigTemplateValues struct {
 
 type ControllerTemplateValues struct {
 	Name                 string
-	ListenerHostPort     string
+	Port                 string
+	AdvertisedAddress    string
+	ListenerAddress      string
 	MgmtListenerHostPort string
 	IdentityCert         string
 	IdentityServerCert   string
@@ -234,9 +236,17 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiEdgeCtrlIdentityCA, err := cmdhelper.GetZitiEdgeIdentityCA()
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
 
-	// Get Ziti Controller Listener Host and Port
-	zitiCtrlListenerHostPort, err := cmdhelper.GetZitiCtrlListenerHostPort()
-	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarName)
+	// Get Ziti Controller Listener Address
+	zitiCtrlListenerAddress, err := cmdhelper.GetZitiCtrlListenerAddress()
+	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlListenerAddressVarName)
+
+	// Get Ziti Controller Advertised Address
+	zitiCtrlAdvertisedAddress, err := cmdhelper.GetZitiCtrlAdvertisedAddress()
+	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlAdvertisedAddressVarName)
+
+	// Get Ziti Controller Port
+	zitiCtrlPort, err := cmdhelper.GetZitiCtrlPort()
+	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlPortVarName)
 
 	// Get Ziti Controller Management Host and Port
 	zitiCtrlMgmtListenerHostPort, err := cmdhelper.GetZitiCtrlMgmtListenerHostPort()
@@ -263,7 +273,9 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.ZitiSigningCert = zitiSigningCert
 	data.ZitiSigningKey = zitiSigningKey
 	data.Controller.Name = zitiCtrlHostname
-	data.Controller.ListenerHostPort = zitiCtrlListenerHostPort
+	data.Controller.ListenerAddress = zitiCtrlListenerAddress
+	data.Controller.AdvertisedAddress = zitiCtrlAdvertisedAddress
+	data.Controller.Port = zitiCtrlPort
 	data.Controller.MgmtListenerHostPort = zitiCtrlMgmtListenerHostPort
 	data.Controller.Edge.ListenerHostPort = zitiEdgeCtrlListenerHostPort
 	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort

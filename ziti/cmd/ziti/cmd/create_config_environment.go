@@ -119,11 +119,15 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
 		cmdhelper.EnvVariableDetails.ZitiHomeVarName, cmdhelper.EnvVariableDetails.ZitiHomeVarDescription, data.ZitiHome,
-		cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarDescription, data.Controller.ListenerHostPort,
+		cmdhelper.EnvVariableDetails.ZitiCtrlPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlPortVarDescription, data.Controller.Port,
 		cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarDescription, data.Controller.MgmtListenerHostPort,
 		cmdhelper.EnvVariableDetails.ZitiCtrlNameVarName, cmdhelper.EnvVariableDetails.ZitiCtrlNameVarDescription, data.Controller.Name,
+		cmdhelper.EnvVariableDetails.ZitiCtrlAdvertisedAddressVarName, cmdhelper.EnvVariableDetails.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress,
+		cmdhelper.EnvVariableDetails.ZitiCtrlListenerAddressVarName, cmdhelper.EnvVariableDetails.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
 		cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname,
@@ -146,15 +150,8 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 	cmd.Long = createConfigLong
 
 	environmentOptions.addCreateFlags(cmd)
-	environmentOptions.addFlags(cmd)
 
 	return cmd
-}
-
-func (options *CreateConfigEnvironmentOptions) addFlags(cmd *cobra.Command) {
-	// cmd.Flags().StringVar(&options.CtrlListener, optionCtrlListener, constants.DefaultZitiControllerListenerHostPort, "address and port of the config controller listener")
-	// cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
-	// cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, constants.DefaultZitiMgmtControllerListenerHostPort, "address and port of the config management listener")
 }
 
 // run implements the command

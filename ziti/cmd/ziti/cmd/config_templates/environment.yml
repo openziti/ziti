@@ -2,7 +2,13 @@
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiHomeVarName }}={{ .ZitiHome }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlNameVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlNameVarName }}={{ .Controller.Name }}
+{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlPortVarDescription }}
+{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlPortVarName }}={{ .Controller.Port }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeRouterHostnameVarDescription }}
+{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlListenerAddressVarDescription }}
+{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlListenerAddressVarName }}={{ .Controller.ListenerAddress }}
+{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlAdvertisedAddressVarDescription }}
+{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlAdvertisedAddressVarName }}={{ .Controller.AdvertisedAddress }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeRouterHostnameVarName }}={{ .Router.Edge.Hostname }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityCertVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityCertVarName }}={{ .Controller.Edge.IdentityCert }}
@@ -32,8 +38,6 @@
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiSigningCertVarName }}={{ .ZitiSigningCert }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiSigningKeyVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiSigningKeyVarName }}={{ .ZitiSigningKey }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlListenerHostPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlListenerHostPortVarName }}={{ .Controller.ListenerHostPort }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlMgmtListenerHostPortVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlMgmtListenerHostPortVarName }}={{ .Controller.MgmtListenerHostPort }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlListenerHostPortVarDescription }}

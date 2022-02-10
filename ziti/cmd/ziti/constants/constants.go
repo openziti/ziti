@@ -54,7 +54,8 @@ const (
 	DefaultWebListenerMaxTLSVersion           = "TLS1.3"
 	DefaultZitiEdgeAPIPort                    = "1280"
 	DefaultZitiEdgeListenerHostPort           = "0.0.0.0:1280"
-	DefaultZitiControllerListenerHostPort     = "0.0.0.0:6262"
+	DefaultZitiControllerListenerAddress      = "0.0.0.0"
+	DefaultZitiControllerPort                 = "6262"
 	DefaultZitiMgmtControllerListenerHostPort = "0.0.0.0:10000"
 	DefaultControllerHealthCheckIntervalSec   = 30
 	DefaultControllerHealthCheckTimeoutSec    = 15

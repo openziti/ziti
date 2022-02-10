@@ -29,6 +29,7 @@ type EnvVariableMetaData struct {
 	PathSeparator                                string
 	ZitiHomeVarName                              string
 	ZitiCtrlNameVarName                          string
+	ZitiCtrlPortVarName                          string
 	ZitiEdgeRouterHostnameVarName                string
 	ZitiEdgeRouterPortVarName                    string
 	ZitiEdgeCtrlIdentityCertVarName              string
@@ -41,7 +42,6 @@ type EnvVariableMetaData struct {
 	ZitiCtrlIdentityCAVarName                    string
 	ZitiSigningCertVarName                       string
 	ZitiSigningKeyVarName                        string
-	ZitiCtrlListenerHostPortVarName              string
 	ZitiCtrlMgmtListenerHostPortVarName          string
 	ZitiEdgeCtrlListenerHostPortVarName          string
 	ZitiEdgeCtrlAdvertisedHostPortVarName        string
@@ -49,6 +49,8 @@ type EnvVariableMetaData struct {
 	ZitiRouterIdentityServerCertVarName          string
 	ZitiRouterIdentityKeyVarName                 string
 	ZitiRouterIdentityCAVarName                  string
+	ZitiCtrlListenerAddressVarName               string
+	ZitiCtrlAdvertisedAddressVarName             string
 	ZitiHomeVarDescription                       string
 	ZitiCtrlNameVarDescription                   string
 	ZitiEdgeRouterHostnameVarDescription         string
@@ -63,7 +65,9 @@ type EnvVariableMetaData struct {
 	ZitiCtrlIdentityCAVarDescription             string
 	ZitiSigningCertVarDescription                string
 	ZitiSigningKeyVarDescription                 string
-	ZitiCtrlListenerHostPortVarDescription       string
+	ZitiCtrlPortVarDescription                   string
+	ZitiCtrlListenerAddressVarDescription        string
+	ZitiCtrlAdvertisedAddressVarDescription      string
 	ZitiCtrlMgmtListenerHostPortVarDescription   string
 	ZitiEdgeCtrlListenerHostPortVarDescription   string
 	ZitiEdgeCtrlAdvertisedHostPortVarDescription string
@@ -79,6 +83,8 @@ var EnvVariableDetails = EnvVariableMetaData{
 	ZitiHomeVarDescription:                       "Root home directory for Ziti related files",
 	ZitiCtrlNameVarName:                          "ZITI_CONTROLLER_NAME",
 	ZitiCtrlNameVarDescription:                   "The name of the Ziti Controller",
+	ZitiCtrlPortVarName:                          "ZITI_CTRL_PORT",
+	ZitiCtrlPortVarDescription:                   "The port of the Ziti Controller",
 	ZitiEdgeRouterHostnameVarName:                "ZITI_EDGE_ROUTER_HOSTNAME",
 	ZitiEdgeRouterHostnameVarDescription:         "Hostname of the Ziti Edge Router",
 	ZitiEdgeRouterPortVarName:                    "ZITI_EDGE_ROUTER_PORT",
@@ -111,8 +117,10 @@ var EnvVariableDetails = EnvVariableMetaData{
 	ZitiRouterIdentityKeyVarDescription:          "Path to Identity Key for Ziti Router",
 	ZitiRouterIdentityCAVarName:                  "ZITI_ROUTER_IDENTITY_CA",
 	ZitiRouterIdentityCAVarDescription:           "Path to Identity CA for Ziti Router",
-	ZitiCtrlListenerHostPortVarName:              "ZITI_CTRL_LISTENER_HOST_PORT",
-	ZitiCtrlListenerHostPortVarDescription:       "Host and port of the Ziti Controller Listener",
+	ZitiCtrlListenerAddressVarName:               "ZITI_CTRL_LISTENER_ADDRESS",
+	ZitiCtrlListenerAddressVarDescription:        "The Ziti Controller Listener Address",
+	ZitiCtrlAdvertisedAddressVarName:             "ZITI_CTRL_ADVERTISED_ADDRESS",
+	ZitiCtrlAdvertisedAddressVarDescription:      "The Ziti Controller Advertised Address",
 	ZitiCtrlMgmtListenerHostPortVarName:          "ZITI_CTRL_MGMT_HOST_PORT",
 	ZitiCtrlMgmtListenerHostPortVarDescription:   "Host and port of the Ziti Controller Management Listener",
 	ZitiEdgeCtrlListenerHostPortVarName:          "ZITI_CTRL_EDGE_LISTENER_HOST_PORT",
@@ -336,8 +344,24 @@ func GetZitiEdgeIdentityCA() (string, error) {
 	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName), false)
 }
 
-func GetZitiCtrlListenerHostPort() (string, error) {
-	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlListenerHostPortVarName, constants.DefaultZitiControllerListenerHostPort, false)
+func GetZitiCtrlAdvertisedAddress() (string, error) {
+	hostname, err := os.Hostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get hostname")
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlAdvertisedAddressVarName, hostname, false)
+}
+
+func GetZitiCtrlPort() (string, error) {
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlPortVarName, constants.DefaultZitiControllerPort, false)
+}
+
+func GetZitiCtrlListenerAddress() (string, error) {
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlListenerAddressVarName, constants.DefaultZitiControllerListenerAddress, false)
 }
 
 func GetZitiCtrlMgmtListenerHostPort() (string, error) {
