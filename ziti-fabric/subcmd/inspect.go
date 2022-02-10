@@ -17,11 +17,11 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -49,36 +49,31 @@ func inspect(cmd *cobra.Command, args []string) {
 		if err != nil {
 			panic(err)
 		}
-		requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_InspectRequestType), body)
-		waitCh, err := ch.SendAndWait(requestMsg)
+		requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_InspectRequestType), body)
+		responseMsg, err := requestMsg.WithTimeout(10 * time.Second).SendForReply(ch)
 		if err != nil {
 			panic(err)
 		}
-		select {
-		case responseMsg := <-waitCh:
-			if responseMsg.ContentType == int32(mgmt_pb.ContentType_InspectResponseType) {
-				response := &mgmt_pb.InspectResponse{}
-				err := proto.Unmarshal(responseMsg.Body, response)
-				if err != nil {
-					panic(err)
-				}
-				if response.Success {
-					fmt.Printf("\nResults: (%d)\n", len(response.Values))
-					for _, value := range response.Values {
-						fmt.Printf("%v.%v\n", value.AppId, value.Name)
-						fmt.Printf("%v\n\n", value.Value)
-					}
-				} else {
-					fmt.Printf("\nEncountered errors: (%d)\n", len(response.Errors))
-					for _, err := range response.Errors {
-						fmt.Printf("\t%v\n", err)
-					}
+		if responseMsg.ContentType == int32(mgmt_pb.ContentType_InspectResponseType) {
+			response := &mgmt_pb.InspectResponse{}
+			err := proto.Unmarshal(responseMsg.Body, response)
+			if err != nil {
+				panic(err)
+			}
+			if response.Success {
+				fmt.Printf("\nResults: (%d)\n", len(response.Values))
+				for _, value := range response.Values {
+					fmt.Printf("%v.%v\n", value.AppId, value.Name)
+					fmt.Printf("%v\n\n", value.Value)
 				}
 			} else {
-				panic(errors.New("unexpected response"))
+				fmt.Printf("\nEncountered errors: (%d)\n", len(response.Errors))
+				for _, err := range response.Errors {
+					fmt.Printf("\t%v\n", err)
+				}
 			}
-		case <-time.After(10 * time.Second):
-			panic(errors.New("timeout"))
+		} else {
+			panic(errors.New("unexpected response"))
 		}
 	} else {
 		panic(err)

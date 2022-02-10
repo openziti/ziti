@@ -17,11 +17,10 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/spf13/cobra"
 	"strconv"
 	"time"
@@ -44,30 +43,24 @@ func setLinkCost(cmd *cobra.Command, args []string) {
 	if ch, err := setLinkCostClient.Connect(); err == nil {
 		if cost, err := strconv.Atoi(args[1]); err == nil {
 			request := &mgmt_pb.SetLinkCostRequest{
-				LinkId:   args[0],
-				Cost: int32(cost),
+				LinkId: args[0],
+				Cost:   int32(cost),
 			}
 			if body, err := proto.Marshal(request); err == nil {
-				requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_SetLinkCostRequestType), body)
-				waitCh, err := ch.SendAndWait(requestMsg)
+				requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_SetLinkCostRequestType), body)
+				responseMsg, err := requestMsg.WithTimeout(5 * time.Second).SendForReply(ch)
 				if err != nil {
 					panic(err)
 				}
-				select {
-				case responseMsg := <-waitCh:
-					if responseMsg.ContentType == channel2.ContentTypeResultType {
-						result := channel2.UnmarshalResult(responseMsg)
-						if result.Success {
-							fmt.Printf("\nsuccess\n\n")
-						} else {
-							fmt.Printf("\nfailure [%s]\n\n", result.Message)
-						}
+				if responseMsg.ContentType == channel.ContentTypeResultType {
+					result := channel.UnmarshalResult(responseMsg)
+					if result.Success {
+						fmt.Printf("\nsuccess\n\n")
 					} else {
-						panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
+						fmt.Printf("\nfailure [%s]\n\n", result.Message)
 					}
-
-				case <-time.After(5 * time.Second):
-					panic(errors.New("timeout"))
+				} else {
+					panic(fmt.Errorf("unexpected response type %v", responseMsg.ContentType))
 				}
 			} else {
 				panic(err)
