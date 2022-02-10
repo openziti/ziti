@@ -665,7 +665,7 @@ function createPrivateRouterConfig {
   fi
 
 output_file="${ZITI_HOME-}/${router_name}.yaml"
-ziti create config router edge --routerName "${router_name}" --private > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
 
 echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
@@ -731,7 +731,7 @@ function createFabricRouterConfig {
   fi
 
 output_file="${ZITI_HOME}/${router_name}.yaml"
-ziti create config router fabric --routerName "${router_name}" > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
 
 echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -767,7 +767,7 @@ function createEdgeRouterWssConfig {
   fi
 
 output_file="${ZITI_HOME-}/${router_name}.yaml"
-ziti create config router edge --wss --routerName "${router_name}" > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
 
 echo -e "Edge router wss configuration file written to: $(BLUE "${output_file}")"
 }
@@ -804,7 +804,7 @@ function createEdgeRouterConfig {
   fi
 
 output_file="${ZITI_HOME}/${router_name}.yaml"
-ziti create config router edge --routerName "${router_name}" > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
 
 echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -855,7 +855,7 @@ cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGN
 echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
 
 output_file="${ZITI_HOME}/${controller_name}.yaml"
-ziti create config controller > "${output_file}"
+"${ZITI_BIN_DIR}/ziti" create config controller > "${output_file}"
 
 echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
