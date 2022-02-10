@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - release-v*
+      - troubleshoot-gox-artifact-paths
   pull_request:
   workflow_dispatch:
 
@@ -98,7 +99,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu tree
           python -m pip install --upgrade pip
           pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
@@ -111,6 +112,7 @@ jobs:
           $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=${GOX_OUTPUT} ./...
           aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
           aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          tree release/
 
       - name: Publish
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
@@ -132,25 +134,25 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
 
       - name: Set up QEMU
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.ref == 'troubleshoot-gox-artifact-paths' ||  github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/setup-qemu-action@master
         with:
           platforms: amd64,arm64,arm
 
       - name: Set up Docker BuildKit
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.ref == 'troubleshoot-gox-artifact-paths' ||  github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         id: buildx
         uses: docker/setup-buildx-action@master
 
       - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.ref == 'troubleshoot-gox-artifact-paths' ||  github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Set up Docker image tags
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.ref == 'troubleshoot-gox-artifact-paths' ||  github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
@@ -176,7 +178,7 @@ jobs:
           echo ::set-output name=tags::${DOCKER_TAGS}
 
       - name: Build & Push Multi-Platform Container Image to Hub
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.ref == 'troubleshoot-gox-artifact-paths' ||  github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}

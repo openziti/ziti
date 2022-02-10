@@ -3,7 +3,7 @@ FROM debian:buster-slim as fetch-ziti-artifacts
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
 
-ARG ARTIFACTS_DIR=./release
+ARG ARTIFACTS_DIR=release
 # e.g. linux
 ARG TARGETOS
 # e.g. arm
@@ -17,6 +17,7 @@ RUN apt-get -q update && apt-get -q install -y --no-install-recommends curl ca-c
 # workaround for `openssl rehash` not working on arm.
 RUN /bin/bash -c "if ! compgen -G '/etc/ssl/certs/*.[0-9]' > /dev/null; then c_rehash /etc/ssl/certs; fi"
 
+RUN ls -lAR ${ARTIFACTS_DIR}
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti-tunnel .
 
 ################
