@@ -582,7 +582,45 @@ func Test_PostureChecks_MFA(t *testing.T) {
 						})
 
 						t.Run("query has a new updatedAt value", func(t *testing.T) {
+							ctx.testContextChanged(t)
 							ctx.Req.True(time.Time(*postureQueries[0].UpdatedAt).After(time.Time(*postureCheckDetail.UpdatedAt())), "posture query updated at [%s] should now be after original time [%s]", postureQueries[0].UpdatedAt.String(), postureCheckDetail.UpdatedAt().String())
+						})
+
+						t.Run("updating the posture check further advances updatedAt", func(t *testing.T) {
+							ctx.testContextChanged(t)
+
+							newTimeout := int64(600)
+							mfaPatch := &rest_model.PostureCheckMfaPatch{}
+							mfaPatch.TimeoutSeconds = &newTimeout
+
+							body, err := mfaPatch.MarshalJSON()
+							ctx.Req.NoError(err)
+
+							resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(body).Patch("/posture-checks/" + postureCheckId)
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+							resp, err = enrolledIdentitySession.newAuthenticatedRequest().Get("/services/" + service.Id)
+							ctx.Req.NoError(err)
+							ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+							patchedServiceEnv := &rest_model.DetailServiceEnvelope{}
+							err = patchedServiceEnv.UnmarshalBinary(resp.Body())
+							ctx.Req.NoError(err)
+
+							patchedQuerySet := patchedServiceEnv.Data.PostureQueries
+							ctx.Req.NotNil(patchedQuerySet)
+							ctx.Req.NotEmpty(patchedQuerySet)
+							ctx.Req.Len(patchedQuerySet, 1)
+
+							patchedPostureQueries := patchedQuerySet[0].PostureQueries
+							ctx.Req.NoError(err)
+							ctx.Req.Len(patchedPostureQueries, 1)
+
+							ctx.Req.Equal(postureCheckId, *patchedPostureQueries[0].ID)
+							ctx.Req.Equal(postureCheck.TypeID(), *patchedPostureQueries[0].QueryType)
+
+							ctx.Req.True(time.Time(*patchedPostureQueries[0].UpdatedAt).After(time.Time(*postureQueries[0].UpdatedAt)), "posture query updated at [%s] should now be after state change time [%s]", patchedPostureQueries[0].UpdatedAt.String(), postureCheckDetail.UpdatedAt().String())
 						})
 					})
 				})

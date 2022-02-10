@@ -46,9 +46,7 @@ type PostureCheckSubType interface {
 	GetTimeoutSeconds() int64
 	GetTimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64
 
-	// LastUpdatedAt returns the last time the posture check changed state. Triggers endpoint clients to inspect
-	// the posture query for relevant information (timeouts, passing state, etc.). If not supported or no current
-	// mutation is known, nil is returned
+	// LastUpdatedAt returns the last time the posture state changed or nil if not supported.
 	LastUpdatedAt(id string, pd *PostureData) *time.Time
 }
 
@@ -156,6 +154,8 @@ func (entity *PostureCheck) TimeoutRemainingSeconds(apiSessionId string, pd *Pos
 	return entity.SubType.GetTimeoutRemainingSeconds(apiSessionId, pd)
 }
 
-func (entity *PostureCheck) LastUpdateAt(apiSessionId string, pd *PostureData) *time.Time {
+// LastUpdatedAt returns the last time posture state changed for a specific posture check.
+// If the posture state does not report changes, nil is returned.
+func (entity *PostureCheck) LastUpdatedAt(apiSessionId string, pd *PostureData) *time.Time {
 	return entity.SubType.LastUpdatedAt(apiSessionId, pd)
 }

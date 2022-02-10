@@ -194,8 +194,8 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			timeout := postureCheck.TimeoutSeconds()
 			timeoutRemaining := postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id))
 
-			//determine if the last updated at is determined the posture checks or posture query to signal state change
-			if lastUpdatedAt := postureCheck.LastUpdateAt(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id)); lastUpdatedAt != nil {
+			//determine if updatedAt is provided by the source posture check or the posture state
+			if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id)); lastUpdatedAt != nil {
 				if lastUpdatedAt.After(postureCheck.UpdatedAt) {
 					query.UpdatedAt = DateTimePtrOrNil(lastUpdatedAt)
 				}
