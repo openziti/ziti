@@ -20,14 +20,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/Jeffail/gabs"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"reflect"
 	"strings"
-
-	"github.com/Jeffail/gabs"
-	"github.com/michaelquigley/pfxlog"
 )
 
 func (ctx *TestContext) setJsonValue(container *gabs.Container, value interface{}, path ...string) {

@@ -228,11 +228,11 @@ definitions:
     type: object
     required:
       - meta
-      - error
+      - data
     properties:
       meta:
         $ref: 'standard-responses.yml#/definitions/meta'
-      error:
+      data:
         $ref: '#/definitions/detailMfa'
   detailMfa:
     type: object

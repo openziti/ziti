@@ -44,8 +44,12 @@ import (
 type MfaProviders string
 
 func NewMfaProviders(value MfaProviders) *MfaProviders {
-	v := value
-	return &v
+	return &value
+}
+
+// Pointer returns a pointer to a freshly-allocated MfaProviders.
+func (m MfaProviders) Pointer() *MfaProviders {
+	return &m
 }
 
 const (

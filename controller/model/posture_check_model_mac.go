@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckMacAddresses{}
@@ -27,6 +28,11 @@ var _ PostureCheckSubType = &PostureCheckMacAddresses{}
 type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
+
+func (p *PostureCheckMacAddresses) LastUpdatedAt(apiSessionId string, pd *PostureData) *time.Time {
+	return nil
+}
+
 func (p *PostureCheckMacAddresses) GetTimeoutRemainingSeconds(_ string, _ *PostureData) int64 {
 	return PostureCheckNoTimeout
 }
@@ -37,8 +43,8 @@ func (p *PostureCheckMacAddresses) GetTimeoutSeconds() int64 {
 
 func (p *PostureCheckMacAddresses) FailureValues(_ string, pd *PostureData) PostureCheckFailureValues {
 	return &PostureCheckFailureValuesMac{
-		ActualValue: pd.Mac.Addresses,
-		ExpectedValue:  p.MacAddresses,
+		ActualValue:   pd.Mac.Addresses,
+		ExpectedValue: p.MacAddresses,
 	}
 }
 

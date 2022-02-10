@@ -21,12 +21,17 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"go.etcd.io/bbolt"
 	"strings"
+	"time"
 )
 
 var _ PostureCheckSubType = &PostureCheckDomains{}
 
 type PostureCheckDomains struct {
 	Domains []string
+}
+
+func (p *PostureCheckDomains) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+	return nil
 }
 
 func (p *PostureCheckDomains) GetTimeoutSeconds() int64 {

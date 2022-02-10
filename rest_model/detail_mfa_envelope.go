@@ -43,9 +43,9 @@ import (
 // swagger:model detailMfaEnvelope
 type DetailMfaEnvelope struct {
 
-	// error
+	// data
 	// Required: true
-	Error *DetailMfa `json:"error"`
+	Data *DetailMfa `json:"data"`
 
 	// meta
 	// Required: true
@@ -56,7 +56,7 @@ type DetailMfaEnvelope struct {
 func (m *DetailMfaEnvelope) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateError(formats); err != nil {
+	if err := m.validateData(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -70,18 +70,18 @@ func (m *DetailMfaEnvelope) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *DetailMfaEnvelope) validateError(formats strfmt.Registry) error {
+func (m *DetailMfaEnvelope) validateData(formats strfmt.Registry) error {
 
-	if err := validate.Required("error", "body", m.Error); err != nil {
+	if err := validate.Required("data", "body", m.Data); err != nil {
 		return err
 	}
 
-	if m.Error != nil {
-		if err := m.Error.Validate(formats); err != nil {
+	if m.Data != nil {
+		if err := m.Data.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("error")
+				return ve.ValidateName("data")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("error")
+				return ce.ValidateName("data")
 			}
 			return err
 		}
@@ -114,7 +114,7 @@ func (m *DetailMfaEnvelope) validateMeta(formats strfmt.Registry) error {
 func (m *DetailMfaEnvelope) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.contextValidateError(ctx, formats); err != nil {
+	if err := m.contextValidateData(ctx, formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -128,14 +128,14 @@ func (m *DetailMfaEnvelope) ContextValidate(ctx context.Context, formats strfmt.
 	return nil
 }
 
-func (m *DetailMfaEnvelope) contextValidateError(ctx context.Context, formats strfmt.Registry) error {
+func (m *DetailMfaEnvelope) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
 
-	if m.Error != nil {
-		if err := m.Error.ContextValidate(ctx, formats); err != nil {
+	if m.Data != nil {
+		if err := m.Data.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("error")
+				return ve.ValidateName("data")
 			} else if ce, ok := err.(*errors.CompositeError); ok {
-				return ce.ValidateName("error")
+				return ce.ValidateName("data")
 			}
 			return err
 		}
