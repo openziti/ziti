@@ -115,6 +115,10 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
 		cmdhelper.EnvVariableDetails.ZitiHomeVarName, cmdhelper.EnvVariableDetails.ZitiHomeVarDescription, data.ZitiHome,
 		cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlListenerHostPortVarDescription, data.Controller.ListenerHostPort,
@@ -124,6 +128,10 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
 		cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname,
 		cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
+		cmdhelper.EnvVariableDetails.ZitiRouterIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityCertVarName, data.Router.IdentityCert,
+		cmdhelper.EnvVariableDetails.ZitiRouterIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityServerCertVarName, data.Router.IdentityServerCert,
+		cmdhelper.EnvVariableDetails.ZitiRouterIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityKeyVarName, data.Router.IdentityKey,
+		cmdhelper.EnvVariableDetails.ZitiRouterIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityCAVarName, data.Router.IdentityCA,
 		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
 		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
 		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,

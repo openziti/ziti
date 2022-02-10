@@ -8,21 +8,15 @@
 v: 3
 
 identity:
-  cert:                 "{{ .Controller.IdentityCert }}"
-  server_cert:          "{{ .Controller.IdentityServerCert }}"
-  key:                  "{{ .Controller.IdentityKey }}"
-  ca:                   "{{ .Controller.IdentityCA }}"
+  cert:                 "{{ .Router.IdentityCert }}"
+  server_cert:          "{{ .Router.IdentityServerCert }}"
+  key:                  "{{ .Router.IdentityKey }}"
+  ca:                   "{{ .Router.IdentityCA }}"
 
 ctrl:
-  endpoint:             tls:{{ .Controller.ListenerHostPort }}
+  endpoint:             tls:{{ .Controller.Edge.AdvertisedHostPort }}
 
 link:
-{{ if .Router.IsPrivate }}#{{ end }}  listeners:
-{{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
-{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
-{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
-{{ if .Router.IsPrivate }}#{{ end }}      options:
-{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
   dialers:
     - binding: transport
 
@@ -79,8 +73,8 @@ edge:
 {{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
 {{ if not .Router.IsWss }}#{{ end }}    enableCompression: true
-{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .ZitiHome }}/certs/{{ .Router.Name }}-router-server.cert
-{{ if not .Router.IsWss }}#{{ end }}    key: {{ .ZitiHome }}/keys/{{ .Router.Name }}-router-server.key
+{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
+{{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
 
 forwarder:
   latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval }}

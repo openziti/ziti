@@ -39,6 +39,7 @@ const (
 	DefaultOutQueueSize       = 16
 	DefaultConnectTimeoutMs   = 5000
 	DefaultGetSessionTimeoutS = 60
+	DefaultZitiPKI            = ""
 
 	// Router defaults
 	DefaultZitiEdgeRouterPort = "3022"
@@ -51,6 +52,7 @@ const (
 	DefaultWebListenerWriteTimeoutMs          = 100000
 	DefaultWebListenerMinTLSVersion           = "TLS1.2"
 	DefaultWebListenerMaxTLSVersion           = "TLS1.3"
+	DefaultZitiEdgeAPIPort                    = "1280"
 	DefaultZitiEdgeListenerHostPort           = "0.0.0.0:1280"
 	DefaultZitiControllerListenerHostPort     = "0.0.0.0:6262"
 	DefaultZitiMgmtControllerListenerHostPort = "0.0.0.0:10000"

@@ -24,46 +24,6 @@ import (
 	"strings"
 )
 
-// const (
-// 	PathSeparator = "/"
-//
-// 	ZitiHomeVarName = "ZITI_HOME"
-//
-// 	ZitiCtrlNameVarName = "ZITI_CONTROLLER_NAME"
-//
-// 	ZitiEdgeRouterHostnameVarName = "ZITI_EDGE_ROUTER_HOSTNAME"
-//
-// 	ZitiEdgeRouterPortVarName = "ZITI_EDGE_ROUTER_PORT"
-//
-// 	ZitiEdgeCtrlIdentityCertVarName = "ZITI_EDGE_CTRL_IDENTITY_CERT"
-//
-// 	ZitiEdgeCtrlIdentityServerCertVarName = "ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT"
-//
-// 	ZitiEdgeCtrlIdentityKeyVarName = "ZITI_EDGE_CTRL_IDENTITY_KEY"
-//
-// 	ZitiEdgeCtrlIdentityCAVarName = "ZITI_EDGE_CTRL_IDENTITY_CA"
-//
-// 	ZitiCtrlIdentityCertVarName = "ZITI_CTRL_IDENTITY_CERT"
-//
-// 	ZitiCtrlIdentityServerCertVarName = "ZITI_CTRL_IDENTITY_SERVER_CERT"
-//
-// 	ZitiCtrlIdentityKeyVarName = "ZITI_CTRL_IDENTITY_KEY"
-//
-// 	ZitiCtrlIdentityCAVarName = "ZITI_CTRL_IDENTITY_CA"
-//
-// 	ZitiSigningCertVarName = "ZITI_SIGNING_CERT"
-//
-// 	ZitiSigningKeyVarName = "ZITI_SIGNING_KEY"
-//
-// 	ZitiCtrlListenerHostPortVarName = "ZITI_CTRL_LISTENER_HOST_PORT"
-//
-// 	ZitiCtrlMgmtListenerHostPortVarName = "ZITI_CTRL_MGMT_HOST_PORT"
-//
-// 	ZitiEdgeCtrlListenerHostPortVarName = "ZITI_CTRL_EDGE_LISTENER_HOST_PORT"
-//
-// 	ZitiEdgeCtrlAdvertisedHostPortVarName = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
-// )
-
 type EnvVariableMetaData struct {
 	OS                                           string
 	PathSeparator                                string
@@ -85,6 +45,10 @@ type EnvVariableMetaData struct {
 	ZitiCtrlMgmtListenerHostPortVarName          string
 	ZitiEdgeCtrlListenerHostPortVarName          string
 	ZitiEdgeCtrlAdvertisedHostPortVarName        string
+	ZitiRouterIdentityCertVarName                string
+	ZitiRouterIdentityServerCertVarName          string
+	ZitiRouterIdentityKeyVarName                 string
+	ZitiRouterIdentityCAVarName                  string
 	ZitiHomeVarDescription                       string
 	ZitiCtrlNameVarDescription                   string
 	ZitiEdgeRouterHostnameVarDescription         string
@@ -103,6 +67,10 @@ type EnvVariableMetaData struct {
 	ZitiCtrlMgmtListenerHostPortVarDescription   string
 	ZitiEdgeCtrlListenerHostPortVarDescription   string
 	ZitiEdgeCtrlAdvertisedHostPortVarDescription string
+	ZitiRouterIdentityCertVarDescription         string
+	ZitiRouterIdentityServerCertVarDescription   string
+	ZitiRouterIdentityKeyVarDescription          string
+	ZitiRouterIdentityCAVarDescription           string
 }
 
 var EnvVariableDetails = EnvVariableMetaData{
@@ -135,6 +103,14 @@ var EnvVariableDetails = EnvVariableMetaData{
 	ZitiSigningCertVarDescription:                "Path to the Ziti Signing Cert",
 	ZitiSigningKeyVarName:                        "ZITI_SIGNING_KEY",
 	ZitiSigningKeyVarDescription:                 "Path to the Ziti Signing Key",
+	ZitiRouterIdentityCertVarName:                "ZITI_ROUTER_IDENTITY_CERT",
+	ZitiRouterIdentityCertVarDescription:         "Path to Identity Cert for Ziti Router",
+	ZitiRouterIdentityServerCertVarName:          "ZITI_ROUTER_IDENTITY_SERVER_CERT",
+	ZitiRouterIdentityServerCertVarDescription:   "Path to Identity Server Cert for Ziti Router",
+	ZitiRouterIdentityKeyVarName:                 "ZITI_ROUTER_IDENTITY_KEY",
+	ZitiRouterIdentityKeyVarDescription:          "Path to Identity Key for Ziti Router",
+	ZitiRouterIdentityCAVarName:                  "ZITI_ROUTER_IDENTITY_CA",
+	ZitiRouterIdentityCAVarDescription:           "Path to Identity CA for Ziti Router",
 	ZitiCtrlListenerHostPortVarName:              "ZITI_CTRL_LISTENER_HOST_PORT",
 	ZitiCtrlListenerHostPortVarDescription:       "Host and port of the Ziti Controller Listener",
 	ZitiCtrlMgmtListenerHostPortVarName:          "ZITI_CTRL_MGMT_HOST_PORT",
@@ -188,7 +164,7 @@ func GetZitiHome() (string, error) {
 	return strings.ReplaceAll(retVal, "\\", EnvVariableDetails.PathSeparator), nil
 }
 
-func GetZitiIdentityCert() (string, error) {
+func GetZitiCtrlIdentityCert() (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
@@ -205,7 +181,7 @@ func GetZitiIdentityCert() (string, error) {
 	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, controllerName))
 }
 
-func GetZitiIdentityServerCert() (string, error) {
+func GetZitiCtrlIdentityServerCert() (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
@@ -222,7 +198,7 @@ func GetZitiIdentityServerCert() (string, error) {
 	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, controllerName))
 }
 
-func GetZitiIdentityKey() (string, error) {
+func GetZitiCtrlIdentityKey() (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
@@ -239,7 +215,7 @@ func GetZitiIdentityKey() (string, error) {
 	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, controllerName))
 }
 
-func GetZitiIdentityCA() (string, error) {
+func GetZitiCtrlIdentityCA() (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
@@ -254,6 +230,42 @@ func GetZitiIdentityCA() (string, error) {
 	}
 
 	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName))
+}
+
+func GetZitiRouterIdentityCert(routerName string) (string, error) {
+	workingDir, err := WorkingDir()
+	if err != nil {
+		return "", err
+	}
+
+	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, routerName))
+}
+
+func GetZitiRouterIdentityServerCert(routerName string) (string, error) {
+	workingDir, err := WorkingDir()
+	if err != nil {
+		return "", err
+	}
+
+	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, routerName))
+}
+
+func GetZitiRouterIdentityKey(routerName string) (string, error) {
+	workingDir, err := WorkingDir()
+	if err != nil {
+		return "", err
+	}
+
+	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, routerName))
+}
+
+func GetZitiRouterIdentityCA(routerName string) (string, error) {
+	workingDir, err := WorkingDir()
+	if err != nil {
+		return "", err
+	}
+
+	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, routerName))
 }
 
 func GetZitiEdgeIdentityCert() (string, error) {
@@ -374,15 +386,15 @@ func GetZitiEdgeCtrlListenerHostPort() (string, error) {
 }
 
 func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
-	edgeCtrlListenerHostPort, err := GetZitiEdgeCtrlListenerHostPort()
+	hostname, err := os.Hostname()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName)
+		err := errors.Wrap(err, "Unable to get hostname")
 		if err != nil {
 			return "", err
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, edgeCtrlListenerHostPort)
+	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+constants.DefaultZitiEdgeAPIPort)
 }
 
 func getOrSetEnvVar(envVarName string, defaultValue string) (string, error) {
