@@ -178,7 +178,7 @@ func GetZitiCtrlIdentityCert() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, controllerName), false)
 }
 
 func GetZitiCtrlIdentityServerCert() (string, error) {
@@ -195,7 +195,7 @@ func GetZitiCtrlIdentityServerCert() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, controllerName), false)
 }
 
 func GetZitiCtrlIdentityKey() (string, error) {
@@ -212,7 +212,7 @@ func GetZitiCtrlIdentityKey() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, controllerName), false)
 }
 
 func GetZitiCtrlIdentityCA() (string, error) {
@@ -229,43 +229,43 @@ func GetZitiCtrlIdentityCA() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName), false)
 }
 
-func GetZitiRouterIdentityCert(routerName string) (string, error) {
+func GetZitiRouterIdentityCert(routerName string, forceSet bool) (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, routerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiRouterIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, routerName), forceSet)
 }
 
-func GetZitiRouterIdentityServerCert(routerName string) (string, error) {
+func GetZitiRouterIdentityServerCert(routerName string, forceSet bool) (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, routerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiRouterIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, routerName), forceSet)
 }
 
-func GetZitiRouterIdentityKey(routerName string) (string, error) {
+func GetZitiRouterIdentityKey(routerName string, forceSet bool) (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, routerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiRouterIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, routerName), forceSet)
 }
 
-func GetZitiRouterIdentityCA(routerName string) (string, error) {
+func GetZitiRouterIdentityCA(routerName string, forceSet bool) (string, error) {
 	workingDir, err := WorkingDir()
 	if err != nil {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiRouterIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, routerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiRouterIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, routerName), forceSet)
 }
 
 func GetZitiEdgeIdentityCert() (string, error) {
@@ -282,7 +282,7 @@ func GetZitiEdgeIdentityCert() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, controllerName), false)
 }
 
 func GetZitiEdgeIdentityServerCert() (string, error) {
@@ -299,7 +299,7 @@ func GetZitiEdgeIdentityServerCert() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarName, fmt.Sprintf("%s/%s-server.pem", workingDir, controllerName), false)
 }
 
 func GetZitiEdgeIdentityKey() (string, error) {
@@ -316,7 +316,7 @@ func GetZitiEdgeIdentityKey() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarName, fmt.Sprintf("%s/%s-server.key", workingDir, controllerName), false)
 }
 
 func GetZitiEdgeIdentityCA() (string, error) {
@@ -333,19 +333,19 @@ func GetZitiEdgeIdentityCA() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName), false)
 }
 
 func GetZitiCtrlListenerHostPort() (string, error) {
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlListenerHostPortVarName, constants.DefaultZitiControllerListenerHostPort)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlListenerHostPortVarName, constants.DefaultZitiControllerListenerHostPort, false)
 }
 
 func GetZitiCtrlMgmtListenerHostPort() (string, error) {
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarName, constants.DefaultZitiMgmtControllerListenerHostPort)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarName, constants.DefaultZitiMgmtControllerListenerHostPort, false)
 }
 
 func GetZitiCtrlName() (string, error) {
-	return getOrSetEnvVar(EnvVariableDetails.ZitiCtrlNameVarName, constants.DefaultZitiControllerName)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlNameVarName, constants.DefaultZitiControllerName, false)
 }
 
 func GetZitiEdgeRouterHostname() (string, error) {
@@ -356,11 +356,11 @@ func GetZitiEdgeRouterHostname() (string, error) {
 			return "", err
 		}
 	}
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeRouterHostnameVarName, hostname)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeRouterHostnameVarName, hostname, false)
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort, false)
 }
 
 func GetZitiSigningCert() (string, error) {
@@ -369,7 +369,7 @@ func GetZitiSigningCert() (string, error) {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiSigningCertVarName, fmt.Sprintf("%s/signingCert.cert", workingDir))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiSigningCertVarName, fmt.Sprintf("%s/signingCert.cert", workingDir), false)
 }
 
 func GetZitiSigningKey() (string, error) {
@@ -378,11 +378,11 @@ func GetZitiSigningKey() (string, error) {
 		return "", err
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiSigningKeyVarName, fmt.Sprintf("%s/signingKey.key", workingDir))
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiSigningKeyVarName, fmt.Sprintf("%s/signingKey.key", workingDir), false)
 }
 
 func GetZitiEdgeCtrlListenerHostPort() (string, error) {
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHostPort)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHostPort, false)
 }
 
 func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
@@ -394,15 +394,17 @@ func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 		}
 	}
 
-	return getOrSetEnvVar(EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+constants.DefaultZitiEdgeAPIPort)
+	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+constants.DefaultZitiEdgeAPIPort, false)
 }
 
-func getOrSetEnvVar(envVarName string, defaultValue string) (string, error) {
-
-	// Get path from env variable
-	retVal := os.Getenv(envVarName)
-	if retVal != "" {
-		return retVal, nil
+func getValueOrSetAndGetDefault(envVarName string, defaultValue string, forceDefault bool) (string, error) {
+	retVal := ""
+	if !forceDefault {
+		// Get path from env variable
+		retVal = os.Getenv(envVarName)
+		if retVal != "" {
+			return retVal, nil
+		}
 	}
 
 	err := os.Setenv(envVarName, defaultValue)

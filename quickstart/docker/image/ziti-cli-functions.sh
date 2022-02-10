@@ -851,9 +851,9 @@ function createControllerConfig {
     return 1
   fi
 
-cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem" > "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert" >> "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
+cat "${ZITI_CTRL_IDENTITY_SERVER_CERT}" > "${ZITI_CTRL_IDENTITY_CA}"
+cat "${ZITI_SIGNING_CERT}" >> "${ZITI_CTRL_IDENTITY_CA}"
+echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
 
 output_file="${ZITI_HOME}/${controller_name}.yaml"
 "${ZITI_BIN_DIR}/ziti" create config controller --ctrlListener 0.0.0.0:1280 > "${output_file}"

@@ -203,19 +203,19 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Controller Identity Cert
-	zitiRouterIdentityCert, err := cmdhelper.GetZitiRouterIdentityCert(zitiEdgeRouterHostName)
+	zitiRouterIdentityCert, err := cmdhelper.GetZitiRouterIdentityCert(zitiEdgeRouterHostName, true)
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName)
 
 	// Get Ziti Controller Identity Server Cert
-	zitiRouterIdentityServerCert, err := cmdhelper.GetZitiRouterIdentityServerCert(zitiEdgeRouterHostName)
+	zitiRouterIdentityServerCert, err := cmdhelper.GetZitiRouterIdentityServerCert(zitiEdgeRouterHostName, true)
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName)
 
 	// Get Ziti Controller Identity Key
-	zitiRouterIdentityKey, err := cmdhelper.GetZitiRouterIdentityKey(zitiEdgeRouterHostName)
+	zitiRouterIdentityKey, err := cmdhelper.GetZitiRouterIdentityKey(zitiEdgeRouterHostName, true)
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName)
 
 	// Get Ziti Controller Identity CA
-	zitiRouterIdentityCA, err := cmdhelper.GetZitiRouterIdentityCA(zitiEdgeRouterHostName)
+	zitiRouterIdentityCA, err := cmdhelper.GetZitiRouterIdentityCA(zitiEdgeRouterHostName, true)
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Edge Controller Identity Cert
