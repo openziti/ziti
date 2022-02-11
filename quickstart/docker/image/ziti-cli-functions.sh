@@ -311,7 +311,7 @@ function generateEnvFile {
 
   echo -e "Generating new network with name: $(BLUE "${ZITI_NETWORK-}")"
 
-  if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-controller"; fi
+  if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-controller"; fi
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-edge-controller"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
@@ -320,6 +320,7 @@ function generateEnvFile {
   if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
   if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_NETWORK-}-controller"; fi
 
   if [[ "${ZITI_BIN_ROOT-}" == "" ]]; then
     export ZITI_BIN_ROOT="${ZITI_HOME-}/ziti-bin"
@@ -821,7 +822,7 @@ function createEdgeRouterConfig {
 }
 
 function createFabricIdentity {
-  output_file="${ZITI_HOME}/identities.yaml"
+  output_file="${ZITI_HOME}/identities.yml"
 cat > "${output_file}" <<IdentitiesJsonHereDoc
 ---
 default:

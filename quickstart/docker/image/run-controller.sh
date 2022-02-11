@@ -1,6 +1,8 @@
 #!/bin/bash
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
+export ZITI_CONTROLLER_RAWNAME=ziti-edge-controller
+export ZITI_CTRL_ADVERTISED_ADDRESS=ziti-edge-controller
 
 ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
