@@ -138,6 +138,18 @@ type RouterListenerTemplateValues struct {
 	OutQueueSize       int
 }
 
+var workingDir string
+
+func init() {
+	wd, err := os.Getwd()
+	if wd == "" || err != nil {
+		//on error just use "."
+		workingDir = "."
+	}
+
+	workingDir = cmdhelper.NormalizePath(wd)
+}
+
 // NewCmdCreateConfig creates a command object for the "config" command
 func NewCmdCreateConfig() *cobra.Command {
 	cmd := &cobra.Command{
@@ -206,20 +218,20 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Controller Identity Cert
-	zitiRouterIdentityCert, err := cmdhelper.GetZitiRouterIdentityCert(zitiEdgeRouterHostName, true)
-	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName)
+	//zitiRouterIdentityCert, err := cmdhelper.GetZitiRouterIdentityCert(zitiEdgeRouterHostName, true)
+	//handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName)
 
 	// Get Ziti Controller Identity Server Cert
-	zitiRouterIdentityServerCert, err := cmdhelper.GetZitiRouterIdentityServerCert(zitiEdgeRouterHostName, true)
-	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName)
+	//zitiRouterIdentityServerCert, err := cmdhelper.GetZitiRouterIdentityServerCert(zitiEdgeRouterHostName, true)
+	//handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName)
 
 	// Get Ziti Controller Identity Key
-	zitiRouterIdentityKey, err := cmdhelper.GetZitiRouterIdentityKey(zitiEdgeRouterHostName, true)
-	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName)
+	//zitiRouterIdentityKey, err := cmdhelper.GetZitiRouterIdentityKey(zitiEdgeRouterHostName, true)
+	//handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName)
 
 	// Get Ziti Controller Identity CA
-	zitiRouterIdentityCA, err := cmdhelper.GetZitiRouterIdentityCA(zitiEdgeRouterHostName, true)
-	handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
+	//zitiRouterIdentityCA, err := cmdhelper.GetZitiRouterIdentityCA(zitiEdgeRouterHostName, true)
+	//handleVariableError(err, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName)
 
 	// Get Ziti Edge Controller Identity Cert
 	zitiEdgeCtrlIdentityCert, err := cmdhelper.GetZitiEdgeIdentityCert()
@@ -288,10 +300,10 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.Edge.IdentityCA = zitiEdgeCtrlIdentityCA
 	data.Controller.Edge.ZitiSigningCert = zitiSigningCert
 	data.Controller.Edge.ZitiSigningKey = zitiSigningKey
-	data.Router.IdentityCert = zitiRouterIdentityCert
-	data.Router.IdentityServerCert = zitiRouterIdentityServerCert
-	data.Router.IdentityKey = zitiRouterIdentityKey
-	data.Router.IdentityCA = zitiRouterIdentityCA
+	//data.Router.IdentityCert = zitiRouterIdentityCert
+	//data.Router.IdentityServerCert = zitiRouterIdentityServerCert
+	//data.Router.IdentityKey = zitiRouterIdentityKey
+	//data.Router.IdentityCA = zitiRouterIdentityCA
 	data.Router.Edge.Hostname = zitiEdgeRouterHostName
 	data.Router.Edge.Port = zitiEdgeRouterPort
 }
