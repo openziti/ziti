@@ -21,6 +21,7 @@ import (
 	"fmt"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -30,6 +31,58 @@ import (
 	"strings"
 	"text/template"
 )
+
+type EnvVariableMetaData struct {
+	OS                                           string
+	ZitiHomeVarName                              string
+	ZitiCtrlNameVarName                          string
+	ZitiCtrlPortVarName                          string
+	ZitiEdgeRouterRawNameVarName                 string
+	ZitiEdgeRouterPortVarName                    string
+	ZitiEdgeCtrlIdentityCertVarName              string
+	ZitiEdgeCtrlIdentityServerCertVarName        string
+	ZitiEdgeCtrlIdentityKeyVarName               string
+	ZitiEdgeCtrlIdentityCAVarName                string
+	ZitiCtrlIdentityCertVarName                  string
+	ZitiCtrlIdentityServerCertVarName            string
+	ZitiCtrlIdentityKeyVarName                   string
+	ZitiCtrlIdentityCAVarName                    string
+	ZitiSigningCertVarName                       string
+	ZitiSigningKeyVarName                        string
+	ZitiCtrlMgmtListenerHostPortVarName          string
+	ZitiEdgeCtrlListenerHostPortVarName          string
+	ZitiEdgeCtrlAdvertisedHostPortVarName        string
+	ZitiRouterIdentityCertVarName                string
+	ZitiRouterIdentityServerCertVarName          string
+	ZitiRouterIdentityKeyVarName                 string
+	ZitiRouterIdentityCAVarName                  string
+	ZitiCtrlListenerAddressVarName               string
+	ZitiCtrlAdvertisedAddressVarName             string
+	ZitiHomeVarDescription                       string
+	ZitiCtrlNameVarDescription                   string
+	ZitiEdgeRouterRawNameVarDescription          string
+	ZitiEdgeRouterPortVarDescription             string
+	ZitiEdgeCtrlIdentityCertVarDescription       string
+	ZitiEdgeCtrlIdentityServerCertVarDescription string
+	ZitiEdgeCtrlIdentityKeyVarDescription        string
+	ZitiEdgeCtrlIdentityCAVarDescription         string
+	ZitiCtrlIdentityCertVarDescription           string
+	ZitiCtrlIdentityServerCertVarDescription     string
+	ZitiCtrlIdentityKeyVarDescription            string
+	ZitiCtrlIdentityCAVarDescription             string
+	ZitiSigningCertVarDescription                string
+	ZitiSigningKeyVarDescription                 string
+	ZitiCtrlPortVarDescription                   string
+	ZitiCtrlListenerAddressVarDescription        string
+	ZitiCtrlAdvertisedAddressVarDescription      string
+	ZitiCtrlMgmtListenerHostPortVarDescription   string
+	ZitiEdgeCtrlListenerHostPortVarDescription   string
+	ZitiEdgeCtrlAdvertisedHostPortVarDescription string
+	ZitiRouterIdentityCertVarDescription         string
+	ZitiRouterIdentityServerCertVarDescription   string
+	ZitiRouterIdentityKeyVarDescription          string
+	ZitiRouterIdentityCAVarDescription           string
+}
 
 var (
 	createConfigEnvironmentLong = templates.LongDesc(`
@@ -52,7 +105,7 @@ var environmentConfigTemplate string
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
 	ConfigTemplateValues
-	cmdhelper.EnvVariableMetaData
+	EnvVariableMetaData
 	output string
 }
 
@@ -60,7 +113,57 @@ type CreateConfigEnvironmentOptions struct {
 func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 	environmentOptions := &CreateConfigEnvironmentOptions{
 		ConfigTemplateValues: *data,
-		EnvVariableMetaData:  cmdhelper.EnvVariableDetails,
+		EnvVariableMetaData: EnvVariableMetaData{
+			OS:                                           "Stuff",
+			ZitiHomeVarName:                              constants.ZitiHomeVarName,
+			ZitiHomeVarDescription:                       constants.ZitiHomeVarDescription,
+			ZitiCtrlNameVarName:                          constants.ZitiCtrlNameVarName,
+			ZitiCtrlNameVarDescription:                   constants.ZitiCtrlNameVarDescription,
+			ZitiCtrlPortVarName:                          constants.ZitiCtrlPortVarName,
+			ZitiCtrlPortVarDescription:                   constants.ZitiCtrlPortVarDescription,
+			ZitiEdgeRouterRawNameVarName:                 constants.ZitiEdgeRouterRawNameVarName,
+			ZitiEdgeRouterRawNameVarDescription:          constants.ZitiEdgeRouterRawNameVarDescription,
+			ZitiEdgeRouterPortVarName:                    constants.ZitiEdgeRouterPortVarName,
+			ZitiEdgeRouterPortVarDescription:             constants.ZitiEdgeRouterPortVarDescription,
+			ZitiEdgeCtrlIdentityCertVarName:              constants.ZitiEdgeCtrlIdentityCertVarName,
+			ZitiEdgeCtrlIdentityCertVarDescription:       constants.ZitiEdgeCtrlIdentityCertVarDescription,
+			ZitiEdgeCtrlIdentityServerCertVarName:        constants.ZitiEdgeCtrlIdentityServerCertVarName,
+			ZitiEdgeCtrlIdentityServerCertVarDescription: constants.ZitiEdgeCtrlIdentityServerCertVarDescription,
+			ZitiEdgeCtrlIdentityKeyVarName:               constants.ZitiEdgeCtrlIdentityKeyVarName,
+			ZitiEdgeCtrlIdentityKeyVarDescription:        constants.ZitiEdgeCtrlIdentityKeyVarDescription,
+			ZitiEdgeCtrlIdentityCAVarName:                constants.ZitiEdgeCtrlIdentityCAVarName,
+			ZitiEdgeCtrlIdentityCAVarDescription:         constants.ZitiEdgeCtrlIdentityCAVarDescription,
+			ZitiCtrlIdentityCertVarName:                  constants.ZitiCtrlIdentityCertVarName,
+			ZitiCtrlIdentityCertVarDescription:           constants.ZitiCtrlIdentityCertVarDescription,
+			ZitiCtrlIdentityServerCertVarName:            constants.ZitiCtrlIdentityServerCertVarName,
+			ZitiCtrlIdentityServerCertVarDescription:     constants.ZitiCtrlIdentityServerCertVarDescription,
+			ZitiCtrlIdentityKeyVarName:                   constants.ZitiCtrlIdentityKeyVarName,
+			ZitiCtrlIdentityKeyVarDescription:            constants.ZitiCtrlIdentityKeyVarDescription,
+			ZitiCtrlIdentityCAVarName:                    constants.ZitiCtrlIdentityCAVarName,
+			ZitiCtrlIdentityCAVarDescription:             constants.ZitiCtrlIdentityCAVarDescription,
+			ZitiSigningCertVarName:                       constants.ZitiSigningCertVarName,
+			ZitiSigningCertVarDescription:                constants.ZitiSigningCertVarDescription,
+			ZitiSigningKeyVarName:                        constants.ZitiSigningKeyVarName,
+			ZitiSigningKeyVarDescription:                 constants.ZitiSigningKeyVarDescription,
+			ZitiRouterIdentityCertVarName:                constants.ZitiRouterIdentityCertVarName,
+			ZitiRouterIdentityCertVarDescription:         constants.ZitiRouterIdentityCertVarDescription,
+			ZitiRouterIdentityServerCertVarName:          constants.ZitiRouterIdentityServerCertVarName,
+			ZitiRouterIdentityServerCertVarDescription:   constants.ZitiRouterIdentityServerCertVarDescription,
+			ZitiRouterIdentityKeyVarName:                 constants.ZitiRouterIdentityKeyVarName,
+			ZitiRouterIdentityKeyVarDescription:          constants.ZitiRouterIdentityKeyVarDescription,
+			ZitiRouterIdentityCAVarName:                  constants.ZitiRouterIdentityCAVarName,
+			ZitiRouterIdentityCAVarDescription:           constants.ZitiRouterIdentityCAVarDescription,
+			ZitiCtrlListenerAddressVarName:               constants.ZitiCtrlListenerAddressVarName,
+			ZitiCtrlListenerAddressVarDescription:        constants.ZitiCtrlListenerAddressVarDescription,
+			ZitiCtrlAdvertisedAddressVarName:             constants.ZitiCtrlAdvertisedAddressVarName,
+			ZitiCtrlAdvertisedAddressVarDescription:      constants.ZitiCtrlAdvertisedAddressVarDescription,
+			ZitiCtrlMgmtListenerHostPortVarName:          constants.ZitiCtrlMgmtListenerHostPortVarName,
+			ZitiCtrlMgmtListenerHostPortVarDescription:   constants.ZitiCtrlMgmtListenerHostPortVarDescription,
+			ZitiEdgeCtrlListenerHostPortVarName:          constants.ZitiEdgeCtrlListenerHostPortVarName,
+			ZitiEdgeCtrlListenerHostPortVarDescription:   constants.ZitiEdgeCtrlListenerHostPortVarDescription,
+			ZitiEdgeCtrlAdvertisedHostPortVarName:        constants.ZitiEdgeCtrlAdvertisedHostPortVarName,
+			ZitiEdgeCtrlAdvertisedHostPortVarDescription: constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription,
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -122,30 +225,30 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
-		cmdhelper.EnvVariableDetails.ZitiHomeVarName, cmdhelper.EnvVariableDetails.ZitiHomeVarDescription, data.ZitiHome,
-		cmdhelper.EnvVariableDetails.ZitiCtrlPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlPortVarDescription, data.Controller.Port,
-		cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiCtrlMgmtListenerHostPortVarDescription, data.Controller.MgmtListenerHostPort,
-		cmdhelper.EnvVariableDetails.ZitiCtrlNameVarName, cmdhelper.EnvVariableDetails.ZitiCtrlNameVarDescription, data.Controller.Name,
-		cmdhelper.EnvVariableDetails.ZitiCtrlAdvertisedAddressVarName, cmdhelper.EnvVariableDetails.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress,
-		cmdhelper.EnvVariableDetails.ZitiCtrlListenerAddressVarName, cmdhelper.EnvVariableDetails.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
-		cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname,
-		cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarName, cmdhelper.EnvVariableDetails.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
-		cmdhelper.EnvVariableDetails.ZitiRouterIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityCertVarName, data.Router.IdentityCert,
-		cmdhelper.EnvVariableDetails.ZitiRouterIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityServerCertVarName, data.Router.IdentityServerCert,
-		cmdhelper.EnvVariableDetails.ZitiRouterIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityKeyVarName, data.Router.IdentityKey,
-		cmdhelper.EnvVariableDetails.ZitiRouterIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiRouterIdentityCAVarName, data.Router.IdentityCA,
-		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
-		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
-		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,
-		cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiCtrlIdentityCAVarDescription, data.Controller.IdentityCA,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCertVarDescription, data.Controller.Edge.IdentityCert,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey,
-		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
-		cmdhelper.EnvVariableDetails.ZitiSigningCertVarName, cmdhelper.EnvVariableDetails.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
-		cmdhelper.EnvVariableDetails.ZitiSigningKeyVarName, cmdhelper.EnvVariableDetails.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey)
+		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
+		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
+		constants.ZitiCtrlMgmtListenerHostPortVarName, constants.ZitiCtrlMgmtListenerHostPortVarDescription, data.Controller.MgmtListenerHostPort,
+		constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name,
+		constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress,
+		constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
+		constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
+		constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
+		constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname,
+		constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
+		constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert,
+		constants.ZitiRouterIdentityServerCertVarName, constants.ZitiRouterIdentityServerCertVarDescription, data.Router.IdentityServerCert,
+		constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey,
+		constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA,
+		constants.ZitiCtrlIdentityCertVarName, constants.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
+		constants.ZitiCtrlIdentityServerCertVarName, constants.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
+		constants.ZitiCtrlIdentityKeyVarName, constants.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,
+		constants.ZitiCtrlIdentityCAVarName, constants.ZitiCtrlIdentityCAVarDescription, data.Controller.IdentityCA,
+		constants.ZitiEdgeCtrlIdentityCertVarName, constants.ZitiEdgeCtrlIdentityCertVarDescription, data.Controller.Edge.IdentityCert,
+		constants.ZitiEdgeCtrlIdentityServerCertVarName, constants.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert,
+		constants.ZitiEdgeCtrlIdentityKeyVarName, constants.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey,
+		constants.ZitiEdgeCtrlIdentityCAVarName, constants.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
+		constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
+		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey)
 
 	cmd.Long = createConfigLong
 

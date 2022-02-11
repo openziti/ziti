@@ -183,30 +183,30 @@ func SetControllerIdentity(data *ControllerTemplateValues) {
 	SetControllerIdentityCA(data)
 }
 func SetControllerIdentityCert(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_CTRL_IDENTITY_CERT")
+	val := os.Getenv(constants.ZitiCtrlIdentityCertVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".cert" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".cert" // default
 	}
 	c.IdentityCert = cmdhelper.NormalizePath(val)
 }
 func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_CTRL_IDENTITY_SERVER_CERT")
+	val := os.Getenv(constants.ZitiCtrlIdentityServerCertVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".server.chain.cert" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".server.chain.cert" // default
 	}
 	c.IdentityServerCert = cmdhelper.NormalizePath(val)
 }
 func SetControllerIdentityKey(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_CTRL_IDENTITY_KEY")
+	val := os.Getenv(constants.ZitiCtrlIdentityKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".key" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".key" // default
 	}
 	c.IdentityKey = cmdhelper.NormalizePath(val)
 }
 func SetControllerIdentityCA(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_CTRL_IDENTITY_CA")
+	val := os.Getenv(constants.ZitiCtrlIdentityCAVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".ca" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".ca" // default
 	}
 	c.IdentityCA = cmdhelper.NormalizePath(val)
 }
@@ -216,16 +216,16 @@ func SetEdgeConfig(data *ControllerTemplateValues) {
 	SetEdgeSigningKey(data)
 }
 func SetEdgeSigningCert(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_SIGNING_CERT")
+	val := os.Getenv(constants.ZitiSigningCertVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.cert" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.cert" // default
 	}
 	c.Edge.ZitiSigningCert = cmdhelper.NormalizePath(val)
 }
 func SetEdgeSigningKey(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_SIGNING_KEY")
+	val := os.Getenv(constants.ZitiSigningKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.key" //default
+		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.key" // default
 	}
 	c.Edge.ZitiSigningKey = cmdhelper.NormalizePath(val)
 }
@@ -237,28 +237,28 @@ func SetWebConfig(data *ControllerTemplateValues) {
 	SetWebIdentityCA(data)
 }
 func SetWebIdentityCert(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_CERT")
+	val := os.Getenv(constants.ZitiEdgeCtrlIdentityCertVarName)
 	if val == "" {
 		val = c.IdentityCert //default
 	}
 	c.Edge.IdentityCert = cmdhelper.NormalizePath(val)
 }
 func SetWebIdentityServerCert(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT")
+	val := os.Getenv(constants.ZitiEdgeCtrlIdentityServerCertVarName)
 	if val == "" {
 		val = c.IdentityServerCert //default
 	}
 	c.Edge.IdentityServerCert = cmdhelper.NormalizePath(val)
 }
 func SetWebIdentityKey(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_KEY")
+	val := os.Getenv(constants.ZitiEdgeCtrlIdentityKeyVarName)
 	if val == "" {
 		val = c.IdentityKey //default
 	}
 	c.Edge.IdentityKey = cmdhelper.NormalizePath(val)
 }
 func SetWebIdentityCA(c *ControllerTemplateValues) {
-	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_CA")
+	val := os.Getenv(constants.ZitiEdgeCtrlIdentityCAVarName)
 	if val == "" {
 		val = c.IdentityCA //default
 	}

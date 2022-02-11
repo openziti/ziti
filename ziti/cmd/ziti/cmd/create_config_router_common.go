@@ -19,6 +19,7 @@ package cmd
 import (
 	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"os"
 )
 
@@ -28,36 +29,36 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityKey(r, routerName)
 	SetZitiRouterIdentityCA(r, routerName)
 
-	val := os.Getenv("ZITI_EDGE_ROUTER_RAWNAME")
+	val := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
 	if val != "" {
 		r.Edge.Hostname = val
 	}
 }
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {
-	val := os.Getenv("ZITI_ROUTER_IDENTITY_CERT")
+	val := os.Getenv(constants.ZitiRouterIdentityCertVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".cert" //default
+		val = workingDir + "/" + routerName + ".cert" // default
 	}
 	r.IdentityCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityServerCert(r *RouterTemplateValues, routerName string) {
-	val := os.Getenv("ZITI_ROUTER_IDENTITY_SERVER_CERT")
+	val := os.Getenv(constants.ZitiRouterIdentityServerCertVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".server.chain.cert" //default
+		val = workingDir + "/" + routerName + ".server.chain.cert" // default
 	}
 	r.IdentityServerCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityKey(r *RouterTemplateValues, routerName string) {
-	val := os.Getenv("ZITI_ROUTER_IDENTITY_KEY")
+	val := os.Getenv(constants.ZitiRouterIdentityKeyVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".key" //default
+		val = workingDir + "/" + routerName + ".key" // default
 	}
 	r.IdentityKey = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityCA(r *RouterTemplateValues, routerName string) {
-	val := os.Getenv("ZITI_ROUTER_IDENTITY_CA")
+	val := os.Getenv(constants.ZitiRouterIdentityCAVarName)
 	if val == "" {
-		val = workingDir + "/" + routerName + ".cas" //default
+		val = workingDir + "/" + routerName + ".cas" // default
 	}
 	r.IdentityCA = cmdhelper.NormalizePath(val)
 }
