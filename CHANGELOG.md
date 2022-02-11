@@ -1,6 +1,8 @@
 # Release 0.24.8
 
 * Bug fix: Move control change presence handler notification out of bind handler
+* Bug fix: Posture queries now have updatedAt values that increase on state change as well as posture check change
+* Enhancement: xweb HTTP servers (edge, fabric REST APIs) now support compression requests from clients via `Accept-Encoding` headers (gzip, br, deflate)
 
 # Release 0.24.7
 
