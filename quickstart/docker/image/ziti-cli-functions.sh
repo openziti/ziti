@@ -851,14 +851,14 @@ function createControllerConfig {
     return 1
   fi
 
-cat "${ZITI_CTRL_IDENTITY_SERVER_CERT}" > "${ZITI_CTRL_IDENTITY_CA}"
-cat "${ZITI_SIGNING_CERT}" >> "${ZITI_CTRL_IDENTITY_CA}"
-echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
+  cat "${ZITI_CTRL_IDENTITY_SERVER_CERT}" > "${ZITI_CTRL_IDENTITY_CA}"
+  cat "${ZITI_SIGNING_CERT}" >> "${ZITI_CTRL_IDENTITY_CA}"
+  echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
 
-output_file="${ZITI_HOME}/${controller_name}.yaml"
-"${ZITI_BIN_DIR}/ziti" create config controller --ctrlListener 0.0.0.0:1280 > "${output_file}"
+  output_file="${ZITI_HOME}/${controller_name}.yaml"
+  "${ZITI_BIN_DIR}/ziti" create config controller --ctrlPort 6262 > "${output_file}"
 
-echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
+  echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
 
 # shellcheck disable=SC2120
@@ -947,10 +947,12 @@ function ziti_createEnvFile {
   if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"; fi
   if [[ "${ZITI_CTRL_IDENTITY_KEY-}" == "" ]]; then export ZITI_CTRL_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"; fi
   if [[ "${ZITI_CTRL_IDENTITY_CA-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/cas.pem"; fi
+  if [[ "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" == "" ]]; then export export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_CERT}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-client.cert"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_KEY}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key"; fi
   if [[ "${ZITI_EDGE_CTRL_IDENTITY_CA}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"; fi
+
   if [[ "${ZITI_SIGNING_CERT}" == "" ]]; then export export ZITI_SIGNING_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
   if [[ "${ZITI_SIGNING_KEY}" == "" ]]; then export export ZITI_SIGNING_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
 

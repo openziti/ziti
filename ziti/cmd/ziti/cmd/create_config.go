@@ -43,10 +43,8 @@ type CreateConfigOptions struct {
 }
 
 type ConfigTemplateValues struct {
-	ZitiHome        string
-	Hostname        string
-	ZitiSigningCert string
-	ZitiSigningKey  string
+	ZitiHome string
+	Hostname string
 
 	Controller ControllerTemplateValues
 	Router     RouterTemplateValues
@@ -68,6 +66,9 @@ type ControllerTemplateValues struct {
 }
 
 type EdgeControllerValues struct {
+	ZitiSigningCert string
+	ZitiSigningKey  string
+
 	APISessionTimeoutMinutes int
 	ListenerHostPort         string
 	AdvertisedHostPort       string
@@ -270,8 +271,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
-	data.ZitiSigningCert = zitiSigningCert
-	data.ZitiSigningKey = zitiSigningKey
 	data.Controller.Name = zitiCtrlHostname
 	data.Controller.ListenerAddress = zitiCtrlListenerAddress
 	data.Controller.AdvertisedAddress = zitiCtrlAdvertisedAddress
@@ -287,6 +286,8 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.Edge.IdentityServerCert = zitiEdgeCtrlIdentityServerCert
 	data.Controller.Edge.IdentityKey = zitiEdgeCtrlIdentityKey
 	data.Controller.Edge.IdentityCA = zitiEdgeCtrlIdentityCA
+	data.Controller.Edge.ZitiSigningCert = zitiSigningCert
+	data.Controller.Edge.ZitiSigningKey = zitiSigningKey
 	data.Router.IdentityCert = zitiRouterIdentityCert
 	data.Router.IdentityServerCert = zitiRouterIdentityServerCert
 	data.Router.IdentityKey = zitiRouterIdentityKey
@@ -326,6 +327,6 @@ func (data *ConfigTemplateValues) populateDefaults() {
 
 func handleVariableError(err error, varName string) {
 	if err != nil {
-		logrus.Errorf("Unable to get %s", varName)
+		logrus.Errorf("Unable to get %s: %v", varName, err)
 	}
 }

@@ -137,7 +137,7 @@ func HomeDir() string {
 	if h == "" {
 		h = "."
 	}
-	return strings.ReplaceAll(h, "\\", EnvVariableDetails.PathSeparator)
+	return backslashToForward(h)
 }
 
 func WorkingDir() (string, error) {
@@ -146,7 +146,7 @@ func WorkingDir() (string, error) {
 		return "", err
 	}
 
-	return strings.ReplaceAll(wd, "\\", EnvVariableDetails.PathSeparator), nil
+	return backslashToForward(wd), nil
 }
 
 func GetZitiHome() (string, error) {
@@ -169,7 +169,7 @@ func GetZitiHome() (string, error) {
 		retVal = os.Getenv(EnvVariableDetails.ZitiHomeVarName)
 	}
 
-	return strings.ReplaceAll(retVal, "\\", EnvVariableDetails.PathSeparator), nil
+	return backslashToForward(retVal), nil
 }
 
 func GetZitiCtrlIdentityCert() (string, error) {
@@ -439,4 +439,9 @@ func getValueOrSetAndGetDefault(envVarName string, defaultValue string, forceDef
 	retVal = os.Getenv(envVarName)
 
 	return retVal, nil
+}
+
+// replaces windows \ with / which windows allows for
+func backslashToForward(input string) string {
+	return strings.ReplaceAll(input, "\\", EnvVariableDetails.PathSeparator)
 }

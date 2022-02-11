@@ -31,22 +31,6 @@ listeners:
 {{ if .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
 {{ if .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
 
-
-{{- if or .Router.IsPrivate .Router.IsFabric }}
-#edge:
-csr:
-  country: US
-  province: NC
-  locality: Charlotte
-  organization: NetFoundry
-  organizationalUnit: Ziti
-  sans:
-    dns:
-      - {{ .Router.Edge.Hostname }}
-      - localhost
-    ip:
-      - "127.0.0.1"
-{{- else }}
 edge:
   csr:
     country: US
@@ -60,7 +44,6 @@ edge:
         - localhost
       ip:
         - "127.0.0.1"
-{{ end }}
 
 {{ if not .Router.IsWss }}#{{ end }}transport:
 {{ if not .Router.IsWss }}#{{ end }}  ws:
