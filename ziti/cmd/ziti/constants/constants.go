@@ -59,6 +59,8 @@ const (
 	DefaultControllerHealthCheckIntervalSec   = 30
 	DefaultControllerHealthCheckTimeoutSec    = 15
 	DefaultControllerHealthCheckDelaySec      = 15
+	DefaultEdgeIdentityDurationMinutes        = 14400
+	DefaultEdgeRouterDurationMinutes          = 14400
 
 	// WSS defaults
 	DefaultWSSWriteTimeout     = 10

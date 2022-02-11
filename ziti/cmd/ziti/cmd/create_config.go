@@ -60,6 +60,8 @@ type ControllerTemplateValues struct {
 	IdentityServerCert   string
 	IdentityKey          string
 	IdentityCA           string
+	EdgeIdentityDuration string
+	EdgeRouterDuration   string
 	Edge                 EdgeControllerValues
 	WebListener          ControllerWebListenerValues
 	HealthCheck          ControllerHealthCheckValues
@@ -242,6 +244,8 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Router.Listener.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
 	data.Router.Listener.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
 	data.Controller.Edge.APISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
+	data.Controller.EdgeIdentityDuration = string(rune(constants.DefaultEdgeIdentityDurationMinutes))
+	data.Controller.EdgeRouterDuration = string(rune(constants.DefaultEdgeRouterDurationMinutes))
 	data.Controller.WebListener.IdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
 	data.Controller.WebListener.ReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
 	data.Controller.WebListener.WriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
