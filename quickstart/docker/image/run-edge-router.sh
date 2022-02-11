@@ -1,22 +1,23 @@
 #!/bin/bash
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
-
+export ZITI_EDGE_CTRL_ADVERTISED=ziti-edge-controller:1280
+export ZITI_CTRL_ADVERTISED_ADDRESS=ziti-edge-controller
 ziti_createEnvFile
 . ${ZITI_HOME}/ziti.env
 
-until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
-    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CTRL_ADVERTISED}"); do
+    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED}"
     sleep 2
 done
 
 if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
 if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
-createRouterPki
+createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
 
-echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
-"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+echo "logging into ziti controller: ${ZITI_EDGE_CTRL_ADVERTISED}"
+"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"

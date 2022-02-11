@@ -74,10 +74,7 @@ func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
 
 			// Update fabric router specific values with options passed in
 			data.Router.Name = options.RouterName
-			data.Router.IdentityCert, _ = cmdhelper.GetZitiRouterIdentityCert(data.Router.Name, true)
-			data.Router.IdentityServerCert, _ = cmdhelper.GetZitiRouterIdentityServerCert(data.Router.Name, true)
-			data.Router.IdentityKey, _ = cmdhelper.GetZitiRouterIdentityKey(data.Router.Name, true)
-			data.Router.IdentityCA, _ = cmdhelper.GetZitiRouterIdentityCA(data.Router.Name, true)
+			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 			data.Router.IsFabric = true
 		},
 		Run: func(cmd *cobra.Command, args []string) {

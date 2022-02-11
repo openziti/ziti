@@ -37,7 +37,7 @@ mgmt:
   #maxOutstandingConnects: 100
   # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
   #connectTimeoutMs:       3000
-  listener:             tls:{{ .Controller.MgmtListenerHostPort }}
+  listener:             tls:{{ .Controller.ListenerAddress }}:10000
 
 #metrics:
 #  influxdb:
@@ -83,8 +83,8 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: {{ .ZitiSigningCert }}
-      key:  {{ .ZitiSigningKey }}
+      cert: {{ .Controller.Edge.ZitiSigningCert }}
+      key:  {{ .Controller.Edge.ZitiSigningKey }}
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
@@ -168,3 +168,5 @@ web:
         options: { }
       - binding: edge-client
         options: { }
+      - binding: fabric
+        optoins: { }

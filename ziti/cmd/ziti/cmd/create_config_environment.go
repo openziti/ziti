@@ -144,8 +144,8 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert,
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey,
 		cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarName, cmdhelper.EnvVariableDetails.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
-		cmdhelper.EnvVariableDetails.ZitiSigningCertVarName, cmdhelper.EnvVariableDetails.ZitiSigningCertVarDescription, data.ZitiSigningCert,
-		cmdhelper.EnvVariableDetails.ZitiSigningKeyVarName, cmdhelper.EnvVariableDetails.ZitiSigningKeyVarDescription, data.ZitiSigningKey)
+		cmdhelper.EnvVariableDetails.ZitiSigningCertVarName, cmdhelper.EnvVariableDetails.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
+		cmdhelper.EnvVariableDetails.ZitiSigningKeyVarName, cmdhelper.EnvVariableDetails.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey)
 
 	cmd.Long = createConfigLong
 

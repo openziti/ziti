@@ -137,7 +137,7 @@ func HomeDir() string {
 	if h == "" {
 		h = "."
 	}
-	return strings.ReplaceAll(h, "\\", EnvVariableDetails.PathSeparator)
+	return NormalizePath(h)
 }
 
 func WorkingDir() (string, error) {
@@ -146,7 +146,7 @@ func WorkingDir() (string, error) {
 		return "", err
 	}
 
-	return strings.ReplaceAll(wd, "\\", EnvVariableDetails.PathSeparator), nil
+	return NormalizePath(wd), nil
 }
 
 func GetZitiHome() (string, error) {
@@ -169,7 +169,7 @@ func GetZitiHome() (string, error) {
 		retVal = os.Getenv(EnvVariableDetails.ZitiHomeVarName)
 	}
 
-	return strings.ReplaceAll(retVal, "\\", EnvVariableDetails.PathSeparator), nil
+	return NormalizePath(retVal), nil
 }
 
 func GetZitiCtrlIdentityCert() (string, error) {
@@ -238,15 +238,6 @@ func GetZitiCtrlIdentityCA() (string, error) {
 	}
 
 	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiCtrlIdentityCAVarName, fmt.Sprintf("%s/%s-cas.pem", workingDir, controllerName), false)
-}
-
-func GetZitiRouterIdentityCert(routerName string, forceSet bool) (string, error) {
-	workingDir, err := WorkingDir()
-	if err != nil {
-		return "", err
-	}
-
-	return getValueOrSetAndGetDefault(EnvVariableDetails.ZitiRouterIdentityCertVarName, fmt.Sprintf("%s/%s-client.cert", workingDir, routerName), forceSet)
 }
 
 func GetZitiRouterIdentityServerCert(routerName string, forceSet bool) (string, error) {
@@ -439,4 +430,9 @@ func getValueOrSetAndGetDefault(envVarName string, defaultValue string, forceDef
 	retVal = os.Getenv(envVarName)
 
 	return retVal, nil
+}
+
+// replaces windows \ with / which windows allows for
+func NormalizePath(input string) string {
+	return strings.ReplaceAll(input, "\\", "/")
 }

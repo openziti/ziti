@@ -17,10 +17,18 @@ ctrl:
   endpoint:             tls:{{ .Controller.AdvertisedAddress }}:{{ .Controller.Port }}
 
 link:
+{{ if .Router.IsPrivate }}#{{ end }}  listeners:
+{{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:10080
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:10080
+{{ if .Router.IsPrivate }}#{{ end }}      options:
+{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   16
   dialers:
     - binding: transport
 
 listeners:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: transport
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    address: tls:0.0.0.0:1{{ .Router.Edge.Port }}
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: tunnel
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    options:
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
@@ -31,22 +39,6 @@ listeners:
 {{ if .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
 {{ if .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
 
-
-{{- if or .Router.IsPrivate .Router.IsFabric }}
-#edge:
-csr:
-  country: US
-  province: NC
-  locality: Charlotte
-  organization: NetFoundry
-  organizationalUnit: Ziti
-  sans:
-    dns:
-      - {{ .Router.Edge.Hostname }}
-      - localhost
-    ip:
-      - "127.0.0.1"
-{{- else }}
 edge:
   csr:
     country: US
@@ -60,7 +52,6 @@ edge:
         - localhost
       ip:
         - "127.0.0.1"
-{{ end }}
 
 {{ if not .Router.IsWss }}#{{ end }}transport:
 {{ if not .Router.IsWss }}#{{ end }}  ws:
