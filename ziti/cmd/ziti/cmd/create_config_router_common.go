@@ -29,38 +29,30 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityCA(r, routerName)
 }
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {
-	// use env var if set - else use default value
 	val := os.Getenv("ZITI_ROUTER_IDENTITY_CERT")
 	if val == "" {
-		// use default value
-		val = workingDir + "/" + routerName + ".cert"
+		val = workingDir + "/" + routerName + ".cert" //default
 	}
 	r.IdentityCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityServerCert(r *RouterTemplateValues, routerName string) {
-	// use env var if set - else use default value
 	val := os.Getenv("ZITI_ROUTER_IDENTITY_SERVER_CERT")
 	if val == "" {
-		// use default value
-		val = workingDir + "/" + routerName + ".server.cert"
+		val = workingDir + "/" + routerName + ".server.chain.cert" //default
 	}
 	r.IdentityServerCert = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityKey(r *RouterTemplateValues, routerName string) {
-	// use env var if set - else use default value
 	val := os.Getenv("ZITI_ROUTER_IDENTITY_KEY")
 	if val == "" {
-		// use default value
-		val = workingDir + "/" + routerName + ".key"
+		val = workingDir + "/" + routerName + ".key" //default
 	}
 	r.IdentityKey = cmdhelper.NormalizePath(val)
 }
 func SetZitiRouterIdentityCA(r *RouterTemplateValues, routerName string) {
-	// use env var if set - else use default value
 	val := os.Getenv("ZITI_ROUTER_IDENTITY_CA")
 	if val == "" {
-		// use default value
-		val = workingDir + "/" + routerName + ".cas"
+		val = workingDir + "/" + routerName + ".cas" //default
 	}
 	r.IdentityCA = cmdhelper.NormalizePath(val)
 }

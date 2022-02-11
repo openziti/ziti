@@ -98,6 +98,12 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			if data.Controller.MgmtListenerHostPort == "" || controllerOptions.MgmtListener != constants.DefaultZitiMgmtControllerListenerHostPort {
 				data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
 			}
+
+			// process identity information
+			SetControllerIdentity(&data.Controller)
+			SetEdgeConfig(&data.Controller)
+			SetWebConfig(&data.Controller)
+
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			controllerOptions.Cmd = cmd
@@ -156,4 +162,105 @@ func (options *CreateConfigControllerOptions) run(data *ConfigTemplateValues) er
 	logrus.Debugf("Controller configuration generated successfully and written to: %s", options.Output)
 
 	return nil
+}
+
+func hostnameOrNetworkName() string {
+	val := os.Getenv("ZITI_NETWORK_NAME")
+	if val == "" {
+		h, err := os.Hostname()
+		if err != nil {
+			return "localhost"
+		}
+		return h
+	}
+	return val
+}
+
+func SetControllerIdentity(data *ControllerTemplateValues) {
+	SetControllerIdentityCert(data)
+	SetControllerIdentityServerCert(data)
+	SetControllerIdentityKey(data)
+	SetControllerIdentityCA(data)
+}
+func SetControllerIdentityCert(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_CTRL_IDENTITY_CERT")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".cert" //default
+	}
+	c.IdentityCert = cmdhelper.NormalizePath(val)
+}
+func SetControllerIdentityServerCert(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_CTRL_IDENTITY_SERVER_CERT")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".server.chain.cert" //default
+	}
+	c.IdentityServerCert = cmdhelper.NormalizePath(val)
+}
+func SetControllerIdentityKey(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_CTRL_IDENTITY_KEY")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".key" //default
+	}
+	c.IdentityKey = cmdhelper.NormalizePath(val)
+}
+func SetControllerIdentityCA(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_CTRL_IDENTITY_CA")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".ca" //default
+	}
+	c.IdentityCA = cmdhelper.NormalizePath(val)
+}
+
+func SetEdgeConfig(data *ControllerTemplateValues) {
+	SetEdgeSigningCert(data)
+	SetEdgeSigningKey(data)
+}
+func SetEdgeSigningCert(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_SIGNING_CERT")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.cert" //default
+	}
+	c.Edge.ZitiSigningCert = cmdhelper.NormalizePath(val)
+}
+func SetEdgeSigningKey(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_SIGNING_KEY")
+	if val == "" {
+		val = workingDir + "/" + hostnameOrNetworkName() + ".signing.key" //default
+	}
+	c.Edge.ZitiSigningKey = cmdhelper.NormalizePath(val)
+}
+
+func SetWebConfig(data *ControllerTemplateValues) {
+	SetWebIdentityCert(data)
+	SetWebIdentityServerCert(data)
+	SetWebIdentityKey(data)
+	SetWebIdentityCA(data)
+}
+func SetWebIdentityCert(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_CERT")
+	if val == "" {
+		val = c.IdentityCert //default
+	}
+	c.Edge.IdentityCert = cmdhelper.NormalizePath(val)
+}
+func SetWebIdentityServerCert(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT")
+	if val == "" {
+		val = c.IdentityServerCert //default
+	}
+	c.Edge.IdentityServerCert = cmdhelper.NormalizePath(val)
+}
+func SetWebIdentityKey(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_KEY")
+	if val == "" {
+		val = c.IdentityKey //default
+	}
+	c.Edge.IdentityKey = cmdhelper.NormalizePath(val)
+}
+func SetWebIdentityCA(c *ControllerTemplateValues) {
+	val := os.Getenv("ZITI_EDGE_CTRL_IDENTITY_CA")
+	if val == "" {
+		val = c.IdentityCA //default
+	}
+	c.Edge.IdentityCA = cmdhelper.NormalizePath(val)
 }
