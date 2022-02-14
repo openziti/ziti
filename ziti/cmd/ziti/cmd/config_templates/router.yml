@@ -26,18 +26,17 @@ link:
   dialers:
     - binding: transport
 
-listeners:
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: transport
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    address: tls:0.0.0.0:{{ .Router.Edge.Port }}
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: tunnel
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    options:
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
-{{ if .Router.IsPrivate }}#{{ end }}  - binding: {{ if or .Router.IsFabric .Router.IsPrivate }}transport{{ else }}edge{{ end }}
-{{ if .Router.IsPrivate }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
-{{ if .Router.IsPrivate }}#{{ end }}    options:
-{{ if .Router.IsPrivate }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
-{{ if .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
-{{ if .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
+{{ if .Router.IsFabric }}#{{- end }}listeners:
+  #bindings of edge and tunnel requires an "edge" section below
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}  - binding: edge
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    options:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
+{{ if .Router.IsFabric }}#{{- end }}  - binding: tunnel
+{{ if .Router.IsFabric }}#{{- end }}    options:
+{{ if .Router.IsFabric }}#{{- end }}      mode: host #tproxy|host
 
 edge:
   csr:
