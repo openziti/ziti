@@ -28,7 +28,7 @@ link:
 
 listeners:
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: transport
-{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    address: tls:0.0.0.0:1{{ .Router.Edge.Port }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    address: tls:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}  - binding: tunnel
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}    options:
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{- end }}      mode: host #tproxy|tun|host
