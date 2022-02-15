@@ -196,17 +196,6 @@ func UsageError(cmd *cobra.Command, format string, args ...interface{}) error {
 	return fmt.Errorf("%s\nSee '%s -h' for help and examples.", msg, cmd.CommandPath())
 }
 
-func HomeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	h := os.Getenv("USERPROFILE") // windows
-	if h == "" {
-		h = "."
-	}
-	return h
-}
-
 func JFrogAPIKey() string {
 	if h := os.Getenv("JFROG_API_KEY"); h != "" {
 		return h

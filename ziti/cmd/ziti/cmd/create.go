@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
 	"io"
@@ -44,7 +43,7 @@ func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfig(common.NewOptionsProvider(out, errOut)))
+	cmd.AddCommand(NewCmdCreateConfig())
 	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
 
 	cmd.AddCommand(NewCmdPKICreateCA(f, out, errOut))

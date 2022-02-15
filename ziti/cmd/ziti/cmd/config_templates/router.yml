@@ -1,0 +1,74 @@
+{{/*
+ Config Format Version
+
+ Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+ expected by the router will be incremented. When the controller tries to load a configuration file with
+ an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+ documentation.*/}}
+v: 3
+
+identity:
+  cert:                 "{{ .Router.IdentityCert }}"
+  server_cert:          "{{ .Router.IdentityServerCert }}"
+  key:                  "{{ .Router.IdentityKey }}"
+  ca:                   "{{ .Router.IdentityCA }}"
+
+ctrl:
+  endpoint:             tls:{{ .Controller.AdvertisedAddress }}:{{ .Controller.Port }}
+
+link:
+{{ if .Router.IsPrivate }}#{{ end }}  listeners:
+{{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:10080
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:10080
+{{ if .Router.IsPrivate }}#{{ end }}      options:
+{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   16
+  dialers:
+    - binding: transport
+
+{{ if .Router.IsFabric }}#{{- end }}listeners:
+  #bindings of edge and tunnel requires an "edge" section below
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}  - binding: edge
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    options:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeoutMs }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeoutS }}s
+{{ if .Router.IsFabric }}#{{- end }}  - binding: tunnel
+{{ if .Router.IsFabric }}#{{- end }}    options:
+{{ if .Router.IsFabric }}#{{- end }}      mode: host #tproxy|host
+
+edge:
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+    sans:
+      dns:
+        - {{ .Router.Edge.Hostname }}
+        - localhost
+      ip:
+        - "127.0.0.1"
+
+{{ if not .Router.IsWss }}#{{ end }}transport:
+{{ if not .Router.IsWss }}#{{ end }}  ws:
+{{ if not .Router.IsWss }}#{{ end }}    writeTimeout: {{ .Router.Wss.WriteTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    readTimeout: {{ .Router.Wss.ReadTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    idleTimeout: {{ .Router.Wss.IdleTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    pongTimeout: {{ .Router.Wss.PongTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    pingInterval: {{ .Router.Wss.PingInterval }}
+{{ if not .Router.IsWss }}#{{ end }}    handshakeTimeout: {{ .Router.Wss.HandshakeTimeout }}
+{{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    enableCompression: true
+{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
+{{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
+
+forwarder:
+  latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval }}
+  xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}
+  xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
+  linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
+  linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}

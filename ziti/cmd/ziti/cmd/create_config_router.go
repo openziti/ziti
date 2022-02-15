@@ -17,74 +17,68 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
+	"strings"
 )
 
 const (
-	optionCtrlAddress  = "ctrlAddress"
-	defaultCtrlAddress = "quic:0.0.0.0:6262"
+	optionRouterName = "routerName"
 )
 
-var (
-	createConfigRouterLong = templates.LongDesc(`
-		Creates the router config
-`)
-
-	createConfigRouterExample = templates.Examples(`
-		# Create the router config 
-		ziti create config router
-
-		# Create the router config with a particular ctrlListener
-		ziti create config router -ctrlListener quic:0.0.0.0:6262
-	`)
-)
-
-// CreateConfigRouterOptions the options for the create spring command
+// CreateConfigRouterOptions the options for the router command
 type CreateConfigRouterOptions struct {
 	CreateConfigOptions
 
-	CtrlAddress string
+	RouterName string
 }
 
-// NewCmdCreateConfigRouter creates a command object for the "create" command
-func NewCmdCreateConfigRouter(p common.OptionsProvider) *cobra.Command {
-	options := &CreateConfigRouterOptions{
-		CreateConfigOptions: CreateConfigOptions{
-			CommonOptions: p(),
-		},
-	}
+// NewCmdCreateConfigRouter creates a command object for the "router" command
+func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
+	options := &CreateConfigRouterOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "router",
-		Short:   "Create a router config",
+		Short:   "Creates a config file for specified Router name",
 		Aliases: []string{"rtr"},
-		Long:    createConfigRouterLong,
-		Example: createConfigRouterExample,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			// Setup logging
+			var logOut *os.File
+			if options.Verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+				// Only print log to stdout if not printing config to stdout
+				if strings.ToLower(options.Output) != "stdout" {
+					logOut = os.Stdout
+				} else {
+					logOut = os.Stderr
+				}
+				logrus.SetOutput(logOut)
+			}
+
+			// Update router data with options passed in
+			data.Router.Name = options.RouterName
+			SetZitiRouterIdentity(&data.Router, data.Router.Name)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			cmdhelper.CheckErr(cmd.Help())
 		},
 	}
 
-	options.addFlags(cmd, "", defaultCtrlListener)
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge(data))
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric(data))
 
+	options.addCreateFlags(cmd)
+	options.addFlags(cmd)
 	return cmd
 }
 
-// Run implements the command
-func (o *CreateConfigRouterOptions) Run() error {
-	if o.CtrlAddress == "" {
-		return util.MissingOption(optionCtrlAddress)
+func (options *CreateConfigRouterOptions) addFlags(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
+	err := cmd.MarkPersistentFlagRequired(optionRouterName)
+	if err != nil {
+		return
 	}
-
-	return fmt.Errorf("UNIMPLEMENTED: '%s'", "create config router")
-
-	// return nil
 }
