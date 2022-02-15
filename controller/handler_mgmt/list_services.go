@@ -74,3 +74,37 @@ func (h *listServicesHandler) HandleReceive(msg *channel.Message, ch channel.Cha
 		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }
+
+func toApiService(s *network.Service) *mgmt_pb.Service {
+	var terminators []*mgmt_pb.Terminator
+	for _, terminator := range s.Terminators {
+		terminators = append(terminators, toApiTerminator(terminator))
+	}
+
+	return &mgmt_pb.Service{
+		Id:                 s.Id,
+		Name:               s.Name,
+		TerminatorStrategy: s.TerminatorStrategy,
+		Terminators:        terminators,
+	}
+}
+
+func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
+	precedence := mgmt_pb.TerminatorPrecedence_Default
+	if s.Precedence.IsRequired() {
+		precedence = mgmt_pb.TerminatorPrecedence_Required
+	} else if s.Precedence.IsFailed() {
+		precedence = mgmt_pb.TerminatorPrecedence_Failed
+	}
+
+	return &mgmt_pb.Terminator{
+		Id:         s.Id,
+		ServiceId:  s.Service,
+		RouterId:   s.Router,
+		Binding:    s.Binding,
+		Address:    s.Address,
+		Identity:   s.Identity,
+		Cost:       uint32(s.Cost),
+		Precedence: precedence,
+	}
+}

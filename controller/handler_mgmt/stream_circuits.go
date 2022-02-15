@@ -110,3 +110,14 @@ func (handler *CircuitsStreamHandler) close() {
 	}
 	events.RemoveCircuitEventHandler(handler)
 }
+
+func NewPath(path *network.Path) *mgmt_pb.Path {
+	mgmtPath := &mgmt_pb.Path{}
+	for _, r := range path.Nodes {
+		mgmtPath.Nodes = append(mgmtPath.Nodes, r.Id)
+	}
+	for _, l := range path.Links {
+		mgmtPath.Links = append(mgmtPath.Links, l.Id)
+	}
+	return mgmtPath
+}
