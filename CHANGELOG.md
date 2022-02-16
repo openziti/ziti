@@ -1,3 +1,7 @@
+# Release 0.24.9
+* Enhancement: `ziti` now has subcommands under `create config` which will properly emit configuration files for 
+  `controller`, `router edge` and `router fabric`. 
+
 # Release 0.24.8
 
 * Bug fix: Move control change presence handler notification out of bind handler
