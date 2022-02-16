@@ -284,6 +284,11 @@ func (c *UpdatableAddress) String() string {
 	return c.getWrapped().String()
 }
 
+// Type implements transport.Address.Type
+func (c *UpdatableAddress) Type() string {
+	return c.getWrapped().Type()
+}
+
 // Dial implements transport.Address.Dial
 func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
 	return c.getWrapped().Dial(name, i, timeout, tcfg)

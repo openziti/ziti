@@ -34,25 +34,9 @@ func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.Bind
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	network := bindHandler.network
-	binding.AddTypedReceiveHandler(newCreateRouterHandler(network))
-	binding.AddTypedReceiveHandler(newCreateServiceHandler(network))
-	binding.AddTypedReceiveHandler(newGetServiceHandler(network))
-	binding.AddTypedReceiveHandler(newInspectHandler(network))
-	binding.AddTypedReceiveHandler(newListLinksHandler(network))
-	binding.AddTypedReceiveHandler(newListRoutersHandler(network))
-	binding.AddTypedReceiveHandler(newListServicesHandler(network))
-	binding.AddTypedReceiveHandler(newListCircuitsHandler(network))
-	binding.AddTypedReceiveHandler(newRemoveRouterHandler(network))
-	binding.AddTypedReceiveHandler(newRemoveServiceHandler(network))
-	binding.AddTypedReceiveHandler(newRemoveCircuitHandler(network))
-	binding.AddTypedReceiveHandler(newSetLinkCostHandler(network))
-	binding.AddTypedReceiveHandler(newSetLinkDownHandler(network))
 
-	binding.AddTypedReceiveHandler(newCreateTerminatorHandler(network))
-	binding.AddTypedReceiveHandler(newRemoveTerminatorHandler(network))
-	binding.AddTypedReceiveHandler(newGetTerminatorHandler(network))
-	binding.AddTypedReceiveHandler(newListTerminatorsHandler(network))
-	binding.AddTypedReceiveHandler(newSetTerminatorCostHandler(network))
+	binding.AddTypedReceiveHandler(newCreateRouterHandler(network))
+	binding.AddTypedReceiveHandler(newListServicesHandler(network))
 
 	streamMetricHandler := newStreamMetricsHandler(network)
 	binding.AddTypedReceiveHandler(streamMetricHandler)
@@ -70,8 +54,6 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 
 	traceDispatchWrapper := trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), binding.GetChannel(), network.GetTraceController(), traceDispatchWrapper))
-
-	binding.AddTypedReceiveHandler(newSnapshotDbHandler(network))
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts {
