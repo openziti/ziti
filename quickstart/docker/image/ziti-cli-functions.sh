@@ -42,7 +42,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
@@ -55,14 +55,16 @@ function cleanZitiController {
   initializeController
 }
 function initializeController {
-"${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${ZITI_HOME_OS_SPECIFIC}/controller-init.log"
-  echo -e "ziti-controller initialized. see $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log") for details"
+  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log"
+"${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  echo -e "ziti-controller initialized. see $(BLUE "${log_file}") for details"
 }
 function startZitiController {
+  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log"
   # shellcheck disable=SC2034
-  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/ziti-edge-controller.log" 2>&1 &)
+  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${log_file}" 2>&1 &)
   pid=$!
-  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
+  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${log_file}")"
   return $pid
 }
 
@@ -73,9 +75,10 @@ function stopZitiController {
 }
 
 function startExpressEdgeRouter {
-  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log" 2>&1 &
+  log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log"
+  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
   pid=$!
-  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log")"
+  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${log_file}")"
   return $pid
 }
 
@@ -168,7 +171,7 @@ function getLatestZiti {
     return 1
   fi
 
-  export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"
+  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"; else echo "Using ZITI_BIN_DIR: ${ZITI_BIN_DIR}"; fi
 
   ZITI_BINARIES_FILE_ABSPATH="${ZITI_HOME-}/ziti-bin/${ZITI_BINARIES_FILE}"
   if ! test -f "${ZITI_BINARIES_FILE_ABSPATH}"; then
@@ -308,15 +311,15 @@ function generateEnvFile {
 
   echo -e "Generating new network with name: $(BLUE "${ZITI_NETWORK-}")"
 
-  if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-controller"; fi
-  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
+  if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-controller"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}"; fi
+  if [[ "${ZITI_CTRL_PORT-}" == "" ]]; then export ZITI_CTRL_PORT="6262"; fi
+
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK-}-edge-controller"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
+
   if [[ "${ZITI_ZAC_RAWNAME-}" == "" ]]; then export export ZITI_ZAC_RAWNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export export ZITI_ZAC_HOSTNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
-  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+  if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}"; fi
 
   if [[ "${ZITI_BIN_ROOT-}" == "" ]]; then
     export ZITI_BIN_ROOT="${ZITI_HOME-}/ziti-bin"
@@ -340,6 +343,9 @@ function ziti_expressConfiguration {
     if [[ "${REPLY}" == [Yy]* ]]; then
       echo -e "$(GREEN "Clearing existing Ziti variables and continuing with express install")"
       unsetZitiEnv "-s"
+      # Stop any devices currently running to avoid port collisions
+      stopAllEdgeRouters
+      stopZitiController
     else
       echo -e "$(RED "  --- Exiting express install ---")"
       return 1
@@ -402,6 +408,7 @@ function ziti_expressConfiguration {
   initializeController
   startZitiController
   echo "waiting for the controller to come online to allow the edge router to enroll"
+
   waitForController
 
   zitiLogin
@@ -621,6 +628,7 @@ function showIssuerAndSubjectForPEM() {
 }
 
 function createRouterPki {
+  #TODO: this needs to be parameterized to take other router_name
   pki_client_server "${ZITI_EDGE_ROUTER_RAWNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
 }
 
@@ -652,81 +660,14 @@ function createPrivateRouterConfig {
   fi
 
   # Make sure necessary env variables are set
-  checkEnvVariable ZITI_HOME ZITI_BIN_DIR
+  checkEnvVariable ZITI_HOME
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
 
 output_file="${ZITI_HOME-}/${router_name}.yaml"
-cat > "${output_file}" <<HereDocForEdgeRouter
-v: 3
-
-identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
-
-ctrl:
-  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
-
-link:
-#  listeners:
-#    - binding:          transport
-#      bind:             tls:0.0.0.0:10080
-#      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:10080
-#      options:
-#        outQueueSize:   16
-  dialers:
-    - binding: transport
-
-listeners:
-#  - binding: tunnel
-#    options:
-#      mode: host #tproxy|tun|host
-#  - binding: transport
-#    address: tls:0.0.0.0:${ZITI_EDGE_ROUTER_PORT}
-#    options:
-#      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:${ZITI_EDGE_ROUTER_PORT}
-#      connectTimeoutMs: 5000
-#      getSessionTimeout: 60s
-
-#edge:
-csr:
-  country: US
-  province: NC
-  locality: Charlotte
-  organization: NetFoundry
-  organizationalUnit: Ziti
-  sans:
-    dns:
-      - ${ZITI_EDGE_ROUTER_HOSTNAME}
-      - localhost
-    ip:
-      - "127.0.0.1"
-
-#transport:
-#  ws:
-#    writeTimeout:      10
-#    readTimeout:       5
-#    idleTimeout:       5
-#    pongTimeout:       60
-#    pingInterval:      54
-#    handshakeTimeout:  10
-#    readBufferSize:    4096
-#    writeBufferSize:   4096
-#    enableCompression: true
-#    server_cert:       ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.cert
-#    key:               ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.key
-
-forwarder:
-  latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
-HereDocForEdgeRouter
+"${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
 
 echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
@@ -792,74 +733,7 @@ function createFabricRouterConfig {
   fi
 
 output_file="${ZITI_HOME}/${router_name}.yaml"
-cat > "${output_file}" <<HereDocForEdgeRouter
-v: 3
-
-identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
-
-ctrl:
-  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
-
-link:
-  listeners:
-    - binding:          transport
-      bind:             tls:0.0.0.0:10080
-      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:10080
-      options:
-        outQueueSize:   16
-  dialers:
-    - binding: transport
-
-listeners:
-#  - binding: tunnel
-#    options:
-#      mode: host #tproxy|tun|host
-  - binding: transport
-    address: tls:0.0.0.0:${ZITI_EDGE_ROUTER_PORT}
-    options:
-      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:${ZITI_EDGE_ROUTER_PORT}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-
-#edge:
-csr:
-  country: US
-  province: NC
-  locality: Charlotte
-  organization: NetFoundry
-  organizationalUnit: Ziti
-  sans:
-    dns:
-      - ${ZITI_EDGE_ROUTER_HOSTNAME}
-      - localhost
-    ip:
-      - "127.0.0.1"
-
-#transport:
-#  ws:
-#    writeTimeout:      10
-#    readTimeout:       5
-#    idleTimeout:       5
-#    pongTimeout:       60
-#    pingInterval:      54
-#    handshakeTimeout:  10
-#    readBufferSize:    4096
-#    writeBufferSize:   4096
-#    enableCompression: true
-#    server_cert:       ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.cert
-#    key:               ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.key
-
-forwarder:
-  latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
-HereDocForEdgeRouter
+"${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
 
 echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -895,74 +769,7 @@ function createEdgeRouterWssConfig {
   fi
 
 output_file="${ZITI_HOME-}/${router_name}.yaml"
-cat > "${output_file}" <<HereDocForEdgeRouter
-v: 3
-
-identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
-
-ctrl:
-  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
-
-link:
-  listeners:
-    - binding:          transport
-      bind:             tls:0.0.0.0:10080
-      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:10080
-      options:
-        outQueueSize:   16
-  dialers:
-    - binding: transport
-
-listeners:
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
-  - binding: edge
-    address: ws:0.0.0.0:3023
-    options:
-      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:3023
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-
-edge:
-  csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
-    sans:
-      dns:
-        - ${ZITI_EDGE_ROUTER_HOSTNAME}
-        - localhost
-      ip:
-        - "127.0.0.1"
-
-transport:
-  ws:
-    writeTimeout:      10
-    readTimeout:       5
-    idleTimeout:       5
-    pongTimeout:       60
-    pingInterval:      54
-    handshakeTimeout:  10
-    readBufferSize:    4096
-    writeBufferSize:   4096
-    enableCompression: true
-    server_cert:       ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.cert
-    key:               ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_ROUTER_HOSTNAME}-router-server.key
-
-forwarder:
-  latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
-HereDocForEdgeRouter
+"${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
 
 echo -e "Edge router wss configuration file written to: $(BLUE "${output_file}")"
 }
@@ -998,88 +805,30 @@ function createEdgeRouterConfig {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${router_name}.yaml"
-cat > "${output_file}" <<HereDocForEdgeRouter
-v: 3
+  output_file="${ZITI_HOME}/${router_name}.yaml"
 
-identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-server.cert"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${router_name}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${router_name}-cas.cert"
-
-ctrl:
-  endpoint:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_CTRL_PORT}
-
-link:
-  listeners:
-    - binding:          transport
-      bind:             tls:0.0.0.0:10080
-      advertise:        tls:${ZITI_EDGE_ROUTER_HOSTNAME}:10080
-      options:
-        outQueueSize:   16
-  dialers:
-    - binding: transport
-
-listeners:
-  - binding: tunnel
-    options:
-      mode: host #tproxy|tun|host
-  - binding: edge
-    address: tls:0.0.0.0:${ZITI_EDGE_ROUTER_PORT}
-    options:
-      advertise: ${ZITI_EDGE_ROUTER_HOSTNAME}:${ZITI_EDGE_ROUTER_PORT}
-      connectTimeoutMs: 5000
-      getSessionTimeout: 60s
-
-edge:
-  csr:
-    country: US
-    province: NC
-    locality: Charlotte
-    organization: NetFoundry
-    organizationalUnit: Ziti
-    sans:
-      dns:
-        - ${ZITI_EDGE_ROUTER_HOSTNAME}
-        - localhost
-      ip:
-        - "127.0.0.1"
-
-#transport:
-#  ws:
-#    writeTimeout:      10
-#    readTimeout:       5
-#    idleTimeout:       5
-#    pongTimeout:       60
-#    pingInterval:      54
-#    handshakeTimeout:  10
-#    readBufferSize:    4096
-#    writeBufferSize:   4096
-#    enableCompression: true
-#    server_cert:       ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.cert
-#    key:               ${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_WSS_ROUTER_HOSTNAME-}-router-server.key
-
-forwarder:
-  latencyProbeInterval: 1000
-  xgressDialQueueLength: 1000
-  xgressDialWorkerCount: 128
-  linkDialQueueLength: 1000
-  linkDialWorkerCount: 10
-HereDocForEdgeRouter
-
-echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
+  mkdir -p "${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}"
+  export ZITI_ROUTER_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/client.cert"
+  export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
+  export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
+  export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
+  "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
+  echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
+  unset ZITI_ROUTER_IDENTITY_CERT
+  unset ZITI_ROUTER_IDENTITY_SERVER_CERT
+  unset ZITI_ROUTER_IDENTITY_KEY
+  unset ZITI_ROUTER_IDENTITY_CA
 }
 
 function createFabricIdentity {
-  output_file="${ZITI_HOME}/identities.yaml"
+  output_file="${ZITI_HOME}/identities.yml"
 cat > "${output_file}" <<IdentitiesJsonHereDoc
 ---
 default:
   caCert:   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
   cert:     "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_NETWORK-}-dotzeet.cert"
   key:      "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"
-  endpoint: tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_MGMT_PORT}
+  endpoint: tls:${ZITI_CTRL_MGMT_HOST_PORT}
 IdentitiesJsonHereDoc
 
 echo -e "identities file written to: $(BLUE "${output_file}")"
@@ -1112,157 +861,12 @@ function createControllerConfig {
     return 1
   fi
 
-cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem" > "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-cat "${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert" >> "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_OS_SPECIFIC}/cas.pem")"
+  cat "${ZITI_CTRL_IDENTITY_SERVER_CERT}" > "${ZITI_CTRL_IDENTITY_CA}"
+  cat "${ZITI_SIGNING_CERT}" >> "${ZITI_CTRL_IDENTITY_CA}"
+  echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
 
-output_file="${ZITI_HOME}/${controller_name}.yaml"
-cat > "${output_file}" <<HereDocForEdgeConfiguration
-v: 3
-
-#trace:
-#  path: "${ZITI_CONTROLLER_RAWNAME}.trace"
-
-#profile:
-#  memory:
-#    path: ctrl.memprof
-
-db:                     "${ZITI_HOME_OS_SPECIFIC}/db/ctrl.db"
-
-identity:
-  cert:                 "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"
-  server_cert:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
-  key:                  "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"
-  ca:                   "${ZITI_PKI_OS_SPECIFIC}/cas.pem"
-
-ctrl:
-  listener:             tls:0.0.0.0:${ZITI_FAB_CTRL_PORT}
-
-mgmt:
-  listener:             tls:${ZITI_CONTROLLER_HOSTNAME}:${ZITI_FAB_MGMT_PORT}
-
-#metrics:
-#  influxdb:
-#    url:                http://localhost:8086
-#    database:           ziti
-
-# xctrl_example
-#
-#example:
-#  enabled:              false
-#  delay:                5s
-
-# By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
-# section, commenting out, or altering the name of the section will cause the edge to not run.
-edge:
-  # This section represents the configuration of the Edge API that is served over HTTPS
-  api:
-    #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
-    # activityUpdateInterval: 90s
-    #(optional, default 250) The number of API Sessions updated for last activity per transaction
-    # activityUpdateBatchSize: 250
-    # sessionTimeout - optional, default 10m
-    # The number of minutes before an Edge API session will timeout. Timeouts are reset by
-    # API requests and connections that are maintained to Edge Routers
-    sessionTimeout: 30m
-    # address - required
-    # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
-    # defined in this webListener's bindPoints.
-    address: ${ZITI_EDGE_CONTROLLER_API}
-  # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
-  enrollment:
-    # signingCert - required
-    # A Ziti Identity configuration section that specifically makes use of the cert and key fields to define
-    # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
-    # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
-    signingCert:
-      cert: ${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert
-      key:  ${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key
-    # edgeIdentity - optional
-    # A section for identity enrollment specific settings
-    edgeIdentity:
-      # durationMinutes - optional, default 5m
-      # The length of time that a Ziti Edge Identity enrollment should remain valid. After
-      # this duration, the enrollment will expire and not longer be usable.
-      duration: 14400m
-    # edgeRouter - Optional
-    # A section for edge router enrollment specific settings.
-    edgeRouter:
-      # durationMinutes - optional, default 5m
-      # The length of time that a Ziti Edge Router enrollment should remain valid. After
-      # this duration, the enrollment will expire and not longer be usable.
-      duration: 14400m
-
-# web
-# Defines webListeners that will be hosted by the controller. Each webListener can host many APIs and be bound to many
-# bind points.
-web:
-  # name - required
-  # Provides a name for this listener, used for logging output. Not required to be unique, but is highly suggested.
-  - name: client-management
-    # bindPoints - required
-    # One or more bind points are required. A bind point specifies an interface (interface:port string) that defines
-    # where on the host machine the webListener will listen and the address (host:port) that should be used to
-    # publicly address the webListener(i.e. mydomain.com, localhost, 127.0.0.1). This public address may be used for
-    # incoming address resolution as well as used in responses in the API.
-    bindPoints:
-      #interface - required
-      # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 0.0.0.0:${ZITI_EDGE_CONTROLLER_PORT}
-        # address - required
-        # The public address that external incoming requests will be able to resolve. Used in request processing and
-        # response content that requires full host:port/path addresses.
-        address: ${ZITI_EDGE_CONTROLLER_API}
-    # identity - optional
-    # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
-    identity:
-      ca:          "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
-      key:         "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key"
-      server_cert: "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem"
-      cert:        "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-client.cert"
-    # options - optional
-    # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
-    # used for all http servers started by the current webListener.
-    options:
-      # idleTimeoutMs - optional, default 5000ms
-      # The maximum amount of idle time in milliseconds allowed for pipelined HTTP requests. Setting this too high
-      # can cause resources on the host to be consumed as clients remain connected and idle. Lowering this value
-      # will cause clients to reconnect on subsequent HTTPs requests.
-      idleTimeout: 5000ms  #http timeouts, new
-      # readTimeoutMs - optional, default 5000ms
-      # The maximum amount of time in milliseconds http servers will wait to read the first incoming requests. A higher
-      # value risks consuming resources on the host with clients that are acting bad faith or suffering from high latency
-      # or packet loss. A lower value can risk losing connections to high latency/packet loss clients.
-      readTimeout: 5000ms
-      # writeTimeoutMs - optional, default 10000ms
-      # The total maximum time in milliseconds that the http server will wait for a single requests to be received and
-      # responded too. A higher value can allow long running requests to consume resources on the host. A lower value
-      # can risk ending requests before the server has a chance to respond.
-      writeTimeout: 100000ms
-      # minTLSVersion - optional, default TSL1.2
-      # The minimum version of TSL to support
-      minTLSVersion: TLS1.2
-      # maxTLSVersion - optional, default TSL1.3
-      # The maximum version of TSL to support
-      maxTLSVersion: TLS1.3
-    # apis - required
-    # Allows one or more APIs to be bound to this webListener
-    apis:
-      # binding - required
-      # Specifies an API to bind to this webListener. Built-in APIs are
-      #   - edge-management
-      #   - edge-client
-      #   - fabric-management
-      - binding: edge-management
-        # options - arg optional/required
-        # This section is used to define values that are specified by the API they are associated with.
-        # These settings are per API. The example below is for the 'edge-api' and contains both optional values and
-        # required values.
-        options: { }
-      - binding: edge-client
-        options: { }
-
-HereDocForEdgeConfiguration
+  output_file="${ZITI_HOME}/${controller_name}.yaml"
+  "${ZITI_BIN_DIR}/ziti" create config controller > "${output_file}"
 
   echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
 }
@@ -1317,8 +921,6 @@ function ziti_createEnvFile {
   if [[ "${ZITI_PWD-}" == "" ]]; then export ZITI_PWD="admin"; fi
   if [[ "${ZITI_DOMAIN_SUFFIX-}" == "" ]]; then export ZITI_DOMAIN_SUFFIX=""; fi
   if [[ "${ZITI_ID-}" == "" ]]; then export ZITI_ID="${ZITI_HOME}/identities.yaml"; fi
-  if [[ "${ZITI_FAB_MGMT_PORT-}" == "" ]]; then export ZITI_FAB_MGMT_PORT="10000"; fi
-  if [[ "${ZITI_FAB_CTRL_PORT-}" == "" ]]; then export ZITI_FAB_CTRL_PORT="6262"; fi
 
   if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK}-controller"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK}-edge-controller"; fi
@@ -1332,9 +934,10 @@ function ziti_createEnvFile {
   if [[ "${ZITI_EDGE_CONTROLLER_PORT-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_PORT="1280"; fi
 
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CONTROLLER_HOSTNAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
   if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_API-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_API="${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
+  if [[ "${ZITI_EDGE_CTRL_ADVERTISED-}" == "" ]]; then export ZITI_EDGE_CTRL_ADVERTISED="${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
 
   export ZITI_SIGNING_CERT_NAME="${ZITI_NETWORK}-signing"
 
@@ -1349,6 +952,20 @@ function ziti_createEnvFile {
 
   export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
 
+  if [[ "${ZITI_CTRL_MGMT_HOST_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:10000"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_KEY-}" == "" ]]; then export ZITI_CTRL_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"; fi
+  if [[ "${ZITI_CTRL_IDENTITY_CA-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/cas.pem"; fi
+  if [[ "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" == "" ]]; then export export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT="${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_CERT}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-client.cert"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.chain.pem"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_KEY}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME}-server.key"; fi
+  if [[ "${ZITI_EDGE_CTRL_IDENTITY_CA}" == "" ]]; then export export ZITI_EDGE_CTRL_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"; fi
+
+  if [[ "${ZITI_SIGNING_CERT}" == "" ]]; then export export ZITI_SIGNING_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
+  if [[ "${ZITI_SIGNING_KEY}" == "" ]]; then export export ZITI_SIGNING_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
+
   mkdir -p "${ZITI_BIN_ROOT}"
   mkdir -p "${ZITI_HOME}/db"
   mkdir -p "${ZITI_PKI}"
@@ -1361,8 +978,8 @@ function ziti_createEnvFile {
   echo "export PFXLOG_NO_JSON=true" >> "${ENV_FILE}"
 
   echo "alias zec='ziti edge'" >> "${ENV_FILE}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CONTROLLER_API}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CONTROLLER_API}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path
@@ -1387,12 +1004,12 @@ function waitForController {
   #  devnull="nul"
   #fi
   # shellcheck disable=SC2091
-  #until $(curl -o /dev/null -sk /dev/null --fail "https://${ZITI_EDGE_CONTROLLER_API}"); do
-  #    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+  #until $(curl -o /dev/null -sk /dev/null --fail "https://${ZITI_EDGE_CTRL_ADVERTISED}"); do
+  #    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED}"
   #    sleep 2
   #done
-  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://${ZITI_EDGE_CONTROLLER_API}/version)" != "200" ]]; do
-    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${ZITI_EDGE_CTRL_ADVERTISED}"/version)" != "200" ]]; do
+    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED}"
     sleep 3
   done
 }
