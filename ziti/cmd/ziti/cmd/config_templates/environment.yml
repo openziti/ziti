@@ -42,5 +42,5 @@
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlMgmtListenerHostPortVarName }}={{ .Controller.MgmtListenerHostPort }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlListenerHostPortVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlListenerHostPortVarName }}={{ .Controller.Edge.ListenerHostPort }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlAdvertisedHostPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlAdvertisedHostPortVarName }}={{ .Controller.Edge.AdvertisedHostPort }}
+{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlAdvertisedAddressVarDescription }}
+{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlAdvertisedAddress }}={{ .Controller.AdvertisedAddress }}

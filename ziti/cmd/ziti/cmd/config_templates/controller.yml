@@ -169,4 +169,4 @@ web:
       - binding: edge-client
         options: { }
       - binding: fabric
-        optoins: { }
+        options: { }

@@ -4,8 +4,7 @@
  Whenever a breaking change is made to the semantics of this configuration file, the configuration version
  expected by the router will be incremented. When the controller tries to load a configuration file with
  an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
- documentation.*/}}
-v: 3
+ documentation.*/}}v: 3
 
 identity:
   cert:                 "{{ .Router.IdentityCert }}"
