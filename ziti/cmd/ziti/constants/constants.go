@@ -124,8 +124,6 @@ const (
 	ZitiCtrlListenerAddressVarDescription        = "The Ziti Controller Listener Address"
 	ZitiCtrlAdvertisedAddressVarName             = "ZITI_CTRL_ADVERTISED_ADDRESS"
 	ZitiCtrlAdvertisedAddressVarDescription      = "The Ziti Controller Advertised Address"
-	ZitiCtrlMgmtListenerHostPortVarName          = "ZITI_CTRL_MGMT_HOST_PORT"
-	ZitiCtrlMgmtListenerHostPortVarDescription   = "Host and port of the Ziti Controller Management Listener"
 	ZitiEdgeCtrlListenerHostPortVarName          = "ZITI_CTRL_EDGE_LISTENER_HOST_PORT"
 	ZitiEdgeCtrlListenerHostPortVarDescription   = "Host and port of the Ziti Edge Controller Listener"
 	ZitiEdgeCtrlAdvertisedHostPortVarName        = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"

@@ -86,10 +86,6 @@ func GetZitiCtrlListenerAddress() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiCtrlListenerAddressVarName, constants.DefaultZitiControllerListenerAddress, false)
 }
 
-func GetZitiCtrlMgmtListenerHostPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlMgmtListenerHostPortVarName, constants.DefaultZitiMgmtControllerListenerHostPort, false)
-}
-
 func GetZitiCtrlName() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiCtrlNameVarName, constants.DefaultZitiControllerName, false)
 }
