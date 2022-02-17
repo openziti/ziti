@@ -2,21 +2,24 @@
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-ziti_createEnvFile
+if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
+if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+
 . ${ZITI_HOME}/ziti.env
 
-until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CONTROLLER_API}"); do
-    echo "waiting for https://${ZITI_EDGE_CONTROLLER_API}"
+until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"); do
+    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
     sleep 2
 done
 
-if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-if [[ "${ZITI_EDGE_ROUTER_PORT}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
+sleep 2
 
-createRouterPki
+createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
 
-echo "logging into ziti controller: ${ZITI_EDGE_API_HOSTNAME}"
-"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CONTROLLER_API}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+#echo "logging into ziti controller: ${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
+#"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+zitiLogin
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"

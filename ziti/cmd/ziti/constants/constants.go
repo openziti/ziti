@@ -32,3 +32,102 @@ const (
 
 	CONFIGFILENAME = "config"
 )
+
+// Config Template Constants
+const (
+	DefaultListenerBindPort   = 10080
+	DefaultOutQueueSize       = 16
+	DefaultConnectTimeoutMs   = 5000
+	DefaultGetSessionTimeoutS = 60
+
+	// Router defaults
+	DefaultZitiEdgeRouterPort = "3022"
+
+	// Controller defaults
+	DefaultZitiControllerName                 = "controller"
+	DefaultEdgeAPISessionTimeoutMinutes       = 30
+	DefaultWebListenerIdleTimeoutMs           = 5000
+	DefaultWebListenerReadTimeoutMs           = 5000
+	DefaultWebListenerWriteTimeoutMs          = 100000
+	DefaultWebListenerMinTLSVersion           = "TLS1.2"
+	DefaultWebListenerMaxTLSVersion           = "TLS1.3"
+	DefaultZitiEdgeAPIPort                    = "1280"
+	DefaultZitiEdgeListenerHostPort           = "0.0.0.0:1280"
+	DefaultZitiControllerListenerAddress      = "0.0.0.0"
+	DefaultZitiControllerPort                 = "6262"
+	DefaultZitiMgmtControllerListenerHostPort = "0.0.0.0:10000"
+	DefaultControllerHealthCheckIntervalSec   = 30
+	DefaultControllerHealthCheckTimeoutSec    = 15
+	DefaultControllerHealthCheckDelaySec      = 15
+	DefaultEdgeIdentityDurationMinutes        = 14400
+	DefaultEdgeRouterDurationMinutes          = 14400
+
+	// WSS defaults
+	DefaultWSSWriteTimeout     = 10
+	DefaultWSSReadTimeout      = 5
+	DefaultWSSIdleTimeout      = 5
+	DefaultWSSPongTimeout      = 60
+	DefaultWSSPingInterval     = 54
+	DefaultWSSHandshakeTimeout = 10
+	DefaultWSSReadBufferSize   = 4096
+	DefaultWSSWriteBufferSize  = 4096
+
+	// Forwarder defaults
+	DefaultLatencyProbeInterval  = 1000
+	DefaultXgressDialQueueLength = 1000
+	DefaultXgressDialWorkerCount = 128
+	DefaultLinkDialQueueLength   = 1000
+	DefaultLinkDialWorkerCount   = 10
+)
+
+// Env Var Constants
+const (
+	ZitiHomeVarName                              = "ZITI_HOME"
+	ZitiHomeVarDescription                       = "Root home directory for Ziti related files"
+	ZitiCtrlNameVarName                          = "ZITI_CONTROLLER_NAME"
+	ZitiCtrlNameVarDescription                   = "The name of the Ziti Controller"
+	ZitiCtrlPortVarName                          = "ZITI_CTRL_PORT"
+	ZitiCtrlPortVarDescription                   = "The port of the Ziti Controller"
+	ZitiEdgeRouterRawNameVarName                 = "ZITI_EDGE_ROUTER_RAWNAME"
+	ZitiEdgeRouterRawNameVarDescription          = "The Edge Router Raw Name"
+	ZitiEdgeRouterPortVarName                    = "ZITI_EDGE_ROUTER_PORT"
+	ZitiEdgeRouterPortVarDescription             = "Port of the Ziti Edge Router"
+	ZitiEdgeCtrlIdentityCertVarName              = "ZITI_EDGE_CTRL_IDENTITY_CERT"
+	ZitiEdgeCtrlIdentityCertVarDescription       = "Path to Identity Cert for Ziti Edge Controller"
+	ZitiEdgeCtrlIdentityServerCertVarName        = "ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT"
+	ZitiEdgeCtrlIdentityServerCertVarDescription = "Path to Identity Server Cert for Ziti Edge Controller"
+	ZitiEdgeCtrlIdentityKeyVarName               = "ZITI_EDGE_CTRL_IDENTITY_KEY"
+	ZitiEdgeCtrlIdentityKeyVarDescription        = "Path to Identity Key for Ziti Edge Controller"
+	ZitiEdgeCtrlIdentityCAVarName                = "ZITI_EDGE_CTRL_IDENTITY_CA"
+	ZitiEdgeCtrlIdentityCAVarDescription         = "Path to Identity CA for Ziti Edge Controller"
+	ZitiCtrlIdentityCertVarName                  = "ZITI_CTRL_IDENTITY_CERT"
+	ZitiCtrlIdentityCertVarDescription           = "Path to Identity Cert for Ziti Controller"
+	ZitiCtrlIdentityServerCertVarName            = "ZITI_CTRL_IDENTITY_SERVER_CERT"
+	ZitiCtrlIdentityServerCertVarDescription     = "Path to Identity Server Cert for Ziti Controller"
+	ZitiCtrlIdentityKeyVarName                   = "ZITI_CTRL_IDENTITY_KEY"
+	ZitiCtrlIdentityKeyVarDescription            = "Path to Identity Key for Ziti Controller"
+	ZitiCtrlIdentityCAVarName                    = "ZITI_CTRL_IDENTITY_CA"
+	ZitiCtrlIdentityCAVarDescription             = "Path to Identity CA for Ziti Controller"
+	ZitiSigningCertVarName                       = "ZITI_SIGNING_CERT"
+	ZitiSigningCertVarDescription                = "Path to the Ziti Signing Cert"
+	ZitiSigningKeyVarName                        = "ZITI_SIGNING_KEY"
+	ZitiSigningKeyVarDescription                 = "Path to the Ziti Signing Key"
+	ZitiRouterIdentityCertVarName                = "ZITI_ROUTER_IDENTITY_CERT"
+	ZitiRouterIdentityCertVarDescription         = "Path to Identity Cert for Ziti Router"
+	ZitiRouterIdentityServerCertVarName          = "ZITI_ROUTER_IDENTITY_SERVER_CERT"
+	ZitiRouterIdentityServerCertVarDescription   = "Path to Identity Server Cert for Ziti Router"
+	ZitiRouterIdentityKeyVarName                 = "ZITI_ROUTER_IDENTITY_KEY"
+	ZitiRouterIdentityKeyVarDescription          = "Path to Identity Key for Ziti Router"
+	ZitiRouterIdentityCAVarName                  = "ZITI_ROUTER_IDENTITY_CA"
+	ZitiRouterIdentityCAVarDescription           = "Path to Identity CA for Ziti Router"
+	ZitiCtrlListenerAddressVarName               = "ZITI_CTRL_LISTENER_ADDRESS"
+	ZitiCtrlListenerAddressVarDescription        = "The Ziti Controller Listener Address"
+	ZitiCtrlAdvertisedAddressVarName             = "ZITI_CTRL_ADVERTISED_ADDRESS"
+	ZitiCtrlAdvertisedAddressVarDescription      = "The Ziti Controller Advertised Address"
+	ZitiCtrlMgmtListenerHostPortVarName          = "ZITI_CTRL_MGMT_HOST_PORT"
+	ZitiCtrlMgmtListenerHostPortVarDescription   = "Host and port of the Ziti Controller Management Listener"
+	ZitiEdgeCtrlListenerHostPortVarName          = "ZITI_CTRL_EDGE_LISTENER_HOST_PORT"
+	ZitiEdgeCtrlListenerHostPortVarDescription   = "Host and port of the Ziti Edge Controller Listener"
+	ZitiEdgeCtrlAdvertisedHostPortVarName        = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	ZitiEdgeCtrlAdvertisedHostPortVarDescription = "Host and port of the Ziti Edge Controller API"
+)
