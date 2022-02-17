@@ -295,7 +295,7 @@ func (ctrl *RouterController) HandleRouterDelete(id string) {
 				log.Warn("deleted router in connected cache doesn't have a connected control channel")
 			}
 		} else {
-			log.Errorf("cached router of wrong type, expected *Router, was %T", v)
+			log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
 		}
 	} else {
 		log.Debug("deleted router not connected, no further action required")
@@ -316,7 +316,7 @@ func (ctrl *RouterController) UpdateCachedRouter(id string) {
 				cached.Name = router.Name
 				cached.Fingerprint = router.Fingerprint
 			} else {
-				log.Errorf("cached router of wrong type, expected *Router, was %T", v)
+				log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
 			}
 
 			return false
