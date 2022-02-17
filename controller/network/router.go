@@ -238,6 +238,17 @@ func (ctrl *RouterController) Read(id string) (entity *Router, err error) {
 	return entity, err
 }
 
+func (ctrl *RouterController) readUncached(id string) (*Router, error) {
+	entity := &Router{}
+	err := ctrl.db.View(func(tx *bbolt.Tx) error {
+		return ctrl.readEntityInTx(tx, id, entity)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
 func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
 	if t, found := ctrl.cache.Get(id); found {
 		return t.(*Router), nil
@@ -293,26 +304,26 @@ func (ctrl *RouterController) HandleRouterDelete(id string) {
 
 func (ctrl *RouterController) UpdateCachedRouter(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
-	if router, err := ctrl.Read(id); err != nil {
+	if router, err := ctrl.readUncached(id); err != nil {
 		log.WithError(err).Error("failed to read router for cache update")
 	} else {
-		upsertF := func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		updateCb := func(key string, v interface{}, exist bool) bool {
 			if !exist {
-				return nil
+				return false
 			}
 
-			if cached, ok := valueInMap.(*Router); ok {
+			if cached, ok := v.(*Router); ok {
 				cached.Name = router.Name
 				cached.Fingerprint = router.Fingerprint
 			} else {
-				log.Errorf("cached router of wrong type, expected *Router, was %T", valueInMap)
+				log.Errorf("cached router of wrong type, expected *Router, was %T", v)
 			}
 
-			return valueInMap
+			return false
 		}
 
-		ctrl.cache.Upsert(id, router, upsertF)
-		ctrl.connected.Upsert(id, router, upsertF)
+		ctrl.cache.RemoveCb(id, updateCb)
+		ctrl.connected.RemoveCb(id, updateCb)
 	}
 }
 
