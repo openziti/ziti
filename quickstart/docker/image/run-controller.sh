@@ -1,8 +1,11 @@
 #!/bin/bash
 
+export ZITI_CONTROLLER_RAWNAME=ziti-controller
+export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-ziti_createEnvFile
+generateEnvFile
 . ${ZITI_HOME}/ziti.env
 
 # create pki

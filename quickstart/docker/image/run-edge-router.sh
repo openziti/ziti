@@ -2,12 +2,16 @@
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
+if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="ziti-controller"; fi
+if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="ziti-edge-controller"; fi
 if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
 if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
 
+generateEnvFile
 . ${ZITI_HOME}/ziti.env
 
+# shellcheck disable=SC2091
 until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"); do
     echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
     sleep 2
@@ -17,25 +21,23 @@ sleep 2
 
 createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
 
-#echo "logging into ziti controller: ${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
-#"${ZITI_BIN_DIR}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 zitiLogin
 
 if [[ "$1" == "edge" ]]; then
   echo "CREATING EDGE ROUTER CONFIG"
-  createEdgeRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
+  createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
 fi
 if [[ "$1" == "wss" ]]; then
   echo "CREATING EDGE ROUTER WSS CONFIG"
-  createEdgeRouterWssConfig ${ZITI_EDGE_ROUTER_RAWNAME}
+  createEdgeRouterWssConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
 fi
 if [[ "$1" == "fabric" ]]; then
   echo "CREATING FABRIC ROUTER CONFIG"
-  createFabricRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
+  createFabricRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
 fi
 if [[ "$1" == "private" ]]; then
   echo "CREATING PRIVATE ROUTER CONFIG"
-  createPrivateRouterConfig ${ZITI_EDGE_ROUTER_RAWNAME}
+  createPrivateRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
 fi
 
 echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
