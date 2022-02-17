@@ -55,7 +55,6 @@ type ControllerTemplateValues struct {
 	Port                 string
 	AdvertisedAddress    string
 	ListenerAddress      string
-	MgmtListenerHostPort string
 	IdentityCert         string
 	IdentityServerCert   string
 	IdentityKey          string
@@ -214,10 +213,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiCtrlPort, err := cmdhelper.GetZitiCtrlPort()
 	handleVariableError(err, constants.ZitiCtrlPortVarName)
 
-	// Get Ziti Controller Management Host and Port
-	zitiCtrlMgmtListenerHostPort, err := cmdhelper.GetZitiCtrlMgmtListenerHostPort()
-	handleVariableError(err, constants.ZitiCtrlMgmtListenerHostPortVarName)
-
 	// Get Ziti Edge Controller Listener Host and Port
 	zitiEdgeCtrlListenerHostPort, err := cmdhelper.GetZitiEdgeCtrlListenerHostPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlListenerHostPortVarName)
@@ -232,7 +227,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.ListenerAddress = zitiCtrlListenerAddress
 	data.Controller.AdvertisedAddress = zitiCtrlAdvertisedAddress
 	data.Controller.Port = zitiCtrlPort
-	data.Controller.MgmtListenerHostPort = zitiCtrlMgmtListenerHostPort
 	data.Controller.Edge.ListenerHostPort = zitiEdgeCtrlListenerHostPort
 	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort
 	data.Router.Edge.Port = zitiEdgeRouterPort

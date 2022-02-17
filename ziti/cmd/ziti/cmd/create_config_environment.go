@@ -157,8 +157,6 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 			ZitiCtrlListenerAddressVarDescription:        constants.ZitiCtrlListenerAddressVarDescription,
 			ZitiCtrlAdvertisedAddressVarName:             constants.ZitiCtrlAdvertisedAddressVarName,
 			ZitiCtrlAdvertisedAddressVarDescription:      constants.ZitiCtrlAdvertisedAddressVarDescription,
-			ZitiCtrlMgmtListenerHostPortVarName:          constants.ZitiCtrlMgmtListenerHostPortVarName,
-			ZitiCtrlMgmtListenerHostPortVarDescription:   constants.ZitiCtrlMgmtListenerHostPortVarDescription,
 			ZitiEdgeCtrlListenerHostPortVarName:          constants.ZitiEdgeCtrlListenerHostPortVarName,
 			ZitiEdgeCtrlListenerHostPortVarDescription:   constants.ZitiEdgeCtrlListenerHostPortVarDescription,
 			ZitiEdgeCtrlAdvertisedHostPortVarName:        constants.ZitiEdgeCtrlAdvertisedHostPortVarName,
@@ -223,11 +221,9 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
-		constants.ZitiCtrlMgmtListenerHostPortVarName, constants.ZitiCtrlMgmtListenerHostPortVarDescription, data.Controller.MgmtListenerHostPort,
 		constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name,
 		constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress,
 		constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
