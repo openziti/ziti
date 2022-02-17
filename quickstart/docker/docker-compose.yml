@@ -35,7 +35,7 @@ services:
     command: "/openziti/scripts/run-edge-router.sh edge"
 
   ziti-edge-router-wss:
-    image: openziti/quickstart
+    image: openziti/quickstart:latest
     environment:
       - ZITI_CONTROLLER_RAWNAME=ziti-controller
       - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
