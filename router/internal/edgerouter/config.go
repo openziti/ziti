@@ -230,10 +230,9 @@ func (config *Config) loadApiProxy(edgeConfigMap map[interface{}]interface{}) er
 func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) error {
 	subArray := rootConfigMap["listeners"]
 
-	listeners := subArray.([]interface{})
-
-	if listeners == nil {
-		return errors.New("could not find [listeners] section")
+	listeners, ok := subArray.([]interface{})
+	if !ok || listeners == nil {
+		return errors.New("required binding [edge] not found in [listeners], at least one edge binding is required if edge functionality is enabled")
 	}
 
 	var edgeBinding map[interface{}]interface{}

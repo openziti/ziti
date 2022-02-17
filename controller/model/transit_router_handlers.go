@@ -239,9 +239,6 @@ func (handler *TransitRouterHandler) ExtendEnrollment(router *TransitRouter, cli
 		return nil, err
 	}
 
-	//Otherwise the controller will continue to use old fingerprint if the router is cached
-	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, fingerprint)
-
 	return &ExtendedCerts{
 		RawClientCert: clientCertRaw,
 		RawServerCert: serverCertRaw,
@@ -301,17 +298,11 @@ func (handler *TransitRouterHandler) ExtendEnrollmentVerify(router *TransitRoute
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		if err := handler.Patch(router, boltz.MapFieldChecker{
+		return handler.Patch(router, boltz.MapFieldChecker{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-		}, true); err == nil {
-			//Otherwise, the controller will continue to use old fingerprint if the router is cached
-			handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, *router.Fingerprint)
-			return nil
-		} else {
-			return err
-		}
+		}, true)
 	}
 
 	return errors.New("no outstanding verification necessary")

@@ -17,14 +17,12 @@
 package persistence
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 const (
@@ -94,8 +92,15 @@ type EdgeServiceStore interface {
 }
 
 func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
+	parentMapper := func(entity boltz.Entity) boltz.Entity {
+		if edgeService, ok := entity.(*EdgeService); ok {
+			return &edgeService.Service
+		}
+		return entity
+	}
+
 	store := &edgeServiceStoreImpl{
-		baseStore: newChildBaseStore(stores, stores.Service),
+		baseStore: newChildBaseStore(stores, stores.Service, parentMapper),
 	}
 	store.InitImpl(store)
 	return store
@@ -159,19 +164,6 @@ func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.bindIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolBindIdentities, store.stores.identity.symbolBindServices)
 	store.dialIdentitiesCollection = store.AddRefCountedLinkCollection(store.symbolDialIdentities, store.stores.identity.symbolDialServices)
 	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
-
-	store.EventEmmiter.AddListener(boltz.EventUpdate, func(i ...interface{}) {
-		if len(i) != 1 {
-			return
-		}
-		service, ok := i[0].(*EdgeService)
-		if !ok {
-			pfxlog.Logger().Warnf("unexpected type in edge service event: %v", reflect.TypeOf(i[0]))
-			return
-		}
-		store.stores.DbProvider.GetServiceCache().RemoveFromCache(service.Id)
-		pfxlog.Logger().WithField("id", service).Debugf("removed service from fabric cache")
-	})
 }
 
 func (store *edgeServiceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
