@@ -8,10 +8,6 @@ import (
 	"time"
 )
 
-const CircuitEventTypeCreated = "created"
-const CircuitEventTypeDeleted = "deleted"
-const CircuitEventTypePathUpdated = "pathUpdated"
-
 func registerCircuitEventHandler(val interface{}, config map[interface{}]interface{}) error {
 	handler, ok := val.(CircuitEventHandler)
 
@@ -39,71 +35,40 @@ func registerCircuitEventHandler(val interface{}, config map[interface{}]interfa
 	if len(includeList) == 0 {
 		AddCircuitEventHandler(adapter)
 	} else {
+		accepted := map[network.CircuitEventType]struct{}{}
 		for _, include := range includeList {
-			if include == CircuitEventTypeCreated {
-				AddCircuitEventHandler(&fabricCircuitCreatedEventAdapter{
-					wrapped: adapter,
-				})
-			} else if include == CircuitEventTypeDeleted {
-				AddCircuitEventHandler(&fabricCircuitDeletedEventAdapter{
-					wrapped: adapter,
-				})
-			} else if include == CircuitEventTypePathUpdated {
-				AddCircuitEventHandler(&fabricCircuitPathUpdatedEventAdapter{
-					wrapped: adapter,
-				})
-			} else {
-				return errors.Errorf("invalid include %v for fabric.circuits. valid values are ['created', 'deleted', 'circuitUpdated']", include)
+			found := false
+			for _, t := range network.CircuitTypes {
+				if include == t.String() {
+					accepted[t] = struct{}{}
+					found = true
+					break
+				}
+			}
+			if !found {
+				return errors.Errorf("invalid include %v for fabric.circuits. valid values are %+v", include, network.CircuitTypes)
 			}
 		}
+		AddCircuitEventHandler(&fabricCircuitTypeFilterEventAdapter{
+			accepted: accepted,
+			wrapped:  adapter,
+		})
 	}
 
 	return nil
 }
 
-type fabricCircuitCreatedEventAdapter struct {
-	wrapped network.CircuitEventHandler
+type fabricCircuitTypeFilterEventAdapter struct {
+	accepted map[network.CircuitEventType]struct{}
+	wrapped  network.CircuitEventHandler
 }
 
-func (adapter *fabricCircuitCreatedEventAdapter) CircuitCreated(circuitId string, clientId string, serviceId string, circuit *network.Path) {
-	adapter.wrapped.CircuitCreated(circuitId, clientId, serviceId, circuit)
+func (self *fabricCircuitTypeFilterEventAdapter) AcceptCircuitEvent(event *network.CircuitEvent) {
+	if _, found := self.accepted[event.Type]; found {
+		self.wrapped.AcceptCircuitEvent(event)
+	}
 }
 
-func (adapter *fabricCircuitCreatedEventAdapter) CircuitDeleted(string, string) {
-}
-
-func (adapter *fabricCircuitCreatedEventAdapter) PathUpdated(string, *network.Path) {
-}
-
-type fabricCircuitDeletedEventAdapter struct {
-	wrapped network.CircuitEventHandler
-}
-
-func (adapter *fabricCircuitDeletedEventAdapter) CircuitCreated(string, string, string, *network.Path) {
-}
-
-func (adapter *fabricCircuitDeletedEventAdapter) CircuitDeleted(circuitId string, clientId string) {
-	adapter.wrapped.CircuitDeleted(circuitId, clientId)
-}
-
-func (adapter *fabricCircuitDeletedEventAdapter) PathUpdated(string, *network.Path) {
-}
-
-type fabricCircuitPathUpdatedEventAdapter struct {
-	wrapped network.CircuitEventHandler
-}
-
-func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitCreated(string, string, string, *network.Path) {
-}
-
-func (adapter *fabricCircuitPathUpdatedEventAdapter) CircuitDeleted(string, string) {
-}
-
-func (adapter *fabricCircuitPathUpdatedEventAdapter) PathUpdated(circuitId string, path *network.Path) {
-	adapter.wrapped.PathUpdated(circuitId, path)
-}
-
-// Will work for all fabric circuit event types
 type CircuitEvent struct {
 	Namespace string    `json:"namespace"`
 	EventType string    `json:"event_type"`
@@ -139,39 +104,21 @@ type circuitEventAdapter struct {
 	handler CircuitEventHandler
 }
 
-func (adapter *circuitEventAdapter) CircuitCreated(circuitId string, clientId string, serviceId string, path *network.Path) {
-	event := &CircuitEvent{
-		Namespace: "fabric.circuits",
-		EventType: "created",
-		CircuitId: circuitId,
-		Timestamp: time.Now(),
-		ClientId:  clientId,
-		ServiceId: serviceId,
-		Path:      path.String(),
+func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.CircuitEvent) {
+	eventType := "created"
+	if netEvent.Type == network.CircuitUpdated {
+		eventType = "pathUpdated"
+	} else if netEvent.Type == network.CircuitDeleted {
+		eventType = "deleted"
 	}
-
-	adapter.handler.AcceptCircuitEvent(event)
-}
-
-func (adapter *circuitEventAdapter) CircuitDeleted(circuitId string, clientId string) {
 	event := &CircuitEvent{
 		Namespace: "fabric.circuits",
-		EventType: "deleted",
-		CircuitId: circuitId,
+		EventType: eventType,
+		CircuitId: netEvent.CircuitId,
 		Timestamp: time.Now(),
-		ClientId:  clientId,
-	}
-
-	adapter.handler.AcceptCircuitEvent(event)
-}
-
-func (adapter *circuitEventAdapter) PathUpdated(circuitId string, path *network.Path) {
-	event := &CircuitEvent{
-		Namespace: "fabric.circuits",
-		EventType: "pathUpdated",
-		CircuitId: circuitId,
-		Timestamp: time.Now(),
-		Path:      path.String(),
+		ClientId:  netEvent.ClientId,
+		ServiceId: netEvent.ServiceId,
+		Path:      netEvent.Path.String(),
 	}
 
 	adapter.handler.AcceptCircuitEvent(event)

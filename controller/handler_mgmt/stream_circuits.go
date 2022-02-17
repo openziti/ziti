@@ -51,7 +51,7 @@ func (handler *streamCircuitsHandler) HandleReceive(msg *channel.Message, ch cha
 	events.AddCircuitEventHandler(circuitsStreamHandler)
 }
 
-func (handler *streamCircuitsHandler) HandleClose(ch channel.Channel) {
+func (handler *streamCircuitsHandler) HandleClose(channel.Channel) {
 	for _, listener := range handler.streamHandlers {
 		events.RemoveCircuitEventHandler(listener)
 	}
@@ -61,31 +61,20 @@ type CircuitsStreamHandler struct {
 	ch channel.Channel
 }
 
-func (handler *CircuitsStreamHandler) CircuitCreated(circuitId string, clientId string, serviceId string, path *network.Path) {
-	event := &mgmt_pb.StreamCircuitsEvent{
-		EventType: mgmt_pb.StreamCircuitEventType_CircuitCreated,
-		CircuitId: circuitId,
-		ClientId:  clientId,
-		ServiceId: serviceId,
-		Path:      NewPath(path),
+func (handler *CircuitsStreamHandler) AcceptCircuitEvent(netEvent *network.CircuitEvent) {
+	eventType := mgmt_pb.StreamCircuitEventType_CircuitCreated
+	if netEvent.Type == network.CircuitUpdated {
+		eventType = mgmt_pb.StreamCircuitEventType_PathUpdated
+	} else if netEvent.Type == network.CircuitDeleted {
+		eventType = mgmt_pb.StreamCircuitEventType_CircuitDeleted
 	}
-	handler.sendEvent(event)
-}
 
-func (handler *CircuitsStreamHandler) CircuitDeleted(circuitId string, clientId string) {
 	event := &mgmt_pb.StreamCircuitsEvent{
-		EventType: mgmt_pb.StreamCircuitEventType_CircuitDeleted,
-		CircuitId: circuitId,
-		ClientId:  clientId,
-	}
-	handler.sendEvent(event)
-}
-
-func (handler *CircuitsStreamHandler) PathUpdated(circuitId string, path *network.Path) {
-	event := &mgmt_pb.StreamCircuitsEvent{
-		EventType: mgmt_pb.StreamCircuitEventType_PathUpdated,
-		CircuitId: circuitId,
-		Path:      NewPath(path),
+		EventType: eventType,
+		CircuitId: netEvent.CircuitId,
+		ClientId:  netEvent.ClientId,
+		ServiceId: netEvent.ServiceId,
+		Path:      NewPath(netEvent.Path),
 	}
 	handler.sendEvent(event)
 }

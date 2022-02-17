@@ -463,7 +463,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			PeerData:   peerData,
 		}
 		network.circuitController.add(circuit)
-		network.CircuitCreated(circuit.Id, circuit.ClientId, circuit.Service.Id, circuit.Path)
+		network.CircuitEvent(CircuitCreated, circuit)
 
 		logger.WithField("path", circuit.Path).Debug("created circuit")
 		return circuit, nil
@@ -594,7 +594,7 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 			}
 		}
 		network.circuitController.remove(ss)
-		network.CircuitDeleted(ss.Id, ss.ClientId)
+		network.CircuitEvent(CircuitDeleted, ss)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
@@ -783,8 +783,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 
 			logrus.Infof("rerouted circuit [s/%s]", circuit.Id)
 
-			network.PathUpdated(circuit.Id, circuit.Path)
-
+			network.CircuitEvent(CircuitUpdated, circuit)
 			return nil
 		} else {
 			return err
@@ -810,9 +809,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 		}
 
 		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
-
-		network.PathUpdated(s.Id, s.Path)
-
+		network.CircuitEvent(CircuitUpdated, s)
 		return nil
 
 	} else {
