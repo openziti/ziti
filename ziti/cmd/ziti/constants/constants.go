@@ -44,23 +44,22 @@ const (
 	DefaultZitiEdgeRouterPort = "3022"
 
 	// Controller defaults
-	DefaultZitiControllerName                 = "controller"
-	DefaultEdgeAPISessionTimeoutMinutes       = 30
-	DefaultWebListenerIdleTimeoutMs           = 5000
-	DefaultWebListenerReadTimeoutMs           = 5000
-	DefaultWebListenerWriteTimeoutMs          = 100000
-	DefaultWebListenerMinTLSVersion           = "TLS1.2"
-	DefaultWebListenerMaxTLSVersion           = "TLS1.3"
-	DefaultZitiEdgeAPIPort                    = "1280"
-	DefaultZitiEdgeListenerHostPort           = "0.0.0.0:1280"
-	DefaultZitiControllerListenerAddress      = "0.0.0.0"
-	DefaultZitiControllerPort                 = "6262"
-	DefaultZitiMgmtControllerListenerHostPort = "0.0.0.0:10000"
-	DefaultControllerHealthCheckIntervalSec   = 30
-	DefaultControllerHealthCheckTimeoutSec    = 15
-	DefaultControllerHealthCheckDelaySec      = 15
-	DefaultEdgeIdentityDurationMinutes        = 14400
-	DefaultEdgeRouterDurationMinutes          = 14400
+	DefaultZitiControllerName               = "controller"
+	DefaultEdgeAPISessionTimeoutMinutes     = 30
+	DefaultWebListenerIdleTimeoutMs         = 5000
+	DefaultWebListenerReadTimeoutMs         = 5000
+	DefaultWebListenerWriteTimeoutMs        = 100000
+	DefaultWebListenerMinTLSVersion         = "TLS1.2"
+	DefaultWebListenerMaxTLSVersion         = "TLS1.3"
+	DefaultZitiEdgeAPIPort                  = "1280"
+	DefaultZitiEdgeListenerHostPort         = "0.0.0.0:1280"
+	DefaultZitiControllerListenerAddress    = "0.0.0.0"
+	DefaultZitiControllerPort               = "6262"
+	DefaultControllerHealthCheckIntervalSec = 30
+	DefaultControllerHealthCheckTimeoutSec  = 15
+	DefaultControllerHealthCheckDelaySec    = 15
+	DefaultEdgeIdentityDurationMinutes      = 14400
+	DefaultEdgeRouterDurationMinutes        = 14400
 
 	// WSS defaults
 	DefaultWSSWriteTimeout     = 10
