@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/stringz"
 	"github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -150,6 +149,27 @@ func newRouterController(controllers *Controllers) *RouterController {
 		store:          controllers.stores.Router,
 	}
 	result.impl = result
+
+	controllers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
+		for _, val := range i {
+			if router, ok := val.(*db.Router); ok {
+				result.UpdateCachedRouter(router.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
+			}
+		}
+	})
+
+	controllers.stores.Router.AddListener(boltz.EventDelete, func(i ...interface{}) {
+		for _, val := range i {
+			if router, ok := val.(*db.Router); ok {
+				result.HandleRouterDelete(router.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
+			}
+		}
+	})
+
 	return result
 }
 
@@ -232,22 +252,10 @@ func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error)
 	return entity, nil
 }
 
-func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
-	if val, ok := ctrl.cache.Get(id); ok {
-		if router, ok := val.(*Router); ok {
-			router.Fingerprint = &fingerprint
-		} else {
-			pfxlog.Logger().Errorf("encountered %t in router cache, expected *Router", val)
-		}
-	}
-}
-
 func (ctrl *RouterController) Update(r *Router) error {
 	if err := ctrl.updateGeneral(r, nil); err != nil {
 		return err
 	}
-
-	ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
 
 	return nil
 }
@@ -257,11 +265,55 @@ func (ctrl *RouterController) Patch(r *Router, checker boltz.FieldChecker) error
 		return err
 	}
 
-	if checker.IsUpdated("fingerprint") {
-		ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
-	}
-
 	return nil
+}
+
+func (ctrl *RouterController) HandleRouterDelete(id string) {
+	log := pfxlog.Logger().WithField("routerId", id)
+	log.Debug("processing router delete")
+	ctrl.cache.Remove(id)
+
+	// if we close the control channel, the router will get removed from the connected cache. We don't do it
+	// here because it results in deadlock
+	if v, found := ctrl.connected.Get(id); found {
+		if router, ok := v.(*Router); ok {
+			if ctrl := router.Control; ctrl != nil {
+				_ = ctrl.Close()
+				log.Warn("connected router deleted, disconnecting router")
+			} else {
+				log.Warn("deleted router in connected cache doesn't have a connected control channel")
+			}
+		} else {
+			log.Errorf("cached router of wrong type, expected *Router, was %T", v)
+		}
+	} else {
+		log.Debug("deleted router not connected, no further action required")
+	}
+}
+
+func (ctrl *RouterController) UpdateCachedRouter(id string) {
+	log := pfxlog.Logger().WithField("routerId", id)
+	if router, err := ctrl.Read(id); err != nil {
+		log.WithError(err).Error("failed to read router for cache update")
+	} else {
+		upsertF := func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+			if !exist {
+				return nil
+			}
+
+			if cached, ok := valueInMap.(*Router); ok {
+				cached.Name = router.Name
+				cached.Fingerprint = router.Fingerprint
+			} else {
+				log.Errorf("cached router of wrong type, expected *Router, was %T", valueInMap)
+			}
+
+			return valueInMap
+		}
+
+		ctrl.cache.Upsert(id, router, upsertF)
+		ctrl.connected.Upsert(id, router, upsertF)
+	}
 }
 
 type RouterLinks struct {

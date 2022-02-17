@@ -69,6 +69,19 @@ func newServiceController(controllers *Controllers) *ServiceController {
 	}
 	result.impl = result
 
+	cacheInvalidationF := func(i ...interface{}) {
+		for _, val := range i {
+			if service, ok := val.(*db.Service); ok {
+				result.RemoveFromCache(service.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in service listener. expected *db.Service, got %T", val)
+			}
+		}
+	}
+
+	controllers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
+	controllers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
+
 	return result
 }
 
