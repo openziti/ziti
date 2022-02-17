@@ -302,9 +302,8 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 		persistence.FieldEdgeRouterCertPEM:    struct{}{},
 		persistence.FieldEdgeRouterIsVerified: struct{}{},
 	}); err != nil {
-		err = fmt.Errorf("unable to patch re-enrolling edge router: %v", err)
-		log.Error(err)
-		return err
+		log.WithError(err).Error("unable to patch re-enrolling edge router")
+		return errors.Wrap(err, "unable to patch re-enrolling edge router")
 	}
 
 	log.Info("closing existing connections for re-enrolling edge router")
