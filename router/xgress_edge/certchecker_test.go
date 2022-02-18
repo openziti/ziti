@@ -27,10 +27,10 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker := newCertChecker()
 
 			now := time.Now()
-			notAfter := now.AddDate(0, 0, 30).Add(30 * time.Second) //30d 30s out
+			notAfter := now.Add(30 * time.Hour * 24).Add(30 * time.Second)
 
-			minWaitTime := 23 * 24 * time.Hour              // 23 days out i.e. 1 week before 30 days
-			maxWaitTime := 23*24*time.Hour + 30*time.Second // 23 days + 30s out i.e. 1 week before 30 days
+			minWaitTime := 23 * 24 * time.Hour          // 23 days out i.e. 1 week before 30 days
+			maxWaitTime := minWaitTime + 30*time.Second // 23 days + 30s out i.e. 1 week before 30 days
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
 			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
@@ -159,8 +159,8 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker := newCertChecker()
 
 			now := time.Now()
-			serverNotAfter := now.AddDate(0, 0, 30)
-			clientNotAfter := now.AddDate(0, 0, 25).Add(30 * time.Second)
+			serverNotAfter := now.Add(30 * time.Hour * 24)
+			clientNotAfter := now.Add(25 * time.Hour * 24).Add(30 * time.Second)
 
 			certChecker.id.Cert().Leaf.NotAfter = clientNotAfter
 			certChecker.id.ServerCert().Leaf.NotAfter = serverNotAfter

@@ -149,10 +149,12 @@ func (handler *EdgeRouterHandler) ListForSession(sessionId string) (*EdgeRouterL
 func (handler *EdgeRouterHandler) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	var list *EdgeRouterListResult
 	var err error
-	handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	if txErr := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		list, err = handler.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
 		return nil
-	})
+	}); txErr != nil {
+		return nil, txErr
+	}
 
 	return list, err
 }
@@ -300,13 +302,9 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 		persistence.FieldEdgeRouterCertPEM:    struct{}{},
 		persistence.FieldEdgeRouterIsVerified: struct{}{},
 	}); err != nil {
-		err = fmt.Errorf("unable to patch re-enrolling edge router: %v", err)
-		log.Error(err)
-		return err
+		log.WithError(err).Error("unable to patch re-enrolling edge router")
+		return errors.Wrap(err, "unable to patch re-enrolling edge router")
 	}
-
-	log.Info("clearing cached fingerprint for re-enrolling edge router")
-	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, "")
 
 	log.Info("closing existing connections for re-enrolling edge router")
 	connectedRouter := handler.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
@@ -364,9 +362,6 @@ func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsr
 	if err != nil {
 		return nil, err
 	}
-
-	//Otherwise, the controller will continue to use old fingerprint if the router is cached
-	handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, fingerprint)
 
 	return &ExtendedCerts{
 		RawClientCert: clientCertRaw,
@@ -431,18 +426,12 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentVerify(router *EdgeRouter) err
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+		return handler.PatchUnrestricted(router, boltz.MapFieldChecker{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldCaCertPem:                       struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-		}); err == nil {
-			//Otherwise, the controller will continue to use old fingerprint if the router is cached
-			handler.env.GetHostController().GetNetwork().Routers.UpdateCachedFingerprint(router.Id, *router.Fingerprint)
-			return nil
-		} else {
-			return err
-		}
+		})
 	}
 
 	return errors.New("no outstanding verification necessary")

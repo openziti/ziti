@@ -28,8 +28,6 @@ import (
 
 type DbProvider interface {
 	GetDb() boltz.Db
-	GetServiceCache() network.Cache
-	NotifyRouterRenamed(id, name string)
 	GetStores() *db.Stores
 	GetControllers() *network.Controllers
 }
@@ -51,23 +49,23 @@ func newBaseStore(stores *stores, entityType string) *baseStore {
 	}
 }
 
-func newChildBaseStore(stores *stores, parent boltz.CrudStore) *baseStore {
-	return newChildBaseStoreWithPath(stores, parent, EdgeBucket)
+func newChildBaseStore(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity) *baseStore {
+	return newChildBaseStoreWithPath(stores, parent, parentMapper, EdgeBucket)
 }
 
-func newChildBaseStoreWithPath(stores *stores, parent boltz.CrudStore, path string) *baseStore {
+func newChildBaseStoreWithPath(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity, path string) *baseStore {
 	entityNotFoundF := func(id string) error {
 		return boltz.NewNotFoundError(parent.GetSingularEntityType(), "id", id)
 	}
 
 	return &baseStore{
 		stores:    stores,
-		BaseStore: boltz.NewChildBaseStore(parent, entityNotFoundF, path),
+		BaseStore: boltz.NewChildBaseStore(parent, parentMapper, entityNotFoundF, path),
 	}
 }
 
-func newExtendedBaseStore(stores *stores, parent boltz.CrudStore, path string) *baseStore {
-	store := newChildBaseStoreWithPath(stores, parent, path)
+func newExtendedBaseStore(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity, path string) *baseStore {
+	store := newChildBaseStoreWithPath(stores, parent, parentMapper, path)
 	store.BaseStore.Extended()
 	return store
 }

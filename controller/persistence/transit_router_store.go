@@ -78,9 +78,16 @@ type TransitRouterStore interface {
 }
 
 func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
+	parentMapper := func(entity boltz.Entity) boltz.Entity {
+		if transitRouter, ok := entity.(*TransitRouter); ok {
+			return &transitRouter.Router
+		}
+		return entity
+	}
+
 	store := &transitRouterStoreImpl{}
 	stores.Router.AddDeleteHandler(store.cleanupEnrollments) // do cleanup first
-	store.baseStore = newExtendedBaseStore(stores, stores.Router, TransitRouterPath)
+	store.baseStore = newExtendedBaseStore(stores, stores.Router, parentMapper, TransitRouterPath)
 	store.InitImpl(store)
 
 	return store
