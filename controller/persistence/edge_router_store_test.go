@@ -113,27 +113,31 @@ func Test_EdgeRouterEvents(t *testing.T) {
 	eventChecker.RequireEvent(boltz.TestEntityTypeChild, edgeRouter, boltz.EventDelete)
 	eventChecker.RequireNoEvent()
 
-	//// check delete again, this time invoked from the child store
-	//mgr = &Manager{
-	//	Employee: Employee{
-	//		Id:   uuid.NewString(),
-	//		Name: "mgr",
-	//	},
-	//}
-	//
-	//err = test.db.Update(func(tx *bbolt.Tx) error {
-	//	return test.mgrStore.Create(NewMutateContext(tx), mgr)
-	//})
-	//test.NoError(err)
-	//eventChecker.requireEvent(entityTypeEmployee, mgr.Id, EventCreate)
-	//eventChecker.requireEvent(entityTypeManager, mgr.Id, EventCreate)
-	//eventChecker.requireNoEvent()
-	//
-	//err = test.db.Update(func(tx *bbolt.Tx) error {
-	//	return test.empStore.DeleteById(NewMutateContext(tx), mgr.Id)
-	//})
-	//test.NoError(err)
-	//eventChecker.requireEvent(entityTypeEmployee, mgr.Id, EventDelete)
-	//eventChecker.requireEvent(entityTypeManager, mgr.Id, EventDelete)
-	//eventChecker.requireNoEvent()
+	// check delete again, this time invoked from the child store
+	fp = uuid.NewString()
+	edgeRouter = &EdgeRouter{
+		Router: db.Router{
+			BaseExtEntity: boltz.BaseExtEntity{
+				Id: uuid.NewString(),
+			},
+			Name:        uuid.NewString(),
+			Fingerprint: &fp,
+		},
+	}
+
+	err = ctx.db.Update(func(tx *bbolt.Tx) error {
+		return ctx.stores.EdgeRouter.Create(boltz.NewMutateContext(tx), edgeRouter)
+	})
+	ctx.NoError(err)
+	eventChecker.RequireEvent(boltz.TestEntityTypeParent, edgeRouter, boltz.EventCreate)
+	eventChecker.RequireEvent(boltz.TestEntityTypeChild, edgeRouter, boltz.EventCreate)
+	eventChecker.RequireNoEvent()
+
+	err = ctx.db.Update(func(tx *bbolt.Tx) error {
+		return ctx.stores.Router.DeleteById(boltz.NewMutateContext(tx), edgeRouter.Id)
+	})
+	ctx.NoError(err)
+	eventChecker.RequireEvent(boltz.TestEntityTypeParent, edgeRouter, boltz.EventDelete)
+	eventChecker.RequireEvent(boltz.TestEntityTypeChild, edgeRouter, boltz.EventDelete)
+	eventChecker.RequireNoEvent()
 }
