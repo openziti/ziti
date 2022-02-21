@@ -18,6 +18,7 @@ package fabric
 
 import (
 	"fmt"
+
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/pkg/errors"
@@ -32,6 +33,7 @@ type updateRouterOptions struct {
 	api.Options
 	name        string
 	fingerprint string
+	cost        uint16
 }
 
 func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
@@ -56,6 +58,7 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the router name")
 	cmd.Flags().StringVar(&options.fingerprint, "fingerprint", "", "Sets the router fingerprint")
+	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -77,6 +80,11 @@ func runUpdateRouter(o *updateRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("fingerprint") {
 		api.SetJSONValue(entityData, o.fingerprint, "fingerprint")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("cost") {
+		api.SetJSONValue(entityData, o.cost, "cost")
 		change = true
 	}
 

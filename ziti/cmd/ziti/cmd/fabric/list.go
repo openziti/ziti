@@ -18,6 +18,8 @@ package fabric
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -26,7 +28,6 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
@@ -290,12 +291,13 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Online", "Version"})
+	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "Version"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
 		name := entity.Path("name").Data().(string)
 		connected := entity.Path("connected").Data().(bool)
+		cost := entity.Path("cost").Data().(float64)
 		versionInfo := entity.Path("versionInfo")
 		var version string
 		if versionInfo != nil {
@@ -304,7 +306,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 			arch := versionInfo.Path("arch").Data().(string)
 			version = fmt.Sprintf("%v on %v/%v", v, os, arch)
 		}
-		t.AppendRow(table.Row{id, name, connected, version})
+		t.AppendRow(table.Row{id, name, connected, cost, version})
 	}
 
 	renderTable(o, t, pagingInfo)
