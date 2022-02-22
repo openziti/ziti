@@ -26,72 +26,55 @@ func getCircuitEventHandlers() []CircuitEventHandler {
 	return CircuitEventHandlerRegistry.Value().([]CircuitEventHandler)
 }
 
+type CircuitEventType int
+
+const (
+	CircuitCreated CircuitEventType = 1
+	CircuitUpdated CircuitEventType = 2
+	CircuitDeleted CircuitEventType = 3
+)
+
+func (self CircuitEventType) String() string {
+	switch self {
+	case CircuitCreated:
+		return "created"
+	case CircuitUpdated:
+		return "updated"
+	case CircuitDeleted:
+		return "deleted"
+	default:
+		return "invalid"
+	}
+}
+
+var CircuitTypes = []CircuitEventType{CircuitCreated, CircuitUpdated, CircuitDeleted}
+
+type CircuitEvent struct {
+	Type      CircuitEventType
+	CircuitId string
+	ClientId  string
+	ServiceId string
+	Path      *Path
+}
+
+func (event *CircuitEvent) Handle() {
+	handlers := getCircuitEventHandlers()
+	for _, handler := range handlers {
+		go handler.AcceptCircuitEvent(event)
+	}
+}
+
 type CircuitEventHandler interface {
-	CircuitCreated(circuitId string, clientId string, serviceId string, path *Path)
-	CircuitDeleted(circuitId string, clientId string)
-	PathUpdated(circuitId string, path *Path)
+	AcceptCircuitEvent(event *CircuitEvent)
 }
 
-func (network *Network) CircuitCreated(circuitId string, clientId string, serviceId string, path *Path) {
-	event := &circuitCreatedEvent{
-		circuitId: circuitId,
-		clientId:  clientId,
-		serviceId: serviceId,
-		path:      path,
+func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit) {
+	event := &CircuitEvent{
+		Type:      eventType,
+		CircuitId: circuit.Id,
+		ClientId:  circuit.ClientId,
+		ServiceId: circuit.Service.Id,
+		Path:      circuit.Path,
 	}
 	network.eventDispatcher.Dispatch(event)
-}
-
-func (network *Network) CircuitDeleted(circuitId string, clientId string) {
-	event := &circuitDeletedEvent{
-		circuitId: circuitId,
-		clientId:  clientId,
-	}
-	network.eventDispatcher.Dispatch(event)
-}
-
-func (network *Network) PathUpdated(circuitId string, path *Path) {
-	event := &circuitPathEvent{
-		circuitId: circuitId,
-		path:      path,
-	}
-	network.eventDispatcher.Dispatch(event)
-}
-
-type circuitCreatedEvent struct {
-	circuitId string
-	clientId  string
-	serviceId string
-	path      *Path
-}
-
-func (event *circuitCreatedEvent) Handle() {
-	handlers := getCircuitEventHandlers()
-	for _, handler := range handlers {
-		go handler.CircuitCreated(event.circuitId, event.clientId, event.serviceId, event.path)
-	}
-}
-
-type circuitDeletedEvent struct {
-	circuitId string
-	clientId  string
-}
-
-func (event *circuitDeletedEvent) Handle() {
-	handlers := getCircuitEventHandlers()
-	for _, handler := range handlers {
-		go handler.CircuitDeleted(event.circuitId, event.clientId)
-	}
-}
-
-type circuitPathEvent struct {
-	circuitId string
-	path      *Path
-}
-
-func (event *circuitPathEvent) Handle() {
-	handlers := getCircuitEventHandlers()
-	for _, handler := range handlers {
-		go handler.PathUpdated(event.circuitId, event.path)
-	}
 }
