@@ -8,7 +8,7 @@ go 1.17
 
 //replace github.com/openziti/fabric => ../fabric
 
-replace github.com/openziti/sdk-golang => ../sdk-golang
+// replace github.com/openziti/sdk-golang => ../sdk-golang
 
 //replace github.com/kataras/go-events => ../go-events
 
