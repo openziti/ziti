@@ -44,12 +44,8 @@ import (
 type OsType string
 
 func NewOsType(value OsType) *OsType {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated OsType.
-func (m OsType) Pointer() *OsType {
-	return &m
+	v := value
+	return &v
 }
 
 const (

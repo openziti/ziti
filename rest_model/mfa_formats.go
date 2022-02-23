@@ -44,12 +44,8 @@ import (
 type MfaFormats string
 
 func NewMfaFormats(value MfaFormats) *MfaFormats {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated MfaFormats.
-func (m MfaFormats) Pointer() *MfaFormats {
-	return &m
+	v := value
+	return &v
 }
 
 const (

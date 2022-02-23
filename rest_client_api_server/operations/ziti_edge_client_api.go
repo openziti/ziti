@@ -187,6 +187,9 @@ func NewZitiEdgeClientAPI(spec *loads.Document) *ZitiEdgeClientAPI {
 		EnrollExtendRouterEnrollmentHandler: enroll.ExtendRouterEnrollmentHandlerFunc(func(params enroll.ExtendRouterEnrollmentParams) middleware.Responder {
 			return middleware.NotImplemented("operation enroll.ExtendRouterEnrollment has not yet been implemented")
 		}),
+		CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler: current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendVerifyCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendVerifyCurrentIdentityAuthenticator has not yet been implemented")
+		}),
 		CurrentAPISessionGetCurrentAPISessionHandler: current_api_session.GetCurrentAPISessionHandlerFunc(func(params current_api_session.GetCurrentAPISessionParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.GetCurrentAPISession has not yet been implemented")
 		}),
@@ -378,6 +381,8 @@ type ZitiEdgeClientAPI struct {
 	CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler current_api_session.ExtendCurrentIdentityAuthenticatorHandler
 	// EnrollExtendRouterEnrollmentHandler sets the operation handler for the extend router enrollment operation
 	EnrollExtendRouterEnrollmentHandler enroll.ExtendRouterEnrollmentHandler
+	// CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler sets the operation handler for the extend verify current identity authenticator operation
+	CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandler
 	// CurrentAPISessionGetCurrentAPISessionHandler sets the operation handler for the get current API session operation
 	CurrentAPISessionGetCurrentAPISessionHandler current_api_session.GetCurrentAPISessionHandler
 	// CurrentIdentityGetCurrentIdentityHandler sets the operation handler for the get current identity operation
@@ -610,6 +615,9 @@ func (o *ZitiEdgeClientAPI) Validate() error {
 	}
 	if o.EnrollExtendRouterEnrollmentHandler == nil {
 		unregistered = append(unregistered, "enroll.ExtendRouterEnrollmentHandler")
+	}
+	if o.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler == nil {
+		unregistered = append(unregistered, "current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandler")
 	}
 	if o.CurrentAPISessionGetCurrentAPISessionHandler == nil {
 		unregistered = append(unregistered, "current_api_session.GetCurrentAPISessionHandler")
@@ -901,6 +909,10 @@ func (o *ZitiEdgeClientAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/enroll/extend/router"] = enroll.NewExtendRouterEnrollment(o.context, o.EnrollExtendRouterEnrollmentHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/current-identity/authenticators/{id}/extend-verify"] = current_api_session.NewExtendVerifyCurrentIdentityAuthenticator(o.context, o.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}

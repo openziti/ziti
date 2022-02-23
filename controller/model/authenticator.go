@@ -24,7 +24,7 @@ import (
 
 type AuthProcessor interface {
 	CanHandle(method string) bool
-	Process(context AuthContext) (string, error)
+	Process(context AuthContext) (identityId string, authenticatorId string, err error)
 }
 
 type AuthRegistry interface {

@@ -70,6 +70,8 @@ paths:
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id'
   '/current-identity/authenticators/{id}/extend':
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id-extend'
+  '/current-identity/authenticators/{id}/extend-verify':
+    $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id-extend-verify'
   '/current-identity/mfa':
     $ref: 'shared/current-identity-mfa.yml#/paths/current-identity-mfa'
   '/current-identity/mfa/qr-code':
@@ -119,6 +121,8 @@ paths:
     $ref: 'management/enrollments.yml#/paths/enrollments'
   '/enrollments/{id}':
     $ref: 'management/enrollments.yml#/paths/enrollments-id'
+  '/enrollments/{id}/refresh':
+    $ref: 'management/enrollments.yml#/paths/enrollments-id-refresh'
 
   '/identities':
     $ref: 'management/identities.yml#/paths/identities'

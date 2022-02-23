@@ -36,6 +36,8 @@ const (
 	EdgeRouterProxyRequest = "X-Edge-Router-Proxy-Request"
 )
 
+var _ AuthProcessor = &AuthModuleCert{}
+
 type AuthModuleCert struct {
 	env                  Env
 	method               string
@@ -50,7 +52,7 @@ func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
 		env:                  env,
 		method:               persistence.MethodAuthenticatorCert,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
-		staticCaCerts:        nfpem.PemToX509(string(caChain)),
+		staticCaCerts:        nfpem.PemBytesToCertificates(caChain),
 		dynamicCaCache:       cmap.New(),
 	}
 
@@ -61,11 +63,11 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 	return method == module.method
 }
 
-func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
+func (module *AuthModuleCert) Process(context AuthContext) (string, string, error) {
 	fingerprints, err := module.GetFingerprints(context)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	for fingerprint, cert := range fingerprints {
@@ -102,14 +104,14 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, error) {
 			}
 
 			if _, err := cert.Verify(opts); err == nil {
-				return authenticator.IdentityId, nil
+				return authenticator.IdentityId, authenticator.Id, nil
 			} else {
 				pfxlog.Logger().Tracef("error verifying client certificate [%s] did not verify: %v", fingerprint, err)
 			}
 		}
 	}
 
-	return "", apierror.NewInvalidAuth()
+	return "", "", apierror.NewInvalidAuth()
 }
 
 func (module *AuthModuleCert) getRootPool() *x509.CertPool {
@@ -137,7 +139,7 @@ func (module *AuthModuleCert) getRootPool() *x509.CertPool {
 				}
 			}
 		} else {
-			caCerts := nfpem.PemToX509(ca.CertPem)
+			caCerts := nfpem.PemStringToCertificates(ca.CertPem)
 			module.dynamicCaCache.Set(ca.Id, caCerts)
 			for _, caCert := range caCerts {
 				roots.AddCert(caCert)

@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/foundation/identity/certtools"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"gopkg.in/resty.v1"
+	"net/http"
 	"testing"
 )
 
@@ -84,22 +85,90 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(json.Unmarshal(extendResp.Body(), respEnvelope))
 		ctx.Req.NotNil(respEnvelope.Data)
 
-		newClientCerts := nfpem.PemToX509(respEnvelope.Data.ClientCert)
+		newClientCerts := nfpem.PemStringToCertificates(respEnvelope.Data.ClientCert)
 		ctx.Req.Len(newClientCerts, 1)
 
-		t.Run("old cert used for auth fails", func(t *testing.T) {
+		t.Run("old cert works pre verify", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			_, err := identityAuth.AuthenticateClientApi(ctx)
-			ctx.Req.Error(err)
-		})
-
-		t.Run("new cert used for auth succeeds", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			identityAuth.cert = newClientCerts[0]
-			identityAuth.key = newPrivateKey
 			_, err := identityAuth.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 		})
+
+		t.Run("new cert used for auth fails pre verify", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			origCert := identityAuth.cert
+			origKey := identityAuth.key
+
+			identityAuth.cert = newClientCerts[0]
+			identityAuth.key = newPrivateKey
+			_, err := identityAuth.AuthenticateClientApi(ctx)
+			ctx.Req.Error(err)
+
+			identityAuth.cert = origCert
+			identityAuth.key = origKey
+		})
+
+		t.Run("verifying", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			t.Run("with an mangled client cert fails", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				mangledPem := "I am very truly not PEM data"
+
+				verifyRequest := &rest_model.IdentityExtendValidateEnrollmentRequest{
+					ClientCert: &mangledPem,
+				}
+
+				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusBadRequest, verifyResp.StatusCode())
+			})
+
+			t.Run("with an the old client cert fails", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				oldCertPem := nfpem.EncodeToString(identityAuth.cert)
+
+				verifyRequest := &rest_model.IdentityExtendValidateEnrollmentRequest{
+					ClientCert: &oldCertPem,
+				}
+
+				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusBadRequest, verifyResp.StatusCode())
+			})
+
+			t.Run("with the correct client cert succeeds", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				verifyRequest := &rest_model.IdentityExtendValidateEnrollmentRequest{
+					ClientCert: &respEnvelope.Data.ClientCert,
+				}
+
+				url := fmt.Sprintf("/current-identity/authenticators/%s/extend-verify", *currentAuthenticator.ID)
+				verifyResp, err := identityApiSession.NewRequest().SetBody(verifyRequest).Post(url)
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, verifyResp.StatusCode())
+
+				t.Run("old cert used for auth fails post verify", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					_, err := identityAuth.AuthenticateClientApi(ctx)
+					ctx.Req.Error(err)
+				})
+
+				t.Run("new cert used for auth succeeds post verify", func(t *testing.T) {
+					ctx.testContextChanged(t)
+					identityAuth.cert = newClientCerts[0]
+					identityAuth.key = newPrivateKey
+					_, err := identityAuth.AuthenticateClientApi(ctx)
+					ctx.Req.NoError(err)
+				})
+			})
+
+		})
+
 	})
 
 	t.Run("no client cert used on request errors", func(t *testing.T) {

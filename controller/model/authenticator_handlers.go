@@ -34,6 +34,7 @@ import (
 	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 type AuthenticatorHandler struct {
@@ -63,25 +64,27 @@ func (handler AuthenticatorHandler) newModelEntity() boltEntitySink {
 	return &Authenticator{}
 }
 
-func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Identity, error) {
+func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Identity, string, error) {
 
 	authModule := handler.env.GetAuthRegistry().GetByMethod(authContext.GetMethod())
 
 	if authModule == nil {
-		return nil, apierror.NewInvalidAuthMethod()
+		return nil, "", apierror.NewInvalidAuthMethod()
 	}
 
-	identityId, err := authModule.Process(authContext)
+	identityId, authenticatorId, err := authModule.Process(authContext)
 
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if identityId == "" {
-		return nil, apierror.NewInvalidAuth()
+		return nil, "", apierror.NewInvalidAuth()
 	}
 
-	return handler.env.GetHandlers().Identity.Read(identityId)
+	identity, err := handler.env.GetHandlers().Identity.Read(identityId)
+
+	return identity, authenticatorId, err
 }
 
 func (handler AuthenticatorHandler) ReadFingerprints(authenticatorId string) ([]string, error) {
@@ -137,7 +140,7 @@ func (handler *AuthenticatorHandler) Create(authenticator *Authenticator) (strin
 	}
 
 	if authenticator.Method == persistence.MethodAuthenticatorCert {
-		certs := nfpem.PemToX509(authenticator.ToCert().Pem)
+		certs := nfpem.PemStringToCertificates(authenticator.ToCert().Pem)
 
 		if len(certs) != 1 {
 			err := apierror.NewCouldNotParsePem()
@@ -181,7 +184,6 @@ func (handler AuthenticatorHandler) getRootPool() *x509.CertPool {
 			return nil
 		}
 		roots.AppendCertsFromPEM([]byte(ca.CertPem))
-
 
 		return nil
 	})
@@ -289,6 +291,11 @@ func (handler AuthenticatorHandler) UpdateSelf(authenticatorSelf *AuthenticatorS
 }
 
 func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker boltz.FieldChecker) error {
+	combinedChecker := &AndFieldChecker{first: handler, second: checker}
+	return handler.PatchUnrestricted(authenticator, combinedChecker)
+}
+
+func (handler AuthenticatorHandler) PatchUnrestricted(authenticator *Authenticator, checker boltz.FieldChecker) error {
 	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
 		if updb := authenticator.ToUpdb(); updb != nil {
 			if checker.IsUpdated("password") {
@@ -308,8 +315,8 @@ func (handler AuthenticatorHandler) Patch(authenticator *Authenticator, checker 
 			}
 		}
 	}
-	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	return handler.patchEntity(authenticator, combinedChecker)
+
+	return handler.patchEntity(authenticator, checker)
 }
 
 func (handler AuthenticatorHandler) PatchSelf(authenticatorSelf *AuthenticatorSelf, checker boltz.FieldChecker) error {
@@ -439,17 +446,37 @@ func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, aut
 		return nil, errorz.NewUnhandled(fmt.Errorf("%T is not a %T", authenticator, authenticatorCert))
 	}
 
-	validClientCert := false
+	if authenticatorCert.Pem == "" {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	var validClientCert *x509.Certificate = nil
 	for _, cert := range peerCerts {
 		fingerprint := handler.env.GetFingerprintGenerator().FromCert(cert)
 		if fingerprint == authenticatorCert.Fingerprint {
-			validClientCert = true
+			validClientCert = cert
 			break
 		}
 	}
 
-	if !validClientCert {
+	if validClientCert == nil {
 		return nil, errorz.NewUnauthorized()
+	}
+
+	caPool := x509.NewCertPool()
+	config := handler.env.GetConfig()
+	caPool.AddCert(config.Enrollment.SigningCert.Cert().Leaf)
+
+	validClientCert.NotBefore = time.Now().Add(-1 * time.Hour)
+	validClientCert.NotAfter = time.Now().Add(+1 * time.Hour)
+
+	validChain, err := validClientCert.Verify(x509.VerifyOptions{
+		Roots:     caPool,
+		KeyUsages: []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+	})
+
+	if len(validChain) == 0 || err != nil {
+		return nil, apierror.NewAuthenticatorCannotBeUpdated()
 	}
 
 	csr, err := edgeCert.ParseCsrPem([]byte(csrPem))
@@ -462,7 +489,7 @@ func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, aut
 
 	}
 
-	currentCerts := nfpem.PemToX509(authenticatorCert.Pem)
+	currentCerts := nfpem.PemStringToCertificates(authenticatorCert.Pem)
 
 	if len(currentCerts) != 1 {
 		return nil, errorz.NewUnhandled(errors.New("could not parse current certificates pem"))
@@ -495,12 +522,12 @@ func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, aut
 		return nil, apiErr
 	}
 
-	authenticatorCert.Pem = string(newPemCert)
-	authenticatorCert.Fingerprint = newFingerprint
+	authenticatorCert.UnverifiedPem = string(newPemCert)
+	authenticatorCert.UnverifiedFingerprint = newFingerprint
 
 	err = handler.env.GetHandlers().Authenticator.Patch(authenticatorCert.Authenticator, boltz.MapFieldChecker{
-		"certPem":     struct{}{},
-		"fingerprint": struct{}{},
+		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
+		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
 	})
 
 	if err != nil {
@@ -508,6 +535,59 @@ func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, aut
 	}
 
 	return newPemCert, nil
+}
+
+func (handler AuthenticatorHandler) VerifyExtendCertForIdentity(identityId, authenticatorId string, verifyCertPem string) error {
+	authenticator, _ := handler.Read(authenticatorId)
+
+	if authenticator == nil {
+		return errorz.NewNotFound()
+	}
+
+	if authenticator.Method != persistence.MethodAuthenticatorCert {
+		return apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	if authenticator.IdentityId != identityId {
+		return errorz.NewUnauthorized()
+	}
+
+	authenticatorCert := authenticator.ToCert()
+
+	if authenticatorCert == nil {
+		return errorz.NewUnhandled(fmt.Errorf("%T is not a %T", authenticator, authenticatorCert))
+	}
+
+	if authenticatorCert.Pem == "" {
+		return apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	if authenticatorCert.UnverifiedPem == "" || authenticatorCert.UnverifiedFingerprint == "" {
+		return apierror.NewAuthenticatorCannotBeUpdated()
+	}
+
+	verifyPrint := nfpem.FingerprintFromPemString(verifyCertPem)
+
+	if verifyPrint != authenticatorCert.UnverifiedFingerprint {
+		return apierror.NewInvalidClientCertificate()
+	}
+
+	authenticatorCert.Pem = authenticatorCert.UnverifiedPem
+	authenticatorCert.Fingerprint = authenticatorCert.UnverifiedFingerprint
+
+	authenticatorCert.UnverifiedFingerprint = ""
+	authenticatorCert.UnverifiedPem = ""
+
+	err := handler.env.GetHandlers().Authenticator.PatchUnrestricted(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+		persistence.FieldSessionCertFingerprint:                 struct{}{},
+		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
+		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
+
+		persistence.FieldAuthenticatorCertPem:         struct{}{},
+		persistence.FieldAuthenticatorCertFingerprint: struct{}{},
+	})
+
+	return err
 }
 
 type HashedPassword struct {

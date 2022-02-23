@@ -22,13 +22,17 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	clientCurrentApiSession "github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -69,6 +73,10 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Extend(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 
+	ae.ClientApi.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler = clientCurrentApiSession.ExtendVerifyCurrentIdentityAuthenticatorHandlerFunc(func(params clientCurrentApiSession.ExtendVerifyCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ExtendVerify(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
 	//Management
 
 	ae.ManagementApi.CurrentAPISessionDetailCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.DetailCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.DetailCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
@@ -89,6 +97,10 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.ExtendCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Extend(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
+	})
+
+	ae.ManagementApi.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler = managementCurrentApiSession.ExtendVerifyCurrentIdentityAuthenticatorHandlerFunc(func(params managementCurrentApiSession.ExtendVerifyCurrentIdentityAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.ExtendVerify(ae, rc, params.Extend) }, params.HTTPRequest, params.ID, "", permissions.IsAuthenticated())
 	})
 }
 
@@ -209,4 +221,39 @@ func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response
 		Ca:         string(ae.Config.CaPems()),
 		ClientCert: string(certPem),
 	}, &rest_model.Meta{})
+}
+
+func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *response.RequestContext, extend *rest_model.IdentityExtendValidateEnrollmentRequest) {
+	authId, err := rc.GetEntityId()
+	err = ae.Handlers.Authenticator.VerifyExtendCertForIdentity(rc.Identity.Id, authId, *extend.ClientCert)
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	certs := nfpem.PemStringToCertificates(*extend.ClientCert)
+
+	if len(certs) == 0 {
+		rc.RespondWithError(errorz.NewUnhandled(errors.New("unexpected certificate parse length")))
+		return
+	}
+
+	fingerprint := ae.GetFingerprintGenerator().FromRaw(certs[0].Raw)
+
+	sessionCert := &model.ApiSessionCertificate{
+		BaseEntity:   models.BaseEntity{},
+		ApiSessionId: rc.ApiSession.Id,
+		Subject:      certs[0].Subject.String(),
+		Fingerprint:  fingerprint,
+		ValidAfter:   &certs[0].NotBefore,
+		ValidBefore:  &certs[0].NotAfter,
+		PEM:          *extend.ClientCert,
+	}
+
+	if _, err := ae.GetHandlers().ApiSessionCertificate.Create(sessionCert); err != nil {
+		rc.RespondWithError(errorz.NewUnhandled(err))
+	}
+
+	rc.RespondWithEmptyOk()
 }

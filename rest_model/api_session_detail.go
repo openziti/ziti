@@ -48,6 +48,10 @@ type APISessionDetail struct {
 	// Required: true
 	AuthQueries AuthQueryList `json:"authQueries"`
 
+	// authenticator Id
+	// Required: true
+	AuthenticatorID *string `json:"authenticatorId"`
+
 	// cached last activity at
 	// Format: date-time
 	CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
@@ -98,6 +102,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		AuthQueries AuthQueryList `json:"authQueries"`
 
+		AuthenticatorID *string `json:"authenticatorId"`
+
 		CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
 
 		ConfigTypes []string `json:"configTypes"`
@@ -121,6 +127,8 @@ func (m *APISessionDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.AuthQueries = dataAO1.AuthQueries
+
+	m.AuthenticatorID = dataAO1.AuthenticatorID
 
 	m.CachedLastActivityAt = dataAO1.CachedLastActivityAt
 
@@ -155,6 +163,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		AuthQueries AuthQueryList `json:"authQueries"`
 
+		AuthenticatorID *string `json:"authenticatorId"`
+
 		CachedLastActivityAt strfmt.DateTime `json:"cachedLastActivityAt,omitempty"`
 
 		ConfigTypes []string `json:"configTypes"`
@@ -175,6 +185,8 @@ func (m APISessionDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.AuthQueries = m.AuthQueries
+
+	dataAO1.AuthenticatorID = m.AuthenticatorID
 
 	dataAO1.CachedLastActivityAt = m.CachedLastActivityAt
 
@@ -212,6 +224,10 @@ func (m *APISessionDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateAuthQueries(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateAuthenticatorID(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -269,6 +285,15 @@ func (m *APISessionDetail) validateAuthQueries(formats strfmt.Registry) error {
 		} else if ce, ok := err.(*errors.CompositeError); ok {
 			return ce.ValidateName("authQueries")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *APISessionDetail) validateAuthenticatorID(formats strfmt.Registry) error {
+
+	if err := validate.Required("authenticatorId", "body", m.AuthenticatorID); err != nil {
 		return err
 	}
 

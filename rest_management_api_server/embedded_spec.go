@@ -3843,7 +3843,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nAfter completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.\nThis request must be made using the existing, valid, client certificate.",
+        "description": "This endpoint only functions for certificates issued by the controller. 3rd party certificates are not handled.\nAllows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nThe response from this endpoint is a new client certificate which the client must  be verified via the /authenticators/{id}/extend-verify endpoint.\nAfter verification is completion any new connections must be made with new certificate. Prior to verification the old client certificate remains active.",
         "tags": [
           "Current API Session",
           "Enroll",
@@ -3866,6 +3866,74 @@ func init() {
             "description": "A response containg the identity's new certificate",
             "schema": {
               "$ref": "#/definitions/identityExtendEnrollmentEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/current-identity/authenticators/{id}/extend-verify": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "After submitting a CSR for a new client certificate the resulting public certificate must be re-submitted to this endpoint to verify receipt.\nAfter receipt, the new client certificate must be used for new authentication requests.",
+        "tags": [
+          "Current API Session",
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Allows the current identity to validate reciept of a new client certificate",
+        "operationId": "extendVerifyCurrentIdentityAuthenticator",
+        "parameters": [
+          {
+            "name": "extend",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/identityExtendValidateEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -6796,6 +6864,110 @@ func init() {
             "description": "The delete request was successful and the resource has been removed",
             "schema": {
               "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/enrollments/{id}/refresh": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the ` + "`" + `validFrom` + "`" + ` value is not provided it will default to now. If the ` + "`" + `validTo` + "`" + ` value is not provided it will default to ` + "`" + `validFrom` + "`" + `  the controller's configured enrollment timeout.",
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Refreshes an enrollment record's expiration window",
+        "operationId": "refreshEnrollment",
+        "parameters": [
+          {
+            "description": "An enrollment refresh request",
+            "name": "refresh",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/enrollmentRefresh"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "400": {
@@ -15349,11 +15521,15 @@ func init() {
             "authQueries",
             "cachedUpdatedAt",
             "isMfaRequired",
-            "isMfaComplete"
+            "isMfaComplete",
+            "authenticatorId"
           ],
           "properties": {
             "authQueries": {
               "$ref": "#/definitions/authQueryList"
+            },
+            "authenticatorId": {
+              "type": "string"
             },
             "cachedLastActivityAt": {
               "type": "string",
@@ -17108,6 +17284,19 @@ func init() {
         "$ref": "#/definitions/enrollmentDetail"
       }
     },
+    "enrollmentRefresh": {
+      "type": "object",
+      "properties": {
+        "validFrom": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "validTo": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "entityRef": {
       "description": "A reference to another resource and links to interact with it",
       "type": "object",
@@ -17465,6 +17654,18 @@ func init() {
       ],
       "properties": {
         "clientCertCsr": {
+          "type": "string"
+        }
+      }
+    },
+    "identityExtendValidateEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "clientCert"
+      ],
+      "properties": {
+        "clientCert": {
+          "description": "A PEM encoded client certificate previously returned after an extension request",
           "type": "string"
         }
       }
@@ -24374,7 +24575,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nAfter completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.\nThis request must be made using the existing, valid, client certificate.",
+        "description": "This endpoint only functions for certificates issued by the controller. 3rd party certificates are not handled.\nAllows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.\nThe response from this endpoint is a new client certificate which the client must  be verified via the /authenticators/{id}/extend-verify endpoint.\nAfter verification is completion any new connections must be made with new certificate. Prior to verification the old client certificate remains active.",
         "tags": [
           "Current API Session",
           "Enroll",
@@ -24397,6 +24598,74 @@ func init() {
             "description": "A response containg the identity's new certificate",
             "schema": {
               "$ref": "#/definitions/identityExtendEnrollmentEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/current-identity/authenticators/{id}/extend-verify": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "After submitting a CSR for a new client certificate the resulting public certificate must be re-submitted to this endpoint to verify receipt.\nAfter receipt, the new client certificate must be used for new authentication requests.",
+        "tags": [
+          "Current API Session",
+          "Enroll",
+          "Extend Enrollment"
+        ],
+        "summary": "Allows the current identity to validate reciept of a new client certificate",
+        "operationId": "extendVerifyCurrentIdentityAuthenticator",
+        "parameters": [
+          {
+            "name": "extend",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/identityExtendValidateEnrollmentRequest"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -27327,6 +27596,110 @@ func init() {
             "description": "The delete request was successful and the resource has been removed",
             "schema": {
               "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/enrollments/{id}/refresh": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the ` + "`" + `validFrom` + "`" + ` value is not provided it will default to now. If the ` + "`" + `validTo` + "`" + ` value is not provided it will default to ` + "`" + `validFrom` + "`" + `  the controller's configured enrollment timeout.",
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Refreshes an enrollment record's expiration window",
+        "operationId": "refreshEnrollment",
+        "parameters": [
+          {
+            "description": "An enrollment refresh request",
+            "name": "refresh",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/enrollmentRefresh"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "400": {
@@ -35970,11 +36343,15 @@ func init() {
             "authQueries",
             "cachedUpdatedAt",
             "isMfaRequired",
-            "isMfaComplete"
+            "isMfaComplete",
+            "authenticatorId"
           ],
           "properties": {
             "authQueries": {
               "$ref": "#/definitions/authQueryList"
+            },
+            "authenticatorId": {
+              "type": "string"
             },
             "cachedLastActivityAt": {
               "type": "string",
@@ -37733,6 +38110,19 @@ func init() {
         "$ref": "#/definitions/enrollmentDetail"
       }
     },
+    "enrollmentRefresh": {
+      "type": "object",
+      "properties": {
+        "validFrom": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "validTo": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "entityRef": {
       "description": "A reference to another resource and links to interact with it",
       "type": "object",
@@ -38090,6 +38480,18 @@ func init() {
       ],
       "properties": {
         "clientCertCsr": {
+          "type": "string"
+        }
+      }
+    },
+    "identityExtendValidateEnrollmentRequest": {
+      "type": "object",
+      "required": [
+        "clientCert"
+      ],
+      "properties": {
+        "clientCert": {
+          "description": "A PEM encoded client certificate previously returned after an extension request",
           "type": "string"
         }
       }

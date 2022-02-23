@@ -44,12 +44,8 @@ import (
 type PostureCheckType string
 
 func NewPostureCheckType(value PostureCheckType) *PostureCheckType {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated PostureCheckType.
-func (m PostureCheckType) Pointer() *PostureCheckType {
-	return &m
+	v := value
+	return &v
 }
 
 const (

@@ -621,7 +621,7 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	err = json.Unmarshal(resp.Body(), envelope)
 	ctx.Req.NoError(err)
 
-	certs := nfPem.PemToX509(envelope.Data.Cert)
+	certs := nfPem.PemStringToCertificates(envelope.Data.Cert)
 
 	ctx.Req.NotEmpty(certs)
 

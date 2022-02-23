@@ -23,6 +23,8 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 )
 
+var _ AuthProcessor = &AuthModuleUpdb{}
+
 type AuthModuleUpdb struct {
 	env    Env
 	method string
@@ -41,7 +43,7 @@ func (handler *AuthModuleUpdb) CanHandle(method string) bool {
 	return method == handler.method
 }
 
-func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
+func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, error) {
 	data := context.GetData()
 
 	username := ""
@@ -55,17 +57,17 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
 	}
 
 	if username == "" || password == "" {
-		return "", errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
+		return "", "", errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
 	}
 
 	authenticator, err := handler.env.GetHandlers().Authenticator.ReadByUsername(username)
 
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	if authenticator == nil {
-		return "", apierror.NewInvalidAuth()
+		return "", "", apierror.NewInvalidAuth()
 	}
 
 	updb := authenticator.ToUpdb()
@@ -73,16 +75,16 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, error) {
 	salt, err := decodeSalt(updb.Salt)
 
 	if err != nil {
-		return "", apierror.NewInvalidAuth()
+		return "", "", apierror.NewInvalidAuth()
 	}
 
 	hr := handler.env.GetHandlers().Authenticator.ReHashPassword(password, salt)
 
 	if updb.Password != hr.Password {
-		return "", apierror.NewInvalidAuth()
+		return "", "", apierror.NewInvalidAuth()
 	}
 
-	return updb.IdentityId, nil
+	return updb.IdentityId, authenticator.Id, nil
 }
 
 func decodeSalt(s string) ([]byte, error) {
