@@ -170,7 +170,7 @@ message Router {
   string buildDate = 8;
   string os = 9;
   string arch = 10;
-
+  uint32 cost = 11;
 }
 
 message ListRoutersRequest {

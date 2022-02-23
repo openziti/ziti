@@ -18,11 +18,12 @@ package network
 
 import (
 	"fmt"
+	"os"
+	"sort"
+
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/tcp"
-	"os"
-	"sort"
 )
 
 func newTestEntityHelper(ctx *db.TestContext, network *Network) *testEntityHelper {
@@ -44,7 +45,7 @@ type testEntityHelper struct {
 }
 
 func (self *testEntityHelper) addTestRouter() *Router {
-	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil)
+	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0)
 	self.network.Routers.markConnected(router)
 	self.routerIdx++
 	return router

@@ -17,6 +17,10 @@
 package network
 
 import (
+	"reflect"
+	"sync"
+	"sync/atomic"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
@@ -24,12 +28,9 @@ import (
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
-	"sync"
-	"sync/atomic"
 )
 
 type Router struct {
@@ -41,6 +42,7 @@ type Router struct {
 	Connected          concurrenz.AtomicBoolean
 	VersionInfo        *common.VersionInfo
 	routerLinks        RouterLinks
+	Cost               uint16
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -50,6 +52,7 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 	}
 	entity.Name = boltRouter.Name
 	entity.Fingerprint = boltRouter.Fingerprint
+	entity.Cost = boltRouter.Cost
 	entity.FillCommon(boltRouter)
 	return nil
 }
@@ -59,10 +62,11 @@ func (entity *Router) toBolt() boltz.Entity {
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
 		Fingerprint:   entity.Fingerprint,
+		Cost:          entity.Cost,
 	}
 }
 
-func NewRouter(id, name, fingerprint string) *Router {
+func NewRouter(id, name, fingerprint string, cost uint16) *Router {
 	if name == "" {
 		name = id
 	}
@@ -70,6 +74,7 @@ func NewRouter(id, name, fingerprint string) *Router {
 		BaseEntity:  models.BaseEntity{Id: id},
 		Name:        name,
 		Fingerprint: &fingerprint,
+		Cost:        cost,
 	}
 	result.routerLinks.allLinks.Store([]*Link{})
 	result.routerLinks.linkByRouter.Store(map[string][]*Link{})
@@ -315,6 +320,7 @@ func (ctrl *RouterController) UpdateCachedRouter(id string) {
 			if cached, ok := v.(*Router); ok {
 				cached.Name = router.Name
 				cached.Fingerprint = router.Fingerprint
+				cached.Cost = router.Cost
 			} else {
 				log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
 			}

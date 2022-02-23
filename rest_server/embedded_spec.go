@@ -1401,9 +1401,14 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "name"
+        "name",
+        "cost"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -1430,11 +1435,16 @@ func init() {
           "required": [
             "name",
             "fingerprint",
-            "connected"
+            "connected",
+            "cost"
           ],
           "properties": {
             "connected": {
               "type": "boolean"
+            },
+            "cost": {
+              "type": "integer",
+              "maximum": 65535
             },
             "fingerprint": {
               "type": "string"
@@ -1461,6 +1471,11 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -1476,12 +1491,17 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "fingerprint",
+        "cost"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535
+        },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"
@@ -5094,9 +5114,15 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "name"
+        "name",
+        "cost"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -5123,11 +5149,17 @@ func init() {
           "required": [
             "name",
             "fingerprint",
-            "connected"
+            "connected",
+            "cost"
           ],
           "properties": {
             "connected": {
               "type": "boolean"
+            },
+            "cost": {
+              "type": "integer",
+              "maximum": 65535,
+              "minimum": 0
             },
             "fingerprint": {
               "type": "string"
@@ -5154,6 +5186,12 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -5169,12 +5207,18 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "fingerprint",
+        "cost"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"

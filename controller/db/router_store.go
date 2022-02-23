@@ -19,33 +19,34 @@ package db
 import (
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
-)
-
-import (
 	"go.etcd.io/bbolt"
 )
 
 const (
 	EntityTypeRouters      = "routers"
 	FieldRouterFingerprint = "fingerprint"
+	FieldRouterCost        = "cost"
 )
 
 type Router struct {
 	boltz.BaseExtEntity
 	Name        string
 	Fingerprint *string
+	Cost        uint16
 }
 
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
+	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
+	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
 }
 
 func (entity *Router) GetEntityType() string {

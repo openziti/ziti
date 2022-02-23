@@ -18,10 +18,11 @@ package network
 
 import (
 	"fmt"
+	"math"
+
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/pkg/errors"
-	"math"
 )
 
 type Path struct {
@@ -186,7 +187,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 			if _, found := unvisited[r]; found {
 				var cost int64 = math.MaxInt64
 				if l, found := network.linkController.leastExpensiveLink(r, u); found {
-					cost = l.GetCost()
+					cost = l.GetCost() + int64(r.Cost)
 				}
 
 				alt := dist[u] + cost

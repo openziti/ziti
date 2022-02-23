@@ -1095,6 +1095,7 @@ definitions:
           - name
           - fingerprint
           - connected
+          - cost
         properties:
           name:
             type: string
@@ -1102,6 +1103,10 @@ definitions:
             type: string
           connected:
             type: boolean
+          cost:
+            type: integer
+            minimum: 0
+            maximum: 65535
           listenerAddress:
             type: string
           versionInfo:
@@ -1111,6 +1116,7 @@ definitions:
     required:
       - id
       - name
+      - cost
     properties:
       id:
         type: string
@@ -1119,18 +1125,27 @@ definitions:
       fingerprint:
         type: string
         x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
     type: object
     required:
       - name
+      - fingerprint
+      - cost
     properties:
       name:
         type: string
       fingerprint:
         type: string
-        x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
       tags:
         $ref: '#/definitions/tags'
   routerPatch:
@@ -1140,6 +1155,11 @@ definitions:
         type: string
       fingerprint:
         type: string
+        x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
         x-nullable: true
       tags:
         $ref: '#/definitions/tags'

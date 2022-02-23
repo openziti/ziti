@@ -48,6 +48,12 @@ type RouterDetail struct {
 	// Required: true
 	Connected *bool `json:"connected"`
 
+	// cost
+	// Required: true
+	// Maximum: 65535
+	// Minimum: 0
+	Cost *int64 `json:"cost"`
+
 	// fingerprint
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
@@ -76,6 +82,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Connected *bool `json:"connected"`
 
+		Cost *int64 `json:"cost"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddress string `json:"listenerAddress,omitempty"`
@@ -89,6 +97,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.Connected = dataAO1.Connected
+
+	m.Cost = dataAO1.Cost
 
 	m.Fingerprint = dataAO1.Fingerprint
 
@@ -113,6 +123,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Connected *bool `json:"connected"`
 
+		Cost *int64 `json:"cost"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddress string `json:"listenerAddress,omitempty"`
@@ -123,6 +135,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.Connected = m.Connected
+
+	dataAO1.Cost = m.Cost
 
 	dataAO1.Fingerprint = m.Fingerprint
 
@@ -153,6 +167,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateCost(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateFingerprint(formats); err != nil {
 		res = append(res, err)
 	}
@@ -174,6 +192,23 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 func (m *RouterDetail) validateConnected(formats strfmt.Registry) error {
 
 	if err := validate.Required("connected", "body", m.Connected); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateCost(formats strfmt.Registry) error {
+
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
+		return err
+	}
+
+	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
 		return err
 	}
 

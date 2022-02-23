@@ -35,12 +35,18 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // RouterPatch router patch
 //
 // swagger:model routerPatch
 type RouterPatch struct {
+
+	// cost
+	// Maximum: 65535
+	// Minimum: 0
+	Cost *int64 `json:"cost,omitempty"`
 
 	// fingerprint
 	Fingerprint *string `json:"fingerprint,omitempty"`
@@ -56,6 +62,10 @@ type RouterPatch struct {
 func (m *RouterPatch) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateCost(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
@@ -63,6 +73,22 @@ func (m *RouterPatch) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *RouterPatch) validateCost(formats strfmt.Registry) error {
+	if swag.IsZero(m.Cost) { // not required
+		return nil
+	}
+
+	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
+	}
+
 	return nil
 }
 

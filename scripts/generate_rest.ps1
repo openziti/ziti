@@ -49,7 +49,7 @@ try
     # works around those changes from showing up in commits by switching to forward slashes.
     #
     # There appears to be no option to suppress this line in the `swagger` executable.
-    $configureFile = Join-Path $serverPath "/configure_ziti_edge.go" -Resolve
+    $configureFile = Join-Path $serverPath "/configure_ziti_fabric.go" -Resolve
 
     $content = ""
     foreach ($line in Get-Content $configureFile)

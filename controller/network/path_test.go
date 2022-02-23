@@ -17,16 +17,17 @@
 package network
 
 import (
+	"runtime"
+	"testing"
+	"time"
+
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/channel"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/transport"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
-	"runtime"
-	"testing"
-	"time"
 )
 
 func TestSimplePath2(t *testing.T) {
@@ -43,10 +44,10 @@ func TestSimplePath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0)
 	network.Routers.markConnected(r1)
 
 	l0 := newLink("l0")
@@ -106,13 +107,13 @@ func TestTransitPath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 0)
 	network.Routers.markConnected(r2)
 
 	l0 := newLink("l0")
@@ -176,11 +177,12 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm2.Forwards[1].DstAddress)
 }
 
-func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel) *Router {
+func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16) *Router {
 	r := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
 		Fingerprint: &fingerprint,
 		Control:     ctrl,
+		Cost:        cost,
 	}
 	if advLstnr != nil {
 		r.AdvertisedListener = advLstnr.String()
@@ -241,16 +243,16 @@ func TestShortestPath(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3)
 	network.Routers.markConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil)
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 4)
 	network.Routers.markConnected(r3)
 
 	link := newLink("l0")
@@ -296,7 +298,7 @@ func TestShortestPath(t *testing.T) {
 	req.Equal(path[1], r1)
 	req.Equal(path[2], r3)
 
-	expected := 10 + 11 + 2 + // link1 cost and src and dest latency
-		9 + 20 + 21 // link2 cost and src and dest latency
+	expected := 10 + 11 + 2 + 2 + // link1 cost and src and dest latency plus dest router cost
+		9 + 20 + 21 + 4 // link2 cost and src and dest latency plus dest router cost
 	req.Equal(int64(expected), cost)
 }

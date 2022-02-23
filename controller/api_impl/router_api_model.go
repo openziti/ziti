@@ -18,6 +18,7 @@ package api_impl
 
 import (
 	"fmt"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
@@ -56,6 +57,7 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *network.Router {
 		},
 		Name:        stringz.OrEmpty(router.Name),
 		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -69,6 +71,7 @@ func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *network
 		},
 		Name:        stringz.OrEmpty(router.Name),
 		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -82,6 +85,7 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.R
 		},
 		Name:        router.Name,
 		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -123,12 +127,14 @@ func MapRouterToRestModel(n *network.Network, _ api.RequestContext, router *netw
 	}
 
 	isConnected := connected != nil
+	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
 		BaseEntity:  BaseEntityToRestModel(router, RouterLinkFactory),
 		Fingerprint: router.Fingerprint,
 		Name:        &router.Name,
 		Connected:   &isConnected,
 		VersionInfo: restVersionInfo,
+		Cost:        &cost,
 	}
 
 	return ret, nil
