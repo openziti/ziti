@@ -2,6 +2,7 @@ package entities
 
 import (
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/utils"
@@ -144,6 +145,7 @@ type allowedAddress interface {
 type cidrAddress struct {
 	cidr net.IPNet
 }
+
 func (self *cidrAddress) Allows(addr interface{}) bool {
 	if ip, ok := addr.(net.IP); ok {
 		return self.cidr.Contains(ip)
@@ -154,36 +156,36 @@ func (self *cidrAddress) Allows(addr interface{}) bool {
 type hostnameAddress struct {
 	hostname string
 }
+
 func (self *hostnameAddress) Allows(addr interface{}) bool {
 	host, ok := addr.(string)
 	return ok && strings.ToLower(host) == self.hostname
 }
+
 type domainAddress struct {
 	domain string
 }
+
 func (self *domainAddress) Allows(addr interface{}) bool {
 	host, ok := addr.(string)
-	return ok && strings.HasSuffix(strings.ToLower(host), self.domain[1:])
+	host = strings.ToLower(host)
+	return ok && (strings.HasSuffix(host, self.domain[1:]) || host == self.domain[2:])
 }
 
-func makeAllowedAddress(addr string) allowedAddress {
+func makeAllowedAddress(addr string) (allowedAddress, error) {
 	if addr[0] == '*' {
-		return &domainAddress{
-			domain: strings.ToLower(addr),
+		if len(addr) < 3 || addr[1] != '.' {
+			return nil, errors.Errorf("invalid domain[%s]", addr)
 		}
+		return &domainAddress{domain: strings.ToLower(addr)}, nil
 	}
 
 	if _, cidr, err := utils.GetDialIP(addr); err == nil {
-		return &cidrAddress{
-			cidr: *cidr,
-		}
+		return &cidrAddress{cidr: *cidr}, nil
 	}
 
-	return &hostnameAddress{
-		hostname: strings.ToLower(addr),
-	}
+	return &hostnameAddress{hostname: strings.ToLower(addr)}, nil
 }
-
 
 type HostV2Terminator struct {
 	Protocol               string
@@ -202,7 +204,7 @@ type HostV2Terminator struct {
 
 	ListenOptions *HostV2ListenOptions
 
-	allowedAddrs           []allowedAddress
+	allowedAddrs []allowedAddress
 }
 
 func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.Duration {
@@ -213,12 +215,17 @@ func (self *HostV2Terminator) GetDialTimeout(defaultTimeout time.Duration) time.
 }
 
 func (self *HostV2Terminator) GetAllowedAddresses() []allowedAddress {
+	log := pfxlog.Logger()
 	if self.allowedAddrs != nil {
 		return self.allowedAddrs
 	}
 
 	for _, addrStr := range self.AllowedAddresses {
-		self.allowedAddrs = append(self.allowedAddrs, makeAllowedAddress(addrStr))
+		if address, err := makeAllowedAddress(addrStr); err == nil {
+			self.allowedAddrs = append(self.allowedAddrs, address)
+		} else {
+			log.WithError(err).Warn("failed to parse allowed address")
+		}
 	}
 
 	return self.allowedAddrs

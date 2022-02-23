@@ -3,7 +3,6 @@ package intercept
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"io"
 	"net"
@@ -35,24 +34,28 @@ type DnsQuestion struct {
 }
 
 type DnsAnswer struct {
-	Name string
-	Type int
-	TTL int `json:"TTL"`
-	Data string
+	Name     string
+	Type     int
+	TTL      int `json:"TTL"`
+	Data     string
+	Port     uint16 `json:"port,omitempty"`
+	Priority uint16 `json:"priority,omitempty"`
+	Weight   uint16 `json:"weight,omitempty"`
 }
 
 type DnsMessage struct {
-	Status int
+	Id       int
+	Status   int
 	Question []*DnsQuestion
-	Answer []*DnsAnswer
-	Comment string `json:",omitempty"`
+	Answer   []*DnsAnswer
+	Comment  string `json:",omitempty"`
 }
 
 type resolvConn struct {
 	ctx *hostingContext
 
 	respQueue chan *DnsMessage
-	closed bool
+	closed    bool
 }
 
 func newResolvConn(hostCtx *hostingContext) (net.Conn, bool, error) {
@@ -64,7 +67,7 @@ func newResolvConn(hostCtx *hostingContext) (net.Conn, bool, error) {
 
 func (r *resolvConn) Read(b []byte) (n int, err error) {
 
-	msg, ok := <- r.respQueue
+	msg, ok := <-r.respQueue
 	if !ok {
 		return 0, io.EOF
 	}
@@ -80,23 +83,30 @@ func (r *resolvConn) Read(b []byte) (n int, err error) {
 }
 
 func (r *resolvConn) Write(b []byte) (int, error) {
-	resp := &DnsMessage{}
-	var q DnsQuestion
+	log := pfxlog.Logger().WithField("service", r.ctx.service.Name)
+	dnsMessage := &DnsMessage{}
 	var matchName string
 	dnsMatch := false
+	var q *DnsQuestion
 
-	err := json.Unmarshal(b, &q)
+	err := json.Unmarshal(b, dnsMessage)
 	if err != nil {
-		resp.Status = FORMERR
-		goto  done
+		dnsMessage.Status = FORMERR
+		goto done
 	}
 
-	resp.Question = []*DnsQuestion{&q}
+	if len(dnsMessage.Question) != 1 {
+		dnsMessage.Status = FORMERR
+		goto done
+	}
+
+	q = dnsMessage.Question[0]
 
 	matchName = q.Name
 	if strings.HasSuffix(matchName, ".") {
-		matchName = matchName[0:len(matchName) - 1]
+		matchName = matchName[0 : len(matchName)-1]
 	}
+	log.WithField("name", matchName).WithField("type", q.Type).Info("resolving")
 	for _, allowed := range r.ctx.config.GetAllowedAddresses() {
 		if allowed.Allows(matchName) {
 			dnsMatch = true
@@ -105,72 +115,82 @@ func (r *resolvConn) Write(b []byte) (int, error) {
 	}
 
 	if !dnsMatch {
-		resp.Status = NXDOMAIN
+		dnsMessage.Status = NXDOMAIN
 		goto done
 	}
 
 	switch q.Type {
 	case SRV:
-		_, srvs, err := net.LookupSRV("","", q.Name)
+		query := strings.SplitN(q.Name, ".", 3)
+		if len(query) < 3 {
+			dnsMessage.Status = FORMERR
+			goto done
+		}
+		_, srvs, err := net.LookupSRV(query[0][1:], query[1][1:], query[2])
 		if err != nil {
-			resp.Comment = err.Error()
-			resp.Status = SERVFAIL
+			dnsMessage.Comment = err.Error()
+			dnsMessage.Status = SERVFAIL
 			goto done
 		}
 
-		resp.Status = NOERROR
+		dnsMessage.Status = NOERROR
 		for _, srv := range srvs {
 			ans := &DnsAnswer{
-				Name: q.Name,
-				Type: q.Type,
-				Data: fmt.Sprintf("%d %d %d %s", srv.Priority, srv.Weight, srv.Port, srv.Target),
-				TTL: 86400,
+				Name:     q.Name,
+				Type:     q.Type,
+				Data:     srv.Target,
+				Port:     srv.Port,
+				Priority: srv.Priority,
+				Weight:   srv.Weight,
+				TTL:      86400,
 			}
-			resp.Answer = append(resp.Answer, ans)
+			dnsMessage.Answer = append(dnsMessage.Answer, ans)
 		}
 
 	case TXT:
 		txts, err := net.LookupTXT(q.Name)
 		if err != nil {
-			resp.Comment = err.Error()
-			resp.Status = SERVFAIL
+			dnsMessage.Comment = err.Error()
+			dnsMessage.Status = SERVFAIL
 			goto done
 		}
-		resp.Status = NOERROR
+		dnsMessage.Status = NOERROR
 		for _, txt := range txts {
 			ans := &DnsAnswer{
 				Name: q.Name,
 				Type: q.Type,
 				Data: txt,
-				TTL: 86400,
+				TTL:  86400,
 			}
-			resp.Answer = append(resp.Answer, ans)
+			dnsMessage.Answer = append(dnsMessage.Answer, ans)
 		}
 
 	case MX:
 		mxs, err := net.LookupMX(q.Name)
+		log.Infof("resolved %d MX recs, err=%v", len(mxs), err)
 		if err != nil {
-			resp.Comment = err.Error()
-			resp.Status = SERVFAIL
+			dnsMessage.Comment = err.Error()
+			dnsMessage.Status = SERVFAIL
 			goto done
 		}
-		resp.Status = NOERROR
+		dnsMessage.Status = NOERROR
 		for _, mx := range mxs {
 			ans := &DnsAnswer{
-				Name: q.Name,
-				Type: q.Type,
-				Data: fmt.Sprintf("%d %s", mx.Pref, mx.Host),
-				TTL: 86400,
+				Name:     q.Name,
+				Type:     q.Type,
+				Data:     mx.Host,
+				Priority: mx.Pref,
+				TTL:      86400,
 			}
-			resp.Answer = append(resp.Answer, ans)
+			dnsMessage.Answer = append(dnsMessage.Answer, ans)
 		}
 
 	default:
-		resp.Status = NOTIMP
+		dnsMessage.Status = NOTIMP
 	}
 
 done:
-	r.respQueue <- resp
+	r.respQueue <- dnsMessage
 	return len(b), nil
 }
 
@@ -194,17 +214,16 @@ func (r *resolvConn) RemoteAddr() net.Addr {
 }
 
 func (r *resolvConn) SetDeadline(t time.Time) error {
-	pfxlog.Logger().Warn("should not be here")
+	pfxlog.Logger().Warn("not implemented")
 	return nil
 }
 
 func (r *resolvConn) SetReadDeadline(t time.Time) error {
-	pfxlog.Logger().Warn("should not be here")
+	pfxlog.Logger().Warn("not implemented")
 	return nil
 }
 
 func (r *resolvConn) SetWriteDeadline(t time.Time) error {
-	pfxlog.Logger().Warn("should not be here")
+	pfxlog.Logger().Warn("not implemented")
 	return nil
 }
-
