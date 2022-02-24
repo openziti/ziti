@@ -46,7 +46,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/fabric v0.17.47
 	github.com/openziti/foundation v0.17.5
-	github.com/openziti/sdk-golang v0.16.7
+	github.com/openziti/sdk-golang v0.16.8
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -94,6 +94,7 @@ require (
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
 	github.com/lucas-clemente/quic-go v0.23.0 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/marten-seemann/qtls-go1-16 v0.1.4 // indirect
 	github.com/marten-seemann/qtls-go1-17 v0.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
@@ -127,7 +128,4 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
-require (
-	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/openziti/channel v0.18.5
-)
+require github.com/openziti/channel v0.18.6
