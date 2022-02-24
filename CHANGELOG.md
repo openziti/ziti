@@ -1,3 +1,11 @@
+# Release 0.24.10
+
+* Fix goroutine leak in channel
+    * Regression introduced in v0.24.5
+* Circuit events of all types now include the full set of attributes
+* Entity count events and the summary REST service now distinguish between fabric and edge service and routers. The edge counts names are suffixed with '.edge'
+* The `ziti edge list summary` now shows entity counts in alphabetical order of the entity type 
+
 # Release 0.24.9
 * Enhancement: `ziti` now has subcommands under `create config` which will properly emit configuration files for 
   `controller`, `router edge` and `router fabric`. 
