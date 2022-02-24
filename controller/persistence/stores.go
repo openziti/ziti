@@ -82,16 +82,11 @@ func (stores *Stores) GetEntityCounts(dbProvider DbProvider) (map[string]int64, 
 		err := dbProvider.GetDb().View(func(tx *bbolt.Tx) error {
 			key := store.GetEntityType()
 			if store.IsChildStore() {
-				if store.GetEntityType() == "routers" {
-					if _, ok := store.(TransitRouterStore); ok {
-						// skip transit routers, since count will be == fabric routers
-						return nil
-					}
-					if _, ok := store.(EdgeRouterStore); ok {
-						key = "routers.edge"
-					}
-				} else if store.GetEntityType() == "services" {
-					key = "services.edge"
+				if _, ok := store.(TransitRouterStore); ok {
+					// skip transit routers, since count will be == fabric routers
+					return nil
+				} else {
+					key = store.GetEntityType() + ".edge"
 				}
 			}
 
