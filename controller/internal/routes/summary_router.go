@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
-	"go.etcd.io/bbolt"
 )
 
 func init() {
@@ -49,22 +48,10 @@ func (r *SummaryRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *SummaryRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	data := rest_model.ListSummaryCounts{}
-
-	err := ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		for _, store := range ae.BoltStores.GetStoreList() {
-			_, count, err := store.QueryIds(tx, "true limit 1")
-			if err != nil {
-				return err
-			}
-			data[store.GetEntityType()] = count
-		}
-		return nil
-	})
-
+	data, err := ae.GetStores().GetEntityCounts(ae.GetDbProvider())
 	if err != nil {
 		rc.RespondWithError(err)
 	} else {
-		rc.RespondWithOk(data, nil)
+		rc.RespondWithOk(rest_model.ListSummaryCounts(data), nil)
 	}
 }
