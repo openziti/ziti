@@ -76,7 +76,41 @@ func (stores *Stores) buildStoreMap() {
 	}
 }
 
-func (stores *Stores) GetStoreList() []Store {
+func (stores *Stores) GetEntityCounts(dbProvider DbProvider) (map[string]int64, error) {
+	result := map[string]int64{}
+	for _, store := range stores.storeMap {
+		err := dbProvider.GetDb().View(func(tx *bbolt.Tx) error {
+			key := store.GetEntityType()
+			if store.IsChildStore() {
+				if store.GetEntityType() == "routers" {
+					if _, ok := store.(TransitRouterStore); ok {
+						// skip transit routers, since count will be == fabric routers
+						return nil
+					}
+					if _, ok := store.(EdgeRouterStore); ok {
+						key = "routers.edge"
+					}
+				} else if store.GetEntityType() == "services" {
+					key = "services.edge"
+				}
+			}
+
+			_, count, err := store.QueryIds(tx, "true limit 1")
+			if err != nil {
+				return err
+			}
+			result[key] = count
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
+}
+
+func (stores *Stores) getStoresForInit() []Store {
 	var result []Store
 	for _, crudStore := range stores.storeMap {
 		if store, ok := crudStore.(Store); ok {
@@ -229,7 +263,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
 
 	externalStores.buildStoreMap()
-	storeList := externalStores.GetStoreList()
+	storeList := externalStores.getStoresForInit()
 
 	err := dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
 		for _, store := range storeList {

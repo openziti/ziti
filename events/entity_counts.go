@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 	"reflect"
 	"time"
 )
@@ -29,23 +28,13 @@ func generateEntityCountEvent(dbProvider persistence.DbProvider, stores *persist
 	event := &EntityCountEvent{
 		Namespace: EntityCountEventNS,
 		Timestamp: time.Now(),
-		Counts:    map[string]int64{},
 	}
 
-	for _, store := range stores.GetStoreList() {
-		err := dbProvider.GetDb().View(func(tx *bbolt.Tx) error {
-			_, count, err := store.QueryIds(tx, "true limit 1")
-			if err != nil {
-				return err
-			}
-			event.Counts[store.GetEntityType()] = count
-			return nil
-		})
-
-		if err != nil {
-			event.Error = err.Error()
-			break
-		}
+	data, err := stores.GetEntityCounts(dbProvider)
+	if err != nil {
+		event.Error = err.Error()
+	} else {
+		event.Counts = data
 	}
 
 	handler.AcceptEntityCountEvent(event)
