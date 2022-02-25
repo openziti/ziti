@@ -15869,11 +15869,17 @@ func init() {
         "name",
         "supportedProtocols",
         "syncStatus",
-        "isOnline"
+        "isOnline",
+        "cost"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
         },
         "hostname": {
           "type": "string"
@@ -16695,6 +16701,11 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -16792,6 +16803,7 @@ func init() {
             "href": "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
           }
         },
+        "cost": 0,
         "createdAt": "2020-03-16T17:13:31.5807454Z",
         "enrollmentCreatedAt": "2020-03-16T17:13:31.5777637Z",
         "enrollmentExpiresAt": "2020-03-16T17:18:31.5777637Z",
@@ -16827,6 +16839,11 @@ func init() {
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
         },
         "isTunnelerEnabled": {
           "type": "boolean"
@@ -16965,6 +16982,11 @@ func init() {
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
         },
         "isTunnelerEnabled": {
           "type": "boolean"
@@ -19433,6 +19455,11 @@ func init() {
         "name"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },
@@ -19453,9 +19480,14 @@ func init() {
             "name",
             "isVerified",
             "isOnline",
-            "fingerprint"
+            "fingerprint",
+            "cost"
           ],
           "properties": {
+            "cost": {
+              "type": "integer",
+              "maximum": 65535
+            },
             "enrollmentCreatedAt": {
               "type": "string",
               "format": "date-time",
@@ -19528,6 +19560,11 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },
@@ -19542,6 +19579,11 @@ func init() {
         "name"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },
@@ -36448,11 +36490,18 @@ func init() {
         "name",
         "supportedProtocols",
         "syncStatus",
-        "isOnline"
+        "isOnline",
+        "cost"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
         },
         "hostname": {
           "type": "string"
@@ -37274,6 +37323,12 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "isTunnelerEnabled": {
           "type": "boolean"
         },
@@ -37371,6 +37426,7 @@ func init() {
             "href": "./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d"
           }
         },
+        "cost": 0,
         "createdAt": "2020-03-16T17:13:31.5807454Z",
         "enrollmentCreatedAt": "2020-03-16T17:13:31.5777637Z",
         "enrollmentExpiresAt": "2020-03-16T17:18:31.5777637Z",
@@ -37406,6 +37462,12 @@ func init() {
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
         },
         "isTunnelerEnabled": {
           "type": "boolean"
@@ -37544,6 +37606,12 @@ func init() {
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
         },
         "isTunnelerEnabled": {
           "type": "boolean"
@@ -40012,6 +40080,12 @@ func init() {
         "name"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },
@@ -40032,9 +40106,15 @@ func init() {
             "name",
             "isVerified",
             "isOnline",
-            "fingerprint"
+            "fingerprint",
+            "cost"
           ],
           "properties": {
+            "cost": {
+              "type": "integer",
+              "maximum": 65535,
+              "minimum": 0
+            },
             "enrollmentCreatedAt": {
               "type": "string",
               "format": "date-time",
@@ -40107,6 +40187,12 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },
@@ -40121,6 +40207,12 @@ func init() {
         "name"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "name": {
           "type": "string"
         },

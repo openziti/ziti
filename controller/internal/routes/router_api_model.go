@@ -2,6 +2,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -20,6 +21,7 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRoute
 	ret := &model.TransitRouter{
 		BaseEntity: models.BaseEntity{},
 		Name:       stringz.OrEmpty(router.Name),
+		Cost:       uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -32,6 +34,7 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 			Id:   id,
 		},
 		Name: stringz.OrEmpty(router.Name),
+		Cost: uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -44,6 +47,7 @@ func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *mo
 			Id:   id,
 		},
 		Name: router.Name,
+		Cost: uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -72,6 +76,7 @@ func MapTransitRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 
 func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*rest_model.RouterDetail, error) {
 	isConnected := ae.GetHandlers().Router.IsConnected(router.GetId())
+	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
 		BaseEntity:            BaseEntityToRestModel(router, TransitRouterLinkFactory),
 		Fingerprint:           router.Fingerprint,
@@ -80,6 +85,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 		Name:                  &router.Name,
 		UnverifiedFingerprint: router.UnverifiedFingerprint,
 		UnverifiedCertPem:     router.UnverifiedCertPem,
+		Cost:                  &cost,
 	}
 
 	if !router.IsBase && !router.IsVerified {

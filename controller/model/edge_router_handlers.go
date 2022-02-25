@@ -18,6 +18,8 @@ package model
 
 import (
 	"fmt"
+	"strconv"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
@@ -28,7 +30,6 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"strconv"
 )
 
 func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
@@ -39,6 +40,7 @@ func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 			persistence.FieldEdgeRouterIsTunnelerEnabled: struct{}{},
 			persistence.FieldRoleAttributes:              struct{}{},
 			boltz.FieldTags:                              struct{}{},
+			db.FieldRouterCost:                           struct{}{},
 		},
 	}
 	handler.impl = handler

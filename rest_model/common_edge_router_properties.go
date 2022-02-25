@@ -46,6 +46,12 @@ type CommonEdgeRouterProperties struct {
 	// app data
 	AppData *Tags `json:"appData,omitempty"`
 
+	// cost
+	// Required: true
+	// Maximum: 65535
+	// Minimum: 0
+	Cost *int64 `json:"cost"`
+
 	// hostname
 	// Required: true
 	Hostname *string `json:"hostname"`
@@ -72,6 +78,10 @@ func (m *CommonEdgeRouterProperties) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAppData(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCost(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -115,6 +125,23 @@ func (m *CommonEdgeRouterProperties) validateAppData(formats strfmt.Registry) er
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *CommonEdgeRouterProperties) validateCost(formats strfmt.Registry) error {
+
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
+		return err
+	}
+
+	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
 	}
 
 	return nil

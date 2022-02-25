@@ -46,6 +46,11 @@ type EdgeRouterUpdate struct {
 	// app data
 	AppData *Tags `json:"appData,omitempty"`
 
+	// cost
+	// Maximum: 65535
+	// Minimum: 0
+	Cost *int64 `json:"cost,omitempty"`
+
 	// is tunneler enabled
 	IsTunnelerEnabled bool `json:"isTunnelerEnabled,omitempty"`
 
@@ -65,6 +70,10 @@ func (m *EdgeRouterUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAppData(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateCost(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -100,6 +109,22 @@ func (m *EdgeRouterUpdate) validateAppData(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *EdgeRouterUpdate) validateCost(formats strfmt.Registry) error {
+	if swag.IsZero(m.Cost) { // not required
+		return nil
+	}
+
+	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
 	}
 
 	return nil

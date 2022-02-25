@@ -18,6 +18,9 @@ package routes
 
 import (
 	"fmt"
+
+	"strings"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -27,7 +30,6 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/util/stringz"
-	"strings"
 )
 
 const (
@@ -61,6 +63,7 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
 		AppData:           TagsOrDefault(router.AppData),
+		Cost:              uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -76,6 +79,7 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
 		AppData:           TagsOrDefault(router.AppData),
+		Cost:              uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -91,6 +95,7 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
 		AppData:           TagsOrDefault(router.AppData),
+		Cost:              uint16(Int64OrDefault(router.Cost)),
 	}
 
 	return ret
@@ -143,6 +148,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		appData.SubTags = map[string]interface{}{}
 	}
 
+	cost := int64(router.Cost)
 	ret := &rest_model.EdgeRouterDetail{
 		BaseEntity: BaseEntityToRestModel(router, EdgeRouterLinkFactory),
 		CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
@@ -152,6 +158,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			SupportedProtocols: routerState.Protocols,
 			SyncStatus:         &syncStatusStr,
 			AppData:            &appData,
+			Cost:               &cost,
 		},
 		RoleAttributes:        &roleAttributes,
 		EnrollmentToken:       nil,

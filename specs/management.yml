@@ -11477,9 +11477,15 @@ definitions:
     - supportedProtocols
     - syncStatus
     - isOnline
+    - cost
     properties:
       appData:
         $ref: '#/definitions/tags'
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       hostname:
         type: string
       isOnline:
@@ -12034,6 +12040,11 @@ definitions:
     properties:
       appData:
         $ref: '#/definitions/tags'
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       isTunnelerEnabled:
         type: boolean
       name:
@@ -12101,6 +12112,7 @@ definitions:
           href: ./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d/edge-routers
         self:
           href: ./edge-routers/b0766b8d-bd1a-4d28-8415-639b29d3c83d
+      cost: 0
       createdAt: "2020-03-16T17:13:31.5807454Z"
       enrollmentCreatedAt: "2020-03-16T17:13:31.5777637Z"
       enrollmentExpiresAt: "2020-03-16T17:18:31.5777637Z"
@@ -12136,6 +12148,11 @@ definitions:
     properties:
       appData:
         $ref: '#/definitions/tags'
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       isTunnelerEnabled:
         type: boolean
       name:
@@ -12226,6 +12243,11 @@ definitions:
     properties:
       appData:
         $ref: '#/definitions/tags'
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       isTunnelerEnabled:
         type: boolean
       name:
@@ -13813,6 +13835,11 @@ definitions:
     required:
     - name
     properties:
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       name:
         type: string
       tags:
@@ -13827,7 +13854,12 @@ definitions:
       - isVerified
       - isOnline
       - fingerprint
+      - cost
       properties:
+        cost:
+          type: integer
+          maximum: 65535
+          minimum: 0
         enrollmentCreatedAt:
           type: string
           format: date-time
@@ -13875,6 +13907,11 @@ definitions:
   routerPatch:
     type: object
     properties:
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       name:
         type: string
       tags:
@@ -13884,6 +13921,11 @@ definitions:
     required:
     - name
     properties:
+      cost:
+        type: integer
+        maximum: 65535
+        minimum: 0
+        x-nullable: true
       name:
         type: string
       tags:

@@ -4001,11 +4001,17 @@ func init() {
         "name",
         "supportedProtocols",
         "syncStatus",
-        "isOnline"
+        "isOnline",
+        "cost"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
         },
         "hostname": {
           "type": "string"
@@ -9714,11 +9720,18 @@ func init() {
         "name",
         "supportedProtocols",
         "syncStatus",
-        "isOnline"
+        "isOnline",
+        "cost"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
         },
         "hostname": {
           "type": "string"

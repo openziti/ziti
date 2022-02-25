@@ -8,6 +8,7 @@ definitions:
       - supportedProtocols
       - syncStatus
       - isOnline
+      - cost
     properties:
       hostname:
         type: string
@@ -21,5 +22,10 @@ definitions:
         type: string
       isOnline:
         type: boolean
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
+        x-nullable: true
       appData:
         $ref: 'base-entity.yml#/definitions/tags'

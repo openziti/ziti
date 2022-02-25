@@ -17,6 +17,8 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -24,7 +26,6 @@ import (
 	"github.com/openziti/foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type EdgeRouter struct {
@@ -41,6 +42,7 @@ type EdgeRouter struct {
 	AppData               map[string]interface{}
 	UnverifiedFingerprint *string
 	UnverifiedCertPem     *string
+	Cost                  uint16
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
@@ -48,6 +50,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entit
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
+			Cost:          entity.Cost,
 		},
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
@@ -64,6 +67,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
+			Cost:          entity.Cost,
 		},
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
@@ -99,6 +103,7 @@ func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	entity.AppData = boltEdgeRouter.AppData
 	entity.UnverifiedFingerprint = boltEdgeRouter.UnverifiedFingerprint
 	entity.UnverifiedCertPem = boltEdgeRouter.UnverifiedCertPem
+	entity.Cost = boltEdgeRouter.Cost
 
 	return nil
 }

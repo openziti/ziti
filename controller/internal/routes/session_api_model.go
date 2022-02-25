@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
@@ -175,6 +176,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 		state := ae.Broker.GetEdgeRouterState(edgeRouter.Id)
 
 		syncStatus := string(state.SyncStatus)
+		cost := int64(edgeRouter.Cost)
 		restModel := &rest_model.SessionEdgeRouter{
 			CommonEdgeRouterProperties: rest_model.CommonEdgeRouterProperties{
 				Hostname:           &state.Hostname,
@@ -182,6 +184,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 				Name:               &edgeRouter.Name,
 				SupportedProtocols: state.Protocols,
 				SyncStatus:         &syncStatus,
+				Cost:               &cost,
 			},
 			// `urls` is deprecated and should be removed once older SDKs that rely on it are not longer in use
 			Urls: state.Protocols,
