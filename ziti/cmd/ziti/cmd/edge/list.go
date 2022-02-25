@@ -32,6 +32,7 @@ import (
 	"io"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -1127,7 +1128,15 @@ func runListSummary(o *api.Options) error {
 		return err
 	}
 
-	for k, v := range children {
+	var keys []string
+	for k := range children {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := children[k]
 		_, err = fmt.Fprintf(o.Out, "%v: %v\n", k, v.Data())
 		if err != nil {
 			return err
