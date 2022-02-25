@@ -18,9 +18,10 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"io/ioutil"
+
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
@@ -36,6 +37,7 @@ type createEdgeRouterOptions struct {
 	jwtOutputFile     string
 	tags              map[string]string
 	appData           map[string]string
+	cost              uint16
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -67,6 +69,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-Data", nil, "Custom application data")
+	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 
 	options.AddCommonFlags(cmd)
 
@@ -81,6 +84,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.appData, "appData")
+	api.SetJSONValue(entityData, o.cost, "cost")
 
 	result, err := CreateEntityOfType("edge-routers", entityData.String(), &o.Options)
 	if err := o.LogCreateResult("edge router", result, err); err != nil {

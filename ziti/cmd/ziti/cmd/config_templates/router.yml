@@ -20,10 +20,10 @@ link:
     - binding: transport
 {{ if .Router.IsPrivate }}#{{ end }}  listeners:
 {{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
-{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:10080
-{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:10080
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
 {{ if .Router.IsPrivate }}#{{ end }}      options:
-{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   16
+{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
 
 {{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}listeners:
 # bindings of edge and tunnel requires an "edge" section below

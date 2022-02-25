@@ -35,12 +35,16 @@ jobs:
 
       - name: Build and Test
         run: |
-          pip install --upgrade pip
-          pip install awscli
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: darwin-release
+          path: release/
+          retention-days: 5
 
   windows-build:
     name: Build Windows binaries
@@ -62,13 +66,16 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          choco install python --version 3.6.8
-          python -m pip install --upgrade pip
-          pip install awscli
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-release
+          path: release/
+          retention-days: 5
 
   tag-and-publish:
     name: Build Linux Binaries and Docker Image, Tag, and Publish
@@ -99,19 +106,27 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-          python -m pip install --upgrade pip
-          pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           go install github.com/mitchellh/gox@latest
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
-          CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
-          CC=aarch64-linux-gnu-gcc CGO_ENABLED=true $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
-          aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+
+      - name: Download darwin release artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: darwin-release
+          path: release/
+
+      - name: Download windows release artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-release
+          path: release/
 
       - name: Publish
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')) && github.repository_owner == 'openziti'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -119,6 +134,7 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
       - name: Trigger Smoketest
+        if: github.repository_owner == 'openziti'
         env:
           JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
           jenkins_user: ${{ secrets.JENKINS_USER }}

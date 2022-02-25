@@ -32,7 +32,6 @@ import (
 
 const (
 	optionCtrlPort     = "ctrlPort"
-	optionMgmtListener = "mgmtListener"
 	optionDatabaseFile = "databaseFile"
 )
 
@@ -95,9 +94,6 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 			if data.Controller.Port == "" || controllerOptions.CtrlPort != constants.DefaultZitiControllerPort {
 				data.Controller.Port = controllerOptions.CtrlPort
 			}
-			if data.Controller.MgmtListenerHostPort == "" || controllerOptions.MgmtListener != constants.DefaultZitiMgmtControllerListenerHostPort {
-				data.Controller.MgmtListenerHostPort = controllerOptions.MgmtListener
-			}
 
 			// process identity information
 			SetControllerIdentity(&data.Controller)
@@ -125,7 +121,6 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultZitiControllerPort, "port to use for the config controller")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
-	cmd.Flags().StringVar(&options.MgmtListener, optionMgmtListener, constants.DefaultZitiMgmtControllerListenerHostPort, "address and port of the config management listener")
 }
 
 // run implements the command

@@ -1,3 +1,15 @@
+# Release 0.24.10
+
+* Bug fix: Fix goroutine leak in channel
+    * Regression introduced in v0.24.5
+* Bug fix: Deleted routers should now be forcefully disconnected on delete
+* Bug fix: Circuit timeouts, and not just failures, should now also incur failure costs on the related terminator when dialing
+* Bug fix: Entity count events and the summary REST service now distinguish between fabric and edge service and routers. The edge counts names are suffixed with '.edge'
+* Enhancement: Circuit events of all types now include the full set of attributes
+* Enhancement: The `ziti edge list summary` now shows entity counts in alphabetical order of the entity type 
+* Enhancement: `ziti edge update edge-router` now supports a `--cost` flag which will update a given routers associated cost.
+* Enhancement: `ziti fabric list routers` and `ziti edge list routers` will now display the cost of associated routers.
+
 # Release 0.24.9
 * Enhancement: `ziti` now has subcommands under `create config` which will properly emit configuration files for 
   `controller`, `router edge` and `router fabric`. 

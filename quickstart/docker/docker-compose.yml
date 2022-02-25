@@ -21,6 +21,8 @@ services:
   ziti-edge-router:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
       - "3022:3022"
@@ -35,6 +37,8 @@ services:
   ziti-edge-router-wss:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
     ports:
@@ -50,6 +54,8 @@ services:
   ziti-fabric-router-br:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
@@ -64,6 +70,8 @@ services:
   ziti-private-red:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
     #ports:
     #  - 3025:3025
@@ -77,6 +85,8 @@ services:
   ziti-private-blue:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
     #ports:
     #  - 3026:3026

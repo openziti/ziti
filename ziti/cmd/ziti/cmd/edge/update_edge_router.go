@@ -18,8 +18,9 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
+
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 
 	"github.com/pkg/errors"
 
@@ -38,6 +39,7 @@ type updateEdgeRouterOptions struct {
 	tags              map[string]string
 	appData           map[string]string
 	usePut            bool
+	cost              uint16
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -71,6 +73,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
+	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 
 	options.AddCommonFlags(cmd)
 
@@ -108,6 +111,11 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("app-data") {
 		api.SetJSONValue(entityData, o.appData, "appData")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("cost") {
+		api.SetJSONValue(entityData, o.cost, "cost")
 		change = true
 	}
 

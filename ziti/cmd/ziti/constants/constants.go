@@ -44,23 +44,22 @@ const (
 	DefaultZitiEdgeRouterPort = "3022"
 
 	// Controller defaults
-	DefaultZitiControllerName                 = "controller"
-	DefaultEdgeAPISessionTimeoutMinutes       = 30
-	DefaultWebListenerIdleTimeoutMs           = 5000
-	DefaultWebListenerReadTimeoutMs           = 5000
-	DefaultWebListenerWriteTimeoutMs          = 100000
-	DefaultWebListenerMinTLSVersion           = "TLS1.2"
-	DefaultWebListenerMaxTLSVersion           = "TLS1.3"
-	DefaultZitiEdgeAPIPort                    = "1280"
-	DefaultZitiEdgeListenerHostPort           = "0.0.0.0:1280"
-	DefaultZitiControllerListenerAddress      = "0.0.0.0"
-	DefaultZitiControllerPort                 = "6262"
-	DefaultZitiMgmtControllerListenerHostPort = "0.0.0.0:10000"
-	DefaultControllerHealthCheckIntervalSec   = 30
-	DefaultControllerHealthCheckTimeoutSec    = 15
-	DefaultControllerHealthCheckDelaySec      = 15
-	DefaultEdgeIdentityDurationMinutes        = 14400
-	DefaultEdgeRouterDurationMinutes          = 14400
+	DefaultZitiControllerName               = "controller"
+	DefaultEdgeAPISessionTimeoutMinutes     = 30
+	DefaultWebListenerIdleTimeoutMs         = 5000
+	DefaultWebListenerReadTimeoutMs         = 5000
+	DefaultWebListenerWriteTimeoutMs        = 100000
+	DefaultWebListenerMinTLSVersion         = "TLS1.2"
+	DefaultWebListenerMaxTLSVersion         = "TLS1.3"
+	DefaultZitiEdgeAPIPort                  = "1280"
+	DefaultZitiEdgeListenerHostPort         = "0.0.0.0:1280"
+	DefaultZitiControllerListenerAddress    = "0.0.0.0"
+	DefaultZitiControllerPort               = "6262"
+	DefaultControllerHealthCheckIntervalSec = 30
+	DefaultControllerHealthCheckTimeoutSec  = 15
+	DefaultControllerHealthCheckDelaySec    = 15
+	DefaultEdgeIdentityDurationMinutes      = 14400
+	DefaultEdgeRouterDurationMinutes        = 14400
 
 	// WSS defaults
 	DefaultWSSWriteTimeout     = 10
@@ -124,8 +123,6 @@ const (
 	ZitiCtrlListenerAddressVarDescription        = "The Ziti Controller Listener Address"
 	ZitiCtrlAdvertisedAddressVarName             = "ZITI_CTRL_ADVERTISED_ADDRESS"
 	ZitiCtrlAdvertisedAddressVarDescription      = "The Ziti Controller Advertised Address"
-	ZitiCtrlMgmtListenerHostPortVarName          = "ZITI_CTRL_MGMT_HOST_PORT"
-	ZitiCtrlMgmtListenerHostPortVarDescription   = "Host and port of the Ziti Controller Management Listener"
 	ZitiEdgeCtrlListenerHostPortVarName          = "ZITI_CTRL_EDGE_LISTENER_HOST_PORT"
 	ZitiEdgeCtrlListenerHostPortVarDescription   = "Host and port of the Ziti Edge Controller Listener"
 	ZitiEdgeCtrlAdvertisedHostPortVarName        = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
