@@ -5,6 +5,8 @@
 * Circuit events of all types now include the full set of attributes
 * Entity count events and the summary REST service now distinguish between fabric and edge service and routers. The edge counts names are suffixed with '.edge'
 * The `ziti edge list summary` now shows entity counts in alphabetical order of the entity type 
+* Enhancement: `ziti edge update edge-router` now supports a `--cost` flag which will update a given routers associated cost.
+* Enhancement: `ziti fabric list routers` and `ziti edge list routers` will now display the cost of associated routers.
 
 # Release 0.24.9
 * Enhancement: `ziti` now has subcommands under `create config` which will properly emit configuration files for 
