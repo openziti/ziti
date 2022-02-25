@@ -127,6 +127,7 @@ attendance:
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)
+			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
 			return nil, cleanups, &routeTimeoutError{circuitId: self.circuitId}
 		}
