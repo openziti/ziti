@@ -165,14 +165,9 @@ func NewCmdCreateConfig() *cobra.Command {
 		},
 	}
 
-	// Get env variable data global to all config files
-	templateData := &ConfigTemplateValues{}
-	templateData.populateEnvVars()
-	templateData.populateDefaults()
-
-	cmd.AddCommand(NewCmdCreateConfigController(templateData))
-	cmd.AddCommand(NewCmdCreateConfigRouter(templateData))
-	cmd.AddCommand(NewCmdCreateConfigEnvironment(templateData))
+	cmd.AddCommand(NewCmdCreateConfigController())
+	cmd.AddCommand(NewCmdCreateConfigRouter())
+	cmd.AddCommand(NewCmdCreateConfigEnvironment())
 
 	return cmd
 }
