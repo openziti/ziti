@@ -187,7 +187,7 @@ func (r *resolver) ServeDNS(w dns.ResponseWriter, query *dns.Msg) {
 	msg := dns.Msg{}
 	msg.SetReply(query)
 	msg.RecursionAvailable = false
-	msg.Rcode = dns.RcodeNotImplemented
+	msg.Rcode = dns.RcodeRefused
 	q := query.Question[0]
 	switch q.Qtype {
 	case dns.TypeA:
