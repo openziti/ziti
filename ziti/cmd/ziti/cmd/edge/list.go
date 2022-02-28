@@ -424,7 +424,8 @@ func outputEdgeRouters(o *api.Options, children []*gabs.Container, pagingInfo *p
 		isOnline, _ := entity.Path("isOnline").Data().(bool)
 		cost, _ := entity.Path("cost").Data().(float64)
 		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    cost: %v    role attributes: %v\n", id, name, isOnline, cost, roleAttributes); err != nil {
+		allowTraversal, _ := entity.Path("allowTraversal").Data().(bool)
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    cost: %v    allowTraversal: %t    role attributes: %v\n", id, name, isOnline, cost, allowTraversal, roleAttributes); err != nil {
 			return err
 		}
 	}
