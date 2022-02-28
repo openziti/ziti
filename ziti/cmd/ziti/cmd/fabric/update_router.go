@@ -61,8 +61,8 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the router name")
 	cmd.Flags().StringVar(&options.fingerprint, "fingerprint", "", "Sets the router fingerprint")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
-	cmd.Flags().BoolVar(&options.disallowTraversal, "disallow-traversal", false, "Dissalow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
-	cmd.Flags().BoolVar(&options.allowTraversal, "allow-traversal", false, "Dissalow traversal for this edge router. Default to allowed. Mutually Exclusive to disallow-traversal, but disallow has priority.")
+	cmd.Flags().BoolVar(&options.disallowTraversal, "disallow-traversal", false, "Disallow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
+	cmd.Flags().BoolVar(&options.allowTraversal, "allow-traversal", false, "Allow traversal for this edge router. Default to allowed. Mutually Exclusive to disallow-traversal, but disallow has priority.")
 
 	options.AddCommonFlags(cmd)
 
