@@ -19,9 +19,8 @@ package main
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/debugz"
-	"github.com/sirupsen/logrus"
-
 	"github.com/openziti/ziti/ziti-tunnel/cmd/ziti-tunnel/subcmd"
+	"github.com/sirupsen/logrus"
 )
 
 func init() {

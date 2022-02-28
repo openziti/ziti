@@ -18,10 +18,7 @@ package subcmd
 
 import (
 	"fmt"
-
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
