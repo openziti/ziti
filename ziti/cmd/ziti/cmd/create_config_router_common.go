@@ -62,3 +62,12 @@ func SetZitiRouterIdentityCA(r *RouterTemplateValues, routerName string) {
 	}
 	r.IdentityCA = cmdhelper.NormalizePath(val)
 }
+
+func validateRouterName(name string) string {
+	// Currently, only worry about router name if it's blank
+	if name == "" {
+		hostname, _ := os.Hostname()
+		return hostname
+	}
+	return name
+}

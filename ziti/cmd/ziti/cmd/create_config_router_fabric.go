@@ -73,7 +73,7 @@ func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update fabric router specific values with options passed in
-			data.Router.Name = options.RouterName
+			data.Router.Name = validateRouterName(options.RouterName)
 			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 			data.Router.IsFabric = true
 		},
@@ -112,7 +112,6 @@ func (options *CreateConfigRouterFabricOptions) run(data *ConfigTemplateValues) 
 		// Check if the path exists, fail if it doesn't
 		basePath := filepath.Dir(options.Output) + "/"
 		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
-			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
 			return err
 		}
 

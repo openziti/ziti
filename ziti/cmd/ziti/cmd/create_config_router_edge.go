@@ -85,7 +85,7 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 			}
 
 			// Update edge router specific values with options passed in
-			data.Router.Name = options.RouterName
+			data.Router.Name = validateRouterName(options.RouterName)
 			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 			data.Router.IsWss = options.WssEnabled
 			data.Router.IsPrivate = options.IsPrivate
@@ -118,8 +118,7 @@ func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
 func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) error {
 	// Ensure private and wss are not both used
 	if options.IsPrivate && options.WssEnabled {
-		logrus.Fatal("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
-		return errors.New("Flags for private and wss configs are mutually exclusive.")
+		return errors.New("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
@@ -132,7 +131,6 @@ func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) er
 		// Check if the path exists, fail if it doesn't
 		basePath := filepath.Dir(options.Output) + "/"
 		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
-			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
 			return err
 		}
 

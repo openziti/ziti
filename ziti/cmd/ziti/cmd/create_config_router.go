@@ -65,7 +65,7 @@ func NewCmdCreateConfigRouter() *cobra.Command {
 			data.populateDefaults()
 
 			// Update router data with options passed in
-			data.Router.Name = options.RouterName
+			data.Router.Name = validateRouterName(options.RouterName)
 			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
