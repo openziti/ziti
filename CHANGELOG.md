@@ -1,3 +1,8 @@
+# Release 0.24.11
+
+* Bug fix: Fix ziti CLI env. Config was getting set to current directory, instead of defaulting to under $HOME
+* Enhancement: Go tunneler support for service-side resolution of SRV, MX, TXT records for wildcard domains 
+
 # Release 0.24.10
 
 * Bug fix: Fix goroutine leak in channel
