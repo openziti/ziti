@@ -22,6 +22,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/controller"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -31,14 +32,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-)
-
-const (
-	sessionTimeoutDefault = 10 * time.Minute
-	sessionTimeoutMin     = 1 * time.Minute
-
-	enrollmentDurationMin     = 5 * time.Minute
-	enrollmentDurationDefault = 5 * time.Minute
 )
 
 type Enrollment struct {
@@ -65,9 +58,9 @@ type Api struct {
 }
 
 type Config struct {
-	Enabled            bool
-	Api                Api
-	Enrollment         Enrollment
+	Enabled    bool
+	Api        Api
+	Enrollment Enrollment
 
 	caPems     *bytes.Buffer
 	caPemsOnce sync.Once
@@ -78,6 +71,16 @@ type HttpTimeouts struct {
 	ReadHeaderTimeoutDuration time.Duration
 	WriteTimeoutDuration      time.Duration
 	IdleTimeoutsDuration      time.Duration
+}
+
+func DefaultHttpTimeouts() *HttpTimeouts {
+	httpTimeouts := &HttpTimeouts{
+		ReadTimeoutDuration:       controller.DefaultHttpReadTimeout,
+		ReadHeaderTimeoutDuration: controller.DefaultHttpReadHeaderTimeout,
+		WriteTimeoutDuration:      controller.DefaultHttpWriteTimeout,
+		IdleTimeoutsDuration:      controller.DefaultHttpIdleTimeout,
+	}
+	return httpTimeouts
 }
 
 func NewConfig() *Config {
@@ -111,13 +114,13 @@ func (c *Config) RefreshCaPems() {
 	c.caPems = CalculateCaPems(c.caPems)
 }
 
-
 func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error {
 	c.Api = Api{}
+	c.Api.HttpTimeouts = *DefaultHttpTimeouts()
 	var err error
 
-	c.Api.ActivityUpdateBatchSize = 250
-	c.Api.ActivityUpdateInterval = 90 * time.Second
+	c.Api.ActivityUpdateBatchSize = controller.DefaultEdgeApiActivityUpdateBatchSize
+	c.Api.ActivityUpdateInterval = controller.DefaultEdgeAPIActivityUpdateInterval
 
 	if value, found := edgeConfigMap["api"]; found {
 		apiSubMap := value.(map[interface{}]interface{})
@@ -147,8 +150,8 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if durationValue < sessionTimeoutMin {
-			durationValue = sessionTimeoutDefault
+		if durationValue < controller.MinEdgeSessionTimeout {
+			durationValue = controller.DefaultEdgeSessionTimeout
 			pfxlog.Logger().Warnf("[edge.api.sessionTimeout] defaulted to %v", durationValue)
 		}
 
@@ -170,12 +173,12 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if c.Api.ActivityUpdateBatchSize < 1 || c.Api.ActivityUpdateBatchSize > 10000 {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between 1 and 10000", c.Api.ActivityUpdateBatchSize)
+		if c.Api.ActivityUpdateBatchSize < controller.MinEdgeAPIActivityUpdateBatchSize || c.Api.ActivityUpdateBatchSize > controller.MaxEdgeAPIActivityUpdateBatchSize {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between %v and %v", c.Api.ActivityUpdateBatchSize, controller.MinEdgeAPIActivityUpdateBatchSize, controller.MaxEdgeAPIActivityUpdateBatchSize)
 		}
 
-		if c.Api.ActivityUpdateInterval < time.Millisecond || c.Api.ActivityUpdateInterval > 10*time.Minute {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between 1ms and 10m", c.Api.ActivityUpdateInterval.String())
+		if c.Api.ActivityUpdateInterval < controller.MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > controller.MaxEdgeAPIActivityUpdateInterval {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), controller.MinEdgeAPIActivityUpdateInterval.Milliseconds(), controller.MaxEdgeAPIActivityUpdateInterval.Minutes())
 		}
 
 		return nil
@@ -279,8 +282,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeIdentityDuration < enrollmentDurationMin {
-				edgeIdentityDuration = enrollmentDurationDefault
+			if edgeIdentityDuration < controller.MinEdgeEnrollmentDuration {
+				edgeIdentityDuration = controller.DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeIdentity = EnrollmentOption{Duration: edgeIdentityDuration}
@@ -303,8 +306,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeRouterDuration < enrollmentDurationMin {
-				edgeRouterDuration = enrollmentDurationDefault
+			if edgeRouterDuration < controller.MinEdgeEnrollmentDuration {
+				edgeRouterDuration = controller.DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeRouter = EnrollmentOption{Duration: edgeRouterDuration}
