@@ -136,7 +136,7 @@ type CircuitInfo struct {
 
 var circuitError = errors.New("error connecting circuit")
 
-func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
+func GetCircuit(ctrl CtrlChannel, ingressId string, service string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
 	if ctrl == nil || ctrl.Channel() == channel.Channel(nil) {
 		return nil, errors.New("ctrl not ready")
 	}
@@ -144,7 +144,7 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, serviceId string, timeout ti
 	log := pfxlog.Logger()
 	circuitRequest := &ctrl_pb.CircuitRequest{
 		IngressId: ingressId,
-		ServiceId: serviceId,
+		Service:   service,
 		PeerData:  peerData,
 	}
 	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ctrl.Channel())

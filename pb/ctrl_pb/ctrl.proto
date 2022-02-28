@@ -46,7 +46,7 @@ message Settings {
 
 message CircuitRequest {
   string ingressId = 1;
-  string serviceId = 2;
+  string service = 2;
   map<uint32, bytes> peerData = 3;
 }
 

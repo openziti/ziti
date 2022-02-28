@@ -42,7 +42,7 @@ func (h *circuitRequestHandler) ContentType() int32 {
 }
 
 func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
+	log := pfxlog.ContextLogger(ch.Label()).Entry
 
 	request := &ctrl_pb.CircuitRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err == nil {
@@ -52,7 +52,14 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 		 */
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
-			if circuit, err := h.network.CreateCircuit(h.r, id, request.ServiceId, logcontext.NewContext()); err == nil {
+			service := request.Service
+			if _, err := h.network.Controllers.Services.Read(service); err != nil {
+				if id, _ := h.network.Controllers.Services.GetIdForName(service); id != "" {
+					service = id
+				}
+			}
+			log = log.WithField("serviceId", service)
+			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext()); err == nil {
 				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 
@@ -69,14 +76,14 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 				if err := responseMsg.WithTimeout(10 * time.Second).Send(h.r.Control); err != nil {
 					log.Errorf("unable to respond with success to create circuit request for circuit %v (%s)", circuit.Id, err)
 					if err := h.network.RemoveCircuit(circuit.Id, true); err != nil {
-						log.Errorf("unable to remove circuit %v (%v)", circuit.Id, err)
+						log.WithError(err).WithField("circuitId", circuit.Id).Error("unable to remove circuit")
 					}
 				}
 			} else {
 				responseMsg := ctrl_msg.NewCircuitFailedMsg(err.Error())
 				responseMsg.ReplyTo(msg)
 				if err := h.r.Control.Send(responseMsg); err != nil {
-					log.Errorf("unable to respond with failure to create circuit request for service %v (%s)", request.ServiceId, err)
+					log.WithError(err).Error("unable to respond with failure to create circuit request for service")
 				}
 			}
 		}()
