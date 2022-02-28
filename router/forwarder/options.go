@@ -18,6 +18,7 @@ package forwarder
 
 import (
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -40,20 +41,20 @@ type WorkerPoolOptions struct {
 
 func DefaultOptions() *Options {
 	return &Options{
-		LatencyProbeInterval:     10 * time.Second,
-		LatencyProbeTimeout:      10 * time.Second,
-		XgressCloseCheckInterval: 5 * time.Second,
-		XgressDialDwellTime:      0,
-		FaultTxInterval:          15 * time.Second,
-		IdleTxInterval:           60 * time.Second,
-		IdleCircuitTimeout:       60 * time.Second,
+		LatencyProbeInterval:     DefaultLatencyProbeInterval,
+		LatencyProbeTimeout:      DefaultLatencyProbeTimeout,
+		XgressCloseCheckInterval: DefaultXgressCloseCheckInterval,
+		XgressDialDwellTime:      DefaultXgressDialDwellTime,
+		FaultTxInterval:          DefaultFaultTxInterval,
+		IdleTxInterval:           DefaultIdleTxInterval,
+		IdleCircuitTimeout:       DefaultIdleCircuitTimeout,
 		XgressDial: WorkerPoolOptions{
-			QueueLength: 1000,
-			WorkerCount: 10,
+			QueueLength: DefaultXgressDialWorkerQueueLength,
+			WorkerCount: DefaultXgressDialWorkerCount,
 		},
 		LinkDial: WorkerPoolOptions{
-			QueueLength: 1000,
-			WorkerCount: 10,
+			QueueLength: DefaultLinkDialQueueLength,
+			WorkerCount: DefaultLinkDialWorkerCount,
 		},
 	}
 }
@@ -119,45 +120,45 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 
 	if value, found := src["xgressDialQueueLength"]; found {
 		if length, ok := value.(int); ok {
-			if length <= 0 || length > 10000 {
-				return nil, errors.New("invalid value for 'xgressDialQueueLength', expected integer between 1 and 1000")
+			if length < MinXgressDialWorkerQueueLength || length > MaxXgressDialWorkerQueueLength {
+				return nil, errors.New(fmt.Sprintf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength))
 			}
 			options.XgressDial.QueueLength = uint16(length)
 		} else {
-			return nil, errors.New("invalid value for 'xgressDialQueueLength', expected integer between 1 and 1000")
+			return nil, errors.New(fmt.Sprintf("invalid value for 'xgressDialQueueLength', expected integer between %v and %v", MinXgressDialWorkerQueueLength, MaxXgressDialWorkerQueueLength))
 		}
 	}
 
 	if value, found := src["xgressDialWorkerCount"]; found {
 		if workers, ok := value.(int); ok {
-			if workers <= 0 || workers > 10000 {
-				return nil, errors.New("invalid value for 'xgressDialWorkerCount', expected integer between 1 and 1000")
+			if workers < MinXgressDialWorkerCount || workers > MaxXgressDialWorkerCount {
+				return nil, errors.New(fmt.Sprintf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount))
 			}
 			options.XgressDial.WorkerCount = uint16(workers)
 		} else {
-			return nil, errors.New("invalid value for 'xgressDialWorkerCount', expected integer between 1 and 1000")
+			return nil, errors.New(fmt.Sprintf("invalid value for 'xgressDialWorkerCount', expected integer between %v and %v", MinXgressDialWorkerCount, MaxXgressDialWorkerCount))
 		}
 	}
 
 	if value, found := src["linkDialQueueLength"]; found {
 		if length, ok := value.(int); ok {
-			if length <= 0 || length > 10000 {
-				return nil, errors.New("invalid value for 'linkDialQueueLength', expected integer between 1 and 1000")
+			if length < MinLinkDialWorkerQueueLength || length > MaxLinkDialWorkerQueueLength {
+				return nil, errors.New(fmt.Sprintf("invalid value for 'linkDialQueueLength', expected integer between %v and %v", MinLinkDialWorkerQueueLength, MaxLinkDialWorkerQueueLength))
 			}
 			options.LinkDial.QueueLength = uint16(length)
 		} else {
-			return nil, errors.New("invalid value for 'linkDialQueueLength', expected integer between 1 and 1000")
+			return nil, errors.New(fmt.Sprintf("invalid value for 'linkDialQueueLength', expected integer between %v and %v", MinLinkDialWorkerQueueLength, MaxLinkDialWorkerQueueLength))
 		}
 	}
 
 	if value, found := src["linkDialWorkerCount"]; found {
 		if workers, ok := value.(int); ok {
-			if workers <= 0 || workers > 10000 {
-				return nil, errors.New("invalid value for 'linkDialWorkerCount', expected integer between 10 and 1000")
+			if workers <= MinLinkDialWorkerCount || workers > MaxLinkDialWorkerCount {
+				return nil, errors.New(fmt.Sprintf("invalid value for 'linkDialWorkerCount', expected integer between %v and %v", MinLinkDialWorkerCount, MaxLinkDialWorkerCount))
 			}
 			options.LinkDial.WorkerCount = uint16(workers)
 		} else {
-			return nil, errors.New("invalid value for 'linkDialWorkerCount', expected integer between 10 and 1000")
+			return nil, errors.New(fmt.Sprintf("invalid value for 'linkDialWorkerCount', expected integer between %v and %v", MinLinkDialWorkerCount, MaxLinkDialWorkerCount))
 		}
 	}
 

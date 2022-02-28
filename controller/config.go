@@ -174,7 +174,7 @@ func LoadConfig(path string) (*Config, error) {
 					if value, found := submap["intervalMs"]; found {
 						controllerConfig.Profile.Memory.Interval = time.Duration(value.(int)) * time.Millisecond
 					} else {
-						controllerConfig.Profile.Memory.Interval = 15 * time.Second
+						controllerConfig.Profile.Memory.Interval = DefaultProfileMemoryInterval
 					}
 				}
 			}
@@ -288,9 +288,9 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	controllerConfig.HealthChecks.BoltCheck.Interval = 30 * time.Second
-	controllerConfig.HealthChecks.BoltCheck.Timeout = 20 * time.Second
-	controllerConfig.HealthChecks.BoltCheck.InitialDelay = 30 * time.Second
+	controllerConfig.HealthChecks.BoltCheck.Interval = DefaultHealthChecksBoltCheckInterval
+	controllerConfig.HealthChecks.BoltCheck.Timeout = DefaultHealthChecksBoltCheckTimeout
+	controllerConfig.HealthChecks.BoltCheck.InitialDelay = DefaultHealthChecksBoltCheckInitialDelay
 
 	if value, found := cfgmap["healthChecks"]; found {
 		if healthChecksMap, ok := value.(map[interface{}]interface{}); ok {
