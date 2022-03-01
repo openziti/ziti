@@ -291,7 +291,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "Traversal Allowed", "Version"})
+	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "No Traversal", "Version"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
@@ -299,7 +299,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 		connected := entity.Path("connected").Data().(bool)
 		cost := entity.Path("cost").Data().(float64)
 		versionInfo := entity.Path("versionInfo")
-		allowTraversal := entity.Path("allowTraversal").Data().(bool)
+		noTraversal := entity.Path("noTraversal").Data().(bool)
 		var version string
 		if versionInfo != nil {
 			v := versionInfo.Path("version").Data().(string)
@@ -307,7 +307,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 			arch := versionInfo.Path("arch").Data().(string)
 			version = fmt.Sprintf("%v on %v/%v", v, os, arch)
 		}
-		t.AppendRow(table.Row{id, name, connected, cost, allowTraversal, version})
+		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version})
 	}
 
 	renderTable(o, t, pagingInfo)

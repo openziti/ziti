@@ -29,11 +29,11 @@ import (
 
 type createRouterOptions struct {
 	api.Options
-	name              string
-	cost              uint16
-	tags              map[string]string
-	disallowTraversal bool
-	allowTraversal    bool
+	name           string
+	cost           uint16
+	tags           map[string]string
+	noTraversal    bool
+	allowTraversal bool
 }
 
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
@@ -58,7 +58,7 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to router definition")
 	cmd.Flags().StringVar(&options.name, "name", "", "Specifies the router name. If not specified, the id in the controller cert will be used")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
-	cmd.Flags().BoolVar(&options.disallowTraversal, "disallow-traversal", false, "Disallow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
+	cmd.Flags().BoolVar(&options.noTraversal, "disallow-traversal", false, "Disallow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
 	cmd.Flags().BoolVar(&options.allowTraversal, "allow-traversal", false, "Allow traversal for this edge router. Default to allowed. Mutually Exclusive to disallow-traversal, but disallow has priority.")
 
 	options.AddCommonFlags(cmd)
@@ -85,10 +85,10 @@ func (o *createRouterOptions) createRouter(_ *cobra.Command, args []string) erro
 	api.SetJSONValue(entityData, fingerprint, "fingerprint")
 	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.cost, "cost")
-	if o.disallowTraversal {
-		api.SetJSONValue(entityData, !o.disallowTraversal, "allowTraversal")
+	if o.noTraversal {
+		api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 	} else {
-		api.SetJSONValue(entityData, o.allowTraversal, "allowTraversal")
+		api.SetJSONValue(entityData, !o.allowTraversal, "noTraversal")
 	}
 	result, err := createEntityOfType("routers", entityData.String(), &o.Options)
 	if err != nil {
