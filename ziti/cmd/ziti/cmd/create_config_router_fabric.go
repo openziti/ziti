@@ -49,7 +49,7 @@ type CreateConfigRouterFabricOptions struct {
 var routerConfigFabricTemplate string
 
 // NewCmdCreateConfigRouterFabric creates a command object for the "fabric" command
-func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
+func NewCmdCreateConfigRouterFabric() *cobra.Command {
 	options := &CreateConfigRouterFabricOptions{}
 
 	cmd := &cobra.Command{
@@ -59,22 +59,6 @@ func NewCmdCreateConfigRouterFabric(data *ConfigTemplateValues) *cobra.Command {
 		Long:    createConfigRouterFabricLong,
 		Example: createConfigRouterFabricExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
-			// Setup logging
-			var logOut *os.File
-			if options.Verbose {
-				logrus.SetLevel(logrus.DebugLevel)
-				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(options.Output) != "stdout" {
-					logOut = os.Stdout
-				} else {
-					logOut = os.Stderr
-				}
-				logrus.SetOutput(logOut)
-			}
-
-			// Update fabric router specific values with options passed in
-			data.Router.Name = options.RouterName
-			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 			data.Router.IsFabric = true
 		},
 		Run: func(cmd *cobra.Command, args []string) {

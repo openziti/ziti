@@ -40,14 +40,11 @@ type CreateConfigRouterOptions struct {
 func NewCmdCreateConfigRouter() *cobra.Command {
 	options := &CreateConfigRouterOptions{}
 
-	// Get env variable data global to all config files
-	data := &ConfigTemplateValues{}
-
 	cmd := &cobra.Command{
 		Use:     "router",
 		Short:   "Creates a config file for specified Router name",
 		Aliases: []string{"rtr"},
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Setup logging
 			var logOut *os.File
 			if options.Verbose {
@@ -73,8 +70,8 @@ func NewCmdCreateConfigRouter() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigRouterEdge(data))
-	cmd.AddCommand(NewCmdCreateConfigRouterFabric(data))
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge())
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric())
 
 	options.addCreateFlags(cmd)
 	options.addFlags(cmd)

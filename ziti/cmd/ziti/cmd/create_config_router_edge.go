@@ -61,7 +61,7 @@ type CreateConfigRouterEdgeOptions struct {
 var routerConfigEdgeTemplate string
 
 // NewCmdCreateConfigRouterEdge creates a command object for the "edge" command
-func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
+func NewCmdCreateConfigRouterEdge() *cobra.Command {
 	options := &CreateConfigRouterEdgeOptions{}
 
 	cmd := &cobra.Command{
@@ -71,22 +71,6 @@ func NewCmdCreateConfigRouterEdge(data *ConfigTemplateValues) *cobra.Command {
 		Long:    createConfigRouterEdgeLong,
 		Example: createConfigRouterEdgeExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
-			// Setup logging
-			var logOut *os.File
-			if options.Verbose {
-				logrus.SetLevel(logrus.DebugLevel)
-				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(options.Output) != "stdout" {
-					logOut = os.Stdout
-				} else {
-					logOut = os.Stderr
-				}
-				logrus.SetOutput(logOut)
-			}
-
-			// Update edge router specific values with options passed in
-			data.Router.Name = options.RouterName
-			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 			data.Router.IsWss = options.WssEnabled
 			data.Router.IsPrivate = options.IsPrivate
 		},
