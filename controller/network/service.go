@@ -169,6 +169,15 @@ func (ctrl *ServiceController) Read(id string) (entity *Service, err error) {
 	return entity, err
 }
 
+func (ctrl *ServiceController) GetIdForName(id string) (string, error) {
+	var result []byte
+	err := ctrl.db.View(func(tx *bbolt.Tx) error {
+		result = ctrl.store.GetNameIndex().Read(tx, []byte(id))
+		return nil
+	})
+	return string(result), err
+}
+
 func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
 	if t, found := ctrl.cache.Get(id); found {
 		return t.(*Service), nil

@@ -20,12 +20,12 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/trace/pb"
 )
 
 type streamTracesHandler struct {

@@ -3,10 +3,10 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/channel"
-	trace_pb "github.com/openziti/foundation/trace/pb"
 )
 
 type traceHandler struct {

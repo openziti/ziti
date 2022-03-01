@@ -20,12 +20,12 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
-	trace_pb "github.com/openziti/foundation/trace/pb"
 	"sync"
 	"time"
 )

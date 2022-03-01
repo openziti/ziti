@@ -19,9 +19,9 @@ package trace
 import (
 	"fmt"
 	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	trace_pb "github.com/openziti/foundation/trace/pb"
 	"github.com/openziti/foundation/util/concurrenz"
 	"time"
 )

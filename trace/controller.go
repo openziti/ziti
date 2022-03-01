@@ -18,7 +18,7 @@ package trace
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/trace/pb"
+	"github.com/openziti/channel/trace/pb"
 	"regexp"
 	"strings"
 )

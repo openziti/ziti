@@ -38,7 +38,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 		if err := proto.Unmarshal(msg.Body, circuitRequest); err == nil {
 			meta := channel.NewTraceMessageDecode(DECODER, "Circuit Request")
 			meta["ingressId"] = circuitRequest.IngressId
-			meta["serviceId"] = circuitRequest.ServiceId
+			meta["service"] = circuitRequest.Service
 			headers := make([]string, 0)
 			for k := range circuitRequest.PeerData {
 				headers = append(headers, strconv.Itoa(int(k)))

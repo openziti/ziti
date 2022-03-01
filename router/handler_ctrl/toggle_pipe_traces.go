@@ -20,10 +20,10 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	trace_pb "github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/identity/identity"
-	trace_pb "github.com/openziti/foundation/trace/pb"
 )
 
 func newTraceHandler(appId *identity.TokenId, controller trace.Controller) *traceHandler {

@@ -16,10 +16,10 @@
 
 package trace
 
-import tracepb "github.com/openziti/foundation/trace/pb"
+import "github.com/openziti/channel/trace/pb"
 
 type Filter interface {
-	Accept(event *tracepb.ChannelMessage) bool
+	Accept(event *trace_pb.ChannelMessage) bool
 }
 
 func NewAllowAllFilter() Filter {
@@ -36,7 +36,7 @@ func NewExcludeFilter(excludedContentTypes []int32) Filter {
 
 type allowAllFilter struct{}
 
-func (*allowAllFilter) Accept(event *tracepb.ChannelMessage) bool {
+func (*allowAllFilter) Accept(event *trace_pb.ChannelMessage) bool {
 	return true
 }
 
@@ -44,7 +44,7 @@ type includeFilter struct {
 	contentTypes []int32
 }
 
-func (filter *includeFilter) Accept(event *tracepb.ChannelMessage) bool {
+func (filter *includeFilter) Accept(event *trace_pb.ChannelMessage) bool {
 	for _, contentType := range filter.contentTypes {
 		if event.ContentType == contentType {
 			return true
@@ -57,7 +57,7 @@ type excludeFilter struct {
 	contentTypes []int32
 }
 
-func (filter *excludeFilter) Accept(event *tracepb.ChannelMessage) bool {
+func (filter *excludeFilter) Accept(event *trace_pb.ChannelMessage) bool {
 	for _, contentType := range filter.contentTypes {
 		if event.ContentType == contentType {
 			return false
