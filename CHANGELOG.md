@@ -1,3 +1,8 @@
+# Release 0.24.12
+
+* Enhancement: Allow xgress proxy configuration in router config to accept service id or service name
+* Build: Docker build process fixes 
+
 # Release 0.24.11
 
 * Bug fix: Fix ziti CLI env. Config was getting set to current directory, instead of defaulting to under $HOME
