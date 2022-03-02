@@ -37,8 +37,11 @@ type CreateConfigRouterOptions struct {
 }
 
 // NewCmdCreateConfigRouter creates a command object for the "router" command
-func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
+func NewCmdCreateConfigRouter() *cobra.Command {
 	options := &CreateConfigRouterOptions{}
+
+	// Get env variable data global to all config files
+	data := &ConfigTemplateValues{}
 
 	cmd := &cobra.Command{
 		Use:     "router",
@@ -57,6 +60,9 @@ func NewCmdCreateConfigRouter(data *ConfigTemplateValues) *cobra.Command {
 				}
 				logrus.SetOutput(logOut)
 			}
+
+			data.populateEnvVars()
+			data.populateDefaults()
 
 			// Update router data with options passed in
 			data.Router.Name = options.RouterName

@@ -19,6 +19,12 @@ package edge
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/url"
+	"reflect"
+	"sort"
+	"strings"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
@@ -29,10 +35,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net/url"
-	"reflect"
-	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
@@ -420,8 +422,9 @@ func outputEdgeRouters(o *api.Options, children []*gabs.Container, pagingInfo *p
 		id, _ := entity.Path("id").Data().(string)
 		name, _ := entity.Path("name").Data().(string)
 		isOnline, _ := entity.Path("isOnline").Data().(bool)
+		cost, _ := entity.Path("cost").Data().(float64)
 		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    role attributes: %v\n", id, name, isOnline, roleAttributes); err != nil {
+		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    cost: %v    role attributes: %v\n", id, name, isOnline, cost, roleAttributes); err != nil {
 			return err
 		}
 	}
@@ -1127,7 +1130,15 @@ func runListSummary(o *api.Options) error {
 		return err
 	}
 
-	for k, v := range children {
+	var keys []string
+	for k := range children {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := children[k]
 		_, err = fmt.Fprintf(o.Out, "%v: %v\n", k, v.Data())
 		if err != nil {
 			return err

@@ -110,7 +110,11 @@ type CreateConfigEnvironmentOptions struct {
 }
 
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
-func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
+func NewCmdCreateConfigEnvironment() *cobra.Command {
+
+	// Get env variable data global to all config files
+	data := &ConfigTemplateValues{}
+
 	environmentOptions := &CreateConfigEnvironmentOptions{
 		ConfigTemplateValues: *data,
 		EnvVariableMetaData: EnvVariableMetaData{
@@ -171,6 +175,9 @@ func NewCmdCreateConfigEnvironment(data *ConfigTemplateValues) *cobra.Command {
 		Long:    createConfigEnvironmentLong,
 		Example: createConfigEnvironmentExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
+			data.populateEnvVars()
+			data.populateDefaults()
+
 			// Setup logging
 			var logOut *os.File
 			environmentOptions.OS = runtime.GOOS
