@@ -34,11 +34,23 @@ import (
 )
 
 const (
-	sessionTimeoutDefault = 10 * time.Minute
-	sessionTimeoutMin     = 1 * time.Minute
+	DefaultEdgeApiActivityUpdateBatchSize = 250
+	DefaultEdgeAPIActivityUpdateInterval  = 90 * time.Second
+	MaxEdgeAPIActivityUpdateBatchSize     = 10000
+	MinEdgeAPIActivityUpdateBatchSize     = 1
+	MaxEdgeAPIActivityUpdateInterval      = 10 * time.Minute
+	MinEdgeAPIActivityUpdateInterval      = time.Millisecond
 
-	enrollmentDurationMin     = 5 * time.Minute
-	enrollmentDurationDefault = 5 * time.Minute
+	DefaultEdgeSessionTimeout = 10 * time.Minute
+	MinEdgeSessionTimeout     = 1 * time.Minute
+
+	MinEdgeEnrollmentDuration     = 5 * time.Minute
+	DefaultEdgeEnrollmentDuration = 5 * time.Minute
+
+	DefaultHttpIdleTimeout       = 5000 * time.Millisecond
+	DefaultHttpReadTimeout       = 5000 * time.Millisecond
+	DefaultHttpReadHeaderTimeout = 5000 * time.Millisecond
+	DefaultHttpWriteTimeout      = 100000 * time.Millisecond
 )
 
 type Enrollment struct {
@@ -65,9 +77,9 @@ type Api struct {
 }
 
 type Config struct {
-	Enabled            bool
-	Api                Api
-	Enrollment         Enrollment
+	Enabled    bool
+	Api        Api
+	Enrollment Enrollment
 
 	caPems     *bytes.Buffer
 	caPemsOnce sync.Once
@@ -78,6 +90,16 @@ type HttpTimeouts struct {
 	ReadHeaderTimeoutDuration time.Duration
 	WriteTimeoutDuration      time.Duration
 	IdleTimeoutsDuration      time.Duration
+}
+
+func DefaultHttpTimeouts() *HttpTimeouts {
+	httpTimeouts := &HttpTimeouts{
+		ReadTimeoutDuration:       DefaultHttpReadTimeout,
+		ReadHeaderTimeoutDuration: DefaultHttpReadHeaderTimeout,
+		WriteTimeoutDuration:      DefaultHttpWriteTimeout,
+		IdleTimeoutsDuration:      DefaultHttpIdleTimeout,
+	}
+	return httpTimeouts
 }
 
 func NewConfig() *Config {
@@ -111,13 +133,13 @@ func (c *Config) RefreshCaPems() {
 	c.caPems = CalculateCaPems(c.caPems)
 }
 
-
 func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error {
 	c.Api = Api{}
+	c.Api.HttpTimeouts = *DefaultHttpTimeouts()
 	var err error
 
-	c.Api.ActivityUpdateBatchSize = 250
-	c.Api.ActivityUpdateInterval = 90 * time.Second
+	c.Api.ActivityUpdateBatchSize = DefaultEdgeApiActivityUpdateBatchSize
+	c.Api.ActivityUpdateInterval = DefaultEdgeAPIActivityUpdateInterval
 
 	if value, found := edgeConfigMap["api"]; found {
 		apiSubMap := value.(map[interface{}]interface{})
@@ -147,8 +169,8 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if durationValue < sessionTimeoutMin {
-			durationValue = sessionTimeoutDefault
+		if durationValue < MinEdgeSessionTimeout {
+			durationValue = DefaultEdgeSessionTimeout
 			pfxlog.Logger().Warnf("[edge.api.sessionTimeout] defaulted to %v", durationValue)
 		}
 
@@ -170,12 +192,12 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if c.Api.ActivityUpdateBatchSize < 1 || c.Api.ActivityUpdateBatchSize > 10000 {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between 1 and 10000", c.Api.ActivityUpdateBatchSize)
+		if c.Api.ActivityUpdateBatchSize < MinEdgeAPIActivityUpdateBatchSize || c.Api.ActivityUpdateBatchSize > MaxEdgeAPIActivityUpdateBatchSize {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between %v and %v", c.Api.ActivityUpdateBatchSize, MinEdgeAPIActivityUpdateBatchSize, MaxEdgeAPIActivityUpdateBatchSize)
 		}
 
-		if c.Api.ActivityUpdateInterval < time.Millisecond || c.Api.ActivityUpdateInterval > 10*time.Minute {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between 1ms and 10m", c.Api.ActivityUpdateInterval.String())
+		if c.Api.ActivityUpdateInterval < MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > MaxEdgeAPIActivityUpdateInterval {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), MinEdgeAPIActivityUpdateInterval.Milliseconds(), MaxEdgeAPIActivityUpdateInterval.Minutes())
 		}
 
 		return nil
@@ -279,8 +301,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeIdentityDuration < enrollmentDurationMin {
-				edgeIdentityDuration = enrollmentDurationDefault
+			if edgeIdentityDuration < MinEdgeEnrollmentDuration {
+				edgeIdentityDuration = DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeIdentity = EnrollmentOption{Duration: edgeIdentityDuration}
@@ -303,8 +325,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeRouterDuration < enrollmentDurationMin {
-				edgeRouterDuration = enrollmentDurationDefault
+			if edgeRouterDuration < MinEdgeEnrollmentDuration {
+				edgeRouterDuration = DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeRouter = EnrollmentOption{Duration: edgeRouterDuration}
