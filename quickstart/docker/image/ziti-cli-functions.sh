@@ -814,7 +814,6 @@ function createEdgeRouterConfig {
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
 
-  echo -e "**** ZITI_EDGE_ROUTER_RAWNAME is ${ZITI_EDGE_ROUTER_RAWNAME}"
   mkdir -p "${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}"
   export ZITI_ROUTER_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/client.cert"
   export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
