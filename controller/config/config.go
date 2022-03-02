@@ -22,7 +22,6 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"io/ioutil"
@@ -32,6 +31,26 @@ import (
 	"strings"
 	"sync"
 	"time"
+)
+
+const (
+	DefaultEdgeApiActivityUpdateBatchSize = 250
+	DefaultEdgeAPIActivityUpdateInterval  = 90 * time.Second
+	MaxEdgeAPIActivityUpdateBatchSize     = 10000
+	MinEdgeAPIActivityUpdateBatchSize     = 1
+	MaxEdgeAPIActivityUpdateInterval      = 10 * time.Minute
+	MinEdgeAPIActivityUpdateInterval      = time.Millisecond
+
+	DefaultEdgeSessionTimeout = 10 * time.Minute
+	MinEdgeSessionTimeout     = 1 * time.Minute
+
+	MinEdgeEnrollmentDuration     = 5 * time.Minute
+	DefaultEdgeEnrollmentDuration = 5 * time.Minute
+
+	DefaultHttpIdleTimeout       = 5000 * time.Millisecond
+	DefaultHttpReadTimeout       = 5000 * time.Millisecond
+	DefaultHttpReadHeaderTimeout = 5000 * time.Millisecond
+	DefaultHttpWriteTimeout      = 100000 * time.Millisecond
 )
 
 type Enrollment struct {
@@ -75,10 +94,10 @@ type HttpTimeouts struct {
 
 func DefaultHttpTimeouts() *HttpTimeouts {
 	httpTimeouts := &HttpTimeouts{
-		ReadTimeoutDuration:       controller.DefaultHttpReadTimeout,
-		ReadHeaderTimeoutDuration: controller.DefaultHttpReadHeaderTimeout,
-		WriteTimeoutDuration:      controller.DefaultHttpWriteTimeout,
-		IdleTimeoutsDuration:      controller.DefaultHttpIdleTimeout,
+		ReadTimeoutDuration:       DefaultHttpReadTimeout,
+		ReadHeaderTimeoutDuration: DefaultHttpReadHeaderTimeout,
+		WriteTimeoutDuration:      DefaultHttpWriteTimeout,
+		IdleTimeoutsDuration:      DefaultHttpIdleTimeout,
 	}
 	return httpTimeouts
 }
@@ -119,8 +138,8 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 	c.Api.HttpTimeouts = *DefaultHttpTimeouts()
 	var err error
 
-	c.Api.ActivityUpdateBatchSize = controller.DefaultEdgeApiActivityUpdateBatchSize
-	c.Api.ActivityUpdateInterval = controller.DefaultEdgeAPIActivityUpdateInterval
+	c.Api.ActivityUpdateBatchSize = DefaultEdgeApiActivityUpdateBatchSize
+	c.Api.ActivityUpdateInterval = DefaultEdgeAPIActivityUpdateInterval
 
 	if value, found := edgeConfigMap["api"]; found {
 		apiSubMap := value.(map[interface{}]interface{})
@@ -150,8 +169,8 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if durationValue < controller.MinEdgeSessionTimeout {
-			durationValue = controller.DefaultEdgeSessionTimeout
+		if durationValue < MinEdgeSessionTimeout {
+			durationValue = DefaultEdgeSessionTimeout
 			pfxlog.Logger().Warnf("[edge.api.sessionTimeout] defaulted to %v", durationValue)
 		}
 
@@ -173,12 +192,12 @@ func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error
 			}
 		}
 
-		if c.Api.ActivityUpdateBatchSize < controller.MinEdgeAPIActivityUpdateBatchSize || c.Api.ActivityUpdateBatchSize > controller.MaxEdgeAPIActivityUpdateBatchSize {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between %v and %v", c.Api.ActivityUpdateBatchSize, controller.MinEdgeAPIActivityUpdateBatchSize, controller.MaxEdgeAPIActivityUpdateBatchSize)
+		if c.Api.ActivityUpdateBatchSize < MinEdgeAPIActivityUpdateBatchSize || c.Api.ActivityUpdateBatchSize > MaxEdgeAPIActivityUpdateBatchSize {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateBatchSize, must be between %v and %v", c.Api.ActivityUpdateBatchSize, MinEdgeAPIActivityUpdateBatchSize, MaxEdgeAPIActivityUpdateBatchSize)
 		}
 
-		if c.Api.ActivityUpdateInterval < controller.MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > controller.MaxEdgeAPIActivityUpdateInterval {
-			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), controller.MinEdgeAPIActivityUpdateInterval.Milliseconds(), controller.MaxEdgeAPIActivityUpdateInterval.Minutes())
+		if c.Api.ActivityUpdateInterval < MinEdgeAPIActivityUpdateInterval || c.Api.ActivityUpdateInterval > MaxEdgeAPIActivityUpdateInterval {
+			return errors.Errorf("invalid value %v for apiSessions.activityUpdateInterval, must be between %vms and %vm", c.Api.ActivityUpdateInterval.String(), MinEdgeAPIActivityUpdateInterval.Milliseconds(), MaxEdgeAPIActivityUpdateInterval.Minutes())
 		}
 
 		return nil
@@ -282,8 +301,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeIdentityDuration < controller.MinEdgeEnrollmentDuration {
-				edgeIdentityDuration = controller.DefaultEdgeEnrollmentDuration
+			if edgeIdentityDuration < MinEdgeEnrollmentDuration {
+				edgeIdentityDuration = DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeIdentity = EnrollmentOption{Duration: edgeIdentityDuration}
@@ -306,8 +325,8 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 				}
 			}
 
-			if edgeRouterDuration < controller.MinEdgeEnrollmentDuration {
-				edgeRouterDuration = controller.DefaultEdgeEnrollmentDuration
+			if edgeRouterDuration < MinEdgeEnrollmentDuration {
+				edgeRouterDuration = DefaultEdgeEnrollmentDuration
 			}
 
 			c.Enrollment.EdgeRouter = EnrollmentOption{Duration: edgeRouterDuration}
