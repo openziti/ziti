@@ -18,11 +18,11 @@ package cmd
 
 import (
 	"github.com/openziti/channel"
-	edge "github.com/openziti/edge/controller"
-	"github.com/openziti/fabric/controller"
-	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/xweb"
-	"github.com/openziti/foundation/transport"
+	edge "github.com/openziti/edge/controller/config"
+	fabCtrl "github.com/openziti/fabric/controller"
+	fabForwarder "github.com/openziti/fabric/router/forwarder"
+	fabXweb "github.com/openziti/fabric/xweb"
+	foundation "github.com/openziti/foundation/transport"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -264,9 +264,9 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Controller.MinConnectTimeout = channel.MinConnectTimeout
 	data.Controller.MaxConnectTimeout = channel.MaxConnectTimeout
 	data.Controller.DefaultConnectTimeout = channel.DefaultConnectTimeout
-	data.Controller.HealthCheck.Timeout = controller.DefaultHealthChecksBoltCheckTimeout
-	data.Controller.HealthCheck.Interval = controller.DefaultHealthChecksBoltCheckInterval
-	data.Controller.HealthCheck.InitialDelay = controller.DefaultHealthChecksBoltCheckInitialDelay
+	data.Controller.HealthCheck.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout
+	data.Controller.HealthCheck.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
+	data.Controller.HealthCheck.InitialDelay = fabCtrl.DefaultHealthChecksBoltCheckInitialDelay
 	data.Controller.Edge.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
 	data.Controller.Edge.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval
 	data.Controller.Edge.APISessionTimeout = edge.DefaultEdgeSessionTimeout
@@ -275,22 +275,22 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Controller.WebListener.IdleTimeout = edge.DefaultHttpIdleTimeout
 	data.Controller.WebListener.ReadTimeout = edge.DefaultHttpReadTimeout
 	data.Controller.WebListener.WriteTimeout = edge.DefaultHttpWriteTimeout
-	data.Controller.WebListener.MinTLSVersion = xweb.ReverseTlsVersionMap[xweb.MinTLSVersion]
-	data.Controller.WebListener.MaxTLSVersion = xweb.ReverseTlsVersionMap[xweb.MaxTLSVersion]
-	data.Router.Wss.WriteTimeout = transport.DefaultWsWriteTimeout
-	data.Router.Wss.ReadTimeout = transport.DefaultWsReadTimeout
-	data.Router.Wss.IdleTimeout = transport.DefaultWsIdleTimeout
-	data.Router.Wss.PongTimeout = transport.DefaultWsPongTimeout
-	data.Router.Wss.PingInterval = transport.DefaultWsPingInterval
-	data.Router.Wss.HandshakeTimeout = transport.DefaultWsHandshakeTimeout
-	data.Router.Wss.ReadBufferSize = transport.DefaultWsReadBufferSize
-	data.Router.Wss.WriteBufferSize = transport.DefaultWsWriteBufferSize
-	data.Router.Wss.EnableCompression = transport.DefaultWsEnableCompression
-	data.Router.Forwarder.LatencyProbeInterval = forwarder.DefaultLatencyProbeInterval
-	data.Router.Forwarder.XgressDialQueueLength = forwarder.DefaultXgressDialWorkerQueueLength
-	data.Router.Forwarder.XgressDialWorkerCount = forwarder.DefaultXgressDialWorkerCount
-	data.Router.Forwarder.LinkDialQueueLength = forwarder.DefaultLinkDialQueueLength
-	data.Router.Forwarder.LinkDialWorkerCount = forwarder.DefaultLinkDialWorkerCount
+	data.Controller.WebListener.MinTLSVersion = fabXweb.ReverseTlsVersionMap[fabXweb.MinTLSVersion]
+	data.Controller.WebListener.MaxTLSVersion = fabXweb.ReverseTlsVersionMap[fabXweb.MaxTLSVersion]
+	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout
+	data.Router.Wss.ReadTimeout = foundation.DefaultWsReadTimeout
+	data.Router.Wss.IdleTimeout = foundation.DefaultWsIdleTimeout
+	data.Router.Wss.PongTimeout = foundation.DefaultWsPongTimeout
+	data.Router.Wss.PingInterval = foundation.DefaultWsPingInterval
+	data.Router.Wss.HandshakeTimeout = foundation.DefaultWsHandshakeTimeout
+	data.Router.Wss.ReadBufferSize = foundation.DefaultWsReadBufferSize
+	data.Router.Wss.WriteBufferSize = foundation.DefaultWsWriteBufferSize
+	data.Router.Wss.EnableCompression = foundation.DefaultWsEnableCompression
+	data.Router.Forwarder.LatencyProbeInterval = fabForwarder.DefaultLatencyProbeInterval
+	data.Router.Forwarder.XgressDialQueueLength = fabForwarder.DefaultXgressDialWorkerQueueLength
+	data.Router.Forwarder.XgressDialWorkerCount = fabForwarder.DefaultXgressDialWorkerCount
+	data.Router.Forwarder.LinkDialQueueLength = fabForwarder.DefaultLinkDialQueueLength
+	data.Router.Forwarder.LinkDialWorkerCount = fabForwarder.DefaultLinkDialWorkerCount
 	data.Router.Listener.OutQueueSize = channel.DefaultOutQueueSize
 	data.Router.Listener.ConnectTimeout = channel.DefaultConnectTimeout
 }
