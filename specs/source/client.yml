@@ -48,6 +48,9 @@ paths:
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id'
   '/current-identity/authenticators/{id}/extend':
     $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id-extend'
+  '/current-identity/authenticators/{id}/extend-verify':
+    $ref: 'shared/current-identity-authenticators.yml#/paths/current-identity-authenticators-id-extend-verify'
+
   '/current-identity/edge-routers':
     $ref: 'client/current-identity-edge-routers.yml#/paths/current-identity-edge-routers'
   '/current-identity/mfa':

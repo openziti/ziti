@@ -312,12 +312,20 @@ func NewInvalidMfaTokenError() *errorz.ApiError {
 	}
 }
 
-func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError{
+func NewEdgeRouterFailedReEnrollment(cause error) *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:        EdgeRouterFailedReEnrollmentCode,
 		Message:     EdgeRouterFailedReEnrollmentMessage,
-		Status: EdgeRouterFailedReEnrollmentStatus,
+		Status:      EdgeRouterFailedReEnrollmentStatus,
 		Cause:       cause,
 		AppendCause: true,
+	}
+}
+
+func NewInvalidClientCertificate() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidClientCertCode,
+		Message: InvalidClientCertMessage,
+		Status:  InvalidClientCertStatus,
 	}
 }

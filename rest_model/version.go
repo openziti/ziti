@@ -91,11 +91,6 @@ func (m *Version) validateAPIVersions(formats strfmt.Registry) error {
 			}
 			if val, ok := m.APIVersions[k][kk]; ok {
 				if err := val.Validate(formats); err != nil {
-					if ve, ok := err.(*errors.Validation); ok {
-						return ve.ValidateName("apiVersions" + "." + k + "." + kk)
-					} else if ce, ok := err.(*errors.CompositeError); ok {
-						return ce.ValidateName("apiVersions" + "." + k + "." + kk)
-					}
 					return err
 				}
 			}

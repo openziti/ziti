@@ -54,7 +54,35 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
-
+  enrollments-id-refresh:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    post:
+      summary: Refreshes an enrollment record's expiration window
+      description: >-
+          For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated
+          and must be used for the enrollment. If the `validFrom` value is not provided it will default to
+          now. If the `validTo` value is not provided it will default to `validFrom`  the controller's
+          configured enrollment timeout.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Enrollment
+      operationId: refreshEnrollment
+      parameters:
+        - name: refresh
+          in: body
+          required: true
+          description: An enrollment refresh request
+          schema:
+            $ref: '#/definitions/enrollmentRefresh'
+      responses:
+        '201':
+          $ref: '../shared/standard-responses.yml#/responses/createResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
   listEnrollments:
     description: A list of enrollments
@@ -151,3 +179,13 @@ definitions:
             href: './identities/f047ac96-dc3a-408a-a6f2-0ba487c08ef9'
       ca:
       username: example-username
+
+  enrollmentRefresh:
+    type: object
+    properties:
+      validFrom:
+        type: string
+        format: date-time
+      validTo:
+        type: string
+        format: date-time

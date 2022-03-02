@@ -108,11 +108,6 @@ func (m *PostureData) validateAPISessionPostureData(formats strfmt.Registry) err
 		}
 		if val, ok := m.APISessionPostureData[k]; ok {
 			if err := val.Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("apiSessionPostureData" + "." + k)
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName("apiSessionPostureData" + "." + k)
-				}
 				return err
 			}
 		}

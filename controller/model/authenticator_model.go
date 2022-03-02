@@ -63,19 +63,23 @@ func (entity *Authenticator) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.E
 
 	boltSubType := boltAuthenticator.ToSubType()
 
-	switch bothAuth := boltSubType.(type) {
+	switch boltAuth := boltSubType.(type) {
 	case *persistence.AuthenticatorUpdb:
 		entity.SubType = &AuthenticatorUpdb{
 			Authenticator: entity,
-			Username:      bothAuth.Username,
-			Password:      bothAuth.Password,
-			Salt:          bothAuth.Salt,
+			Username:      boltAuth.Username,
+			Password:      boltAuth.Password,
+			Salt:          boltAuth.Salt,
 		}
 	case *persistence.AuthenticatorCert:
 		entity.SubType = &AuthenticatorCert{
 			Authenticator: entity,
-			Fingerprint:   bothAuth.Fingerprint,
-			Pem:           bothAuth.Pem}
+			Fingerprint:   boltAuth.Fingerprint,
+			Pem:           boltAuth.Pem,
+
+			UnverifiedPem:         boltAuth.UnverifiedPem,
+			UnverifiedFingerprint: boltAuth.UnverifiedFingerprint,
+		}
 	default:
 		pfxlog.Logger().Panicf("unexpected type %v when filling model %s", reflect.TypeOf(boltSubType), "authenticator")
 	}
@@ -114,9 +118,11 @@ func (entity *Authenticator) toBoltEntity() (boltz.Entity, error) {
 		}
 
 		subType = &persistence.AuthenticatorCert{
-			Authenticator: *boltEntity,
-			Fingerprint:   certModel.Fingerprint,
-			Pem:           certModel.Pem,
+			Authenticator:         *boltEntity,
+			Fingerprint:           certModel.Fingerprint,
+			Pem:                   certModel.Pem,
+			UnverifiedFingerprint: certModel.UnverifiedFingerprint,
+			UnverifiedPem:         certModel.UnverifiedPem,
 		}
 
 	default:
@@ -166,6 +172,9 @@ type AuthenticatorCert struct {
 	*Authenticator
 	Fingerprint string
 	Pem         string
+
+	UnverifiedFingerprint string
+	UnverifiedPem         string
 }
 
 type AuthenticatorUpdb struct {

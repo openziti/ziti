@@ -44,12 +44,8 @@ import (
 type IdentityType string
 
 func NewIdentityType(value IdentityType) *IdentityType {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated IdentityType.
-func (m IdentityType) Pointer() *IdentityType {
-	return &m
+	v := value
+	return &v
 }
 
 const (

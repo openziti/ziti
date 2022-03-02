@@ -78,7 +78,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	logger := pfxlog.Logger()
 	authContext := model.NewAuthContextHttp(httpRequest, method, auth)
 
-	identity, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
+	identity, authenticatorId, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -142,11 +142,12 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	logger.Debugf("client %v requesting configTypes: %v", identity.Name, configTypes)
 	newApiSession := &model.ApiSession{
-		IdentityId:     identity.Id,
-		Token:          token,
-		ConfigTypes:    configTypes,
-		IPAddress:      remoteIpStr,
-		LastActivityAt: time.Now().UTC(),
+		IdentityId:      identity.Id,
+		Token:           token,
+		ConfigTypes:     configTypes,
+		IPAddress:       remoteIpStr,
+		AuthenticatorId: authenticatorId,
+		LastActivityAt:  time.Now().UTC(),
 	}
 
 	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)

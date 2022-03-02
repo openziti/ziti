@@ -449,6 +449,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
 		})
 	}
+	if api.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler == nil {
+		api.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler = current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendVerifyCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendVerifyCurrentIdentityAuthenticator has not yet been implemented")
+		})
+	}
 	if api.DatabaseFixDataIntegrityHandler == nil {
 		api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
@@ -817,6 +822,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 	if api.EdgeRouterReEnrollEdgeRouterHandler == nil {
 		api.EdgeRouterReEnrollEdgeRouterHandler = edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.ReEnrollEdgeRouter has not yet been implemented")
+		})
+	}
+	if api.EnrollmentRefreshEnrollmentHandler == nil {
+		api.EnrollmentRefreshEnrollmentHandler = enrollment.RefreshEnrollmentHandlerFunc(func(params enrollment.RefreshEnrollmentParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation enrollment.RefreshEnrollment has not yet been implemented")
 		})
 	}
 	if api.IdentityRemoveIdentityMfaHandler == nil {

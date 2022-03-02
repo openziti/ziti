@@ -44,12 +44,8 @@ import (
 type DialBind string
 
 func NewDialBind(value DialBind) *DialBind {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated DialBind.
-func (m DialBind) Pointer() *DialBind {
-	return &m
+	v := value
+	return &v
 }
 
 const (

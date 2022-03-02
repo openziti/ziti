@@ -304,6 +304,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler: current_api_session.ExtendCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.ExtendCurrentIdentityAuthenticator has not yet been implemented")
 		}),
+		CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler: current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandlerFunc(func(params current_api_session.ExtendVerifyCurrentIdentityAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation current_api_session.ExtendVerifyCurrentIdentityAuthenticator has not yet been implemented")
+		}),
 		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		}),
@@ -525,6 +528,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		}),
 		EdgeRouterReEnrollEdgeRouterHandler: edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.ReEnrollEdgeRouter has not yet been implemented")
+		}),
+		EnrollmentRefreshEnrollmentHandler: enrollment.RefreshEnrollmentHandlerFunc(func(params enrollment.RefreshEnrollmentParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation enrollment.RefreshEnrollment has not yet been implemented")
 		}),
 		IdentityRemoveIdentityMfaHandler: identity.RemoveIdentityMfaHandlerFunc(func(params identity.RemoveIdentityMfaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")
@@ -783,6 +789,8 @@ type ZitiEdgeManagementAPI struct {
 	CurrentIdentityEnrollMfaHandler current_identity.EnrollMfaHandler
 	// CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler sets the operation handler for the extend current identity authenticator operation
 	CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler current_api_session.ExtendCurrentIdentityAuthenticatorHandler
+	// CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler sets the operation handler for the extend verify current identity authenticator operation
+	CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandler
 	// DatabaseFixDataIntegrityHandler sets the operation handler for the fix data integrity operation
 	DatabaseFixDataIntegrityHandler database.FixDataIntegrityHandler
 	// CertificateAuthorityGetCaJwtHandler sets the operation handler for the get ca jwt operation
@@ -931,6 +939,8 @@ type ZitiEdgeManagementAPI struct {
 	RouterPatchTransitRouterHandler router.PatchTransitRouterHandler
 	// EdgeRouterReEnrollEdgeRouterHandler sets the operation handler for the re enroll edge router operation
 	EdgeRouterReEnrollEdgeRouterHandler edge_router.ReEnrollEdgeRouterHandler
+	// EnrollmentRefreshEnrollmentHandler sets the operation handler for the refresh enrollment operation
+	EnrollmentRefreshEnrollmentHandler enrollment.RefreshEnrollmentHandler
 	// IdentityRemoveIdentityMfaHandler sets the operation handler for the remove identity mfa operation
 	IdentityRemoveIdentityMfaHandler identity.RemoveIdentityMfaHandler
 	// AuthenticatorUpdateAuthenticatorHandler sets the operation handler for the update authenticator operation
@@ -1269,6 +1279,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	if o.CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler == nil {
 		unregistered = append(unregistered, "current_api_session.ExtendCurrentIdentityAuthenticatorHandler")
 	}
+	if o.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler == nil {
+		unregistered = append(unregistered, "current_api_session.ExtendVerifyCurrentIdentityAuthenticatorHandler")
+	}
 	if o.DatabaseFixDataIntegrityHandler == nil {
 		unregistered = append(unregistered, "database.FixDataIntegrityHandler")
 	}
@@ -1490,6 +1503,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.EdgeRouterReEnrollEdgeRouterHandler == nil {
 		unregistered = append(unregistered, "edge_router.ReEnrollEdgeRouterHandler")
+	}
+	if o.EnrollmentRefreshEnrollmentHandler == nil {
+		unregistered = append(unregistered, "enrollment.RefreshEnrollmentHandler")
 	}
 	if o.IdentityRemoveIdentityMfaHandler == nil {
 		unregistered = append(unregistered, "identity.RemoveIdentityMfaHandler")
@@ -1932,6 +1948,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/current-identity/authenticators/{id}/extend-verify"] = current_api_session.NewExtendVerifyCurrentIdentityAuthenticator(o.context, o.CurrentAPISessionExtendVerifyCurrentIdentityAuthenticatorHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/database/fix-data-integrity"] = database.NewFixDataIntegrity(o.context, o.DatabaseFixDataIntegrityHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -2225,6 +2245,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/edge-routers/{id}/re-enroll"] = edge_router.NewReEnrollEdgeRouter(o.context, o.EdgeRouterReEnrollEdgeRouterHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/enrollments/{id}/refresh"] = enrollment.NewRefreshEnrollment(o.context, o.EnrollmentRefreshEnrollmentHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}

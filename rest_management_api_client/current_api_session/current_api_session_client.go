@@ -60,6 +60,8 @@ type ClientService interface {
 
 	ExtendCurrentIdentityAuthenticator(params *ExtendCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendCurrentIdentityAuthenticatorOK, error)
 
+	ExtendVerifyCurrentIdentityAuthenticator(params *ExtendVerifyCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendVerifyCurrentIdentityAuthenticatorOK, error)
+
 	GetCurrentAPISession(params *GetCurrentAPISessionParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCurrentAPISessionOK, error)
 
 	ListCurrentIdentityAuthenticators(params *ListCurrentIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListCurrentIdentityAuthenticatorsOK, error)
@@ -156,9 +158,10 @@ func (a *Client) DetailCurrentIdentityAuthenticator(params *DetailCurrentIdentit
 /*
   ExtendCurrentIdentityAuthenticator allows the current identity to recieve a new certificate associated with a certificate based authenticator
 
-  Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.
-After completion any new connections must be made with certificates returned from a 200 OK response. The previous client certificate is rendered invalid for use with the controller even if it has not expired.
-This request must be made using the existing, valid, client certificate.
+  This endpoint only functions for certificates issued by the controller. 3rd party certificates are not handled.
+Allows an identity to extend its certificate's expiration date by using its current and valid client certificate to submit a CSR. This CSR may be passed in using a new private key, thus allowing private key rotation.
+The response from this endpoint is a new client certificate which the client must  be verified via the /authenticators/{id}/extend-verify endpoint.
+After verification is completion any new connections must be made with new certificate. Prior to verification the old client certificate remains active.
 */
 func (a *Client) ExtendCurrentIdentityAuthenticator(params *ExtendCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendCurrentIdentityAuthenticatorOK, error) {
 	// TODO: Validate the params before sending
@@ -193,6 +196,48 @@ func (a *Client) ExtendCurrentIdentityAuthenticator(params *ExtendCurrentIdentit
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for extendCurrentIdentityAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ExtendVerifyCurrentIdentityAuthenticator allows the current identity to validate reciept of a new client certificate
+
+  After submitting a CSR for a new client certificate the resulting public certificate must be re-submitted to this endpoint to verify receipt.
+After receipt, the new client certificate must be used for new authentication requests.
+*/
+func (a *Client) ExtendVerifyCurrentIdentityAuthenticator(params *ExtendVerifyCurrentIdentityAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ExtendVerifyCurrentIdentityAuthenticatorOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewExtendVerifyCurrentIdentityAuthenticatorParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "extendVerifyCurrentIdentityAuthenticator",
+		Method:             "POST",
+		PathPattern:        "/current-identity/authenticators/{id}/extend-verify",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ExtendVerifyCurrentIdentityAuthenticatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ExtendVerifyCurrentIdentityAuthenticatorOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for extendVerifyCurrentIdentityAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

@@ -35,6 +35,7 @@ const (
 	FieldApiSessionMfaComplete    = "mfaComplete"
 	FieldApiSessionMfaRequired    = "mfaRequired"
 	FieldApiSessionLastActivityAt = "lastActivityAt"
+	FieldApiSessionAuthenticator  = "authenticator"
 
 	EventFullyAuthenticated       events.EventName = "FULLY_AUTHENTICATED"
 	EventualEventApiSessionDelete                  = "ApiSessionDelete"
@@ -42,13 +43,14 @@ const (
 
 type ApiSession struct {
 	boltz.BaseExtEntity
-	IdentityId     string
-	Token          string
-	IPAddress      string
-	ConfigTypes    []string
-	MfaComplete    bool
-	MfaRequired    bool
-	LastActivityAt time.Time
+	IdentityId      string
+	Token           string
+	IPAddress       string
+	ConfigTypes     []string
+	MfaComplete     bool
+	MfaRequired     bool
+	LastActivityAt  time.Time
+	AuthenticatorId string
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -67,6 +69,7 @@ func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.IPAddress = bucket.GetStringWithDefault(FieldApiSessionIPAddress, "")
 	entity.MfaComplete = bucket.GetBoolWithDefault(FieldApiSessionMfaComplete, false)
 	entity.MfaRequired = bucket.GetBoolWithDefault(FieldApiSessionMfaRequired, false)
+	entity.AuthenticatorId = bucket.GetStringWithDefault(FieldApiSessionAuthenticator, "")
 	lastActivityAt := bucket.GetTime(FieldApiSessionLastActivityAt) //not orError due to migration v18
 
 	if lastActivityAt != nil {
@@ -82,6 +85,7 @@ func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldApiSessionIPAddress, entity.IPAddress)
 	ctx.SetBool(FieldApiSessionMfaComplete, entity.MfaComplete)
 	ctx.SetBool(FieldApiSessionMfaRequired, entity.MfaRequired)
+	ctx.SetString(FieldApiSessionAuthenticator, entity.AuthenticatorId)
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
 }
 

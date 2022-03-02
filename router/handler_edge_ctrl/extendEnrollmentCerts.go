@@ -75,7 +75,7 @@ func (h *extendEnrollmentCertsHandler) HandleReceive(msg *channel.Message, ch ch
 				return
 			}
 
-			certs := nfpem.PemToX509(enrollmentCerts.ClientCertPem)
+			certs := nfpem.PemStringToCertificates(enrollmentCerts.ClientCertPem)
 
 			if len(certs) == 0 {
 				log.Error("could not parse client certificate during enrollment extension")

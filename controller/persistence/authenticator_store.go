@@ -31,6 +31,9 @@ const (
 	FieldAuthenticatorCertFingerprint = "certFingerprint"
 	FieldAuthenticatorCertPem         = "certPem"
 
+	FieldAuthenticatorUnverifiedCertPem         = "unverifiedCertPem"
+	FieldAuthenticatorUnverifiedCertFingerprint = "unverifiedCertFingerprint"
+
 	FieldAuthenticatorUpdbUsername = "updbUsername"
 	FieldAuthenticatorUpdbPassword = "updbPassword"
 	FieldAuthenticatorUpdbSalt     = "updbSalt"
@@ -47,6 +50,9 @@ type AuthenticatorCert struct {
 	Authenticator
 	Fingerprint string
 	Pem         string
+
+	UnverifiedPem         string
+	UnverifiedFingerprint string
 }
 
 func (entity *AuthenticatorCert) Fingerprints() []string {
@@ -86,6 +92,9 @@ func (entity *Authenticator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBu
 		authCert := &AuthenticatorCert{}
 		authCert.Fingerprint = bucket.GetStringWithDefault(FieldAuthenticatorCertFingerprint, "")
 		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
+
+		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
+		authCert.UnverifiedFingerprint = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertFingerprint, "")
 		entity.SubType = authCert
 	} else if entity.Type == MethodAuthenticatorUpdb {
 		authUpdb := &AuthenticatorUpdb{}
@@ -107,6 +116,9 @@ func (entity *Authenticator) SetValues(ctx *boltz.PersistContext) {
 		if authCert, ok := entity.SubType.(*AuthenticatorCert); ok {
 			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
 			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
+
+			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
+			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)
 		} else {
 			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
 		}

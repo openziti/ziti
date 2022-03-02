@@ -60,6 +60,8 @@ type ClientService interface {
 
 	ListEnrollments(params *ListEnrollmentsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListEnrollmentsOK, error)
 
+	RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentCreated, error)
+
 	SetTransport(transport runtime.ClientTransport)
 }
 
@@ -184,6 +186,47 @@ func (a *Client) ListEnrollments(params *ListEnrollmentsParams, authInfo runtime
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for listEnrollments: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  RefreshEnrollment refreshes an enrollment record s expiration window
+
+  For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the `validFrom` value is not provided it will default to now. If the `validTo` value is not provided it will default to `validFrom`  the controller's configured enrollment timeout.
+*/
+func (a *Client) RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentCreated, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewRefreshEnrollmentParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "refreshEnrollment",
+		Method:             "POST",
+		PathPattern:        "/enrollments/{id}/refresh",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &RefreshEnrollmentReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*RefreshEnrollmentCreated)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for refreshEnrollment: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

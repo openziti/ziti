@@ -44,12 +44,8 @@ import (
 type TerminatorPrecedence string
 
 func NewTerminatorPrecedence(value TerminatorPrecedence) *TerminatorPrecedence {
-	return &value
-}
-
-// Pointer returns a pointer to a freshly-allocated TerminatorPrecedence.
-func (m TerminatorPrecedence) Pointer() *TerminatorPrecedence {
-	return &m
+	v := value
+	return &v
 }
 
 const (

@@ -170,4 +170,8 @@ const (
 	EdgeRouterFailedReEnrollmentCode        = "FAILED_ER_REENROLLMENT"
 	EdgeRouterFailedReEnrollmentMessage     = "the edge router failed to be re-enrolled, see cause"
 	EdgeRouterFailedReEnrollmentStatus  int = http.StatusInternalServerError
+
+	InvalidClientCertCode    string = "INVALID_CLIENT_CERT"
+	InvalidClientCertMessage string = "The provided client certificate is invalid"
+	InvalidClientCertStatus  int    = http.StatusBadRequest
 )
