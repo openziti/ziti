@@ -80,6 +80,10 @@ type RouterDetail struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
+
 	// unverified cert pem
 	UnverifiedCertPem *string `json:"unverifiedCertPem"`
 
@@ -116,6 +120,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		UnverifiedCertPem *string `json:"unverifiedCertPem"`
 
 		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
@@ -141,6 +147,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	m.IsVerified = dataAO1.IsVerified
 
 	m.Name = dataAO1.Name
+
+	m.NoTraversal = dataAO1.NoTraversal
 
 	m.UnverifiedCertPem = dataAO1.UnverifiedCertPem
 
@@ -177,6 +185,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		UnverifiedCertPem *string `json:"unverifiedCertPem"`
 
 		UnverifiedFingerprint *string `json:"unverifiedFingerprint"`
@@ -199,6 +209,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.IsVerified = m.IsVerified
 
 	dataAO1.Name = m.Name
+
+	dataAO1.NoTraversal = m.NoTraversal
 
 	dataAO1.UnverifiedCertPem = m.UnverifiedCertPem
 
@@ -246,6 +258,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateNoTraversal(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -328,6 +344,15 @@ func (m *RouterDetail) validateIsVerified(formats strfmt.Registry) error {
 func (m *RouterDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

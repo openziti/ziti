@@ -36,6 +36,7 @@ type TransitRouter struct {
 	UnverifiedFingerprint *string
 	UnverifiedCertPem     *string
 	Cost                  uint16
+	NoTraversal           bool
 }
 
 func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
@@ -45,6 +46,7 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.En
 			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 			Cost:          entity.Cost,
+			NoTraversal:   entity.NoTraversal,
 		},
 		IsVerified: false,
 	}
@@ -59,6 +61,7 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.En
 			Name:          entity.Name,
 			Fingerprint:   entity.Fingerprint,
 			Cost:          entity.Cost,
+			NoTraversal:   entity.NoTraversal,
 		},
 		IsVerified:            entity.IsVerified,
 		UnverifiedFingerprint: entity.UnverifiedFingerprint,
@@ -85,6 +88,7 @@ func (entity *TransitRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.E
 	entity.UnverifiedFingerprint = boltTransitRouter.UnverifiedFingerprint
 	entity.UnverifiedCertPem = boltTransitRouter.UnverifiedCertPem
 	entity.Cost = boltTransitRouter.Cost
+	entity.NoTraversal = boltTransitRouter.NoTraversal
 
 	return nil
 }

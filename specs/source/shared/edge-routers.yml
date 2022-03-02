@@ -9,6 +9,7 @@ definitions:
       - syncStatus
       - isOnline
       - cost
+      - noTraversal
     properties:
       hostname:
         type: string
@@ -26,6 +27,9 @@ definitions:
         type: integer
         minimum: 0
         maximum: 65535
+        x-nullable: true
+      noTraversal:
+        type: boolean
         x-nullable: true
       appData:
         $ref: 'base-entity.yml#/definitions/tags'

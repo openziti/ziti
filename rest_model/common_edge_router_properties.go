@@ -64,6 +64,10 @@ type CommonEdgeRouterProperties struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
+
 	// supported protocols
 	// Required: true
 	SupportedProtocols map[string]string `json:"supportedProtocols"`
@@ -94,6 +98,10 @@ func (m *CommonEdgeRouterProperties) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateNoTraversal(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -168,6 +176,15 @@ func (m *CommonEdgeRouterProperties) validateIsOnline(formats strfmt.Registry) e
 func (m *CommonEdgeRouterProperties) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *CommonEdgeRouterProperties) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

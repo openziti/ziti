@@ -4074,7 +4074,8 @@ func init() {
         "supportedProtocols",
         "syncStatus",
         "isOnline",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "appData": {
@@ -4093,6 +4094,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "supportedProtocols": {
           "type": "object",
@@ -9877,7 +9882,8 @@ func init() {
         "supportedProtocols",
         "syncStatus",
         "isOnline",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "appData": {
@@ -9897,6 +9903,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "supportedProtocols": {
           "type": "object",

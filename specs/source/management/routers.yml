@@ -300,6 +300,7 @@ definitions:
           - isOnline
           - fingerprint
           - cost
+          - noTraversal
         properties:
           name:
             type: string
@@ -335,6 +336,8 @@ definitions:
             type: integer
             minimum: 0
             maximum: 65535
+          noTraversal:
+            type: boolean
   routerCreate:
     type: object
     required:
@@ -347,6 +350,9 @@ definitions:
         x-nullable: true
         minimum: 0
         maximum: 65535
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   routerUpdate:
@@ -361,6 +367,9 @@ definitions:
         x-nullable: true
         minimum: 0
         maximum: 65535
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   routerPatch:
@@ -373,5 +382,8 @@ definitions:
         x-nullable: true
         minimum: 0
         maximum: 65535
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'

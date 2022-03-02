@@ -11611,6 +11611,7 @@ definitions:
     - syncStatus
     - isOnline
     - cost
+    - noTraversal
     properties:
       appData:
         $ref: '#/definitions/tags'
@@ -11625,6 +11626,9 @@ definitions:
         type: boolean
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       supportedProtocols:
         type: object
         additionalProperties:
@@ -12182,6 +12186,9 @@ definitions:
         type: boolean
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -12263,6 +12270,7 @@ definitions:
       isTunnelerEnabled: false
       isVerified: false
       name: TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e
+      noTraversal: false
       roleAttributes:
       - eastCoast
       - sales
@@ -12290,6 +12298,9 @@ definitions:
         type: boolean
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -12385,6 +12396,9 @@ definitions:
         type: boolean
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       roleAttributes:
         $ref: '#/definitions/attributes'
       tags:
@@ -13993,6 +14007,9 @@ definitions:
         x-nullable: true
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   routerDetail:
@@ -14006,6 +14023,7 @@ definitions:
       - isOnline
       - fingerprint
       - cost
+      - noTraversal
       properties:
         cost:
           type: integer
@@ -14033,6 +14051,8 @@ definitions:
           type: boolean
         name:
           type: string
+        noTraversal:
+          type: boolean
         unverifiedCertPem:
           type: string
           x-nullable: true
@@ -14065,6 +14085,9 @@ definitions:
         x-nullable: true
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
@@ -14079,6 +14102,9 @@ definitions:
         x-nullable: true
       name:
         type: string
+      noTraversal:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   sdkInfo:

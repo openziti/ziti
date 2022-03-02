@@ -16046,7 +16046,8 @@ func init() {
         "supportedProtocols",
         "syncStatus",
         "isOnline",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "appData": {
@@ -16065,6 +16066,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "supportedProtocols": {
           "type": "object",
@@ -16888,6 +16893,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
@@ -16992,6 +17001,7 @@ func init() {
         "isTunnelerEnabled": false,
         "isVerified": false,
         "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
+        "noTraversal": false,
         "roleAttributes": [
           "eastCoast",
           "sales",
@@ -17026,6 +17036,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -17169,6 +17183,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -19664,6 +19682,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -19682,7 +19704,8 @@ func init() {
             "isVerified",
             "isOnline",
             "fingerprint",
-            "cost"
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "cost": {
@@ -19718,6 +19741,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "unverifiedCertPem": {
               "type": "string",
@@ -19769,6 +19795,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -19787,6 +19817,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -36868,7 +36902,8 @@ func init() {
         "supportedProtocols",
         "syncStatus",
         "isOnline",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "appData": {
@@ -36888,6 +36923,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "supportedProtocols": {
           "type": "object",
@@ -37712,6 +37751,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
         },
@@ -37816,6 +37859,7 @@ func init() {
         "isTunnelerEnabled": false,
         "isVerified": false,
         "name": "TestRouter-e33c837f-3222-4b40-bcd6-b3458fd5156e",
+        "noTraversal": false,
         "roleAttributes": [
           "eastCoast",
           "sales",
@@ -37851,6 +37895,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -37995,6 +38043,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -40491,6 +40543,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -40509,7 +40565,8 @@ func init() {
             "isVerified",
             "isOnline",
             "fingerprint",
-            "cost"
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "cost": {
@@ -40546,6 +40603,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "unverifiedCertPem": {
               "type": "string",
@@ -40598,6 +40658,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -40617,6 +40681,10 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "tags": {
           "$ref": "#/definitions/tags"

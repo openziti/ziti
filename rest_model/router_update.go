@@ -52,6 +52,9 @@ type RouterUpdate struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	NoTraversal *bool `json:"noTraversal,omitempty"`
+
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
 }

@@ -58,6 +58,9 @@ type EdgeRouterUpdate struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	NoTraversal *bool `json:"noTraversal,omitempty"`
+
 	// role attributes
 	RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 

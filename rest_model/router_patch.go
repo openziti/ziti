@@ -51,6 +51,9 @@ type RouterPatch struct {
 	// name
 	Name string `json:"name,omitempty"`
 
+	// no traversal
+	NoTraversal *bool `json:"noTraversal,omitempty"`
+
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
 }

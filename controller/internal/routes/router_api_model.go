@@ -19,9 +19,10 @@ var TransitRouterLinkFactory = NewBasicLinkFactory(EntityNameTransitRouter)
 
 func MapCreateRouterToModel(router *rest_model.RouterCreate) *model.TransitRouter {
 	ret := &model.TransitRouter{
-		BaseEntity: models.BaseEntity{},
-		Name:       stringz.OrEmpty(router.Name),
-		Cost:       uint16(Int64OrDefault(router.Cost)),
+		BaseEntity:  models.BaseEntity{},
+		Name:        stringz.OrEmpty(router.Name),
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -33,8 +34,9 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name: stringz.OrEmpty(router.Name),
-		Cost: uint16(Int64OrDefault(router.Cost)),
+		Name:        stringz.OrEmpty(router.Name),
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -46,8 +48,9 @@ func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *mo
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name: router.Name,
-		Cost: uint16(Int64OrDefault(router.Cost)),
+		Name:        router.Name,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -86,6 +89,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 		UnverifiedFingerprint: router.UnverifiedFingerprint,
 		UnverifiedCertPem:     router.UnverifiedCertPem,
 		Cost:                  &cost,
+		NoTraversal:           &router.NoTraversal,
 	}
 
 	if !router.IsBase && !router.IsVerified {

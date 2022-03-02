@@ -57,6 +57,9 @@ type EdgeRouterPatch struct {
 	// name
 	Name string `json:"name,omitempty"`
 
+	// no traversal
+	NoTraversal *bool `json:"noTraversal,omitempty"`
+
 	// role attributes
 	RoleAttributes *Attributes `json:"roleAttributes,omitempty"`
 
