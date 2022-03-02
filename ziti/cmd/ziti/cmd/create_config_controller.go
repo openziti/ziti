@@ -67,8 +67,11 @@ type CreateConfigControllerOptions struct {
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
-func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
+func NewCmdCreateConfigController() *cobra.Command {
 	controllerOptions := &CreateConfigControllerOptions{}
+
+	// Get env variable data global to all config files
+	data := &ConfigTemplateValues{}
 
 	cmd := &cobra.Command{
 		Use:     "controller",
@@ -89,6 +92,9 @@ func NewCmdCreateConfigController(data *ConfigTemplateValues) *cobra.Command {
 				}
 				logrus.SetOutput(logOut)
 			}
+
+			data.populateEnvVars()
+			data.populateDefaults()
 
 			// Update controller specific values with configOptions passed in if the argument was provided or the value is currently blank
 			if data.Controller.Port == "" || controllerOptions.CtrlPort != constants.DefaultZitiControllerPort {

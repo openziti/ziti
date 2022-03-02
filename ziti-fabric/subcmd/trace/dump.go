@@ -21,8 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/trace"
-	"github.com/openziti/foundation/trace/pb"
+	"github.com/openziti/channel/trace"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/ziti/ziti-fabric/subcmd"
 	"github.com/spf13/cobra"
 )
