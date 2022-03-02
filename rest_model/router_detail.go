@@ -65,6 +65,10 @@ type RouterDetail struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
+
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 }
@@ -90,6 +94,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
@@ -105,6 +111,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	m.ListenerAddress = dataAO1.ListenerAddress
 
 	m.Name = dataAO1.Name
+
+	m.NoTraversal = dataAO1.NoTraversal
 
 	m.VersionInfo = dataAO1.VersionInfo
 
@@ -131,6 +139,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 
@@ -143,6 +153,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.ListenerAddress = m.ListenerAddress
 
 	dataAO1.Name = m.Name
+
+	dataAO1.NoTraversal = m.NoTraversal
 
 	dataAO1.VersionInfo = m.VersionInfo
 
@@ -176,6 +188,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateNoTraversal(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -227,6 +243,15 @@ func (m *RouterDetail) validateFingerprint(formats strfmt.Registry) error {
 func (m *RouterDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

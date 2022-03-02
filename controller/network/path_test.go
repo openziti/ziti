@@ -44,10 +44,10 @@ func TestSimplePath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r1)
 
 	l0 := newLink("l0")
@@ -107,13 +107,13 @@ func TestTransitPath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 0)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r2)
 
 	l0 := newLink("l0")
@@ -177,12 +177,13 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm2.Forwards[1].DstAddress)
 }
 
-func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16) *Router {
+func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
 	r := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
 		Fingerprint: &fingerprint,
 		Control:     ctrl,
 		Cost:        cost,
+		NoTraversal: noTraversal,
 	}
 	if advLstnr != nil {
 		r.AdvertisedListener = advLstnr.String()
@@ -243,16 +244,16 @@ func TestShortestPath(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
 	network.Routers.markConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 4)
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
 	network.Routers.markConnected(r3)
 
 	link := newLink("l0")
@@ -301,4 +302,271 @@ func TestShortestPath(t *testing.T) {
 	expected := 10 + 11 + 2 + 2 + // link1 cost and src and dest latency plus dest router cost
 		9 + 20 + 21 + 4 // link2 cost and src and dest latency plus dest router cost
 	req.Equal(int64(expected), cost)
+}
+
+func TestShortestPathWithUntraversableRouter(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Routers.markConnected(r1)
+
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
+	network.Routers.markConnected(r2)
+
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
+	network.Routers.markConnected(r3)
+
+	link := newLink("l0")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	link = newLink("l1")
+	link.SetStaticCost(5)
+	link.SetDstLatency(15 * 1_000_000)
+	link.SetSrcLatency(16 * 1_000_000)
+	link.Src = r0
+	link.Dst = r2
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	link = newLink("l2")
+	link.SetStaticCost(9)
+	link.SetDstLatency(20 * 1_000_000)
+	link.SetSrcLatency(21 * 1_000_000)
+	link.Src = r1
+	link.Dst = r3
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	link = newLink("l3")
+	link.SetStaticCost(13)
+	link.SetDstLatency(25 * 1_000_000)
+	link.SetSrcLatency(26 * 1_000_000)
+	link.Src = r2
+	link.Dst = r3
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r3)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Equal(path[0], r0)
+	req.Equal(path[1], r2)
+	req.Equal(path[2], r3)
+
+	expected := 15 + 16 + 5 + 3 + // link1 cost and src and dest latency plus dest router cost
+		25 + 26 + 13 + 4 // link3 cost and src and dest latency plus dest router cost
+	req.Equal(int64(expected), cost)
+}
+
+func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Routers.markConnected(r1)
+
+	link := newLink("l0")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r1)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Equal(path[0], r0)
+	req.Equal(path[1], r1)
+
+	expected := 2 + 10 + 11 + 2 // link0 cost and src and dest latency plus dest router cost
+
+	req.Equal(int64(expected), cost)
+}
+
+func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Routers.markConnected(r1)
+
+	link := newLink("l0")
+	link.SetStaticCost(3)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r1)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Equal(path[0], r0)
+	req.Equal(path[1], r1)
+
+	expected := 3 + 10 + 11 + 2 // link0 cost and src and dest latency plus dest router cost
+
+	req.Equal(int64(expected), cost)
+}
+
+func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	network.Routers.markConnected(r1)
+
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
+	network.Routers.markConnected(r2)
+
+	link := newLink("l0")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	link = newLink("l1")
+	link.SetStaticCost(3)
+	link.SetDstLatency(12 * 1_000_000)
+	link.SetSrcLatency(15 * 1_000_000)
+	link.Src = r1
+	link.Dst = r2
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r2)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Equal(path[0], r0)
+	req.Equal(path[1], r1)
+	req.Equal(path[2], r2)
+
+	expected := 2 + 10 + 11 + 2 + // link0 cost and src and dest latency plus dest router cost
+		3 + 12 + 15 + 3 // link1 cost and src and dest latency plus dest router cost
+
+	req.Equal(int64(expected), cost)
+}
+
+func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	network.Routers.markConnected(r1)
+
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 2, true)
+	network.Routers.markConnected(r2)
+
+	link := newLink("l0")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	link = newLink("l2")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r1
+	link.Dst = r2
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r2)
+	req.Error(err)
+	req.NotNil(t, path)
+	req.Len(path, 0)
+
+	req.Equal(int64(0), cost)
 }

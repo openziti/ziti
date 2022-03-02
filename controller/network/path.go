@@ -185,9 +185,11 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 		neighbors := network.linkController.connectedNeighborsOfRouter(u)
 		for _, r := range neighbors {
 			if _, found := unvisited[r]; found {
-				var cost int64 = math.MaxInt64
+				var cost int64 = math.MaxInt32 + 1
 				if l, found := network.linkController.leastExpensiveLink(r, u); found {
-					cost = l.GetCost() + int64(r.Cost)
+					if !r.NoTraversal || r == srcR || r == dstR {
+						cost = l.GetCost() + int64(r.Cost)
+					}
 				}
 
 				alt := dist[u] + cost

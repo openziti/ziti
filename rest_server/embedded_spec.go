@@ -1402,7 +1402,8 @@ func init() {
       "required": [
         "id",
         "name",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "cost": {
@@ -1418,6 +1419,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -1436,7 +1440,8 @@ func init() {
             "name",
             "fingerprint",
             "connected",
-            "cost"
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "connected": {
@@ -1454,6 +1459,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -1483,6 +1491,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -1493,7 +1505,8 @@ func init() {
       "required": [
         "name",
         "fingerprint",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "cost": {
@@ -1505,6 +1518,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5115,7 +5131,8 @@ func init() {
       "required": [
         "id",
         "name",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "cost": {
@@ -5132,6 +5149,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5150,7 +5170,8 @@ func init() {
             "name",
             "fingerprint",
             "connected",
-            "cost"
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "connected": {
@@ -5169,6 +5190,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -5199,6 +5223,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -5209,7 +5237,8 @@ func init() {
       "required": [
         "name",
         "fingerprint",
-        "cost"
+        "cost",
+        "noTraversal"
       ],
       "properties": {
         "cost": {
@@ -5222,6 +5251,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"

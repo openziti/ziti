@@ -25,8 +25,8 @@ import (
 func TestLifecycle(t *testing.T) {
 	linkController := newLinkController()
 
-	r0 := NewRouter("r0", "", "", 0)
-	r1 := NewRouter("r1", "", "", 0)
+	r0 := NewRouter("r0", "", "", 0, true)
+	r1 := NewRouter("r1", "", "", 0, true)
 	l0 := &Link{
 		Id:  "l0",
 		Src: r0,
@@ -57,8 +57,8 @@ func TestLifecycle(t *testing.T) {
 func TestNeighbors(t *testing.T) {
 	linkController := newLinkController()
 
-	r0 := newRouterForTest("r0", "", nil, nil, 0)
-	r1 := newRouterForTest("r1", "", nil, nil, 0)
+	r0 := newRouterForTest("r0", "", nil, nil, 0, true)
+	r1 := newRouterForTest("r1", "", nil, nil, 0, true)
 	l0 := &Link{
 		Id:  "l0",
 		Src: r0,
