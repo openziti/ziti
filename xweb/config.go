@@ -17,11 +17,37 @@
 package xweb
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/openziti/foundation/identity/identity"
 	"time"
 )
+
+const (
+	MinTLSVersion = tls.VersionTLS12
+	MaxTLSVersion = tls.VersionTLS13
+
+	DefaultHttpWriteTimeout = time.Second * 10
+	DefaultHttpReadTimeout  = time.Second * 5
+	DefaultHttpIdleTimeout  = time.Second * 5
+)
+
+// TlsVersionMap is a map of configuration strings to TLS version identifiers
+var TlsVersionMap = map[string]int{
+	"TLS1.0": tls.VersionTLS10,
+	"TLS1.1": tls.VersionTLS11,
+	"TLS1.2": tls.VersionTLS12,
+	"TLS1.3": tls.VersionTLS13,
+}
+
+// ReverseTlsVersionMap is a map of TLS version identifiers to configuration strings
+var ReverseTlsVersionMap = map[int]string{
+	tls.VersionTLS10: "TLS1.0",
+	tls.VersionTLS11: "TLS1.1",
+	tls.VersionTLS12: "TLS1.2",
+	tls.VersionTLS13: "TLS1.3",
+}
 
 // Config is the root configuration options necessary to start numerous http.Server instances via WebListener's.
 type Config struct {
