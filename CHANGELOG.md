@@ -1,3 +1,7 @@
+# Release 0.24.13
+
+* Bug fix: Fixed an issue with the ziti CLI quickstart routine which also affected router and controller config generation leaving many config fields blank or incorrect.
+
 # Release 0.24.12
 
 * Enhancement: Allow xgress proxy configuration in router config to accept service id or service name
