@@ -1,6 +1,6 @@
 # Release 0.24.13
 
-* Bug fix: Fixed an issue with the ziti CLI quickstart routine as which also affected router and controller config generation leaving many config fields blank or incorrect.
+* Bug fix: Fixed an issue with the ziti CLI quickstart routine which also affected router and controller config generation leaving many config fields blank or incorrect.
 
 # Release 0.24.12
 
