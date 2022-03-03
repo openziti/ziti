@@ -1,11 +1,12 @@
 package xgress_edge
 
 import (
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/channel"
 	"github.com/stretchr/testify/require"
 	"testing"
+	"time"
 )
 
 /*
@@ -107,7 +108,7 @@ func Test_load(t *testing.T) {
 const (
 	connectMaxQueuedConnections   = 50
 	connectMaxOutstandingConnects = 100
-	connectTimeoutMs              = 3000
+	connectTimeoutMs              = 1000 * time.Millisecond
 )
 
 func newTestConfigWithConnectOptions() xgress.OptionsData {
