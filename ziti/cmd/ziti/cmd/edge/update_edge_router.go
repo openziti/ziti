@@ -41,7 +41,6 @@ type updateEdgeRouterOptions struct {
 	usePut            bool
 	cost              uint16
 	noTraversal       bool
-	allowTraversal    bool
 }
 
 func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -76,8 +75,7 @@ func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
-	cmd.Flags().BoolVar(&options.noTraversal, "disallow-traversal", false, "Disallow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
-	cmd.Flags().BoolVar(&options.allowTraversal, "allow-traversal", false, "Allow traversal for this edge router. Default to allowed. Mutually Exclusive to disallow-traversal, but disallow has priority.")
+	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 
 	options.AddCommonFlags(cmd)
 
@@ -123,12 +121,7 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("allow-traversal") {
-		api.SetJSONValue(entityData, !o.allowTraversal, "noTraversal")
-		change = true
-	}
-
-	if o.Cmd.Flags().Changed("disallow-traversal") {
+	if o.Cmd.Flags().Changed("no-traversal") {
 		api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 		change = true
 	}

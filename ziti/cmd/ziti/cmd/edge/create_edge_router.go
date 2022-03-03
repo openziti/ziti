@@ -39,7 +39,6 @@ type createEdgeRouterOptions struct {
 	appData           map[string]string
 	cost              uint16
 	noTraversal       bool
-	allowTraversal    bool
 }
 
 func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -72,8 +71,7 @@ func newCreateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-Data", nil, "Custom application data")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
-	cmd.Flags().BoolVar(&options.noTraversal, "disallow-traversal", false, "Disallow traversal for this edge router. Default to allowed. Mutually Exclusive to allow-traversal, but disallow has priority.")
-	cmd.Flags().BoolVar(&options.allowTraversal, "allow-traversal", false, "Allow traversal for this edge router. Default to allowed. Mutually Exclusive to disallow-traversal, but disallow has priority.")
+	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 
 	options.AddCommonFlags(cmd)
 
@@ -89,11 +87,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.appData, "appData")
 	api.SetJSONValue(entityData, o.cost, "cost")
-	if o.noTraversal {
-		api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
-	} else {
-		api.SetJSONValue(entityData, !o.allowTraversal, "noTraversal")
-	}
+	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 
 	result, err := CreateEntityOfType("edge-routers", entityData.String(), &o.Options)
 	if err := o.LogCreateResult("edge router", result, err); err != nil {
