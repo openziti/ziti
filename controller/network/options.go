@@ -22,6 +22,16 @@ import (
 	"time"
 )
 
+const (
+	DefaultNetworkOptionsCycleSeconds            = 60
+	DefaultNetworkOptionsRouteTimeout            = 10 * time.Second
+	DefaultNetworkOptionsCreateCircuitRetries    = 3
+	DefaultNetworkOptionsCtrlChanLatencyInterval = 10 * time.Second
+	DefaultNetworkOptionsPendingLinkTimeout      = 10 * time.Second
+	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
+	DefaultNetworkOptionsSmartRerouteCap         = 4
+)
+
 type Options struct {
 	CycleSeconds uint32
 	Smart        struct {
@@ -36,14 +46,14 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	options := &Options{
-		CycleSeconds:            60,
-		RouteTimeout:            10 * time.Second,
-		CreateCircuitRetries:    3,
-		CtrlChanLatencyInterval: 10 * time.Second,
-		PendingLinkTimeout:      10 * time.Second,
+		CycleSeconds:            DefaultNetworkOptionsCycleSeconds,
+		RouteTimeout:            DefaultNetworkOptionsRouteTimeout,
+		CreateCircuitRetries:    DefaultNetworkOptionsCreateCircuitRetries,
+		CtrlChanLatencyInterval: DefaultNetworkOptionsCtrlChanLatencyInterval,
+		PendingLinkTimeout:      DefaultNetworkOptionsPendingLinkTimeout,
 	}
-	options.Smart.RerouteFraction = 0.02
-	options.Smart.RerouteCap = 4
+	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
+	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
 	return options
 }
 

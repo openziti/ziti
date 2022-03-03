@@ -24,6 +24,31 @@ import (
 	"time"
 )
 
+const (
+	MinTLSVersion = tls.VersionTLS12
+	MaxTLSVersion = tls.VersionTLS13
+
+	DefaultHttpWriteTimeout = time.Second * 10
+	DefaultHttpReadTimeout  = time.Second * 5
+	DefaultHttpIdleTimeout  = time.Second * 5
+)
+
+// TlsVersionMap is a map of configuration strings to TLS version identifiers
+var TlsVersionMap = map[string]int{
+	"TLS1.0": tls.VersionTLS10,
+	"TLS1.1": tls.VersionTLS11,
+	"TLS1.2": tls.VersionTLS12,
+	"TLS1.3": tls.VersionTLS13,
+}
+
+// ReverseTlsVersionMap is a map of TLS version identifiers to configuration strings
+var ReverseTlsVersionMap = map[int]string{
+	tls.VersionTLS10: "TLS1.0",
+	tls.VersionTLS11: "TLS1.1",
+	tls.VersionTLS12: "TLS1.2",
+	tls.VersionTLS13: "TLS1.3",
+}
+
 // Config is the root configuration options necessary to start numerous http.Server instances via WebListener's.
 type Config struct {
 	SourceConfig map[interface{}]interface{}
@@ -180,9 +205,9 @@ type TimeoutOptions struct {
 
 // Default defaults all HTTP timeout options
 func (timeoutOptions *TimeoutOptions) Default() {
-	timeoutOptions.WriteTimeout = time.Second * 10
-	timeoutOptions.ReadTimeout = time.Second * 5
-	timeoutOptions.IdleTimeout = time.Second * 5
+	timeoutOptions.WriteTimeout = DefaultHttpWriteTimeout
+	timeoutOptions.ReadTimeout = DefaultHttpReadTimeout
+	timeoutOptions.IdleTimeout = DefaultHttpIdleTimeout
 }
 
 // Parse parses a config map
@@ -252,18 +277,10 @@ type TlsVersionOptions struct {
 	maxTLSVersionStr string
 }
 
-// tlsVersionMap is a map of configuration strings to TLS version identifiers
-var tlsVersionMap = map[string]int{
-	"TLS1.0": tls.VersionTLS10,
-	"TLS1.1": tls.VersionTLS11,
-	"TLS1.2": tls.VersionTLS12,
-	"TLS1.3": tls.VersionTLS13,
-}
-
 // Default defaults TLS versions
 func (tlsVersionOptions *TlsVersionOptions) Default() {
-	tlsVersionOptions.MinTLSVersion = tls.VersionTLS12
-	tlsVersionOptions.MaxTLSVersion = tls.VersionTLS13
+	tlsVersionOptions.MinTLSVersion = MinTLSVersion
+	tlsVersionOptions.MaxTLSVersion = MaxTLSVersion
 }
 
 // Parse parses a config map
@@ -271,7 +288,7 @@ func (tlsVersionOptions *TlsVersionOptions) Parse(config map[interface{}]interfa
 	if interfaceVal, ok := config["minTLSVersion"]; ok {
 		var ok bool
 		if tlsVersionOptions.minTLSVersionStr, ok = interfaceVal.(string); ok {
-			if minTLSVersion, ok := tlsVersionMap[tlsVersionOptions.minTLSVersionStr]; ok {
+			if minTLSVersion, ok := TlsVersionMap[tlsVersionOptions.minTLSVersionStr]; ok {
 				tlsVersionOptions.MinTLSVersion = minTLSVersion
 			} else {
 				return fmt.Errorf("could not use value for minTLSVersion, invalid value [%s]", tlsVersionOptions.minTLSVersionStr)
@@ -284,7 +301,7 @@ func (tlsVersionOptions *TlsVersionOptions) Parse(config map[interface{}]interfa
 	if interfaceVal, ok := config["maxTLSVersion"]; ok {
 		var ok bool
 		if tlsVersionOptions.maxTLSVersionStr, ok = interfaceVal.(string); ok {
-			if maxTLSVersion, ok := tlsVersionMap[tlsVersionOptions.maxTLSVersionStr]; ok {
+			if maxTLSVersion, ok := TlsVersionMap[tlsVersionOptions.maxTLSVersionStr]; ok {
 				tlsVersionOptions.MaxTLSVersion = maxTLSVersion
 			} else {
 				return fmt.Errorf("could not use value for maxTLSVersion, invalid value [%s]", tlsVersionOptions.maxTLSVersionStr)
