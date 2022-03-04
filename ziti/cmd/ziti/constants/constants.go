@@ -16,6 +16,8 @@
 
 package constants
 
+import "time"
+
 const (
 	ZITI                    = "ziti"
 	ZITI_CONTROLLER         = "ziti-controller"
@@ -35,48 +37,16 @@ const (
 
 // Config Template Constants
 const (
-	DefaultListenerBindPort   = 10080
-	DefaultOutQueueSize       = 16
-	DefaultConnectTimeoutMs   = 5000
-	DefaultGetSessionTimeoutS = 60
+	DefaultListenerBindPort  = 10080
+	DefaultGetSessionTimeout = 60 * time.Second
 
-	// Router defaults
 	DefaultZitiEdgeRouterPort = "3022"
 
-	// Controller defaults
-	DefaultZitiControllerName               = "controller"
-	DefaultEdgeAPISessionTimeoutMinutes     = 30
-	DefaultWebListenerIdleTimeoutMs         = 5000
-	DefaultWebListenerReadTimeoutMs         = 5000
-	DefaultWebListenerWriteTimeoutMs        = 100000
-	DefaultWebListenerMinTLSVersion         = "TLS1.2"
-	DefaultWebListenerMaxTLSVersion         = "TLS1.3"
-	DefaultZitiEdgeAPIPort                  = "1280"
-	DefaultZitiEdgeListenerHostPort         = "0.0.0.0:1280"
-	DefaultZitiControllerListenerAddress    = "0.0.0.0"
-	DefaultZitiControllerPort               = "6262"
-	DefaultControllerHealthCheckIntervalSec = 30
-	DefaultControllerHealthCheckTimeoutSec  = 15
-	DefaultControllerHealthCheckDelaySec    = 15
-	DefaultEdgeIdentityDurationMinutes      = 14400
-	DefaultEdgeRouterDurationMinutes        = 14400
-
-	// WSS defaults
-	DefaultWSSWriteTimeout     = 10
-	DefaultWSSReadTimeout      = 5
-	DefaultWSSIdleTimeout      = 5
-	DefaultWSSPongTimeout      = 60
-	DefaultWSSPingInterval     = 54
-	DefaultWSSHandshakeTimeout = 10
-	DefaultWSSReadBufferSize   = 4096
-	DefaultWSSWriteBufferSize  = 4096
-
-	// Forwarder defaults
-	DefaultLatencyProbeInterval  = 1000
-	DefaultXgressDialQueueLength = 1000
-	DefaultXgressDialWorkerCount = 128
-	DefaultLinkDialQueueLength   = 1000
-	DefaultLinkDialWorkerCount   = 10
+	DefaultZitiControllerName            = "controller"
+	DefaultZitiEdgeAPIPort               = "1280"
+	DefaultZitiEdgeListenerHostPort      = "0.0.0.0:1280"
+	DefaultZitiControllerListenerAddress = "0.0.0.0"
+	DefaultZitiControllerPort            = "6262"
 )
 
 // Env Var Constants
