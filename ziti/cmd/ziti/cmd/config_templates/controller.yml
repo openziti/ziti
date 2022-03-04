@@ -19,24 +19,24 @@ identity:
 ctrl:
   #options:
   # (optional) settings
-  # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-  #maxQueuedConnects:      50
-  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-  #maxOutstandingConnects: 100
-  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-  #connectTimeoutMs:       3000
+  # set the maximum number of connect requests that are buffered and waiting to be acknowledged ({{ .Controller.MinQueuedConnects }} to {{ .Controller.MaxQueuedConnects }}, default {{ .Controller.DefaultQueuedConnects }})
+  #maxQueuedConnects:      {{ .Controller.DefaultQueuedConnects }}
+  # the maximum number of connects that have  begun hello synchronization ({{ .Controller.MinOutstandingConnects }} to {{ .Controller.MaxOutstandingConnects }}, default {{ .Controller.DefaultOutstandingConnects }})
+  #maxOutstandingConnects: {{ .Controller.DefaultOutstandingConnects }}
+  # the number of milliseconds to wait before a hello synchronization fails and closes the connection ({{ .Controller.MinConnectTimeout.Milliseconds }}ms to {{ .Controller.MaxConnectTimeout.Milliseconds }}ms, default: {{ .Controller.DefaultConnectTimeout.Milliseconds }}ms)
+  #connectTimeoutMs:       {{ .Controller.DefaultConnectTimeout.Milliseconds }}
   listener:             tls:{{ .Controller.ListenerAddress }}:{{ .Controller.Port }}
 
 # the endpoint that management tools connect to the controller over.
 mgmt:
   #options:
   # (optional) settings
-  # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-  #maxQueuedConnects:      50
-  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-  #maxOutstandingConnects: 100
-  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-  #connectTimeoutMs:       3000
+  # set the maximum number of connect requests that are buffered and waiting to be acknowledged ({{ .Controller.MinQueuedConnects }} to {{ .Controller.MaxQueuedConnects }}, default {{ .Controller.DefaultQueuedConnects }})
+  #maxQueuedConnects:      {{ .Controller.DefaultQueuedConnects }}
+  # the maximum number of connects that have  begun hello synchronization ({{ .Controller.MinOutstandingConnects }} to {{ .Controller.MaxOutstandingConnects }}, default {{ .Controller.DefaultOutstandingConnects }})
+  #maxOutstandingConnects: {{ .Controller.DefaultOutstandingConnects }}
+  # the number of milliseconds to wait before a hello synchronization fails and closes the connection ({{ .Controller.MinConnectTimeout.Milliseconds }}ms to {{ .Controller.MaxConnectTimeout.Milliseconds }}ms, default: {{ .Controller.DefaultConnectTimeout.Milliseconds }}ms)
+  #connectTimeoutMs:       {{ .Controller.DefaultConnectTimeout.Milliseconds }}
   listener:             tls:{{ .Controller.ListenerAddress }}:10000
 
 #metrics:
@@ -52,26 +52,26 @@ mgmt:
 
 healthChecks:
   boltCheck:
-    # How often to try entering a bolt read tx. Defaults to {{ .Controller.HealthCheck.IntervalSec }} seconds
-    interval: {{ .Controller.HealthCheck.IntervalSec }}s
-    # When to time out the check. Defaults to {{ .Controller.HealthCheck.TimeoutSec }} seconds
-    timeout: {{ .Controller.HealthCheck.TimeoutSec }}s
-    # How long to wait before starting the check. Defaults to {{ .Controller.HealthCheck.InitialDelaySec }} seconds
-    initialDelay: {{ .Controller.HealthCheck.InitialDelaySec }}s
+    # How often to try entering a bolt read tx. Defaults to {{ .Controller.HealthCheck.Interval.Seconds }} seconds
+    interval: {{ .Controller.HealthCheck.Interval.Seconds }}s
+    # When to time out the check. Defaults to {{ .Controller.HealthCheck.Timeout.Seconds }} seconds
+    timeout: {{ .Controller.HealthCheck.Timeout.Seconds }}s
+    # How long to wait before starting the check. Defaults to {{ .Controller.HealthCheck.InitialDelay.Seconds }} seconds
+    initialDelay: {{ .Controller.HealthCheck.InitialDelay.Seconds }}s
 
 # By having an 'edge' section defined, the ziti-controller will attempt to parse the edge configuration. Removing this
 # section, commenting out, or altering the name of the section will cause the edge to not run.
 edge:
   # This section represents the configuration of the Edge API that is served over HTTPS
   api:
-    #(optional, default 90s) Alters how frequently heartbeat and last activity values are persisted
-    # activityUpdateInterval: 90s
-    #(optional, default 250) The number of API Sessions updated for last activity per transaction
-    # activityUpdateBatchSize: 250
-    # sessionTimeout - optional, default {{ .Controller.Edge.APISessionTimeoutMinutes }}m
+    #(optional, default {{ .Controller.Edge.APIActivityUpdateInterval.Seconds }}s) Alters how frequently heartbeat and last activity values are persisted
+    # activityUpdateInterval: {{ .Controller.Edge.APIActivityUpdateInterval.Seconds }}s
+    #(optional, default {{ .Controller.Edge.APIActivityUpdateBatchSize }}) The number of API Sessions updated for last activity per transaction
+    # activityUpdateBatchSize: {{ .Controller.Edge.APIActivityUpdateBatchSize }}
+    # sessionTimeout - optional, default {{ .Controller.Edge.APISessionTimeout.Minutes }}m
     # The number of minutes before an Edge API session will time out. Timeouts are reset by
     # API requests and connections that are maintained to Edge Routers
-    sessionTimeout: {{ .Controller.Edge.APISessionTimeoutMinutes }}m
+    sessionTimeout: {{ .Controller.Edge.APISessionTimeout.Minutes }}m
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in this Controller.WebListener.'s bindPoints.
@@ -88,17 +88,17 @@ edge:
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
-      # durationMinutes - optional, default {{ .Controller.EdgeIdentityDuration }}m
+      # durationMinutes - optional, default {{ .Controller.EdgeIdentityDuration.Minutes }}m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
-      duration: {{ .Controller.EdgeIdentityDuration }}m
+      duration: {{ .Controller.EdgeIdentityDuration.Minutes }}m
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
-      # durationMinutes - optional, default {{ .Controller.EdgeRouterDuration }}m
+      # durationMinutes - optional, default {{ .Controller.EdgeRouterDuration.Minutes }}m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
-      duration: {{ .Controller.EdgeRouterDuration }}m
+      duration: {{ .Controller.EdgeRouterDuration.Minutes }}m
 
 # web
 # Defines webListeners that will be hosted by the controller. Each webListener can host many APIs and be bound to many
@@ -131,21 +131,21 @@ web:
     # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
     # used for all http servers started by the current webListener.
     options:
-      # idleTimeoutMs - optional, default {{ .Controller.WebListener.IdleTimeoutMS }}ms
+      # idleTimeoutMs - optional, default {{ .Controller.WebListener.IdleTimeout.Milliseconds }}ms
       # The maximum amount of idle time in milliseconds allowed for pipelined HTTP requests. Setting this too high
       # can cause resources on the host to be consumed as clients remain connected and idle. Lowering this value
       # will cause clients to reconnect on subsequent HTTPs requests.
-      idleTimeout: {{ .Controller.WebListener.IdleTimeoutMS }}ms  #http timeouts, new
-      # readTimeoutMs - optional, default {{ .Controller.WebListener.ReadTimeoutMS }}ms
+      idleTimeout: {{ .Controller.WebListener.IdleTimeout.Milliseconds }}ms  #http timeouts, new
+      # readTimeoutMs - optional, default {{ .Controller.WebListener.ReadTimeout.Milliseconds }}ms
       # The maximum amount of time in milliseconds http servers will wait to read the first incoming requests. A higher
       # value risks consuming resources on the host with clients that are acting bad faith or suffering from high latency
       # or packet loss. A lower value can risk losing connections to high latency/packet loss clients.
-      readTimeout: {{ .Controller.WebListener.ReadTimeoutMS }}ms
-      # writeTimeoutMs - optional, default {{ .Controller.WebListener.WriteTimeoutMS }}ms
+      readTimeout: {{ .Controller.WebListener.ReadTimeout.Milliseconds }}ms
+      # writeTimeoutMs - optional, default {{ .Controller.WebListener.WriteTimeout.Milliseconds }}ms
       # The total maximum time in milliseconds that the http server will wait for a single requests to be received and
-      # responded too. A higher value can allow long running requests to consume resources on the host. A lower value
+      # responded too. A higher value can allow long-running requests to consume resources on the host. A lower value
       # can risk ending requests before the server has a chance to respond.
-      writeTimeout: {{ .Controller.WebListener.WriteTimeoutMS }}ms
+      writeTimeout: {{ .Controller.WebListener.WriteTimeout.Milliseconds }}ms
       # minTLSVersion - optional, default {{ .Controller.WebListener.MinTLSVersion }}
       # The minimum version of TSL to support
       minTLSVersion: {{ .Controller.WebListener.MinTLSVersion }}
