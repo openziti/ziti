@@ -8,7 +8,7 @@
 
 ## 1st Party Certificate Extension
 
-Zit Edge Client and Management API both support certificate extension for Ziti provisioned certificates. Before a 
+Ziti Edge Client and Management API both support certificate extension for Ziti provisioned certificates. Before a 
 client certificate expires, the client can elect to generate a new client certificate that will extend its valid period
 and allows the client to optionally utilize a new private key.
 
