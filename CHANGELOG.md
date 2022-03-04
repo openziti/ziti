@@ -1,6 +1,9 @@
 # Release 0.24.13
 
 * Bug fix: Fixed an issue with the ziti CLI quickstart routine which also affected router and controller config generation leaving many config fields blank or incorrect.
+* Enhancement: Added new `noTraversal` field to routers. Configures if a router should allow/disallow traversal. Required on create/update commands.
+* Enhancement: `ziti edge update edge-router` now supports either `--no-traversal` flag which will allow/disallow a given router from being used to traverse. 
+* Enhancement: `ziti fabric list routers` and `ziti edge list routers` will now display the noTraversal flag of associated routers. 
 
 # Release 0.24.12
 

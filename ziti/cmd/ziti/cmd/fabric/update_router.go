@@ -34,6 +34,7 @@ type updateRouterOptions struct {
 	name        string
 	fingerprint string
 	cost        uint16
+	noTraversal bool
 }
 
 func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
@@ -59,6 +60,8 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the router name")
 	cmd.Flags().StringVar(&options.fingerprint, "fingerprint", "", "Sets the router fingerprint")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
+	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -85,6 +88,11 @@ func runUpdateRouter(o *updateRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("cost") {
 		api.SetJSONValue(entityData, o.cost, "cost")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("no-traversal") {
+		api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 		change = true
 	}
 
