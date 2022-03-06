@@ -27,6 +27,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
+	"time"
 )
 
 const (
@@ -57,6 +58,8 @@ const (
 	FieldIdentityAppData                   = "appData"
 	FieldIdentityAuthPolicyId              = "authPolicyId"
 	FieldIdentityExternalId                = "externalId"
+	FieldIdentityDisabledAt                = "disabledAt"
+	FieldIdentityDisabledUntil             = "disabledUntil"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -102,6 +105,9 @@ type Identity struct {
 	AppData                   map[string]interface{}
 	AuthPolicyId              string
 	ExternalId                *string
+	DisabledAt                *time.Time
+	DisabledUntil             *time.Time
+	Disabled                  bool
 }
 
 type ServiceConfig struct {
@@ -125,6 +131,16 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
 	entity.AppData = bucket.GetMap(FieldIdentityAppData)
 	entity.ExternalId = bucket.GetString(FieldIdentityExternalId)
+
+	entity.Disabled = false
+	entity.DisabledAt = bucket.GetTime(FieldIdentityDisabledAt)
+	entity.DisabledUntil = bucket.GetTime(FieldIdentityDisabledUntil)
+
+	if entity.DisabledAt != nil {
+		if entity.DisabledUntil == nil || entity.DisabledUntil.After(time.Now()) {
+			entity.Disabled = true
+		}
+	}
 
 	entity.SdkInfo = &SdkInfo{
 		Branch:     bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
@@ -176,6 +192,9 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
 	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
 	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, false)
+
+	ctx.SetTimeP(FieldIdentityDisabledAt, entity.DisabledAt)
+	ctx.SetTimeP(FieldIdentityDisabledUntil, entity.DisabledUntil)
 
 	//treat empty string and white space like nil
 	if entity.ExternalId != nil && len(strings.TrimSpace(*entity.ExternalId)) == 0 {

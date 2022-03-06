@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"time"
 )
 
 type EnvInfo struct {
@@ -60,6 +61,9 @@ type Identity struct {
 	AppData                   map[string]interface{}
 	AuthPolicyId              string
 	ExternalId                *string
+	Disabled                  bool
+	DisabledAt                *time.Time
+	DisabledUntil             *time.Time
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -77,6 +81,8 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
 		AppData:                   entity.AppData,
 		ExternalId:                entity.ExternalId,
+		DisabledAt:                entity.DisabledAt,
+		DisabledUntil:             entity.DisabledUntil,
 	}
 
 	if entity.EnvInfo != nil {
@@ -168,6 +174,8 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
 		AppData:                   entity.AppData,
 		ExternalId:                entity.ExternalId,
+		DisabledAt:                entity.DisabledAt,
+		DisabledUntil:             entity.DisabledUntil,
 	}
 
 	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
@@ -211,6 +219,9 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.ServiceHostingCosts = boltIdentity.ServiceHostingCosts
 	entity.AppData = boltIdentity.AppData
 	entity.ExternalId = boltIdentity.ExternalId
+	entity.DisabledUntil = boltIdentity.DisabledUntil
+	entity.DisabledAt = boltIdentity.DisabledAt
+	entity.Disabled = boltIdentity.Disabled
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil

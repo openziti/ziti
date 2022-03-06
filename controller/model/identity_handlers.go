@@ -18,6 +18,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
@@ -499,6 +500,76 @@ func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(tx *bbolt
 		return false
 	})
 	return stopVisit, err
+}
+
+func (handler IdentityHandler) ReadByExternalId(externalId string) (*Identity, error) {
+	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldIdentityExternalId, externalId)
+
+	entity, err := handler.readEntityByQuery(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if entity == nil {
+		return nil, nil
+	}
+
+	identity, ok := entity.(*Identity)
+
+	if !ok {
+		return nil, fmt.Errorf("could not cast from %T to %T", entity, identity)
+	}
+
+	return identity, nil
+}
+
+func (handler *IdentityHandler) Disable(identityId string, duration time.Duration) error {
+	if duration < 0 {
+		duration = 0
+	}
+
+	fieldMap := boltz.MapFieldChecker{
+		persistence.FieldIdentityDisabledAt:    struct{}{},
+		persistence.FieldIdentityDisabledUntil: struct{}{},
+	}
+
+	lockedAt := time.Now()
+	var lockedUntil *time.Time
+
+	if duration != 0 {
+		until := lockedAt.Add(duration)
+		lockedUntil = &until
+	}
+
+	err := handler.Patch(&Identity{
+		BaseEntity: models.BaseEntity{
+			Id: identityId,
+		},
+		DisabledAt:    &lockedAt,
+		DisabledUntil: lockedUntil,
+	}, fieldMap)
+
+	if err != nil {
+		return err
+	}
+
+	return handler.GetEnv().GetHandlers().ApiSession.DeleteByIdentityId(identityId)
+}
+
+func (handler *IdentityHandler) Enable(identityId string) error {
+	fieldMap := boltz.MapFieldChecker{
+		persistence.FieldIdentityDisabledAt:    struct{}{},
+		persistence.FieldIdentityDisabledUntil: struct{}{},
+	}
+
+	return handler.Patch(&Identity{
+		BaseEntity: models.BaseEntity{
+			Id: identityId,
+		},
+		DisabledAt:    nil,
+		DisabledUntil: nil,
+	}, fieldMap)
 }
 
 type identityStatusMap struct {

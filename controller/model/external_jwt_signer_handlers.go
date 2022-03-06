@@ -17,6 +17,8 @@
 package model
 
 import (
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 )
 
@@ -62,4 +64,39 @@ func (handler *ExternalJwtSignerHandler) Patch(signer *ExternalJwtSigner, fields
 
 func (handler *ExternalJwtSignerHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
+}
+
+type ListExtJwtSignerResult struct {
+	handler       *ExternalJwtSignerHandler
+	QueryMetaData models.QueryMetaData
+	ExtJwtSigners []*ExternalJwtSigner
+}
+
+func (handler *ExternalJwtSignerHandler) PublicQuery(query ast.Query) (*ListExtJwtSignerResult, error) {
+	queryStr := "enabled = true"
+	enabledQuery, err := ast.Parse(handler.Store, queryStr)
+	if err != nil {
+		return nil, err
+	}
+
+	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), enabledQuery.GetPredicate()))
+
+	entityResult, err := handler.BasePreparedList(query)
+
+	if err != nil {
+		return nil, err
+	}
+
+	result := &ListExtJwtSignerResult{
+		handler:       handler,
+		QueryMetaData: entityResult.QueryMetaData,
+	}
+
+	for _, entity := range entityResult.Entities {
+		if extJwtSigner, ok := entity.(*ExternalJwtSigner); ok {
+			result.ExtJwtSigners = append(result.ExtJwtSigners, extJwtSigner)
+		}
+	}
+
+	return result, nil
 }

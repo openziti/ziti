@@ -150,6 +150,18 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
+	// disable / enable
+	ae.ManagementApi.IdentityEnableIdentityHandler = identity.EnableIdentityHandlerFunc(func(params identity.EnableIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.Enable(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.IdentityDisableIdentityHandler = identity.DisableIdentityHandlerFunc(func(params identity.DisableIdentityParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.Disable(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -401,5 +413,21 @@ func (r *IdentityRouter) updateTracing(ae *env.AppEnv, rc *response.RequestConte
 		rc.RespondWithOk(&rest_model.TraceDetail{
 			Enabled: false,
 		}, nil)
+	}
+}
+
+func (r *IdentityRouter) Enable(ae *env.AppEnv, rc *response.RequestContext, params identity.EnableIdentityParams) {
+	if err := ae.Handlers.Identity.Enable(params.ID); err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithEmptyOk()
+}
+
+func (r *IdentityRouter) Disable(ae *env.AppEnv, rc *response.RequestContext, params identity.DisableIdentityParams) {
+	if err := ae.Handlers.Identity.Disable(params.ID, time.Duration(*params.Disable.DurationMinutes)*time.Minute); err != nil {
+		rc.RespondWithError(err)
+		return
 	}
 }

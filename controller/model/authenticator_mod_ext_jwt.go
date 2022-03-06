@@ -30,7 +30,10 @@ import (
 
 var _ AuthProcessor = &AuthModuleExtJwt{}
 
-const AuthMethodExtJwt = "ext-jwt"
+const (
+	AuthMethodExtJwt    = "ext-jwt"
+	ExtJwtInternalClaim = "-internal-ext-jwt"
+)
 
 type AuthModuleExtJwt struct {
 	env     Env
@@ -67,31 +70,39 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	kidVal, ok := token.Header["kid"]
 
 	if !ok {
+		pfxlog.Logger().Error("missing kid")
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	kid, ok := kidVal.(string)
 
 	if !ok {
+		pfxlog.Logger().Error("kid is not a string")
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	signerRecordInterface, ok := fingerprintToSignerRectInterface[kid]
 
 	if !ok {
+		pfxlog.Logger().Error("unknown kid")
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	signerRecord := signerRecordInterface.(*signerRecord)
 
 	if !signerRecord.externalJwtSigner.Enabled {
+		pfxlog.Logger().WithField("externalJwtId", signerRecord.externalJwtSigner.Id).Error("external jwt is disabled")
 		return nil, apierror.NewInvalidAuth()
 	}
+	mapClaims := token.Claims.(jwt.MapClaims)
+	mapClaims[ExtJwtInternalClaim] = signerRecord.externalJwtSigner
 
 	return signerRecord.cert.PublicKey, nil
 }
 
-func (a AuthModuleExtJwt) Process(context AuthContext) (identityId string, authenticatorId string, err error) {
+func (a AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
+
 	headers := map[string]interface{}{}
 
 	for key, value := range context.GetHeaders() {
@@ -101,12 +112,14 @@ func (a AuthModuleExtJwt) Process(context AuthContext) (identityId string, authe
 	authHeaders := headers["authorization"].([]string)
 
 	if len(authHeaders) != 1 {
-		return "", "", apierror.NewInvalidAuth()
+		logger.Error("no authorization header found")
+		return "", "", "", apierror.NewInvalidAuth()
 	}
 	authHeader := authHeaders[0]
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return "", "", apierror.NewInvalidAuth()
+		logger.Error("authorization header missing Bearer prefix")
+		return "", "", "", apierror.NewInvalidAuth()
 	}
 
 	jwtStr := strings.Replace(authHeader, "Bearer ", "", 1)
@@ -114,11 +127,95 @@ func (a AuthModuleExtJwt) Process(context AuthContext) (identityId string, authe
 	jwtToken, err := jwt.Parse(jwtStr, a.pubKeyLookup)
 
 	if err == nil && jwtToken.Valid {
-		claims := jwtToken.Claims.(jwt.MapClaims)
-		return claims["sub"].(string), AuthMethodExtJwt, nil
+		claimsProperty := "sub"
+		mapClaims := jwtToken.Claims.(jwt.MapClaims)
+
+		extJwt := mapClaims[ExtJwtInternalClaim].(*persistence.ExternalJwtSigner)
+
+		if extJwt == nil {
+			logger.Error("no external jwt signer found for internal claims")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		logger = logger.WithField("externalJwtSignerId", extJwt.Id)
+
+		if extJwt.ClaimsProperty != nil {
+			claimsProperty = *extJwt.ClaimsProperty
+		}
+
+		logger = logger.WithField("claimsProperty", claimsProperty)
+
+		identityIdInterface, ok := mapClaims[claimsProperty]
+
+		if !ok {
+			logger.Error("claims property on external jwt signer not found in claims")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		identityId, ok := identityIdInterface.(string)
+
+		if !ok || identityId == "" {
+			logger.Error("expected claims id was not a string or was empty")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		var authPolicy *AuthPolicy
+
+		var identity *Identity
+		if extJwt.UseExternalId {
+			authPolicy, identity, err = getAuthPolicyByExternalId(a.env, AuthMethodExtJwt, "", identityId)
+		} else {
+			authPolicy, identity, err = getAuthPolicyByIdentityId(a.env, AuthMethodExtJwt, "", identityId)
+		}
+
+		if err != nil {
+			logger.WithError(err).Error("encountered unhandled error during authentication")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		if authPolicy == nil {
+			logger.WithError(err).Error("encountered unhandled nil auth policy during authentication")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		if identity.Disabled {
+			logger.
+				WithField("disabledAt", identity.DisabledAt).
+				WithField("disabledUntil", identity.DisabledUntil).
+				Error("authentication failed, identity is disabled")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		if !authPolicy.Primary.ExtJwt.Allowed {
+			logger.Error("external jwt authentication on auth policy is disabled")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		if len(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners) > 0 {
+			found := false
+			for _, allowedId := range authPolicy.Primary.ExtJwt.AllowedExtJwtSigners {
+				if allowedId == extJwt.Id {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				logger.
+					WithField("allowedSigners", authPolicy.Primary.ExtJwt.AllowedExtJwtSigners).
+					Error("auth policy does not allow specified signer")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
+		}
+
+		if extJwt.UseExternalId {
+			return "", identityId, AuthMethodExtJwt, nil
+		}
+		return identityId, "", AuthMethodExtJwt, nil
 	}
 
-	return "", "", apierror.NewInvalidAuth()
+	logger.Error("authorization failed, jwt did not verify")
+	return "", "", "", apierror.NewInvalidAuth()
 }
 
 func (a *AuthModuleExtJwt) getKnownSignerRecords() map[string]interface{} {

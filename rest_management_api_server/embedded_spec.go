@@ -8953,6 +8953,99 @@ func init() {
         }
       ]
     },
+    "/identities/{id}/disable": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin disable an identity for a set amount of time or indefinitely.\n",
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Set an identity as disabled",
+        "operationId": "disableIdentity",
+        "parameters": [
+          {
+            "description": "Disable parameters",
+            "name": "disable",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/disableParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/identities/{id}/edge-router-policies": {
       "get": {
         "security": [
@@ -9053,6 +9146,88 @@ func init() {
             "description": "A list of edge routers",
             "schema": {
               "$ref": "#/definitions/listEdgeRoutersEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/identities/{id}/enable": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to remove disabled statuses from an identity.\n",
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Clears all disabled state from an identity",
+        "operationId": "enableIdentity",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -18370,6 +18545,17 @@ func init() {
         "$ref": "#/definitions/dialBind"
       }
     },
+    "disableParams": {
+      "type": "object",
+      "required": [
+        "durationMinutes"
+      ],
+      "properties": {
+        "durationMinutes": {
+          "type": "integer"
+        }
+      }
+    },
     "edgeRouterCreate": {
       "description": "An edge router create object",
       "type": "object",
@@ -19197,7 +19383,8 @@ func init() {
             "serviceHostingCosts",
             "defaultHostingCost",
             "authPolicyId",
-            "externalId"
+            "externalId",
+            "disabled"
           ],
           "properties": {
             "appData": {
@@ -19214,6 +19401,19 @@ func init() {
             },
             "defaultHostingPrecedence": {
               "$ref": "#/definitions/terminatorPrecedence"
+            },
+            "disabled": {
+              "type": "boolean"
+            },
+            "disabledAt": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
+            },
+            "disabledUntil": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"
@@ -31456,6 +31656,99 @@ func init() {
         }
       ]
     },
+    "/identities/{id}/disable": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin disable an identity for a set amount of time or indefinitely.\n",
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Set an identity as disabled",
+        "operationId": "disableIdentity",
+        "parameters": [
+          {
+            "description": "Disable parameters",
+            "name": "disable",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/disableParams"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/identities/{id}/edge-router-policies": {
       "get": {
         "security": [
@@ -31556,6 +31849,88 @@ func init() {
             "description": "A list of edge routers",
             "schema": {
               "$ref": "#/definitions/listEdgeRoutersEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/identities/{id}/enable": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an admin to remove disabled statuses from an identity.\n",
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Clears all disabled state from an identity",
+        "operationId": "enableIdentity",
+        "responses": {
+          "200": {
+            "description": "Base empty response",
+            "schema": {
+              "$ref": "#/definitions/empty"
             }
           },
           "401": {
@@ -40964,6 +41339,17 @@ func init() {
         "$ref": "#/definitions/dialBind"
       }
     },
+    "disableParams": {
+      "type": "object",
+      "required": [
+        "durationMinutes"
+      ],
+      "properties": {
+        "durationMinutes": {
+          "type": "integer"
+        }
+      }
+    },
     "edgeRouterCreate": {
       "description": "An edge router create object",
       "type": "object",
@@ -41794,7 +42180,8 @@ func init() {
             "serviceHostingCosts",
             "defaultHostingCost",
             "authPolicyId",
-            "externalId"
+            "externalId",
+            "disabled"
           ],
           "properties": {
             "appData": {
@@ -41811,6 +42198,19 @@ func init() {
             },
             "defaultHostingPrecedence": {
               "$ref": "#/definitions/terminatorPrecedence"
+            },
+            "disabled": {
+              "type": "boolean"
+            },
+            "disabledAt": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
+            },
+            "disabledUntil": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"

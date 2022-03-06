@@ -63,21 +63,47 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 	return method == module.method
 }
 
-func (module *AuthModuleCert) Process(context AuthContext) (string, string, error) {
+func (module *AuthModuleCert) Process(context AuthContext) (string, string, string, error) {
 	fingerprints, err := module.GetFingerprints(context)
 
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
-	for fingerprint, cert := range fingerprints {
+	for fingerprint, authCert := range fingerprints {
+		logger := pfxlog.Logger().WithField("authMethod", module.method)
 		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
+			logger.WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
 		}
 
 		if authenticator != nil {
+			logger = logger.
+				WithField("authenticatorId", authenticator.Id).
+				WithField("identityId", authenticator.IdentityId)
+
+			authPolicy, identity, err := getAuthPolicyByIdentityId(module.env, module.method, authenticator.Id, authenticator.IdentityId)
+
+			if err != nil {
+				logger.WithError(err).Error("could not lookup identity and auth policy for cert authentication")
+			}
+
+			logger = logger.WithField("authPolicyId", authPolicy.Id)
+
+			if identity.Disabled {
+				logger.
+					WithField("disabledAt", identity.DisabledAt).
+					WithField("disabledUntil", identity.DisabledUntil).
+					Error("authentication failed, identity is disabled")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
+
+			if !authPolicy.Primary.Cert.Allowed {
+				logger.Error("invalid certificate authentication, not allowed by auth policy")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
+
 			curCert := fingerprints[fingerprint]
 			if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
 				if authCert.Pem == "" {
@@ -93,9 +119,10 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, string, erro
 				}
 			}
 
-			//ignore client cert expiration windows
-			cert.NotBefore = time.Now().Add(-1 * time.Hour)
-			cert.NotAfter = time.Now().Add(1 * time.Hour)
+			if authPolicy.Primary.Cert.AllowExpiredCerts {
+				authCert.NotBefore = time.Now().Add(-1 * time.Hour)
+				authCert.NotAfter = time.Now().Add(1 * time.Hour)
+			}
 
 			opts := x509.VerifyOptions{
 				Roots:         module.getRootPool(),
@@ -103,15 +130,15 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, string, erro
 				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 			}
 
-			if _, err := cert.Verify(opts); err == nil {
-				return authenticator.IdentityId, authenticator.Id, nil
+			if _, err := authCert.Verify(opts); err == nil {
+				return authenticator.IdentityId, "", authenticator.Id, nil
 			} else {
 				pfxlog.Logger().Tracef("error verifying client certificate [%s] did not verify: %v", fingerprint, err)
 			}
 		}
 	}
 
-	return "", "", apierror.NewInvalidAuth()
+	return "", "", "", apierror.NewInvalidAuth()
 }
 
 func (module *AuthModuleCert) getRootPool() *x509.CertPool {
@@ -228,4 +255,52 @@ func (module *AuthModuleCert) GetFingerprints(ctx AuthContext) (cert.Fingerprint
 	}
 
 	return module.fingerprintGenerator.FromCerts(authCerts), nil
+}
+
+func getAuthPolicyByIdentityId(env Env, authMethod string, authenticatorId string, identityId string) (*AuthPolicy, *Identity, error) {
+	logger := pfxlog.Logger().
+		WithField("authenticatorId", authenticatorId).
+		WithField("identityId", identityId).
+		WithField("authMethod", authMethod)
+	identity, err := env.GetHandlers().Identity.Read(identityId)
+
+	if err != nil {
+		logger.WithError(err).Errorf("encountered error during %s auth when looking up authenticator", authMethod)
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
+	logger = logger.WithField("authPolicyId", identity.AuthPolicyId)
+
+	authPolicy, err := env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+
+	if err != nil {
+		logger.WithError(err).Errorf("encountered error during %s auth when looking up auth policy", authMethod)
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
+	return authPolicy, identity, nil
+}
+
+func getAuthPolicyByExternalId(env Env, authMethod string, authenticatorId string, externalId string) (*AuthPolicy, *Identity, error) {
+	logger := pfxlog.Logger().
+		WithField("authenticatorId", authenticatorId).
+		WithField("externalId", externalId).
+		WithField("authMethod", authMethod)
+	identity, err := env.GetHandlers().Identity.ReadByExternalId(externalId)
+
+	if err != nil {
+		logger.WithError(err).Errorf("encountered error during %s auth when looking up authenticator", authMethod)
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
+	logger = logger.WithField("authPolicyId", identity.AuthPolicyId)
+
+	authPolicy, err := env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+
+	if err != nil {
+		logger.WithError(err).Errorf("encountered error during %s auth when looking up auth policy", authMethod)
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
+	return authPolicy, identity, nil
 }

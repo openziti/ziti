@@ -72,19 +72,23 @@ func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Iden
 		return nil, "", apierror.NewInvalidAuthMethod()
 	}
 
-	identityId, authenticatorId, err := authModule.Process(authContext)
+	identityId, externalId, authenticatorId, err := authModule.Process(authContext)
 
 	if err != nil {
 		return nil, "", err
 	}
 
-	if identityId == "" {
-		return nil, "", apierror.NewInvalidAuth()
+	if externalId != "" {
+		identity, err := handler.env.GetHandlers().Identity.ReadByExternalId(externalId)
+		return identity, authenticatorId, err
 	}
 
-	identity, err := handler.env.GetHandlers().Identity.Read(identityId)
+	if identityId != "" {
+		identity, err := handler.env.GetHandlers().Identity.Read(identityId)
+		return identity, authenticatorId, err
+	}
 
-	return identity, authenticatorId, err
+	return nil, "", apierror.NewInvalidAuth()
 }
 
 func (handler AuthenticatorHandler) ReadFingerprints(authenticatorId string) ([]string, error) {
