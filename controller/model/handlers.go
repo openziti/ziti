@@ -36,6 +36,7 @@ type Handlers struct {
 	EdgeRouterPolicy        *EdgeRouterPolicyHandler
 	EdgeService             *EdgeServiceHandler
 	EventLog                *EventLogHandler
+	ExternalJwtSigner       *ExternalJwtSignerHandler
 	GeoRegion               *GeoRegionHandler
 	Identity                *IdentityHandler
 	IdentityType            *IdentityTypeHandler
@@ -70,6 +71,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.EdgeService = NewEdgeServiceHandler(env)
 	handlers.Enrollment = NewEnrollmentHandler(env)
 	handlers.EventLog = NewEventLogHandler(env)
+	handlers.ExternalJwtSigner = NewExternalJwtSignerHandler(env)
 	handlers.GeoRegion = NewGeoRegionHandler(env)
 	handlers.Identity = NewIdentityHandler(env)
 	handlers.IdentityType = NewIdentityTypeHandler(env)

@@ -9,6 +9,7 @@ parameters:
     enum:
       - password
       - cert
+      - ext-jwt
 paths:
   authenticate:
     parameters:

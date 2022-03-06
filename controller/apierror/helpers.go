@@ -329,3 +329,11 @@ func NewInvalidClientCertificate() *errorz.ApiError {
 		Status:  InvalidClientCertStatus,
 	}
 }
+
+func NewInvalidCertificatePem() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    InvalidCertificatePemCode,
+		Message: InvalidCertificatePemMessage,
+		Status:  InvalidCertificatePemStatus,
+	}
+}

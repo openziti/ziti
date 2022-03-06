@@ -463,7 +463,8 @@ func init() {
         {
           "enum": [
             "password",
-            "cert"
+            "cert",
+            "ext-jwt"
           ],
           "type": "string",
           "name": "method",
@@ -21977,7 +21978,8 @@ func init() {
         {
           "enum": [
             "password",
-            "cert"
+            "cert",
+            "ext-jwt"
           ],
           "type": "string",
           "name": "method",
