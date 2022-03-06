@@ -491,6 +491,9 @@ definitions:
       authPolicyId:
         type: string
         x-nullable: true
+      externalId:
+        type: string
+        x-nullable: true
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:
@@ -511,7 +514,6 @@ definitions:
       - type
       - name
       - isAdmin
-      - authPolicyId
     properties:
       name:
         type: string
@@ -521,6 +523,10 @@ definitions:
         type: boolean
       authPolicyId:
         type: string
+        x-nullable: true
+      externalId:
+        type: string
+        x-nullable: true
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:
@@ -548,6 +554,9 @@ definitions:
         type: boolean
         x-nullable: true
       authPolicyId:
+        type: string
+        x-nullable: true
+      externalId:
         type: string
         x-nullable: true
       roleAttributes:

@@ -178,6 +178,15 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 			return
 		}
 
+		if uie, ok := err.(*boltz.UniqueIndexDuplicateError); ok {
+			rc.RespondWithFieldError(&errorz.FieldError{
+				Reason:     uie.Error(),
+				FieldName:  uie.Field,
+				FieldValue: uie.Value,
+			})
+			return
+		}
+
 		rc.RespondWithError(err)
 		return
 	}

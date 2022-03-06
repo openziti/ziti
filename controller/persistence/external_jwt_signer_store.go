@@ -33,6 +33,10 @@ const (
 	FieldExternalJwtSignerEnabled         = "enabled"
 	FieldExternalJwtSignerExternalAuthUrl = "externalAuthUrl"
 	FieldExternalJwtSignerAuthPolicies    = "authPolicies"
+	FieldExternalJwtSignerClaimsProperty  = "claimsProperty"
+	FieldExternalJwtSignerUseExternalId   = "useExternalId"
+
+	DefaultClaimsProperty = "sub"
 )
 
 type ExternalJwtSigner struct {
@@ -45,6 +49,8 @@ type ExternalJwtSigner struct {
 	NotBefore       *time.Time
 	Enabled         bool
 	ExternalAuthUrl *string
+	ClaimsProperty  *string
+	UseExternalId   bool
 }
 
 func (entity *ExternalJwtSigner) GetName() string {
@@ -61,6 +67,8 @@ func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.Typ
 	entity.NotBefore = bucket.GetTime(FieldExternalJwtSignerNotBefore)
 	entity.Enabled = bucket.GetBoolWithDefault(FieldExternalJwtSignerEnabled, false)
 	entity.ExternalAuthUrl = bucket.GetString(FieldExternalJwtSignerExternalAuthUrl)
+	entity.ClaimsProperty = bucket.GetString(FieldExternalJwtSignerClaimsProperty)
+	entity.UseExternalId = bucket.GetBoolWithDefault(FieldExternalJwtSignerUseExternalId, false)
 }
 
 func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
@@ -73,6 +81,14 @@ func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetTimeP(FieldExternalJwtSignerNotBefore, entity.NotBefore)
 	ctx.SetBool(FieldExternalJwtSignerEnabled, entity.Enabled)
 	ctx.SetStringP(FieldExternalJwtSignerExternalAuthUrl, entity.ExternalAuthUrl)
+	ctx.SetBool(FieldExternalJwtSignerUseExternalId, entity.UseExternalId)
+
+	if entity.ClaimsProperty == nil || *entity.ClaimsProperty == "" {
+		ctx.SetString(FieldExternalJwtSignerClaimsProperty, DefaultClaimsProperty)
+	} else {
+		ctx.SetStringP(FieldExternalJwtSignerClaimsProperty, entity.ClaimsProperty)
+	}
+
 }
 
 func (entity *ExternalJwtSigner) GetEntityType() string {
@@ -97,9 +113,10 @@ func newExternalJwtSignerStore(stores *stores) *externalJwtSignerStoreImpl {
 type externalJwtSignerStoreImpl struct {
 	*baseStore
 	indexName          boltz.ReadIndex
-	indexFingerprint   boltz.EntitySymbol
+	symbolFingerprint  boltz.EntitySymbol
 	symbolEnrollments  boltz.EntitySetSymbol
 	symbolAuthPolicies boltz.EntitySetSymbol
+	fingerprintIndex   boltz.ReadIndex
 }
 
 func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
@@ -109,7 +126,8 @@ func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
 func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
-	store.indexFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
+	store.symbolFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
+	store.fingerprintIndex = store.AddUniqueIndex(store.symbolFingerprint)
 
 	store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerCertPem, ast.NodeTypeString)
@@ -117,6 +135,8 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldExternalJwtSignerNotAfter, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerNotBefore, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerClaimsProperty, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerUseExternalId, ast.NodeTypeBool)
 
 	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
 }

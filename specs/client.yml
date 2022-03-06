@@ -3359,6 +3359,7 @@ definitions:
       - serviceHostingCosts
       - defaultHostingCost
       - authPolicyId
+      - externalId
       properties:
         appData:
           $ref: '#/definitions/tags'
@@ -3374,6 +3375,8 @@ definitions:
           $ref: '#/definitions/identityEnrollments'
         envInfo:
           $ref: '#/definitions/envInfo'
+        externalId:
+          type: string
         hasApiSession:
           type: boolean
         hasEdgeRouterConnection:

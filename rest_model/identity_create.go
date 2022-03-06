@@ -58,6 +58,9 @@ type IdentityCreate struct {
 	// enrollment
 	Enrollment *IdentityCreateEnrollment `json:"enrollment,omitempty"`
 
+	// external Id
+	ExternalID *string `json:"externalId,omitempty"`
+
 	// is admin
 	// Required: true
 	IsAdmin *bool `json:"isAdmin"`

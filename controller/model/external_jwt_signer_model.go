@@ -28,16 +28,14 @@ import (
 	"time"
 )
 
-const (
-	ExternalJwtSignerUser = "User"
-)
-
 type ExternalJwtSigner struct {
 	models.BaseEntity
 	Name            string
 	CertPem         string
 	Enabled         bool
 	ExternalAuthUrl *string
+	UseExternalId   bool
+	ClaimsProperty  *string
 
 	CommonName  string
 	Fingerprint string
@@ -66,6 +64,8 @@ func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
 		NotBefore:       &signerCert.NotBefore,
 		Enabled:         entity.Enabled,
 		ExternalAuthUrl: entity.ExternalAuthUrl,
+		UseExternalId:   entity.UseExternalId,
+		ClaimsProperty:  entity.ClaimsProperty,
 	}
 
 	return signer, nil
@@ -86,6 +86,8 @@ func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.
 		CertPem:         entity.CertPem,
 		Enabled:         entity.Enabled,
 		ExternalAuthUrl: entity.ExternalAuthUrl,
+		UseExternalId:   entity.UseExternalId,
+		ClaimsProperty:  entity.ClaimsProperty,
 	}
 
 	if entity.CertPem != "" {
@@ -121,5 +123,7 @@ func (entity *ExternalJwtSigner) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity bol
 	entity.NotBefore = *boltExternalJwtSigner.NotBefore
 	entity.NotAfter = *boltExternalJwtSigner.NotAfter
 	entity.ExternalAuthUrl = boltExternalJwtSigner.ExternalAuthUrl
+	entity.ClaimsProperty = boltExternalJwtSigner.ClaimsProperty
+	entity.UseExternalId = boltExternalJwtSigner.UseExternalId
 	return nil
 }

@@ -52,24 +52,30 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 	notBefore := strfmt.DateTime(externalJwtSigner.NotBefore)
 
 	ret := &rest_model.ExternalJWTSignerDetail{
-		BaseEntity:  BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
-		CertPem:     &externalJwtSigner.CertPem,
-		CommonName:  &externalJwtSigner.CommonName,
-		Enabled:     &externalJwtSigner.Enabled,
-		Fingerprint: &externalJwtSigner.Fingerprint,
-		Name:        &externalJwtSigner.Name,
-		NotAfter:    &notAfter,
-		NotBefore:   &notBefore,
+		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
+		CertPem:         &externalJwtSigner.CertPem,
+		ClaimsProperty:  externalJwtSigner.ClaimsProperty,
+		CommonName:      &externalJwtSigner.CommonName,
+		Enabled:         &externalJwtSigner.Enabled,
+		ExternalAuthURL: externalJwtSigner.ExternalAuthUrl,
+		Fingerprint:     &externalJwtSigner.Fingerprint,
+		Name:            &externalJwtSigner.Name,
+		NotAfter:        &notAfter,
+		NotBefore:       &notBefore,
+		UseExternalID:   &externalJwtSigner.UseExternalId,
 	}
 	return ret
 }
 
 func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreate) *model.ExternalJwtSigner {
 	return &model.ExternalJwtSigner{
-		BaseEntity: models.BaseEntity{},
-		Name:       *signer.Name,
-		CertPem:    *signer.CertPem,
-		Enabled:    *signer.Enabled,
+		BaseEntity:      models.BaseEntity{},
+		Name:            *signer.Name,
+		CertPem:         *signer.CertPem,
+		Enabled:         *signer.Enabled,
+		ExternalAuthUrl: signer.ExternalAuthURL,
+		ClaimsProperty:  signer.ClaimsProperty,
+		UseExternalId:   BoolOrDefault(signer.UseExternalID),
 	}
 }
 
@@ -85,18 +91,16 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 			Tags:     tags,
 			IsSystem: false,
 		},
-		Name:    *signer.Name,
-		CertPem: *signer.CertPem,
-		Enabled: *signer.Enabled,
+		Name:            *signer.Name,
+		CertPem:         *signer.CertPem,
+		Enabled:         *signer.Enabled,
+		UseExternalId:   BoolOrDefault(signer.UseExternalID),
+		ClaimsProperty:  signer.ClaimsProperty,
+		ExternalAuthUrl: signer.ExternalAuthURL,
 	}
 }
 
 func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTSignerPatch) *model.ExternalJwtSigner {
-	enabled := false
-	if signer.Enabled != nil {
-		enabled = *signer.Enabled
-	}
-
 	var tags map[string]interface{}
 	if signer.Tags != nil && signer.Tags.SubTags != nil {
 		tags = signer.Tags.SubTags
@@ -108,8 +112,11 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 			Tags:     tags,
 			IsSystem: false,
 		},
-		Name:    stringz.OrEmpty(signer.Name),
-		CertPem: stringz.OrEmpty(signer.CertPem),
-		Enabled: enabled,
+		Name:            stringz.OrEmpty(signer.Name),
+		CertPem:         stringz.OrEmpty(signer.CertPem),
+		Enabled:         BoolOrDefault(signer.Enabled),
+		ExternalAuthUrl: signer.ExternalAuthURL,
+		UseExternalId:   BoolOrDefault(signer.UseExternalID),
+		ClaimsProperty:  signer.ClaimsProperty,
 	}
 }

@@ -47,12 +47,15 @@ type ExternalJWTSignerUpdate struct {
 	// Required: true
 	CertPem *string `json:"certPem"`
 
+	// claims property
+	ClaimsProperty *string `json:"claimsProperty,omitempty"`
+
 	// enabled
 	// Required: true
 	Enabled *bool `json:"enabled"`
 
 	// external auth Url
-	ExternalAuthURL string `json:"externalAuthUrl,omitempty"`
+	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
 
 	// name
 	// Example: MyApps Signer
@@ -61,6 +64,9 @@ type ExternalJWTSignerUpdate struct {
 
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
+
+	// use external Id
+	UseExternalID *bool `json:"useExternalId,omitempty"`
 }
 
 // Validate validates this external Jwt signer update

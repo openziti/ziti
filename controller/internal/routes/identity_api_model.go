@@ -125,6 +125,7 @@ func MapCreateIdentityToModel(identity *rest_model.IdentityCreate, identityTypeI
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
+		ExternalId:                identity.ExternalID,
 	}
 
 	if identity.Enrollment != nil {
@@ -269,6 +270,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		ServiceHostingCosts:       getRestServiceHostingCosts(identity.ServiceHostingCosts),
 		IsMfaEnabled:              &isMfaEnabled,
 		AppData:                   &appData,
+		AuthPolicyID:              &identity.AuthPolicyId,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

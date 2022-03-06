@@ -175,6 +175,8 @@ definitions:
           - notAfter
           - notBefore
           - externalAuthUrl
+          - claimsProperty
+          - useExternalId
         properties:
           name:
             type: string
@@ -196,6 +198,10 @@ definitions:
           externalAuthUrl:
             type: string
             format: url
+          claimsProperty:
+            type: string
+          useExternalId:
+            type: boolean
   externalJwtSignerCreate:
     description: A create Certificate Authority (CA) object
     type: object
@@ -214,6 +220,13 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      claimsProperty:
+        type: string
+        x-nullable: true
+      useExternalId:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   externalJwtSignerUpdate:
@@ -233,6 +246,13 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      claimsProperty:
+        type: string
+        x-nullable: true
+      useExternalId:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   externalJwtSignerPatch:
@@ -251,6 +271,12 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      claimsProperty:
+        type: string
+        x-nullable: true
+      useExternalId:
+        type: boolean
         x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'

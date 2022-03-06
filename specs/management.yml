@@ -13605,16 +13605,23 @@ definitions:
     properties:
       certPem:
         type: string
+      claimsProperty:
+        type: string
+        x-nullable: true
       enabled:
         type: boolean
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
       name:
         type: string
         example: MyApps Signer
       tags:
         $ref: '#/definitions/tags'
+      useExternalId:
+        type: boolean
+        x-nullable: true
   externalJwtSignerDetail:
     description: A External JWT Signer resource
     type: object
@@ -13630,8 +13637,12 @@ definitions:
       - notAfter
       - notBefore
       - externalAuthUrl
+      - claimsProperty
+      - useExternalId
       properties:
         certPem:
+          type: string
+        claimsProperty:
           type: string
         commonName:
           type: string
@@ -13651,6 +13662,8 @@ definitions:
         notBefore:
           type: string
           format: date-time
+        useExternalId:
+          type: boolean
   externalJwtSignerList:
     description: An array of External JWT Signers resources
     type: array
@@ -13662,6 +13675,9 @@ definitions:
       certPem:
         type: string
         x-nullable: true
+      claimsProperty:
+        type: string
+        x-nullable: true
       enabled:
         type: boolean
         x-nullable: true
@@ -13675,6 +13691,9 @@ definitions:
         example: MyApps Signer
       tags:
         $ref: '#/definitions/tags'
+      useExternalId:
+        type: boolean
+        x-nullable: true
   externalJwtSignerUpdate:
     type: object
     required:
@@ -13684,16 +13703,23 @@ definitions:
     properties:
       certPem:
         type: string
+      claimsProperty:
+        type: string
+        x-nullable: true
       enabled:
         type: boolean
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
       name:
         type: string
         example: MyApps Signer
       tags:
         $ref: '#/definitions/tags'
+      useExternalId:
+        type: boolean
+        x-nullable: true
   failedServiceRequest:
     type: object
     properties:
@@ -13775,6 +13801,9 @@ definitions:
             type: string
           updb:
             type: string
+      externalId:
+        type: string
+        x-nullable: true
       isAdmin:
         type: boolean
       name:
@@ -13813,6 +13842,7 @@ definitions:
       - serviceHostingCosts
       - defaultHostingCost
       - authPolicyId
+      - externalId
       properties:
         appData:
           $ref: '#/definitions/tags'
@@ -13828,6 +13858,8 @@ definitions:
           $ref: '#/definitions/identityEnrollments'
         envInfo:
           $ref: '#/definitions/envInfo'
+        externalId:
+          type: string
         hasApiSession:
           type: boolean
         hasEdgeRouterConnection:
@@ -13944,6 +13976,9 @@ definitions:
         $ref: '#/definitions/terminatorCost'
       defaultHostingPrecedence:
         $ref: '#/definitions/terminatorPrecedence'
+      externalId:
+        type: string
+        x-nullable: true
       isAdmin:
         type: boolean
         x-nullable: true
@@ -13985,16 +14020,19 @@ definitions:
     - type
     - name
     - isAdmin
-    - authPolicyId
     properties:
       appData:
         $ref: '#/definitions/tags'
       authPolicyId:
         type: string
+        x-nullable: true
       defaultHostingCost:
         $ref: '#/definitions/terminatorCost'
       defaultHostingPrecedence:
         $ref: '#/definitions/terminatorPrecedence'
+      externalId:
+        type: string
+        x-nullable: true
       isAdmin:
         type: boolean
       name:
