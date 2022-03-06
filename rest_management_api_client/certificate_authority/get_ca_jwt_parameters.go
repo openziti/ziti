@@ -40,48 +40,48 @@ import (
 	"github.com/go-openapi/strfmt"
 )
 
-// NewGetCaJwtParams creates a new GetCaJwtParams object,
+// NewGetCaJWTParams creates a new GetCaJWTParams object,
 // with the default timeout for this client.
 //
 // Default values are not hydrated, since defaults are normally applied by the API server side.
 //
 // To enforce default values in parameter, use SetDefaults or WithDefaults.
-func NewGetCaJwtParams() *GetCaJwtParams {
-	return &GetCaJwtParams{
+func NewGetCaJWTParams() *GetCaJWTParams {
+	return &GetCaJWTParams{
 		timeout: cr.DefaultTimeout,
 	}
 }
 
-// NewGetCaJwtParamsWithTimeout creates a new GetCaJwtParams object
+// NewGetCaJWTParamsWithTimeout creates a new GetCaJWTParams object
 // with the ability to set a timeout on a request.
-func NewGetCaJwtParamsWithTimeout(timeout time.Duration) *GetCaJwtParams {
-	return &GetCaJwtParams{
+func NewGetCaJWTParamsWithTimeout(timeout time.Duration) *GetCaJWTParams {
+	return &GetCaJWTParams{
 		timeout: timeout,
 	}
 }
 
-// NewGetCaJwtParamsWithContext creates a new GetCaJwtParams object
+// NewGetCaJWTParamsWithContext creates a new GetCaJWTParams object
 // with the ability to set a context for a request.
-func NewGetCaJwtParamsWithContext(ctx context.Context) *GetCaJwtParams {
-	return &GetCaJwtParams{
+func NewGetCaJWTParamsWithContext(ctx context.Context) *GetCaJWTParams {
+	return &GetCaJWTParams{
 		Context: ctx,
 	}
 }
 
-// NewGetCaJwtParamsWithHTTPClient creates a new GetCaJwtParams object
+// NewGetCaJWTParamsWithHTTPClient creates a new GetCaJWTParams object
 // with the ability to set a custom HTTPClient for a request.
-func NewGetCaJwtParamsWithHTTPClient(client *http.Client) *GetCaJwtParams {
-	return &GetCaJwtParams{
+func NewGetCaJWTParamsWithHTTPClient(client *http.Client) *GetCaJWTParams {
+	return &GetCaJWTParams{
 		HTTPClient: client,
 	}
 }
 
-/* GetCaJwtParams contains all the parameters to send to the API endpoint
-   for the get ca jwt operation.
+/* GetCaJWTParams contains all the parameters to send to the API endpoint
+   for the get ca Jwt operation.
 
    Typically these are written to a http.Request.
 */
-type GetCaJwtParams struct {
+type GetCaJWTParams struct {
 
 	/* ID.
 
@@ -94,67 +94,67 @@ type GetCaJwtParams struct {
 	HTTPClient *http.Client
 }
 
-// WithDefaults hydrates default values in the get ca jwt params (not the query body).
+// WithDefaults hydrates default values in the get ca Jwt params (not the query body).
 //
 // All values with no default are reset to their zero value.
-func (o *GetCaJwtParams) WithDefaults() *GetCaJwtParams {
+func (o *GetCaJWTParams) WithDefaults() *GetCaJWTParams {
 	o.SetDefaults()
 	return o
 }
 
-// SetDefaults hydrates default values in the get ca jwt params (not the query body).
+// SetDefaults hydrates default values in the get ca Jwt params (not the query body).
 //
 // All values with no default are reset to their zero value.
-func (o *GetCaJwtParams) SetDefaults() {
+func (o *GetCaJWTParams) SetDefaults() {
 	// no default values defined for this parameter
 }
 
-// WithTimeout adds the timeout to the get ca jwt params
-func (o *GetCaJwtParams) WithTimeout(timeout time.Duration) *GetCaJwtParams {
+// WithTimeout adds the timeout to the get ca Jwt params
+func (o *GetCaJWTParams) WithTimeout(timeout time.Duration) *GetCaJWTParams {
 	o.SetTimeout(timeout)
 	return o
 }
 
-// SetTimeout adds the timeout to the get ca jwt params
-func (o *GetCaJwtParams) SetTimeout(timeout time.Duration) {
+// SetTimeout adds the timeout to the get ca Jwt params
+func (o *GetCaJWTParams) SetTimeout(timeout time.Duration) {
 	o.timeout = timeout
 }
 
-// WithContext adds the context to the get ca jwt params
-func (o *GetCaJwtParams) WithContext(ctx context.Context) *GetCaJwtParams {
+// WithContext adds the context to the get ca Jwt params
+func (o *GetCaJWTParams) WithContext(ctx context.Context) *GetCaJWTParams {
 	o.SetContext(ctx)
 	return o
 }
 
-// SetContext adds the context to the get ca jwt params
-func (o *GetCaJwtParams) SetContext(ctx context.Context) {
+// SetContext adds the context to the get ca Jwt params
+func (o *GetCaJWTParams) SetContext(ctx context.Context) {
 	o.Context = ctx
 }
 
-// WithHTTPClient adds the HTTPClient to the get ca jwt params
-func (o *GetCaJwtParams) WithHTTPClient(client *http.Client) *GetCaJwtParams {
+// WithHTTPClient adds the HTTPClient to the get ca Jwt params
+func (o *GetCaJWTParams) WithHTTPClient(client *http.Client) *GetCaJWTParams {
 	o.SetHTTPClient(client)
 	return o
 }
 
-// SetHTTPClient adds the HTTPClient to the get ca jwt params
-func (o *GetCaJwtParams) SetHTTPClient(client *http.Client) {
+// SetHTTPClient adds the HTTPClient to the get ca Jwt params
+func (o *GetCaJWTParams) SetHTTPClient(client *http.Client) {
 	o.HTTPClient = client
 }
 
-// WithID adds the id to the get ca jwt params
-func (o *GetCaJwtParams) WithID(id string) *GetCaJwtParams {
+// WithID adds the id to the get ca Jwt params
+func (o *GetCaJWTParams) WithID(id string) *GetCaJWTParams {
 	o.SetID(id)
 	return o
 }
 
-// SetID adds the id to the get ca jwt params
-func (o *GetCaJwtParams) SetID(id string) {
+// SetID adds the id to the get ca Jwt params
+func (o *GetCaJWTParams) SetID(id string) {
 	o.ID = id
 }
 
 // WriteToRequest writes these params to a swagger request
-func (o *GetCaJwtParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
+func (o *GetCaJWTParams) WriteToRequest(r runtime.ClientRequest, reg strfmt.Registry) error {
 
 	if err := r.SetTimeout(o.timeout); err != nil {
 		return err

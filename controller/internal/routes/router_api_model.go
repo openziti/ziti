@@ -114,7 +114,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 
 		ret.EnrollmentExpiresAt = &expiresAt
 		ret.EnrollmentCreatedAt = &createdAt
-		ret.EnrollmentJwt = &enrollment.Jwt
+		ret.EnrollmentJWT = &enrollment.Jwt
 		ret.EnrollmentToken = &enrollment.Token
 	}
 

@@ -38,13 +38,13 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// ExternalJwtSignerList An array of External JWT Signers resources
+// ExternalJWTSignerList An array of External JWT Signers resources
 //
 // swagger:model externalJwtSignerList
-type ExternalJwtSignerList []*ExternalJwtSignerDetail
+type ExternalJWTSignerList []*ExternalJWTSignerDetail
 
-// Validate validates this external jwt signer list
-func (m ExternalJwtSignerList) Validate(formats strfmt.Registry) error {
+// Validate validates this external Jwt signer list
+func (m ExternalJWTSignerList) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	for i := 0; i < len(m); i++ {
@@ -71,8 +71,8 @@ func (m ExternalJwtSignerList) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validate this external jwt signer list based on the context it is used
-func (m ExternalJwtSignerList) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this external Jwt signer list based on the context it is used
+func (m ExternalJWTSignerList) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	for i := 0; i < len(m); i++ {

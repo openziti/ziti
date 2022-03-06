@@ -59,7 +59,7 @@ mkdir -p "$modelPath"
 
 
 echo "...generating client api server"
-swagger generate server --exclude-main -f "$clientSwagSpec" -s rest_client_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+swagger generate server --exclude-main --additional-initialism=jwt -f "$clientSwagSpec" -s rest_client_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
   echo "Failed to generate client api server. See above."
@@ -67,7 +67,7 @@ if [ ${exit_status} -ne 0 ]; then
 fi
 
 echo "...generating client api client"
-swagger generate client -f "$clientSwagSpec" -c rest_client_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+swagger generate client --additional-initialism=jwt -f "$clientSwagSpec" -c rest_client_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
   echo "Failed to generate client api client. See above."
@@ -75,7 +75,7 @@ if [ ${exit_status} -ne 0 ]; then
 fi
 
 echo "...generating management api server"
-swagger generate server --exclude-main -f "$managementSwagSpec" -s rest_management_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+swagger generate server --exclude-main --additional-initialism=jwt -f "$managementSwagSpec" -s rest_management_api_server -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
   echo "Failed to generate management api server. See above."
@@ -83,7 +83,7 @@ if [ ${exit_status} -ne 0 ]; then
 fi
 
 echo "...generating management api management"
-swagger generate client -f "$managementSwagSpec" -c rest_management_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
+swagger generate client --additional-initialism=jwt -f "$managementSwagSpec" -c rest_management_api_client -t "$zitiEdgeDir" -q -r "$copyrightFile" -m "rest_model"
 exit_status=$?
 if [ ${exit_status} -ne 0 ]; then
   echo "Failed to generate management api client. See above."

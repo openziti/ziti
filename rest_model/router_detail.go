@@ -58,8 +58,8 @@ type RouterDetail struct {
 	// Format: date-time
 	EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-	// enrollment jwt
-	EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+	// enrollment Jwt
+	EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 	// enrollment token
 	EnrollmentToken *string `json:"enrollmentToken,omitempty"`
@@ -108,7 +108,7 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-		EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+		EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 		EnrollmentToken *string `json:"enrollmentToken,omitempty"`
 
@@ -136,7 +136,7 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 	m.EnrollmentExpiresAt = dataAO1.EnrollmentExpiresAt
 
-	m.EnrollmentJwt = dataAO1.EnrollmentJwt
+	m.EnrollmentJWT = dataAO1.EnrollmentJWT
 
 	m.EnrollmentToken = dataAO1.EnrollmentToken
 
@@ -173,7 +173,7 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-		EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+		EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 		EnrollmentToken *string `json:"enrollmentToken,omitempty"`
 
@@ -198,7 +198,7 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 	dataAO1.EnrollmentExpiresAt = m.EnrollmentExpiresAt
 
-	dataAO1.EnrollmentJwt = m.EnrollmentJwt
+	dataAO1.EnrollmentJWT = m.EnrollmentJWT
 
 	dataAO1.EnrollmentToken = m.EnrollmentToken
 

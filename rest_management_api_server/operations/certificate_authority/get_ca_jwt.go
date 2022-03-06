@@ -35,25 +35,25 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// GetCaJwtHandlerFunc turns a function with the right signature into a get ca jwt handler
-type GetCaJwtHandlerFunc func(GetCaJwtParams, interface{}) middleware.Responder
+// GetCaJWTHandlerFunc turns a function with the right signature into a get ca Jwt handler
+type GetCaJWTHandlerFunc func(GetCaJWTParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn GetCaJwtHandlerFunc) Handle(params GetCaJwtParams, principal interface{}) middleware.Responder {
+func (fn GetCaJWTHandlerFunc) Handle(params GetCaJWTParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// GetCaJwtHandler interface for that can handle valid get ca jwt params
-type GetCaJwtHandler interface {
-	Handle(GetCaJwtParams, interface{}) middleware.Responder
+// GetCaJWTHandler interface for that can handle valid get ca Jwt params
+type GetCaJWTHandler interface {
+	Handle(GetCaJWTParams, interface{}) middleware.Responder
 }
 
-// NewGetCaJwt creates a new http.Handler for the get ca jwt operation
-func NewGetCaJwt(ctx *middleware.Context, handler GetCaJwtHandler) *GetCaJwt {
-	return &GetCaJwt{Context: ctx, Handler: handler}
+// NewGetCaJWT creates a new http.Handler for the get ca Jwt operation
+func NewGetCaJWT(ctx *middleware.Context, handler GetCaJWTHandler) *GetCaJWT {
+	return &GetCaJWT{Context: ctx, Handler: handler}
 }
 
-/* GetCaJwt swagger:route GET /cas/{id}/jwt Certificate Authority getCaJwt
+/* GetCaJWT swagger:route GET /cas/{id}/jwt Certificate Authority getCaJwt
 
 Retrieve the enrollment JWT for a CA
 
@@ -62,17 +62,17 @@ the jwt as a text response.
 
 
 */
-type GetCaJwt struct {
+type GetCaJWT struct {
 	Context *middleware.Context
-	Handler GetCaJwtHandler
+	Handler GetCaJWTHandler
 }
 
-func (o *GetCaJwt) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *GetCaJWT) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		*r = *rCtx
 	}
-	var Params = NewGetCaJwtParams()
+	var Params = NewGetCaJWTParams()
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
 		o.Context.Respond(rw, r, route.Produces, route, err)

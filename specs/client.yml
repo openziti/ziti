@@ -2794,7 +2794,7 @@ definitions:
       reason:
         type: string
       value:
-        type: string
+        description: can be any value - string, number, boolean, array or object
   apiSessionDetail:
     description: An API Session object
     type: object
@@ -3358,9 +3358,12 @@ definitions:
       - serviceHostingPrecedences
       - serviceHostingCosts
       - defaultHostingCost
+      - authPolicyId
       properties:
         appData:
           $ref: '#/definitions/tags'
+        authPolicyId:
+          type: string
         authenticators:
           $ref: '#/definitions/identityAuthenticators'
         defaultHostingCost:
@@ -3620,6 +3623,7 @@ definitions:
     type: string
     enum:
     - ziti
+    - url
   osType:
     type: string
     enum:

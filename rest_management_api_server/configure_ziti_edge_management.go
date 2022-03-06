@@ -37,6 +37,7 @@ import (
 
 	"github.com/openziti/edge/rest_management_api_server/operations"
 	"github.com/openziti/edge/rest_management_api_server/operations/api_session"
+	"github.com/openziti/edge/rest_management_api_server/operations/auth_policy"
 	"github.com/openziti/edge/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge/rest_management_api_server/operations/authenticator"
 	"github.com/openziti/edge/rest_management_api_server/operations/certificate_authority"
@@ -47,7 +48,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router"
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router_policy"
 	"github.com/openziti/edge/rest_management_api_server/operations/enrollment"
-	"github.com/openziti/edge/rest_management_api_server/operations/external_j_w_t_signer"
+	"github.com/openziti/edge/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_management_api_server/operations/posture_checks"
@@ -83,7 +84,7 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 	api.JSONConsumer = runtime.JSONConsumer()
 	api.TxtConsumer = runtime.TextConsumer()
 
-	api.ApplicationJwtProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
+	api.ApplicationJWTProducer = runtime.ProducerFunc(func(w io.Writer, data interface{}) error {
 		return errors.NotImplemented("applicationJwt producer has not yet been implemented")
 	})
 	api.BinProducer = runtime.ByteStreamProducer()
@@ -130,6 +131,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
 		})
 	}
+	if api.AuthPolicyCreateAuthPolicyHandler == nil {
+		api.AuthPolicyCreateAuthPolicyHandler = auth_policy.CreateAuthPolicyHandlerFunc(func(params auth_policy.CreateAuthPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.CreateAuthPolicy has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorCreateAuthenticatorHandler == nil {
 		api.AuthenticatorCreateAuthenticatorHandler = authenticator.CreateAuthenticatorHandlerFunc(func(params authenticator.CreateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.CreateAuthenticator has not yet been implemented")
@@ -165,9 +171,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation edge_router_policy.CreateEdgeRouterPolicy has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerCreateExternalJwtSignerHandler == nil {
-		api.ExternaljwtSignerCreateExternalJwtSignerHandler = external_j_w_t_signer.CreateExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.CreateExternalJwtSignerParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.CreateExternalJwtSigner has not yet been implemented")
+	if api.ExternalJWTSignerCreateExternalJWTSignerHandler == nil {
+		api.ExternalJWTSignerCreateExternalJWTSignerHandler = external_jwt_signer.CreateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.CreateExternalJWTSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.CreateExternalJWTSigner has not yet been implemented")
 		})
 	}
 	if api.IdentityCreateIdentityHandler == nil {
@@ -225,6 +231,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation api_session.DeleteAPISessions has not yet been implemented")
 		})
 	}
+	if api.AuthPolicyDeleteAuthPolicyHandler == nil {
+		api.AuthPolicyDeleteAuthPolicyHandler = auth_policy.DeleteAuthPolicyHandlerFunc(func(params auth_policy.DeleteAuthPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.DeleteAuthPolicy has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorDeleteAuthenticatorHandler == nil {
 		api.AuthenticatorDeleteAuthenticatorHandler = authenticator.DeleteAuthenticatorHandlerFunc(func(params authenticator.DeleteAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.DeleteAuthenticator has not yet been implemented")
@@ -260,9 +271,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation enrollment.DeleteEnrollment has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerDeleteExternalJwtSignerHandler == nil {
-		api.ExternaljwtSignerDeleteExternalJwtSignerHandler = external_j_w_t_signer.DeleteExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.DeleteExternalJwtSignerParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.DeleteExternalJwtSigner has not yet been implemented")
+	if api.ExternalJWTSignerDeleteExternalJWTSignerHandler == nil {
+		api.ExternalJWTSignerDeleteExternalJWTSignerHandler = external_jwt_signer.DeleteExternalJWTSignerHandlerFunc(func(params external_jwt_signer.DeleteExternalJWTSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.DeleteExternalJWTSigner has not yet been implemented")
 		})
 	}
 	if api.IdentityDeleteIdentityHandler == nil {
@@ -320,6 +331,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation api_session.DetailAPISessions has not yet been implemented")
 		})
 	}
+	if api.AuthPolicyDetailAuthPolicyHandler == nil {
+		api.AuthPolicyDetailAuthPolicyHandler = auth_policy.DetailAuthPolicyHandlerFunc(func(params auth_policy.DetailAuthPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.DetailAuthPolicy has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorDetailAuthenticatorHandler == nil {
 		api.AuthenticatorDetailAuthenticatorHandler = authenticator.DetailAuthenticatorHandlerFunc(func(params authenticator.DetailAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.DetailAuthenticator has not yet been implemented")
@@ -360,9 +376,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation enrollment.DetailEnrollment has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerDetailExternalJwtSignerHandler == nil {
-		api.ExternaljwtSignerDetailExternalJwtSignerHandler = external_j_w_t_signer.DetailExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.DetailExternalJwtSignerParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.DetailExternalJwtSigner has not yet been implemented")
+	if api.ExternalJWTSignerDetailExternalJWTSignerHandler == nil {
+		api.ExternalJWTSignerDetailExternalJWTSignerHandler = external_jwt_signer.DetailExternalJWTSignerHandlerFunc(func(params external_jwt_signer.DetailExternalJWTSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.DetailExternalJWTSigner has not yet been implemented")
 		})
 	}
 	if api.IdentityDetailIdentityHandler == nil {
@@ -475,9 +491,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		})
 	}
-	if api.CertificateAuthorityGetCaJwtHandler == nil {
-		api.CertificateAuthorityGetCaJwtHandler = certificate_authority.GetCaJwtHandlerFunc(func(params certificate_authority.GetCaJwtParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation certificate_authority.GetCaJwt has not yet been implemented")
+	if api.CertificateAuthorityGetCaJWTHandler == nil {
+		api.CertificateAuthorityGetCaJWTHandler = certificate_authority.GetCaJWTHandlerFunc(func(params certificate_authority.GetCaJWTParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation certificate_authority.GetCaJWT has not yet been implemented")
 		})
 	}
 	if api.CurrentAPISessionGetCurrentAPISessionHandler == nil {
@@ -513,6 +529,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 	if api.APISessionListAPISessionsHandler == nil {
 		api.APISessionListAPISessionsHandler = api_session.ListAPISessionsHandlerFunc(func(params api_session.ListAPISessionsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation api_session.ListAPISessions has not yet been implemented")
+		})
+	}
+	if api.AuthPolicyListAuthPoliciesHandler == nil {
+		api.AuthPolicyListAuthPoliciesHandler = auth_policy.ListAuthPoliciesHandlerFunc(func(params auth_policy.ListAuthPoliciesParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.ListAuthPolicies has not yet been implemented")
 		})
 	}
 	if api.AuthenticatorListAuthenticatorsHandler == nil {
@@ -595,9 +616,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation enrollment.ListEnrollments has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerListExternalJwtSignersHandler == nil {
-		api.ExternaljwtSignerListExternalJwtSignersHandler = external_j_w_t_signer.ListExternalJwtSignersHandlerFunc(func(params external_j_w_t_signer.ListExternalJwtSignersParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.ListExternalJwtSigners has not yet been implemented")
+	if api.ExternalJWTSignerListExternalJWTSignersHandler == nil {
+		api.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer.ListExternalJWTSignersParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.ListExternalJWTSigners has not yet been implemented")
 		})
 	}
 	if api.IdentityListIdentitiesHandler == nil {
@@ -765,6 +786,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation informational.ListVersion has not yet been implemented")
 		})
 	}
+	if api.AuthPolicyPatchAuthPolicyHandler == nil {
+		api.AuthPolicyPatchAuthPolicyHandler = auth_policy.PatchAuthPolicyHandlerFunc(func(params auth_policy.PatchAuthPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.PatchAuthPolicy has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorPatchAuthenticatorHandler == nil {
 		api.AuthenticatorPatchAuthenticatorHandler = authenticator.PatchAuthenticatorHandlerFunc(func(params authenticator.PatchAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.PatchAuthenticator has not yet been implemented")
@@ -800,9 +826,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation edge_router_policy.PatchEdgeRouterPolicy has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerPatchExternalJwtSignerHandler == nil {
-		api.ExternaljwtSignerPatchExternalJwtSignerHandler = external_j_w_t_signer.PatchExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.PatchExternalJwtSignerParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.PatchExternalJwtSigner has not yet been implemented")
+	if api.ExternalJWTSignerPatchExternalJWTSignerHandler == nil {
+		api.ExternalJWTSignerPatchExternalJWTSignerHandler = external_jwt_signer.PatchExternalJWTSignerHandlerFunc(func(params external_jwt_signer.PatchExternalJWTSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.PatchExternalJWTSigner has not yet been implemented")
 		})
 	}
 	if api.IdentityPatchIdentityHandler == nil {
@@ -860,6 +886,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.RemoveIdentityMfa has not yet been implemented")
 		})
 	}
+	if api.AuthPolicyUpdateAuthPolicyHandler == nil {
+		api.AuthPolicyUpdateAuthPolicyHandler = auth_policy.UpdateAuthPolicyHandlerFunc(func(params auth_policy.UpdateAuthPolicyParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation auth_policy.UpdateAuthPolicy has not yet been implemented")
+		})
+	}
 	if api.AuthenticatorUpdateAuthenticatorHandler == nil {
 		api.AuthenticatorUpdateAuthenticatorHandler = authenticator.UpdateAuthenticatorHandlerFunc(func(params authenticator.UpdateAuthenticatorParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation authenticator.UpdateAuthenticator has not yet been implemented")
@@ -895,9 +926,9 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation edge_router_policy.UpdateEdgeRouterPolicy has not yet been implemented")
 		})
 	}
-	if api.ExternaljwtSignerUpdateExternalJwtSignerHandler == nil {
-		api.ExternaljwtSignerUpdateExternalJwtSignerHandler = external_j_w_t_signer.UpdateExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.UpdateExternalJwtSignerParams, principal interface{}) middleware.Responder {
-			return middleware.NotImplemented("operation external_j_w_t_signer.UpdateExternalJwtSigner has not yet been implemented")
+	if api.ExternalJWTSignerUpdateExternalJWTSignerHandler == nil {
+		api.ExternalJWTSignerUpdateExternalJWTSignerHandler = external_jwt_signer.UpdateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.UpdateExternalJWTSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.UpdateExternalJWTSigner has not yet been implemented")
 		})
 	}
 	if api.IdentityUpdateIdentityHandler == nil {

@@ -39,28 +39,28 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// GetCaJwtReader is a Reader for the GetCaJwt structure.
-type GetCaJwtReader struct {
+// GetCaJWTReader is a Reader for the GetCaJWT structure.
+type GetCaJWTReader struct {
 	formats strfmt.Registry
 }
 
 // ReadResponse reads a server response into the received o.
-func (o *GetCaJwtReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
+func (o *GetCaJWTReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
 	case 200:
-		result := NewGetCaJwtOK()
+		result := NewGetCaJWTOK()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return result, nil
 	case 401:
-		result := NewGetCaJwtUnauthorized()
+		result := NewGetCaJWTUnauthorized()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
 		return nil, result
 	case 404:
-		result := NewGetCaJwtNotFound()
+		result := NewGetCaJWTNotFound()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -70,27 +70,27 @@ func (o *GetCaJwtReader) ReadResponse(response runtime.ClientResponse, consumer 
 	}
 }
 
-// NewGetCaJwtOK creates a GetCaJwtOK with default headers values
-func NewGetCaJwtOK() *GetCaJwtOK {
-	return &GetCaJwtOK{}
+// NewGetCaJWTOK creates a GetCaJWTOK with default headers values
+func NewGetCaJWTOK() *GetCaJWTOK {
+	return &GetCaJWTOK{}
 }
 
-/* GetCaJwtOK describes a response with status code 200, with default header values.
+/* GetCaJWTOK describes a response with status code 200, with default header values.
 
 The result is the JWT text to validate the CA
 */
-type GetCaJwtOK struct {
+type GetCaJWTOK struct {
 	Payload string
 }
 
-func (o *GetCaJwtOK) Error() string {
+func (o *GetCaJWTOK) Error() string {
 	return fmt.Sprintf("[GET /cas/{id}/jwt][%d] getCaJwtOK  %+v", 200, o.Payload)
 }
-func (o *GetCaJwtOK) GetPayload() string {
+func (o *GetCaJWTOK) GetPayload() string {
 	return o.Payload
 }
 
-func (o *GetCaJwtOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *GetCaJWTOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	// response payload
 	if err := consumer.Consume(response.Body(), &o.Payload); err != nil && err != io.EOF {
@@ -100,27 +100,27 @@ func (o *GetCaJwtOK) readResponse(response runtime.ClientResponse, consumer runt
 	return nil
 }
 
-// NewGetCaJwtUnauthorized creates a GetCaJwtUnauthorized with default headers values
-func NewGetCaJwtUnauthorized() *GetCaJwtUnauthorized {
-	return &GetCaJwtUnauthorized{}
+// NewGetCaJWTUnauthorized creates a GetCaJWTUnauthorized with default headers values
+func NewGetCaJWTUnauthorized() *GetCaJWTUnauthorized {
+	return &GetCaJWTUnauthorized{}
 }
 
-/* GetCaJwtUnauthorized describes a response with status code 401, with default header values.
+/* GetCaJWTUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
-type GetCaJwtUnauthorized struct {
+type GetCaJWTUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *GetCaJwtUnauthorized) Error() string {
+func (o *GetCaJWTUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /cas/{id}/jwt][%d] getCaJwtUnauthorized  %+v", 401, o.Payload)
 }
-func (o *GetCaJwtUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *GetCaJWTUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *GetCaJwtUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *GetCaJWTUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 
@@ -132,27 +132,27 @@ func (o *GetCaJwtUnauthorized) readResponse(response runtime.ClientResponse, con
 	return nil
 }
 
-// NewGetCaJwtNotFound creates a GetCaJwtNotFound with default headers values
-func NewGetCaJwtNotFound() *GetCaJwtNotFound {
-	return &GetCaJwtNotFound{}
+// NewGetCaJWTNotFound creates a GetCaJWTNotFound with default headers values
+func NewGetCaJWTNotFound() *GetCaJWTNotFound {
+	return &GetCaJWTNotFound{}
 }
 
-/* GetCaJwtNotFound describes a response with status code 404, with default header values.
+/* GetCaJWTNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
-type GetCaJwtNotFound struct {
+type GetCaJWTNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
-func (o *GetCaJwtNotFound) Error() string {
+func (o *GetCaJWTNotFound) Error() string {
 	return fmt.Sprintf("[GET /cas/{id}/jwt][%d] getCaJwtNotFound  %+v", 404, o.Payload)
 }
-func (o *GetCaJwtNotFound) GetPayload() *rest_model.APIErrorEnvelope {
+func (o *GetCaJWTNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
 
-func (o *GetCaJwtNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *GetCaJWTNotFound) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

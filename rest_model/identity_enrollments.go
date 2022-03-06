@@ -233,7 +233,7 @@ type IdentityEnrollmentsOtt struct {
 	ID string `json:"id,omitempty"`
 
 	// jwt
-	Jwt string `json:"jwt,omitempty"`
+	JWT string `json:"jwt,omitempty"`
 
 	// token
 	Token string `json:"token,omitempty"`
@@ -307,7 +307,7 @@ type IdentityEnrollmentsOttca struct {
 	ID string `json:"id,omitempty"`
 
 	// jwt
-	Jwt string `json:"jwt,omitempty"`
+	JWT string `json:"jwt,omitempty"`
 
 	// token
 	Token string `json:"token,omitempty"`
@@ -423,7 +423,7 @@ type IdentityEnrollmentsUpdb struct {
 	ID string `json:"id,omitempty"`
 
 	// jwt
-	Jwt string `json:"jwt,omitempty"`
+	JWT string `json:"jwt,omitempty"`
 
 	// token
 	Token string `json:"token,omitempty"`

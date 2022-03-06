@@ -335,6 +335,602 @@ func init() {
         }
       ]
     },
+    "/auth-policies": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of Auth Policies",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "List Auth Policies",
+        "operationId": "listAuthPolicies",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of Auth Policies",
+            "schema": {
+              "$ref": "#/definitions/listAuthPoliciesEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates an Auth Policy. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Creates an Auth Policy",
+        "operationId": "createAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy to create",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyCreate"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth-policies/{id}": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Retrieves a single Auth Policy",
+        "operationId": "detailAuthPolicy",
+        "responses": {
+          "200": {
+            "description": "A singular Auth Policy resource",
+            "schema": {
+              "$ref": "#/definitions/detailAuthPolicyEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Update all fields on an Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Update all fields on an Auth Policy",
+        "operationId": "updateAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy update object",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The update request was successful and the resource has been altered",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Delete an Auth Policy by id. Requires admin access.\n",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Delete an Auth Policy",
+        "operationId": "deleteAuthPolicy",
+        "responses": {
+          "200": {
+            "description": "The delete request was successful and the resource has been removed",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Update only the supplied fields on an Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Update the supplied fields on an Auth Policy",
+        "operationId": "patchAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy patch object",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyPatch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The patch request was successful and the resource has been altered",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
     "/authenticate": {
       "post": {
         "security": [],
@@ -16096,7 +16692,7 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "description": "can be any value - string, number, boolean, array or object"
         }
       }
     },
@@ -16215,6 +16811,281 @@ func init() {
       },
       "x-nullable": true,
       "x-omitempty": true
+    },
+    "authPolicyCreate": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "required": [
+        "name",
+        "primary",
+        "secondary"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "primary": {
+          "$ref": "#/definitions/authPolicyPrimary"
+        },
+        "secondary": {
+          "$ref": "#/definitions/authPolicySecondary"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        }
+      }
+    },
+    "authPolicyDetail": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "primary",
+            "secondary"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "primary": {
+              "$ref": "#/definitions/authPolicyPrimary"
+            },
+            "secondary": {
+              "$ref": "#/definitions/authPolicySecondary"
+            }
+          }
+        }
+      ]
+    },
+    "authPolicyList": {
+      "description": "An array of Auth Policies resources",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/authPolicyDetail"
+      }
+    },
+    "authPolicyPatch": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "primary": {
+          "$ref": "#/definitions/authPolicyPrimaryPatch"
+        },
+        "secondary": {
+          "$ref": "#/definitions/authPolicySecondaryPatch"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        }
+      }
+    },
+    "authPolicyPrimary": {
+      "type": "object",
+      "required": [
+        "updb",
+        "cert",
+        "extJwt"
+      ],
+      "properties": {
+        "cert": {
+          "$ref": "#/definitions/authPolicyPrimaryCert"
+        },
+        "extJwt": {
+          "$ref": "#/definitions/authPolicyPrimaryExtJwt"
+        },
+        "updb": {
+          "$ref": "#/definitions/authPolicyPrimaryUpdb"
+        }
+      }
+    },
+    "authPolicyPrimaryCert": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "allowExpiredCerts"
+      ],
+      "properties": {
+        "allowExpiredCerts": {
+          "type": "boolean"
+        },
+        "allowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicyPrimaryCertPatch": {
+      "type": "object",
+      "properties": {
+        "allowExpiredCerts": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyPrimaryExtJwt": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "allowedSigners"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "allowedSigners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "authPolicyPrimaryExtJwtPatch": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "allowedSigners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyPrimaryPatch": {
+      "type": "object",
+      "properties": {
+        "cert": {
+          "$ref": "#/definitions/authPolicyPrimaryCertPatch"
+        },
+        "extJwt": {
+          "$ref": "#/definitions/authPolicyPrimaryExtJwtPatch"
+        },
+        "updb": {
+          "$ref": "#/definitions/authPolicyPrimaryUpdbPatch"
+        }
+      }
+    },
+    "authPolicyPrimaryUpdb": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "minPasswordLength",
+        "requireSpecialChar",
+        "requireNumberChar",
+        "requireMixedCase",
+        "maxAttempts",
+        "lockoutDurationMinutes"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "lockoutDurationMinutes": {
+          "type": "integer"
+        },
+        "maxAttempts": {
+          "type": "integer"
+        },
+        "minPasswordLength": {
+          "type": "integer"
+        },
+        "requireMixedCase": {
+          "type": "boolean"
+        },
+        "requireNumberChar": {
+          "type": "boolean"
+        },
+        "requireSpecialChar": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicyPrimaryUpdbPatch": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "lockoutDurationMinutes": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "minPasswordLength": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "requireMixedCase": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "requireNumberChar": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "requireSpecialChar": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicySecondary": {
+      "type": "object",
+      "required": [
+        "requireTotp"
+      ],
+      "properties": {
+        "requireExtJwtSigner": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "requireTotp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicySecondaryPatch": {
+      "type": "object",
+      "properties": {
+        "requireExtJwtSigner": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "requireTotp": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyUpdate": {
+      "$ref": "#/definitions/authPolicyCreate"
     },
     "authQueryDetail": {
       "type": "object",
@@ -17070,6 +17941,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/apiSessionDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailAuthPolicyEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/authPolicyDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -17978,6 +18864,10 @@ func init() {
         "enabled": {
           "type": "boolean"
         },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url"
+        },
         "name": {
           "type": "string",
           "example": "MyApps Signer"
@@ -18003,7 +18893,8 @@ func init() {
             "fingerprint",
             "commonName",
             "notAfter",
-            "notBefore"
+            "notBefore",
+            "externalAuthUrl"
           ],
           "properties": {
             "certPem": {
@@ -18014,6 +18905,10 @@ func init() {
             },
             "enabled": {
               "type": "boolean"
+            },
+            "externalAuthUrl": {
+              "type": "string",
+              "format": "url"
             },
             "fingerprint": {
               "type": "string"
@@ -18052,6 +18947,11 @@ func init() {
           "type": "boolean",
           "x-nullable": true
         },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url",
+          "x-nullable": true
+        },
         "name": {
           "type": "string",
           "x-nullable": true,
@@ -18075,6 +18975,10 @@ func init() {
         },
         "enabled": {
           "type": "boolean"
+        },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url"
         },
         "name": {
           "type": "string",
@@ -18181,6 +19085,10 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "authPolicyId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -18249,11 +19157,15 @@ func init() {
             "isMfaEnabled",
             "serviceHostingPrecedences",
             "serviceHostingCosts",
-            "defaultHostingCost"
+            "defaultHostingCost",
+            "authPolicyId"
           ],
           "properties": {
             "appData": {
               "$ref": "#/definitions/tags"
+            },
+            "authPolicyId": {
+              "type": "string"
             },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
@@ -18435,6 +19347,10 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "authPolicyId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -18442,10 +19358,12 @@ func init() {
           "$ref": "#/definitions/terminatorPrecedence"
         },
         "isAdmin": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-nullable": true
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -18500,11 +19418,15 @@ func init() {
       "required": [
         "type",
         "name",
-        "isAdmin"
+        "isAdmin",
+        "authPolicyId"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "authPolicyId": {
+          "type": "string"
         },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
@@ -18570,6 +19492,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/apiSessionList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listAuthPoliciesEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/authPolicyList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -18969,7 +19906,8 @@ func init() {
     "mfaProviders": {
       "type": "string",
       "enum": [
-        "ziti"
+        "ziti",
+        "url"
       ]
     },
     "namedRole": {
@@ -21789,6 +22727,602 @@ func init() {
             }
           },
           "403": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/auth-policies": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of Auth Policies",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "List Auth Policies",
+        "operationId": "listAuthPolicies",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of Auth Policies",
+            "schema": {
+              "$ref": "#/definitions/listAuthPoliciesEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates an Auth Policy. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Creates an Auth Policy",
+        "operationId": "createAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy to create",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyCreate"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth-policies/{id}": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a single Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Retrieves a single Auth Policy",
+        "operationId": "detailAuthPolicy",
+        "responses": {
+          "200": {
+            "description": "A singular Auth Policy resource",
+            "schema": {
+              "$ref": "#/definitions/detailAuthPolicyEnvelope"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Update all fields on an Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Update all fields on an Auth Policy",
+        "operationId": "updateAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy update object",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The update request was successful and the resource has been altered",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Delete an Auth Policy by id. Requires admin access.\n",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Delete an Auth Policy",
+        "operationId": "deleteAuthPolicy",
+        "responses": {
+          "200": {
+            "description": "The delete request was successful and the resource has been removed",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Update only the supplied fields on an Auth Policy by id. Requires admin access.",
+        "tags": [
+          "Auth Policy"
+        ],
+        "summary": "Update the supplied fields on an Auth Policy",
+        "operationId": "patchAuthPolicy",
+        "parameters": [
+          {
+            "description": "An Auth Policy patch object",
+            "name": "authPolicy",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authPolicyPatch"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The patch request was successful and the resource has been altered",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
             "description": "The currently supplied session does not have the correct access rights to request this resource",
             "schema": {
               "$ref": "#/definitions/apiErrorEnvelope"
@@ -37701,7 +39235,7 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "description": "can be any value - string, number, boolean, array or object"
         }
       }
     },
@@ -37820,6 +39354,281 @@ func init() {
       },
       "x-nullable": true,
       "x-omitempty": true
+    },
+    "authPolicyCreate": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "required": [
+        "name",
+        "primary",
+        "secondary"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "primary": {
+          "$ref": "#/definitions/authPolicyPrimary"
+        },
+        "secondary": {
+          "$ref": "#/definitions/authPolicySecondary"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        }
+      }
+    },
+    "authPolicyDetail": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "primary",
+            "secondary"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "primary": {
+              "$ref": "#/definitions/authPolicyPrimary"
+            },
+            "secondary": {
+              "$ref": "#/definitions/authPolicySecondary"
+            }
+          }
+        }
+      ]
+    },
+    "authPolicyList": {
+      "description": "An array of Auth Policies resources",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/authPolicyDetail"
+      }
+    },
+    "authPolicyPatch": {
+      "description": "A Auth Policy resource",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "primary": {
+          "$ref": "#/definitions/authPolicyPrimaryPatch"
+        },
+        "secondary": {
+          "$ref": "#/definitions/authPolicySecondaryPatch"
+        },
+        "tags": {
+          "$ref": "#/definitions/tags"
+        }
+      }
+    },
+    "authPolicyPrimary": {
+      "type": "object",
+      "required": [
+        "updb",
+        "cert",
+        "extJwt"
+      ],
+      "properties": {
+        "cert": {
+          "$ref": "#/definitions/authPolicyPrimaryCert"
+        },
+        "extJwt": {
+          "$ref": "#/definitions/authPolicyPrimaryExtJwt"
+        },
+        "updb": {
+          "$ref": "#/definitions/authPolicyPrimaryUpdb"
+        }
+      }
+    },
+    "authPolicyPrimaryCert": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "allowExpiredCerts"
+      ],
+      "properties": {
+        "allowExpiredCerts": {
+          "type": "boolean"
+        },
+        "allowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicyPrimaryCertPatch": {
+      "type": "object",
+      "properties": {
+        "allowExpiredCerts": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyPrimaryExtJwt": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "allowedSigners"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "allowedSigners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "authPolicyPrimaryExtJwtPatch": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "allowedSigners": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyPrimaryPatch": {
+      "type": "object",
+      "properties": {
+        "cert": {
+          "$ref": "#/definitions/authPolicyPrimaryCertPatch"
+        },
+        "extJwt": {
+          "$ref": "#/definitions/authPolicyPrimaryExtJwtPatch"
+        },
+        "updb": {
+          "$ref": "#/definitions/authPolicyPrimaryUpdbPatch"
+        }
+      }
+    },
+    "authPolicyPrimaryUpdb": {
+      "type": "object",
+      "required": [
+        "allowed",
+        "minPasswordLength",
+        "requireSpecialChar",
+        "requireNumberChar",
+        "requireMixedCase",
+        "maxAttempts",
+        "lockoutDurationMinutes"
+      ],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "lockoutDurationMinutes": {
+          "type": "integer"
+        },
+        "maxAttempts": {
+          "type": "integer"
+        },
+        "minPasswordLength": {
+          "type": "integer"
+        },
+        "requireMixedCase": {
+          "type": "boolean"
+        },
+        "requireNumberChar": {
+          "type": "boolean"
+        },
+        "requireSpecialChar": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicyPrimaryUpdbPatch": {
+      "type": "object",
+      "properties": {
+        "allowed": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "lockoutDurationMinutes": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "maxAttempts": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "minPasswordLength": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "requireMixedCase": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "requireNumberChar": {
+          "type": "boolean",
+          "x-nullable": true
+        },
+        "requireSpecialChar": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicySecondary": {
+      "type": "object",
+      "required": [
+        "requireTotp"
+      ],
+      "properties": {
+        "requireExtJwtSigner": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "requireTotp": {
+          "type": "boolean"
+        }
+      }
+    },
+    "authPolicySecondaryPatch": {
+      "type": "object",
+      "properties": {
+        "requireExtJwtSigner": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "requireTotp": {
+          "type": "boolean",
+          "x-nullable": true
+        }
+      },
+      "x-nullable": true
+    },
+    "authPolicyUpdate": {
+      "$ref": "#/definitions/authPolicyCreate"
     },
     "authQueryDetail": {
       "type": "object",
@@ -38676,6 +40485,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/apiSessionDetail"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "detailAuthPolicyEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/authPolicyDetail"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -39587,6 +41411,10 @@ func init() {
         "enabled": {
           "type": "boolean"
         },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url"
+        },
         "name": {
           "type": "string",
           "example": "MyApps Signer"
@@ -39612,7 +41440,8 @@ func init() {
             "fingerprint",
             "commonName",
             "notAfter",
-            "notBefore"
+            "notBefore",
+            "externalAuthUrl"
           ],
           "properties": {
             "certPem": {
@@ -39623,6 +41452,10 @@ func init() {
             },
             "enabled": {
               "type": "boolean"
+            },
+            "externalAuthUrl": {
+              "type": "string",
+              "format": "url"
             },
             "fingerprint": {
               "type": "string"
@@ -39661,6 +41494,11 @@ func init() {
           "type": "boolean",
           "x-nullable": true
         },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url",
+          "x-nullable": true
+        },
         "name": {
           "type": "string",
           "x-nullable": true,
@@ -39684,6 +41522,10 @@ func init() {
         },
         "enabled": {
           "type": "boolean"
+        },
+        "externalAuthUrl": {
+          "type": "string",
+          "format": "url"
         },
         "name": {
           "type": "string",
@@ -39790,6 +41632,10 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "authPolicyId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -39858,11 +41704,15 @@ func init() {
             "isMfaEnabled",
             "serviceHostingPrecedences",
             "serviceHostingCosts",
-            "defaultHostingCost"
+            "defaultHostingCost",
+            "authPolicyId"
           ],
           "properties": {
             "appData": {
               "$ref": "#/definitions/tags"
+            },
+            "authPolicyId": {
+              "type": "string"
             },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
@@ -40044,6 +41894,10 @@ func init() {
         "appData": {
           "$ref": "#/definitions/tags"
         },
+        "authPolicyId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
@@ -40051,10 +41905,12 @@ func init() {
           "$ref": "#/definitions/terminatorPrecedence"
         },
         "isAdmin": {
-          "type": "boolean"
+          "type": "boolean",
+          "x-nullable": true
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "roleAttributes": {
           "$ref": "#/definitions/attributes"
@@ -40109,11 +41965,15 @@ func init() {
       "required": [
         "type",
         "name",
-        "isAdmin"
+        "isAdmin",
+        "authPolicyId"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
+        },
+        "authPolicyId": {
+          "type": "string"
         },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
@@ -40179,6 +42039,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/apiSessionList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listAuthPoliciesEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/authPolicyList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -40578,7 +42453,8 @@ func init() {
     "mfaProviders": {
       "type": "string",
       "enum": [
-        "ziti"
+        "ziti",
+        "url"
       ]
     },
     "namedRole": {

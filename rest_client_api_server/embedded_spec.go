@@ -3767,7 +3767,7 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "description": "can be any value - string, number, boolean, array or object"
         }
       }
     },
@@ -4623,11 +4623,15 @@ func init() {
             "isMfaEnabled",
             "serviceHostingPrecedences",
             "serviceHostingCosts",
-            "defaultHostingCost"
+            "defaultHostingCost",
+            "authPolicyId"
           ],
           "properties": {
             "appData": {
               "$ref": "#/definitions/tags"
+            },
+            "authPolicyId": {
+              "type": "string"
             },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
@@ -5017,7 +5021,8 @@ func init() {
     "mfaProviders": {
       "type": "string",
       "enum": [
-        "ziti"
+        "ziti",
+        "url"
       ]
     },
     "osType": {
@@ -9576,7 +9581,7 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "description": "can be any value - string, number, boolean, array or object"
         }
       }
     },
@@ -10433,11 +10438,15 @@ func init() {
             "isMfaEnabled",
             "serviceHostingPrecedences",
             "serviceHostingCosts",
-            "defaultHostingCost"
+            "defaultHostingCost",
+            "authPolicyId"
           ],
           "properties": {
             "appData": {
               "$ref": "#/definitions/tags"
+            },
+            "authPolicyId": {
+              "type": "string"
             },
             "authenticators": {
               "$ref": "#/definitions/identityAuthenticators"
@@ -10827,7 +10836,8 @@ func init() {
     "mfaProviders": {
       "type": "string",
       "enum": [
-        "ziti"
+        "ziti",
+        "url"
       ]
     },
     "osType": {

@@ -36,8 +36,8 @@ import (
 	"strings"
 )
 
-// GetCaJwtURL generates an URL for the get ca jwt operation
-type GetCaJwtURL struct {
+// GetCaJWTURL generates an URL for the get ca Jwt operation
+type GetCaJWTURL struct {
 	ID string
 
 	_basePath string
@@ -48,7 +48,7 @@ type GetCaJwtURL struct {
 // WithBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetCaJwtURL) WithBasePath(bp string) *GetCaJwtURL {
+func (o *GetCaJWTURL) WithBasePath(bp string) *GetCaJWTURL {
 	o.SetBasePath(bp)
 	return o
 }
@@ -56,12 +56,12 @@ func (o *GetCaJwtURL) WithBasePath(bp string) *GetCaJwtURL {
 // SetBasePath sets the base path for this url builder, only required when it's different from the
 // base path specified in the swagger spec.
 // When the value of the base path is an empty string
-func (o *GetCaJwtURL) SetBasePath(bp string) {
+func (o *GetCaJWTURL) SetBasePath(bp string) {
 	o._basePath = bp
 }
 
 // Build a url path and query string
-func (o *GetCaJwtURL) Build() (*url.URL, error) {
+func (o *GetCaJWTURL) Build() (*url.URL, error) {
 	var _result url.URL
 
 	var _path = "/cas/{id}/jwt"
@@ -70,7 +70,7 @@ func (o *GetCaJwtURL) Build() (*url.URL, error) {
 	if id != "" {
 		_path = strings.Replace(_path, "{id}", id, -1)
 	} else {
-		return nil, errors.New("id is required on GetCaJwtURL")
+		return nil, errors.New("id is required on GetCaJWTURL")
 	}
 
 	_basePath := o._basePath
@@ -83,7 +83,7 @@ func (o *GetCaJwtURL) Build() (*url.URL, error) {
 }
 
 // Must is a helper function to panic when the url builder returns an error
-func (o *GetCaJwtURL) Must(u *url.URL, err error) *url.URL {
+func (o *GetCaJWTURL) Must(u *url.URL, err error) *url.URL {
 	if err != nil {
 		panic(err)
 	}
@@ -94,17 +94,17 @@ func (o *GetCaJwtURL) Must(u *url.URL, err error) *url.URL {
 }
 
 // String returns the string representation of the path with query string
-func (o *GetCaJwtURL) String() string {
+func (o *GetCaJWTURL) String() string {
 	return o.Must(o.Build()).String()
 }
 
 // BuildFull builds a full url with scheme, host, path and query string
-func (o *GetCaJwtURL) BuildFull(scheme, host string) (*url.URL, error) {
+func (o *GetCaJWTURL) BuildFull(scheme, host string) (*url.URL, error) {
 	if scheme == "" {
-		return nil, errors.New("scheme is required for a full url on GetCaJwtURL")
+		return nil, errors.New("scheme is required for a full url on GetCaJWTURL")
 	}
 	if host == "" {
-		return nil, errors.New("host is required for a full url on GetCaJwtURL")
+		return nil, errors.New("host is required for a full url on GetCaJWTURL")
 	}
 
 	base, err := o.Build()
@@ -118,6 +118,6 @@ func (o *GetCaJwtURL) BuildFull(scheme, host string) (*url.URL, error) {
 }
 
 // StringFull returns the string representation of a complete url
-func (o *GetCaJwtURL) StringFull(scheme, host string) string {
+func (o *GetCaJWTURL) StringFull(scheme, host string) string {
 	return o.Must(o.BuildFull(scheme, host)).String()
 }

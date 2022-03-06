@@ -51,6 +51,7 @@ type Handlers struct {
 	PostureCheckType        *PostureCheckTypeHandler
 	PostureResponse         *PostureResponseHandler
 	Mfa                     *MfaHandler
+	AuthPolicy              *AuthPolicyHandler
 }
 
 func InitHandlers(env Env) *Handlers {
@@ -63,6 +64,7 @@ func InitHandlers(env Env) *Handlers {
 	handlers.ApiSession = NewApiSessionHandler(env)
 	handlers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
 	handlers.Authenticator = NewAuthenticatorHandler(env)
+	handlers.AuthPolicy = NewAuthPolicyHandler(env)
 	handlers.Ca = NewCaHandler(env)
 	handlers.Config = NewConfigHandler(env)
 	handlers.ConfigType = NewConfigTypeHandler(env)

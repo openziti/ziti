@@ -17,6 +17,7 @@
 package apierror
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/util/errorz"
 )
@@ -335,5 +336,15 @@ func NewInvalidCertificatePem() *errorz.ApiError {
 		Code:    InvalidCertificatePemCode,
 		Message: InvalidCertificatePemMessage,
 		Status:  InvalidCertificatePemStatus,
+	}
+}
+
+func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, referencingEntityTypeIds []string, fieldName string) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        CanNotDeleteReferencedEntityCode,
+		Message:     CanNotDeleteReferencedEntityMessage,
+		Status:      CanNotDeleteReferencedEntityStatus,
+		Cause:       errorz.NewFieldError(fmt.Sprintf("entity type %s referenced by %s: %v", localEntityType, remoteEntityType, referencingEntityTypeIds), fieldName, referencingEntityTypeIds),
+		AppendCause: true,
 	}
 }

@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -24,24 +25,26 @@ import (
 )
 
 const (
-	FieldExternalJwtSignerFingerprint = "fingerprint"
-	FieldExternalJwtSignerCertPem     = "certPem"
-	FieldExternalJwtSignerCommonName  = "commonName"
-	FieldExternalJwtSignerNotAfter    = "notAfter"
-	FieldExternalJwtSignerNotBefore   = "notBefore"
-	FieldExternalJwtSignerEnabled     = "enabled"
-	FieldExternalJwtSignerPubKey      = "pubKey"
+	FieldExternalJwtSignerFingerprint     = "fingerprint"
+	FieldExternalJwtSignerCertPem         = "certPem"
+	FieldExternalJwtSignerCommonName      = "commonName"
+	FieldExternalJwtSignerNotAfter        = "notAfter"
+	FieldExternalJwtSignerNotBefore       = "notBefore"
+	FieldExternalJwtSignerEnabled         = "enabled"
+	FieldExternalJwtSignerExternalAuthUrl = "externalAuthUrl"
+	FieldExternalJwtSignerAuthPolicies    = "authPolicies"
 )
 
 type ExternalJwtSigner struct {
 	boltz.BaseExtEntity
-	Name        string
-	Fingerprint string
-	CertPem     string
-	CommonName  string
-	NotAfter    *time.Time
-	NotBefore   *time.Time
-	Enabled     bool
+	Name            string
+	Fingerprint     string
+	CertPem         string
+	CommonName      string
+	NotAfter        *time.Time
+	NotBefore       *time.Time
+	Enabled         bool
+	ExternalAuthUrl *string
 }
 
 func (entity *ExternalJwtSigner) GetName() string {
@@ -57,6 +60,7 @@ func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.Typ
 	entity.NotAfter = bucket.GetTime(FieldExternalJwtSignerNotAfter)
 	entity.NotBefore = bucket.GetTime(FieldExternalJwtSignerNotBefore)
 	entity.Enabled = bucket.GetBoolWithDefault(FieldExternalJwtSignerEnabled, false)
+	entity.ExternalAuthUrl = bucket.GetString(FieldExternalJwtSignerExternalAuthUrl)
 }
 
 func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
@@ -68,6 +72,7 @@ func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetTimeP(FieldExternalJwtSignerNotAfter, entity.NotAfter)
 	ctx.SetTimeP(FieldExternalJwtSignerNotBefore, entity.NotBefore)
 	ctx.SetBool(FieldExternalJwtSignerEnabled, entity.Enabled)
+	ctx.SetStringP(FieldExternalJwtSignerExternalAuthUrl, entity.ExternalAuthUrl)
 }
 
 func (entity *ExternalJwtSigner) GetEntityType() string {
@@ -91,8 +96,10 @@ func newExternalJwtSignerStore(stores *stores) *externalJwtSignerStoreImpl {
 
 type externalJwtSignerStoreImpl struct {
 	*baseStore
-	indexName         boltz.ReadIndex
-	symbolEnrollments boltz.EntitySetSymbol
+	indexName          boltz.ReadIndex
+	indexFingerprint   boltz.EntitySymbol
+	symbolEnrollments  boltz.EntitySetSymbol
+	symbolAuthPolicies boltz.EntitySetSymbol
 }
 
 func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
@@ -102,6 +109,7 @@ func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
 func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.indexName = store.addUniqueNameField()
+	store.indexFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
 
 	store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerCertPem, ast.NodeTypeString)
@@ -109,6 +117,8 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldExternalJwtSignerNotAfter, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerNotBefore, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
+
+	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
 }
 
 func (store *externalJwtSignerStoreImpl) initializeLinked() {
@@ -136,4 +146,19 @@ func (store *externalJwtSignerStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query stri
 		return nil, err
 	}
 	return entity, nil
+}
+func (store *externalJwtSignerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	ids, _, err := store.stores.authPolicy.QueryIds(ctx.Tx(), fmt.Sprintf(`anyOf(%s) = "%s"`, FieldAuthPolicyPrimaryExtJwtAllowedSigners, id))
+
+	if err != nil {
+		return err
+	}
+
+	if len(ids) > 0 {
+		return boltz.NewReferenceByIdsError(EntityTypeExternalJwtSigners, id, EntityTypeAuthPolicies, ids, FieldAuthPolicyPrimaryExtJwtAllowedSigners)
+	}
+
+	err = store.BaseStore.DeleteById(ctx, id)
+
+	return err
 }

@@ -115,6 +115,10 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
+	if step.CurrentVersion < 26 {
+		m.addSystemAuthPolicies(step)
+	}
+
 	// current version
 	if step.CurrentVersion <= CurrentDbVersion {
 		return CurrentDbVersion

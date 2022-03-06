@@ -38,6 +38,11 @@ paths:
   '/authenticators/{id}':
     $ref: 'management/authenticators.yml#/paths/authenticators-id'
 
+  '/auth-policies':
+    $ref: 'management/auth-policies.yml#/paths/auth-policies'
+  '/auth-policies/{id}':
+    $ref: 'management/auth-policies.yml#/paths/auth-policies-id'
+
   '/cas':
     $ref: 'management/cas.yml#/paths/cas'
   '/cas/{id}':

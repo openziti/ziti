@@ -46,6 +46,9 @@ type IdentityCreate struct {
 	// app data
 	AppData *Tags `json:"appData,omitempty"`
 
+	// auth policy Id
+	AuthPolicyID *string `json:"authPolicyId,omitempty"`
+
 	// default hosting cost
 	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
 

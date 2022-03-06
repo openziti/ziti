@@ -35,6 +35,7 @@ import (
 	"github.com/go-openapi/strfmt"
 
 	"github.com/openziti/edge/rest_management_api_client/api_session"
+	"github.com/openziti/edge/rest_management_api_client/auth_policy"
 	"github.com/openziti/edge/rest_management_api_client/authentication"
 	"github.com/openziti/edge/rest_management_api_client/authenticator"
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
@@ -45,7 +46,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_client/edge_router"
 	"github.com/openziti/edge/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge/rest_management_api_client/enrollment"
-	"github.com/openziti/edge/rest_management_api_client/external_j_w_t_signer"
+	"github.com/openziti/edge/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/edge/rest_management_api_client/identity"
 	"github.com/openziti/edge/rest_management_api_client/informational"
 	"github.com/openziti/edge/rest_management_api_client/posture_checks"
@@ -101,6 +102,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiEdgeMa
 	cli := new(ZitiEdgeManagement)
 	cli.Transport = transport
 	cli.APISession = api_session.New(transport, formats)
+	cli.AuthPolicy = auth_policy.New(transport, formats)
 	cli.Authentication = authentication.New(transport, formats)
 	cli.Authenticator = authenticator.New(transport, formats)
 	cli.CertificateAuthority = certificate_authority.New(transport, formats)
@@ -111,7 +113,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiEdgeMa
 	cli.EdgeRouter = edge_router.New(transport, formats)
 	cli.EdgeRouterPolicy = edge_router_policy.New(transport, formats)
 	cli.Enrollment = enrollment.New(transport, formats)
-	cli.ExternaljwtSigner = external_j_w_t_signer.New(transport, formats)
+	cli.ExternalJWTSigner = external_jwt_signer.New(transport, formats)
 	cli.Identity = identity.New(transport, formats)
 	cli.Informational = informational.New(transport, formats)
 	cli.PostureChecks = posture_checks.New(transport, formats)
@@ -168,6 +170,8 @@ func (cfg *TransportConfig) WithSchemes(schemes []string) *TransportConfig {
 type ZitiEdgeManagement struct {
 	APISession api_session.ClientService
 
+	AuthPolicy auth_policy.ClientService
+
 	Authentication authentication.ClientService
 
 	Authenticator authenticator.ClientService
@@ -188,7 +192,7 @@ type ZitiEdgeManagement struct {
 
 	Enrollment enrollment.ClientService
 
-	ExternaljwtSigner external_j_w_t_signer.ClientService
+	ExternalJWTSigner external_jwt_signer.ClientService
 
 	Identity identity.ClientService
 
@@ -217,6 +221,7 @@ type ZitiEdgeManagement struct {
 func (c *ZitiEdgeManagement) SetTransport(transport runtime.ClientTransport) {
 	c.Transport = transport
 	c.APISession.SetTransport(transport)
+	c.AuthPolicy.SetTransport(transport)
 	c.Authentication.SetTransport(transport)
 	c.Authenticator.SetTransport(transport)
 	c.CertificateAuthority.SetTransport(transport)
@@ -227,7 +232,7 @@ func (c *ZitiEdgeManagement) SetTransport(transport runtime.ClientTransport) {
 	c.EdgeRouter.SetTransport(transport)
 	c.EdgeRouterPolicy.SetTransport(transport)
 	c.Enrollment.SetTransport(transport)
-	c.ExternaljwtSigner.SetTransport(transport)
+	c.ExternalJWTSigner.SetTransport(transport)
 	c.Identity.SetTransport(transport)
 	c.Informational.SetTransport(transport)
 	c.PostureChecks.SetTransport(transport)

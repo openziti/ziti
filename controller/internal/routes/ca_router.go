@@ -81,7 +81,7 @@ func (r *CaRouter) Register(ae *env.AppEnv) {
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
-	ae.ManagementApi.CertificateAuthorityGetCaJwtHandler = certificate_authority.GetCaJwtHandlerFunc(func(params certificate_authority.GetCaJwtParams, _ interface{}) middleware.Responder {
+	ae.ManagementApi.CertificateAuthorityGetCaJWTHandler = certificate_authority.GetCaJWTHandlerFunc(func(params certificate_authority.GetCaJWTParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.generateJwt(ae, rc)
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())

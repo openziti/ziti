@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"strings"
 )
 
 const (
@@ -54,6 +55,7 @@ const (
 	FieldIdentityServiceHostingPrecedences = "serviceHostingPrecedences"
 	FieldIdentityServiceHostingCosts       = "serviceHostingCosts"
 	FieldIdentityAppData                   = "appData"
+	FieldIdentityAuthPolicyId              = "authPolicyId"
 )
 
 func newIdentity(name string, identityTypeId string, roleAttributes ...string) *Identity {
@@ -97,6 +99,7 @@ type Identity struct {
 	ServiceHostingPrecedences map[string]ziti.Precedence
 	ServiceHostingCosts       map[string]uint16
 	AppData                   map[string]interface{}
+	AuthPolicyId              string
 }
 
 type ServiceConfig struct {
@@ -110,6 +113,7 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
+	entity.AuthPolicyId = bucket.GetStringWithDefault(FieldIdentityAuthPolicyId, DefaultAuthPolicyId)
 	entity.IsDefaultAdmin = bucket.GetBoolWithDefault(FieldIdentityIsDefaultAdmin, false)
 	entity.IsAdmin = bucket.GetBoolWithDefault(FieldIdentityIsAdmin, false)
 	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
@@ -160,6 +164,10 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 			ctx.Bucket.SetError(errors.New("cannot change type of router identity"))
 		}
 	}
+	if strings.TrimSpace(entity.AuthPolicyId) == "" {
+		entity.AuthPolicyId = DefaultAuthPolicyId
+	}
+	ctx.SetString(FieldIdentityAuthPolicyId, entity.AuthPolicyId)
 	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
@@ -258,6 +266,7 @@ type identityStoreImpl struct {
 	symbolRoleAttributes boltz.EntitySetSymbol
 	symbolAuthenticators boltz.EntitySetSymbol
 	symbolIdentityTypeId boltz.EntitySymbol
+	symbolAuthPolicyId   boltz.EntitySymbol
 	symbolEnrollments    boltz.EntitySetSymbol
 
 	symbolEdgeRouterPolicies boltz.EntitySetSymbol
@@ -295,6 +304,9 @@ func (store *identityStoreImpl) initializeLocal() {
 	store.symbolAuthenticators = store.AddFkSetSymbol(FieldIdentityAuthenticators, store.stores.authenticator)
 
 	store.symbolIdentityTypeId = store.AddFkSymbol(FieldIdentityType, store.stores.identityType)
+	store.symbolAuthPolicyId = store.AddFkSymbol(FieldIdentityAuthPolicyId, store.stores.authPolicy)
+
+	store.AddFkConstraint(store.symbolAuthPolicyId, true, boltz.CascadeNone)
 
 	store.AddSymbol(FieldIdentityIsAdmin, ast.NodeTypeBool)
 	store.AddSymbol(FieldIdentityIsDefaultAdmin, ast.NodeTypeBool)

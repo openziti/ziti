@@ -52,7 +52,7 @@ func Test_Router_ReEnroll(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(resp)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-			ctx.Req.NotNil(edgeRouterDetail.EnrollmentJwt)
+			ctx.Req.NotNil(edgeRouterDetail.EnrollmentJWT)
 
 			t.Run("router has no current fingerprint", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -61,7 +61,7 @@ func Test_Router_ReEnroll(t *testing.T) {
 
 			t.Run("router has a new enrollment JWT", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.Req.NotNil(edgeRouterDetail.EnrollmentJwt)
+				ctx.Req.NotNil(edgeRouterDetail.EnrollmentJWT)
 
 				t.Run("router can enroll", func(t *testing.T) {
 					ctx.testContextChanged(t)
@@ -83,7 +83,7 @@ func Test_Router_ReEnroll(t *testing.T) {
 
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-			ctx.Req.Nil(edgeRouterDetail.EnrollmentJwt)
+			ctx.Req.Nil(edgeRouterDetail.EnrollmentJWT)
 		})
 
 		t.Run("can start re-enroll", func(t *testing.T) {
@@ -103,7 +103,7 @@ func Test_Router_ReEnroll(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(resp)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
-			ctx.Req.NotNil(edgeRouterDetail.EnrollmentJwt)
+			ctx.Req.NotNil(edgeRouterDetail.EnrollmentJWT)
 
 			t.Run("router has no current fingerprint", func(t *testing.T) {
 				ctx.testContextChanged(t)
@@ -112,7 +112,7 @@ func Test_Router_ReEnroll(t *testing.T) {
 
 			t.Run("router has a new enrollment JWT", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				ctx.Req.NotNil(edgeRouterDetail.EnrollmentJwt)
+				ctx.Req.NotNil(edgeRouterDetail.EnrollmentJWT)
 
 				t.Run("router can enroll with JWT", func(t *testing.T) {
 					ctx.testContextChanged(t)

@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -32,6 +33,7 @@ func Test_ApiSession(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 
 	t.Run("config types should be set and viewable", func(t *testing.T) {
+		ctx.testContextChanged(t)
 		configType1 := ctx.AdminManagementSession.requireCreateNewConfigType()
 		configType2 := ctx.AdminManagementSession.requireCreateNewConfigType()
 

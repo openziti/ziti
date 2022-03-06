@@ -43,7 +43,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	validJwtSignerEnabled := true
 	validJwtSignerFingerprint := nfpem.FingerprintFromCertificate(validJwtSignerCert)
 
-	validJwtSigner := &rest_model.ExternalJwtSignerCreate{
+	validJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem: &validJwtSignerCertPem,
 		Enabled: &validJwtSignerEnabled,
 		Name:    &validJwtSignerName,
@@ -62,7 +62,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	notEnabledJwtSignerEnabled := false
 	notEnabledJwtSignerFingerprint := nfpem.FingerprintFromCertificate(notEnabledJwtSignerCert)
 
-	notEnabledJwtSigner := &rest_model.ExternalJwtSignerCreate{
+	notEnabledJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem: &notEnabledJwtSignerCertPem,
 		Enabled: &notEnabledJwtSignerEnabled,
 		Name:    &notEnabledJwtSignerName,
