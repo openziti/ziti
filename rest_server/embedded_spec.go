@@ -1188,7 +1188,12 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "type": [
+            "object",
+            "string",
+            "number",
+            "boolean"
+          ]
         }
       }
     },
@@ -1215,6 +1220,7 @@ func init() {
       "type": "object",
       "required": [
         "id",
+        "type",
         "sourceRouter",
         "destRouter",
         "state",
@@ -1251,6 +1257,9 @@ func init() {
         },
         "staticCost": {
           "type": "integer"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },
@@ -1454,8 +1463,11 @@ func init() {
             "fingerprint": {
               "type": "string"
             },
-            "listenerAddress": {
-              "type": "string"
+            "listenerAddresses": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/routerListener"
+              }
             },
             "name": {
               "type": "string"
@@ -1474,6 +1486,21 @@ func init() {
       "type": "array",
       "items": {
         "$ref": "#/definitions/routerDetail"
+      }
+    },
+    "routerListener": {
+      "type": "object",
+      "required": [
+        "address",
+        "type"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
       }
     },
     "routerPatch": {
@@ -4917,7 +4944,12 @@ func init() {
           "type": "string"
         },
         "value": {
-          "type": "string"
+          "type": [
+            "object",
+            "string",
+            "number",
+            "boolean"
+          ]
         }
       }
     },
@@ -4944,6 +4976,7 @@ func init() {
       "type": "object",
       "required": [
         "id",
+        "type",
         "sourceRouter",
         "destRouter",
         "state",
@@ -4980,6 +5013,9 @@ func init() {
         },
         "staticCost": {
           "type": "integer"
+        },
+        "type": {
+          "type": "string"
         }
       }
     },
@@ -5185,8 +5221,11 @@ func init() {
             "fingerprint": {
               "type": "string"
             },
-            "listenerAddress": {
-              "type": "string"
+            "listenerAddresses": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/routerListener"
+              }
             },
             "name": {
               "type": "string"
@@ -5205,6 +5244,21 @@ func init() {
       "type": "array",
       "items": {
         "$ref": "#/definitions/routerDetail"
+      }
+    },
+    "routerListener": {
+      "type": "object",
+      "required": [
+        "address",
+        "type"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        }
       }
     },
     "routerPatch": {

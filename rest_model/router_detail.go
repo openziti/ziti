@@ -31,6 +31,7 @@ package rest_model
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -58,8 +59,8 @@ type RouterDetail struct {
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
 
-	// listener address
-	ListenerAddress string `json:"listenerAddress,omitempty"`
+	// listener addresses
+	ListenerAddresses []*RouterListener `json:"listenerAddresses"`
 
 	// name
 	// Required: true
@@ -90,7 +91,7 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Fingerprint *string `json:"fingerprint"`
 
-		ListenerAddress string `json:"listenerAddress,omitempty"`
+		ListenerAddresses []*RouterListener `json:"listenerAddresses"`
 
 		Name *string `json:"name"`
 
@@ -108,7 +109,7 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 	m.Fingerprint = dataAO1.Fingerprint
 
-	m.ListenerAddress = dataAO1.ListenerAddress
+	m.ListenerAddresses = dataAO1.ListenerAddresses
 
 	m.Name = dataAO1.Name
 
@@ -135,7 +136,7 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		Fingerprint *string `json:"fingerprint"`
 
-		ListenerAddress string `json:"listenerAddress,omitempty"`
+		ListenerAddresses []*RouterListener `json:"listenerAddresses"`
 
 		Name *string `json:"name"`
 
@@ -150,7 +151,7 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 	dataAO1.Fingerprint = m.Fingerprint
 
-	dataAO1.ListenerAddress = m.ListenerAddress
+	dataAO1.ListenerAddresses = m.ListenerAddresses
 
 	dataAO1.Name = m.Name
 
@@ -184,6 +185,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateFingerprint(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateListenerAddresses(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -240,6 +245,33 @@ func (m *RouterDetail) validateFingerprint(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *RouterDetail) validateListenerAddresses(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ListenerAddresses) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.ListenerAddresses); i++ {
+		if swag.IsZero(m.ListenerAddresses[i]) { // not required
+			continue
+		}
+
+		if m.ListenerAddresses[i] != nil {
+			if err := m.ListenerAddresses[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("listenerAddresses" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("listenerAddresses" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 func (m *RouterDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
@@ -287,6 +319,10 @@ func (m *RouterDetail) ContextValidate(ctx context.Context, formats strfmt.Regis
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateListenerAddresses(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateVersionInfo(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -294,6 +330,26 @@ func (m *RouterDetail) ContextValidate(ctx context.Context, formats strfmt.Regis
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *RouterDetail) contextValidateListenerAddresses(ctx context.Context, formats strfmt.Registry) error {
+
+	for i := 0; i < len(m.ListenerAddresses); i++ {
+
+		if m.ListenerAddresses[i] != nil {
+			if err := m.ListenerAddresses[i].ContextValidate(ctx, formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("listenerAddresses" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("listenerAddresses" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
 	return nil
 }
 

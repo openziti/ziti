@@ -17,10 +17,13 @@
 package handler_ctrl
 
 import (
+	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 )
 
@@ -67,10 +70,10 @@ func (self *CtrlAccepter) Run() {
 }
 
 func (self *CtrlAccepter) Bind(binding channel.Binding) error {
-	log := pfxlog.Logger()
-
 	binding.GetChannel().SetLogicalName(binding.GetChannel().Id().Token)
 	ch := binding.GetChannel()
+
+	log := pfxlog.Logger().WithField("routerId", ch.Id().Token)
 
 	if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
 		if ch.Underlay().Headers() != nil {
@@ -83,10 +86,26 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			} else {
 				return errors.New("no version info header, closing router connection")
 			}
-
-			if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
-				listenerString := string(listenerValue)
-				r.AdvertisedListener = listenerString
+			r.Listeners = nil
+			if val, found := ch.Underlay().Headers()[int32(ctrl_pb.ContentType_ListenersHeader)]; found {
+				log.Debug("router reported listeners using listeners header")
+				listeners := &ctrl_pb.Listeners{}
+				if err := proto.Unmarshal(val, listeners); err != nil {
+					log.WithError(err).Error("unable to unmarshall listeners value")
+				} else {
+					for _, listener := range listeners.Listeners {
+						log.WithField("address", listener.GetAddress()).WithField("type", listener.GetType()).Debug("router listener")
+						r.AddLinkListener(listener.GetAddress(), listener.GetType())
+					}
+				}
+			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
+				log.Debug("router reported listener using advertisement header")
+				addr := string(listenerValue)
+				linkType := "default"
+				if addr, _ := transport.ParseAddress(addr); addr != nil {
+					linkType = addr.Type()
+				}
+				r.AddLinkListener(addr, linkType)
 			} else {
 				log.Warn("no advertised listeners")
 			}

@@ -1110,10 +1110,22 @@ definitions:
             maximum: 65535
           noTraversal:
             type: boolean
-          listenerAddress:
-            type: string
+          listenerAddresses:
+            type: array
+            items:
+              $ref: '#/definitions/routerListener'
           versionInfo:
             $ref: '#/definitions/versionInfo'
+  routerListener:
+    type: object
+    required:
+      - address
+      - type
+    properties:
+      address:
+        type: string
+      type:
+        type: string
   routerCreate:
     type: object
     required:
@@ -1357,6 +1369,7 @@ definitions:
     type: object
     required:
       - id
+      - type
       - sourceRouter
       - destRouter
       - state
@@ -1367,6 +1380,8 @@ definitions:
       - down
     properties:
       id:
+        type: string
+      type:
         type: string
       sourceRouter:
         $ref: '#/definitions/entityRef'
@@ -1479,7 +1494,11 @@ definitions:
       name:
         type: string
       value:
-        type: string
+        type:
+          - object
+          - string
+          - number
+          - boolean
   inspectResponse:
     type: object
     required:

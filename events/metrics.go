@@ -32,7 +32,7 @@ func mapLinkMetrics(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
 
 	if strings.HasPrefix(event.Metric, "link.") {
 		var name, linkId string
-		if strings.HasSuffix(event.Metric, "latency") {
+		if strings.HasSuffix(event.Metric, "latency") || strings.HasSuffix(event.Metric, "queue_time") {
 			name, linkId = ExtractId(event.Metric, "link.", 1)
 		} else {
 			name, linkId = ExtractId(event.Metric, "link.", 2)

@@ -250,7 +250,8 @@ func (network *Network) ConnectedRouter(id string) bool {
 
 func (network *Network) ConnectRouter(r *Router) {
 	network.Routers.markConnected(r)
-	network.routerChanged <- r
+
+	time.AfterFunc(250*time.Millisecond, func() { network.routerChanged <- r })
 
 	for _, h := range network.routerPresenceHandlers {
 		go h.RouterConnected(r)
@@ -302,6 +303,15 @@ func (network *Network) DisconnectRouter(r *Router) {
 	for _, h := range network.routerPresenceHandlers {
 		h.RouterDisconnected(r)
 	}
+}
+
+func (network *Network) NotifyExistingLink(id, linkType string, srcRouter *Router, dstRouterId string) (bool, error) {
+	dst := network.Routers.getConnected(dstRouterId)
+	if dst == nil {
+		return false, errors.New("destination router not connected")
+	}
+	_, created := network.linkController.routerReportedLink(id, linkType, srcRouter, dst)
+	return created, nil
 }
 
 func (network *Network) LinkConnected(id string, connected bool) error {
@@ -833,11 +843,24 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 
 	for _, link := range network.GetAllLinksForRouter(router.Id) {
 		metricId := "link." + link.Id + ".latency"
+		var latencyCost int64
+		var found bool
 		if latency, ok := metrics.Histograms[metricId]; ok {
+			latencyCost = int64(latency.Mean)
+			found = true
+		}
+
+		metricId = "link." + link.Id + ".queue_time"
+		if latency, ok := metrics.Histograms[metricId]; ok {
+			latencyCost += int64(latency.Mean)
+			found = true
+		}
+
+		if found {
 			if link.Src.Id == router.Id {
-				link.SetSrcLatency(int64(latency.Mean)) // latency is in nanoseconds
+				link.SetSrcLatency(latencyCost) // latency is in nanoseconds
 			} else if link.Dst.Id == router.Id {
-				link.SetDstLatency(int64(latency.Mean)) // latency is in nanoseconds
+				link.SetDstLatency(latencyCost) // latency is in nanoseconds
 			} else {
 				log.Warnf("link not for router")
 			}
@@ -895,10 +918,10 @@ func (network *Network) showOptions() {
 	}
 }
 
-func (network *Network) Inspect(name string) *string {
+func (network *Network) Inspect(name string) interface{} {
 	if strings.ToLower(name) == "stackdump" {
 		result := debugz.GenerateStack()
-		return &result
+		return result
 	}
 	return nil
 }

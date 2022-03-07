@@ -38,6 +38,7 @@ type listener struct {
 	tcfg               transport.Configuration
 	pendingLinks       map[string]*pendingLink
 	lock               sync.Mutex
+	xlinkRegistery     xlink.Registry
 }
 
 func (self *listener) Listen() error {
@@ -55,6 +56,10 @@ func (self *listener) Listen() error {
 
 func (self *listener) GetAdvertisement() string {
 	return self.config.advertise.String()
+}
+
+func (self *listener) GetType() string {
+	return self.config.linkType
 }
 
 func (self *listener) Close() error {
@@ -76,11 +81,13 @@ func (self *listener) acceptLoop() {
 
 func (self *listener) BindChannel(binding channel.Binding) error {
 	log := pfxlog.ChannelLogger("link", "linkListener").
+		WithField("linkType", self.GetType()).
 		WithField("linkId", binding.GetChannel().Id().Token)
 
 	headers := binding.GetChannel().Underlay().Headers()
 	var chanType channelType
 	routerId := ""
+	routerVersion := ""
 
 	if headers != nil {
 		if v, ok := headers[LinkHeaderRouterId]; ok {
@@ -91,17 +98,21 @@ func (self *listener) BindChannel(binding channel.Binding) error {
 		if val, ok := headers[LinkHeaderType]; ok {
 			chanType = channelType(val[0])
 		}
+		if val, ok := headers[LinkHeaderRouterVersion]; ok {
+			routerVersion = string(val)
+			log = log.WithField("routerVersion", routerVersion)
+		}
 	}
 
 	if chanType != 0 {
 		log = log.WithField("channelType", chanType)
-		return self.bindSplitChannel(binding, chanType, routerId, log)
+		return self.bindSplitChannel(binding, chanType, routerId, routerVersion, log)
 	}
 
-	return self.bindNonSplitChannel(binding, routerId, log)
+	return self.bindNonSplitChannel(binding, routerId, routerVersion, log)
 }
 
-func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, routerId string, log *logrus.Entry) error {
+func (self *listener) bindSplitChannel(binding channel.Binding, chanType channelType, routerId, routerVersion string, log *logrus.Entry) error {
 	headers := binding.GetChannel().Underlay().Headers()
 	id, ok := headers[LinkHeaderConnId]
 	if !ok {
@@ -110,7 +121,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 	log.Info("accepted part of split conn")
 
-	xli, err := self.getOrCreateSplitLink(string(id), routerId, binding, chanType)
+	xli, err := self.getOrCreateSplitLink(string(id), routerId, routerVersion, binding, chanType)
 	if err != nil {
 		log.WithError(err).Error("erroring binding link channel")
 	}
@@ -123,15 +134,25 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 	if xli.payloadCh != nil && xli.ackCh != nil {
 		if err := self.accepter.Accept(xli); err != nil {
 			log.WithError(err).Error("error accepting incoming Xlink")
-		}
 
+			if err := xli.Close(); err != nil {
+				log.WithError(err).Debugf("error closing link")
+			}
+			return err
+		}
 		log.Info("accepted link")
+
+		if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
+			log.Info("link registered")
+		} else {
+			log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
+		}
 	}
 
 	return nil
 }
 
-func (self *listener) getOrCreateSplitLink(id, routerId string, binding channel.Binding, chanType channelType) (*splitImpl, error) {
+func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, binding channel.Binding, chanType channelType) (*splitImpl, error) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -143,8 +164,10 @@ func (self *listener) getOrCreateSplitLink(id, routerId string, binding channel.
 	} else {
 		pending = &pendingLink{
 			link: &splitImpl{
-				id:       binding.GetChannel().Id(),
-				routerId: routerId,
+				id:            binding.GetChannel().Id(),
+				routerId:      routerId,
+				routerVersion: routerVersion,
+				linkType:      self.GetType(),
 			},
 			eventTime: time.Now(),
 		}
@@ -171,11 +194,12 @@ func (self *listener) getOrCreateSplitLink(id, routerId string, binding channel.
 	return link, nil
 }
 
-func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId string, log *logrus.Entry) error {
+func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, routerVersion string, log *logrus.Entry) error {
 	xli := &impl{
 		id:       binding.GetChannel().Id(),
 		ch:       binding.GetChannel(),
 		routerId: routerId,
+		linkType: self.GetType(),
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
@@ -191,6 +215,12 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId stri
 			log.WithError(err).Debugf("error closing link")
 		}
 		return err
+	}
+
+	if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
+		log.Info("link registered")
+	} else {
+		log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
 	}
 
 	log.Info("accepted link")

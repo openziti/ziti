@@ -23,7 +23,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
@@ -33,14 +32,12 @@ import (
 type ConnectHandler struct {
 	identity identity.Identity
 	network  *network.Network
-	xctrls   []xctrl.Xctrl
 }
 
-func NewConnectHandler(identity identity.Identity, network *network.Network, xctrls []xctrl.Xctrl) *ConnectHandler {
+func NewConnectHandler(identity identity.Identity, network *network.Network) *ConnectHandler {
 	return &ConnectHandler{
 		identity: identity,
 		network:  network,
-		xctrls:   xctrls,
 	}
 }
 

@@ -17,11 +17,37 @@
 package xlink
 
 import (
+	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 )
 
+// Registry contains known link instances and manages link de-duplication
+type Registry interface {
+	xctrl.Xctrl
+
+	// GetLink returns the link to the given router, of the given type, if one exists
+	GetLink(routerId, linkType string) (Xlink, bool)
+	// GetLinkById returns the link for the given id, if it exists
+	GetLinkById(linkId string) (Xlink, bool)
+	// GetDialLock tries to acquire a dial lock for the given dial attempt
+	GetDialLock(dial Dial) (Xlink, bool)
+	// DialFailed notifies the registry that a dial failed
+	DialFailed(dial Dial)
+	// DialSucceeded notifies the registry that a dial succeed and provides the resulting link
+	DialSucceeded(link Xlink) (Xlink, bool)
+	// LinkAccepted notifes the registry that a link listener accepted a dial and provides the resulting link
+	LinkAccepted(link Xlink) (Xlink, bool)
+	// LinkClosed notifies the registry that a link closed
+	LinkClosed(link Xlink)
+	// Iter provides a channel which returns all known links
+	Iter() <-chan Xlink
+	// Shutdown frees any resources owned by the registry
+	Shutdown()
+}
+
+// A Factory creates link listeners and link dialers
 type Factory interface {
 	CreateListener(id *identity.TokenId, f Forwarder, config transport.Configuration) (Listener, error)
 	CreateDialer(id *identity.TokenId, f Forwarder, config transport.Configuration) (Dialer, error)
@@ -30,6 +56,7 @@ type Factory interface {
 type Listener interface {
 	Listen() error
 	GetAdvertisement() string
+	GetType() string
 	Close() error
 }
 
@@ -37,8 +64,17 @@ type Acceptor interface {
 	Accept(xlink Xlink) error
 }
 
+// A Dial contains the information need to dial another router
+type Dial interface {
+	GetLinkId() string
+	GetRouterId() string
+	GetAddress() string
+	GetLinkType() string
+	GetRouterVersion() string
+}
+
 type Dialer interface {
-	Dial(address string, id *identity.TokenId, routerId string) error
+	Dial(dial Dial) (Xlink, error)
 }
 
 type Xlink interface {
@@ -47,7 +83,11 @@ type Xlink interface {
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
 	Close() error
+	CloseNotified() error
 	DestinationId() string
+	DestVersion() string
+	LinkType() string
+	HandleCloseNotification(f func())
 }
 
 type Forwarder interface {

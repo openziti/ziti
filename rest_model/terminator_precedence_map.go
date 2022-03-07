@@ -49,11 +49,6 @@ func (m TerminatorPrecedenceMap) Validate(formats strfmt.Registry) error {
 
 		if val, ok := m[k]; ok {
 			if err := val.Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName(k)
-				} else if ce, ok := err.(*errors.CompositeError); ok {
-					return ce.ValidateName(k)
-				}
 				return err
 			}
 		}

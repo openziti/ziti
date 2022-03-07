@@ -231,7 +231,6 @@ func (c *Controller) startProfiling() {
 }
 
 func (c *Controller) loadEventHandlers() {
-
 	if e, ok := c.config.src["events"]; ok {
 		if em, ok := e.(map[interface{}]interface{}); ok {
 			for k, v := range em {
@@ -250,7 +249,7 @@ func (c *Controller) registerXts() {
 }
 
 func (c *Controller) registerComponents() error {
-	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.xctrls)
+	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
 	//add default REST XWeb

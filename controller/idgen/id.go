@@ -3,7 +3,10 @@ package idgen
 import (
 	"crypto/rand"
 	"encoding/binary"
+	"github.com/dineshappavoo/basex"
+	"github.com/google/uuid"
 	"github.com/teris-io/shortid"
+	"math/big"
 )
 
 const Alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-"
@@ -51,4 +54,11 @@ func (self *shortIdGenerator) NextAlphaNumericPrefixedId() (string, error) {
 			return id, nil
 		}
 	}
+}
+
+func NewUUIDString() (string, error) {
+	id := uuid.New()
+	v := &big.Int{}
+	v.SetBytes(id[:])
+	return basex.EncodeInt(v)
 }

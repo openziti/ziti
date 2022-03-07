@@ -10,7 +10,7 @@ enum ContentType {
   // defined in ctrl_msg/messages.go now
   // CircuitSuccessType = 1001;
   DialType = 1002;
-  LinkType = 1003;
+  LinkConnectedType = 1003;
   FaultType = 1004;
   RouteType = 1005;
   UnrouteType = 1006;
@@ -28,6 +28,9 @@ enum ContentType {
   VerifyLinkType = 1019;
   SettingsType = 1020;
   CircuitConfirmationType = 1034;
+  RouterLinksType = 1035;
+
+  ListenersHeader = 10;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.
@@ -97,10 +100,22 @@ message Dial {
   string linkId = 1;
   string address = 2;
   string routerId = 3;
+  string linkType = 4;
+  string routerVersion = 5;
 }
 
-message Link {
+message LinkConnected {
   string id = 1;
+}
+
+message RouterLinks {
+  message RouterLink {
+    string id = 1;
+    string destRouterId = 2;
+    string linkType = 3;
+  }
+
+  repeated RouterLink links = 1;
 }
 
 enum FaultSubject {
@@ -163,4 +178,13 @@ message InspectResponse {
 message VerifyLink {
   string linkId = 1;
   repeated string fingerprints = 2;
+}
+
+message Listener {
+  string address = 1;
+  string type = 2;
+}
+
+message Listeners {
+  repeated Listener listeners = 1;
 }

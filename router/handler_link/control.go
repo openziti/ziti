@@ -29,7 +29,7 @@ type controlHandler struct {
 	forwarder *forwarder.Forwarder
 }
 
-func newControlHandler(link xlink.Xlink, forwarder *forwarder.Forwarder, closeNotify <-chan struct{}) *controlHandler {
+func newControlHandler(link xlink.Xlink, forwarder *forwarder.Forwarder) *controlHandler {
 	result := &controlHandler{
 		link:      link,
 		forwarder: forwarder,

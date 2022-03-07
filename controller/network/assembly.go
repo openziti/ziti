@@ -27,27 +27,39 @@ func (network *Network) assemble() {
 	log := pfxlog.Logger()
 
 	if network.Routers.connectedCount() > 1 {
-		log.Debugf("assembling with [%d] routers", network.Routers.connectedCount())
+		log.Tracef("assembling with [%d] routers", network.Routers.connectedCount())
 
 		missingLinks, err := network.linkController.missingLinks(network.Routers.allConnected(), network.options.PendingLinkTimeout)
 		if err == nil {
 			for _, missingLink := range missingLinks {
 				network.linkController.add(missingLink)
 
-				dial := &ctrl_pb.Dial{
-					LinkId:   missingLink.Id,
-					Address:  missingLink.Dst.AdvertisedListener,
-					RouterId: missingLink.Dst.Id,
-				}
+				for _, listener := range missingLink.Dst.Listeners {
+					if listener.Type() != missingLink.Type {
+						continue
+					}
+					dial := &ctrl_pb.Dial{
+						LinkId:   missingLink.Id,
+						Address:  listener.AdvertiseAddress(),
+						RouterId: missingLink.Dst.Id,
+						LinkType: listener.Type(),
+					}
 
-				if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
-					log.WithError(err).Error("unexpected error sending dial")
+					if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {
+						dial.RouterVersion = missingLink.Dst.VersionInfo.Version
+					}
+
+					if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
+						log.WithError(err).Error("unexpected error sending dial")
+					}
 				}
 			}
 
 		} else {
 			log.WithField("err", err).Error("missing link enumeration failed")
 		}
+
+		network.linkController.clearExpiredPending(network.options.PendingLinkTimeout)
 	}
 }
 

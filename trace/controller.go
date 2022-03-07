@@ -187,19 +187,35 @@ type controllerImpl struct {
 }
 
 func (controller *controllerImpl) EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
-	controller.events <- &enableSourcesEvent{sourceType, matcher, resultChan}
+	select {
+	case controller.events <- &enableSourcesEvent{sourceType, matcher, resultChan}:
+	case <-controller.closeNotify:
+		return
+	}
 }
 
 func (controller *controllerImpl) DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
-	controller.events <- &disableSourcesEvent{sourceType, matcher, resultChan}
+	select {
+	case controller.events <- &disableSourcesEvent{sourceType, matcher, resultChan}:
+	case <-controller.closeNotify:
+		return
+	}
 }
 
 func (controller *controllerImpl) AddSource(source Source) {
-	controller.events <- &sourceAddedEvent{source}
+	select {
+	case controller.events <- &sourceAddedEvent{source}:
+	case <-controller.closeNotify:
+		return
+	}
 }
 
 func (controller *controllerImpl) RemoveSource(source Source) {
-	controller.events <- &sourceRemovedEvent{source}
+	select {
+	case controller.events <- &sourceRemovedEvent{source}:
+	case <-controller.closeNotify:
+		return
+	}
 }
 
 func (controller *controllerImpl) run() {

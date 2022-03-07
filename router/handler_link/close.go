@@ -28,19 +28,21 @@ import (
 )
 
 type closeHandler struct {
-	link        xlink.Xlink
-	ctrl        xgress.CtrlChannel
-	forwarder   *forwarder.Forwarder
-	closeNotify chan struct{}
-	closed      concurrenz.AtomicBoolean
+	link          xlink.Xlink
+	ctrl          xgress.CtrlChannel
+	forwarder     *forwarder.Forwarder
+	closeNotify   chan struct{}
+	closed        concurrenz.AtomicBoolean
+	xlinkRegistry xlink.Registry
 }
 
-func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *closeHandler {
+func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify chan struct{}, registry xlink.Registry) *closeHandler {
 	return &closeHandler{
-		link:        link,
-		ctrl:        ctrl,
-		forwarder:   forwarder,
-		closeNotify: closeNotify,
+		link:          link,
+		ctrl:          ctrl,
+		forwarder:     forwarder,
+		closeNotify:   closeNotify,
+		xlinkRegistry: registry,
 	}
 }
 
@@ -51,16 +53,22 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 			WithField("routerId", self.link.DestinationId())
 
 		// ensure that both parts of a split link are closed, if one side closes
-		go func() { _ = self.link.Close() }()
+		go func() {
+			_ = self.link.Close()
+			// Close can be called from the link registry, so we can't call back into it from the same go-routine
+			self.xlinkRegistry.LinkClosed(self.link)
+		}()
 
 		log.Info("link closed")
 
-		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
-		if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err == nil {
-			log.Debug("transmitted link fault")
-		} else {
-			log.WithError(err).Error("unexpected error transmitting link fault")
-		}
+		self.link.HandleCloseNotification(func() {
+			fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
+			if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err == nil {
+				log.Debug("transmitted link fault")
+			} else {
+				log.WithError(err).Error("unexpected error transmitting link fault")
+			}
+		})
 
 		self.forwarder.UnregisterLink(self.link)
 		close(self.closeNotify)

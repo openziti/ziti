@@ -26,9 +26,10 @@ import (
 type channelType byte
 
 const (
-	LinkHeaderConnId   = 0
-	LinkHeaderType     = 1
-	LinkHeaderRouterId = 2
+	LinkHeaderConnId        = 0
+	LinkHeaderType          = 1
+	LinkHeaderRouterId      = 2
+	LinkHeaderRouterVersion = 3
 
 	PayloadChannel channelType = 1
 	AckChannel     channelType = 2
@@ -44,8 +45,13 @@ func (self channelType) String() string {
 	return "invalid"
 }
 
-func NewFactory(accepter xlink.Acceptor, bindHandlerFactory BindHandlerFactory, c transport.Configuration) xlink.Factory {
-	return &factory{acceptor: accepter, bindHandlerFactory: bindHandlerFactory, transportConfig: c}
+func NewFactory(accepter xlink.Acceptor, bindHandlerFactory BindHandlerFactory, c transport.Configuration, registry xlink.Registry) xlink.Factory {
+	return &factory{
+		acceptor:           accepter,
+		bindHandlerFactory: bindHandlerFactory,
+		transportConfig:    c,
+		xlinkRegistry:      registry,
+	}
 }
 
 func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, configData transport.Configuration) (xlink.Listener, error) {
@@ -60,6 +66,7 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 		bindHandlerFactory: self.bindHandlerFactory,
 		tcfg:               self.transportConfig,
 		pendingLinks:       map[string]*pendingLink{},
+		xlinkRegistery:     self.xlinkRegistry,
 	}, nil
 }
 
@@ -81,4 +88,5 @@ type factory struct {
 	acceptor           xlink.Acceptor
 	bindHandlerFactory BindHandlerFactory
 	transportConfig    transport.Configuration
+	xlinkRegistry      xlink.Registry
 }

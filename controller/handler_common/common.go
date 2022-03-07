@@ -20,6 +20,7 @@ func SendResult(request *channel.Message, ch channel.Channel, message string, su
 
 	response := channel.NewResult(success, message)
 	response.ReplyTo(request)
-	_ = ch.Send(response)
-	log.Debug("success")
+	if err := ch.Send(response); err != nil {
+		log.WithError(err).Error("failed to send result")
+	}
 }

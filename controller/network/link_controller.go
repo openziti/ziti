@@ -21,12 +21,14 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/orcaman/concurrent-map"
 	"math"
+	"sync"
 	"time"
 )
 
 type linkController struct {
 	linkTable   *linkTable
 	idGenerator idgen.Generator
+	lock        sync.Mutex
 }
 
 func newLinkController() *linkController {
@@ -44,6 +46,22 @@ func (linkController *linkController) add(link *Link) {
 
 func (linkController *linkController) has(link *Link) bool {
 	return linkController.linkTable.has(link)
+}
+
+func (linkController *linkController) routerReportedLink(linkId, linkType string, src, dst *Router) (*Link, bool) {
+	linkController.lock.Lock()
+	defer linkController.lock.Unlock()
+
+	if link, found := linkController.get(linkId); found {
+		return link, false
+	}
+
+	link := newLink(linkId, linkType)
+	link.Src = src
+	link.Dst = dst
+	link.addState(newLinkState(Connected))
+	linkController.add(link)
+	return link, true
 }
 
 func (linkController *linkController) get(linkId string) (*Link, bool) {
@@ -123,16 +141,18 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
 		for _, dstR := range routers {
-			if srcR != dstR && dstR.AdvertisedListener != "" {
-				if !linkController.hasLink(srcR, dstR, pendingLimit) {
-					id, err := linkController.idGenerator.NextAlphaNumericPrefixedId()
-					if err != nil {
-						return nil, err
+			if srcR != dstR && len(dstR.Listeners) > 0 {
+				for _, listener := range dstR.Listeners {
+					if !linkController.hasLink(srcR, dstR, listener.Type(), pendingLimit) {
+						id, err := idgen.NewUUIDString()
+						if err != nil {
+							return nil, err
+						}
+						link := newLink(id, listener.Type())
+						link.Src = srcR
+						link.Dst = dstR
+						missingLinks = append(missingLinks, link)
 					}
-					link := newLink(id)
-					link.Src = srcR
-					link.Dst = dstR
-					missingLinks = append(missingLinks, link)
 				}
 			}
 		}
@@ -141,15 +161,28 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 	return missingLinks, nil
 }
 
-func (linkController *linkController) hasLink(a, b *Router, pendingLimit int64) bool {
-	return linkController.hasDirectedLink(a, b, pendingLimit) || linkController.hasDirectedLink(b, a, pendingLimit)
+func (linkController *linkController) clearExpiredPending(pendingTimeout time.Duration) {
+	pendingLimit := info.NowInMilliseconds() - pendingTimeout.Milliseconds()
+
+	toRemove := linkController.linkTable.matching(func(link *Link) bool {
+		state := link.CurrentState()
+		return state != nil && state.Mode == Pending && state.Timestamp < pendingLimit
+	})
+
+	for _, link := range toRemove {
+		linkController.remove(link)
+	}
 }
 
-func (linkController *linkController) hasDirectedLink(a, b *Router, pendingLimit int64) bool {
+func (linkController *linkController) hasLink(a, b *Router, linkType string, pendingLimit int64) bool {
+	return linkController.hasDirectedLink(a, b, linkType, pendingLimit) || linkController.hasDirectedLink(b, a, linkType, pendingLimit)
+}
+
+func (linkController *linkController) hasDirectedLink(a, b *Router, linkType string, pendingLimit int64) bool {
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
-		if link.Src == a && link.Dst == b && state != nil {
+		if link.Src == a && link.Dst == b && state != nil && link.Type == linkType {
 			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
 				return true
 			}
@@ -214,140 +247,16 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 	return links
 }
 
+func (lt *linkTable) matching(f func(*Link) bool) []*Link {
+	var links []*Link
+	for i := range lt.links.IterBuffered() {
+		if link, ok := i.Val.(*Link); ok && f(link) {
+			links = append(links, link)
+		}
+	}
+	return links
+}
+
 func (lt *linkTable) remove(link *Link) {
 	lt.links.Remove(link.Id)
-}
-
-/*
- * adjacencyTable
- */
-
-type adjacencyTable struct {
-	adjacency cmap.ConcurrentMap // map[Router.Id.Token]*routerLinksTable
-}
-
-func newAdjacencyTable() *adjacencyTable {
-	return &adjacencyTable{adjacency: cmap.New()}
-}
-
-func (at *adjacencyTable) add(link *Link) {
-	// src->dst
-	var rlt *routerLinksTable
-	if i, found := at.adjacency.Get(link.Src.Id); found {
-		rlt = i.(*routerLinksTable)
-	} else {
-		rlt = newRouterLinksTable()
-	}
-	rlt.addLinkForRouter(link.Dst.Id, link)
-	at.adjacency.Set(link.Src.Id, rlt)
-
-	// dst->src
-	if i, found := at.adjacency.Get(link.Dst.Id); found {
-		rlt = i.(*routerLinksTable)
-	} else {
-		rlt = newRouterLinksTable()
-	}
-	rlt.addLinkForRouter(link.Src.Id, link)
-	at.adjacency.Set(link.Dst.Id, rlt)
-}
-
-func (at *adjacencyTable) get(routerId string) (*routerLinksTable, bool) {
-	i, found := at.adjacency.Get(routerId)
-	if i != nil {
-		return i.(*routerLinksTable), found
-	}
-	return nil, found
-}
-
-func (at *adjacencyTable) remove(link *Link) {
-	// src->dst
-	if i, found := at.adjacency.Get(link.Src.Id); found {
-		rlt := i.(*routerLinksTable)
-		rlt.removeLinkFromRouter(link.Dst.Id, link)
-		if rlt.size() > 0 {
-			at.adjacency.Set(link.Src.Id, rlt)
-		} else {
-			at.adjacency.Remove(link.Src.Id)
-		}
-	}
-
-	// dst->src
-	if i, found := at.adjacency.Get(link.Dst.Id); found {
-		rlt := i.(*routerLinksTable)
-		rlt.removeLinkFromRouter(link.Src.Id, link)
-		if rlt.size() > 0 {
-			at.adjacency.Set(link.Dst.Id, rlt)
-		} else {
-			at.adjacency.Remove(link.Dst.Id)
-		}
-	}
-}
-
-/*
- * routerLinksTable
- */
-
-type routerLinksTable struct {
-	routerLinks cmap.ConcurrentMap // map[Router.Id.Token][]*Link
-}
-
-func newRouterLinksTable() *routerLinksTable {
-	return &routerLinksTable{routerLinks: cmap.New()}
-}
-
-func (rlt *routerLinksTable) addLinkForRouter(routerId string, link *Link) {
-	var links []*Link
-	if i, found := rlt.routerLinks.Get(routerId); found {
-		links = i.([]*Link)
-	} else {
-		links = make([]*Link, 0)
-	}
-
-	links = append(links, link)
-	rlt.routerLinks.Set(routerId, links)
-}
-
-func (rlt *routerLinksTable) allLinksForRouter(routerId string) ([]*Link, bool) {
-	if i, found := rlt.routerLinks.Get(routerId); found {
-		return i.([]*Link), true
-	}
-	return nil, false
-}
-
-func (rlt *routerLinksTable) allLinksForAllRouters() []*Link {
-	allLinks := make([]*Link, 0, rlt.routerLinks.Count())
-	for i := range rlt.routerLinks.IterBuffered() {
-		links := i.Val.([]*Link)
-		for _, link := range links {
-			allLinks = append(allLinks, link)
-		}
-	}
-	return allLinks
-}
-
-func (rlt *routerLinksTable) size() int {
-	return rlt.routerLinks.Count()
-}
-
-func (rlt *routerLinksTable) removeLinkFromRouter(routerId string, link *Link) {
-	var links []*Link
-	if i, found := rlt.routerLinks.Get(routerId); found {
-		links = i.([]*Link)
-		if len(links) == 1 && links[0] == link {
-			rlt.routerLinks.Remove(routerId)
-
-		} else {
-			i := -1
-			for j, jLink := range links {
-				if jLink == link {
-					i = j
-					break
-				}
-			}
-			if i != -1 {
-				links = append(links[:i], links[i+1:]...)
-			}
-			rlt.routerLinks.Set(routerId, links)
-		}
-	}
 }

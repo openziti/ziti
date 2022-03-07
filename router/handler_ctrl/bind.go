@@ -37,6 +37,7 @@ type bindHandler struct {
 	closeNotify        chan struct{}
 	ctrlAddressChanger CtrlAddressChanger
 	traceHandler       *channel.TraceHandler
+	linkRegistry       xlink.Registry
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -47,6 +48,7 @@ func NewBindHandler(id *identity.TokenId,
 	xctrls []xctrl.Xctrl,
 	ctrlAddressChanger CtrlAddressChanger,
 	traceHandler *channel.TraceHandler,
+	linkRegistry xlink.Registry,
 	closeNotify chan struct{}) channel.BindHandler {
 	return &bindHandler{
 		id:                 id,
@@ -58,17 +60,23 @@ func NewBindHandler(id *identity.TokenId,
 		closeNotify:        closeNotify,
 		ctrlAddressChanger: ctrlAddressChanger,
 		traceHandler:       traceHandler,
+		linkRegistry:       linkRegistry,
 	}
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
-	binding.AddTypedReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, self.forwarder, self.closeNotify))
+	linkDialerPool := &handlerPool{
+		options:     self.forwarder.Options.LinkDial,
+		closeNotify: self.closeNotify,
+	}
+	binding.AddTypedReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, linkDialerPool, self.linkRegistry))
 	binding.AddTypedReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, self.closeNotify))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
-	binding.AddTypedReceiveHandler(newInspectHandler(self.id))
+	binding.AddTypedReceiveHandler(newInspectHandler(self.id, self.linkRegistry))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
+	binding.AddTypedReceiveHandler(newFaultHandler(self.linkRegistry))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
 	latency.AddLatencyProbeResponder(binding)

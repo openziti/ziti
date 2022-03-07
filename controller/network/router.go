@@ -33,17 +33,22 @@ import (
 	"go.etcd.io/bbolt"
 )
 
+type Listener interface {
+	AdvertiseAddress() string
+	Type() string
+}
+
 type Router struct {
 	models.BaseEntity
-	Name               string
-	Fingerprint        *string
-	AdvertisedListener string
-	Control            channel.Channel
-	Connected          concurrenz.AtomicBoolean
-	VersionInfo        *common.VersionInfo
-	routerLinks        RouterLinks
-	Cost               uint16
-	NoTraversal        bool
+	Name        string
+	Fingerprint *string
+	Listeners   []Listener
+	Control     channel.Channel
+	Connected   concurrenz.AtomicBoolean
+	VersionInfo *common.VersionInfo
+	routerLinks RouterLinks
+	Cost        uint16
+	NoTraversal bool
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -69,6 +74,13 @@ func (entity *Router) toBolt() boltz.Entity {
 	}
 }
 
+func (entity *Router) AddLinkListener(addr, linkType string) {
+	entity.Listeners = append(entity.Listeners, linkListener{
+		addr:     addr,
+		linkType: linkType,
+	})
+}
+
 func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
 		name = id
@@ -83,60 +95,6 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 	result.routerLinks.allLinks.Store([]*Link{})
 	result.routerLinks.linkByRouter.Store(map[string][]*Link{})
 	return result
-}
-
-type routerCopyOnWriteMap struct {
-	sync.Mutex
-	atomic.Value
-}
-
-func newRouterCopyOnWriteMap() *routerCopyOnWriteMap {
-	result := &routerCopyOnWriteMap{}
-	result.Store(map[string]*Router{})
-	return result
-}
-
-func (self *routerCopyOnWriteMap) Has(id string) bool {
-	_, found := self.getCurrentMap()[id]
-	return found
-}
-
-func (self *routerCopyOnWriteMap) Count() int {
-	return len(self.getCurrentMap())
-}
-
-func (self *routerCopyOnWriteMap) Get(id string) (*Router, bool) {
-	r, found := self.getCurrentMap()[id]
-	return r, found
-}
-
-func (self *routerCopyOnWriteMap) Set(id string, router *Router) {
-	self.Lock()
-	defer self.Unlock()
-	m := self.getMapCopy()
-	m[id] = router
-	self.Store(m)
-}
-
-func (self *routerCopyOnWriteMap) Remove(id string) {
-	self.Lock()
-	defer self.Unlock()
-	m := self.getMapCopy()
-	delete(m, id)
-	self.Store(m)
-}
-
-func (self *routerCopyOnWriteMap) getCurrentMap() map[string]*Router {
-	return self.Load().(map[string]*Router)
-}
-
-func (self *routerCopyOnWriteMap) getMapCopy() map[string]*Router {
-	m := self.getCurrentMap()
-	mapCopy := map[string]*Router{}
-	for k, v := range m {
-		mapCopy[k] = v
-	}
-	return mapCopy
 }
 
 type RouterController struct {
@@ -419,4 +377,17 @@ func (self *RouterLinks) Remove(link *Link, other *Router) {
 func (self *RouterLinks) Clear() {
 	self.allLinks.Store([]*Link{})
 	self.linkByRouter.Store(map[string][]*Link{})
+}
+
+type linkListener struct {
+	addr     string
+	linkType string
+}
+
+func (self linkListener) AdvertiseAddress() string {
+	return self.addr
+}
+
+func (self linkListener) Type() string {
+	return self.linkType
 }

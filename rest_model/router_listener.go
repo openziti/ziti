@@ -38,37 +38,29 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// InspectResponseValue inspect response value
+// RouterListener router listener
 //
-// swagger:model inspectResponseValue
-type InspectResponseValue struct {
+// swagger:model routerListener
+type RouterListener struct {
 
-	// app Id
+	// address
 	// Required: true
-	AppID *string `json:"appId"`
+	Address *string `json:"address"`
 
-	// name
+	// type
 	// Required: true
-	Name *string `json:"name"`
-
-	// value
-	// Required: true
-	Value interface{} `json:"value"`
+	Type *string `json:"type"`
 }
 
-// Validate validates this inspect response value
-func (m *InspectResponseValue) Validate(formats strfmt.Registry) error {
+// Validate validates this router listener
+func (m *RouterListener) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateAppID(formats); err != nil {
+	if err := m.validateAddress(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateName(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateValue(formats); err != nil {
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -78,40 +70,31 @@ func (m *InspectResponseValue) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *InspectResponseValue) validateAppID(formats strfmt.Registry) error {
+func (m *RouterListener) validateAddress(formats strfmt.Registry) error {
 
-	if err := validate.Required("appId", "body", m.AppID); err != nil {
+	if err := validate.Required("address", "body", m.Address); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *InspectResponseValue) validateName(formats strfmt.Registry) error {
+func (m *RouterListener) validateType(formats strfmt.Registry) error {
 
-	if err := validate.Required("name", "body", m.Name); err != nil {
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *InspectResponseValue) validateValue(formats strfmt.Registry) error {
-
-	if m.Value == nil {
-		return errors.Required("value", "body", nil)
-	}
-
-	return nil
-}
-
-// ContextValidate validates this inspect response value based on context it is used
-func (m *InspectResponseValue) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this router listener based on context it is used
+func (m *RouterListener) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *InspectResponseValue) MarshalBinary() ([]byte, error) {
+func (m *RouterListener) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -119,8 +102,8 @@ func (m *InspectResponseValue) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *InspectResponseValue) UnmarshalBinary(b []byte) error {
-	var res InspectResponseValue
+func (m *RouterListener) UnmarshalBinary(b []byte) error {
+	var res RouterListener
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

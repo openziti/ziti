@@ -20,7 +20,17 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/concurrenz"
 )
+
+type impl struct {
+	id            *identity.TokenId
+	ch            channel.Channel
+	routerId      string
+	routerVersion string
+	linkType      string
+	closeNotified concurrenz.AtomicBoolean
+}
 
 func (self *impl) Id() *identity.TokenId {
 	return self.id
@@ -42,12 +52,25 @@ func (self *impl) Close() error {
 	return self.ch.Close()
 }
 
+func (self *impl) CloseNotified() error {
+	self.closeNotified.Set(true)
+	return self.Close()
+}
+
 func (self *impl) DestinationId() string {
 	return self.routerId
 }
 
-type impl struct {
-	id       *identity.TokenId
-	ch       channel.Channel
-	routerId string
+func (self *impl) DestVersion() string {
+	return self.routerVersion
+}
+
+func (self *impl) LinkType() string {
+	return self.linkType
+}
+
+func (self *impl) HandleCloseNotification(f func()) {
+	if self.closeNotified.CompareAndSwap(false, true) {
+		f()
+	}
 }

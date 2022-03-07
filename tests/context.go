@@ -59,7 +59,7 @@ func init() {
 		SetTrimPrefix("github.com/openziti/").
 		StartingToday()
 
-	pfxlog.GlobalInit(logrus.DebugLevel, logOptions)
+	pfxlog.GlobalInit(logrus.InfoLevel, logOptions)
 	pfxlog.SetFormatter(pfxlog.NewFormatter(logOptions))
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
@@ -199,16 +199,17 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	ctx.requireRestPort(time.Second * 5)
 }
 
-func (ctx *TestContext) startRouter(index uint8) {
+func (ctx *TestContext) startRouter(index uint8) *router.Router {
 	config, err := router.LoadConfig(fmt.Sprintf(RouterConfFile, index))
 	ctx.Req.NoError(err)
 	r := router.Create(config, NewVersionProviderTest())
 	ctx.Req.NoError(r.Start())
 
 	ctx.routers = append(ctx.routers, r)
+	return r
 }
 
-func (ctx *TestContext) shutdownRouter() {
+func (ctx *TestContext) shutdownRouters() {
 	for _, r := range ctx.routers {
 		ctx.Req.NoError(r.Shutdown())
 	}
@@ -243,9 +244,28 @@ func (ctx *TestContext) waitForPort(address string, duration time.Duration) erro
 	}
 }
 
+func (ctx *TestContext) waitForPortClose(address string, duration time.Duration) error {
+	now := time.Now()
+	endTime := now.Add(duration)
+	maxWait := duration
+	for {
+		conn, err := net.DialTimeout("tcp", address, maxWait)
+		if err != nil {
+			return nil
+		}
+		_ = conn.Close()
+		now = time.Now()
+		if !now.Before(endTime) {
+			return err
+		}
+		maxWait = endTime.Sub(now)
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func (ctx *TestContext) Teardown() {
 	pfxlog.Logger().Info("tearing down test context")
-	ctx.shutdownRouter()
+	ctx.shutdownRouters()
 	if ctx.fabricController != nil {
 		ctx.fabricController.Shutdown()
 		ctx.fabricController = nil

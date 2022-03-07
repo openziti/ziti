@@ -34,46 +34,52 @@ type dialer struct {
 	transportConfig    transport.Configuration
 }
 
-func (self *dialer) Dial(addressString string, linkId *identity.TokenId, routerId string) error {
-	address, err := transport.ParseAddress(addressString)
+func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
+	address, err := transport.ParseAddress(dial.GetAddress())
 	if err != nil {
-		return errors.Wrapf(err, "error parsing link address [%s]", addressString)
+		return nil, errors.Wrapf(err, "error parsing link address [%s]", dial.GetAddress())
 	}
 
+	linkId := self.id.ShallowCloneWithNewToken(dial.GetLinkId())
 	connId := uuid.New().String()
 
 	var xli xlink.Xlink
 	if self.config.split {
-		xli, err = self.dialSplit(linkId, address, routerId, connId)
+		xli, err = self.dialSplit(linkId, address, connId, dial)
 	} else {
-		xli, err = self.dialSingle(linkId, address, routerId, connId)
+		xli, err = self.dialSingle(linkId, address, connId, dial)
 	}
 	if err != nil {
-		return errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
+		return nil, errors.Wrapf(err, "error dialing outgoing link [l/%s]", linkId.Token)
 	}
 
 	if err := self.acceptor.Accept(xli); err != nil {
-		return errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
+		return nil, errors.Wrapf(err, "error accepting link [l/%s]", linkId.Token)
 	}
 
-	return nil
+	return xli, nil
 
 }
 
-func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
+func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
 	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
-		LinkHeaderRouterId: []byte(routerId),
-		LinkHeaderConnId:   []byte(connId),
-		LinkHeaderType:     {byte(PayloadChannel)},
+		LinkHeaderRouterId:      []byte(self.id.Token),
+		LinkHeaderConnId:        []byte(connId),
+		LinkHeaderType:          {byte(PayloadChannel)},
+		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 	})
 
 	logrus.Debugf("dialing payload channel for [l/%s]", linkId.Token)
 
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
-		link:   &splitImpl{id: linkId, routerId: routerId},
+		link: &splitImpl{id: linkId,
+			routerId:      dial.GetRouterId(),
+			routerVersion: dial.GetRouterVersion(),
+			linkType:      dial.GetLinkType(),
+		},
 	}
 
 	payloadCh, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, channel.BindHandlerF(bindHandler.bindPayloadChannel), self.config.options, self.transportConfig)
@@ -84,8 +90,10 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
 	ackDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
-		LinkHeaderConnId: []byte(connId),
-		LinkHeaderType:   {byte(AckChannel)},
+		LinkHeaderRouterId:      []byte(self.id.Token),
+		LinkHeaderConnId:        []byte(connId),
+		LinkHeaderType:          {byte(AckChannel)},
+		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 	})
 
 	_, err = channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, ackDialer, channel.BindHandlerF(bindHandler.bindAckChannel), self.config.options, self.transportConfig)
@@ -97,17 +105,23 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	return bindHandler.link, nil
 }
 
-func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, routerId, connId string) (xlink.Xlink, error) {
+func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
 	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
-		LinkHeaderRouterId: []byte(routerId),
-		LinkHeaderConnId:   []byte(connId),
+		LinkHeaderRouterId:      []byte(self.id.Token),
+		LinkHeaderConnId:        []byte(connId),
+		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),
 	})
 
 	bindHandler := &dialBindHandler{
 		dialer: self,
-		link:   &impl{id: linkId, routerId: routerId},
+		link: &impl{
+			id:            linkId,
+			routerId:      dial.GetRouterId(),
+			linkType:      dial.GetLinkType(),
+			routerVersion: dial.GetRouterVersion(),
+		},
 	}
 
 	_, err := channel.NewChannelWithTransportConfiguration("l/"+linkId.Token, payloadDialer, bindHandler, self.config.options, self.transportConfig)

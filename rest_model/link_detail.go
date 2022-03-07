@@ -78,6 +78,10 @@ type LinkDetail struct {
 	// static cost
 	// Required: true
 	StaticCost *int64 `json:"staticCost"`
+
+	// type
+	// Required: true
+	Type *string `json:"type"`
 }
 
 // Validate validates this link detail
@@ -117,6 +121,10 @@ func (m *LinkDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateStaticCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -223,6 +231,15 @@ func (m *LinkDetail) validateState(formats strfmt.Registry) error {
 func (m *LinkDetail) validateStaticCost(formats strfmt.Registry) error {
 
 	if err := validate.Required("staticCost", "body", m.StaticCost); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *LinkDetail) validateType(formats strfmt.Registry) error {
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
 	}
 

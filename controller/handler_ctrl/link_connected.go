@@ -19,41 +19,41 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/channel"
 )
 
-type linkHandler struct {
+type linkConnectedHandler struct {
 	r       *network.Router
 	network *network.Network
 }
 
-func newLinkHandler(r *network.Router, network *network.Network) *linkHandler {
-	return &linkHandler{r: r, network: network}
+func newLinkConnectedHandler(r *network.Router, network *network.Network) *linkConnectedHandler {
+	return &linkConnectedHandler{r: r, network: network}
 }
 
-func (h *linkHandler) ContentType() int32 {
-	return int32(ctrl_pb.ContentType_LinkType)
+func (h *linkConnectedHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_LinkConnectedType)
 }
 
-func (h *linkHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (h *linkConnectedHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	link := &ctrl_pb.Link{}
+	link := &ctrl_pb.LinkConnected{}
 	if err := proto.Unmarshal(msg.Body, link); err != nil {
 		log.WithError(err).Error("failed to unmarshal link message")
 		return
 	}
 
-	go h.HandleLink(msg, ch, link)
+	go h.HandleLink(ch, link)
 }
 
-func (h *linkHandler) HandleLink(msg *channel.Message, ch channel.Channel, link *ctrl_pb.Link) {
-	log := pfxlog.ContextLogger(ch.Label())
+func (h *linkConnectedHandler) HandleLink(ch channel.Channel, link *ctrl_pb.LinkConnected) {
+	log := pfxlog.ContextLogger(ch.Label()).WithField("linkId", link.Id)
 
 	if err := h.network.LinkConnected(link.Id, true); err == nil {
-		log.Infof("link connected [l/%s]", link.Id)
+		log.Info("link connected")
 	} else {
 		log.WithError(err).Error("unexpected error marking link connected")
 	}

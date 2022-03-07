@@ -17,21 +17,28 @@
 package handler_ctrl
 
 import (
+	"encoding/json"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/debugz"
+	"github.com/pkg/errors"
 	"strings"
 )
 
 type inspectHandler struct {
-	id *identity.TokenId
+	id            *identity.TokenId
+	xlinkRegistry xlink.Registry
 }
 
-func newInspectHandler(id *identity.TokenId) *inspectHandler {
-	return &inspectHandler{id: id}
+func newInspectHandler(id *identity.TokenId, xlinkRegistry xlink.Registry) *inspectHandler {
+	return &inspectHandler{
+		id:            id,
+		xlinkRegistry: xlinkRegistry,
+	}
 }
 
 func (*inspectHandler) ContentType() int32 {
@@ -73,6 +80,22 @@ func (context *inspectRequestContext) processLocal() {
 	for _, requested := range context.request.RequestedValues {
 		if strings.ToLower(requested) == "stackdump" {
 			context.appendValue(requested, debugz.GenerateStack())
+		} else if strings.ToLower(requested) == "links" {
+			var result []*linkInspectResult
+			for link := range context.handler.xlinkRegistry.Iter() {
+				result = append(result, &linkInspectResult{
+					Id:          link.Id().Token,
+					Type:        link.LinkType(),
+					Dest:        link.DestinationId(),
+					DestVersion: link.DestVersion(),
+				})
+			}
+			js, err := json.Marshal(result)
+			if err != nil {
+				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())
+			} else {
+				context.appendValue(requested, string(js))
+			}
 		}
 	}
 }
@@ -101,4 +124,11 @@ func (context *inspectRequestContext) appendValue(name string, value string) {
 func (context *inspectRequestContext) appendError(err string) {
 	context.response.Success = false
 	context.response.Errors = append(context.response.Errors, err)
+}
+
+type linkInspectResult struct {
+	Id          string `json:"id"`
+	Type        string `json:"type"`
+	Dest        string `json:"dest"`
+	DestVersion string `json:"destVersion"`
 }

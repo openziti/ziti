@@ -68,6 +68,7 @@ type Router struct {
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
+	xlinkRegistry   xlink.Registry
 	xgressListeners []xgress.Listener
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
@@ -124,6 +125,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
+		xlinkRegistry:       NewLinkRegistry(),
 	}
 }
 
@@ -205,6 +207,8 @@ func (self *Router) Shutdown() error {
 			}
 		}
 
+		self.xlinkRegistry.Shutdown()
+
 		for _, xgressListener := range self.xgressListeners {
 			if err := xgressListener.Close(); err != nil {
 				errors = append(errors, err)
@@ -266,12 +270,14 @@ func (self *Router) startProfiling() {
 func (self *Router) registerComponents() error {
 	self.xlinkFactories = make(map[string]xlink.Factory)
 	xlinkAccepter := newXlinkAccepter(self.forwarder)
-	xlinkChAccepter := handler_link.NewBindHandlerFactory(self,
+	xlinkChAccepter := handler_link.NewBindHandlerFactory(
+		self,
 		self.forwarder,
 		self.config.Forwarder,
 		self.metricsRegistry,
+		self.xlinkRegistry,
 	)
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport)
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport, self.xlinkRegistry)
 
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
@@ -279,6 +285,10 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
 	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry, self.config.Id)); err != nil {
+		return err
+	}
+
+	if err := self.RegisterXctrl(self.xlinkRegistry); err != nil {
 		return err
 	}
 
@@ -383,9 +393,25 @@ func (self *Router) startControlPlane() error {
 		attributes[channel.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
+	listeners := &ctrl_pb.Listeners{}
+	for _, listener := range self.xlinkListeners {
+		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
+			Address: listener.GetAdvertisement(),
+			Type:    listener.GetType(),
+		})
+	}
+
+	if len(listeners.Listeners) > 0 {
+		if buf, err := proto.Marshal(listeners); err != nil {
+			return errors.Wrap(err, "unable to marshal Listeners")
+		} else {
+			attributes[int32(ctrl_pb.ContentType_ListenersHeader)] = buf
+		}
+	}
+
 	reconnectHandler := func() {
 		for _, x := range self.xctrls {
-			x.NotifyOfReconnect()
+			go x.NotifyOfReconnect()
 		}
 	}
 
@@ -400,6 +426,7 @@ func (self *Router) startControlPlane() error {
 		self.xctrls,
 		self.config,
 		self.config.Trace.Handler,
+		self.xlinkRegistry,
 		self.shutdownC,
 	)
 
@@ -458,6 +485,7 @@ const (
 	UpdateRoute         byte = 2
 	CloseControlChannel byte = 3
 	OpenControlChannel  byte = 4
+	DumpLinks           byte = 5
 )
 
 func (self *Router) RegisterDefaultDebugOps() {
@@ -465,6 +493,7 @@ func (self *Router) RegisterDefaultDebugOps() {
 	self.debugOperations[UpdateRoute] = self.debugOpUpdateRouter
 	self.debugOperations[CloseControlChannel] = self.debugOpCloseControlChannel
 	self.debugOperations[OpenControlChannel] = self.debugOpOpenControlChannel
+	self.debugOperations[DumpLinks] = self.debugOpWriteLinks
 }
 
 func (self *Router) RegisterDebugOp(opId byte, f func(c *bufio.ReadWriter) error) {
@@ -475,6 +504,23 @@ func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
 	tables := self.forwarder.Debug()
 	_, err := c.Write([]byte(tables))
 	return err
+}
+
+func (self *Router) debugOpWriteLinks(c *bufio.ReadWriter) error {
+	noLinks := true
+	for link := range self.xlinkRegistry.Iter() {
+		line := fmt.Sprintf("id: %v dest: %v type: %v\n", link.Id().Token, link.DestinationId(), link.LinkType())
+		_, err := c.WriteString(line)
+		if err != nil {
+			return err
+		}
+		noLinks = false
+	}
+	if noLinks {
+		_, err := c.WriteString("no links\n")
+		return err
+	}
+	return nil
 }
 
 func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
@@ -546,7 +592,10 @@ func (self *Router) HandleDebug(conn io.ReadWriter) error {
 	}
 
 	if opF, ok := self.debugOperations[op]; ok {
-		return opF(bconn)
+		if err := opF(bconn); err != nil {
+			return err
+		}
+		return bconn.Flush()
 	}
 	return errors.Errorf("invalid operation %v", op)
 }

@@ -20,8 +20,19 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
 )
+
+type splitImpl struct {
+	id            *identity.TokenId
+	payloadCh     channel.Channel
+	ackCh         channel.Channel
+	routerId      string
+	routerVersion string
+	linkType      string
+	closeNotified concurrenz.AtomicBoolean
+}
 
 func (self *splitImpl) Id() *identity.TokenId {
 	return self.id
@@ -37,6 +48,11 @@ func (self *splitImpl) SendControl(control *xgress.Control) error {
 
 func (self *splitImpl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
 	return self.ackCh.Send(acknowledgement.Marshall())
+}
+
+func (self *splitImpl) CloseNotified() error {
+	self.closeNotified.Set(true)
+	return self.Close()
 }
 
 func (self *splitImpl) Close() error {
@@ -61,9 +77,16 @@ func (self *splitImpl) DestinationId() string {
 	return self.routerId
 }
 
-type splitImpl struct {
-	id        *identity.TokenId
-	payloadCh channel.Channel
-	ackCh     channel.Channel
-	routerId  string
+func (self *splitImpl) DestVersion() string {
+	return self.routerVersion
+}
+
+func (self *splitImpl) LinkType() string {
+	return self.linkType
+}
+
+func (self *splitImpl) HandleCloseNotification(f func()) {
+	if self.closeNotified.CompareAndSwap(false, true) {
+		f()
+	}
 }

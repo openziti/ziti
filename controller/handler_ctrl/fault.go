@@ -20,9 +20,10 @@ import (
 	"errors"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/channel"
 	"strings"
 )
 
@@ -51,17 +52,32 @@ func (h *faultHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go h.handleFault(msg, ch, fault)
 }
 
-func (h *faultHandler) handleFault(msg *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
+func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	switch fault.Subject {
 	case ctrl_pb.FaultSubject_LinkFault:
 		linkId := fault.Id
-		if err := h.network.LinkConnected(linkId, false); err == nil {
-			if link, found := h.network.GetLink(linkId); found {
+		if link, found := h.network.GetLink(linkId); found {
+			wasConnected := link.IsUsable()
+			if err := h.network.LinkConnected(linkId, false); err == nil {
 				h.network.LinkChanged(link)
+				otherRouter := link.Src
+				if link.Src.Id == h.r.Id {
+					otherRouter = link.Dst
+				}
+
+				if wasConnected {
+					if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Get() {
+						if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
+							log.WithField("linkId", linkId).WithField("routerId", otherRouter.Id).
+								WithError(err).Error("failed to forward link fault to other router")
+						}
+					}
+				}
+
+				log.Infof("link fault [l/%s]", linkId)
 			}
-			log.Infof("link fault [l/%s]", linkId)
 		}
 
 	case ctrl_pb.FaultSubject_IngressFault:

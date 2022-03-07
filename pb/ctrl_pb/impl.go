@@ -22,8 +22,12 @@ func (request *CircuitConfirmation) GetContentType() int32 {
 	return int32(ContentType_CircuitConfirmationType)
 }
 
-func (request *Link) GetContentType() int32 {
-	return int32(ContentType_LinkType)
+func (request *LinkConnected) GetContentType() int32 {
+	return int32(ContentType_LinkConnectedType)
+}
+
+func (request *RouterLinks) GetContentType() int32 {
+	return int32(ContentType_RouterLinksType)
 }
 
 func (request *VerifyLink) GetContentType() int32 {

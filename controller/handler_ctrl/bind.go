@@ -45,7 +45,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newCreateTerminatorHandler(self.network, self.router))
 	binding.AddTypedReceiveHandler(newRemoveTerminatorHandler(self.network))
 	binding.AddTypedReceiveHandler(newUpdateTerminatorHandler(self.network))
-	binding.AddTypedReceiveHandler(newLinkHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newLinkConnectedHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newRouterLinkHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newVerifyLinkHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newMetricsHandler(self.network))
@@ -56,11 +57,17 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
 	if self.router.VersionInfo.HasMinimumVersion("0.18.7") {
+		roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
+		queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
 		latencyHandler := &ctrlChannelLatencyHandler{
-			roundTripHistogram: self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id),
-			queueTimeHistogram: self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id),
+			roundTripHistogram: roundTripHistogram,
+			queueTimeHistogram: queueTimeHistogram,
 		}
-		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler)
+		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler.HandleLatency)
+		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+			roundTripHistogram.Dispose()
+			queueTimeHistogram.Dispose()
+		}))
 	}
 
 	xctrlDone := make(chan struct{})
@@ -85,15 +92,10 @@ type ctrlChannelLatencyHandler struct {
 	queueTimeHistogram metrics.Histogram
 }
 
-func (self *ctrlChannelLatencyHandler) LatencyReported(latencyType latency.Type, elapsed time.Duration) {
+func (self *ctrlChannelLatencyHandler) HandleLatency(latencyType latency.Type, elapsed time.Duration) {
 	if latencyType == latency.RoundTripType {
 		self.roundTripHistogram.Update(elapsed.Nanoseconds())
 	} else if latencyType == latency.BeforeSendType {
 		self.queueTimeHistogram.Update(elapsed.Nanoseconds())
 	}
-}
-
-func (self *ctrlChannelLatencyHandler) ChannelClosed() {
-	self.roundTripHistogram.Dispose()
-	self.queueTimeHistogram.Dispose()
 }

@@ -113,6 +113,24 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 			return nil, true
 		}
 
+	case int32(ContentType_VerifyLinkType):
+		request := &VerifyLink{}
+		if err := proto.Unmarshal(msg.Body, request); err == nil {
+			meta := channel.NewTraceMessageDecode(DECODER, "Verify Link")
+			meta["linkId"] = request.LinkId
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
 	case int32(ctrl_msg.CircuitSuccessType):
 		meta := channel.NewTraceMessageDecode(DECODER, "Circuit Success Response")
 		meta["circuitId"] = string(msg.Body)
@@ -159,11 +177,36 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_LinkType):
-		link := &Link{}
+	case int32(ContentType_LinkConnectedType):
+		link := &LinkConnected{}
 		if err := proto.Unmarshal(msg.Body, link); err == nil {
-			meta := channel.NewTraceMessageDecode(DECODER, "Link")
+			meta := channel.NewTraceMessageDecode(DECODER, "LinkConnected")
 			meta["id"] = link.Id
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_RouterLinksType):
+		links := &RouterLinks{}
+		if err := proto.Unmarshal(msg.Body, links); err == nil {
+			meta := channel.NewTraceMessageDecode(DECODER, "RouterLinks")
+			var linksD []map[string]interface{}
+			for _, link := range links.Links {
+				linksD = append(linksD, map[string]interface{}{
+					"id":   link.Id,
+					"dest": link.DestRouterId,
+				})
+			}
+			meta["links"] = linksD
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {

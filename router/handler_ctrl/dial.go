@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
@@ -31,21 +30,20 @@ import (
 )
 
 type dialHandler struct {
-	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
-	dialers []xlink.Dialer
-	pool    handlerPool
+	id       *identity.TokenId
+	ctrl     xgress.CtrlChannel
+	dialers  []xlink.Dialer
+	registry xlink.Registry
+	pool     *handlerPool
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *dialHandler {
+func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, pool *handlerPool, registry xlink.Registry) *dialHandler {
 	handler := &dialHandler{
-		id:      id,
-		ctrl:    ctrl,
-		dialers: dialers,
-		pool: handlerPool{
-			options:     forwarder.Options.LinkDial,
-			closeNotify: closeNotify,
-		},
+		id:       id,
+		ctrl:     ctrl,
+		dialers:  dialers,
+		pool:     pool,
+		registry: registry,
 	}
 	handler.pool.Start()
 
@@ -57,44 +55,69 @@ func (self *dialHandler) ContentType() int32 {
 }
 
 func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	dial := &ctrl_pb.Dial{}
+	if err := proto.Unmarshal(msg.Body, dial); err != nil {
+		logrus.WithError(err).Error("error unmarshalling dial message")
+		return
+	}
+
 	self.pool.Queue(func() {
-		self.handle(msg, ch)
+		self.handle(dial, ch)
 	})
 }
 
-func (self *dialHandler) handle(msg *channel.Message, _ channel.Channel) {
-	dial := &ctrl_pb.Dial{}
-	if err := proto.Unmarshal(msg.Body, dial); err == nil {
-		log := pfxlog.ChannelLogger("link", "linkDialer").
-			WithFields(logrus.Fields{"linkId": dial.LinkId, "routerId": dial.RouterId, "address": dial.Address})
+func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
+	log := pfxlog.ChannelLogger("link", "linkDialer").
+		WithFields(logrus.Fields{
+			"linkId":        dial.LinkId,
+			"routerId":      dial.RouterId,
+			"address":       dial.Address,
+			"linkType":      dial.LinkType,
+			"routerVersion": dial.RouterVersion,
+		})
 
-		linkId := self.id.ShallowCloneWithNewToken(dial.LinkId)
-		if len(self.dialers) == 1 {
-			log.Info("dialing link")
-			if err := self.dialers[0].Dial(dial.Address, linkId, self.id.Token); err == nil {
+	if len(self.dialers) != 1 {
+		log.Errorf("invalid Xlink dialers configuration")
+		if err := self.sendLinkFault(dial.LinkId); err != nil {
+			log.WithError(err).Error("error sending link fault")
+		}
+		return
+	}
+
+	link, lockAcquired := self.registry.GetDialLock(dial)
+	if link != nil {
+		log.WithField("existingLinkId", link.Id().Token).Info("existing link found")
+		if err := self.sendLinkFault(dial.LinkId); err != nil {
+			log.WithError(err).Error("error sending link fault")
+		}
+		return
+	}
+
+	if lockAcquired {
+		log.Info("dialing link")
+		if link, err := self.dialers[0].Dial(dial); err == nil {
+			if existingLink, success := self.registry.DialSucceeded(link); success {
+				log.Info("link registered")
 				if err := self.sendLinkMessage(dial.LinkId); err != nil {
 					log.WithError(err).Error("error sending link message ")
 				}
-				log.Info("link established")
 			} else {
-				log.WithError(err).Error("link dialing failed")
-				if err := self.sendLinkFault(dial.LinkId); err != nil {
-					log.WithError(err).Error("error sending fault")
-				}
+				log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
 			}
 		} else {
-			log.Errorf("invalid Xlink dialers configuration")
+			log.WithError(err).Error("link dialing failed")
+			self.registry.DialFailed(dial)
 			if err := self.sendLinkFault(dial.LinkId); err != nil {
-				log.WithError(err).Error("error sending link fault")
+				log.WithError(err).Error("error sending fault")
 			}
 		}
 	} else {
-		logrus.WithError(err).Error("error unmarshalling dial message")
+		log.Info("unable to dial, dial already in progress")
 	}
 }
 
 func (self *dialHandler) sendLinkMessage(linkId string) error {
-	linkMsg := &ctrl_pb.Link{Id: linkId}
+	linkMsg := &ctrl_pb.LinkConnected{Id: linkId}
 	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrl.Channel()); err != nil {
 		return errors.Wrap(err, "error sending link message")
 	}
