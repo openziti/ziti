@@ -70,9 +70,6 @@ type CreateConfigControllerOptions struct {
 func NewCmdCreateConfigController() *cobra.Command {
 	controllerOptions := &CreateConfigControllerOptions{}
 
-	// Get env variable data global to all config files
-	data := &ConfigTemplateValues{}
-
 	cmd := &cobra.Command{
 		Use:     "controller",
 		Short:   "Create a controller config",

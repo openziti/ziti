@@ -1,3 +1,67 @@
+# Release 0.24.13
+
+* Bug fix: Fixed an issue with the ziti CLI quickstart routine which also affected router and controller config generation leaving many config fields blank or incorrect.
+* Enhancement: Added new `noTraversal` field to routers. Configures if a router should allow/disallow traversal. Required on create/update commands.
+* Enhancement: `ziti edge update edge-router` now supports either `--no-traversal` flag which will allow/disallow a given router from being used to traverse. 
+* Enhancement: `ziti fabric list routers` and `ziti edge list routers` will now display the noTraversal flag of associated routers. 
+* Feature: 1st Party Certificate Extension
+
+## 1st Party Certificate Extension
+
+Ziti Edge Client and Management API both support certificate extension for Ziti provisioned certificates. Before a 
+client certificate expires, the client can elect to generate a new client certificate that will extend its valid period
+and allows the client to optionally utilize a new private key.
+
+Process Outline:
+
+1) The client enrolls, obtaining a client certificate that is signed by the Ziti Controller
+2) The client authenticates
+3) The client provides a CSR
+4) The client receives a new public certificate
+5) The client verifies with the controller the new public certificate has been obtained
+
+### Detailed Outline
+
+The client enrolls and authenticates with the controller as normal. If the client wishes to extend its client certificate,
+it can request that at any time by doing:
+
+```
+POST /edge/{client|management}/current-identity/authenticators/{id}/extend
+
+{
+  "clientCertCsr": "-----BEGIN NEW CERTIFICATE REQUEST-----\n..."
+}
+
+```
+
+If the authenticator specified by `{id}` is a certificate based authenticator and provisioned by Ziti, it will be allowed.
+If not, 4xx HTTP status code errors will be returned outlining the issue. If ok, a 200 OK will be returned in the format of:
+
+```
+{
+  "clientCert": "-----BEGIN CERTIFICATE-----\n....",
+  "ca": ""-----BEGIN CERTIFICATE-----\n...."
+}
+```
+
+At this point the controller will have stored the new certificate, but it is not usable for authentication until the client
+proves that is has properly stored the client certificate. This verification is done by sending the client certificate
+back to the controller:
+
+```
+POST /edge/{client|management}/current-identity/authenticators{id}/extend-verify
+{
+  "clientCert": "-----BEGIN CERTIFICATE-----\n...."
+}
+```
+
+On success, 200 OK is returned and the new client certificate should be used for all future authentication requests. 
+
+# Release 0.24.12
+
+* Enhancement: Allow xgress proxy configuration in router config to accept service id or service name
+* Build: Docker build process fixes 
+
 # Release 0.24.11
 
 * Bug fix: Fix ziti CLI env. Config was getting set to current directory, instead of defaulting to under $HOME

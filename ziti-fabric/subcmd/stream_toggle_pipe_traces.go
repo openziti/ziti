@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	trace_pb "github.com/openziti/foundation/trace/pb"
 	"github.com/spf13/cobra"
 	"time"
 )

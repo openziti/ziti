@@ -17,12 +17,19 @@
 package cmd
 
 import (
+	"github.com/openziti/channel"
+	edge "github.com/openziti/edge/controller/config"
+	fabCtrl "github.com/openziti/fabric/controller"
+	fabForwarder "github.com/openziti/fabric/router/forwarder"
+	fabXweb "github.com/openziti/fabric/xweb"
+	foundation "github.com/openziti/foundation/transport"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 )
 
 const (
@@ -51,46 +58,57 @@ type ConfigTemplateValues struct {
 }
 
 type ControllerTemplateValues struct {
-	Name                 string
-	Port                 string
-	AdvertisedAddress    string
-	ListenerAddress      string
-	IdentityCert         string
-	IdentityServerCert   string
-	IdentityKey          string
-	IdentityCA           string
-	EdgeIdentityDuration int
-	EdgeRouterDuration   int
-	Edge                 EdgeControllerValues
-	WebListener          ControllerWebListenerValues
-	HealthCheck          ControllerHealthCheckValues
+	Name                       string
+	Port                       string
+	AdvertisedAddress          string
+	ListenerAddress            string
+	IdentityCert               string
+	IdentityServerCert         string
+	IdentityKey                string
+	IdentityCA                 string
+	MinQueuedConnects          int
+	MaxQueuedConnects          int
+	DefaultQueuedConnects      int
+	MinOutstandingConnects     int
+	MaxOutstandingConnects     int
+	DefaultOutstandingConnects int
+	MinConnectTimeout          time.Duration
+	MaxConnectTimeout          time.Duration
+	DefaultConnectTimeout      time.Duration
+	EdgeIdentityDuration       time.Duration
+	EdgeRouterDuration         time.Duration
+	Edge                       EdgeControllerValues
+	WebListener                ControllerWebListenerValues
+	HealthCheck                ControllerHealthCheckValues
 }
 
 type EdgeControllerValues struct {
 	ZitiSigningCert string
 	ZitiSigningKey  string
 
-	APISessionTimeoutMinutes int
-	ListenerHostPort         string
-	AdvertisedHostPort       string
-	IdentityCert             string
-	IdentityServerCert       string
-	IdentityKey              string
-	IdentityCA               string
+	APIActivityUpdateBatchSize int
+	APIActivityUpdateInterval  time.Duration
+	APISessionTimeout          time.Duration
+	ListenerHostPort           string
+	AdvertisedHostPort         string
+	IdentityCert               string
+	IdentityServerCert         string
+	IdentityKey                string
+	IdentityCA                 string
 }
 
 type ControllerWebListenerValues struct {
-	IdleTimeoutMS  int
-	ReadTimeoutMS  int
-	WriteTimeoutMS int
-	MinTLSVersion  string
-	MaxTLSVersion  string
+	IdleTimeout   time.Duration
+	ReadTimeout   time.Duration
+	WriteTimeout  time.Duration
+	MinTLSVersion string
+	MaxTLSVersion string
 }
 
 type ControllerHealthCheckValues struct {
-	IntervalSec     int
-	TimeoutSec      int
-	InitialDelaySec int
+	Interval     time.Duration
+	Timeout      time.Duration
+	InitialDelay time.Duration
 }
 
 type RouterTemplateValues struct {
@@ -114,18 +132,19 @@ type EdgeRouterTemplateValues struct {
 }
 
 type WSSRouterTemplateValues struct {
-	WriteTimeout     int
-	ReadTimeout      int
-	IdleTimeout      int
-	PongTimeout      int
-	PingInterval     int
-	HandshakeTimeout int
-	ReadBufferSize   int
-	WriteBufferSize  int
+	WriteTimeout      time.Duration
+	ReadTimeout       time.Duration
+	IdleTimeout       time.Duration
+	PongTimeout       time.Duration
+	PingInterval      time.Duration
+	HandshakeTimeout  time.Duration
+	ReadBufferSize    int
+	WriteBufferSize   int
+	EnableCompression bool
 }
 
 type RouterForwarderTemplateValues struct {
-	LatencyProbeInterval  int
+	LatencyProbeInterval  time.Duration
 	XgressDialQueueLength int
 	XgressDialWorkerCount int
 	LinkDialQueueLength   int
@@ -133,13 +152,14 @@ type RouterForwarderTemplateValues struct {
 }
 
 type RouterListenerTemplateValues struct {
-	ConnectTimeoutMs   int
-	GetSessionTimeoutS int
-	BindPort           int
-	OutQueueSize       int
+	ConnectTimeout    time.Duration
+	GetSessionTimeout time.Duration
+	BindPort          int
+	OutQueueSize      int
 }
 
 var workingDir string
+var data = &ConfigTemplateValues{}
 
 func init() {
 	zh := os.Getenv("ZITI_HOME")
@@ -229,33 +249,46 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 
 func (data *ConfigTemplateValues) populateDefaults() {
 	data.Router.Listener.BindPort = constants.DefaultListenerBindPort
-	data.Router.Listener.OutQueueSize = constants.DefaultOutQueueSize
-	data.Router.Listener.ConnectTimeoutMs = constants.DefaultConnectTimeoutMs
-	data.Router.Listener.GetSessionTimeoutS = constants.DefaultGetSessionTimeoutS
-	data.Controller.Edge.APISessionTimeoutMinutes = constants.DefaultEdgeAPISessionTimeoutMinutes
-	data.Controller.EdgeIdentityDuration = constants.DefaultEdgeIdentityDurationMinutes
-	data.Controller.EdgeRouterDuration = constants.DefaultEdgeRouterDurationMinutes
-	data.Controller.WebListener.IdleTimeoutMS = constants.DefaultWebListenerIdleTimeoutMs
-	data.Controller.WebListener.ReadTimeoutMS = constants.DefaultWebListenerReadTimeoutMs
-	data.Controller.WebListener.WriteTimeoutMS = constants.DefaultWebListenerWriteTimeoutMs
-	data.Controller.WebListener.MinTLSVersion = constants.DefaultWebListenerMinTLSVersion
-	data.Controller.WebListener.MaxTLSVersion = constants.DefaultWebListenerMaxTLSVersion
-	data.Controller.HealthCheck.TimeoutSec = constants.DefaultControllerHealthCheckTimeoutSec
-	data.Controller.HealthCheck.IntervalSec = constants.DefaultControllerHealthCheckIntervalSec
-	data.Controller.HealthCheck.InitialDelaySec = constants.DefaultControllerHealthCheckDelaySec
-	data.Router.Wss.WriteTimeout = constants.DefaultWSSWriteTimeout
-	data.Router.Wss.ReadTimeout = constants.DefaultWSSReadTimeout
-	data.Router.Wss.IdleTimeout = constants.DefaultWSSIdleTimeout
-	data.Router.Wss.PongTimeout = constants.DefaultWSSPongTimeout
-	data.Router.Wss.PingInterval = constants.DefaultWSSPingInterval
-	data.Router.Wss.HandshakeTimeout = constants.DefaultWSSHandshakeTimeout
-	data.Router.Wss.ReadBufferSize = constants.DefaultWSSReadBufferSize
-	data.Router.Wss.WriteBufferSize = constants.DefaultWSSWriteBufferSize
-	data.Router.Forwarder.LatencyProbeInterval = constants.DefaultLatencyProbeInterval
-	data.Router.Forwarder.XgressDialQueueLength = constants.DefaultXgressDialQueueLength
-	data.Router.Forwarder.XgressDialWorkerCount = constants.DefaultXgressDialWorkerCount
-	data.Router.Forwarder.LinkDialQueueLength = constants.DefaultLinkDialQueueLength
-	data.Router.Forwarder.LinkDialWorkerCount = constants.DefaultLinkDialWorkerCount
+	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
+
+	data.Controller.MinQueuedConnects = channel.MinQueuedConnects
+	data.Controller.MaxQueuedConnects = channel.MaxQueuedConnects
+	data.Controller.DefaultQueuedConnects = channel.DefaultQueuedConnects
+	data.Controller.MinOutstandingConnects = channel.MinOutstandingConnects
+	data.Controller.MaxOutstandingConnects = channel.MaxOutstandingConnects
+	data.Controller.DefaultOutstandingConnects = channel.DefaultOutstandingConnects
+	data.Controller.MinConnectTimeout = channel.MinConnectTimeout
+	data.Controller.MaxConnectTimeout = channel.MaxConnectTimeout
+	data.Controller.DefaultConnectTimeout = channel.DefaultConnectTimeout
+	data.Controller.HealthCheck.Timeout = fabCtrl.DefaultHealthChecksBoltCheckTimeout
+	data.Controller.HealthCheck.Interval = fabCtrl.DefaultHealthChecksBoltCheckInterval
+	data.Controller.HealthCheck.InitialDelay = fabCtrl.DefaultHealthChecksBoltCheckInitialDelay
+	data.Controller.Edge.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
+	data.Controller.Edge.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval
+	data.Controller.Edge.APISessionTimeout = edge.DefaultEdgeSessionTimeout
+	data.Controller.EdgeIdentityDuration = edge.DefaultEdgeEnrollmentDuration
+	data.Controller.EdgeRouterDuration = edge.DefaultEdgeEnrollmentDuration
+	data.Controller.WebListener.IdleTimeout = edge.DefaultHttpIdleTimeout
+	data.Controller.WebListener.ReadTimeout = edge.DefaultHttpReadTimeout
+	data.Controller.WebListener.WriteTimeout = edge.DefaultHttpWriteTimeout
+	data.Controller.WebListener.MinTLSVersion = fabXweb.ReverseTlsVersionMap[fabXweb.MinTLSVersion]
+	data.Controller.WebListener.MaxTLSVersion = fabXweb.ReverseTlsVersionMap[fabXweb.MaxTLSVersion]
+	data.Router.Wss.WriteTimeout = foundation.DefaultWsWriteTimeout
+	data.Router.Wss.ReadTimeout = foundation.DefaultWsReadTimeout
+	data.Router.Wss.IdleTimeout = foundation.DefaultWsIdleTimeout
+	data.Router.Wss.PongTimeout = foundation.DefaultWsPongTimeout
+	data.Router.Wss.PingInterval = foundation.DefaultWsPingInterval
+	data.Router.Wss.HandshakeTimeout = foundation.DefaultWsHandshakeTimeout
+	data.Router.Wss.ReadBufferSize = foundation.DefaultWsReadBufferSize
+	data.Router.Wss.WriteBufferSize = foundation.DefaultWsWriteBufferSize
+	data.Router.Wss.EnableCompression = foundation.DefaultWsEnableCompression
+	data.Router.Forwarder.LatencyProbeInterval = fabForwarder.DefaultLatencyProbeInterval
+	data.Router.Forwarder.XgressDialQueueLength = fabForwarder.DefaultXgressDialWorkerQueueLength
+	data.Router.Forwarder.XgressDialWorkerCount = fabForwarder.DefaultXgressDialWorkerCount
+	data.Router.Forwarder.LinkDialQueueLength = fabForwarder.DefaultLinkDialQueueLength
+	data.Router.Forwarder.LinkDialWorkerCount = fabForwarder.DefaultLinkDialWorkerCount
+	data.Router.Listener.OutQueueSize = channel.DefaultOutQueueSize
+	data.Router.Listener.ConnectTimeout = channel.DefaultConnectTimeout
 }
 
 func handleVariableError(err error, varName string) {

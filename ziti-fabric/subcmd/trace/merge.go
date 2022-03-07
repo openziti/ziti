@@ -17,10 +17,10 @@
 package trace
 
 import (
-	"github.com/openziti/foundation/trace"
-	"github.com/openziti/foundation/trace/pb"
 	"errors"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/trace"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/spf13/cobra"
 	"os"
 	"sort"
@@ -74,10 +74,10 @@ func merge(cmd *cobra.Command, args []string) {
 
 type mergeItem struct {
 	timestamp int64
-	msg interface{}
+	msg       interface{}
 }
 
-type mergeHandler struct{
+type mergeHandler struct {
 	items []*mergeItem
 }
 
