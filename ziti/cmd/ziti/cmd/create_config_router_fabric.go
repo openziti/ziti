@@ -40,17 +40,11 @@ var (
 	`)
 )
 
-// CreateConfigRouterFabricOptions the options for the fabric command
-type CreateConfigRouterFabricOptions struct {
-	CreateConfigRouterOptions
-}
-
 //go:embed config_templates/router.yml
 var routerConfigFabricTemplate string
 
 // NewCmdCreateConfigRouterFabric creates a command object for the "fabric" command
 func NewCmdCreateConfigRouterFabric() *cobra.Command {
-	options := &CreateConfigRouterFabricOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "fabric",
@@ -62,20 +56,20 @@ func NewCmdCreateConfigRouterFabric() *cobra.Command {
 			data.Router.IsFabric = true
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.run(data)
+			routerOptions.Cmd = cmd
+			routerOptions.Args = args
+			err := routerOptions.runFabricRouter(data)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	options.addCreateFlags(cmd)
-	options.addFlags(cmd)
+	routerOptions.addCreateFlags(cmd)
+	routerOptions.addFabricFlags(cmd)
 
 	return cmd
 }
 
-func (options *CreateConfigRouterFabricOptions) addFlags(cmd *cobra.Command) {
+func (options *CreateConfigRouterOptions) addFabricFlags(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -84,7 +78,7 @@ func (options *CreateConfigRouterFabricOptions) addFlags(cmd *cobra.Command) {
 }
 
 // run implements the command
-func (options *CreateConfigRouterFabricOptions) run(data *ConfigTemplateValues) error {
+func (options *CreateConfigRouterOptions) runFabricRouter(data *ConfigTemplateValues) error {
 
 	tmpl, err := template.New("fabric-router-config").Parse(routerConfigFabricTemplate)
 	if err != nil {

@@ -49,20 +49,11 @@ var (
 	`)
 )
 
-// CreateConfigRouterEdgeOptions the options for the edge command
-type CreateConfigRouterEdgeOptions struct {
-	CreateConfigRouterOptions
-
-	WssEnabled bool
-	IsPrivate  bool
-}
-
 //go:embed config_templates/router.yml
 var routerConfigEdgeTemplate string
 
 // NewCmdCreateConfigRouterEdge creates a command object for the "edge" command
 func NewCmdCreateConfigRouterEdge() *cobra.Command {
-	options := &CreateConfigRouterEdgeOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "edge",
@@ -71,24 +62,24 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 		Long:    createConfigRouterEdgeLong,
 		Example: createConfigRouterEdgeExample,
 		PreRun: func(cmd *cobra.Command, args []string) {
-			data.Router.IsWss = options.WssEnabled
-			data.Router.IsPrivate = options.IsPrivate
+			data.Router.IsWss = routerOptions.WssEnabled
+			data.Router.IsPrivate = routerOptions.IsPrivate
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.run(data)
+			routerOptions.Cmd = cmd
+			routerOptions.Args = args
+			err := routerOptions.runEdgeRouter(data)
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	options.addCreateFlags(cmd)
-	options.addFlags(cmd)
+	routerOptions.addCreateFlags(cmd)
+	routerOptions.addEdgeFlags(cmd)
 
 	return cmd
 }
 
-func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
+func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
@@ -99,7 +90,7 @@ func (options *CreateConfigRouterEdgeOptions) addFlags(cmd *cobra.Command) {
 }
 
 // run implements the command
-func (options *CreateConfigRouterEdgeOptions) run(data *ConfigTemplateValues) error {
+func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValues) error {
 	// Ensure private and wss are not both used
 	if options.IsPrivate && options.WssEnabled {
 		logrus.Fatal("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
