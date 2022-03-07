@@ -51,12 +51,16 @@ func (self *ListCmd) run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if self.OutputResponseJson() {
+		return nil
+	}
+
 	result := inspectOk.Payload
 	if *result.Success {
 		fmt.Printf("\nResults: (%d)\n", len(result.Values))
 		for _, value := range result.Values {
 			fmt.Printf("%v.%v\n", stringz.OrEmpty(value.AppID), stringz.OrEmpty(value.Name))
-			fmt.Printf("%v\n\n", stringz.OrEmpty(value.Value))
+			fmt.Printf("%+v\n\n", value.Value)
 		}
 	} else {
 		fmt.Printf("\nEncountered errors: (%d)\n", len(result.Errors))

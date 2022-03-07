@@ -78,10 +78,7 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 		Short: "Show Ziti router process info",
 		Long:  psLong,
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+			cmdhelper.CheckErr(cmd.Help())
 		},
 	}
 
@@ -105,11 +102,7 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("disconnect", router.CloseControlChannel, f, out, errOut))
 	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("reconnect", router.OpenControlChannel, f, out, errOut))
 	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-api-sessions", debugops.DumpApiSessions, f, out, errOut))
-
-	// cmd.AddCommand(NewCmdPsController(f, out, errOut))
-	// cmd.AddCommand(NewCmdPsMgmt(f, out, errOut))
-	// cmd.AddCommand(NewCmdPsMgmtGw(f, out, errOut))
-	// cmd.AddCommand(NewCmdPsRouter(f, out, errOut))
+	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-links", router.DumpLinks, f, out, errOut))
 
 	options.addPsFlags(cmd)
 	return cmd
