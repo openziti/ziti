@@ -184,10 +184,11 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 	columnConfigs[4] = table.ColumnConfig{Align: text.AlignRight}
 	columnConfigs[5] = table.ColumnConfig{Align: text.AlignRight}
 	t.SetColumnConfigs(columnConfigs)
-	t.AppendHeader(table.Row{"ID", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
+	t.AppendHeader(table.Row{"ID", "Type", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
+		linkType := entity.Path("type").Data().(string)
 		srcRouter := entity.Path("sourceRouter.name").Data().(string)
 		dstRouter := entity.Path("destRouter.name").Data().(string)
 		staticCost := entity.Path("staticCost").Data().(float64)
@@ -202,7 +203,7 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 			status = "down"
 		}
 
-		t.AppendRow(table.Row{id, srcRouter, dstRouter, staticCost,
+		t.AppendRow(table.Row{id, linkType, srcRouter, dstRouter, staticCost,
 			fmt.Sprintf("%.2vms", srcLatency),
 			fmt.Sprintf("%.2vms", dstLatency),
 			state, status, cost})
@@ -291,7 +292,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "No Traversal", "Version"})
+	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "No Traversal", "Version", "Listeners"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
@@ -307,7 +308,17 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 			arch := versionInfo.Path("arch").Data().(string)
 			version = fmt.Sprintf("%v on %v/%v", v, os, arch)
 		}
-		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version})
+		var listeners []string
+		listenerAddresses := entity.Path("listenerAddresses")
+		if listenerAddresses != nil {
+			children, _ := listenerAddresses.Children()
+			for idx, child := range children {
+				addr := child.Path("address").Data().(string)
+				linkType := child.Path("type").Data().(string)
+				listeners = append(listeners, fmt.Sprintf("%v: %v (%v)", idx+1, addr, linkType))
+			}
+		}
+		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version, strings.Join(listeners, "\n")})
 	}
 
 	renderTable(o, t, pagingInfo)

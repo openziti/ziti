@@ -1,6 +1,84 @@
-# Release 0.24.13
+# Release 0.25.0
+
+## Breaking Changes
+Routers with version 0.25.0 or greater must be used with a controller that is also v0.25 or greater. 
+Controllers will continue to work with older routers. Router of this version should also continue to interoperate with older routers.
+
+NOTE: You may be used to seeing two links between routers, if they both have link listeners. Starting with v0.25 expect to see only
+a single link between routers, unless you use the new link types feature.
+
+## What's New
 
 * Bug fix: Fixed an issue with the ziti CLI quickstart routine which also affected router and controller config generation leaving many config fields blank or incorrect.
+    * Note: This fix was previously reported to have been fixed in 0.24.13 but the fix was actually applied to this release.
+* Enhancement: Router Link Refactor
+    * Support for multiple link types
+    * Existing link notifications
+    * Link heartbeats/latency have changed
+    * Inspect and ps upport for links
+    * Router version dissemination
+    * Distributed control preparation
+* Enhancement: `ziti fabric list routers` now includes the link listener types and advertise addresses
+
+## Router Link Refactor
+
+### Multiple Link Types 
+Routers can now configure multiple link listeners. Listeners now support an option 'type' attribute. If no type is provided, the link type will be derived from the address. For example, given the following configuration:
+
+```
+link:
+  dialers:
+    - binding:          transport
+  listeners:
+    - binding:          transport
+      bind:             tls:127.0.0.1:7878
+      advertise:        tls:127.0.0.1:7878
+
+    - binding:          transport
+      bind:             tls:127.0.0.1:5876
+      advertise:        tls:127.0.0.1:5876
+      type: cellular
+```
+
+The first listener will have a type of `tls` and the second listener will have a type of `cellular`. 
+
+Routers will now try to maintain one link of each type available on the target router.
+
+When using `ziti fabric list links` the link type will now be shown.
+
+### Existing link notifications
+As the controller doesn't persist links, when the controller restarts or loses connection it loses all information about router links. Routers can now notify the controller about existing links when they reconnect. If they receive a link dial request for a link that they already have (based on the target router and link type), they can now report back the existing link. This should prevent the number of links to remain relatively constant.
+
+### Link Heartbeats
+
+Because we are now limiting the number of links it is even more vital to ensure that links are healthy, and to respond quickly when links become unresponsive. To that end links now use heartbeats. As data flows across the link, heartbeat headers will be added periodically. Heartbeat responses will be added to return messages. If the link is currently quiet, explicit heartbeat messages will be sent. Heartbeats will also be used to measure latency. If heartbeats are unreturned for a certain amount of time, the link will be considered bad and torn down, so a new one can be established.
+
+The link.latency metric now is calculated starting when the message is about to be sent. It may have a few extra milliseconds time, as the response waits briefly to see if there's an existing message that the response can piggyback on.
+
+Previously link.latency include both queue and network time. Now that it only has network time, there's a new metrics, `link.queue_time` which tracks how long it takes messages to get from send requested to just before send.
+
+### Inspect and ps support for links
+
+`ziti fabric inspect .* links` can now be used to see what links each router knows about. This can be useful to determine if/how the controller and routers may have gotten out of sync.
+
+Router can also be interrogated directly for their links via IPC, using `ziti ps`. 
+
+```
+$ ziti ps router dump-links 275061
+id: 4sYO18tZ1Fz4HByXuIp1Dq dest: o.oVU2Qm. type: tls
+id: 19V7yhjBpHAc2prTDiTihQ dest: hBjIP2wmxj type: tls
+```
+
+### Router version dissemination
+
+Routers now get the version of the router they are dialing a link to, and pass their own version to that router as part of the dial. This allows routers to only enable specific features if both sides of the link support it.
+
+### Distributed Control preparation
+
+Giving the routers have more control over the links prepares us for a time when routers may be connected to multiple controllers. Routers will be able to notify controllers of existing links and will be prepared to resolve duplicate link dial requests from multiple sources.
+
+# Release 0.24.13
+
 * Enhancement: Added new `noTraversal` field to routers. Configures if a router should allow/disallow traversal. Required on create/update commands.
 * Enhancement: `ziti edge update edge-router` now supports either `--no-traversal` flag which will allow/disallow a given router from being used to traverse. 
 * Enhancement: `ziti fabric list routers` and `ziti edge list routers` will now display the noTraversal flag of associated routers. 

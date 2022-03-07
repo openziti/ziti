@@ -34,26 +34,26 @@ type CreateConfigRouterOptions struct {
 	CreateConfigOptions
 
 	RouterName string
+	WssEnabled bool
+	IsPrivate  bool
 }
+
+var routerOptions = CreateConfigRouterOptions{}
 
 // NewCmdCreateConfigRouter creates a command object for the "router" command
 func NewCmdCreateConfigRouter() *cobra.Command {
-	options := &CreateConfigRouterOptions{}
-
-	// Get env variable data global to all config files
-	data := &ConfigTemplateValues{}
 
 	cmd := &cobra.Command{
 		Use:     "router",
 		Short:   "Creates a config file for specified Router name",
 		Aliases: []string{"rtr"},
-		PreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Setup logging
 			var logOut *os.File
-			if options.Verbose {
+			if routerOptions.Verbose {
 				logrus.SetLevel(logrus.DebugLevel)
 				// Only print log to stdout if not printing config to stdout
-				if strings.ToLower(options.Output) != "stdout" {
+				if strings.ToLower(routerOptions.Output) != "stdout" {
 					logOut = os.Stdout
 				} else {
 					logOut = os.Stderr
@@ -65,7 +65,7 @@ func NewCmdCreateConfigRouter() *cobra.Command {
 			data.populateDefaults()
 
 			// Update router data with options passed in
-			data.Router.Name = options.RouterName
+			data.Router.Name = routerOptions.RouterName
 			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 		},
 		Run: func(cmd *cobra.Command, args []string) {
@@ -73,11 +73,11 @@ func NewCmdCreateConfigRouter() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(NewCmdCreateConfigRouterEdge(data))
-	cmd.AddCommand(NewCmdCreateConfigRouterFabric(data))
+	cmd.AddCommand(NewCmdCreateConfigRouterEdge())
+	cmd.AddCommand(NewCmdCreateConfigRouterFabric())
 
-	options.addCreateFlags(cmd)
-	options.addFlags(cmd)
+	routerOptions.addCreateFlags(cmd)
+	routerOptions.addFlags(cmd)
 	return cmd
 }
 

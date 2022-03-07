@@ -35,9 +35,9 @@ require (
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.3
-	github.com/openziti/channel v0.18.11
-	github.com/openziti/foundation v0.17.7
-	github.com/openziti/sdk-golang v0.16.14
+	github.com/openziti/channel v0.18.14
+	github.com/openziti/foundation v0.17.8
+	github.com/openziti/sdk-golang v0.16.20
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -73,6 +73,7 @@ require (
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3 // indirect
+	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
@@ -172,7 +173,7 @@ require (
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
-	github.com/openziti/edge v0.21.115
-	github.com/openziti/fabric v0.17.57
+	github.com/openziti/edge v0.21.120
+	github.com/openziti/fabric v0.17.60
 	github.com/rivo/uniseg v0.2.0 // indirect
 )
