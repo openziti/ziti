@@ -44,9 +44,9 @@ require (
 	github.com/miekg/dns v1.1.46
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/fabric v0.17.59
+	github.com/openziti/fabric v0.17.60
 	github.com/openziti/foundation v0.17.8
-	github.com/openziti/sdk-golang v0.16.18
+	github.com/openziti/sdk-golang v0.16.19
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -77,6 +77,7 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/emirpasic/gods v1.12.0 // indirect
@@ -128,4 +129,4 @@ require (
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
-require github.com/openziti/channel v0.18.12
+require github.com/openziti/channel v0.18.14

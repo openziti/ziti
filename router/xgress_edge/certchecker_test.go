@@ -222,7 +222,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker := newCertChecker()
 
 			now := time.Now()
-			notAfter := now.AddDate(0, 0, 7).Add(30 * time.Second)
+			notAfter := now.Add(7 * 24 * time.Hour).Add(30 * time.Second)
 
 			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
 
