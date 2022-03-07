@@ -110,9 +110,8 @@ func Test_TransitRouters(t *testing.T) {
 				UpdatedAt: time.Now(),
 				Tags:      nil,
 			},
-			Name:               "uMvqq",
-			Fingerprint:        &fp,
-			AdvertisedListener: "tls:127.0.0.1",
+			Name:        "uMvqq",
+			Fingerprint: &fp,
 		}
 		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)
 		ctx.Req.NoError(err, "could not create router at fabric level")
