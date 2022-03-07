@@ -124,6 +124,11 @@ paths:
   '/enrollments/{id}/refresh':
     $ref: 'management/enrollments.yml#/paths/enrollments-id-refresh'
 
+  '/external-jwt-signers':
+    $ref: 'management/ext-jwt-signers.yml#/paths/external-jwt-signers'
+  '/external-jwt-signers/{id}':
+    $ref: 'management/ext-jwt-signers.yml#/paths/external-jwt-signers-id'
+
   '/identities':
     $ref: 'management/identities.yml#/paths/identities'
   '/identities/{id}':

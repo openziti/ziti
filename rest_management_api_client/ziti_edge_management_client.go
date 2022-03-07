@@ -45,6 +45,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_client/edge_router"
 	"github.com/openziti/edge/rest_management_api_client/edge_router_policy"
 	"github.com/openziti/edge/rest_management_api_client/enrollment"
+	"github.com/openziti/edge/rest_management_api_client/external_j_w_t_signer"
 	"github.com/openziti/edge/rest_management_api_client/identity"
 	"github.com/openziti/edge/rest_management_api_client/informational"
 	"github.com/openziti/edge/rest_management_api_client/posture_checks"
@@ -110,6 +111,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiEdgeMa
 	cli.EdgeRouter = edge_router.New(transport, formats)
 	cli.EdgeRouterPolicy = edge_router_policy.New(transport, formats)
 	cli.Enrollment = enrollment.New(transport, formats)
+	cli.ExternaljwtSigner = external_j_w_t_signer.New(transport, formats)
 	cli.Identity = identity.New(transport, formats)
 	cli.Informational = informational.New(transport, formats)
 	cli.PostureChecks = posture_checks.New(transport, formats)
@@ -186,6 +188,8 @@ type ZitiEdgeManagement struct {
 
 	Enrollment enrollment.ClientService
 
+	ExternaljwtSigner external_j_w_t_signer.ClientService
+
 	Identity identity.ClientService
 
 	Informational informational.ClientService
@@ -223,6 +227,7 @@ func (c *ZitiEdgeManagement) SetTransport(transport runtime.ClientTransport) {
 	c.EdgeRouter.SetTransport(transport)
 	c.EdgeRouterPolicy.SetTransport(transport)
 	c.Enrollment.SetTransport(transport)
+	c.ExternaljwtSigner.SetTransport(transport)
 	c.Identity.SetTransport(transport)
 	c.Informational.SetTransport(transport)
 	c.PostureChecks.SetTransport(transport)
