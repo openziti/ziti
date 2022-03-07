@@ -114,7 +114,7 @@ type CreateConfigEnvironmentOptions struct {
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 
-	environmentOptions := &CreateConfigEnvironmentOptions{
+	environmentOptions = &CreateConfigEnvironmentOptions{
 		ConfigTemplateValues: *data,
 		EnvVariableMetaData: EnvVariableMetaData{
 			OS:                                           "Stuff",

@@ -118,9 +118,10 @@ func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
 	NewCmdCreateConfigEnvironment()
 
 	// Run the environment options command and capture stdout
-	environmentOptions.output = "stdout"
+	cmd := NewCmdCreateConfigEnvironment()
+	cmd.SetArgs([]string{"-o", "stdout"})
 	output := captureOutput(func() {
-		_ = environmentOptions.run()
+		_ = cmd.Execute()
 	})
 
 	// Split the output on newlines
@@ -135,7 +136,7 @@ func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
 		}
 		// Strip out the variable name and see if it's a known value
 		start := strings.Index(line, prefix)
-		end := strings.Index(line, ".")
+		end := strings.Index(line, "=")
 		if end < 0 {
 			// If there's no assignment, assume a variable name was referenced in a comment and ignore
 			continue
@@ -161,9 +162,10 @@ func TestThatAllKnownEnvVariablesAreAccountedForInOutput(t *testing.T) {
 	NewCmdCreateConfigEnvironment()
 
 	// Run the environment options command and capture stdout
-	environmentOptions.output = "stdout"
+	cmd := NewCmdCreateConfigEnvironment()
+	cmd.SetArgs([]string{"-o", "stdout"})
 	output := captureOutput(func() {
-		_ = environmentOptions.run()
+		_ = cmd.Execute()
 	})
 
 	// Split the output on newlines
