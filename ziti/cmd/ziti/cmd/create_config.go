@@ -159,6 +159,7 @@ type RouterListenerTemplateValues struct {
 }
 
 var workingDir string
+var data = &ConfigTemplateValues{}
 
 func init() {
 	zh := os.Getenv("ZITI_HOME")
