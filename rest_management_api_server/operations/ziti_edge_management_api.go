@@ -55,6 +55,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router"
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router_policy"
 	"github.com/openziti/edge/rest_management_api_server/operations/enrollment"
+	"github.com/openziti/edge/rest_management_api_server/operations/external_j_w_t_signer"
 	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_management_api_server/operations/posture_checks"
@@ -133,6 +134,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		EdgeRouterPolicyCreateEdgeRouterPolicyHandler: edge_router_policy.CreateEdgeRouterPolicyHandlerFunc(func(params edge_router_policy.CreateEdgeRouterPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router_policy.CreateEdgeRouterPolicy has not yet been implemented")
 		}),
+		ExternaljwtSignerCreateExternalJwtSignerHandler: external_j_w_t_signer.CreateExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.CreateExternalJwtSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.CreateExternalJwtSigner has not yet been implemented")
+		}),
 		IdentityCreateIdentityHandler: identity.CreateIdentityHandlerFunc(func(params identity.CreateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.CreateIdentity has not yet been implemented")
 		}),
@@ -186,6 +190,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		}),
 		EnrollmentDeleteEnrollmentHandler: enrollment.DeleteEnrollmentHandlerFunc(func(params enrollment.DeleteEnrollmentParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation enrollment.DeleteEnrollment has not yet been implemented")
+		}),
+		ExternaljwtSignerDeleteExternalJwtSignerHandler: external_j_w_t_signer.DeleteExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.DeleteExternalJwtSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.DeleteExternalJwtSigner has not yet been implemented")
 		}),
 		IdentityDeleteIdentityHandler: identity.DeleteIdentityHandlerFunc(func(params identity.DeleteIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DeleteIdentity has not yet been implemented")
@@ -243,6 +250,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		}),
 		EnrollmentDetailEnrollmentHandler: enrollment.DetailEnrollmentHandlerFunc(func(params enrollment.DetailEnrollmentParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation enrollment.DetailEnrollment has not yet been implemented")
+		}),
+		ExternaljwtSignerDetailExternalJwtSignerHandler: external_j_w_t_signer.DetailExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.DetailExternalJwtSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.DetailExternalJwtSigner has not yet been implemented")
 		}),
 		IdentityDetailIdentityHandler: identity.DetailIdentityHandlerFunc(func(params identity.DetailIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DetailIdentity has not yet been implemented")
@@ -382,6 +392,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		EnrollmentListEnrollmentsHandler: enrollment.ListEnrollmentsHandlerFunc(func(params enrollment.ListEnrollmentsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation enrollment.ListEnrollments has not yet been implemented")
 		}),
+		ExternaljwtSignerListExternalJwtSignersHandler: external_j_w_t_signer.ListExternalJwtSignersHandlerFunc(func(params external_j_w_t_signer.ListExternalJwtSignersParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.ListExternalJwtSigners has not yet been implemented")
+		}),
 		IdentityListIdentitiesHandler: identity.ListIdentitiesHandlerFunc(func(params identity.ListIdentitiesParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.ListIdentities has not yet been implemented")
 		}),
@@ -502,6 +515,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		EdgeRouterPolicyPatchEdgeRouterPolicyHandler: edge_router_policy.PatchEdgeRouterPolicyHandlerFunc(func(params edge_router_policy.PatchEdgeRouterPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router_policy.PatchEdgeRouterPolicy has not yet been implemented")
 		}),
+		ExternaljwtSignerPatchExternalJwtSignerHandler: external_j_w_t_signer.PatchExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.PatchExternalJwtSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.PatchExternalJwtSigner has not yet been implemented")
+		}),
 		IdentityPatchIdentityHandler: identity.PatchIdentityHandlerFunc(func(params identity.PatchIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.PatchIdentity has not yet been implemented")
 		}),
@@ -555,6 +571,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		}),
 		EdgeRouterPolicyUpdateEdgeRouterPolicyHandler: edge_router_policy.UpdateEdgeRouterPolicyHandlerFunc(func(params edge_router_policy.UpdateEdgeRouterPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router_policy.UpdateEdgeRouterPolicy has not yet been implemented")
+		}),
+		ExternaljwtSignerUpdateExternalJwtSignerHandler: external_j_w_t_signer.UpdateExternalJwtSignerHandlerFunc(func(params external_j_w_t_signer.UpdateExternalJwtSignerParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_j_w_t_signer.UpdateExternalJwtSigner has not yet been implemented")
 		}),
 		IdentityUpdateIdentityHandler: identity.UpdateIdentityHandlerFunc(func(params identity.UpdateIdentityParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.UpdateIdentity has not yet been implemented")
@@ -675,6 +694,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterCreateEdgeRouterHandler edge_router.CreateEdgeRouterHandler
 	// EdgeRouterPolicyCreateEdgeRouterPolicyHandler sets the operation handler for the create edge router policy operation
 	EdgeRouterPolicyCreateEdgeRouterPolicyHandler edge_router_policy.CreateEdgeRouterPolicyHandler
+	// ExternaljwtSignerCreateExternalJwtSignerHandler sets the operation handler for the create external jwt signer operation
+	ExternaljwtSignerCreateExternalJwtSignerHandler external_j_w_t_signer.CreateExternalJwtSignerHandler
 	// IdentityCreateIdentityHandler sets the operation handler for the create identity operation
 	IdentityCreateIdentityHandler identity.CreateIdentityHandler
 	// CurrentIdentityCreateMfaRecoveryCodesHandler sets the operation handler for the create mfa recovery codes operation
@@ -711,6 +732,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterPolicyDeleteEdgeRouterPolicyHandler edge_router_policy.DeleteEdgeRouterPolicyHandler
 	// EnrollmentDeleteEnrollmentHandler sets the operation handler for the delete enrollment operation
 	EnrollmentDeleteEnrollmentHandler enrollment.DeleteEnrollmentHandler
+	// ExternaljwtSignerDeleteExternalJwtSignerHandler sets the operation handler for the delete external jwt signer operation
+	ExternaljwtSignerDeleteExternalJwtSignerHandler external_j_w_t_signer.DeleteExternalJwtSignerHandler
 	// IdentityDeleteIdentityHandler sets the operation handler for the delete identity operation
 	IdentityDeleteIdentityHandler identity.DeleteIdentityHandler
 	// CurrentIdentityDeleteMfaHandler sets the operation handler for the delete mfa operation
@@ -749,6 +772,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterPolicyDetailEdgeRouterPolicyHandler edge_router_policy.DetailEdgeRouterPolicyHandler
 	// EnrollmentDetailEnrollmentHandler sets the operation handler for the detail enrollment operation
 	EnrollmentDetailEnrollmentHandler enrollment.DetailEnrollmentHandler
+	// ExternaljwtSignerDetailExternalJwtSignerHandler sets the operation handler for the detail external jwt signer operation
+	ExternaljwtSignerDetailExternalJwtSignerHandler external_j_w_t_signer.DetailExternalJwtSignerHandler
 	// IdentityDetailIdentityHandler sets the operation handler for the detail identity operation
 	IdentityDetailIdentityHandler identity.DetailIdentityHandler
 	// IdentityDetailIdentityTypeHandler sets the operation handler for the detail identity type operation
@@ -841,6 +866,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterListEdgeRoutersHandler edge_router.ListEdgeRoutersHandler
 	// EnrollmentListEnrollmentsHandler sets the operation handler for the list enrollments operation
 	EnrollmentListEnrollmentsHandler enrollment.ListEnrollmentsHandler
+	// ExternaljwtSignerListExternalJwtSignersHandler sets the operation handler for the list external jwt signers operation
+	ExternaljwtSignerListExternalJwtSignersHandler external_j_w_t_signer.ListExternalJwtSignersHandler
 	// IdentityListIdentitiesHandler sets the operation handler for the list identities operation
 	IdentityListIdentitiesHandler identity.ListIdentitiesHandler
 	// IdentityListIdentityEdgeRoutersHandler sets the operation handler for the list identity edge routers operation
@@ -921,6 +948,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterPatchEdgeRouterHandler edge_router.PatchEdgeRouterHandler
 	// EdgeRouterPolicyPatchEdgeRouterPolicyHandler sets the operation handler for the patch edge router policy operation
 	EdgeRouterPolicyPatchEdgeRouterPolicyHandler edge_router_policy.PatchEdgeRouterPolicyHandler
+	// ExternaljwtSignerPatchExternalJwtSignerHandler sets the operation handler for the patch external jwt signer operation
+	ExternaljwtSignerPatchExternalJwtSignerHandler external_j_w_t_signer.PatchExternalJwtSignerHandler
 	// IdentityPatchIdentityHandler sets the operation handler for the patch identity operation
 	IdentityPatchIdentityHandler identity.PatchIdentityHandler
 	// PostureChecksPatchPostureCheckHandler sets the operation handler for the patch posture check operation
@@ -957,6 +986,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterUpdateEdgeRouterHandler edge_router.UpdateEdgeRouterHandler
 	// EdgeRouterPolicyUpdateEdgeRouterPolicyHandler sets the operation handler for the update edge router policy operation
 	EdgeRouterPolicyUpdateEdgeRouterPolicyHandler edge_router_policy.UpdateEdgeRouterPolicyHandler
+	// ExternaljwtSignerUpdateExternalJwtSignerHandler sets the operation handler for the update external jwt signer operation
+	ExternaljwtSignerUpdateExternalJwtSignerHandler external_j_w_t_signer.UpdateExternalJwtSignerHandler
 	// IdentityUpdateIdentityHandler sets the operation handler for the update identity operation
 	IdentityUpdateIdentityHandler identity.UpdateIdentityHandler
 	// IdentityUpdateIdentityTracingHandler sets the operation handler for the update identity tracing operation
@@ -1108,6 +1139,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	if o.EdgeRouterPolicyCreateEdgeRouterPolicyHandler == nil {
 		unregistered = append(unregistered, "edge_router_policy.CreateEdgeRouterPolicyHandler")
 	}
+	if o.ExternaljwtSignerCreateExternalJwtSignerHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.CreateExternalJwtSignerHandler")
+	}
 	if o.IdentityCreateIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.CreateIdentityHandler")
 	}
@@ -1161,6 +1195,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.EnrollmentDeleteEnrollmentHandler == nil {
 		unregistered = append(unregistered, "enrollment.DeleteEnrollmentHandler")
+	}
+	if o.ExternaljwtSignerDeleteExternalJwtSignerHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.DeleteExternalJwtSignerHandler")
 	}
 	if o.IdentityDeleteIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.DeleteIdentityHandler")
@@ -1218,6 +1255,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.EnrollmentDetailEnrollmentHandler == nil {
 		unregistered = append(unregistered, "enrollment.DetailEnrollmentHandler")
+	}
+	if o.ExternaljwtSignerDetailExternalJwtSignerHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.DetailExternalJwtSignerHandler")
 	}
 	if o.IdentityDetailIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.DetailIdentityHandler")
@@ -1357,6 +1397,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	if o.EnrollmentListEnrollmentsHandler == nil {
 		unregistered = append(unregistered, "enrollment.ListEnrollmentsHandler")
 	}
+	if o.ExternaljwtSignerListExternalJwtSignersHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.ListExternalJwtSignersHandler")
+	}
 	if o.IdentityListIdentitiesHandler == nil {
 		unregistered = append(unregistered, "identity.ListIdentitiesHandler")
 	}
@@ -1477,6 +1520,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	if o.EdgeRouterPolicyPatchEdgeRouterPolicyHandler == nil {
 		unregistered = append(unregistered, "edge_router_policy.PatchEdgeRouterPolicyHandler")
 	}
+	if o.ExternaljwtSignerPatchExternalJwtSignerHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.PatchExternalJwtSignerHandler")
+	}
 	if o.IdentityPatchIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.PatchIdentityHandler")
 	}
@@ -1530,6 +1576,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.EdgeRouterPolicyUpdateEdgeRouterPolicyHandler == nil {
 		unregistered = append(unregistered, "edge_router_policy.UpdateEdgeRouterPolicyHandler")
+	}
+	if o.ExternaljwtSignerUpdateExternalJwtSignerHandler == nil {
+		unregistered = append(unregistered, "external_j_w_t_signer.UpdateExternalJwtSignerHandler")
 	}
 	if o.IdentityUpdateIdentityHandler == nil {
 		unregistered = append(unregistered, "identity.UpdateIdentityHandler")
@@ -1720,6 +1769,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/external-jwt-signers"] = external_j_w_t_signer.NewCreateExternalJwtSigner(o.context, o.ExternaljwtSignerCreateExternalJwtSignerHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/identities"] = identity.NewCreateIdentity(o.context, o.IdentityCreateIdentityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -1789,6 +1842,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/enrollments/{id}"] = enrollment.NewDeleteEnrollment(o.context, o.EnrollmentDeleteEnrollmentHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/external-jwt-signers/{id}"] = external_j_w_t_signer.NewDeleteExternalJwtSigner(o.context, o.ExternaljwtSignerDeleteExternalJwtSignerHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
@@ -1865,6 +1922,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/enrollments/{id}"] = enrollment.NewDetailEnrollment(o.context, o.EnrollmentDetailEnrollmentHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/external-jwt-signers/{id}"] = external_j_w_t_signer.NewDetailExternalJwtSigner(o.context, o.ExternaljwtSignerDetailExternalJwtSignerHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
@@ -2052,6 +2113,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
+	o.handlers["GET"]["/external-jwt-signers"] = external_j_w_t_signer.NewListExternalJwtSigners(o.context, o.ExternaljwtSignerListExternalJwtSignersHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
 	o.handlers["GET"]["/identities"] = identity.NewListIdentities(o.context, o.IdentityListIdentitiesHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
@@ -2212,6 +2277,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
+	o.handlers["PATCH"]["/external-jwt-signers/{id}"] = external_j_w_t_signer.NewPatchExternalJwtSigner(o.context, o.ExternaljwtSignerPatchExternalJwtSignerHandler)
+	if o.handlers["PATCH"] == nil {
+		o.handlers["PATCH"] = make(map[string]http.Handler)
+	}
 	o.handlers["PATCH"]["/identities/{id}"] = identity.NewPatchIdentity(o.context, o.IdentityPatchIdentityHandler)
 	if o.handlers["PATCH"] == nil {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
@@ -2281,6 +2350,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
 	o.handlers["PUT"]["/edge-router-policies/{id}"] = edge_router_policy.NewUpdateEdgeRouterPolicy(o.context, o.EdgeRouterPolicyUpdateEdgeRouterPolicyHandler)
+	if o.handlers["PUT"] == nil {
+		o.handlers["PUT"] = make(map[string]http.Handler)
+	}
+	o.handlers["PUT"]["/external-jwt-signers/{id}"] = external_j_w_t_signer.NewUpdateExternalJwtSigner(o.context, o.ExternaljwtSignerUpdateExternalJwtSignerHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}
