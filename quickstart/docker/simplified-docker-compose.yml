@@ -30,7 +30,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh edge"
+    command: "/openziti/scripts/run-router.sh edge"
 
   ziti-console:
     image: openziti/zac
