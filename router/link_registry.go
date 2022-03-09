@@ -29,6 +29,16 @@ type linkRegistryImpl struct {
 	ctrlCh channel.Channel
 }
 
+func (self *linkRegistryImpl) ControlChannel() channel.Channel {
+	// we may get link requests before the control channel is fully
+	// established. wait until it's set before we return. Will only
+	// happen right at startup
+	for self.ctrlCh == nil {
+		time.Sleep(30 * time.Millisecond)
+	}
+	return self.ctrlCh
+}
+
 func (self *linkRegistryImpl) GetLink(routerId, linkType string) (xlink.Xlink, bool) {
 	self.Lock()
 	defer self.Unlock()
@@ -145,7 +155,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 			Subject: ctrl_pb.FaultSubject_LinkFault,
 		}
 
-		if err := protobufs.MarshalTyped(fault).Send(self.ctrlCh); err != nil {
+		if err := protobufs.MarshalTyped(fault).Send(self.ControlChannel()); err != nil {
 			logrus.WithError(err).Error("failed to send router fault when duplicate link detected")
 		}
 
@@ -184,7 +194,7 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 			},
 		},
 	}
-	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrlCh); err != nil {
+	if err := protobufs.MarshalTyped(linkMsg).Send(self.ControlChannel()); err != nil {
 		pfxlog.Logger().WithField("linkId", link.Id().Token).
 			WithField("dest", link.DestinationId()).
 			WithField("linkType", link.LinkType()).
@@ -238,7 +248,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect() {
 		})
 	}
 
-	if err := protobufs.MarshalTyped(routerLinks).Send(self.ctrlCh); err != nil {
+	if err := protobufs.MarshalTyped(routerLinks).Send(self.ControlChannel()); err != nil {
 		logrus.WithError(err).Error("failed to send router links on reconnect")
 	}
 }
