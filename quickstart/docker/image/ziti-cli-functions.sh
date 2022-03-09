@@ -423,15 +423,15 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
 
-  createRouterPki
-
-
   if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
     echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
   else
     ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"
   fi
   echo "USING ZITI_EDGE_ROUTER_RAWNAME: $ZITI_EDGE_ROUTER_RAWNAME"
+
+  createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
+
   createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
   #createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
 
@@ -635,8 +635,18 @@ function showIssuerAndSubjectForPEM() {
 }
 
 function createRouterPki {
-  #TODO: this needs to be parameterized to take other router_name
-  pki_client_server "${ZITI_EDGE_ROUTER_RAWNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
+  # Allow router name to be passed in as arg
+  router_name="${1-}"
+  if [[ "${router_name}" == "" ]]; then
+    echo -e "  * ERROR: $(RED "routerName needs to be supplied") "
+    return 1
+  fi
+  mkdir -p "${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}"
+  export ZITI_ROUTER_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/client.cert"
+  export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
+  export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
+  export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
+  pki_client_server "${router_name}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
 }
 
 function createPrivateRouterConfig {
@@ -673,10 +683,9 @@ function createPrivateRouterConfig {
     return 1
   fi
 
-output_file="${ZITI_HOME-}/${router_name}.yaml"
-"${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
-
-echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
+  output_file="${ZITI_HOME-}/${router_name}.yaml"
+  "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
+  echo -e "Router configuration file written to: $(BLUE "${output_file}")"
 }
 
 function createPki {
@@ -739,10 +748,9 @@ function createFabricRouterConfig {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${router_name}.yaml"
-"${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
-
-echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
+  output_file="${ZITI_HOME}/${router_name}.yaml"
+  "${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
+  echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
 }
 
 function createEdgeRouterWssConfig {
@@ -775,10 +783,9 @@ function createEdgeRouterWssConfig {
     return 1
   fi
 
-output_file="${ZITI_HOME-}/${router_name}.yaml"
-"${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
-
-echo -e "Edge router wss configuration file written to: $(BLUE "${output_file}")"
+  output_file="${ZITI_HOME-}/${router_name}.yaml"
+  "${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
+  echo -e "WSS Edge router wss configuration file written to: $(BLUE "${output_file}")"
 }
 
 # shellcheck disable=SC2120
@@ -814,17 +821,8 @@ function createEdgeRouterConfig {
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
 
-  mkdir -p "${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}"
-  export ZITI_ROUTER_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/client.cert"
-  export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
-  export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
-  export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
-  unset ZITI_ROUTER_IDENTITY_CERT
-  unset ZITI_ROUTER_IDENTITY_SERVER_CERT
-  unset ZITI_ROUTER_IDENTITY_KEY
-  unset ZITI_ROUTER_IDENTITY_CA
 }
 
 function createFabricIdentity {
@@ -955,8 +953,6 @@ function ziti_createEnvFile {
   export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_SIGNING_CERT_NAME}-intermediate"
 
   export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
-
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"; fi
 
   if [[ "${ZITI_CTRL_MGMT_HOST_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:10000"; fi
   if [[ "${ZITI_CTRL_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"; fi
