@@ -17,6 +17,7 @@
 package controller
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
@@ -56,8 +57,9 @@ type Controller struct {
 	ctrlListener channel.UnderlayListener
 	mgmtListener channel.UnderlayListener
 
-	shutdownC  chan struct{}
-	isShutdown concurrenz.AtomicBoolean
+	shutdownC     chan struct{}
+	isShutdown    concurrenz.AtomicBoolean
+	agentHandlers map[byte]func(c *bufio.ReadWriter) error
 }
 
 func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
@@ -65,6 +67,7 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 		config:              cfg,
 		shutdownC:           make(chan struct{}),
 		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
+		agentHandlers:       map[byte]func(c *bufio.ReadWriter) error{},
 	}
 
 	c.registerXts()

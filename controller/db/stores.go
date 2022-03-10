@@ -17,8 +17,11 @@
 package db
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/storage/boltz"
+	"go.etcd.io/bbolt"
 	"reflect"
+	"sync"
 )
 
 type Stores struct {
@@ -26,6 +29,18 @@ type Stores struct {
 	Router     RouterStore
 	Service    ServiceStore
 	storeMap   map[string]boltz.CrudStore
+	lock       sync.Mutex
+	checkables []Checkable
+}
+
+type Checkable interface {
+	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
+}
+
+func (store *Stores) AddCheckable(checkable Checkable) {
+	store.lock.Lock()
+	defer store.lock.Unlock()
+	store.checkables = append(store.checkables, checkable)
 }
 
 func (stores *Stores) buildStoreMap() {
@@ -36,6 +51,7 @@ func (stores *Stores) buildStoreMap() {
 		if f.CanInterface() {
 			if store, ok := f.Interface().(boltz.CrudStore); ok {
 				stores.storeMap[store.GetEntityType()] = store
+				stores.AddCheckable(store)
 			}
 		}
 	}
@@ -51,6 +67,34 @@ func (stores *Stores) GetStoreList() []boltz.CrudStore {
 
 func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 	return stores.storeMap[entity.GetEntityType()]
+}
+
+func (stores *Stores) CheckIntegrity(db boltz.Db, fix bool, errorHandler func(error, bool)) error {
+	if fix {
+		return db.Update(func(tx *bbolt.Tx) error {
+			return stores.CheckIntegrityInTx(db, tx, fix, errorHandler)
+		})
+	}
+
+	return db.View(func(tx *bbolt.Tx) error {
+		return stores.CheckIntegrityInTx(db, tx, fix, errorHandler)
+	})
+}
+
+func (stores *Stores) CheckIntegrityInTx(db boltz.Db, tx *bbolt.Tx, fix bool, errorHandler func(error, bool)) error {
+	if fix {
+		pfxlog.Logger().Info("creating database snapshot before attempting to fix data integrity issues")
+		if err := db.Snapshot(tx); err != nil {
+			return err
+		}
+	}
+
+	for _, checkable := range stores.checkables {
+		if err := checkable.CheckIntegrity(tx, fix, errorHandler); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type stores struct {
