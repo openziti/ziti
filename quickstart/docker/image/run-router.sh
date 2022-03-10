@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# give the controller time to ramp up before running if running in docker-compose
+sleep 5
+
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="ziti-controller"; fi
@@ -8,7 +11,6 @@ if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUT
 if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 if [[ "${ZITI_EDGE_ROUTER_HOSTNAME}" == "" ]]; then export ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_EDGE_ROUTER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
 
-generateEnvFile
 . ${ZITI_HOME}/ziti.env
 
 # shellcheck disable=SC2091
@@ -16,8 +18,6 @@ until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CTRL_ADVERTISED_HOST
     echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
     sleep 2
 done
-
-sleep 2
 
 createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
 
