@@ -44,6 +44,7 @@ require (
 	github.com/miekg/dns v1.1.46
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
+	github.com/openziti/channel v0.18.14
 	github.com/openziti/fabric v0.17.62
 	github.com/openziti/foundation v0.17.8
 	github.com/openziti/sdk-golang v0.16.20
@@ -58,10 +59,10 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
+	golang.org/x/crypto v0.0.0-20220307211146-efcb8507fb70
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
+	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -128,5 +129,3 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
-
-require github.com/openziti/channel v0.18.14
