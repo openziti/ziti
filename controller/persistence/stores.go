@@ -17,7 +17,6 @@
 package persistence
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/storage/ast"
 	"github.com/openziti/foundation/storage/boltz"
@@ -61,6 +60,19 @@ type Stores struct {
 	PostureCheckType        PostureCheckTypeStore
 	Mfa                     MfaStore
 	storeMap                map[reflect.Type]boltz.CrudStore
+}
+
+func (stores *Stores) addStoresToIntegrityCheck(fabricStores *db.Stores) {
+	val := reflect.ValueOf(stores).Elem()
+	for i := 0; i < val.NumField(); i++ {
+		f := val.Field(i)
+		if f.CanInterface() {
+			// filter by the edge Store interface, so we don't recheck fabric stores, which are already being checked
+			if store, ok := f.Interface().(Store); ok {
+				fabricStores.AddCheckable(store)
+			}
+		}
+	}
 }
 
 func (stores *Stores) buildStoreMap() {
@@ -117,34 +129,6 @@ func (stores *Stores) getStoresForInit() []Store {
 
 func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 	return stores.storeMap[reflect.TypeOf(entity)]
-}
-
-func (stores *Stores) CheckIntegrity(fix bool, errorHandler func(error, bool)) error {
-	if fix {
-		return stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-			return stores.CheckIntegrityInTx(tx, fix, errorHandler)
-		})
-	}
-
-	return stores.DbProvider.GetDb().View(func(tx *bbolt.Tx) error {
-		return stores.CheckIntegrityInTx(tx, fix, errorHandler)
-	})
-}
-
-func (stores *Stores) CheckIntegrityInTx(tx *bbolt.Tx, fix bool, errorHandler func(error, bool)) error {
-	if fix {
-		pfxlog.Logger().Info("creating database snapshot before attempting to fix data integrity issues")
-		if err := stores.DbProvider.GetDb().Snapshot(tx); err != nil {
-			return err
-		}
-	}
-
-	for _, store := range stores.storeMap {
-		if err := store.CheckIntegrity(tx, fix, errorHandler); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 type stores struct {
@@ -272,6 +256,8 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		}
 		return nil
 	})
+
+	externalStores.addStoresToIntegrityCheck(dbProvider.GetStores())
 
 	errorHolder.SetError(err)
 	if errorHolder.HasError() {

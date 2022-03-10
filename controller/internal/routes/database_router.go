@@ -176,5 +176,5 @@ func (r *DatabaseRouter) runDataIntegrityCheck(ae *env.AppEnv, fixErrors bool) {
 		}
 	}
 
-	r.integrityCheck.err = ae.GetStores().CheckIntegrity(fixErrors, errorHandler)
+	r.integrityCheck.err = ae.GetDbProvider().GetStores().CheckIntegrity(ae.GetDbProvider().GetDb(), fixErrors, errorHandler)
 }
