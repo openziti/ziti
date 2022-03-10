@@ -481,6 +481,8 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 }
 
 const (
+	AgentAppId byte = 2
+
 	DumpForwarderTables byte = 1
 	UpdateRoute         byte = 2
 	CloseControlChannel byte = 3
@@ -586,7 +588,17 @@ func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
 
 func (self *Router) HandleDebug(conn io.ReadWriter) error {
 	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
+	appId, err := bconn.ReadByte()
+	if err != nil {
+		return err
+	}
+
+	if appId != AgentAppId {
+		return errors.Errorf("invalid operation for router")
+	}
+
 	op, err := bconn.ReadByte()
+
 	if err != nil {
 		return err
 	}

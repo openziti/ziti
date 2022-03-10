@@ -36,6 +36,7 @@ import (
 
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/database"
 	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
@@ -67,6 +68,16 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 
 	api.JSONProducer = runtime.JSONProducer()
 
+	if api.DatabaseCheckDataIntegrityHandler == nil {
+		api.DatabaseCheckDataIntegrityHandler = database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		})
+	}
+	if api.DatabaseCreateDatabaseSnapshotHandler == nil {
+		api.DatabaseCreateDatabaseSnapshotHandler = database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
+		})
+	}
 	if api.RouterCreateRouterHandler == nil {
 		api.RouterCreateRouterHandler = router.CreateRouterHandlerFunc(func(params router.CreateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.CreateRouter has not yet been implemented")
@@ -80,6 +91,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorCreateTerminatorHandler == nil {
 		api.TerminatorCreateTerminatorHandler = terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.CreateTerminator has not yet been implemented")
+		})
+	}
+	if api.DatabaseDataIntegrityResultsHandler == nil {
+		api.DatabaseDataIntegrityResultsHandler = database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
 		})
 	}
 	if api.CircuitDeleteCircuitHandler == nil {
@@ -125,6 +141,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorDetailTerminatorHandler == nil {
 		api.TerminatorDetailTerminatorHandler = terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		})
+	}
+	if api.DatabaseFixDataIntegrityHandler == nil {
+		api.DatabaseFixDataIntegrityHandler = database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		})
 	}
 	if api.InspectInspectHandler == nil {

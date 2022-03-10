@@ -44,6 +44,7 @@ import (
 	"github.com/go-openapi/swag"
 
 	"github.com/openziti/fabric/rest_server/operations/circuit"
+	"github.com/openziti/fabric/rest_server/operations/database"
 	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
 	"github.com/openziti/fabric/rest_server/operations/router"
@@ -73,6 +74,12 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 
 		JSONProducer: runtime.JSONProducer(),
 
+		DatabaseCheckDataIntegrityHandler: database.CheckDataIntegrityHandlerFunc(func(params database.CheckDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CheckDataIntegrity has not yet been implemented")
+		}),
+		DatabaseCreateDatabaseSnapshotHandler: database.CreateDatabaseSnapshotHandlerFunc(func(params database.CreateDatabaseSnapshotParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.CreateDatabaseSnapshot has not yet been implemented")
+		}),
 		RouterCreateRouterHandler: router.CreateRouterHandlerFunc(func(params router.CreateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.CreateRouter has not yet been implemented")
 		}),
@@ -81,6 +88,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		}),
 		TerminatorCreateTerminatorHandler: terminator.CreateTerminatorHandlerFunc(func(params terminator.CreateTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.CreateTerminator has not yet been implemented")
+		}),
+		DatabaseDataIntegrityResultsHandler: database.DataIntegrityResultsHandlerFunc(func(params database.DataIntegrityResultsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.DataIntegrityResults has not yet been implemented")
 		}),
 		CircuitDeleteCircuitHandler: circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
 			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
@@ -108,6 +118,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		}),
 		TerminatorDetailTerminatorHandler: terminator.DetailTerminatorHandlerFunc(func(params terminator.DetailTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.DetailTerminator has not yet been implemented")
+		}),
+		DatabaseFixDataIntegrityHandler: database.FixDataIntegrityHandlerFunc(func(params database.FixDataIntegrityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation database.FixDataIntegrity has not yet been implemented")
 		}),
 		InspectInspectHandler: inspect.InspectHandlerFunc(func(params inspect.InspectParams) middleware.Responder {
 			return middleware.NotImplemented("operation inspect.Inspect has not yet been implemented")
@@ -190,12 +203,18 @@ type ZitiFabricAPI struct {
 	//   - application/json
 	JSONProducer runtime.Producer
 
+	// DatabaseCheckDataIntegrityHandler sets the operation handler for the check data integrity operation
+	DatabaseCheckDataIntegrityHandler database.CheckDataIntegrityHandler
+	// DatabaseCreateDatabaseSnapshotHandler sets the operation handler for the create database snapshot operation
+	DatabaseCreateDatabaseSnapshotHandler database.CreateDatabaseSnapshotHandler
 	// RouterCreateRouterHandler sets the operation handler for the create router operation
 	RouterCreateRouterHandler router.CreateRouterHandler
 	// ServiceCreateServiceHandler sets the operation handler for the create service operation
 	ServiceCreateServiceHandler service.CreateServiceHandler
 	// TerminatorCreateTerminatorHandler sets the operation handler for the create terminator operation
 	TerminatorCreateTerminatorHandler terminator.CreateTerminatorHandler
+	// DatabaseDataIntegrityResultsHandler sets the operation handler for the data integrity results operation
+	DatabaseDataIntegrityResultsHandler database.DataIntegrityResultsHandler
 	// CircuitDeleteCircuitHandler sets the operation handler for the delete circuit operation
 	CircuitDeleteCircuitHandler circuit.DeleteCircuitHandler
 	// RouterDeleteRouterHandler sets the operation handler for the delete router operation
@@ -214,6 +233,8 @@ type ZitiFabricAPI struct {
 	ServiceDetailServiceHandler service.DetailServiceHandler
 	// TerminatorDetailTerminatorHandler sets the operation handler for the detail terminator operation
 	TerminatorDetailTerminatorHandler terminator.DetailTerminatorHandler
+	// DatabaseFixDataIntegrityHandler sets the operation handler for the fix data integrity operation
+	DatabaseFixDataIntegrityHandler database.FixDataIntegrityHandler
 	// InspectInspectHandler sets the operation handler for the inspect operation
 	InspectInspectHandler inspect.InspectHandler
 	// CircuitListCircuitsHandler sets the operation handler for the list circuits operation
@@ -321,6 +342,12 @@ func (o *ZitiFabricAPI) Validate() error {
 		unregistered = append(unregistered, "JSONProducer")
 	}
 
+	if o.DatabaseCheckDataIntegrityHandler == nil {
+		unregistered = append(unregistered, "database.CheckDataIntegrityHandler")
+	}
+	if o.DatabaseCreateDatabaseSnapshotHandler == nil {
+		unregistered = append(unregistered, "database.CreateDatabaseSnapshotHandler")
+	}
 	if o.RouterCreateRouterHandler == nil {
 		unregistered = append(unregistered, "router.CreateRouterHandler")
 	}
@@ -329,6 +356,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorCreateTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.CreateTerminatorHandler")
+	}
+	if o.DatabaseDataIntegrityResultsHandler == nil {
+		unregistered = append(unregistered, "database.DataIntegrityResultsHandler")
 	}
 	if o.CircuitDeleteCircuitHandler == nil {
 		unregistered = append(unregistered, "circuit.DeleteCircuitHandler")
@@ -356,6 +386,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorDetailTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.DetailTerminatorHandler")
+	}
+	if o.DatabaseFixDataIntegrityHandler == nil {
+		unregistered = append(unregistered, "database.FixDataIntegrityHandler")
 	}
 	if o.InspectInspectHandler == nil {
 		unregistered = append(unregistered, "inspect.InspectHandler")
@@ -493,6 +526,14 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
+	o.handlers["POST"]["/database/check-data-integrity"] = database.NewCheckDataIntegrity(o.context, o.DatabaseCheckDataIntegrityHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database"] = database.NewCreateDatabaseSnapshot(o.context, o.DatabaseCreateDatabaseSnapshotHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
 	o.handlers["POST"]["/routers"] = router.NewCreateRouter(o.context, o.RouterCreateRouterHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
@@ -502,6 +543,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/terminators"] = terminator.NewCreateTerminator(o.context, o.TerminatorCreateTerminatorHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/database/data-integrity-results"] = database.NewDataIntegrityResults(o.context, o.DatabaseDataIntegrityResultsHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
@@ -538,6 +583,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/terminators/{id}"] = terminator.NewDetailTerminator(o.context, o.TerminatorDetailTerminatorHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/database/fix-data-integrity"] = database.NewFixDataIntegrity(o.context, o.DatabaseFixDataIntegrityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
