@@ -19,8 +19,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/edge/router/debugops"
-	"github.com/openziti/fabric/router"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
@@ -28,7 +26,6 @@ import (
 	"strconv"
 	"strings"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/goprocess"
@@ -52,12 +49,11 @@ var (
 )
 
 // NewCmdPs Pss a command object for the "Ps" command
-func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPs(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -73,43 +69,21 @@ func NewCmdPs(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command
 		},
 	}
 
-	routerCmd := &cobra.Command{
-		Use:   "router",
-		Short: "Show Ziti router process info",
-		Long:  psLong,
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
-	}
+	cmd.AddCommand(NewCmdPsGet(out, errOut))
+	cmd.AddCommand(NewCmdPsGoversion(out, errOut))
+	cmd.AddCommand(NewCmdPsGc(out, errOut))
+	cmd.AddCommand(NewCmdPsSetgc(out, errOut))
+	cmd.AddCommand(NewCmdPsStack(out, errOut))
+	cmd.AddCommand(NewCmdPsMemstats(out, errOut))
+	cmd.AddCommand(NewCmdPsStats(out, errOut))
+	cmd.AddCommand(NewCmdPsPprofHeap(out, errOut))
+	cmd.AddCommand(NewCmdPsPprofCpu(out, errOut))
+	cmd.AddCommand(NewCmdPsTrace(out, errOut))
+	cmd.AddCommand(NewCmdPsSetLogLevel(out, errOut))
+	cmd.AddCommand(NewCmdPsSetChannelLogLevel(out, errOut))
+	cmd.AddCommand(NewCmdPsClearChannelLogLevel(out, errOut))
 
-	cmd.AddCommand(routerCmd)
-	cmd.AddCommand(NewCmdPsGet(f, out, errOut))
-	cmd.AddCommand(NewCmdPsGoversion(f, out, errOut))
-	cmd.AddCommand(NewCmdPsGc(f, out, errOut))
-	cmd.AddCommand(NewCmdPsSetgc(f, out, errOut))
-	cmd.AddCommand(NewCmdPsStack(f, out, errOut))
-	cmd.AddCommand(NewCmdPsMemstats(f, out, errOut))
-	cmd.AddCommand(NewCmdPsStats(f, out, errOut))
-	cmd.AddCommand(NewCmdPsPprofHeap(f, out, errOut))
-	cmd.AddCommand(NewCmdPsPprofCpu(f, out, errOut))
-	cmd.AddCommand(NewCmdPsTrace(f, out, errOut))
-	cmd.AddCommand(NewCmdPsSetLogLevel(f, out, errOut))
-	cmd.AddCommand(NewCmdPsSetChannelLogLevel(f, out, errOut))
-	cmd.AddCommand(NewCmdPsClearChannelLogLevel(f, out, errOut))
-
-	routerCmd.AddCommand(NewCmdPsRoute(f, out, errOut))
-	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-routes", router.DumpForwarderTables, f, out, errOut))
-	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("disconnect", router.CloseControlChannel, f, out, errOut))
-	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("reconnect", router.OpenControlChannel, f, out, errOut))
-	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-api-sessions", debugops.DumpApiSessions, f, out, errOut))
-	routerCmd.AddCommand(NewCmdPsBasicRouterCmd("dump-links", router.DumpLinks, f, out, errOut))
-
-	options.addPsFlags(cmd)
 	return cmd
-}
-
-func (options *PsOptions) addPsFlags(cmd *cobra.Command) {
-	// cmd.Flags().StringVarP(&options.Flags.Identity, "identity", "", "", "Which identity to use.")
 }
 
 // Run implements this command

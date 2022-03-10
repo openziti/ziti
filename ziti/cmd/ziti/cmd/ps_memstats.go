@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -32,20 +31,20 @@ type PsMemstatsOptions struct {
 }
 
 // NewCmdPsMemstats creates a command object for the "create" command
-func NewCmdPsMemstats(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsMemstats(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsMemstatsOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "memstats <optional-target>",
-		Args: cobra.MaximumNArgs(1),
+		Use:   "memstats <optional-target>",
+		Short: "Returns memory use summary of the target application",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
