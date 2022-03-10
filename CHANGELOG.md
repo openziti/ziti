@@ -1,3 +1,8 @@
+# Release 0.25.1
+
+* Bug fix: Fix panic caused by race condition at router start up
+    * Regression since 0.25.0
+
 # Release 0.25.0
 
 ## Breaking Changes
