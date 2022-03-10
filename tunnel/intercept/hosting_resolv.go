@@ -45,26 +45,26 @@ const (
 )
 
 type DnsQuestion struct {
-	Name string
-	Type int
+	Name string `json:"name"`
+	Type int    `json:"type"`
 }
 
 type DnsAnswer struct {
-	Name     string
-	Type     int
-	TTL      int `json:"TTL"`
-	Data     string
+	Name     string `json:"name"`
+	Type     int    `json:"type"`
+	TTL      int    `json:"ttl"`
+	Data     string `json:"data"`
 	Port     uint16 `json:"port,omitempty"`
 	Priority uint16 `json:"priority,omitempty"`
 	Weight   uint16 `json:"weight,omitempty"`
 }
 
 type DnsMessage struct {
-	Id       int
-	Status   int
-	Question []*DnsQuestion
-	Answer   []*DnsAnswer
-	Comment  string `json:",omitempty"`
+	Id       int            `json:"id"`
+	Status   int            `json:"status"`
+	Question []*DnsQuestion `json:"question"`
+	Answer   []*DnsAnswer   `json:"answer"`
+	Comment  string         `json:"comment,omitempty"`
 }
 
 type resolvConn struct {
