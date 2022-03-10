@@ -22,7 +22,7 @@ RUN mkdir -p "${ZITI_SCRIPTS}"
 
 # copy the ziti binaries to a directory already on the path
 COPY --chown=ziti ziti.ignore "${ZITI_BIN_DIR}"
-COPY --chown=ziti ziti-cli-function.sh "${ZITI_SCRIPTS}/"
+COPY --chown=ziti ziti-cli-functions.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-controller.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router.sh "${ZITI_SCRIPTS}/"
 
