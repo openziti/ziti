@@ -14,56 +14,47 @@
 	limitations under the License.
 */
 
-package cmd
+package fabric
 
 import (
-	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
+	"net/http"
 )
 
-type PsBasicRouterCmdOptions struct {
-	PsOptions
+type dbSnapshotOptions struct {
+	api.Options
 }
 
-func NewCmdPsBasicRouterCmd(name string, op byte, f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsBasicRouterCmdOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
-			},
-		},
+func newDbSnapshotCmd(p common.OptionsProvider) *cobra.Command {
+	options := &dbSnapshotOptions{
+		Options: api.Options{CommonOptions: p()},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.MaximumNArgs(1),
-		Use:  name + " <optional-target> ",
+		Use:   "snapshot",
+		Short: "creates a database snapshot",
+		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run(op)
+			err := runSnapshotDb(options)
 			cmdhelper.CheckErr(err)
 		},
+		SuggestFor: []string{},
 	}
 
-	options.addCommonFlags(cmd)
+	// allow interspersing positional args and flags
+	cmd.Flags().SetInterspersed(true)
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }
 
-// Run implements the command
-func (o *PsBasicRouterCmdOptions) Run(op byte) error {
-	addr, err := agent.ParseGopsAddress(o.Args)
-	if err != nil {
-		return err
-	}
-
-	buf := []byte{op}
-
-	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
+func runSnapshotDb(o *dbSnapshotOptions) error {
+	_, err := util.ControllerUpdate("edge", "database/snapshot", "", o.Out, http.MethodPost, false, false, o.Options.Timeout, o.Options.Verbose)
+	return err
 }

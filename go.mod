@@ -158,7 +158,7 @@ require (
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220307203707-22a9840ba4d7 // indirect
+	golang.org/x/sys v0.0.0-20220310020820-b874c991c1a5 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect
@@ -173,7 +173,7 @@ require (
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
-	github.com/openziti/edge v0.21.124
-	github.com/openziti/fabric v0.17.61
+	github.com/openziti/edge v0.21.127
+	github.com/openziti/fabric v0.17.62
 	github.com/rivo/uniseg v0.2.0 // indirect
 )

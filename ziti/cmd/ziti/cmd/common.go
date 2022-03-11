@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/spf13/cobra"
 	"io"
@@ -55,10 +54,6 @@ func (c *CommonOptions) Stdout() io.Writer {
 		return c.Out
 	}
 	return os.Stdout
-}
-
-func (c *CommonOptions) CreateTable() table.Table {
-	return c.Factory.CreateTable(c.Stdout())
 }
 
 // Debugf outputs the given text to the console if verbose mode is enabled

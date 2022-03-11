@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -35,20 +34,20 @@ type PsSetLogLevelOptions struct {
 }
 
 // NewCmdPsLogLevel creates a command object for the "create" command
-func NewCmdPsSetLogLevel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsSetLogLevel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsSetLogLevelOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "set-log-level target log-level (panic, fatal, error, warn, info, debug, trace)",
-		Args: cobra.MinimumNArgs(1),
+		Use:   "set-log-level target log-level (panic, fatal, error, warn, info, debug, trace)",
+		Short: "Sets the global logrus logging level in the target application",
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

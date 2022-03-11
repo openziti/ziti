@@ -131,7 +131,8 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	createCommands := NewCmdCreate(f, out, err)
 	updateCommands := NewCmdUpdate(f, out, err)
 	executeCommands := NewCmdExecute(f, out, err)
-	psCommands := NewCmdPs(f, out, err)
+	agentCommands := NewAgentCmd(out, err)
+	psCommands := NewCmdPs(out, err)
 	pkiCommands := NewCmdPKI(f, out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(f, out, err)
@@ -161,6 +162,7 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 			Message: "Executing Ziti components:",
 			Commands: []*cobra.Command{
 				executeCommands,
+				agentCommands,
 				psCommands,
 				pkiCommands,
 				unwrapIdentityFileCommand,

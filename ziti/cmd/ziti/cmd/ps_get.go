@@ -23,7 +23,6 @@ import (
 	"io"
 	"strconv"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 )
@@ -36,19 +35,19 @@ type PsGetOptions struct {
 }
 
 // NewCmdPsGet creates a command object for the "create" command
-func NewCmdPsGet(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsGet(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsGetOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use: "get",
+		Use:   "get",
+		Short: "Returns information about the target process",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
