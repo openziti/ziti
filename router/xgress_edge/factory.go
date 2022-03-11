@@ -228,7 +228,7 @@ func (options *Options) ToLoggableString() string {
 	buf.WriteString(fmt.Sprintf("lookupSessionTimeout=%v\n", options.lookupSessionTimeout))
 
 	buf.WriteString(fmt.Sprintf("channel.outQueueSize=%v\n", options.channelOptions.OutQueueSize))
-	buf.WriteString(fmt.Sprintf("channel.connectTimeoutMs=%v\n", options.channelOptions.ConnectTimeoutMs))
+	buf.WriteString(fmt.Sprintf("channel.connectTimeout=%v\n", options.channelOptions.ConnectTimeout))
 	buf.WriteString(fmt.Sprintf("channel.maxOutstandingConnects=%v\n", options.channelOptions.MaxOutstandingConnects))
 	buf.WriteString(fmt.Sprintf("channel.maxQueuedConnects=%v\n", options.channelOptions.MaxQueuedConnects))
 

@@ -44,8 +44,8 @@ func Test_load(t *testing.T) {
 			require.New(t).Equal(connectMaxOutstandingConnects, options.channelOptions.MaxOutstandingConnects)
 		})
 
-		t.Run("has ConnectTimeoutMs value set", func(t *testing.T) {
-			require.New(t).Equal(connectTimeoutMs, options.channelOptions.ConnectTimeoutMs)
+		t.Run("has ConnectTimeout value set", func(t *testing.T) {
+			require.New(t).Equal(connectTimeout, options.channelOptions.ConnectTimeout)
 		})
 	})
 
@@ -67,8 +67,8 @@ func Test_load(t *testing.T) {
 			require.New(t).Equal(defaults.MaxOutstandingConnects, options.channelOptions.MaxOutstandingConnects)
 		})
 
-		t.Run("has ConnectTimeoutMs set to the default value", func(t *testing.T) {
-			require.New(t).Equal(defaults.ConnectTimeoutMs, options.channelOptions.ConnectTimeoutMs)
+		t.Run("has ConnectTimeout set to the default value", func(t *testing.T) {
+			require.New(t).Equal(defaults.ConnectTimeout, options.channelOptions.ConnectTimeout)
 		})
 	})
 
@@ -93,11 +93,11 @@ func Test_load(t *testing.T) {
 			require.New(t).Error(err)
 		})
 
-		t.Run("errors if ConnectTimeoutMs is invalid", func(t *testing.T) {
+		t.Run("errors if ConnectTimeout is invalid", func(t *testing.T) {
 			options := &Options{}
 			testConfig := newTestConfigWithoutConnectOptions()
 			optionsConfig := testConfig["options"].(map[interface{}]interface{})
-			optionsConfig["connectTimeoutMs"] = 0
+			optionsConfig["connectTimeout"] = "abcded"
 
 			err := options.load(testConfig)
 			require.New(t).Error(err)
@@ -108,7 +108,7 @@ func Test_load(t *testing.T) {
 const (
 	connectMaxQueuedConnections   = 50
 	connectMaxOutstandingConnects = 100
-	connectTimeoutMs              = 1000 * time.Millisecond
+	connectTimeout                = 1000 * time.Millisecond
 )
 
 func newTestConfigWithConnectOptions() xgress.OptionsData {
@@ -119,7 +119,7 @@ func newTestConfigWithConnectOptions() xgress.OptionsData {
 			"advertise":              "127.0.0.1:3022",
 			"maxQueuedConnects":      connectMaxQueuedConnections,
 			"maxOutstandingConnects": connectMaxOutstandingConnects,
-			"connectTimeoutMs":       connectTimeoutMs,
+			"connectTimeout":         connectTimeout.String(),
 		},
 	}
 }
