@@ -46,14 +46,14 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.15
 	github.com/openziti/fabric v0.17.64
-	github.com/openziti/foundation v0.17.8
-	github.com/openziti/sdk-golang v0.16.21
+	github.com/openziti/foundation v0.17.9
+	github.com/openziti/sdk-golang v0.16.22
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/spf13/cobra v1.3.0
+	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
