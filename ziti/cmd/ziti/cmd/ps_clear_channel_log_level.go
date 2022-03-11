@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -33,20 +32,20 @@ type PsClearChannelLogLevelOptions struct {
 }
 
 // NewCmdPsClearChannelLogLevel creates a command object for the "create" command
-func NewCmdPsClearChannelLogLevel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsClearChannelLogLevel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsClearChannelLogLevelOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "clear-channel-log-level target channel",
-		Args: cobra.MinimumNArgs(1),
+		Use:   "clear-channel-log-level target channel",
+		Short: "Clears a channel-specific log level in the target application",
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

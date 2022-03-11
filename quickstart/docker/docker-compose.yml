@@ -32,7 +32,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh edge"
+    command: "/openziti/scripts/run-router.sh edge"
 
   ziti-edge-router-wss:
     image: openziti/quickstart:latest
@@ -49,7 +49,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh wss"
+    command: "/openziti/scripts/run-router.sh wss"
 
   ziti-fabric-router-br:
     image: openziti/quickstart:latest
@@ -65,7 +65,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh fabric"
+    command: "/openziti/scripts/run-router.sh fabric"
 
   ziti-private-red:
     image: openziti/quickstart:latest
@@ -80,7 +80,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh private"
+    command: "/openziti/scripts/run-router.sh private"
 
   ziti-private-blue:
     image: openziti/quickstart:latest
@@ -95,7 +95,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh private"
+    command: "/openziti/scripts/run-router.sh private"
 
   web-test-blue:
     image: crccheck/hello-world

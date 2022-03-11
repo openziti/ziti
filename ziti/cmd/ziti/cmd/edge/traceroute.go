@@ -20,6 +20,7 @@ type traceRouteOptions struct {
 	hops             uint8
 	configFile       string
 	timeout          time.Duration
+	lookupRouterName bool
 }
 
 func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -50,6 +51,7 @@ func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().Uint8Var(&options.hops, "hops", 0, "Maximum number of hops")
 	cmd.Flags().DurationVarP(&options.timeout, "timeout", "t", 5*time.Second, "Trace route response timeout")
 	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
+	cmd.Flags().BoolVarP(&options.lookupRouterName, "get-router-names", "n", false, "Lookup and output router names instead of ids. Requires admin privileges")
 
 	return cmd
 }
@@ -99,10 +101,12 @@ func (o *traceRouteOptions) Run() error {
 
 		hopLabel := result.HopId
 		if result.HopType == "forwarder" {
-			hopLabel, err = mapIdToName("transit-routers", result.HopId, o.Options)
-			if err != nil {
-				hopLabel = result.HopId
-				routerNameLookupsFailed = true
+			if o.lookupRouterName {
+				hopLabel, err = mapIdToName("transit-routers", result.HopId, o.Options)
+				if err != nil {
+					hopLabel = result.HopId
+					routerNameLookupsFailed = true
+				}
 			}
 		}
 

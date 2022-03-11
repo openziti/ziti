@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -31,19 +30,19 @@ type PsPprofHeapOptions struct {
 }
 
 // NewCmdPsPprofHeap creates a command object for the "create" command
-func NewCmdPsPprofHeap(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsPprofHeap(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsPprofHeapOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use: "pprof-heap",
+		Use:   "pprof-heap",
+		Short: "Returns a memory heap pprof of the target application",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

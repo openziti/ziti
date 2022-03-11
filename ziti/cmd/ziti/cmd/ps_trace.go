@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -31,19 +30,19 @@ type PsTraceOptions struct {
 }
 
 // NewCmdPsTrace creates a command object for the "create" command
-func NewCmdPsTrace(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsTrace(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsTraceOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use: "trace",
+		Use:   "trace",
+		Short: "Turn tracing on for 5 seconds in the target application",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

@@ -1,3 +1,19 @@
+# Release 0.25.2
+
+## Deprecations
+The Ziti Edge management REST `/database` and `/terminators` endpoints are being deprecated. They belong in the 
+fabric management API, but there was no fabric REST api at the time when they were added. Now that they are 
+available under fabric, they will be removed from the edge APIs in a future release, v0.26 or later.
+
+## What's New
+
+* Enhancement: Only translate router ids -> names in `ziti edge traceroute` when requested to with flag
+* Enhancement: Add the /database rest API from edge to fabric, where they below
+    * `ziti fabric db` now as the same commands as `ziti edge db`
+* Enhancement: Add `ziti agent` command for sending IPC commands. Contains copy of what was under `ziti ps`.
+* Enhancement: Add `ziti agent controller snapshot-db <name or pid>` IPC command
+
+
 # Release 0.25.1
 
 * Bug fix: Fix panic caused by race condition at router start up
