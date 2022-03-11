@@ -32,6 +32,7 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 			if address, err := transport.ParseAddress(addressString); err == nil {
 				config.bind = address
 				config.advertise = address
+				config.linkType = address.Type()
 			} else {
 				return nil, fmt.Errorf("error parsing 'bind' address in listener config (%w)", err)
 			}
@@ -46,7 +47,6 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		if addressString, ok := value.(string); ok {
 			if address, err := transport.ParseAddress(addressString); err == nil {
 				config.advertise = address
-				config.linkType = address.Type()
 			} else {
 				return nil, fmt.Errorf("error parsing 'advertise' address in listener config")
 			}
