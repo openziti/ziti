@@ -227,6 +227,32 @@ func TestSetZitiRouterIdentitySetsAllIdentitiesAndEdgeRouterRawName(t *testing.T
 	assert.NotEqualf(t, blank, rtv.IdentityCA, "Router.IdentityCert expected to have a value, instead it was blank")
 }
 
+func TestSetZitiRouterIdentitySetsAllIdentitiesAndEdgeRouterRawNameToHostWhenBlank(t *testing.T) {
+	// Setup
+	expectedRawName, _ := os.Hostname()
+	blank := ""
+	rtv := &RouterTemplateValues{}
+
+	// Check that they're all currently blank
+	assert.Equal(t, blank, rtv.Edge.Hostname)
+	assert.Equal(t, blank, rtv.IdentityCert)
+	assert.Equal(t, blank, rtv.IdentityServerCert)
+	assert.Equal(t, blank, rtv.IdentityKey)
+	assert.Equal(t, blank, rtv.IdentityCA)
+
+	// Set the env variable to an empty value
+	_ = os.Setenv(constants.ZitiEdgeRouterRawNameVarName, "")
+
+	SetZitiRouterIdentity(rtv, expectedRawName)
+
+	// Check that the value matches
+	assert.Equal(t, expectedRawName, rtv.Edge.Hostname)
+	assert.NotEqualf(t, blank, rtv.IdentityCert, "Router.IdentityCert expected to have a value, instead it was blank")
+	assert.NotEqualf(t, blank, rtv.IdentityServerCert, "Router.IdentityCert expected to have a value, instead it was blank")
+	assert.NotEqualf(t, blank, rtv.IdentityKey, "Router.IdentityCert expected to have a value, instead it was blank")
+	assert.NotEqualf(t, blank, rtv.IdentityCA, "Router.IdentityCert expected to have a value, instead it was blank")
+}
+
 func TestExecuteCreateConfigRouterEdgeHasNonBlankTemplateValues(t *testing.T) {
 	routerName := "MyEdgeRouter"
 	expectedNonEmptyStringFields := []string{".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Hostname", ".Router.Edge.Port"}
