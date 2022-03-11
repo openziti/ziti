@@ -17,9 +17,11 @@
 package cmd
 
 import (
+	"encoding/binary"
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -27,26 +29,25 @@ import (
 )
 
 // PsRouteOptions the options for the create spring command
-type PsRouterReconnectOptions struct {
+type PsRouteOptions struct {
 	PsOptions
 	CtrlListener string
 }
 
-// NewCmdPsRouterReconnect creates a command object for the "router-disconnect" command
-func NewCmdPsRouterReconnect(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsRouterReconnectOptions{
+// NewCmdPsRoute creates a command object for the "create" command
+func NewCmdPsRoute(out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &PsRouteOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.MaximumNArgs(1),
-		Use:  "router-reconnect <optional-target> ",
+		Args: cobra.RangeArgs(3, 4),
+		Use:  "route <optional-target> <session id> <source-address> <destination-address>",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -61,13 +62,43 @@ func NewCmdPsRouterReconnect(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 }
 
 // Run implements the command
-func (o *PsRouterReconnectOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (o *PsRouteOptions) Run() error {
+	var addr string
+	var err error
+
+	offset := 0
+	if len(o.Args) == 4 {
+		addr, err = agent.ParseGopsAddress(o.Args)
+		if err != nil {
+			return err
+		}
+		offset = 1
+	}
+
+	route := &ctrl_pb.Route{
+		CircuitId: o.Args[offset],
+		Forwards: []*ctrl_pb.Route_Forward{
+			{
+				SrcAddress: o.Args[offset+1],
+				DstAddress: o.Args[offset+2],
+			},
+		},
+	}
+
+	buf, err := proto.Marshal(route)
 	if err != nil {
 		return err
 	}
 
-	buf := []byte{router.OpenControlChannel}
+	fullBuf := make([]byte, len(buf)+6)
+	fullBuf[0] = byte(AgentAppRouter)
+	fullBuf[1] = router.UpdateRoute
 
-	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
+	sizeBuf := make([]byte, 4)
+	binary.LittleEndian.PutUint32(sizeBuf, uint32(len(buf)))
+
+	copy(fullBuf[2:], sizeBuf)
+	copy(fullBuf[6:], buf)
+
+	return agent.MakeRequest(addr, agent.CustomOp, fullBuf, os.Stdout)
 }

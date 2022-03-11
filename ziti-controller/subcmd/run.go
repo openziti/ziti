@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io"
 	"os"
 	"os/signal"
 	"syscall"
@@ -59,12 +60,6 @@ func run(cmd *cobra.Command, args []string) {
 	startLogger = startLogger.WithField("nodeId", config.Id.Token)
 	startLogger.Info("starting ziti-controller")
 
-	if cliAgentEnabled {
-		if err := agent.Listen(agent.Options{Addr: cliAgentAddr}); err != nil {
-			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
-		}
-	}
-
 	var fabricController *controller.Controller
 	if fabricController, err = controller.NewController(config, version.GetCmdBuildInfo()); err != nil {
 		fmt.Printf("unable to create fabric controller %+v\n", err)
@@ -78,6 +73,18 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	edgeController.Initialize()
+
+	if cliAgentEnabled {
+		options := agent.Options{Addr: cliAgentAddr}
+		fabricController.RegisterDefaultAgentOps()
+		options.CustomOps = map[byte]func(conn io.ReadWriter) error{
+			agent.CustomOp: fabricController.HandleCustomAgentOp,
+		}
+		if err := agent.Listen(options); err != nil {
+			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+		}
+	}
+
 	go waitForShutdown(fabricController, edgeController)
 	edgeController.Run()
 	if err := fabricController.Run(); err != nil {

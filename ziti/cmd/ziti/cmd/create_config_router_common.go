@@ -32,6 +32,8 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
 	if val != "" {
 		r.Edge.Hostname = val
+	} else {
+		r.Edge.Hostname, _ = os.Hostname()
 	}
 }
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {

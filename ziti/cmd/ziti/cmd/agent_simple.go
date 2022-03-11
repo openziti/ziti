@@ -17,24 +17,19 @@
 package cmd
 
 import (
-	"encoding/binary"
 	"github.com/openziti/foundation/agent"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
-	"strconv"
 )
 
-// PsSetgcOptions the options for the create spring command
-type PsSetgcOptions struct {
+type SimpleAgentCmdOptions struct {
 	PsOptions
-	CtrlListener string
 }
 
-// NewCmdPsSetgc creates a command object for the "create" command
-func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsSetgcOptions{
+func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, out io.Writer, errOut io.Writer) *cobra.Command {
+	options := &SimpleAgentCmdOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
 				Out: out,
@@ -44,13 +39,12 @@ func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "setgc target gc-percentage",
-		Short: "Sets the GC percentage in the target application",
-		Args:  cobra.MinimumNArgs(1),
+		Args: cobra.MaximumNArgs(1),
+		Use:  name + " <optional-target> ",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := options.Run()
+			err := options.Run(appId, op)
 			cmdhelper.CheckErr(err)
 		},
 	}
@@ -61,28 +55,13 @@ func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 // Run implements the command
-func (o *PsSetgcOptions) Run() error {
-	var addr string
-	var err error
-	var pctArg string
-	if len(o.Args) == 1 {
-		addr, err = agent.ParseGopsAddress(nil)
-		pctArg = o.Args[0]
-	} else {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		pctArg = o.Args[1]
-	}
-
+func (o *SimpleAgentCmdOptions) Run(appId AgentAppId, op byte) error {
+	addr, err := agent.ParseGopsAddress(o.Args)
 	if err != nil {
 		return err
 	}
 
-	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, binary.MaxVarintLen64)
-	binary.PutVarint(buf, perc)
+	buf := []byte{byte(appId), op}
 
-	return agent.MakeRequest(addr, agent.SetGCPercent, buf, os.Stdout)
+	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
 }
