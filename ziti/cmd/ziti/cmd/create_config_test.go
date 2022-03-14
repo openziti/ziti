@@ -41,7 +41,7 @@ func getZitiEnvironmentVariables() []string {
 }
 
 // Test that all ZITI_* variables are included in the values for output
-func TestThatNoNewUnknownTemplateEnvVariablesExist(t *testing.T) {
+func TestNoUnknownTemplateEnvVariablesExist(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
@@ -74,7 +74,7 @@ func TestThatNoNewUnknownTemplateEnvVariablesExist(t *testing.T) {
 }
 
 // Test that all known ZITI env variables are found in the output
-func TestThatAllKnownEnvVariablesAreAccountedForInTemplate(t *testing.T) {
+func TestAllKnownEnvVariablesAreFoundInTemplate(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
@@ -111,7 +111,7 @@ func TestThatAllKnownEnvVariablesAreAccountedForInTemplate(t *testing.T) {
 }
 
 // Test that all ZITI_* variables are included in the values for output
-func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
+func TestNoUnknownOutputEnvVariablesExist(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
@@ -155,7 +155,7 @@ func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
 }
 
 // Test that all known ZITI_* variables are included in the env file
-func TestThatAllKnownEnvVariablesAreAccountedForInOutput(t *testing.T) {
+func TestAllKnownEnvVariablesAreFoundInOutput(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
