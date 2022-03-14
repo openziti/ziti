@@ -20,6 +20,8 @@
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityKeyVarName }}={{ .Controller.Edge.IdentityKey }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityCAVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityCAVarName }}={{ .Controller.Edge.IdentityCA }}
+{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlPortVarDescription }}
+{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlPortVarName }}={{ .Controller.Edge.Port }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityCertVarDescription }}
 {{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlIdentityCertVarName }}={{ .Controller.IdentityCert }}
 {{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityServerCertVarDescription }}

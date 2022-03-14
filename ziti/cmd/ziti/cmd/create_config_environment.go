@@ -58,6 +58,7 @@ type EnvVariableMetaData struct {
 	ZitiRouterIdentityCAVarName                  string
 	ZitiCtrlListenerAddressVarName               string
 	ZitiCtrlAdvertisedAddressVarName             string
+	ZitiEdgeCtrlPortVarName                      string
 	ZitiHomeVarDescription                       string
 	ZitiCtrlNameVarDescription                   string
 	ZitiEdgeRouterRawNameVarDescription          string
@@ -82,6 +83,7 @@ type EnvVariableMetaData struct {
 	ZitiRouterIdentityServerCertVarDescription   string
 	ZitiRouterIdentityKeyVarDescription          string
 	ZitiRouterIdentityCAVarDescription           string
+	ZitiEdgeCtrlPortVarDescription               string
 }
 
 var (
@@ -106,7 +108,7 @@ var environmentOptions *CreateConfigEnvironmentOptions
 // CreateConfigEnvironmentOptions the options for the create environment command
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
-	ConfigTemplateValues
+	*ConfigTemplateValues
 	EnvVariableMetaData
 	output string
 }
@@ -115,7 +117,7 @@ type CreateConfigEnvironmentOptions struct {
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 	environmentOptions = &CreateConfigEnvironmentOptions{
-		ConfigTemplateValues: *data,
+		ConfigTemplateValues: data,
 		EnvVariableMetaData: EnvVariableMetaData{
 			OS:                                           "Stuff",
 			ZitiHomeVarName:                              constants.ZitiHomeVarName,
@@ -164,6 +166,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 			ZitiEdgeCtrlListenerHostPortVarDescription:   constants.ZitiEdgeCtrlListenerHostPortVarDescription,
 			ZitiEdgeCtrlAdvertisedHostPortVarName:        constants.ZitiEdgeCtrlAdvertisedHostPortVarName,
 			ZitiEdgeCtrlAdvertisedHostPortVarDescription: constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription,
+			ZitiEdgeCtrlPortVarName:                      constants.ZitiEdgeCtrlPortVarName,
+			ZitiEdgeCtrlPortVarDescription:               constants.ZitiEdgeCtrlPortVarDescription,
 		},
 	}
 
@@ -176,6 +180,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.populateEnvVars()
 			data.populateDefaults()
+			SetZitiRouterIdentity(&data.Router, data.Router.Name)
 
 			// Setup logging
 			var logOut *os.File
@@ -227,6 +232,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
@@ -235,6 +241,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
 		constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
 		constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
+		constants.ZitiEdgeCtrlPortVarName, constants.ZitiEdgeCtrlPortVarDescription, data.Controller.Edge.Port,
 		constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname,
 		constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
 		constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert,

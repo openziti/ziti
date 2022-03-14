@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/stretchr/testify/assert"
+	"os"
 	"testing"
 	"time"
 )
@@ -39,4 +40,93 @@ func TestExecuteCreateConfigControllerHasNonBlankTemplateValues(t *testing.T) {
 	for field, value := range expectedNonEmptyTimeValues {
 		assert.NotZero(t, *value, expectedNonEmptyTimeFields[field]+" should be a non-zero value")
 	}
+}
+
+// Edge Ctrl Listener address and port should use default values if env vars are not set
+func TestCreateConfigControllerDefaultListenerAddress(t *testing.T) {
+	expectedListenerAddress := "0.0.0.0:1280"
+
+	// Make sure the related env vars are unset
+	_ = os.Unsetenv("ZITI_EDGE_CONTROLLER_PORT")
+	_ = os.Unsetenv("ZITI_CTRL_EDGE_LISTENER_HOST_PORT")
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedListenerAddress, data.Controller.Edge.ListenerHostPort)
+}
+
+// Edge Ctrl Listener port should use ZITI_EDGE_CONTROLLER_PORT if it is set
+func TestCreateConfigControllerListenerAddressWhenEdgeCtrlPortSetAndListenerHostPortNotSet(t *testing.T) {
+	myPort := "1234"
+	expectedListenerAddress := "0.0.0.0:" + myPort
+
+	// Make sure the related env vars are unset
+	_ = os.Unsetenv("ZITI_CTRL_EDGE_LISTENER_HOST_PORT")
+
+	// Set the edge controller port
+	_ = os.Setenv("ZITI_EDGE_CONTROLLER_PORT", myPort)
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedListenerAddress, data.Controller.Edge.ListenerHostPort)
+}
+
+// Edge Ctrl Listener address and port should always use ZITI_EDGE_CTRL_LISTENER_HOST_PORT value if it is set
+func TestCreateConfigControllerListenerAddressWhenEdgeCtrlPortSetAndListenerHostPortSet(t *testing.T) {
+	myPort := "1234"
+	expectedListenerAddress := "0.0.0.0:4321" // Expecting a different port even when edge ctrl port is set
+
+	// Set a custom value for the host and port
+	_ = os.Setenv("ZITI_CTRL_EDGE_LISTENER_HOST_PORT", expectedListenerAddress)
+
+	// Set the edge controller port (this should not show up in the end resulting listener address)
+	_ = os.Setenv("ZITI_EDGE_CONTROLLER_PORT", myPort)
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedListenerAddress, data.Controller.Edge.ListenerHostPort)
+}
+
+// Edge Ctrl Port should update the edge ctrl port to the default when ZITI_EDGE_CONTROLLER_PORT is not set
+func TestCreateConfigControllerEdgeCtrlPortDefaultWhenNotSet(t *testing.T) {
+	expectedPort := "1280" // Expecting the default port of 1280
+
+	// Set a custom value for the host and port
+	_ = os.Unsetenv("ZITI_EDGE_CONTROLLER_PORT")
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
+}
+
+// Edge Ctrl Port should update the edge ctrl port to the custom value when ZITI_EDGE_CONTROLLER_PORT is set
+func TestCreateConfigControllerEdgeCtrlPortWhenSet(t *testing.T) {
+	expectedPort := "1234" // Setting a custom port which is not the default value
+
+	// Set a custom value for the host and port
+	_ = os.Setenv("ZITI_EDGE_CONTROLLER_PORT", expectedPort)
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
 }
