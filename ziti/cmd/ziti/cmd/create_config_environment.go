@@ -101,6 +101,8 @@ var (
 //go:embed config_templates/environment.yml
 var environmentConfigTemplate string
 
+var environmentOptions *CreateConfigEnvironmentOptions
+
 // CreateConfigEnvironmentOptions the options for the create environment command
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
@@ -112,7 +114,7 @@ type CreateConfigEnvironmentOptions struct {
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 
-	environmentOptions := &CreateConfigEnvironmentOptions{
+	environmentOptions = &CreateConfigEnvironmentOptions{
 		ConfigTemplateValues: *data,
 		EnvVariableMetaData: EnvVariableMetaData{
 			OS:                                           "Stuff",

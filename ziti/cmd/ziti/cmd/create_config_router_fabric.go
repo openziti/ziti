@@ -90,7 +90,6 @@ func (options *CreateConfigRouterOptions) runFabricRouter(data *ConfigTemplateVa
 		// Check if the path exists, fail if it doesn't
 		basePath := filepath.Dir(options.Output) + "/"
 		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
-			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
 			return err
 		}
 

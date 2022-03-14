@@ -93,8 +93,7 @@ func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValues) error {
 	// Ensure private and wss are not both used
 	if options.IsPrivate && options.WssEnabled {
-		logrus.Fatal("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
-		return errors.New("Flags for private and wss configs are mutually exclusive.")
+		return errors.New("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
@@ -107,7 +106,6 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 		// Check if the path exists, fail if it doesn't
 		basePath := filepath.Dir(options.Output) + "/"
 		if _, err := os.Stat(filepath.Dir(basePath)); os.IsNotExist(err) {
-			logrus.Fatalf("Provided path: [%s] does not exist\n", basePath)
 			return err
 		}
 
