@@ -21,6 +21,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	edgeSubCmd "github.com/openziti/edge/controller/subcmd"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
