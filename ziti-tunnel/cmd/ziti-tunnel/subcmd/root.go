@@ -90,6 +90,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	default:
 		// let logrus do its own thing
 	}
+	util.LogReleaseVersionCheck(constants.ZITI_TUNNEL)
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {

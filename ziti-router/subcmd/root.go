@@ -49,6 +49,7 @@ var root = &cobra.Command{
 		default:
 			// let logrus do its own thing
 		}
+		util.LogReleaseVersionCheck(constants.ZITI_ROUTER)
 
 	},
 }
