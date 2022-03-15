@@ -1,46 +1,6 @@
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiHomeVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiHomeVarName }}={{ .ZitiHome }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlNameVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlNameVarName }}={{ .Controller.Name }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlPortVarName }}={{ .Controller.Port }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeRouterRawNameVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeRouterRawNameVarName }}={{ .Router.Edge.Hostname }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeRouterPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeRouterPortVarName }}={{ .Router.Edge.Port }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlListenerAddressVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlListenerAddressVarName }}={{ .Controller.ListenerAddress }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlAdvertisedAddressVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlAdvertisedAddressVarName }}={{ .Controller.AdvertisedAddress }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityCertVarName }}={{ .Controller.Edge.IdentityCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityServerCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityServerCertVarName }}={{ .Controller.Edge.IdentityServerCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityKeyVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityKeyVarName }}={{ .Controller.Edge.IdentityKey }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlIdentityCAVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlIdentityCAVarName }}={{ .Controller.Edge.IdentityCA }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlIdentityCertVarName }}={{ .Controller.IdentityCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityServerCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlIdentityServerCertVarName }}={{ .Controller.IdentityServerCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityKeyVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlIdentityKeyVarName }}={{ .Controller.IdentityKey }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiCtrlIdentityCAVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiCtrlIdentityCAVarName }}={{ .Controller.IdentityCA }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiRouterIdentityCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiRouterIdentityCertVarName }}={{ .Router.IdentityCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiRouterIdentityServerCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiRouterIdentityServerCertVarName }}={{ .Router.IdentityServerCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiRouterIdentityKeyVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiRouterIdentityKeyVarName }}={{ .Router.IdentityKey }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiRouterIdentityCAVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiRouterIdentityCAVarName }}={{ .Router.IdentityCA }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiSigningCertVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiSigningCertVarName }}={{ .Controller.Edge.ZitiSigningCert }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiSigningKeyVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiSigningKeyVarName }}={{ .Controller.Edge.ZitiSigningKey }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlListenerHostPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlListenerHostPortVarName }}={{ .Controller.Edge.ListenerHostPort }}
-{{ if eq .OS "windows" }}Rem {{ else }}# {{ end }}{{ .ZitiEdgeCtrlAdvertisedHostPortVarDescription }}
-{{ if eq .OS "windows" }}SET{{ else }}export{{ end }} {{ .ZitiEdgeCtrlAdvertisedHostPortVarName }}={{ .Controller.Edge.AdvertisedHostPort }}
+{{ $commentPrefix := .OSCommentPrefix }}
+{{ $varDeclare := .OSVarDeclare }}
+{{- range .EnvVars}}
+{{ $commentPrefix }} {{ .Description }}
+{{ $varDeclare }} {{ .Name }}={{ .Value }}
+{{- end }}

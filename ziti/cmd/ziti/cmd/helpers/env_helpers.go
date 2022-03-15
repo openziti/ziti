@@ -75,27 +75,36 @@ func GetZitiCtrlAdvertisedAddress() (string, error) {
 		}
 	}
 
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlAdvertisedAddressVarName, hostname, false)
+	return getValueOrSetAndGetDefault(constants.ZitiCtrlAdvertisedAddressVarName, hostname)
 }
 
 func GetZitiCtrlPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlPortVarName, constants.DefaultZitiControllerPort, false)
+	return getValueOrSetAndGetDefault(constants.ZitiCtrlPortVarName, constants.DefaultZitiControllerPort)
 }
 
 func GetZitiCtrlListenerAddress() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlListenerAddressVarName, constants.DefaultZitiControllerListenerAddress, false)
+	return getValueOrSetAndGetDefault(constants.ZitiCtrlListenerAddressVarName, constants.DefaultZitiControllerListenerAddress)
 }
 
 func GetZitiCtrlName() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlNameVarName, constants.DefaultZitiControllerName, false)
+	return getValueOrSetAndGetDefault(constants.ZitiCtrlNameVarName, constants.DefaultZitiControllerName)
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort, false)
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
 }
 
 func GetZitiEdgeCtrlListenerHostPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHostPort, false)
+	// Get the edge controller port to use as the default
+	edgeCtrlPort, err := GetZitiEdgeCtrlAdvertisedPort()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHost+":"+edgeCtrlPort)
 }
 
 func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
@@ -107,17 +116,26 @@ func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 		}
 	}
 
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+constants.DefaultZitiEdgeAPIPort, false)
+	port, err := GetZitiEdgeCtrlAdvertisedPort()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+port)
 }
 
-func getValueOrSetAndGetDefault(envVarName string, defaultValue string, forceDefault bool) (string, error) {
-	retVal := ""
-	if !forceDefault {
-		// Get path from env variable
-		retVal = os.Getenv(envVarName)
-		if retVal != "" {
-			return retVal, nil
-		}
+func GetZitiEdgeCtrlAdvertisedPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.DefaultZitiEdgeAPIPort)
+}
+
+func getValueOrSetAndGetDefault(envVarName string, defaultValue string) (string, error) {
+	// Get path from env variable
+	retVal := os.Getenv(envVarName)
+	if retVal != "" {
+		return retVal, nil
 	}
 
 	err := os.Setenv(envVarName, defaultValue)

@@ -275,3 +275,29 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenSet(t *testing.T) {
 	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
+
+func TestGetZitiEdgeCtrlPortWhenNotSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_CONTROLLER_PORT"
+	expectedValue := "1280"
+
+	// Be sure the var is unset
+	_ = os.Unsetenv(varName)
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeCtrlPortWhenSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_CONTROLLER_PORT"
+	expectedValue := "1234"
+
+	// Set the env variable
+	_ = os.Setenv(varName, expectedValue)
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
+	assert.Equal(t, expectedValue, actualValue)
+}

@@ -6,7 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -40,77 +39,7 @@ func getZitiEnvironmentVariables() []string {
 }
 
 // Test that all ZITI_* variables are included in the values for output
-func TestThatNoNewUnknownTemplateEnvVariablesExist(t *testing.T) {
-	// Get the list of ZITI_* environment variables
-	allEnvVars := getZitiEnvironmentVariables()
-
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
-
-	values := reflect.ValueOf(environmentOptions.EnvVariableMetaData)
-	elements := make([]interface{}, values.NumField())
-
-	for i := 0; i < values.NumField(); i++ {
-		elements[i] = values.Field(i).Interface()
-	}
-
-	// Check that every known environment variable is represented in the interface of values
-	var unknownValues []string
-	for _, value := range elements {
-		strValue := fmt.Sprintf("%v", value)
-		// If the value starts with ZITI_, make sure it's in the list of known environment variables
-		if strings.HasPrefix(strValue, "ZITI_") {
-			if !contains(allEnvVars, strValue) {
-				unknownValues = append(unknownValues, strValue)
-			}
-		}
-	}
-
-	assert.Zero(t, len(unknownValues))
-	for _, value := range unknownValues {
-		fmt.Printf("The variable %s was found in template values but is not a known variable. If necessary, update ZITI env variables list in test with the new variable\n", value)
-	}
-}
-
-// Test that all known ZITI env variables are found in the output
-func TestThatAllKnownEnvVariablesAreAccountedForInTemplate(t *testing.T) {
-	// Get the list of ZITI_* environment variables
-	allEnvVars := getZitiEnvironmentVariables()
-
-	// Create a config environment command which will populate the env variable metadata
-	NewCmdCreateConfigEnvironment()
-
-	values := reflect.ValueOf(environmentOptions.EnvVariableMetaData)
-	elements := make([]interface{}, values.NumField())
-
-	for i := 0; i < values.NumField(); i++ {
-		elements[i] = values.Field(i).Interface()
-	}
-
-	// Check that the interface of values doesn't have any remaining variables unaccounted for here
-	var unfoundVariables []string
-	for _, variable := range allEnvVars {
-		found := false
-		for _, value := range elements {
-			strValue := fmt.Sprintf("%v", value)
-			if variable == strValue {
-				found = true
-				break
-			}
-		}
-		if !found {
-			unfoundVariables = append(unfoundVariables, variable)
-		}
-	}
-
-	assert.Zero(t, len(unfoundVariables))
-	for _, value := range unfoundVariables {
-		fmt.Printf("The variable %s was not found in template values. Update ZITI env variables list in test by removing this variable if necessary\n", value)
-	}
-}
-
-// Test that all ZITI_* variables are included in the values for output
-func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
+func TestNoUnknownOutputEnvVariablesExist(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
@@ -149,12 +78,12 @@ func TestThatNoNewUnknownOutputEnvVariablesExist(t *testing.T) {
 
 	assert.Zero(t, len(unknownValues))
 	for _, value := range unknownValues {
-		fmt.Printf("The variable %s was found in env file output but is not a known variable. If necessary, update ZITI env variables list in test with the new variable\n", value)
+		fmt.Printf("The variable %s was found in env command output but was not expected.\n  -If this is a new variable, add it to the ZITI env variables list in create_config_test.\n  -If this variable was removed, remove the variable from the env command output.\n", value)
 	}
 }
 
 // Test that all known ZITI_* variables are included in the env file
-func TestThatAllKnownEnvVariablesAreAccountedForInOutput(t *testing.T) {
+func TestAllKnownEnvVariablesAreFoundInOutput(t *testing.T) {
 	// Get the list of ZITI_* environment variables
 	allEnvVars := getZitiEnvironmentVariables()
 
@@ -189,7 +118,90 @@ func TestThatAllKnownEnvVariablesAreAccountedForInOutput(t *testing.T) {
 
 	assert.Zero(t, len(unfoundVariables))
 	for _, value := range unfoundVariables {
-		fmt.Printf("The variable %s was not found in env file output. Update ZITI env variables list in test by removing this variable if necessary\n", value)
+		fmt.Printf("The variable %s was expected in env command output but was not found.\n  -If this is variable was removed, remove it from the ZITI env variables list in create_config_test.\n  -If this is a new variable, add it to the env command output.\n", value)
+	}
+}
+
+// Test that all known ZITI_* variables are included in the help output
+func TestAllKnownEnvVariablesAreFoundInHelpOutput(t *testing.T) {
+	// Get the list of ZITI_* environment variables
+	allEnvVars := getZitiEnvironmentVariables()
+
+	// Create a config environment command which will populate the env variable metadata
+	NewCmdCreateConfigEnvironment()
+
+	// Run the environment options command and capture stdout from help
+	cmd := NewCmdCreateConfigEnvironment()
+	cmd.SetArgs([]string{"-h"})
+	output := captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	// Split the output on newlines
+	lines := strings.Split(output, "\n")
+	// Check that every known environment variable is represented in the help output
+	var unfoundVariables []string
+	for _, variable := range allEnvVars {
+		found := false
+		for _, line := range lines {
+			// Check if the line contains an assignment for this env variable
+			if strings.HasPrefix(line, variable) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			unfoundVariables = append(unfoundVariables, variable)
+		}
+	}
+
+	assert.Zero(t, len(unfoundVariables))
+	for _, value := range unfoundVariables {
+		fmt.Printf("The variable %s was expected in env command's help output but was not found.\n  -If this is variable was removed, remove it from the ZITI env variables list in create_config_test.\n  -If this is a new variable, add it to the env command's help output.\n", value)
+	}
+}
+
+// Test that all ZITI_* variables are included in the values for help output
+func TestNoUnknownHelpEnvVariablesExist(t *testing.T) {
+	// Get the list of ZITI_* environment variables
+	allEnvVars := getZitiEnvironmentVariables()
+
+	// Create a config environment command which will populate the env variable metadata
+	NewCmdCreateConfigEnvironment()
+
+	// Run the environment options command and capture stdout from help
+	cmd := NewCmdCreateConfigEnvironment()
+	cmd.SetArgs([]string{"-h"})
+	output := captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	// Split the output on newlines
+	lines := strings.Split(output, "\n")
+	// Check that every known environment variable is represented in the env file output
+	prefix := "ZITI_"
+	var unknownValues []string
+	for _, line := range lines {
+		// Only look at lines with a ZITI_* env var
+		if !strings.HasPrefix(line, prefix) {
+			continue
+		}
+		// Strip out the variable name and see if it's a known value
+		start := strings.Index(line, prefix)
+		end := strings.Index(line, " ")
+		if end < 0 {
+			// If there's no assignment, assume a variable name was referenced in a comment and ignore
+			continue
+		}
+		envVar := strings.TrimSpace(line[start:end])
+		if !contains(allEnvVars, envVar) {
+			unknownValues = append(unknownValues, envVar)
+		}
+	}
+
+	assert.Zero(t, len(unknownValues))
+	for _, value := range unknownValues {
+		fmt.Printf("The variable %s was found in env command's help output but was not expected.\n  -If this is a new variable, add it to the ZITI env variables list in create_config_test.\n  -If this variable was removed, remove the variable from the env command's help output.\n", value)
 	}
 }
 
