@@ -1,0 +1,87 @@
+{{/*
+ Config Format Version
+
+ Whenever a breaking change is made to the semantics of this configuration file, the configuration version
+ expected by the router will be incremented. When the controller tries to load a configuration file with
+ an incompatible version, it will abort with a message prompting the operator to seek out the breaking changes
+ documentation.*/}}v: 3
+
+identity:
+  cert:                 "{{ .Router.IdentityCert }}"
+  server_cert:          "{{ .Router.IdentityServerCert }}"
+  key:                  "{{ .Router.IdentityKey }}"
+  ca:                   "{{ .Router.IdentityCA }}"
+
+ctrl:
+  endpoint:             tls:{{ .Controller.AdvertisedAddress }}:{{ .Controller.Port }}
+
+link:
+  dialers:
+    - binding: transport
+{{ if .Router.IsPrivate }}#{{ end }}  listeners:
+{{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      options:
+{{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
+
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}listeners:
+# bindings of edge and tunnel requires an "edge" section below
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}  - binding: edge
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    options:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}  - binding: tunnel
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}    options:
+{{ if or .Router.IsFabric .Router.IsPrivate }}#{{ end }}      mode: host #tproxy|host
+
+{{ if or .Router.IsFabric .Router.IsPrivate }}
+csr:
+  country: US
+  province: NC
+  locality: Charlotte
+  organization: NetFoundry
+  organizationalUnit: Ziti
+  sans:
+    dns:
+      - {{ .Router.Edge.Hostname }}
+      - localhost
+    ip:
+      - "127.0.0.1"
+{{ else }}
+edge:
+  csr:
+    country: US
+    province: NC
+    locality: Charlotte
+    organization: NetFoundry
+    organizationalUnit: Ziti
+    sans:
+      dns:
+        - {{ .Router.Edge.Hostname }}
+        - localhost
+      ip:
+        - "127.0.0.1"
+{{ end }}
+{{ if not .Router.IsWss }}#{{ end }}transport:
+{{ if not .Router.IsWss }}#{{ end }}  ws:
+{{ if not .Router.IsWss }}#{{ end }}    writeTimeout: {{ .Router.Wss.WriteTimeout.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    readTimeout: {{ .Router.Wss.ReadTimeout.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    idleTimeout: {{ .Router.Wss.IdleTimeout.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    pongTimeout: {{ .Router.Wss.PongTimeout.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    pingInterval: {{ .Router.Wss.PingInterval.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    handshakeTimeout: {{ .Router.Wss.HandshakeTimeout.Seconds }}
+{{ if not .Router.IsWss }}#{{ end }}    readBufferSize: {{ .Router.Wss.ReadBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    writeBufferSize: {{ .Router.Wss.WriteBufferSize }}
+{{ if not .Router.IsWss }}#{{ end }}    enableCompression: {{ .Router.Wss.EnableCompression }}
+{{ if not .Router.IsWss }}#{{ end }}    server_cert: {{ .Router.IdentityServerCert }}
+{{ if not .Router.IsWss }}#{{ end }}    key: {{ .Router.IdentityKey }}
+
+forwarder:
+  latencyProbeInterval: {{ .Router.Forwarder.LatencyProbeInterval.Seconds }}
+  xgressDialQueueLength: {{ .Router.Forwarder.XgressDialQueueLength }}
+  xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
+  linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
+  linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}

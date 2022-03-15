@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -32,20 +31,20 @@ type PsPprofCpuOptions struct {
 }
 
 // NewCmdPsPprofCpu creates a command object for the "create" command
-func NewCmdPsPprofCpu(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsPprofCpu(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsPprofCpuOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "pprof-cpu",
-		Args: cobra.MaximumNArgs(2),
+		Use:   "pprof-cpu",
+		Short: "Runs and emits a 30 second pprof from the target application",
+		Args:  cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

@@ -17,6 +17,7 @@ jobs:
     name: POST Webhook
     steps:
     - uses: openziti/ziti-webhook-action@main
+      if: github.repository_owner == 'openziti'
       with:
         ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
         webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}

@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -36,20 +35,20 @@ type PsSetChannelLogLevelOptions struct {
 }
 
 // NewCmdPsSetChannelLogLevel creates a command object for the "create" command
-func NewCmdPsSetChannelLogLevel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsSetChannelLogLevel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsSetChannelLogLevelOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "set-channel-log-level target channel log-level (panic, fatal, error, warn, info, debug, trace)",
-		Args: cobra.MinimumNArgs(2),
+		Use:   "set-channel-log-level target channel log-level (panic, fatal, error, warn, info, debug, trace)",
+		Short: "Sets a channel-specific log level in the target application",
+		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

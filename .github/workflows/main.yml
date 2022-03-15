@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - release-v*
-      - builx-action # TODO: prune after initial testing
   pull_request:
   workflow_dispatch:
 
@@ -36,12 +35,16 @@ jobs:
 
       - name: Build and Test
         run: |
-          pip install --upgrade pip
-          pip install awscli
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: darwin-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
 
   windows-build:
     name: Build Windows binaries
@@ -63,16 +66,19 @@ jobs:
       - name: Build and Test
         shell: bash
         run: |
-          choco install python --version 3.6.8
-          python -m pip install --upgrade pip
-          pip install awscli
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress release/ s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
 
   tag-and-publish:
-    name: Build Linux Binaries and Docker Image, Tag, and Publish
+    name: Build and Publish Linux Binaries and Docker Image
     runs-on: ubuntu-18.04
     needs: [ mac-os-build, windows-build ]
     steps:
@@ -97,22 +103,33 @@ jobs:
       - name: Build and Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
-          python -m pip install --upgrade pip
-          pip install awscli
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           go install github.com/mitchellh/gox@latest
-          CGO_ENABLED=true $(go env GOPATH)/bin/gox -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
-          CC=arm-linux-gnueabihf-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
-          CC=aarch64-linux-gnu-gcc CGO_ENABLED=true gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
-          aws s3 sync --no-progress s3://ziti-cmd-build-tmp/${{ github.run_id }} release/
-          aws s3 rm --recursive s3://ziti-cmd-build-tmp/${{ github.run_id }}
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+      - name: Download darwin release artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: darwin-release-${{ github.run_id }}
+          path: release/
+
+      - name: Download windows release artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-release-${{ github.run_id }}
+          path: release/
+
+      # remaining steps in job only run on the upstream repo, not forks
       - name: Publish
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -120,6 +137,7 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
       - name: Trigger Smoketest
+        if: github.repository_owner == 'openziti'
         env:
           JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
           jenkins_user: ${{ secrets.JENKINS_USER }}
@@ -131,25 +149,25 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
 
       - name: Set up QEMU
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         uses: docker/setup-qemu-action@master
         with:
           platforms: amd64,arm64,arm
 
       - name: Set up Docker BuildKit
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         id: buildx
         uses: docker/setup-buildx-action@master
 
       - name: Login to Docker Hub
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Set up Docker image tags
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
@@ -158,7 +176,7 @@ jobs:
           # the Docker cross-build only runs on branches main or release-v*
           # where ziti-ci always computes and pushes a new release tag
           ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leaving "v" char, if any
+          # drop the leading 'v', if any
           ZITI_VERSION=${ZITI_VERSION#v}
           DOCKER_TAGS=""
           if [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -175,13 +193,13 @@ jobs:
           echo ::set-output name=tags::${DOCKER_TAGS}
 
       - name: Build & Push Multi-Platform Container Image to Hub
-        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v')
+        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: . # build context is workspace so we can copy artifacts from ./release
-          file: ./ziti-tunnel/docker/Dockerfile.copy # a Dockerfile that does copy instead of fetch
-          build-args: | # base dir for copy/add operations in Dockerfile
+          context: ${{ github.workspace }} # build context is workspace so we can copy artifacts from ./release
+          file: ${{ github.workspace }}/ziti-tunnel/docker/Dockerfile.copy # a Dockerfile that does copy instead of fetch
+          build-args: | # base dir for copy/add operations should be dir containing Dockerfile
             DOCKER_BUILD_DIR=./ziti-tunnel/docker
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true

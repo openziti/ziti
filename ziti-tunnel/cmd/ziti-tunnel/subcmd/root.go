@@ -27,6 +27,8 @@ import (
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
@@ -90,6 +92,7 @@ func rootPreRun(cmd *cobra.Command, _ []string) {
 	default:
 		// let logrus do its own thing
 	}
+	util.LogReleaseVersionCheck(constants.ZITI_TUNNEL)
 }
 
 func rootPostRun(cmd *cobra.Command, _ []string) {

@@ -22,6 +22,8 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
+	"os"
+
 	// "strings"
 
 	"github.com/openziti/ziti/common/version"
@@ -77,19 +79,19 @@ func (o *VersionOptions) Run() error {
 
 	info := util.ColorInfo
 
-	table := o.CreateTable()
-	table.AddRow("NAME", "VERSION")
+	t := table.CreateTable(os.Stdout)
+	t.AddRow("NAME", "VERSION")
 
-	table.AddRow(c.ZITI, info(version.GetBuildMetadata(o.Verbose)))
+	t.AddRow(c.ZITI, info(version.GetBuildMetadata(o.Verbose)))
 
-	o.versionPrintZitiApp(c.ZITI_CONTROLLER, &table)
-	o.versionPrintZitiApp(c.ZITI_FABRIC, &table)
-	o.versionPrintZitiApp(c.ZITI_PROX_C, &table)
-	o.versionPrintZitiApp(c.ZITI_ROUTER, &table)
-	o.versionPrintZitiApp(c.ZITI_TUNNEL, &table)
-	o.versionPrintZitiApp(c.ZITI_EDGE_TUNNEL, &table)
+	o.versionPrintZitiApp(c.ZITI_CONTROLLER, &t)
+	o.versionPrintZitiApp(c.ZITI_FABRIC, &t)
+	o.versionPrintZitiApp(c.ZITI_PROX_C, &t)
+	o.versionPrintZitiApp(c.ZITI_ROUTER, &t)
+	o.versionPrintZitiApp(c.ZITI_TUNNEL, &t)
+	o.versionPrintZitiApp(c.ZITI_EDGE_TUNNEL, &t)
 
-	table.Render()
+	t.Render()
 
 	if !o.NoVersionCheck && !o.Verbose {
 		return o.versionCheck()

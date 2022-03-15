@@ -17,15 +17,16 @@
 package subcmd
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/trace/pb"
 	"github.com/spf13/cobra"
+	"reflect"
 	"sort"
 	"time"
 )
@@ -72,7 +73,15 @@ func streamTraces(_ *cobra.Command, args []string) {
 		}
 	}
 
-	ch, err := streamTracesClient.Connect()
+	cw := newCloseWatcher()
+
+	bindHandler := func(binding channel.Binding) error {
+		binding.AddTypedReceiveHandler(&traceHandler{})
+		binding.AddCloseHandler(cw)
+		return nil
+	}
+
+	ch, err := streamCircuitsClient.ConnectAndBind(channel.BindHandlerF(bindHandler))
 	if err != nil {
 		panic(err)
 	}
@@ -82,22 +91,13 @@ func streamTraces(_ *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	ch.AddReceiveHandler(&traceHandler{})
-	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_StreamTracesRequestType), body)
+	requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamTracesRequestType), body)
 
-	waitCh, err := ch.SendAndSync(requestMsg)
-	if err != nil {
+	if err = requestMsg.WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 		panic(err)
 	}
-	select {
-	case err := <-waitCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-time.After(5 * time.Second):
-		panic(errors.New("timeout"))
-	}
-	waitForChannelClose(ch)
+
+	cw.waitForChannelClose()
 }
 
 func getContentType(name string) (int32, error) {
@@ -141,7 +141,7 @@ func (*traceHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamTracesEventType)
 }
 
-func (*traceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (*traceHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	event := &trace_pb.ChannelMessage{}
 	err := proto.Unmarshal(msg.Body, event)
 	if err != nil {
@@ -156,6 +156,59 @@ func (*traceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	if event.ReplyFor != -1 {
 		replyFor = fmt.Sprintf(">%d", event.ReplyFor)
 	}
+	meta := DecodeTraceAndFormat(event.Decode)
+	if meta == "" {
+		meta = fmt.Sprintf("missing decode, content-type=%v", event.ContentType)
+	}
 	fmt.Printf("%8d: %-16s %8s %s #%-5d %5s | %s\n",
-		event.Timestamp, event.Identity, event.Channel, flow, event.Sequence, replyFor, channel2.DecodeTraceAndFormat(event.Decode))
+		event.Timestamp, event.Identity, event.Channel, flow, event.Sequence, replyFor, meta)
+}
+
+func DecodeTraceAndFormat(decode []byte) string {
+	if len(decode) > 0 {
+		meta := make(map[string]interface{})
+		err := json.Unmarshal(decode, &meta)
+		if err != nil {
+			panic(err)
+		}
+
+		out := fmt.Sprintf("%-24s", fmt.Sprintf("%-8s %s", meta[channel.DecoderFieldName], meta[channel.MessageFieldName]))
+
+		if len(meta) > 2 {
+			keys := make([]string, 0)
+			for k := range meta {
+				if k != channel.DecoderFieldName && k != channel.MessageFieldName {
+					keys = append(keys, k)
+				}
+			}
+			sort.Strings(keys)
+
+			out += " {"
+			for i := 0; i < len(keys); i++ {
+				k := keys[i]
+				if i > 0 {
+					out += " "
+				}
+				out += k
+				out += "=["
+				v := meta[k]
+				switch v.(type) {
+				case string:
+					out += v.(string)
+				case float64:
+					out += fmt.Sprintf("%0.0f", v.(float64))
+				case bool:
+					out += fmt.Sprintf("%t", v.(bool))
+				default:
+					out += fmt.Sprintf("<%s>", reflect.TypeOf(v))
+				}
+				out += "]"
+			}
+			out += "}"
+		}
+
+		return out
+	} else {
+		return ""
+	}
 }

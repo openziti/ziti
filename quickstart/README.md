@@ -19,7 +19,7 @@ Lastly, you can choose to run [docker](https://docs.docker.com/get-started/) dir
 more verbose but should you prefer to not use docker-compose it can also illustrate how to establish
 a Ziti Network piece by piece.
 
-## Prerequisties
+## Prerequisites
 
 ### Bash
 
@@ -91,7 +91,7 @@ Before running the commands below please do the following:
       #make a docker network for isolation while allowing the parts to be able to interact
       docker network create "$zitinw"
 
-### Staring the Containers
+### Starting the Containers
 
 To start the containers you can simply run these two commands in two different shells. (or choose to daemonize them
 once you're ready to do so). Take special note of the initial variables used in these commands. The ${zitinw} variable
@@ -103,7 +103,7 @@ Ziti Controller:
 
 Ziti Edge Router:
    
-    routerName=edge-router; docker run -d --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-edge-router.sh edge
+    routerName=edge-router; docker run -d --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-router.sh edge
 
 
 

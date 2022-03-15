@@ -21,6 +21,8 @@ services:
   ziti-edge-router:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
       - "3022:3022"
@@ -30,11 +32,13 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh edge"
+    command: "/openziti/scripts/run-router.sh edge"
 
   ziti-edge-router-wss:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
     ports:
@@ -45,11 +49,13 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh wss"
+    command: "/openziti/scripts/run-router.sh wss"
 
   ziti-fabric-router-br:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
@@ -59,11 +65,13 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh fabric"
+    command: "/openziti/scripts/run-router.sh fabric"
 
   ziti-private-red:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
     #ports:
     #  - 3025:3025
@@ -72,11 +80,13 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh private"
+    command: "/openziti/scripts/run-router.sh private"
 
   ziti-private-blue:
     image: openziti/quickstart:latest
     environment:
+      - ZITI_CONTROLLER_RAWNAME=ziti-controller
+      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
     #ports:
     #  - 3026:3026
@@ -85,14 +95,18 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-edge-router.sh private"
+    command: "/openziti/scripts/run-router.sh private"
 
   web-test-blue:
     image: crccheck/hello-world
     ports:
       - "80:8000"
     networks:
-      - zitiblue
+      zitiblue:
+        aliases:
+          - web-test-blue
+          - web-test.blue
+          - web.test.blue
 
   ziti-console:
     image: openziti/zac

@@ -17,13 +17,12 @@
 package subcmd
 
 import (
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/fabric/pb/mgmt_pb"
-	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/spf13/cobra"
 	"sort"
 	"time"
@@ -43,7 +42,15 @@ var streamMetricsCmd = &cobra.Command{
 var streamMetricsClient *mgmtClient
 
 func streamMetrics(cmd *cobra.Command, args []string) {
-	ch, err := streamMetricsClient.Connect()
+	cw := newCloseWatcher()
+
+	bindHandler := func(binding channel.Binding) error {
+		binding.AddTypedReceiveHandler(&metricsHandler{})
+		binding.AddCloseHandler(cw)
+		return nil
+	}
+
+	ch, err := streamCircuitsClient.ConnectAndBind(channel.BindHandlerF(bindHandler))
 	if err != nil {
 		panic(err)
 	}
@@ -64,23 +71,12 @@ func streamMetrics(cmd *cobra.Command, args []string) {
 		panic(err)
 	}
 
-	ch.AddReceiveHandler(&metricsHandler{})
-	requestMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_StreamMetricsRequestType), body)
-
-	waitCh, err := ch.SendAndSync(requestMsg)
-	if err != nil {
+	requestMsg := channel.NewMessage(int32(mgmt_pb.ContentType_StreamMetricsRequestType), body)
+	if err = requestMsg.WithTimeout(5 * time.Second).SendAndWaitForWire(ch); err != nil {
 		panic(err)
 	}
-	select {
-	case err := <-waitCh:
-		if err != nil {
-			panic(err)
-		}
-	case <-time.After(5 * time.Second):
-		panic(errors.New("timeout"))
-	}
 
-	waitForChannelClose(ch)
+	cw.waitForChannelClose()
 }
 
 type metricsHandler struct{}
@@ -89,7 +85,7 @@ func (*metricsHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamMetricsEventType)
 }
 
-func (*metricsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (*metricsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	response := &mgmt_pb.StreamMetricsEvent{}
 	err := proto.Unmarshal(msg.Body, response)
 	if err != nil {

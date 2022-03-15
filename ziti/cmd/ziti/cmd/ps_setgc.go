@@ -19,7 +19,6 @@ package cmd
 import (
 	"encoding/binary"
 	"github.com/openziti/foundation/agent"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -34,20 +33,20 @@ type PsSetgcOptions struct {
 }
 
 // NewCmdPsSetgc creates a command object for the "create" command
-func NewCmdPsSetgc(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PsSetgcOptions{
 		PsOptions: PsOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:  "setgc target gc-percentage",
-		Args: cobra.MinimumNArgs(1),
+		Use:   "setgc target gc-percentage",
+		Short: "Sets the GC percentage in the target application",
+		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

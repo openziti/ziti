@@ -19,6 +19,7 @@ package fabric
 import (
 	"crypto/sha1"
 	"fmt"
+
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
@@ -28,8 +29,10 @@ import (
 
 type createRouterOptions struct {
 	api.Options
-	name string
-	tags map[string]string
+	name        string
+	cost        uint16
+	tags        map[string]string
+	noTraversal bool
 }
 
 // newCreateRouterCmd creates the 'fabric create router' command for the given entity type
@@ -53,6 +56,9 @@ func newCreateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringToStringVarP(&options.tags, "tags", "t", nil, "Add tags to router definition")
 	cmd.Flags().StringVar(&options.name, "name", "", "Specifies the router name. If not specified, the id in the controller cert will be used")
+	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
+	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -76,7 +82,8 @@ func (o *createRouterOptions) createRouter(_ *cobra.Command, args []string) erro
 	api.SetJSONValue(entityData, name, "name")
 	api.SetJSONValue(entityData, fingerprint, "fingerprint")
 	api.SetJSONValue(entityData, o.tags, "tags")
-
+	api.SetJSONValue(entityData, o.cost, "cost")
+	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
 	result, err := createEntityOfType("routers", entityData.String(), &o.Options)
 	if err != nil {
 		return err
