@@ -97,6 +97,6 @@ const (
 	ZitiEdgeCtrlListenerHostPortVarDescription   = "Host and port of the Ziti Edge Controller Listener"
 	ZitiEdgeCtrlAdvertisedHostPortVarName        = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
 	ZitiEdgeCtrlAdvertisedHostPortVarDescription = "Host and port of the Ziti Edge Controller API"
-	ZitiEdgeCtrlPortVarName                      = "ZITI_EDGE_CONTROLLER_PORT"
-	ZitiEdgeCtrlPortVarDescription               = "The advertised port of the edge controller"
+	ZitiEdgeCtrlAdvertisedPortVarName            = "ZITI_EDGE_CONTROLLER_PORT"
+	ZitiEdgeCtrlAdvertisedPortVarDescription     = "The advertised port of the edge controller"
 )

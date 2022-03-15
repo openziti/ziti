@@ -99,8 +99,8 @@ func TestListenerAddressWhenEdgeCtrlPortAndListenerHostPortSet(t *testing.T) {
 	assert.Equal(t, expectedListenerAddress, data.Controller.Edge.ListenerHostPort)
 }
 
-// Edge Ctrl Port should update the edge ctrl port to the default when ZITI_EDGE_CONTROLLER_PORT is not set
-func TestDefaultEdgeCtrlPort(t *testing.T) {
+// Edge Ctrl Advertised Port should update the edge ctrl port to the default when ZITI_EDGE_CONTROLLER_PORT is not set
+func TestDefaultEdgeCtrlAdvertisedPort(t *testing.T) {
 	expectedPort := "1280" // Expecting the default port of 1280
 
 	// Set a custom value for the host and port
@@ -112,11 +112,11 @@ func TestDefaultEdgeCtrlPort(t *testing.T) {
 		_ = cmd.Execute()
 	})
 
-	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
+	assert.Equal(t, expectedPort, data.Controller.Edge.AdvertisedPort)
 }
 
-// Edge Ctrl Port should update the edge ctrl port to the custom value when ZITI_EDGE_CONTROLLER_PORT is set
-func TestEdgeCtrlPortValueWhenSet(t *testing.T) {
+// Edge Ctrl Advertised Port should update the edge ctrl port to the custom value when ZITI_EDGE_CONTROLLER_PORT is set
+func TestEdgeCtrlAdvertisedPortValueWhenSet(t *testing.T) {
 	expectedPort := "1234" // Setting a custom port which is not the default value
 
 	// Set a custom value for the host and port
@@ -128,5 +128,5 @@ func TestEdgeCtrlPortValueWhenSet(t *testing.T) {
 		_ = cmd.Execute()
 	})
 
-	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
+	assert.Equal(t, expectedPort, data.Controller.Edge.AdvertisedPort)
 }

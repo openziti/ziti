@@ -285,7 +285,7 @@ func TestGetZitiEdgeCtrlPortWhenNotSet(t *testing.T) {
 	_ = os.Unsetenv(varName)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlPort()
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -298,6 +298,6 @@ func TestGetZitiEdgeCtrlPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlPort()
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
