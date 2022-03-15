@@ -46,7 +46,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.15
 	github.com/openziti/fabric v0.17.66
-	github.com/openziti/foundation v0.17.10
+	github.com/openziti/foundation v0.17.11
 	github.com/openziti/sdk-golang v0.16.23
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
