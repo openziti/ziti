@@ -233,6 +233,15 @@ func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity
 	options.Precedence = ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
 	options.Cost = identity.DefaultHostingCost
 
+	if config.ListenOptions != nil {
+		if config.ListenOptions.Cost != nil {
+			options.Cost = *config.ListenOptions.Cost
+		}
+		if config.ListenOptions.Precedence != nil {
+			options.Precedence = ziti.GetPrecedenceForLabel(*config.ListenOptions.Precedence)
+		}
+	}
+
 	if val, ok := identity.ServiceHostingPrecedences[service.Id]; ok {
 		if strVal, ok := val.(string); ok {
 			options.Precedence = ziti.GetPrecedenceForLabel(strVal)
