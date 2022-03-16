@@ -691,10 +691,9 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/channel v0.18.17 h1:0nZz9WMmxGnySE5yg8IeBY20yjO/YPFurP1qNt2wryE=
 github.com/openziti/channel v0.18.17/go.mod h1:seDAqUKIl6J5vmHWlk042WkAzyY9qaPKr2DJc2DMpHE=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.67 h1:4cnRGkyqfa9i9kqGKAh2y6JBN+YqztrE9ujmN3WGOO0=
-github.com/openziti/fabric v0.17.67/go.mod h1:NpU40k5h8KoWMwBRT6w1t/pzl8J4f9fc1bMdG6ZQevQ=
+github.com/openziti/fabric v0.17.68 h1:2aC6b7krnkqaLxOF5mzr8CZ8wV202subup4espv9WeY=
+github.com/openziti/fabric v0.17.68/go.mod h1:3coRsWdb4jkFSYtMZh5NlTlgBw7y5oL3D8lky5eGmEQ=
 github.com/openziti/foundation v0.17.8/go.mod h1:dTaJgdO5OqnKpV+0OPHpnTnqfPpqNGbhJv8O6pMot6o=
-github.com/openziti/foundation v0.17.11/go.mod h1:2wUj+Kcvi8RsgP2wvPtmMLmk0OtIKD+3IVQj2pGZCrs=
 github.com/openziti/foundation v0.17.12 h1:buMTGTgrBlkr7Yv0pqTEJGvyZVg0Tp9gC02cqu3jhSI=
 github.com/openziti/foundation v0.17.12/go.mod h1:YT8EFUtJMS4qBN2j0KnVyKR0gUmGy4i8tLCETC3pM5A=
 github.com/openziti/sdk-golang v0.16.27 h1:1ZdK5jmmqVWDjW8UzEDwIVA9mbbU3YP4iam+7xU9ZYI=
