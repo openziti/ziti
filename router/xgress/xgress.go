@@ -19,13 +19,12 @@ package xgress
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
-	"github.com/openziti/foundation/util/mathz"
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
@@ -505,38 +504,26 @@ func (self *Xgress) rx() {
 		if self.Closed() {
 			return
 		}
-		start := 0
-		remaining := n
-		payloads := 0
-		for {
-			length := mathz.MinInt(remaining, int(self.Options.Mtu))
-			payload := &Payload{
-				Header: Header{
-					CircuitId: self.circuitId,
-					Flags:     SetOriginatorFlag(0, self.originator),
-				},
-				Sequence: self.nextReceiveSequence(),
-				Data:     buffer[start : start+length],
-				Headers:  headers,
-			}
-			start += length
-			remaining -= length
-			payloads++
 
-			// if the payload buffer is closed, we can't forward any more data, so might as well exit the rx loop
-			// The txer will still have a chance to flush any already received data
-			if !self.forwardPayload(payload) {
-				return
-			}
-			payloadLogger := log.WithFields(payload.GetLoggerFields())
-			payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
-
-			if remaining < 1 {
-				break
-			}
+		payload := &Payload{
+			Header: Header{
+				CircuitId: self.circuitId,
+				Flags:     SetOriginatorFlag(0, self.originator),
+			},
+			Sequence: self.nextReceiveSequence(),
+			Data:     buffer[0:n],
+			Headers:  headers,
 		}
 
-		logrus.Debugf("received [%d] payloads for [%d] bytes", payloads, n)
+		// if the payload buffer is closed, we can't forward any more data, so might as well exit the rx loop
+		// The txer will still have a chance to flush any already received data
+		if !self.forwardPayload(payload) {
+			return
+		}
+		payloadLogger := log.WithFields(payload.GetLoggerFields())
+		payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
+
+		logrus.Debugf("received payload for [%d] bytes", n)
 	}
 }
 
