@@ -364,6 +364,12 @@
             "connectTimeout": {
               "$ref": "#/definitions/duration"
             },
+            "cost": {
+              "description": "defaults to 0",
+              "maximum": 65535,
+              "minimum": 0,
+              "type": "integer"
+            },
             "identity": {
               "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
               "type": "string"
@@ -372,6 +378,15 @@
               "description": "defaults to 3",
               "minimum": 1,
               "type": "integer"
+            },
+            "precedence": {
+              "description": "defaults to 'default'",
+              "enum": [
+                "default",
+                "required",
+                "failed"
+              ],
+              "type": "string"
             }
           },
           "type": "object"

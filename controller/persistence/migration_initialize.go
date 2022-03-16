@@ -416,6 +416,17 @@ var hostV1SchemaSansDefs = map[string]interface{}{
 						"type":        "boolean",
 						"description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
 					},
+					"cost": map[string]interface{}{
+						"type":        "integer",
+						"minimum":     0,
+						"maximum":     65535,
+						"description": "defaults to 0",
+					},
+					"precedence": map[string]interface{}{
+						"type":        "string",
+						"enum":        []interface{}{"default", "required", "failed"},
+						"description": "defaults to 'default'",
+					},
 				},
 			},
 		},

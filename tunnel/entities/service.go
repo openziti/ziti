@@ -72,8 +72,10 @@ func (self *ServiceConfig) ToHostV2Config() *HostV2Config {
 type HostV1ListenOptions struct {
 	BindUsingEdgeIdentity bool
 	ConnectTimeoutSeconds *int
+	Cost                  *uint16
 	Identity              string
 	MaxConnections        int
+	Precedence            *string
 }
 
 type HostV1Config struct {
@@ -119,8 +121,10 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 		terminator.ListenOptions = &HostV2ListenOptions{
 			BindUsingEdgeIdentity: self.ListenOptions.BindUsingEdgeIdentity,
 			ConnectTimeout:        timeout,
+			Cost:                  self.ListenOptions.Cost,
 			Identity:              self.ListenOptions.Identity,
 			MaxConnections:        self.ListenOptions.MaxConnections,
+			Precedence:            self.ListenOptions.Precedence,
 		}
 	}
 
@@ -134,8 +138,10 @@ func (self *HostV1Config) ToHostV2Config() *HostV2Config {
 type HostV2ListenOptions struct {
 	BindUsingEdgeIdentity bool
 	ConnectTimeout        *time.Duration
+	Cost                  *uint16
 	Identity              string
 	MaxConnections        int
+	Precedence            *string
 }
 
 type allowedAddress interface {
