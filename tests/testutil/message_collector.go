@@ -25,6 +25,10 @@ type MessageCollector struct {
 }
 
 func (self *MessageCollector) HandleReceive(m *channel.Message, ch channel.Channel) {
+	if m.ContentType == -33 {
+		logrus.Debug("ignoring reconnect ping")
+		return
+	}
 	select {
 	case self.msgs <- m:
 		decoded := fmt.Sprintf("ContentType: %v", m.ContentType)
