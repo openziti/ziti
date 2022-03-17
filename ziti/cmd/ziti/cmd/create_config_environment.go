@@ -32,56 +32,16 @@ import (
 	"text/template"
 )
 
-type EnvVariableMetaData struct {
-	OS                                           string
-	ZitiHomeVarName                              string
-	ZitiCtrlNameVarName                          string
-	ZitiCtrlPortVarName                          string
-	ZitiEdgeRouterRawNameVarName                 string
-	ZitiEdgeRouterPortVarName                    string
-	ZitiEdgeCtrlIdentityCertVarName              string
-	ZitiEdgeCtrlIdentityServerCertVarName        string
-	ZitiEdgeCtrlIdentityKeyVarName               string
-	ZitiEdgeCtrlIdentityCAVarName                string
-	ZitiCtrlIdentityCertVarName                  string
-	ZitiCtrlIdentityServerCertVarName            string
-	ZitiCtrlIdentityKeyVarName                   string
-	ZitiCtrlIdentityCAVarName                    string
-	ZitiSigningCertVarName                       string
-	ZitiSigningKeyVarName                        string
-	ZitiCtrlMgmtListenerHostPortVarName          string
-	ZitiEdgeCtrlListenerHostPortVarName          string
-	ZitiEdgeCtrlAdvertisedHostPortVarName        string
-	ZitiRouterIdentityCertVarName                string
-	ZitiRouterIdentityServerCertVarName          string
-	ZitiRouterIdentityKeyVarName                 string
-	ZitiRouterIdentityCAVarName                  string
-	ZitiCtrlListenerAddressVarName               string
-	ZitiCtrlAdvertisedAddressVarName             string
-	ZitiHomeVarDescription                       string
-	ZitiCtrlNameVarDescription                   string
-	ZitiEdgeRouterRawNameVarDescription          string
-	ZitiEdgeRouterPortVarDescription             string
-	ZitiEdgeCtrlIdentityCertVarDescription       string
-	ZitiEdgeCtrlIdentityServerCertVarDescription string
-	ZitiEdgeCtrlIdentityKeyVarDescription        string
-	ZitiEdgeCtrlIdentityCAVarDescription         string
-	ZitiCtrlIdentityCertVarDescription           string
-	ZitiCtrlIdentityServerCertVarDescription     string
-	ZitiCtrlIdentityKeyVarDescription            string
-	ZitiCtrlIdentityCAVarDescription             string
-	ZitiSigningCertVarDescription                string
-	ZitiSigningKeyVarDescription                 string
-	ZitiCtrlPortVarDescription                   string
-	ZitiCtrlListenerAddressVarDescription        string
-	ZitiCtrlAdvertisedAddressVarDescription      string
-	ZitiCtrlMgmtListenerHostPortVarDescription   string
-	ZitiEdgeCtrlListenerHostPortVarDescription   string
-	ZitiEdgeCtrlAdvertisedHostPortVarDescription string
-	ZitiRouterIdentityCertVarDescription         string
-	ZitiRouterIdentityServerCertVarDescription   string
-	ZitiRouterIdentityKeyVarDescription          string
-	ZitiRouterIdentityCAVarDescription           string
+type EnvVariableTemplateData struct {
+	OSCommentPrefix string
+	OSVarDeclare    string
+	EnvVars         []EnvVar
+}
+
+type EnvVar struct {
+	Name        string
+	Description string
+	Value       string
 }
 
 var (
@@ -101,69 +61,19 @@ var (
 //go:embed config_templates/environment.yml
 var environmentConfigTemplate string
 
+var environmentOptions *CreateConfigEnvironmentOptions
+
 // CreateConfigEnvironmentOptions the options for the create environment command
 type CreateConfigEnvironmentOptions struct {
 	CreateConfigOptions
-	ConfigTemplateValues
-	EnvVariableMetaData
+	EnvVariableTemplateData
 	output string
 }
 
 // NewCmdCreateConfigEnvironment creates a command object for the "environment" command
 func NewCmdCreateConfigEnvironment() *cobra.Command {
 
-	environmentOptions := &CreateConfigEnvironmentOptions{
-		ConfigTemplateValues: *data,
-		EnvVariableMetaData: EnvVariableMetaData{
-			OS:                                           "Stuff",
-			ZitiHomeVarName:                              constants.ZitiHomeVarName,
-			ZitiHomeVarDescription:                       constants.ZitiHomeVarDescription,
-			ZitiCtrlNameVarName:                          constants.ZitiCtrlNameVarName,
-			ZitiCtrlNameVarDescription:                   constants.ZitiCtrlNameVarDescription,
-			ZitiCtrlPortVarName:                          constants.ZitiCtrlPortVarName,
-			ZitiCtrlPortVarDescription:                   constants.ZitiCtrlPortVarDescription,
-			ZitiEdgeRouterRawNameVarName:                 constants.ZitiEdgeRouterRawNameVarName,
-			ZitiEdgeRouterRawNameVarDescription:          constants.ZitiEdgeRouterRawNameVarDescription,
-			ZitiEdgeRouterPortVarName:                    constants.ZitiEdgeRouterPortVarName,
-			ZitiEdgeRouterPortVarDescription:             constants.ZitiEdgeRouterPortVarDescription,
-			ZitiEdgeCtrlIdentityCertVarName:              constants.ZitiEdgeCtrlIdentityCertVarName,
-			ZitiEdgeCtrlIdentityCertVarDescription:       constants.ZitiEdgeCtrlIdentityCertVarDescription,
-			ZitiEdgeCtrlIdentityServerCertVarName:        constants.ZitiEdgeCtrlIdentityServerCertVarName,
-			ZitiEdgeCtrlIdentityServerCertVarDescription: constants.ZitiEdgeCtrlIdentityServerCertVarDescription,
-			ZitiEdgeCtrlIdentityKeyVarName:               constants.ZitiEdgeCtrlIdentityKeyVarName,
-			ZitiEdgeCtrlIdentityKeyVarDescription:        constants.ZitiEdgeCtrlIdentityKeyVarDescription,
-			ZitiEdgeCtrlIdentityCAVarName:                constants.ZitiEdgeCtrlIdentityCAVarName,
-			ZitiEdgeCtrlIdentityCAVarDescription:         constants.ZitiEdgeCtrlIdentityCAVarDescription,
-			ZitiCtrlIdentityCertVarName:                  constants.ZitiCtrlIdentityCertVarName,
-			ZitiCtrlIdentityCertVarDescription:           constants.ZitiCtrlIdentityCertVarDescription,
-			ZitiCtrlIdentityServerCertVarName:            constants.ZitiCtrlIdentityServerCertVarName,
-			ZitiCtrlIdentityServerCertVarDescription:     constants.ZitiCtrlIdentityServerCertVarDescription,
-			ZitiCtrlIdentityKeyVarName:                   constants.ZitiCtrlIdentityKeyVarName,
-			ZitiCtrlIdentityKeyVarDescription:            constants.ZitiCtrlIdentityKeyVarDescription,
-			ZitiCtrlIdentityCAVarName:                    constants.ZitiCtrlIdentityCAVarName,
-			ZitiCtrlIdentityCAVarDescription:             constants.ZitiCtrlIdentityCAVarDescription,
-			ZitiSigningCertVarName:                       constants.ZitiSigningCertVarName,
-			ZitiSigningCertVarDescription:                constants.ZitiSigningCertVarDescription,
-			ZitiSigningKeyVarName:                        constants.ZitiSigningKeyVarName,
-			ZitiSigningKeyVarDescription:                 constants.ZitiSigningKeyVarDescription,
-			ZitiRouterIdentityCertVarName:                constants.ZitiRouterIdentityCertVarName,
-			ZitiRouterIdentityCertVarDescription:         constants.ZitiRouterIdentityCertVarDescription,
-			ZitiRouterIdentityServerCertVarName:          constants.ZitiRouterIdentityServerCertVarName,
-			ZitiRouterIdentityServerCertVarDescription:   constants.ZitiRouterIdentityServerCertVarDescription,
-			ZitiRouterIdentityKeyVarName:                 constants.ZitiRouterIdentityKeyVarName,
-			ZitiRouterIdentityKeyVarDescription:          constants.ZitiRouterIdentityKeyVarDescription,
-			ZitiRouterIdentityCAVarName:                  constants.ZitiRouterIdentityCAVarName,
-			ZitiRouterIdentityCAVarDescription:           constants.ZitiRouterIdentityCAVarDescription,
-			ZitiCtrlListenerAddressVarName:               constants.ZitiCtrlListenerAddressVarName,
-			ZitiCtrlListenerAddressVarDescription:        constants.ZitiCtrlListenerAddressVarDescription,
-			ZitiCtrlAdvertisedAddressVarName:             constants.ZitiCtrlAdvertisedAddressVarName,
-			ZitiCtrlAdvertisedAddressVarDescription:      constants.ZitiCtrlAdvertisedAddressVarDescription,
-			ZitiEdgeCtrlListenerHostPortVarName:          constants.ZitiEdgeCtrlListenerHostPortVarName,
-			ZitiEdgeCtrlListenerHostPortVarDescription:   constants.ZitiEdgeCtrlListenerHostPortVarDescription,
-			ZitiEdgeCtrlAdvertisedHostPortVarName:        constants.ZitiEdgeCtrlAdvertisedHostPortVarName,
-			ZitiEdgeCtrlAdvertisedHostPortVarDescription: constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription,
-		},
-	}
+	environmentOptions = &CreateConfigEnvironmentOptions{}
 
 	cmd := &cobra.Command{
 		Use:     "environment",
@@ -174,10 +84,50 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.populateEnvVars()
 			data.populateDefaults()
+			// Set router identities
+			SetZitiRouterIdentity(&data.Router, validateRouterName(""))
+			// Set up other identity info
+			SetControllerIdentity(&data.Controller)
+			SetEdgeConfig(&data.Controller)
+			SetWebConfig(&data.Controller)
+
+			environmentOptions.EnvVars = []EnvVar{
+				{constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome},
+				{constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name},
+				{constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port},
+				{constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname},
+				{constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port},
+				{constants.ZitiEdgeCtrlIdentityCertVarName, constants.ZitiEdgeCtrlIdentityCertVarDescription, data.Controller.Edge.IdentityCert},
+				{constants.ZitiEdgeCtrlIdentityServerCertVarName, constants.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert},
+				{constants.ZitiEdgeCtrlIdentityKeyVarName, constants.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey},
+				{constants.ZitiEdgeCtrlIdentityCAVarName, constants.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA},
+				{constants.ZitiCtrlIdentityCertVarName, constants.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert},
+				{constants.ZitiCtrlIdentityServerCertVarName, constants.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert},
+				{constants.ZitiCtrlIdentityKeyVarName, constants.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey},
+				{constants.ZitiCtrlIdentityCAVarName, constants.ZitiCtrlIdentityCAVarDescription, data.Controller.IdentityCA},
+				{constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert},
+				{constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey},
+				{constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert},
+				{constants.ZitiRouterIdentityServerCertVarName, constants.ZitiRouterIdentityServerCertVarDescription, data.Router.IdentityServerCert},
+				{constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey},
+				{constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA},
+				{constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress},
+				{constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress},
+				{constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort},
+				{constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort},
+				{constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.ZitiEdgeCtrlAdvertisedPortVarDescription, data.Controller.Edge.AdvertisedPort},
+			}
 
 			// Setup logging
 			var logOut *os.File
-			environmentOptions.OS = runtime.GOOS
+			// Figure out the correct comment prefix and variable declaration command
+			if runtime.GOOS == "windows" {
+				environmentOptions.OSCommentPrefix = "rem"
+				environmentOptions.OSVarDeclare = "SET"
+			} else {
+				environmentOptions.OSCommentPrefix = "#"
+				environmentOptions.OSVarDeclare = "export"
+			}
 			if environmentOptions.Verbose {
 				logrus.SetLevel(logrus.DebugLevel)
 				// Only print log to stdout if not printing config to stdout
@@ -225,6 +175,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s\n"+
+		"%-36s %-50s %s\n"+
 		"%-36s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
@@ -233,6 +184,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
 		constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
 		constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
+		constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.ZitiEdgeCtrlAdvertisedPortVarDescription, data.Controller.Edge.AdvertisedPort,
 		constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname,
 		constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
 		constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert,

@@ -1,3 +1,8 @@
+# Release 0.25.3
+
+* Enhancement: Add cost and precedence to host.v1 and host.v2 config types. This allows router-embedded tunnelers the ability to handle HA failover scenarios.
+* Bug fix: Router link listener type was only inferred from the adverise address, not the bind address
+
 # Release 0.25.2
 
 ## Deprecations

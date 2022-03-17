@@ -44,7 +44,7 @@ const (
 
 	DefaultZitiControllerName            = "controller"
 	DefaultZitiEdgeAPIPort               = "1280"
-	DefaultZitiEdgeListenerHostPort      = "0.0.0.0:1280"
+	DefaultZitiEdgeListenerHost          = "0.0.0.0"
 	DefaultZitiControllerListenerAddress = "0.0.0.0"
 	DefaultZitiControllerPort            = "6262"
 )
@@ -97,4 +97,6 @@ const (
 	ZitiEdgeCtrlListenerHostPortVarDescription   = "Host and port of the Ziti Edge Controller Listener"
 	ZitiEdgeCtrlAdvertisedHostPortVarName        = "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
 	ZitiEdgeCtrlAdvertisedHostPortVarDescription = "Host and port of the Ziti Edge Controller API"
+	ZitiEdgeCtrlAdvertisedPortVarName            = "ZITI_EDGE_CONTROLLER_PORT"
+	ZitiEdgeCtrlAdvertisedPortVarDescription     = "The advertised port of the edge controller"
 )

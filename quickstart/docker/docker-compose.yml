@@ -102,7 +102,11 @@ services:
     ports:
       - "80:8000"
     networks:
-      - zitiblue
+      zitiblue:
+        aliases:
+          - web-test-blue
+          - web-test.blue
+          - web.test.blue
 
   ziti-console:
     image: openziti/zac
