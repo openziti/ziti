@@ -127,12 +127,15 @@ function checkHostsFile {
   fi
 }
 
-function getLatestZitiVersion {
+function getZitiVersion {
   setupZitiHome
 
   if ! setOs; then
     return 1
   fi
+
+  # If not overridden, get latest ziti version
+  if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]]; then export ZITI_VERSION_OVERRIDE="latest"; fi
 
   ZITI_ARCH="amd64"
   if [[ "$(uname -a)" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" != "darwin" ]]; then
@@ -144,16 +147,16 @@ function getLatestZitiVersion {
   unset ZITI_BINARIES_VERSION
 
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
-    zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
+    ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/${ZITI_VERSION_OVERRIDE})"
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
+    export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.tag_name')
+    export ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
   fi
   echo "ZITI_BINARIES_VERSION: ${ZITI_BINARIES_VERSION}"
 }
 
-function getLatestZiti {
+function getZiti {
   setupZitiHome
   checkEnvVariable ZITI_HOME
   retVal=$?
@@ -169,7 +172,7 @@ function getLatestZiti {
 
   mkdir -p "${ziti_bin_root}"
 
-  if ! getLatestZitiVersion; then
+  if ! getZitiVersion; then
     return 1
   fi
 
@@ -386,8 +389,8 @@ function ziti_expressConfiguration {
   setupZitiHome
   echo -e "ZITI HOME SET TO: $(BLUE "${ZITI_HOME}")"
 
-  if ! getLatestZiti "no"; then
-    echo -e "$(RED "getLatestZiti failed")"
+  if ! getZiti "no"; then
+    echo -e "$(RED "getZiti failed")"
     return 1
   fi
   if ! generateEnvFile; then
