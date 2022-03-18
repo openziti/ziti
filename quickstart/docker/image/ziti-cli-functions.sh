@@ -135,8 +135,10 @@ function getLatestZitiVersion {
   fi
 
   ZITI_ARCH="amd64"
-  if [[ "$(uname -a)" == *"arm"* ]]; then
+  if [[ "$(uname -a)" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" != "darwin" ]]; then
     ZITI_ARCH="arm"
+  else
+    echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
   fi
 
   unset ZITI_BINARIES_VERSION
