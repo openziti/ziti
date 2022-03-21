@@ -17,22 +17,29 @@ import (
 	"time"
 )
 
-func TimeoutHandler(h http.Handler, dt time.Duration, apiErr *errorz.ApiError, mapper ResponseMapper) http.Handler {
+// TimeoutHandler will create a http.Handler that wraps the given http.Handler. If the given timeout is reached, the
+// supplied errorz.ApiError and ResponseMapper will be used to create an error response. This handler assumes JSON
+// output.
+//
+// This handler functions by creating a proxy ResponseWriter that is passed to downstream http.Handlers.
+// This proxy ResponseWriter is ignored on timeout and panics. On panic, a blank response is returned with a
+// 500 Internal Error status code. Downstream handlers are encouraged to implement their own panic recovery.
+func TimeoutHandler(next http.Handler, timeout time.Duration, apiErr *errorz.ApiError, mapper ResponseMapper) http.Handler {
 	return &timeoutHandler{
-		handler:        h,
+		next:           next,
 		apiError:       apiErr,
-		dt:             dt,
+		timeout:        timeout,
 		producer:       runtime.JSONProducer(),
-		resopnseMapper: mapper,
+		responseMapper: mapper,
 	}
 }
 
 type timeoutHandler struct {
-	handler        http.Handler
-	dt             time.Duration
+	next           http.Handler
+	timeout        time.Duration
 	apiError       *errorz.ApiError
 	producer       runtime.Producer
-	resopnseMapper ResponseMapper
+	responseMapper ResponseMapper
 }
 
 func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error {
@@ -42,7 +49,7 @@ func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error
 		if rc != nil {
 			requestId = rc.GetId()
 		}
-		apiError := h.resopnseMapper.MapApiError(requestId, h.apiError)
+		apiError := h.responseMapper.MapApiError(requestId, h.apiError)
 		err := h.producer.Produce(w, apiError)
 
 		return err
@@ -51,41 +58,48 @@ func (h *timeoutHandler) errorBody(w http.ResponseWriter, r *http.Request) error
 }
 
 func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancelCtx := context.WithTimeout(r.Context(), h.dt)
+	ctx, cancelCtx := context.WithTimeout(r.Context(), h.timeout)
 	defer cancelCtx()
 
 	r = r.WithContext(ctx)
 	done := make(chan struct{})
 	tw := &timeoutWriter{
-		w:   w,
-		h:   make(http.Header),
-		req: r,
+		writer:  w,
+		header:  make(http.Header),
+		request: r,
 	}
 	panicChan := make(chan interface{}, 1)
 	go func() {
 		defer func() {
 			if p := recover(); p != nil {
-				pfxlog.Logger().Errorf("panic caught by timeout handler: %v\n%v", p, debugz.GenerateLocalStack())
+				pfxlog.Logger().Errorf("panic caught by timeout next: %v\n%v", p, debugz.GenerateLocalStack())
 				panicChan <- p
 			}
 		}()
-		h.handler.ServeHTTP(tw, r)
+		h.next.ServeHTTP(tw, r)
 		close(done)
 	}()
 	select {
 	case <-panicChan:
+		tw.mu.Lock()
+		defer tw.mu.Unlock()
+		dst := w.Header()
+		for k, vv := range tw.header {
+			dst[k] = vv
+		}
+		w.WriteHeader(http.StatusInternalServerError)
 	case <-done:
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
 		dst := w.Header()
-		for k, vv := range tw.h {
+		for k, vv := range tw.header {
 			dst[k] = vv
 		}
 		if !tw.wroteHeader {
 			tw.code = http.StatusOK
 		}
 		w.WriteHeader(tw.code)
-		_, _ = w.Write(tw.wbuf.Bytes())
+		_, _ = w.Write(tw.buffer.Bytes())
 	case <-ctx.Done():
 		tw.mu.Lock()
 		defer tw.mu.Unlock()
@@ -102,11 +116,12 @@ func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// timeoutWriter is a proxy http.ResponseWriter that is used by TimeoutHandler.
 type timeoutWriter struct {
-	w    http.ResponseWriter
-	h    http.Header
-	wbuf bytes.Buffer
-	req  *http.Request
+	writer  http.ResponseWriter
+	header  http.Header
+	buffer  bytes.Buffer
+	request *http.Request
 
 	mu          sync.Mutex
 	timedOut    bool
@@ -117,13 +132,13 @@ type timeoutWriter struct {
 var _ http.Pusher = (*timeoutWriter)(nil)
 
 func (tw *timeoutWriter) Push(target string, opts *http.PushOptions) error {
-	if pusher, ok := tw.w.(http.Pusher); ok {
+	if pusher, ok := tw.writer.(http.Pusher); ok {
 		return pusher.Push(target, opts)
 	}
 	return http.ErrNotSupported
 }
 
-func (tw *timeoutWriter) Header() http.Header { return tw.h }
+func (tw *timeoutWriter) Header() http.Header { return tw.header }
 
 func (tw *timeoutWriter) Write(p []byte) (int, error) {
 	tw.mu.Lock()
@@ -134,7 +149,7 @@ func (tw *timeoutWriter) Write(p []byte) (int, error) {
 	if !tw.wroteHeader {
 		tw.writeHeaderLocked(http.StatusOK)
 	}
-	return tw.wbuf.Write(p)
+	return tw.buffer.Write(p)
 }
 
 func (tw *timeoutWriter) writeHeaderLocked(code int) {
@@ -144,7 +159,7 @@ func (tw *timeoutWriter) writeHeaderLocked(code int) {
 	case tw.timedOut:
 		return
 	case tw.wroteHeader:
-		if tw.req != nil {
+		if tw.request != nil {
 			caller := relevantCaller()
 			pfxlog.Logger().Errorf("http: superfluous response.WriteHeader call from %s (%s:%d)", caller.Function, path.Base(caller.File), caller.Line)
 		}
