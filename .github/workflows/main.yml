@@ -31,6 +31,8 @@ jobs:
       - name: Release
         env:
           gh_ci_key: ${{ secrets.GH_CI_KEY }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-')
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
