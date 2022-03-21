@@ -134,9 +134,6 @@ function getZitiVersion {
     return 1
   fi
 
-  # If not overridden, get latest ziti version
-  if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]]; then export ZITI_VERSION_OVERRIDE="latest"; fi
-
   ZITI_ARCH="amd64"
   if [[ "$(uname -a)" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" != "darwin" ]]; then
     ZITI_ARCH="arm"
@@ -147,11 +144,22 @@ function getZitiVersion {
   unset ZITI_BINARIES_VERSION
 
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
-    ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/${ZITI_VERSION_OVERRIDE})"
+    if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]] || [[ "${ZITI_VERSION_OVERRIDE-}" == "latest" ]]; then
+      export ZITI_VERSION_OVERRIDE="latest"
+      ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)"
+      echo -e "using latest"
+    else
+      ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/${ZITI_VERSION_OVERRIDE})"
+      echo -e "using ${ZITI_VERSION_OVERRIDE}"
+    fi
     # shellcheck disable=SC2155
     export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
     export ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
+  fi
+  if [[ "${ZITI_BINARIES_VERSION}" == "null" ]]; then
+      echo -e "  * $(RED "ERROR: This version of ziti (${ZITI_VERSION_OVERRIDE}) could not be found. Please check the version and try again.") "
+      return 1
   fi
   echo "ZITI_BINARIES_VERSION: ${ZITI_BINARIES_VERSION}"
 }
