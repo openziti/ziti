@@ -141,7 +141,7 @@ func (o *AuthenticateParams) bindMethod(rawData []string, hasKey bool, formats s
 // validateMethod carries on validations for parameter Method
 func (o *AuthenticateParams) validateMethod(formats strfmt.Registry) error {
 
-	if err := validate.EnumCase("method", "query", o.Method, []interface{}{"password", "cert"}, true); err != nil {
+	if err := validate.EnumCase("method", "query", o.Method, []interface{}{"password", "cert", "ext-jwt"}, true); err != nil {
 		return err
 	}
 

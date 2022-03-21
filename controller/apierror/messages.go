@@ -174,4 +174,8 @@ const (
 	InvalidClientCertCode    string = "INVALID_CLIENT_CERT"
 	InvalidClientCertMessage string = "The provided client certificate is invalid"
 	InvalidClientCertStatus  int    = http.StatusBadRequest
+
+	InvalidCertificatePemCode    string = "INVALID_CERT_PEM"
+	InvalidCertificatePemMessage string = "the supplied certificate PEM is either invalid or contains the incorrect number of certificates"
+	InvalidCertificatePemStatus  int    = http.StatusBadRequest
 )

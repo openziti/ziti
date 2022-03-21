@@ -203,6 +203,7 @@ paths:
     - enum:
       - password
       - cert
+      - ext-jwt
       type: string
       name: method
       in: query

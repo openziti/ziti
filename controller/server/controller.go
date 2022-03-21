@@ -197,6 +197,7 @@ func (c *Controller) initializeAuthModules() {
 	c.initModulesOnce.Do(func() {
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleUpdb(c.AppEnv))
 		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleCert(c.AppEnv, c.AppEnv.GetConfig().CaPems()))
+		c.AppEnv.AuthRegistry.Add(model.NewAuthModuleExtJwt(c.AppEnv))
 
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleCa(c.AppEnv))
 		c.AppEnv.EnrollRegistry.Add(model.NewEnrollModuleOttCa(c.AppEnv))
@@ -215,14 +216,13 @@ func (c *Controller) Initialize() {
 	log := pfxlog.Logger()
 
 	log.Info("initializing edge")
-
-	//done before ae.InitPersistence()
-	c.initializeAuthModules()
-
+	
 	//should be done after all modules that add migrations have been added (i.e. AuthRegistry)
 	if err := c.AppEnv.InitPersistence(); err != nil {
 		log.Fatalf("error initializing persistence: %+v", err)
 	}
+
+	c.initializeAuthModules()
 
 	//after InitPersistence
 	c.AppEnv.Broker = env.NewBroker(c.AppEnv, sync2.NewInstantStrategy(c.AppEnv, sync2.InstantStrategyOptions{

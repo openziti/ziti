@@ -30,6 +30,7 @@ const (
 	EntityTypeConfigTypes               = "configTypes"
 	EntityTypeEdgeRouterPolicies        = "edgeRouterPolicies"
 	EntityTypeEventLogs                 = "eventLogs"
+	EntityTypeExternalJwtSigners        = "externalJwtSigners"
 	EntityTypeGeoRegions                = "geoRegions"
 	EntityTypeIdentities                = "identities"
 	EntityTypeIdentityTypes             = "identityTypes"
