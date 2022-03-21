@@ -123,7 +123,8 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 	xli, err := self.getOrCreateSplitLink(string(id), routerId, routerVersion, binding, chanType)
 	if err != nil {
-		log.WithError(err).Error("erroring binding link channel")
+		log.WithError(err).Error("error binding link channel")
+		return err
 	}
 
 	latencyPing := chanType == PayloadChannel
