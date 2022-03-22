@@ -147,10 +147,8 @@ function getZitiVersion {
     if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]] || [[ "${ZITI_VERSION_OVERRIDE-}" == "latest" ]]; then
       export ZITI_VERSION_OVERRIDE="latest"
       ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)"
-      echo -e "using latest"
     else
       ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/${ZITI_VERSION_OVERRIDE})"
-      echo -e "using ${ZITI_VERSION_OVERRIDE}"
     fi
     # shellcheck disable=SC2155
     export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
