@@ -61,7 +61,7 @@ func MapLinkToRestModel(_ *network.Network, _ api.RequestContext, link *network.
 		SourceRouter:  ToEntityRef(link.Src.Name, link.Src, RouterLinkFactory),
 		State:         &linkStateStr,
 		StaticCost:    &staticCost,
-		Type:          &link.Type,
+		Protocol:      &link.Protocol,
 	}
 	return ret, nil
 }

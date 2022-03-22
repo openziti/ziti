@@ -56,7 +56,7 @@ func (h *routerLinkHandler) HandleLinks(ch channel.Channel, links *ctrl_pb.Route
 		linkLog := log.WithField("linkId", link.Id).
 			WithField("destRouterId", link.DestRouterId)
 
-		created, err := h.network.NotifyExistingLink(link.Id, link.LinkType, h.r, link.DestRouterId)
+		created, err := h.network.NotifyExistingLink(link.Id, link.LinkProtocol, h.r, link.DestRouterId)
 		if err != nil {
 			linkLog.WithError(err).Error("unexpected error adding router reported link")
 		} else if created {

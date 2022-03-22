@@ -72,7 +72,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 			"linkId":        dial.LinkId,
 			"routerId":      dial.RouterId,
 			"address":       dial.Address,
-			"linkType":      dial.LinkType,
+			"linkProtocol":  dial.LinkProtocol,
 			"routerVersion": dial.RouterVersion,
 		})
 

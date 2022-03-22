@@ -35,7 +35,7 @@ import (
 
 type Listener interface {
 	AdvertiseAddress() string
-	Type() string
+	Protocol() string
 }
 
 type Router struct {
@@ -74,10 +74,11 @@ func (entity *Router) toBolt() boltz.Entity {
 	}
 }
 
-func (entity *Router) AddLinkListener(addr, linkType string) {
+func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string) {
 	entity.Listeners = append(entity.Listeners, linkListener{
-		addr:     addr,
-		linkType: linkType,
+		addr:         addr,
+		linkProtocol: linkProtocol,
+		linkCostTags: linkCostTags,
 	})
 }
 
@@ -380,14 +381,15 @@ func (self *RouterLinks) Clear() {
 }
 
 type linkListener struct {
-	addr     string
-	linkType string
+	addr         string
+	linkProtocol string
+	linkCostTags []string
 }
 
 func (self linkListener) AdvertiseAddress() string {
 	return self.addr
 }
 
-func (self linkListener) Type() string {
-	return self.linkType
+func (self linkListener) Protocol() string {
+	return self.linkProtocol
 }

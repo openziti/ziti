@@ -1394,7 +1394,7 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "type",
+        "protocol",
         "sourceRouter",
         "destRouter",
         "state",
@@ -1420,6 +1420,9 @@ func init() {
         "id": {
           "type": "string"
         },
+        "protocol": {
+          "type": "string"
+        },
         "sourceLatency": {
           "type": "integer"
         },
@@ -1431,9 +1434,6 @@ func init() {
         },
         "staticCost": {
           "type": "integer"
-        },
-        "type": {
-          "type": "string"
         }
       }
     },
@@ -1666,13 +1666,13 @@ func init() {
       "type": "object",
       "required": [
         "address",
-        "type"
+        "protocol"
       ],
       "properties": {
         "address": {
           "type": "string"
         },
-        "type": {
+        "protocol": {
           "type": "string"
         }
       }
@@ -5486,7 +5486,7 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "type",
+        "protocol",
         "sourceRouter",
         "destRouter",
         "state",
@@ -5512,6 +5512,9 @@ func init() {
         "id": {
           "type": "string"
         },
+        "protocol": {
+          "type": "string"
+        },
         "sourceLatency": {
           "type": "integer"
         },
@@ -5523,9 +5526,6 @@ func init() {
         },
         "staticCost": {
           "type": "integer"
-        },
-        "type": {
-          "type": "string"
         }
       }
     },
@@ -5760,13 +5760,13 @@ func init() {
       "type": "object",
       "required": [
         "address",
-        "type"
+        "protocol"
       ],
       "properties": {
         "address": {
           "type": "string"
         },
-        "type": {
+        "protocol": {
           "type": "string"
         }
       }

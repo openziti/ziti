@@ -94,18 +94,18 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 					log.WithError(err).Error("unable to unmarshall listeners value")
 				} else {
 					for _, listener := range listeners.Listeners {
-						log.WithField("address", listener.GetAddress()).WithField("type", listener.GetType()).Debug("router listener")
-						r.AddLinkListener(listener.GetAddress(), listener.GetType())
+						log.WithField("address", listener.GetAddress()).WithField("protocol", listener.GetProtocol()).WithField("costTags", listener.GetCostTags()).Debug("router listener")
+						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetCostTags())
 					}
 				}
 			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
 				log.Debug("router reported listener using advertisement header")
 				addr := string(listenerValue)
-				linkType := "default"
+				linkProtocol := "tls"
 				if addr, _ := transport.ParseAddress(addr); addr != nil {
-					linkType = addr.Type()
+					linkProtocol = addr.Type()
 				}
-				r.AddLinkListener(addr, linkType)
+				r.AddLinkListener(addr, linkProtocol, nil)
 			} else {
 				log.Warn("no advertised listeners")
 			}

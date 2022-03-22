@@ -32,7 +32,7 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 			if address, err := transport.ParseAddress(addressString); err == nil {
 				config.bind = address
 				config.advertise = address
-				config.linkType = address.Type()
+				config.linkProtocol = address.Type()
 			} else {
 				return nil, fmt.Errorf("error parsing 'bind' address in listener config (%w)", err)
 			}
@@ -55,11 +55,15 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 		}
 	}
 
-	if value, found := data["type"]; found {
-		if typeString, ok := value.(string); ok {
-			config.linkType = typeString
+	if value, found := data["costTags"]; found {
+		if costTags, ok := value.([]interface{}); ok {
+			stringTags := make([]string, len(costTags))
+			for i, tag := range costTags {
+				stringTags[i] = fmt.Sprint(tag)
+			}
+			config.linkCostTags = stringTags
 		} else {
-			return nil, fmt.Errorf("invalid 'type' address in listener config (%s)", reflect.TypeOf(value))
+			return nil, fmt.Errorf("invalid 'costTags' address in listener config (%s)", reflect.TypeOf(value))
 		}
 	}
 
@@ -81,10 +85,11 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 }
 
 type listenerConfig struct {
-	bind      transport.Address
-	advertise transport.Address
-	linkType  string
-	options   *channel.Options
+	bind         transport.Address
+	advertise    transport.Address
+	linkProtocol string
+	linkCostTags []string
+	options      *channel.Options
 }
 
 func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
@@ -94,7 +99,7 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 		if split, ok := value.(bool); ok {
 			config.split = split
 		} else {
-			return nil, errors.Errorf("invalid 'split' flag in listener config (%s)", reflect.TypeOf(value))
+			return nil, errors.Errorf("invalid 'split' flag in dialer config (%s)", reflect.TypeOf(value))
 		}
 	}
 

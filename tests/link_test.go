@@ -69,10 +69,10 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
 	dial := &ctrl_pb.Dial{
-		LinkId:   "testLinkId",
-		Address:  "tls:127.0.0.1:6004",
-		RouterId: "002",
-		LinkType: "default",
+		LinkId:       "testLinkId",
+		Address:      "tls:127.0.0.1:6004",
+		RouterId:     "002",
+		LinkProtocol: "tls",
 	}
 	_, err = dialer.Dial(dial)
 	ctx.Req.Error(err)
@@ -103,10 +103,10 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
 	dial := &ctrl_pb.Dial{
-		LinkId:   "testLinkId",
-		Address:  "tls:127.0.0.1:6004",
-		RouterId: "002",
-		LinkType: "default",
+		LinkId:       "testLinkId",
+		Address:      "tls:127.0.0.1:6004",
+		RouterId:     "002",
+		LinkProtocol: "tls",
 	}
 	_, err = dialer.Dial(dial)
 	if err != nil {
@@ -151,10 +151,10 @@ func Test_DuplicateLinks(t *testing.T) {
 	router2cc, _ := acceptControl("router-2")
 
 	dial1 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send initial link request. This should result in a new link
@@ -166,10 +166,10 @@ func Test_DuplicateLinks(t *testing.T) {
 	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
 
 	dial2 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send another link request. This should result in the router letting us know about the current link
@@ -241,10 +241,10 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	router2cc, _ := acceptControl("router-2")
 
 	dial1 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send initial link request. This should result in a new link
@@ -256,10 +256,10 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
 
 	dial2 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send another link request. This should result in the router letting us know about the current link
@@ -340,10 +340,10 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	router2cc, msgc2 := acceptControl("router-2")
 
 	dial1 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send initial link request. This should result in a new link
@@ -355,10 +355,10 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx.Req.Equal(int32(ctrl_pb.ContentType_LinkConnectedType), msg.ContentType)
 
 	dial2 := &ctrl_pb.Dial{
-		LinkId:   uuid.NewString(),
-		RouterId: "002",
-		Address:  "tls:localhost:6005",
-		LinkType: "tls",
+		LinkId:       uuid.NewString(),
+		RouterId:     "002",
+		Address:      "tls:localhost:6005",
+		LinkProtocol: "tls",
 	}
 
 	// send another link request. This should result in the router letting us know about the current link

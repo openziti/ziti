@@ -144,10 +144,10 @@ func MapRouterToRestModel(n *network.Network, _ api.RequestContext, router *netw
 	if connected != nil {
 		for _, listener := range connected.Listeners {
 			advAddr := listener.AdvertiseAddress()
-			linkType := listener.Type()
+			linkProtocol := listener.Protocol()
 			ret.ListenerAddresses = append(ret.ListenerAddresses, &rest_model.RouterListener{
-				Address: &advAddr,
-				Type:    &linkType,
+				Address:  &advAddr,
+				Protocol: &linkProtocol,
 			})
 		}
 	}

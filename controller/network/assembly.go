@@ -35,14 +35,14 @@ func (network *Network) assemble() {
 				network.linkController.add(missingLink)
 
 				for _, listener := range missingLink.Dst.Listeners {
-					if listener.Type() != missingLink.Type {
+					if listener.Protocol() != missingLink.Protocol {
 						continue
 					}
 					dial := &ctrl_pb.Dial{
-						LinkId:   missingLink.Id,
-						Address:  listener.AdvertiseAddress(),
-						RouterId: missingLink.Dst.Id,
-						LinkType: listener.Type(),
+						LinkId:       missingLink.Id,
+						Address:      listener.AdvertiseAddress(),
+						RouterId:     missingLink.Dst.Id,
+						LinkProtocol: listener.Protocol(),
 					}
 
 					if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {

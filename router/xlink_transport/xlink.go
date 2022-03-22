@@ -28,7 +28,7 @@ type impl struct {
 	ch            channel.Channel
 	routerId      string
 	routerVersion string
-	linkType      string
+	linkProtocol  string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -65,8 +65,8 @@ func (self *impl) DestVersion() string {
 	return self.routerVersion
 }
 
-func (self *impl) LinkType() string {
-	return self.linkType
+func (self *impl) LinkProtocol() string {
+	return self.linkProtocol
 }
 
 func (self *impl) HandleCloseNotification(f func()) {

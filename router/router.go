@@ -396,8 +396,9 @@ func (self *Router) startControlPlane() error {
 	listeners := &ctrl_pb.Listeners{}
 	for _, listener := range self.xlinkListeners {
 		listeners.Listeners = append(listeners.Listeners, &ctrl_pb.Listener{
-			Address: listener.GetAdvertisement(),
-			Type:    listener.GetType(),
+			Address:  listener.GetAdvertisement(),
+			Protocol: listener.GetLinkProtocol(),
+			CostTags: listener.GetLinkCostTags(),
 		})
 	}
 
@@ -511,7 +512,7 @@ func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
 func (self *Router) debugOpWriteLinks(c *bufio.ReadWriter) error {
 	noLinks := true
 	for link := range self.xlinkRegistry.Iter() {
-		line := fmt.Sprintf("id: %v dest: %v type: %v\n", link.Id().Token, link.DestinationId(), link.LinkType())
+		line := fmt.Sprintf("id: %v dest: %v protocol: %v\n", link.Id().Token, link.DestinationId(), link.LinkProtocol())
 		_, err := c.WriteString(line)
 		if err != nil {
 			return err

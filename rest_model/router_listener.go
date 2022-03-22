@@ -47,9 +47,9 @@ type RouterListener struct {
 	// Required: true
 	Address *string `json:"address"`
 
-	// type
+	// protocol
 	// Required: true
-	Type *string `json:"type"`
+	Protocol *string `json:"protocol"`
 }
 
 // Validate validates this router listener
@@ -60,7 +60,7 @@ func (m *RouterListener) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateType(formats); err != nil {
+	if err := m.validateProtocol(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -79,9 +79,9 @@ func (m *RouterListener) validateAddress(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *RouterListener) validateType(formats strfmt.Registry) error {
+func (m *RouterListener) validateProtocol(formats strfmt.Registry) error {
 
-	if err := validate.Required("type", "body", m.Type); err != nil {
+	if err := validate.Required("protocol", "body", m.Protocol); err != nil {
 		return err
 	}
 

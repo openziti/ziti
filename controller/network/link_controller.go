@@ -143,12 +143,12 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 		for _, dstR := range routers {
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
-					if !linkController.hasLink(srcR, dstR, listener.Type(), pendingLimit) {
+					if !linkController.hasLink(srcR, dstR, listener.Protocol(), pendingLimit) {
 						id, err := idgen.NewUUIDString()
 						if err != nil {
 							return nil, err
 						}
-						link := newLink(id, listener.Type())
+						link := newLink(id, listener.Protocol())
 						link.Src = srcR
 						link.Dst = dstR
 						missingLinks = append(missingLinks, link)
@@ -174,15 +174,15 @@ func (linkController *linkController) clearExpiredPending(pendingTimeout time.Du
 	}
 }
 
-func (linkController *linkController) hasLink(a, b *Router, linkType string, pendingLimit int64) bool {
-	return linkController.hasDirectedLink(a, b, linkType, pendingLimit) || linkController.hasDirectedLink(b, a, linkType, pendingLimit)
+func (linkController *linkController) hasLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
+	return linkController.hasDirectedLink(a, b, linkProtocol, pendingLimit) || linkController.hasDirectedLink(b, a, linkProtocol, pendingLimit)
 }
 
-func (linkController *linkController) hasDirectedLink(a, b *Router, linkType string, pendingLimit int64) bool {
+func (linkController *linkController) hasDirectedLink(a, b *Router, linkProtocol string, pendingLimit int64) bool {
 	links := a.routerLinks.GetLinks()
 	for _, link := range links {
 		state := link.CurrentState()
-		if link.Src == a && link.Dst == b && state != nil && link.Type == linkType {
+		if link.Src == a && link.Dst == b && state != nil && link.Protocol == linkProtocol {
 			if state.Mode == Connected || (state.Mode == Pending && state.Timestamp > pendingLimit) {
 				return true
 			}

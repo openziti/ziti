@@ -99,11 +99,11 @@ func (self *linkRegistryImpl) purgeOldDialLocks() {
 }
 
 func (self *linkRegistryImpl) getDialLookupKey(dial xlink.Dial) string {
-	return self.getLookupKey(dial.GetRouterId(), dial.GetLinkType())
+	return self.getLookupKey(dial.GetRouterId(), dial.GetLinkProtocol())
 }
 
 func (self *linkRegistryImpl) getLinkLookupKey(link xlink.Xlink) string {
-	return self.getLookupKey(link.DestinationId(), link.LinkType())
+	return self.getLookupKey(link.DestinationId(), link.LinkProtocol())
 }
 
 func (self *linkRegistryImpl) getLookupKey(routerId, linkType string) string {
@@ -136,7 +136,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	key := self.getLinkLookupKey(link)
 	if existing := self.linkMap[key]; existing != nil {
 		log := logrus.WithField("dest", link.DestinationId()).
-			WithField("linkType", link.LinkType()).
+			WithField("linkProtocol", link.LinkProtocol()).
 			WithField("currentLinkId", existing.Id().Token).
 			WithField("newLinkId", link.Id().Token)
 		if existing.Id().Token < link.Id().Token {
@@ -190,14 +190,14 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 			{
 				Id:           link.Id().Token,
 				DestRouterId: link.DestinationId(),
-				LinkType:     link.LinkType(),
+				LinkProtocol: link.LinkProtocol(),
 			},
 		},
 	}
 	if err := protobufs.MarshalTyped(linkMsg).Send(self.ControlChannel()); err != nil {
 		pfxlog.Logger().WithField("linkId", link.Id().Token).
 			WithField("dest", link.DestinationId()).
-			WithField("linkType", link.LinkType()).
+			WithField("linkProtocol", link.LinkProtocol()).
 			WithError(err).Error("error sending router link message")
 	}
 }
@@ -244,7 +244,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect() {
 		routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{
 			Id:           link.Id().Token,
 			DestRouterId: link.DestinationId(),
-			LinkType:     link.LinkType(),
+			LinkProtocol: link.LinkProtocol(),
 		})
 	}
 

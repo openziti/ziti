@@ -27,7 +27,7 @@ type Link struct {
 	Id         string
 	Src        *Router
 	Dst        *Router
-	Type       string
+	Protocol   string
 	state      []*LinkState
 	down       bool
 	StaticCost int32
@@ -38,10 +38,10 @@ type Link struct {
 	lock       sync.Mutex
 }
 
-func newLink(id string, linkType string) *Link {
+func newLink(id string, linkProtocol string) *Link {
 	l := &Link{
 		Id:         id,
-		Type:       linkType,
+		Protocol:   linkProtocol,
 		state:      make([]*LinkState, 0),
 		down:       false,
 		StaticCost: 1,

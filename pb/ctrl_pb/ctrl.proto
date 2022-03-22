@@ -100,7 +100,7 @@ message Dial {
   string linkId = 1;
   string address = 2;
   string routerId = 3;
-  string linkType = 4;
+  string linkProtocol = 4;
   string routerVersion = 5;
 }
 
@@ -112,7 +112,8 @@ message RouterLinks {
   message RouterLink {
     string id = 1;
     string destRouterId = 2;
-    string linkType = 3;
+    string linkProtocol = 3;
+    repeated string linkCostTags = 4;
   }
 
   repeated RouterLink links = 1;
@@ -182,7 +183,8 @@ message VerifyLink {
 
 message Listener {
   string address = 1;
-  string type = 2;
+  string protocol = 2;
+  repeated string costTags = 3;
 }
 
 message Listeners {

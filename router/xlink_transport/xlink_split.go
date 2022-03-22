@@ -30,7 +30,7 @@ type splitImpl struct {
 	ackCh         channel.Channel
 	routerId      string
 	routerVersion string
-	linkType      string
+	linkProtocol  string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -81,8 +81,8 @@ func (self *splitImpl) DestVersion() string {
 	return self.routerVersion
 }
 
-func (self *splitImpl) LinkType() string {
-	return self.linkType
+func (self *splitImpl) LinkProtocol() string {
+	return self.linkProtocol
 }
 
 func (self *splitImpl) HandleCloseNotification(f func()) {

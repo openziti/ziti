@@ -56,7 +56,8 @@ type Factory interface {
 type Listener interface {
 	Listen() error
 	GetAdvertisement() string
-	GetType() string
+	GetLinkProtocol() string
+	GetLinkCostTags() []string
 	Close() error
 }
 
@@ -69,7 +70,7 @@ type Dial interface {
 	GetLinkId() string
 	GetRouterId() string
 	GetAddress() string
-	GetLinkType() string
+	GetLinkProtocol() string
 	GetRouterVersion() string
 }
 
@@ -86,7 +87,7 @@ type Xlink interface {
 	CloseNotified() error
 	DestinationId() string
 	DestVersion() string
-	LinkType() string
+	LinkProtocol() string
 	HandleCloseNotification(f func())
 }
 

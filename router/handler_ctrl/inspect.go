@@ -85,7 +85,7 @@ func (context *inspectRequestContext) processLocal() {
 			for link := range context.handler.xlinkRegistry.Iter() {
 				result = append(result, &linkInspectResult{
 					Id:          link.Id().Token,
-					Type:        link.LinkType(),
+					Protocol:    link.LinkProtocol(),
 					Dest:        link.DestinationId(),
 					DestVersion: link.DestVersion(),
 				})
@@ -128,7 +128,7 @@ func (context *inspectRequestContext) appendError(err string) {
 
 type linkInspectResult struct {
 	Id          string `json:"id"`
-	Type        string `json:"type"`
+	Protocol    string `json:"protocol"`
 	Dest        string `json:"dest"`
 	DestVersion string `json:"destVersion"`
 }

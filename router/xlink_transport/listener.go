@@ -58,8 +58,12 @@ func (self *listener) GetAdvertisement() string {
 	return self.config.advertise.String()
 }
 
-func (self *listener) GetType() string {
-	return self.config.linkType
+func (self *listener) GetLinkProtocol() string {
+	return self.config.linkProtocol
+}
+
+func (self *listener) GetLinkCostTags() []string {
+	return self.config.linkCostTags
 }
 
 func (self *listener) Close() error {
@@ -81,7 +85,7 @@ func (self *listener) acceptLoop() {
 
 func (self *listener) BindChannel(binding channel.Binding) error {
 	log := pfxlog.ChannelLogger("link", "linkListener").
-		WithField("linkType", self.GetType()).
+		WithField("linkProtocol", self.GetLinkProtocol()).
 		WithField("linkId", binding.GetChannel().Id().Token)
 
 	headers := binding.GetChannel().Underlay().Headers()
@@ -168,7 +172,7 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 				id:            binding.GetChannel().Id(),
 				routerId:      routerId,
 				routerVersion: routerVersion,
-				linkType:      self.GetType(),
+				linkProtocol:  self.GetLinkProtocol(),
 			},
 			eventTime: time.Now(),
 		}
@@ -197,10 +201,10 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 
 func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, routerVersion string, log *logrus.Entry) error {
 	xli := &impl{
-		id:       binding.GetChannel().Id(),
-		ch:       binding.GetChannel(),
-		routerId: routerId,
-		linkType: self.GetType(),
+		id:           binding.GetChannel().Id(),
+		ch:           binding.GetChannel(),
+		routerId:     routerId,
+		linkProtocol: self.GetLinkProtocol(),
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)

@@ -78,7 +78,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 		link: &splitImpl{id: linkId,
 			routerId:      dial.GetRouterId(),
 			routerVersion: dial.GetRouterVersion(),
-			linkType:      dial.GetLinkType(),
+			linkProtocol:  dial.GetLinkProtocol(),
 		},
 	}
 
@@ -119,7 +119,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 		link: &impl{
 			id:            linkId,
 			routerId:      dial.GetRouterId(),
-			linkType:      dial.GetLinkType(),
+			linkProtocol:  dial.GetLinkProtocol(),
 			routerVersion: dial.GetRouterVersion(),
 		},
 	}

@@ -1246,11 +1246,11 @@ definitions:
     type: object
     required:
       - address
-      - type
+      - protocol
     properties:
       address:
         type: string
-      type:
+      protocol:
         type: string
   routerCreate:
     type: object
@@ -1495,7 +1495,7 @@ definitions:
     type: object
     required:
       - id
-      - type
+      - protocol
       - sourceRouter
       - destRouter
       - state
@@ -1507,7 +1507,7 @@ definitions:
     properties:
       id:
         type: string
-      type:
+      protocol:
         type: string
       sourceRouter:
         $ref: '#/definitions/entityRef'
