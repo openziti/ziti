@@ -29,6 +29,13 @@ const (
 	RouteResultAttemptHeader    = 1101
 	RouteResultSuccessHeader    = 1102
 	RouteResultErrorHeader      = 1103
+	RouteResultErrorCodeHeader  = 1104
+
+	ErrorTypeGeneric                 = 0
+	ErrorTypeInvalidTerminator       = 1
+	ErrorTypeMisconfiguredTerminator = 2
+	ErrorTypeDialTimedOut            = 3
+	ErrorTypeConnectionRefused       = 4
 )
 
 func NewCircuitSuccessMsg(sessionId, address string) *channel.Message {

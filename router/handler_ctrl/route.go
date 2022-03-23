@@ -17,6 +17,9 @@
 package handler_ctrl
 
 import (
+	"syscall"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -30,7 +33,6 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type routeHandler struct {
@@ -118,10 +120,13 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, log *logrus.Entry) {
+func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, errorHeader *byte, log *logrus.Entry) {
 	log.WithError(err).Error("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
+	if errorHeader != nil {
+		response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, *errorHeader)
+	}
 	response.ReplyTo(msg)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
 		log.WithError(err).Error("send failure response failed")
@@ -156,13 +161,31 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
-					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
+					var headerError *byte
+					if _, ok := err.(xgress.InvalidTerminatorError); ok {
+						var errCode byte = ctrl_msg.ErrorTypeInvalidTerminator
+						headerError = &errCode
+						switch {
+						case errors.Is(err, syscall.ECONNREFUSED):
+							errCode = ctrl_msg.ErrorTypeConnectionRefused
+						case errors.Is(err, syscall.ETIMEDOUT):
+							errCode = ctrl_msg.ErrorTypeDialTimedOut
+						case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
+							errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
+						case errors.As(err, &xgress.InvalidTerminatorError{}):
+							errCode = ctrl_msg.ErrorTypeInvalidTerminator
+						}
+						headerError = &errCode
+					}
+					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)
 				}
 			} else {
-				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), log)
+				var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), &errCode, log)
 			}
 		} else {
-			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
+			var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), &errCode, log)
 		}
 	})
 }

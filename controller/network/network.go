@@ -19,6 +19,11 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/db"
@@ -40,10 +45,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 const SmartRerouteAttempt = 99969996
@@ -75,6 +76,11 @@ type Network struct {
 	serviceDialFailCounter       metrics.IntervalCounter
 	serviceDialTimeoutCounter    metrics.IntervalCounter
 	serviceDialOtherErrorCounter metrics.IntervalCounter
+
+	serviceTerminatorTimeoutCounter           metrics.IntervalCounter
+	serviceTerminatorConnectionRefusedCounter metrics.IntervalCounter
+	serviceInvalidTerminatorCounter           metrics.IntervalCounter
+	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
 }
 
 func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
@@ -111,6 +117,11 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 		serviceDialFailCounter:       serviceEventMetrics.IntervalCounter("service.dial.fail", time.Minute),
 		serviceDialTimeoutCounter:    serviceEventMetrics.IntervalCounter("service.dial.timeout", time.Minute),
 		serviceDialOtherErrorCounter: serviceEventMetrics.IntervalCounter("service.dial.error_other", time.Minute),
+
+		serviceTerminatorTimeoutCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.timeout", time.Minute),
+		serviceTerminatorConnectionRefusedCounter: serviceEventMetrics.IntervalCounter("service.dial.terminator.connection_refused", time.Minute),
+		serviceInvalidTerminatorCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
+		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
 	}
 
 	network.Controllers.Inspections.network = network
@@ -210,12 +221,12 @@ func (network *Network) GetAllCircuits() []*Circuit {
 	return network.circuitController.all()
 }
 
-func (network *Network) RouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	return network.routeSenderController.forwardRouteResult(r, circuitId, attempt, success, rerr, peerData)
+func (network *Network) RouteResult(rs *RouteStatus) bool {
+	return network.routeSenderController.forwardRouteResult(rs)
 }
 
 func (network *Network) newRouteSender(circuitId string) *routeSender {
-	rs := newRouteSender(circuitId, network.options.RouteTimeout, network)
+	rs := newRouteSender(circuitId, network.options.RouteTimeout, network, network.Terminators)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
@@ -463,6 +474,11 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
 
+		terminatorLocalAddress := peerData[uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader)]
+		path.TerminatorLocalAddr = string(terminatorLocalAddress)
+
+		delete(peerData, uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader))
+
 		// 6: Create Circuit Object
 		circuit := &Circuit{
 			Id:         circuitId,
@@ -513,6 +529,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 				err := errors.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
 					terminator.GetRouterId(), terminator.GetId(), svc.Name)
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
+
 				errList = append(errList, err)
 				continue
 			}

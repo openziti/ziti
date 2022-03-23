@@ -18,15 +18,17 @@ package network
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type routeSenderController struct {
@@ -37,14 +39,14 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{senders: cmap.New()}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	v, found := self.senders.Get(circuitId)
+func (self *routeSenderController) forwardRouteResult(rs *RouteStatus) bool {
+	v, found := self.senders.Get(rs.CircuitId)
 	if found {
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, circuitId: circuitId, attempt: attempt, success: success, rerr: rerr, peerData: peerData}
+		routeSender.in <- rs
 		return true
 	}
-	logrus.Warnf("did not find route sender for [s/%s]", circuitId)
+	logrus.Warnf("did not find route sender for [s/%s]", rs.CircuitId)
 	return false
 }
 
@@ -61,18 +63,20 @@ type routeSender struct {
 	path            *Path
 	routeMsgs       []*ctrl_pb.Route
 	timeout         time.Duration
-	in              chan *routeStatus
+	in              chan *RouteStatus
 	attendance      map[string]bool
 	serviceCounters ServiceCounters
+	terminators     *TerminatorController
 }
 
-func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters) *routeSender {
+func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *TerminatorController) *routeSender {
 	return &routeSender{
 		circuitId:       circuitId,
 		timeout:         timeout,
-		in:              make(chan *routeStatus, 16),
+		in:              make(chan *RouteStatus, 16),
 		attendance:      make(map[string]bool),
 		serviceCounters: serviceCounters,
+		terminators:     terminators,
 	}
 }
 
@@ -80,7 +84,6 @@ func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
 
 	// send route messages
-	tr := path.Nodes[len(path.Nodes)-1]
 	for i := 0; i < len(path.Nodes); i++ {
 		r := path.Nodes[i]
 		msg := routeMsgs[i]
@@ -95,34 +98,9 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
-			if status.success {
-				if status.attempt == attempt {
-					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.circuitId)
-
-					self.attendance[status.r.Id] = true
-					if status.r == tr {
-						peerData = status.peerData
-						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
-						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
-					}
-				} else {
-					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
-				}
-
-			} else {
-				if status.attempt == attempt {
-					logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.circuitId, status.rerr)
-
-					if status.r == tr {
-						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-						self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
-					}
-					cleanups = self.cleanups(path)
-
-					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.r.Id, status.rerr)
-				} else {
-					logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
-				}
+			peerData, cleanups, err = self.handleRouteSend(attempt, path, strategy, status, terminator, logger)
+			if err != nil {
+				return nil, cleanups, err
 			}
 
 		case <-time.After(timeout):
@@ -148,6 +126,65 @@ attendance:
 	return peerData, nil, nil
 }
 
+func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+	if status.Success == (status.ErrorCode != nil) {
+		logger.WithError(fmt.Errorf("route status success and error code differ. Success: %t\tErrorCode: %v", status.Success, status.ErrorCode))
+	}
+	if !status.Success && status.ErrorCode != nil {
+		switch *status.ErrorCode {
+		case ctrl_msg.ErrorTypeGeneric:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+		case ctrl_msg.ErrorTypeInvalidTerminator:
+			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
+				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+				if err := self.terminators.Delete(terminator.GetId()); err != nil {
+					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
+				}
+			} else {
+				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
+				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+			}
+		case ctrl_msg.ErrorTypeDialTimedOut:
+			self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+		case ctrl_msg.ErrorTypeConnectionRefused:
+			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+		default:
+			logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
+		}
+	}
+	tr := path.Nodes[len(path.Nodes)-1]
+	if status.Success {
+		if status.Attempt == attempt {
+			logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)
+
+			self.attendance[status.Router.Id] = true
+			if status.Router == tr {
+				peerData = status.PeerData
+				strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+				self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
+			}
+		} else {
+			logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
+		}
+
+	} else {
+		if status.Attempt == attempt {
+			logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
+
+			if status.Router == tr {
+				strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+				self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
+			}
+			cleanups = self.cleanups(path)
+
+			return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
+		} else {
+			logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
+		}
+	}
+	return peerData, nil, nil
+}
+
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).WithField("routerId", r.Id)
 
@@ -170,13 +207,14 @@ func (self *routeSender) cleanups(path *Path) map[string]struct{} {
 	return cleanups
 }
 
-type routeStatus struct {
-	r         *Router
-	circuitId string
-	attempt   uint32
-	success   bool
-	rerr      string
-	peerData  xt.PeerData
+type RouteStatus struct {
+	Router    *Router
+	CircuitId string
+	Attempt   uint32
+	Success   bool
+	Err       string
+	PeerData  xt.PeerData
+	ErrorCode *byte
 }
 
 type routeTimeoutError struct {

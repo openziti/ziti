@@ -20,11 +20,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/channel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -52,8 +52,7 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 	log := logrus.WithField("routerId", self.r.Id)
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
 		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
-		rerrv, _ := msg.Headers[ctrl_msg.RouteResultErrorHeader]
-		rerr := string(rerrv)
+		rerr, _ := msg.GetStringHeader(ctrl_msg.RouteResultErrorHeader)
 
 		var attempt uint32
 		buf := bytes.NewBuffer(v)
@@ -61,15 +60,25 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 			circuitId := string(msg.Body)
 			peerData := xt.PeerData{}
 			for k, v := range msg.Headers {
-				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader && k != ctrl_msg.RouteResultAttemptHeader {
+				if k > 0 && (k < ctrl_msg.RouteResultSuccessHeader || k > ctrl_msg.RouteResultErrorCodeHeader) {
 					peerData[uint32(k)] = v
 				}
 			}
-			routing := self.network.RouteResult(self.r, circuitId, attempt, success, rerr, peerData)
+			errCode, _ := msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader)
+
+			rs := &network.RouteStatus{
+				Router:    self.r,
+				CircuitId: circuitId,
+				Attempt:   attempt,
+				Success:   success,
+				Err:       rerr,
+				PeerData:  peerData,
+				ErrorCode: &errCode,
+			}
+			routing := self.network.RouteResult(rs)
 			if !routing && attempt != network.SmartRerouteAttempt {
 				go self.notRoutingCircuit(circuitId)
 			}
-
 		} else {
 			log.WithError(err).Error("error reading attempt number from route result")
 			return

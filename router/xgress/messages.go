@@ -387,3 +387,27 @@ func RespondToTraceRequest(headers channel.Headers, hopType, hopId string, respo
 	resp.Headers.PutStringHeader(ControlHopId, hopId)
 	response.HandleControlReceive(ControlTypeTraceRouteResponse, headers)
 }
+
+type InvalidTerminatorError struct {
+	InnerError error
+}
+
+func (e InvalidTerminatorError) Error() string {
+	return e.InnerError.Error()
+}
+
+func (e InvalidTerminatorError) Unwrap() error {
+	return e.InnerError
+}
+
+type MisconfiguredTerminatorError struct {
+	InnerError error
+}
+
+func (e MisconfiguredTerminatorError) Error() string {
+	return e.InnerError.Error()
+}
+
+func (e MisconfiguredTerminatorError) Unwrap() error {
+	return e.InnerError
+}

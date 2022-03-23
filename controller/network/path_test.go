@@ -180,6 +180,7 @@ func TestTransitPath2(t *testing.T) {
 func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
 	r := &Router{
 		BaseEntity:  models.BaseEntity{Id: id},
+		Name:        id,
 		Fingerprint: &fingerprint,
 		Control:     ctrl,
 		Cost:        cost,
