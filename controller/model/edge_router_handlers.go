@@ -311,7 +311,7 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 
 	log.Info("closing existing connections for re-enrolling edge router")
 	connectedRouter := handler.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
-	if connectedRouter.Control != nil && !connectedRouter.Control.IsClosed() {
+	if connectedRouter != nil && connectedRouter.Control != nil && !connectedRouter.Control.IsClosed() {
 		log = log.WithField("channel", connectedRouter.Control.Id())
 		log.Info("closing channel, router is flagged for re-enrollment and an existing open channel was found")
 		if err := connectedRouter.Control.Close(); err != nil {
