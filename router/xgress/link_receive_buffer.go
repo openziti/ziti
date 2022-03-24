@@ -83,3 +83,10 @@ func (buffer *LinkReceiveBuffer) Remove(payload *Payload) {
 func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
 	return atomic.LoadUint32(&buffer.lastBufferSizeSent)
 }
+
+func (buffer *LinkReceiveBuffer) Inspect() map[string]interface{} {
+	result := map[string]interface{}{}
+	result["size"] = buffer.Size()
+	result["lastSizeSent"] = buffer.getLastBufferSizeSent()
+	return result
+}

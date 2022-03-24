@@ -22,6 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/debugz"
@@ -32,12 +33,14 @@ import (
 type inspectHandler struct {
 	id            *identity.TokenId
 	xlinkRegistry xlink.Registry
+	fwd           *forwarder.Forwarder
 }
 
-func newInspectHandler(id *identity.TokenId, xlinkRegistry xlink.Registry) *inspectHandler {
+func newInspectHandler(id *identity.TokenId, xlinkRegistry xlink.Registry, fwd *forwarder.Forwarder) *inspectHandler {
 	return &inspectHandler{
 		id:            id,
 		xlinkRegistry: xlinkRegistry,
+		fwd:           fwd,
 	}
 }
 
@@ -78,9 +81,10 @@ type inspectRequestContext struct {
 
 func (context *inspectRequestContext) processLocal() {
 	for _, requested := range context.request.RequestedValues {
-		if strings.ToLower(requested) == "stackdump" {
+		lc := strings.ToLower(requested)
+		if strings.ToLower(lc) == "stackdump" {
 			context.appendValue(requested, debugz.GenerateStack())
-		} else if strings.ToLower(requested) == "links" {
+		} else if strings.ToLower(lc) == "links" {
 			var result []*linkInspectResult
 			for link := range context.handler.xlinkRegistry.Iter() {
 				result = append(result, &linkInspectResult{
@@ -95,6 +99,17 @@ func (context *inspectRequestContext) processLocal() {
 				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())
 			} else {
 				context.appendValue(requested, string(js))
+			}
+		} else if strings.HasPrefix(lc, "circuit:") {
+			circuitId := requested[len("circuit:"):]
+			result := context.handler.fwd.InspectCircuit(circuitId)
+			if result != nil {
+				js, err := json.Marshal(result)
+				if err != nil {
+					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
+				} else {
+					context.appendValue(requested, string(js))
+				}
 			}
 		}
 	}

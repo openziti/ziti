@@ -163,7 +163,7 @@ func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier
 		handled := false
 		if strings.HasPrefix(val.Value, "{") {
 			mapVal := map[string]interface{}{}
-			if err := json.Unmarshal([]byte(val.Value), mapVal); err == nil {
+			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
 				ctx.appendValue(router.Id, val.Name, mapVal)
 				handled = true
 			}

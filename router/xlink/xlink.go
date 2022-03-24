@@ -89,6 +89,7 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	HandleCloseNotification(f func())
+	Inspect() map[string]interface{}
 }
 
 type Forwarder interface {

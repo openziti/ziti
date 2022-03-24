@@ -25,8 +25,10 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type dialHandler struct {
@@ -34,10 +36,10 @@ type dialHandler struct {
 	ctrl     xgress.CtrlChannel
 	dialers  []xlink.Dialer
 	registry xlink.Registry
-	pool     *handlerPool
+	pool     goroutines.Pool
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, pool *handlerPool, registry xlink.Registry) *dialHandler {
+func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, pool goroutines.Pool, registry xlink.Registry) *dialHandler {
 	handler := &dialHandler{
 		id:       id,
 		ctrl:     ctrl,
@@ -45,7 +47,6 @@ func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xli
 		pool:     pool,
 		registry: registry,
 	}
-	handler.pool.Start()
 
 	return handler
 }
@@ -61,20 +62,21 @@ func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel)
 		return
 	}
 
-	self.pool.Queue(func() {
+	err := self.pool.QueueWithTimeout(func() {
 		self.handle(dial, ch)
-	})
+	}, 15*time.Second)
+
+	if err != nil {
+		log := self.getLogger(dial)
+		log.WithError(err).Error("error queuing link dial to pool")
+		if sendErr := self.sendLinkFault(dial.LinkId); err != nil {
+			log.WithError(sendErr).Error("error sending link fault")
+		}
+	}
 }
 
 func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
-	log := pfxlog.ChannelLogger("link", "linkDialer").
-		WithFields(logrus.Fields{
-			"linkId":        dial.LinkId,
-			"routerId":      dial.RouterId,
-			"address":       dial.Address,
-			"linkProtocol":  dial.LinkProtocol,
-			"routerVersion": dial.RouterVersion,
-		})
+	log := self.getLogger(dial)
 
 	if len(self.dialers) != 1 {
 		log.Errorf("invalid Xlink dialers configuration")
@@ -130,4 +132,15 @@ func (self *dialHandler) sendLinkFault(linkId string) error {
 		return errors.Wrap(err, "error sending fault")
 	}
 	return nil
+}
+
+func (self *dialHandler) getLogger(dial *ctrl_pb.Dial) *logrus.Entry {
+	return pfxlog.ChannelLogger("link", "linkDialer").
+		WithFields(logrus.Fields{
+			"linkId":        dial.LinkId,
+			"routerId":      dial.RouterId,
+			"address":       dial.Address,
+			"linkProtocol":  dial.LinkProtocol,
+			"routerVersion": dial.RouterVersion,
+		})
 }

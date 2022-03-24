@@ -44,6 +44,7 @@ type Destination interface {
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
+	Inspect() map[string]interface{}
 }
 
 type XgressDestination interface {
@@ -279,4 +280,36 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 		}
 	}
 	return nil
+}
+
+func (forwarder *Forwarder) InspectCircuit(circuitId string) *CircuitReport {
+	if val, found := forwarder.circuits.circuits.Get(circuitId); found {
+		result := &CircuitReport{
+			Forwards:     map[string]string{},
+			Destinations: map[string]map[string]interface{}{},
+		}
+
+		ft := val.(*forwardTable)
+		ft.destinations.IterCb(func(key string, v interface{}) {
+			result.Forwards[key] = v.(string)
+		})
+
+		for _, addr := range result.Forwards {
+			if dest, _ := forwarder.destinations.getDestination(xgress.Address(addr)); dest != nil {
+				result.Destinations[addr] = dest.Inspect()
+			} else {
+				result.Destinations[addr] = map[string]interface{}{
+					"type": "missing",
+					"addr": string(addr),
+				}
+			}
+		}
+		return result
+	}
+	return nil
+}
+
+type CircuitReport struct {
+	Forwards     map[string]string
+	Destinations map[string]map[string]interface{}
 }

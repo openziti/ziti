@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/latency"
 	"github.com/openziti/fabric/controller/xctrl"
@@ -25,6 +26,10 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/goroutines"
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type bindHandler struct {
@@ -65,16 +70,44 @@ func NewBindHandler(id *identity.TokenId,
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
-	linkDialerPool := &handlerPool{
-		options:     self.forwarder.Options.LinkDial,
-		closeNotify: self.closeNotify,
+	linkDialerPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(self.forwarder.Options.LinkDial.QueueLength),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(self.forwarder.Options.LinkDial.WorkerCount),
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.closeNotify,
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during link dial")
+		},
 	}
+
+	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
+	if err != nil {
+		return errors.Wrap(err, "error creating link dialer pool")
+	}
+
+	xgDialerPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(self.forwarder.Options.XgressDial.QueueLength),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(self.forwarder.Options.XgressDial.WorkerCount),
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.closeNotify,
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during xgress dial")
+		},
+	}
+
+	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
+	if err != nil {
+		return errors.Wrap(err, "error creating xgress dialer pool")
+	}
+
 	binding.AddTypedReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, linkDialerPool, self.linkRegistry))
-	binding.AddTypedReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, self.closeNotify))
+	binding.AddTypedReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
-	binding.AddTypedReceiveHandler(newInspectHandler(self.id, self.linkRegistry))
+	binding.AddTypedReceiveHandler(newInspectHandler(self.id, self.linkRegistry, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.linkRegistry))
 

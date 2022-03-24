@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/foundation/util/goroutines"
 	"syscall"
 	"time"
 
@@ -40,22 +41,17 @@ type routeHandler struct {
 	ctrl      xgress.CtrlChannel
 	dialerCfg map[string]xgress.OptionsData
 	forwarder *forwarder.Forwarder
-	pool      handlerPool
+	pool      goroutines.Pool
 }
 
-func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder, closeNotify chan struct{}) *routeHandler {
+func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
 	handler := &routeHandler{
 		id:        id,
 		ctrl:      ctrl,
 		dialerCfg: dialerCfg,
 		forwarder: forwarder,
-		pool: handlerPool{
-			options:     forwarder.Options.XgressDial,
-			closeNotify: closeNotify,
-		},
+		pool:      pool,
 	}
-
-	handler.pool.Start()
 
 	return handler
 }
@@ -143,7 +139,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 
 	log.Debug("route request received")
 
-	rh.pool.Queue(func() {
+	dialF := func() {
 		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 				circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
@@ -187,5 +183,10 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 			var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
 			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), &errCode, log)
 		}
-	})
+	}
+
+	if err := rh.pool.QueueWithTimeout(dialF, time.Second*15); err != nil {
+		log.WithError(err).Error("error queuing xgress dial to pool")
+		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), nil, log)
+	}
 }

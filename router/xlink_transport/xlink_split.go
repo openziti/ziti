@@ -90,3 +90,13 @@ func (self *splitImpl) HandleCloseNotification(f func()) {
 		f()
 	}
 }
+
+func (self *splitImpl) Inspect() map[string]interface{} {
+	return map[string]interface{}{
+		"type":     "link",
+		"split":    true,
+		"id":       self.Id().Token,
+		"dest":     self.DestinationId(),
+		"protocol": self.LinkProtocol(),
+	}
+}

@@ -579,3 +579,17 @@ func (self *Xgress) SendEmptyAck() {
 	atomic.StoreUint32(&self.linkRxBuffer.lastBufferSizeSent, ack.RecvBufferSize)
 	acker.ack(ack, self.address)
 }
+
+func (self *Xgress) Inspect() map[string]interface{} {
+	result := map[string]interface{}{}
+	result["type"] = "xgress"
+	result["addr"] = string(self.address)
+	result["originator"] = self.originator.String()
+
+	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
+	result["timeSinceLastLinkRx"] = timeSinceLastRxFromLink.String()
+	result["sendBuffer"] = self.payloadBuffer.Inspect()
+	result["recvBuffer"] = self.linkRxBuffer.Inspect()
+
+	return result
+}

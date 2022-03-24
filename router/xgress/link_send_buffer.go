@@ -52,6 +52,7 @@ type LinkSendBuffer struct {
 	retxThreshold         uint32
 	lastRetransmitTime    int64
 	closeWhenEmpty        concurrenz.AtomicBoolean
+	inspectRequests       chan *InspectEvent
 }
 
 type txPayload struct {
@@ -104,6 +105,7 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 		windowsSize:       x.Options.TxPortalStartSize,
 		retxThreshold:     x.Options.RetxStartMs,
 		retxScale:         x.Options.RetxScale,
+		inspectRequests:   make(chan *InspectEvent, 1),
 	}
 
 	go buffer.run()
@@ -207,6 +209,9 @@ func (buffer *LinkSendBuffer) run() {
 		}
 
 		select {
+		case inspectEvent := <-buffer.inspectRequests:
+			inspectEvent.handle(buffer)
+
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
@@ -328,4 +333,57 @@ func (buffer *LinkSendBuffer) scale(factor float64) {
 	} else if buffer.windowsSize < buffer.x.Options.TxPortalMinSize {
 		buffer.windowsSize = buffer.x.Options.TxPortalMinSize
 	}
+}
+
+func (buffer *LinkSendBuffer) inspect() map[string]interface{} {
+	result := map[string]interface{}{}
+	result["windowsSize"] = buffer.windowsSize
+	result["linkSendBufferSize"] = buffer.linkSendBufferSize
+	result["linkRecvBufferSize"] = buffer.linkRecvBufferSize
+	result["accumulator"] = buffer.accumulator
+	result["successfulAcks"] = buffer.successfulAcks
+	result["duplicateAcks"] = buffer.duplicateAcks
+	result["retransmits"] = buffer.retransmits
+	result["closed"] = buffer.closed.Get()
+	result["blockedByLocalWindow"] = buffer.blockedByLocalWindow
+	result["blockedByRemoteWindow"] = buffer.blockedByRemoteWindow
+	result["retxScale"] = buffer.retxScale
+	result["retxThreshold"] = buffer.retxThreshold
+
+	timeSinceLastRetransmit := time.Duration(info.NowInMilliseconds()-buffer.lastRetransmitTime) * time.Millisecond
+	result["timeSinceLastRetx"] = timeSinceLastRetransmit.String()
+	result["closeWhenEmpty"] = buffer.closeWhenEmpty.Get()
+
+	return result
+}
+
+func (buffer *LinkSendBuffer) Inspect() map[string]interface{} {
+	timeout := time.After(25 * time.Millisecond)
+	inspectEvent := &InspectEvent{
+		notifyComplete: make(chan map[string]interface{}, 1),
+	}
+
+	select {
+	case buffer.inspectRequests <- inspectEvent:
+		select {
+		case result := <-inspectEvent.notifyComplete:
+			result["acquiredSafely"] = true
+			return result
+		case <-timeout:
+		}
+	case <-timeout:
+	}
+
+	result := buffer.inspect()
+	result["acquiredSafely"] = false
+	return result
+}
+
+type InspectEvent struct {
+	notifyComplete chan map[string]interface{}
+}
+
+func (self *InspectEvent) handle(buffer *LinkSendBuffer) {
+	result := buffer.inspect()
+	self.notifyComplete <- result
 }
