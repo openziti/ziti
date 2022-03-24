@@ -116,13 +116,12 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, errorHeader *byte, log *logrus.Entry) {
+func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, errorHeader byte, log *logrus.Entry) {
 	log.WithError(err).Error("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
-	if errorHeader != nil {
-		response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, *errorHeader)
-	}
+	response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, errorHeader)
+
 	response.ReplyTo(msg)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
 		log.WithError(err).Error("send failure response failed")
@@ -157,36 +156,36 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
-					var headerError *byte
-					if _, ok := err.(xgress.InvalidTerminatorError); ok {
-						var errCode byte = ctrl_msg.ErrorTypeInvalidTerminator
-						headerError = &errCode
-						switch {
-						case errors.Is(err, syscall.ECONNREFUSED):
-							errCode = ctrl_msg.ErrorTypeConnectionRefused
-						case errors.Is(err, syscall.ETIMEDOUT):
-							errCode = ctrl_msg.ErrorTypeDialTimedOut
-						case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
-							errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
-						case errors.As(err, &xgress.InvalidTerminatorError{}):
-							errCode = ctrl_msg.ErrorTypeInvalidTerminator
-						}
-						headerError = &errCode
+					var errCode byte
+
+					switch {
+					case errors.Is(err, syscall.ECONNREFUSED):
+						errCode = ctrl_msg.ErrorTypeConnectionRefused
+					case errors.Is(err, syscall.ETIMEDOUT):
+						errCode = ctrl_msg.ErrorTypeDialTimedOut
+					case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
+						errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
+					case errors.As(err, &xgress.InvalidTerminatorError{}):
+						errCode = ctrl_msg.ErrorTypeInvalidTerminator
+					default:
+						errCode = ctrl_msg.ErrorTypeGeneric
 					}
-					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)
+
+					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 				}
 			} else {
 				var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
-				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), &errCode, log)
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), errCode, log)
 			}
 		} else {
 			var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
-			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), &errCode, log)
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 		}
 	}
 
 	if err := rh.pool.QueueWithTimeout(dialF, time.Second*15); err != nil {
 		log.WithError(err).Error("error queuing xgress dial to pool")
-		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), nil, log)
+		var errCode byte = ctrl_msg.ErrorTypeGeneric
+		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 	}
 }
