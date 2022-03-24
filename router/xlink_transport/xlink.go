@@ -74,3 +74,13 @@ func (self *impl) HandleCloseNotification(f func()) {
 		f()
 	}
 }
+
+func (self *impl) Inspect() map[string]interface{} {
+	return map[string]interface{}{
+		"type":     "link",
+		"split":    false,
+		"id":       self.Id().Token,
+		"dest":     self.DestinationId(),
+		"protocol": self.LinkProtocol(),
+	}
+}
