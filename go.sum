@@ -451,7 +451,7 @@ github.com/ianlancetaylor/demangle v0.0.0-20200824232613-28f6c0f3b639/go.mod h1:
 github.com/inconshreveable/mousetrap v1.0.0 h1:Z8tu5sraLXCXIcARxBp/8cbvlwVa7Z1NHg9XEKhtSvM=
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/influxdata/influxdb-client-go/v2 v2.2.2/go.mod h1:fa/d1lAdUHxuc1jedx30ZfNG573oQTQmUni3N6pcW+0=
-github.com/influxdata/influxdb-client-go/v2 v2.8.0/go.mod h1:x7Jo5UHHl+w8wu8UnGiNobDDHygojXwJX4mx7rXGKMk=
+github.com/influxdata/influxdb-client-go/v2 v2.8.1/go.mod h1:x7Jo5UHHl+w8wu8UnGiNobDDHygojXwJX4mx7rXGKMk=
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d h1:/WZQPMZNsjZ7IlCpsLGdQBINg5bxKQ1K1sh6awxLtkA=
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d/go.mod h1:qj24IKcXYK6Iy9ceXlo3Tc+vtHo9lIhSX5JddghvEPo=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
@@ -627,8 +627,8 @@ github.com/openziti/fabric v0.17.75/go.mod h1:xsIz38z5iv/AIsZCvdJDWKP0/14hbyolRx
 github.com/openziti/foundation v0.17.12/go.mod h1:YT8EFUtJMS4qBN2j0KnVyKR0gUmGy4i8tLCETC3pM5A=
 github.com/openziti/foundation v0.17.15 h1:neuPHSmSkhE/SqD3dEdB34GiK4mkjIpYUDCIjfTfm3I=
 github.com/openziti/foundation v0.17.15/go.mod h1:gKNBKfxssnxebGbf8/LMp5FaF6zcpg6rjhMxBhPhj2U=
-github.com/openziti/sdk-golang v0.16.31 h1:iy0+fiNQsKvySCmLAndtfr0gF/okQf3Hl1MWcr+E17A=
-github.com/openziti/sdk-golang v0.16.31/go.mod h1:I8w4i1ehlpfB3vo2L4P6gSDMIUxP3d9hGduoMgMCVm4=
+github.com/openziti/sdk-golang v0.16.32 h1:GLip5V50Mqc26XmgrWBP8D1xVpkP9EU2ddsQ0iYh2sE=
+github.com/openziti/sdk-golang v0.16.32/go.mod h1:qxKlDyhuQpjnfdvUsIXLTaBZWQIX67oiibR4Cn7tawA=
 github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
