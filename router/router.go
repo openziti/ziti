@@ -64,7 +64,6 @@ type Router struct {
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
 	xctrls          []xctrl.Xctrl
-	xctrlDone       chan struct{}
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
@@ -199,7 +198,6 @@ func (self *Router) Shutdown() error {
 		}
 
 		close(self.shutdownC)
-		close(self.xctrlDone)
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
@@ -440,9 +438,8 @@ func (self *Router) startControlPlane() error {
 	self.faulter.SetCtrl(ch)
 	self.scanner.SetCtrl(ch)
 
-	self.xctrlDone = make(chan struct{})
 	for _, x := range self.xctrls {
-		if err := x.Run(self.ctrl, nil, self.xctrlDone); err != nil {
+		if err := x.Run(self.ctrl, nil, self.shutdownC); err != nil {
 			return err
 		}
 	}
