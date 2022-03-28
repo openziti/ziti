@@ -54,6 +54,9 @@ type IdentityPatch struct {
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
+	// external Id
+	ExternalID *string `json:"externalId,omitempty"`
+
 	// is admin
 	IsAdmin *bool `json:"isAdmin,omitempty"`
 

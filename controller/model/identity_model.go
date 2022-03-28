@@ -59,6 +59,7 @@ type Identity struct {
 	ServiceHostingCosts       map[string]uint16
 	AppData                   map[string]interface{}
 	AuthPolicyId              string
+	ExternalId                *string
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -75,6 +76,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
 		AppData:                   entity.AppData,
+		ExternalId:                entity.ExternalId,
 	}
 
 	if entity.EnvInfo != nil {
@@ -165,6 +167,7 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 		ServiceHostingPrecedences: entity.ServiceHostingPrecedences,
 		ServiceHostingCosts:       entity.ServiceHostingCosts,
 		AppData:                   entity.AppData,
+		ExternalId:                entity.ExternalId,
 	}
 
 	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
@@ -207,6 +210,7 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences
 	entity.ServiceHostingCosts = boltIdentity.ServiceHostingCosts
 	entity.AppData = boltIdentity.AppData
+	entity.ExternalId = boltIdentity.ExternalId
 	fillModelInfo(entity, boltIdentity.EnvInfo, boltIdentity.SdkInfo)
 
 	return nil

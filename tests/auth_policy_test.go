@@ -162,7 +162,7 @@ func Test_AuthPolicies(t *testing.T) {
 						Updb: &rest_model.AuthPolicyPrimaryUpdb{
 							Allowed:                B(false),
 							MaxAttempts:            I(1),
-							MinPasswordLength:      I(1),
+							MinPasswordLength:      I(12),
 							LockoutDurationMinutes: I(1),
 							RequireMixedCase:       B(false),
 							RequireNumberChar:      B(false),
@@ -754,6 +754,16 @@ func Test_AuthPolicies(t *testing.T) {
 		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
 		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
 
+		t.Run("identity has auth policy set", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			getResponse := &rest_model.DetailIdentityEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(getResponse).Get("/identities/" + identityCreated.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.Equal(*identity.AuthPolicyID, *getResponse.Data.AuthPolicyID)
+		})
+
 		t.Run("cannot delete auth policy assigned to identity", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().Delete("/auth-policies/" + authPolicyCreated.Data.ID)
@@ -824,7 +834,7 @@ func Test_AuthPolicies(t *testing.T) {
 					Updb: &rest_model.AuthPolicyPrimaryUpdb{
 						Allowed:                B(false),
 						MaxAttempts:            I(1),
-						MinPasswordLength:      I(1),
+						MinPasswordLength:      I(5),
 						LockoutDurationMinutes: I(1),
 						RequireMixedCase:       B(false),
 						RequireNumberChar:      B(false),
@@ -902,6 +912,101 @@ func Test_AuthPolicies(t *testing.T) {
 			authPolicyPatchedDetail := authPolicyPatchEnvelope.Data
 
 			ctx.Req.Equal(*authPolicyPatch.Name, *authPolicyPatchedDetail.Name)
+		})
+	})
+
+	t.Run("create with below minimum values default with 200 Ok", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy 08")
+
+		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
+			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled: B(true),
+			Name:    S("Test JWT Signer - Auth Policy 08"),
+		}
+
+		extJwtSignerCreated := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
+
+		tag1Name := "originalTag1Name"
+		tag1Value := "originalTag1Value"
+		authPolicy := &rest_model.AuthPolicyCreate{
+			Name: S("Original Name 6"),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: B(true),
+					Allowed:           B(true),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					Allowed: B(true),
+					AllowedSigners: []string{
+						extJwtSignerCreated.Data.ID,
+					},
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                B(true),
+					MaxAttempts:            I(-1),
+					MinPasswordLength:      I(-1),
+					LockoutDurationMinutes: I(-1),
+					RequireMixedCase:       B(true),
+					RequireNumberChar:      B(true),
+					RequireSpecialChar:     B(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: nil,
+				RequireTotp:         B(false),
+			},
+			Tags: &rest_model.Tags{
+				SubTags: map[string]interface{}{
+					tag1Name: tag1Value,
+				},
+			},
+		}
+
+		authPolicyCreated := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
+
+		t.Run("get returns 200 and same input values", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			authPolicyEnvelope := &rest_model.DetailAuthPolicyEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authPolicyEnvelope).Get("/auth-policies/" + authPolicyCreated.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "expected 200 for GET %s: %s", resp.Request.URL, resp.Body())
+			authPolicyDetail := authPolicyEnvelope.Data
+
+			ctx.Req.Equal(authPolicyCreated.Data.ID, *authPolicyDetail.ID)
+			ctx.Req.Equal(len(authPolicy.Tags.SubTags), len(authPolicyDetail.Tags.SubTags))
+			ctx.Req.Equal(authPolicy.Tags.SubTags[tag1Name], authPolicyDetail.Tags.SubTags[tag1Name])
+			ctx.Req.Equal(*authPolicy.Name, *authPolicyDetail.Name)
+
+			ctx.Req.Equal(len(authPolicy.Primary.ExtJWT.AllowedSigners), len(authPolicyDetail.Primary.ExtJWT.AllowedSigners))
+			ctx.Req.Equal(authPolicy.Primary.ExtJWT.AllowedSigners[0], authPolicyDetail.Primary.ExtJWT.AllowedSigners[0])
+			ctx.Req.Equal(*authPolicy.Primary.ExtJWT.Allowed, *authPolicyDetail.Primary.ExtJWT.Allowed)
+
+			ctx.Req.Equal(*authPolicy.Primary.Updb.Allowed, *authPolicyDetail.Primary.Updb.Allowed)
+			ctx.Req.Equal(persistence.UpdbUnlimitedAttemptsLimit, *authPolicyDetail.Primary.Updb.MaxAttempts)
+			ctx.Req.Equal(persistence.DefaultUpdbMinPasswordLength, *authPolicyDetail.Primary.Updb.MinPasswordLength)
+			ctx.Req.Equal(persistence.UpdbIndefiniteLockout, *authPolicyDetail.Primary.Updb.LockoutDurationMinutes)
+			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireMixedCase, *authPolicyDetail.Primary.Updb.RequireMixedCase)
+			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireNumberChar, *authPolicyDetail.Primary.Updb.RequireNumberChar)
+			ctx.Req.Equal(*authPolicy.Primary.Updb.RequireSpecialChar, *authPolicyDetail.Primary.Updb.RequireSpecialChar)
+
+			ctx.Req.Equal(*authPolicy.Primary.Cert.Allowed, *authPolicyDetail.Primary.Cert.Allowed)
+			ctx.Req.Equal(*authPolicy.Primary.Cert.AllowExpiredCerts, *authPolicyDetail.Primary.Cert.AllowExpiredCerts)
+
+			ctx.Req.Equal(*authPolicy.Secondary.RequireTotp, *authPolicyDetail.Secondary.RequireTotp)
+			ctx.Req.Equal(authPolicy.Secondary.RequireExtJWTSigner, authPolicyDetail.Secondary.RequireExtJWTSigner)
 		})
 	})
 }

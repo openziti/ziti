@@ -30,6 +30,7 @@ definitions:
           - serviceHostingCosts
           - defaultHostingCost
           - authPolicyId
+          - externalId
         properties:
           name:
             type: string
@@ -69,6 +70,8 @@ definitions:
             $ref: 'terminators.yml#/definitions/terminatorCostMap'
           appData:
             $ref: 'base-entity.yml#/definitions/tags'
+          externalId:
+            type: string
   identityAuthenticators:
     type: object
     properties:

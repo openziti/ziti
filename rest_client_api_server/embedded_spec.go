@@ -4624,7 +4624,8 @@ func init() {
             "serviceHostingPrecedences",
             "serviceHostingCosts",
             "defaultHostingCost",
-            "authPolicyId"
+            "authPolicyId",
+            "externalId"
           ],
           "properties": {
             "appData": {
@@ -4647,6 +4648,9 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "externalId": {
+              "type": "string"
             },
             "hasApiSession": {
               "type": "boolean"
@@ -10439,7 +10443,8 @@ func init() {
             "serviceHostingPrecedences",
             "serviceHostingCosts",
             "defaultHostingCost",
-            "authPolicyId"
+            "authPolicyId",
+            "externalId"
           ],
           "properties": {
             "appData": {
@@ -10462,6 +10467,9 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "externalId": {
+              "type": "string"
             },
             "hasApiSession": {
               "type": "boolean"

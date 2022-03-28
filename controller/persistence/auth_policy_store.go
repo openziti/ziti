@@ -23,9 +23,12 @@ import (
 )
 
 const (
-	DefaultUpdbMinPasswordLength = 5
-	DefaultUpdbMaxAttempts       = 5
+	DefaultUpdbMinPasswordLength = int64(5)
+	DefaultUpdbMaxAttempts       = int64(5)
 	DefaultAuthPolicyId          = "default"
+
+	UpdbIndefiniteLockout      = int64(0)
+	UpdbUnlimitedAttemptsLimit = int64(0)
 
 	FieldAuthPolicyPrimaryCertAllowed           = "primary.cert.allowed"
 	FieldAuthPolicyPrimaryCertAllowExpiredCerts = "primary.cert.allowExpiredCerts"
@@ -112,6 +115,19 @@ func (entity *AuthPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 
 func (entity *AuthPolicy) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
+
+	if entity.Primary.Updb.LockoutDurationMinutes < 0 {
+		entity.Primary.Updb.LockoutDurationMinutes = UpdbIndefiniteLockout
+	}
+
+	if entity.Primary.Updb.MaxAttempts < 0 {
+		entity.Primary.Updb.MaxAttempts = UpdbUnlimitedAttemptsLimit
+	}
+
+	if entity.Primary.Updb.MinPasswordLength < DefaultUpdbMinPasswordLength {
+		entity.Primary.Updb.MinPasswordLength = DefaultUpdbMinPasswordLength
+	}
+
 	ctx.SetString(FieldName, entity.Name)
 
 	ctx.SetBool(FieldAuthPolicyPrimaryCertAllowed, entity.Primary.Cert.Allowed)

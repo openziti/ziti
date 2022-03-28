@@ -70,6 +70,10 @@ type IdentityDetail struct {
 	// Required: true
 	EnvInfo *EnvInfo `json:"envInfo"`
 
+	// external Id
+	// Required: true
+	ExternalID *string `json:"externalId"`
+
 	// has Api session
 	// Required: true
 	HasAPISession *bool `json:"hasApiSession"`
@@ -144,6 +148,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		EnvInfo *EnvInfo `json:"envInfo"`
 
+		ExternalID *string `json:"externalId"`
+
 		HasAPISession *bool `json:"hasApiSession"`
 
 		HasEdgeRouterConnection *bool `json:"hasEdgeRouterConnection"`
@@ -185,6 +191,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	m.Enrollment = dataAO1.Enrollment
 
 	m.EnvInfo = dataAO1.EnvInfo
+
+	m.ExternalID = dataAO1.ExternalID
 
 	m.HasAPISession = dataAO1.HasAPISession
 
@@ -237,6 +245,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		EnvInfo *EnvInfo `json:"envInfo"`
 
+		ExternalID *string `json:"externalId"`
+
 		HasAPISession *bool `json:"hasApiSession"`
 
 		HasEdgeRouterConnection *bool `json:"hasEdgeRouterConnection"`
@@ -275,6 +285,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Enrollment = m.Enrollment
 
 	dataAO1.EnvInfo = m.EnvInfo
+
+	dataAO1.ExternalID = m.ExternalID
 
 	dataAO1.HasAPISession = m.HasAPISession
 
@@ -342,6 +354,10 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEnvInfo(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExternalID(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -525,6 +541,15 @@ func (m *IdentityDetail) validateEnvInfo(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateExternalID(formats strfmt.Registry) error {
+
+	if err := validate.Required("externalId", "body", m.ExternalID); err != nil {
+		return err
 	}
 
 	return nil

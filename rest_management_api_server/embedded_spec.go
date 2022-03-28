@@ -18861,12 +18861,17 @@ func init() {
         "certPem": {
           "type": "string"
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean"
         },
         "externalAuthUrl": {
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -18874,6 +18879,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -18894,10 +18903,15 @@ func init() {
             "commonName",
             "notAfter",
             "notBefore",
-            "externalAuthUrl"
+            "externalAuthUrl",
+            "claimsProperty",
+            "useExternalId"
           ],
           "properties": {
             "certPem": {
+              "type": "string"
+            },
+            "claimsProperty": {
               "type": "string"
             },
             "commonName": {
@@ -18924,6 +18938,9 @@ func init() {
             "notBefore": {
               "type": "string",
               "format": "date-time"
+            },
+            "useExternalId": {
+              "type": "boolean"
             }
           }
         }
@@ -18943,6 +18960,10 @@ func init() {
           "type": "string",
           "x-nullable": true
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean",
           "x-nullable": true
@@ -18959,6 +18980,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -18973,12 +18998,17 @@ func init() {
         "certPem": {
           "type": "string"
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean"
         },
         "externalAuthUrl": {
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -18986,6 +19016,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -19109,6 +19143,10 @@ func init() {
             }
           }
         },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "isAdmin": {
           "type": "boolean"
         },
@@ -19158,7 +19196,8 @@ func init() {
             "serviceHostingPrecedences",
             "serviceHostingCosts",
             "defaultHostingCost",
-            "authPolicyId"
+            "authPolicyId",
+            "externalId"
           ],
           "properties": {
             "appData": {
@@ -19181,6 +19220,9 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "externalId": {
+              "type": "string"
             },
             "hasApiSession": {
               "type": "boolean"
@@ -19357,6 +19399,10 @@ func init() {
         "defaultHostingPrecedence": {
           "$ref": "#/definitions/terminatorPrecedence"
         },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "isAdmin": {
           "type": "boolean",
           "x-nullable": true
@@ -19418,21 +19464,25 @@ func init() {
       "required": [
         "type",
         "name",
-        "isAdmin",
-        "authPolicyId"
+        "isAdmin"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
         },
         "authPolicyId": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
         "defaultHostingPrecedence": {
           "$ref": "#/definitions/terminatorPrecedence"
+        },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
         },
         "isAdmin": {
           "type": "boolean"
@@ -41408,12 +41458,17 @@ func init() {
         "certPem": {
           "type": "string"
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean"
         },
         "externalAuthUrl": {
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -41421,6 +41476,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -41441,10 +41500,15 @@ func init() {
             "commonName",
             "notAfter",
             "notBefore",
-            "externalAuthUrl"
+            "externalAuthUrl",
+            "claimsProperty",
+            "useExternalId"
           ],
           "properties": {
             "certPem": {
+              "type": "string"
+            },
+            "claimsProperty": {
               "type": "string"
             },
             "commonName": {
@@ -41471,6 +41535,9 @@ func init() {
             "notBefore": {
               "type": "string",
               "format": "date-time"
+            },
+            "useExternalId": {
+              "type": "boolean"
             }
           }
         }
@@ -41490,6 +41557,10 @@ func init() {
           "type": "string",
           "x-nullable": true
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean",
           "x-nullable": true
@@ -41506,6 +41577,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -41520,12 +41595,17 @@ func init() {
         "certPem": {
           "type": "string"
         },
+        "claimsProperty": {
+          "type": "string",
+          "x-nullable": true
+        },
         "enabled": {
           "type": "boolean"
         },
         "externalAuthUrl": {
           "type": "string",
-          "format": "url"
+          "format": "url",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -41533,6 +41613,10 @@ func init() {
         },
         "tags": {
           "$ref": "#/definitions/tags"
+        },
+        "useExternalId": {
+          "type": "boolean",
+          "x-nullable": true
         }
       }
     },
@@ -41656,6 +41740,10 @@ func init() {
             }
           }
         },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "isAdmin": {
           "type": "boolean"
         },
@@ -41705,7 +41793,8 @@ func init() {
             "serviceHostingPrecedences",
             "serviceHostingCosts",
             "defaultHostingCost",
-            "authPolicyId"
+            "authPolicyId",
+            "externalId"
           ],
           "properties": {
             "appData": {
@@ -41728,6 +41817,9 @@ func init() {
             },
             "envInfo": {
               "$ref": "#/definitions/envInfo"
+            },
+            "externalId": {
+              "type": "string"
             },
             "hasApiSession": {
               "type": "boolean"
@@ -41904,6 +41996,10 @@ func init() {
         "defaultHostingPrecedence": {
           "$ref": "#/definitions/terminatorPrecedence"
         },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
+        },
         "isAdmin": {
           "type": "boolean",
           "x-nullable": true
@@ -41965,21 +42061,25 @@ func init() {
       "required": [
         "type",
         "name",
-        "isAdmin",
-        "authPolicyId"
+        "isAdmin"
       ],
       "properties": {
         "appData": {
           "$ref": "#/definitions/tags"
         },
         "authPolicyId": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "defaultHostingCost": {
           "$ref": "#/definitions/terminatorCost"
         },
         "defaultHostingPrecedence": {
           "$ref": "#/definitions/terminatorPrecedence"
+        },
+        "externalId": {
+          "type": "string",
+          "x-nullable": true
         },
         "isAdmin": {
           "type": "boolean"

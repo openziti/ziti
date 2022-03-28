@@ -45,6 +45,9 @@ type ExternalJWTSignerPatch struct {
 	// cert pem
 	CertPem *string `json:"certPem,omitempty"`
 
+	// claims property
+	ClaimsProperty *string `json:"claimsProperty,omitempty"`
+
 	// enabled
 	Enabled *bool `json:"enabled,omitempty"`
 
@@ -57,6 +60,9 @@ type ExternalJWTSignerPatch struct {
 
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
+
+	// use external Id
+	UseExternalID *bool `json:"useExternalId,omitempty"`
 }
 
 // Validate validates this external Jwt signer patch

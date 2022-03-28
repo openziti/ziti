@@ -66,7 +66,6 @@ import (
 	"github.com/openziti/fabric/controller"
 	idlib "github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/transport/quic"
 	"github.com/openziti/foundation/transport/tcp"
 	"github.com/openziti/foundation/transport/tls"
 	"github.com/sirupsen/logrus"
@@ -85,7 +84,6 @@ func init() {
 
 	_ = os.Setenv("ZITI_TRACE_ENABLED", "false")
 
-	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
 }

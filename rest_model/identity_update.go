@@ -47,14 +47,16 @@ type IdentityUpdate struct {
 	AppData *Tags `json:"appData,omitempty"`
 
 	// auth policy Id
-	// Required: true
-	AuthPolicyID *string `json:"authPolicyId"`
+	AuthPolicyID *string `json:"authPolicyId,omitempty"`
 
 	// default hosting cost
 	DefaultHostingCost *TerminatorCost `json:"defaultHostingCost,omitempty"`
 
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
+
+	// external Id
+	ExternalID *string `json:"externalId,omitempty"`
 
 	// is admin
 	// Required: true
@@ -86,10 +88,6 @@ func (m *IdentityUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateAppData(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateAuthPolicyID(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -149,15 +147,6 @@ func (m *IdentityUpdate) validateAppData(formats strfmt.Registry) error {
 			}
 			return err
 		}
-	}
-
-	return nil
-}
-
-func (m *IdentityUpdate) validateAuthPolicyID(formats strfmt.Registry) error {
-
-	if err := validate.Required("authPolicyId", "body", m.AuthPolicyID); err != nil {
-		return err
 	}
 
 	return nil

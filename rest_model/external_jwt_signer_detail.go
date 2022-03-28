@@ -48,6 +48,10 @@ type ExternalJWTSignerDetail struct {
 	// Required: true
 	CertPem *string `json:"certPem"`
 
+	// claims property
+	// Required: true
+	ClaimsProperty *string `json:"claimsProperty"`
+
 	// common name
 	// Required: true
 	CommonName *string `json:"commonName"`
@@ -78,6 +82,10 @@ type ExternalJWTSignerDetail struct {
 	// Required: true
 	// Format: date-time
 	NotBefore *strfmt.DateTime `json:"notBefore"`
+
+	// use external Id
+	// Required: true
+	UseExternalID *bool `json:"useExternalId"`
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
@@ -93,6 +101,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		CertPem *string `json:"certPem"`
 
+		ClaimsProperty *string `json:"claimsProperty"`
+
 		CommonName *string `json:"commonName"`
 
 		Enabled *bool `json:"enabled"`
@@ -106,12 +116,16 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 		NotAfter *strfmt.DateTime `json:"notAfter"`
 
 		NotBefore *strfmt.DateTime `json:"notBefore"`
+
+		UseExternalID *bool `json:"useExternalId"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
 
 	m.CertPem = dataAO1.CertPem
+
+	m.ClaimsProperty = dataAO1.ClaimsProperty
 
 	m.CommonName = dataAO1.CommonName
 
@@ -126,6 +140,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	m.NotAfter = dataAO1.NotAfter
 
 	m.NotBefore = dataAO1.NotBefore
+
+	m.UseExternalID = dataAO1.UseExternalID
 
 	return nil
 }
@@ -142,6 +158,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		CertPem *string `json:"certPem"`
 
+		ClaimsProperty *string `json:"claimsProperty"`
+
 		CommonName *string `json:"commonName"`
 
 		Enabled *bool `json:"enabled"`
@@ -155,9 +173,13 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 		NotAfter *strfmt.DateTime `json:"notAfter"`
 
 		NotBefore *strfmt.DateTime `json:"notBefore"`
+
+		UseExternalID *bool `json:"useExternalId"`
 	}
 
 	dataAO1.CertPem = m.CertPem
+
+	dataAO1.ClaimsProperty = m.ClaimsProperty
 
 	dataAO1.CommonName = m.CommonName
 
@@ -172,6 +194,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.NotAfter = m.NotAfter
 
 	dataAO1.NotBefore = m.NotBefore
+
+	dataAO1.UseExternalID = m.UseExternalID
 
 	jsonDataAO1, errAO1 := swag.WriteJSON(dataAO1)
 	if errAO1 != nil {
@@ -191,6 +215,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateCertPem(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateClaimsProperty(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -222,6 +250,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateUseExternalID(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -231,6 +263,15 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 func (m *ExternalJWTSignerDetail) validateCertPem(formats strfmt.Registry) error {
 
 	if err := validate.Required("certPem", "body", m.CertPem); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateClaimsProperty(formats strfmt.Registry) error {
+
+	if err := validate.Required("claimsProperty", "body", m.ClaimsProperty); err != nil {
 		return err
 	}
 
@@ -302,6 +343,15 @@ func (m *ExternalJWTSignerDetail) validateNotBefore(formats strfmt.Registry) err
 	}
 
 	if err := validate.FormatOf("notBefore", "body", "date-time", m.NotBefore.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateUseExternalID(formats strfmt.Registry) error {
+
+	if err := validate.Required("useExternalId", "body", m.UseExternalID); err != nil {
 		return err
 	}
 
