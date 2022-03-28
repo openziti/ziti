@@ -178,4 +178,8 @@ const (
 	InvalidCertificatePemCode    string = "INVALID_CERT_PEM"
 	InvalidCertificatePemMessage string = "the supplied certificate PEM is either invalid or contains the incorrect number of certificates"
 	InvalidCertificatePemStatus  int    = http.StatusBadRequest
+
+	CanNotDeleteReferencedEntityCode    string = "CAN_NOT_DELETE_REFERENCED_ENTITY"
+	CanNotDeleteReferencedEntityMessage string = "the entity cannot be deleted because it is referenced by another entity, see cause"
+	CanNotDeleteReferencedEntityStatus  int    = http.StatusConflict
 )

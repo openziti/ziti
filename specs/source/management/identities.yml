@@ -488,6 +488,9 @@ definitions:
             type: string
           ottca:
             type: string
+      authPolicyId:
+        type: string
+        x-nullable: true
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:
@@ -508,6 +511,7 @@ definitions:
       - type
       - name
       - isAdmin
+      - authPolicyId
     properties:
       name:
         type: string
@@ -515,6 +519,8 @@ definitions:
         $ref: 'identity-types.yml#/definitions/identityType'
       isAdmin:
         type: boolean
+      authPolicyId:
+        type: string
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:
@@ -534,10 +540,16 @@ definitions:
     properties:
       name:
         type: string
+        x-nullable: true
       type:
         $ref: 'identity-types.yml#/definitions/identityType'
+        x-nullable: true
       isAdmin:
         type: boolean
+        x-nullable: true
+      authPolicyId:
+        type: string
+        x-nullable: true
       roleAttributes:
         $ref: '../shared/base-entity.yml#/definitions/attributes'
       tags:

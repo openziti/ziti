@@ -47,6 +47,10 @@ type IdentityDetail struct {
 	// app data
 	AppData *Tags `json:"appData,omitempty"`
 
+	// auth policy Id
+	// Required: true
+	AuthPolicyID *string `json:"authPolicyId"`
+
 	// authenticators
 	// Required: true
 	Authenticators *IdentityAuthenticators `json:"authenticators"`
@@ -128,6 +132,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		AppData *Tags `json:"appData,omitempty"`
 
+		AuthPolicyID *string `json:"authPolicyId"`
+
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost"`
@@ -167,6 +173,8 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.AppData = dataAO1.AppData
+
+	m.AuthPolicyID = dataAO1.AuthPolicyID
 
 	m.Authenticators = dataAO1.Authenticators
 
@@ -217,6 +225,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		AppData *Tags `json:"appData,omitempty"`
 
+		AuthPolicyID *string `json:"authPolicyId"`
+
 		Authenticators *IdentityAuthenticators `json:"authenticators"`
 
 		DefaultHostingCost *TerminatorCost `json:"defaultHostingCost"`
@@ -253,6 +263,8 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.AppData = m.AppData
+
+	dataAO1.AuthPolicyID = m.AuthPolicyID
 
 	dataAO1.Authenticators = m.Authenticators
 
@@ -306,6 +318,10 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateAppData(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateAuthPolicyID(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -398,6 +414,15 @@ func (m *IdentityDetail) validateAppData(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateAuthPolicyID(formats strfmt.Registry) error {
+
+	if err := validate.Required("authPolicyId", "body", m.AuthPolicyID); err != nil {
+		return err
 	}
 
 	return nil

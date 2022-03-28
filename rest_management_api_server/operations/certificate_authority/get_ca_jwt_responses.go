@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// GetCaJwtOKCode is the HTTP code returned for type GetCaJwtOK
-const GetCaJwtOKCode int = 200
+// GetCaJWTOKCode is the HTTP code returned for type GetCaJWTOK
+const GetCaJWTOKCode int = 200
 
-/*GetCaJwtOK The result is the JWT text to validate the CA
+/*GetCaJWTOK The result is the JWT text to validate the CA
 
 swagger:response getCaJwtOK
 */
-type GetCaJwtOK struct {
+type GetCaJWTOK struct {
 
 	/*
 	  In: Body
@@ -52,25 +52,25 @@ type GetCaJwtOK struct {
 	Payload string `json:"body,omitempty"`
 }
 
-// NewGetCaJwtOK creates GetCaJwtOK with default headers values
-func NewGetCaJwtOK() *GetCaJwtOK {
+// NewGetCaJWTOK creates GetCaJWTOK with default headers values
+func NewGetCaJWTOK() *GetCaJWTOK {
 
-	return &GetCaJwtOK{}
+	return &GetCaJWTOK{}
 }
 
-// WithPayload adds the payload to the get ca jwt o k response
-func (o *GetCaJwtOK) WithPayload(payload string) *GetCaJwtOK {
+// WithPayload adds the payload to the get ca Jwt o k response
+func (o *GetCaJWTOK) WithPayload(payload string) *GetCaJWTOK {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the get ca jwt o k response
-func (o *GetCaJwtOK) SetPayload(payload string) {
+// SetPayload sets the payload to the get ca Jwt o k response
+func (o *GetCaJWTOK) SetPayload(payload string) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *GetCaJwtOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *GetCaJWTOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(200)
 	payload := o.Payload
@@ -79,14 +79,14 @@ func (o *GetCaJwtOK) WriteResponse(rw http.ResponseWriter, producer runtime.Prod
 	}
 }
 
-// GetCaJwtUnauthorizedCode is the HTTP code returned for type GetCaJwtUnauthorized
-const GetCaJwtUnauthorizedCode int = 401
+// GetCaJWTUnauthorizedCode is the HTTP code returned for type GetCaJWTUnauthorized
+const GetCaJWTUnauthorizedCode int = 401
 
-/*GetCaJwtUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*GetCaJWTUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response getCaJwtUnauthorized
 */
-type GetCaJwtUnauthorized struct {
+type GetCaJWTUnauthorized struct {
 
 	/*
 	  In: Body
@@ -94,25 +94,25 @@ type GetCaJwtUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
 }
 
-// NewGetCaJwtUnauthorized creates GetCaJwtUnauthorized with default headers values
-func NewGetCaJwtUnauthorized() *GetCaJwtUnauthorized {
+// NewGetCaJWTUnauthorized creates GetCaJWTUnauthorized with default headers values
+func NewGetCaJWTUnauthorized() *GetCaJWTUnauthorized {
 
-	return &GetCaJwtUnauthorized{}
+	return &GetCaJWTUnauthorized{}
 }
 
-// WithPayload adds the payload to the get ca jwt unauthorized response
-func (o *GetCaJwtUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *GetCaJwtUnauthorized {
+// WithPayload adds the payload to the get ca Jwt unauthorized response
+func (o *GetCaJWTUnauthorized) WithPayload(payload *rest_model.APIErrorEnvelope) *GetCaJWTUnauthorized {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the get ca jwt unauthorized response
-func (o *GetCaJwtUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
+// SetPayload sets the payload to the get ca Jwt unauthorized response
+func (o *GetCaJWTUnauthorized) SetPayload(payload *rest_model.APIErrorEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *GetCaJwtUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *GetCaJWTUnauthorized) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(401)
 	if o.Payload != nil {
@@ -123,14 +123,14 @@ func (o *GetCaJwtUnauthorized) WriteResponse(rw http.ResponseWriter, producer ru
 	}
 }
 
-// GetCaJwtNotFoundCode is the HTTP code returned for type GetCaJwtNotFound
-const GetCaJwtNotFoundCode int = 404
+// GetCaJWTNotFoundCode is the HTTP code returned for type GetCaJWTNotFound
+const GetCaJWTNotFoundCode int = 404
 
-/*GetCaJwtNotFound The requested resource does not exist
+/*GetCaJWTNotFound The requested resource does not exist
 
 swagger:response getCaJwtNotFound
 */
-type GetCaJwtNotFound struct {
+type GetCaJWTNotFound struct {
 
 	/*
 	  In: Body
@@ -138,25 +138,25 @@ type GetCaJwtNotFound struct {
 	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
 }
 
-// NewGetCaJwtNotFound creates GetCaJwtNotFound with default headers values
-func NewGetCaJwtNotFound() *GetCaJwtNotFound {
+// NewGetCaJWTNotFound creates GetCaJWTNotFound with default headers values
+func NewGetCaJWTNotFound() *GetCaJWTNotFound {
 
-	return &GetCaJwtNotFound{}
+	return &GetCaJWTNotFound{}
 }
 
-// WithPayload adds the payload to the get ca jwt not found response
-func (o *GetCaJwtNotFound) WithPayload(payload *rest_model.APIErrorEnvelope) *GetCaJwtNotFound {
+// WithPayload adds the payload to the get ca Jwt not found response
+func (o *GetCaJWTNotFound) WithPayload(payload *rest_model.APIErrorEnvelope) *GetCaJWTNotFound {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the get ca jwt not found response
-func (o *GetCaJwtNotFound) SetPayload(payload *rest_model.APIErrorEnvelope) {
+// SetPayload sets the payload to the get ca Jwt not found response
+func (o *GetCaJWTNotFound) SetPayload(payload *rest_model.APIErrorEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *GetCaJwtNotFound) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *GetCaJWTNotFound) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
 	rw.WriteHeader(404)
 	if o.Payload != nil {

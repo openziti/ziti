@@ -69,30 +69,29 @@ try
     Remove-Item $modelPath -Recurse -Force -ErrorAction "SilentlyContinue" | Out-Null
     New-Item -ItemType "directory" -Path $modelPath -ErrorAction "SilentlyContinue" | Out-Null
 
-
     "...generating Client API server"
-    swagger generate server --exclude-main -f $clientSpec -s rest_client_api_server -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
+    swagger generate server --exclude-main --additional-initialism=jwt -f $clientSpec -s rest_client_api_server -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
     if (-not$?)
     {
         throw "Failed to generate server. See above."
     }
 
     "...generating Client API client"
-    swagger generate client -f $clientSpec  -c rest_client_api_client -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
+    swagger generate client -f $clientSpec --additional-initialism=jwt -c rest_client_api_client -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
     if (-not$?)
     {
         throw "Failed to generate client. See above."
     }
 
     "...generating Management API server"
-    swagger generate server --exclude-main -f $managementSpec -s rest_management_api_server -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
+    swagger generate server --exclude-main --additional-initialism=jwt -f $managementSpec -s rest_management_api_server -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
     if (-not$?)
     {
         throw "Failed to generate server. See above."
     }
 
     "...generating Management API client"
-    swagger generate client -f $managementSpec  -c rest_management_api_client -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
+    swagger generate client -f $managementSpec --additional-initialism=jwt -c rest_management_api_client -t $zitiEdgeDir -q -r $copyrightFile -m "rest_model"
     if (-not$?)
     {
         throw "Failed to generate client. See above."

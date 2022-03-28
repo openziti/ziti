@@ -37,16 +37,19 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// ExternalJwtSignerPatch external jwt signer patch
+// ExternalJWTSignerPatch external Jwt signer patch
 //
 // swagger:model externalJwtSignerPatch
-type ExternalJwtSignerPatch struct {
+type ExternalJWTSignerPatch struct {
 
 	// cert pem
 	CertPem *string `json:"certPem,omitempty"`
 
 	// enabled
 	Enabled *bool `json:"enabled,omitempty"`
+
+	// external auth Url
+	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
 
 	// name
 	// Example: MyApps Signer
@@ -56,8 +59,8 @@ type ExternalJwtSignerPatch struct {
 	Tags *Tags `json:"tags,omitempty"`
 }
 
-// Validate validates this external jwt signer patch
-func (m *ExternalJwtSignerPatch) Validate(formats strfmt.Registry) error {
+// Validate validates this external Jwt signer patch
+func (m *ExternalJWTSignerPatch) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateTags(formats); err != nil {
@@ -70,7 +73,7 @@ func (m *ExternalJwtSignerPatch) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ExternalJwtSignerPatch) validateTags(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerPatch) validateTags(formats strfmt.Registry) error {
 	if swag.IsZero(m.Tags) { // not required
 		return nil
 	}
@@ -89,8 +92,8 @@ func (m *ExternalJwtSignerPatch) validateTags(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validate this external jwt signer patch based on the context it is used
-func (m *ExternalJwtSignerPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this external Jwt signer patch based on the context it is used
+func (m *ExternalJWTSignerPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateTags(ctx, formats); err != nil {
@@ -103,7 +106,7 @@ func (m *ExternalJwtSignerPatch) ContextValidate(ctx context.Context, formats st
 	return nil
 }
 
-func (m *ExternalJwtSignerPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
+func (m *ExternalJWTSignerPatch) contextValidateTags(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Tags != nil {
 		if err := m.Tags.ContextValidate(ctx, formats); err != nil {
@@ -120,7 +123,7 @@ func (m *ExternalJwtSignerPatch) contextValidateTags(ctx context.Context, format
 }
 
 // MarshalBinary interface implementation
-func (m *ExternalJwtSignerPatch) MarshalBinary() ([]byte, error) {
+func (m *ExternalJWTSignerPatch) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -128,8 +131,8 @@ func (m *ExternalJwtSignerPatch) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *ExternalJwtSignerPatch) UnmarshalBinary(b []byte) error {
-	var res ExternalJwtSignerPatch
+func (m *ExternalJWTSignerPatch) UnmarshalBinary(b []byte) error {
+	var res ExternalJWTSignerPatch
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

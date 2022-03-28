@@ -38,10 +38,10 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// ExternalJwtSignerDetail A External JWT Signer resource
+// ExternalJWTSignerDetail A External JWT Signer resource
 //
 // swagger:model externalJwtSignerDetail
-type ExternalJwtSignerDetail struct {
+type ExternalJWTSignerDetail struct {
 	BaseEntity
 
 	// cert pem
@@ -55,6 +55,10 @@ type ExternalJwtSignerDetail struct {
 	// enabled
 	// Required: true
 	Enabled *bool `json:"enabled"`
+
+	// external auth Url
+	// Required: true
+	ExternalAuthURL *string `json:"externalAuthUrl"`
 
 	// fingerprint
 	// Required: true
@@ -77,7 +81,7 @@ type ExternalJwtSignerDetail struct {
 }
 
 // UnmarshalJSON unmarshals this object from a JSON structure
-func (m *ExternalJwtSignerDetail) UnmarshalJSON(raw []byte) error {
+func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	// AO0
 	var aO0 BaseEntity
 	if err := swag.ReadJSON(raw, &aO0); err != nil {
@@ -92,6 +96,8 @@ func (m *ExternalJwtSignerDetail) UnmarshalJSON(raw []byte) error {
 		CommonName *string `json:"commonName"`
 
 		Enabled *bool `json:"enabled"`
+
+		ExternalAuthURL *string `json:"externalAuthUrl"`
 
 		Fingerprint *string `json:"fingerprint"`
 
@@ -111,6 +117,8 @@ func (m *ExternalJwtSignerDetail) UnmarshalJSON(raw []byte) error {
 
 	m.Enabled = dataAO1.Enabled
 
+	m.ExternalAuthURL = dataAO1.ExternalAuthURL
+
 	m.Fingerprint = dataAO1.Fingerprint
 
 	m.Name = dataAO1.Name
@@ -123,7 +131,7 @@ func (m *ExternalJwtSignerDetail) UnmarshalJSON(raw []byte) error {
 }
 
 // MarshalJSON marshals this object to a JSON structure
-func (m ExternalJwtSignerDetail) MarshalJSON() ([]byte, error) {
+func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	_parts := make([][]byte, 0, 2)
 
 	aO0, err := swag.WriteJSON(m.BaseEntity)
@@ -137,6 +145,8 @@ func (m ExternalJwtSignerDetail) MarshalJSON() ([]byte, error) {
 		CommonName *string `json:"commonName"`
 
 		Enabled *bool `json:"enabled"`
+
+		ExternalAuthURL *string `json:"externalAuthUrl"`
 
 		Fingerprint *string `json:"fingerprint"`
 
@@ -152,6 +162,8 @@ func (m ExternalJwtSignerDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.CommonName = m.CommonName
 
 	dataAO1.Enabled = m.Enabled
+
+	dataAO1.ExternalAuthURL = m.ExternalAuthURL
 
 	dataAO1.Fingerprint = m.Fingerprint
 
@@ -169,8 +181,8 @@ func (m ExternalJwtSignerDetail) MarshalJSON() ([]byte, error) {
 	return swag.ConcatJSON(_parts...), nil
 }
 
-// Validate validates this external jwt signer detail
-func (m *ExternalJwtSignerDetail) Validate(formats strfmt.Registry) error {
+// Validate validates this external Jwt signer detail
+func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseEntity
@@ -187,6 +199,10 @@ func (m *ExternalJwtSignerDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEnabled(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExternalAuthURL(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -212,7 +228,7 @@ func (m *ExternalJwtSignerDetail) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateCertPem(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateCertPem(formats strfmt.Registry) error {
 
 	if err := validate.Required("certPem", "body", m.CertPem); err != nil {
 		return err
@@ -221,7 +237,7 @@ func (m *ExternalJwtSignerDetail) validateCertPem(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateCommonName(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateCommonName(formats strfmt.Registry) error {
 
 	if err := validate.Required("commonName", "body", m.CommonName); err != nil {
 		return err
@@ -230,7 +246,7 @@ func (m *ExternalJwtSignerDetail) validateCommonName(formats strfmt.Registry) er
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateEnabled(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateEnabled(formats strfmt.Registry) error {
 
 	if err := validate.Required("enabled", "body", m.Enabled); err != nil {
 		return err
@@ -239,7 +255,16 @@ func (m *ExternalJwtSignerDetail) validateEnabled(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateFingerprint(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateExternalAuthURL(formats strfmt.Registry) error {
+
+	if err := validate.Required("externalAuthUrl", "body", m.ExternalAuthURL); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateFingerprint(formats strfmt.Registry) error {
 
 	if err := validate.Required("fingerprint", "body", m.Fingerprint); err != nil {
 		return err
@@ -248,7 +273,7 @@ func (m *ExternalJwtSignerDetail) validateFingerprint(formats strfmt.Registry) e
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateName(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
 		return err
@@ -257,7 +282,7 @@ func (m *ExternalJwtSignerDetail) validateName(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateNotAfter(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateNotAfter(formats strfmt.Registry) error {
 
 	if err := validate.Required("notAfter", "body", m.NotAfter); err != nil {
 		return err
@@ -270,7 +295,7 @@ func (m *ExternalJwtSignerDetail) validateNotAfter(formats strfmt.Registry) erro
 	return nil
 }
 
-func (m *ExternalJwtSignerDetail) validateNotBefore(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerDetail) validateNotBefore(formats strfmt.Registry) error {
 
 	if err := validate.Required("notBefore", "body", m.NotBefore); err != nil {
 		return err
@@ -283,8 +308,8 @@ func (m *ExternalJwtSignerDetail) validateNotBefore(formats strfmt.Registry) err
 	return nil
 }
 
-// ContextValidate validate this external jwt signer detail based on the context it is used
-func (m *ExternalJwtSignerDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this external Jwt signer detail based on the context it is used
+func (m *ExternalJWTSignerDetail) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	// validation for a type composition with BaseEntity
@@ -299,7 +324,7 @@ func (m *ExternalJwtSignerDetail) ContextValidate(ctx context.Context, formats s
 }
 
 // MarshalBinary interface implementation
-func (m *ExternalJwtSignerDetail) MarshalBinary() ([]byte, error) {
+func (m *ExternalJWTSignerDetail) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -307,8 +332,8 @@ func (m *ExternalJwtSignerDetail) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *ExternalJwtSignerDetail) UnmarshalBinary(b []byte) error {
-	var res ExternalJwtSignerDetail
+func (m *ExternalJWTSignerDetail) UnmarshalBinary(b []byte) error {
+	var res ExternalJWTSignerDetail
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

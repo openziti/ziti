@@ -168,7 +168,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 		EnrollmentToken:       nil,
 		EnrollmentCreatedAt:   nil,
 		EnrollmentExpiresAt:   nil,
-		EnrollmentJwt:         nil,
+		EnrollmentJWT:         nil,
 		IsVerified:            &router.IsVerified,
 		Fingerprint:           stringz.OrEmpty(router.Fingerprint),
 		VersionInfo:           MapVersionInfoToRestModel(routerState.VersionInfo),
@@ -198,7 +198,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 
 			ret.EnrollmentExpiresAt = &expiresAt
 			ret.EnrollmentCreatedAt = &createdAt
-			ret.EnrollmentJwt = &enrollment.Jwt
+			ret.EnrollmentJWT = &enrollment.Jwt
 			ret.EnrollmentToken = &enrollment.Token
 		}
 	}

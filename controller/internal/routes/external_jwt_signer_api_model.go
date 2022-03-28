@@ -47,11 +47,11 @@ func MapExternalJwtSignerToRestEntity(_ *env.AppEnv, _ *response.RequestContext,
 	return restModel, nil
 }
 
-func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ExternalJwtSignerDetail {
+func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ExternalJWTSignerDetail {
 	notAfter := strfmt.DateTime(externalJwtSigner.NotAfter)
 	notBefore := strfmt.DateTime(externalJwtSigner.NotBefore)
 
-	ret := &rest_model.ExternalJwtSignerDetail{
+	ret := &rest_model.ExternalJWTSignerDetail{
 		BaseEntity:  BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
 		CertPem:     &externalJwtSigner.CertPem,
 		CommonName:  &externalJwtSigner.CommonName,
@@ -64,7 +64,7 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 	return ret
 }
 
-func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJwtSignerCreate) *model.ExternalJwtSigner {
+func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreate) *model.ExternalJwtSigner {
 	return &model.ExternalJwtSigner{
 		BaseEntity: models.BaseEntity{},
 		Name:       *signer.Name,
@@ -73,7 +73,7 @@ func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJwtSignerCreat
 	}
 }
 
-func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJwtSignerUpdate) *model.ExternalJwtSigner {
+func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTSignerUpdate) *model.ExternalJwtSigner {
 	var tags map[string]interface{}
 	if signer.Tags != nil && signer.Tags.SubTags != nil {
 		tags = signer.Tags.SubTags
@@ -91,7 +91,7 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJwt
 	}
 }
 
-func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJwtSignerPatch) *model.ExternalJwtSigner {
+func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTSignerPatch) *model.ExternalJwtSigner {
 	enabled := false
 	if signer.Enabled != nil {
 		enabled = *signer.Enabled

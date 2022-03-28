@@ -198,6 +198,7 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
+			_, _ = updateContent.SetP("", "authPolicyId")
 
 			resp := ctx.AdminManagementSession.updateEntityOfType(enrolledId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -220,6 +221,7 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
+			_, _ = updateContent.SetP("", "authPolicyId")
 
 			resp := ctx.AdminManagementSession.updateEntityOfType(unenrolledId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -245,6 +247,7 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(true, "isAdmin")
 			_, _ = updateContent.SetP(true, "isDefaultAdmin")
+			_, _ = updateContent.SetP("", "authPolicyId")
 
 			resp := ctx.AdminManagementSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -266,6 +269,7 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP("Device", "type")
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
+			_, _ = updateContent.SetP("", "authPolicyId")
 
 			resp := ctx.AdminManagementSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())

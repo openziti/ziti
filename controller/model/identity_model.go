@@ -58,6 +58,7 @@ type Identity struct {
 	ServiceHostingPrecedences map[string]ziti.Precedence
 	ServiceHostingCosts       map[string]uint16
 	AppData                   map[string]interface{}
+	AuthPolicyId              string
 }
 
 func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
@@ -65,6 +66,7 @@ func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Ent
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,
+		AuthPolicyId:              entity.AuthPolicyId,
 		IsDefaultAdmin:            entity.IsDefaultAdmin,
 		IsAdmin:                   entity.IsAdmin,
 		RoleAttributes:            entity.RoleAttributes,
@@ -155,6 +157,7 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 	boltEntity := &persistence.Identity{
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,
+		AuthPolicyId:              entity.AuthPolicyId,
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		RoleAttributes:            entity.RoleAttributes,
 		DefaultHostingPrecedence:  entity.DefaultHostingPrecedence,
@@ -194,6 +197,7 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.FillCommon(boltIdentity)
 	entity.Name = boltIdentity.Name
 	entity.IdentityTypeId = boltIdentity.IdentityTypeId
+	entity.AuthPolicyId = boltIdentity.AuthPolicyId
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes

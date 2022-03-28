@@ -60,7 +60,7 @@ type ClientService interface {
 
 	DetailCa(params *DetailCaParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailCaOK, error)
 
-	GetCaJwt(params *GetCaJwtParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCaJwtOK, error)
+	GetCaJWT(params *GetCaJWTParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCaJWTOK, error)
 
 	ListCas(params *ListCasParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListCasOK, error)
 
@@ -199,16 +199,16 @@ func (a *Client) DetailCa(params *DetailCaParams, authInfo runtime.ClientAuthInf
 }
 
 /*
-  GetCaJwt retrieves the enrollment j w t for a c a
+  GetCaJWT retrieves the enrollment JWT for a c a
 
   For CA auto enrollment, the enrollment JWT is static and provided on each CA resource. This endpoint provides
 the jwt as a text response.
 
 */
-func (a *Client) GetCaJwt(params *GetCaJwtParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCaJwtOK, error) {
+func (a *Client) GetCaJWT(params *GetCaJWTParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetCaJWTOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
-		params = NewGetCaJwtParams()
+		params = NewGetCaJWTParams()
 	}
 	op := &runtime.ClientOperation{
 		ID:                 "getCaJwt",
@@ -218,7 +218,7 @@ func (a *Client) GetCaJwt(params *GetCaJwtParams, authInfo runtime.ClientAuthInf
 		ConsumesMediaTypes: []string{"application/json"},
 		Schemes:            []string{"https"},
 		Params:             params,
-		Reader:             &GetCaJwtReader{formats: a.formats},
+		Reader:             &GetCaJWTReader{formats: a.formats},
 		AuthInfo:           authInfo,
 		Context:            params.Context,
 		Client:             params.HTTPClient,
@@ -231,7 +231,7 @@ func (a *Client) GetCaJwt(params *GetCaJwtParams, authInfo runtime.ClientAuthInf
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*GetCaJwtOK)
+	success, ok := result.(*GetCaJWTOK)
 	if ok {
 		return success, nil
 	}

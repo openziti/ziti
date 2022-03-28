@@ -52,6 +52,9 @@ const (
 
 	// MfaProvidersZiti captures enum value "ziti"
 	MfaProvidersZiti MfaProviders = "ziti"
+
+	// MfaProvidersURL captures enum value "url"
+	MfaProvidersURL MfaProviders = "url"
 )
 
 // for schema
@@ -59,7 +62,7 @@ var mfaProvidersEnum []interface{}
 
 func init() {
 	var res []MfaProviders
-	if err := json.Unmarshal([]byte(`["ziti"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["ziti","url"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {

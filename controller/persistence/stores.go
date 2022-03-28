@@ -38,6 +38,7 @@ type Stores struct {
 
 	ApiSession              ApiSessionStore
 	ApiSessionCertificate   ApiSessionCertificateStore
+	AuthPolicy              AuthPolicyStore
 	EventualEvent           EventualEventStore
 	ExternalJwtSigner       ExternalJwtSignerStore
 	Ca                      CaStore
@@ -142,6 +143,7 @@ type stores struct {
 	Terminator db.TerminatorStore
 
 	apiSession              *apiSessionStoreImpl
+	authPolicy              *AuthPolicyStoreImpl
 	eventualEvent           *eventualEventStoreImpl
 	ca                      *caStoreImpl
 	config                  *configStoreImpl
@@ -182,6 +184,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.apiSession = newApiSessionStore(internalStores)
 	internalStores.apiSessionCertificate = newApiSessionCertificateStore(internalStores)
 	internalStores.authenticator = newAuthenticatorStore(internalStores)
+	internalStores.authPolicy = newAuthPolicyStore(internalStores)
 	internalStores.ca = newCaStore(internalStores)
 	internalStores.config = newConfigsStore(internalStores)
 	internalStores.configType = newConfigTypesStore(internalStores)
@@ -211,6 +214,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 		ApiSession:              internalStores.apiSession,
 		ApiSessionCertificate:   internalStores.apiSessionCertificate,
+		AuthPolicy:              internalStores.authPolicy,
 		EventualEvent:           internalStores.eventualEvent,
 		Ca:                      internalStores.ca,
 		Config:                  internalStores.config,

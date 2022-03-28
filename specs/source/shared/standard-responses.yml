@@ -209,7 +209,7 @@ definitions:
       field:
         type: string
       value:
-        type: string
+        description: can be any value - string, number, boolean, array or object
   apiErrorCause:
     allOf:
       - $ref: '#/definitions/apiFieldError'

@@ -38,22 +38,22 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// DetailExternalJwtSignerEnvelope detail external jwt signer envelope
+// DetailExternalJWTSignerEnvelope detail external Jwt signer envelope
 //
 // swagger:model detailExternalJwtSignerEnvelope
-type DetailExternalJwtSignerEnvelope struct {
+type DetailExternalJWTSignerEnvelope struct {
 
 	// data
 	// Required: true
-	Data *ExternalJwtSignerDetail `json:"data"`
+	Data *ExternalJWTSignerDetail `json:"data"`
 
 	// meta
 	// Required: true
 	Meta *Meta `json:"meta"`
 }
 
-// Validate validates this detail external jwt signer envelope
-func (m *DetailExternalJwtSignerEnvelope) Validate(formats strfmt.Registry) error {
+// Validate validates this detail external Jwt signer envelope
+func (m *DetailExternalJWTSignerEnvelope) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateData(formats); err != nil {
@@ -70,7 +70,7 @@ func (m *DetailExternalJwtSignerEnvelope) Validate(formats strfmt.Registry) erro
 	return nil
 }
 
-func (m *DetailExternalJwtSignerEnvelope) validateData(formats strfmt.Registry) error {
+func (m *DetailExternalJWTSignerEnvelope) validateData(formats strfmt.Registry) error {
 
 	if err := validate.Required("data", "body", m.Data); err != nil {
 		return err
@@ -90,7 +90,7 @@ func (m *DetailExternalJwtSignerEnvelope) validateData(formats strfmt.Registry) 
 	return nil
 }
 
-func (m *DetailExternalJwtSignerEnvelope) validateMeta(formats strfmt.Registry) error {
+func (m *DetailExternalJWTSignerEnvelope) validateMeta(formats strfmt.Registry) error {
 
 	if err := validate.Required("meta", "body", m.Meta); err != nil {
 		return err
@@ -110,8 +110,8 @@ func (m *DetailExternalJwtSignerEnvelope) validateMeta(formats strfmt.Registry) 
 	return nil
 }
 
-// ContextValidate validate this detail external jwt signer envelope based on the context it is used
-func (m *DetailExternalJwtSignerEnvelope) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validate this detail external Jwt signer envelope based on the context it is used
+func (m *DetailExternalJWTSignerEnvelope) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.contextValidateData(ctx, formats); err != nil {
@@ -128,7 +128,7 @@ func (m *DetailExternalJwtSignerEnvelope) ContextValidate(ctx context.Context, f
 	return nil
 }
 
-func (m *DetailExternalJwtSignerEnvelope) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
+func (m *DetailExternalJWTSignerEnvelope) contextValidateData(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Data != nil {
 		if err := m.Data.ContextValidate(ctx, formats); err != nil {
@@ -144,7 +144,7 @@ func (m *DetailExternalJwtSignerEnvelope) contextValidateData(ctx context.Contex
 	return nil
 }
 
-func (m *DetailExternalJwtSignerEnvelope) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
+func (m *DetailExternalJWTSignerEnvelope) contextValidateMeta(ctx context.Context, formats strfmt.Registry) error {
 
 	if m.Meta != nil {
 		if err := m.Meta.ContextValidate(ctx, formats); err != nil {
@@ -161,7 +161,7 @@ func (m *DetailExternalJwtSignerEnvelope) contextValidateMeta(ctx context.Contex
 }
 
 // MarshalBinary interface implementation
-func (m *DetailExternalJwtSignerEnvelope) MarshalBinary() ([]byte, error) {
+func (m *DetailExternalJWTSignerEnvelope) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -169,8 +169,8 @@ func (m *DetailExternalJwtSignerEnvelope) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *DetailExternalJwtSignerEnvelope) UnmarshalBinary(b []byte) error {
-	var res DetailExternalJwtSignerEnvelope
+func (m *DetailExternalJWTSignerEnvelope) UnmarshalBinary(b []byte) error {
+	var res DetailExternalJWTSignerEnvelope
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

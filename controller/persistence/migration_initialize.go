@@ -41,6 +41,7 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.createHostV1ConfigType(step)
 	m.addProcessMultiPostureCheck(step)
 	step.SetError(m.stores.ConfigType.Create(step.Ctx, hostV2ConfigType))
+	m.addSystemAuthPolicies(step)
 
 	return CurrentDbVersion
 }

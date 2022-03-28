@@ -262,6 +262,7 @@ type identity struct {
 	serviceHostingPrecedences map[string]interface{}
 	serviceHostingCosts       map[string]uint16
 	config                    *config.Config
+	authPolicyId              string
 }
 
 func (entity *identity) getId() string {
@@ -291,6 +292,7 @@ func (entity *identity) toJson(isCreate bool, ctx *TestContext, _ ...string) str
 	}
 	ctx.setJsonValue(entityData, entity.serviceHostingPrecedences, "serviceHostingPrecedences")
 	ctx.setJsonValue(entityData, entity.serviceHostingCosts, "serviceHostingCosts")
+	ctx.setJsonValue(entityData, entity.authPolicyId, "authPolicyId")
 
 	if isCreate {
 		if entity.enrollment == nil {

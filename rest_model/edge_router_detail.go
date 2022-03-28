@@ -58,8 +58,8 @@ type EdgeRouterDetail struct {
 	// Format: date-time
 	EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-	// enrollment jwt
-	EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+	// enrollment Jwt
+	EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 	// enrollment token
 	EnrollmentToken *string `json:"enrollmentToken,omitempty"`
@@ -113,7 +113,7 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-		EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+		EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 		EnrollmentToken *string `json:"enrollmentToken,omitempty"`
 
@@ -141,7 +141,7 @@ func (m *EdgeRouterDetail) UnmarshalJSON(raw []byte) error {
 
 	m.EnrollmentExpiresAt = dataAO2.EnrollmentExpiresAt
 
-	m.EnrollmentJwt = dataAO2.EnrollmentJwt
+	m.EnrollmentJWT = dataAO2.EnrollmentJWT
 
 	m.EnrollmentToken = dataAO2.EnrollmentToken
 
@@ -184,7 +184,7 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 		EnrollmentExpiresAt *strfmt.DateTime `json:"enrollmentExpiresAt,omitempty"`
 
-		EnrollmentJwt *string `json:"enrollmentJwt,omitempty"`
+		EnrollmentJWT *string `json:"enrollmentJwt,omitempty"`
 
 		EnrollmentToken *string `json:"enrollmentToken,omitempty"`
 
@@ -209,7 +209,7 @@ func (m EdgeRouterDetail) MarshalJSON() ([]byte, error) {
 
 	dataAO2.EnrollmentExpiresAt = m.EnrollmentExpiresAt
 
-	dataAO2.EnrollmentJwt = m.EnrollmentJwt
+	dataAO2.EnrollmentJWT = m.EnrollmentJWT
 
 	dataAO2.EnrollmentToken = m.EnrollmentToken
 
