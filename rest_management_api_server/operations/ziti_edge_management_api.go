@@ -315,8 +315,14 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		RouterDetailTransitRouterHandler: router.DetailTransitRouterHandlerFunc(func(params router.DetailTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation router.DetailTransitRouter has not yet been implemented")
 		}),
+		IdentityDisableIdentityHandler: identity.DisableIdentityHandlerFunc(func(params identity.DisableIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.DisableIdentity has not yet been implemented")
+		}),
 		IdentityDisassociateIdentitysServiceConfigsHandler: identity.DisassociateIdentitysServiceConfigsHandlerFunc(func(params identity.DisassociateIdentitysServiceConfigsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DisassociateIdentitysServiceConfigs has not yet been implemented")
+		}),
+		IdentityEnableIdentityHandler: identity.EnableIdentityHandlerFunc(func(params identity.EnableIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.EnableIdentity has not yet been implemented")
 		}),
 		CurrentIdentityEnrollMfaHandler: current_identity.EnrollMfaHandlerFunc(func(params current_identity.EnrollMfaParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_identity.EnrollMfa has not yet been implemented")
@@ -833,8 +839,12 @@ type ZitiEdgeManagementAPI struct {
 	TerminatorDetailTerminatorHandler terminator.DetailTerminatorHandler
 	// RouterDetailTransitRouterHandler sets the operation handler for the detail transit router operation
 	RouterDetailTransitRouterHandler router.DetailTransitRouterHandler
+	// IdentityDisableIdentityHandler sets the operation handler for the disable identity operation
+	IdentityDisableIdentityHandler identity.DisableIdentityHandler
 	// IdentityDisassociateIdentitysServiceConfigsHandler sets the operation handler for the disassociate identitys service configs operation
 	IdentityDisassociateIdentitysServiceConfigsHandler identity.DisassociateIdentitysServiceConfigsHandler
+	// IdentityEnableIdentityHandler sets the operation handler for the enable identity operation
+	IdentityEnableIdentityHandler identity.EnableIdentityHandler
 	// CurrentIdentityEnrollMfaHandler sets the operation handler for the enroll mfa operation
 	CurrentIdentityEnrollMfaHandler current_identity.EnrollMfaHandler
 	// CurrentAPISessionExtendCurrentIdentityAuthenticatorHandler sets the operation handler for the extend current identity authenticator operation
@@ -1350,8 +1360,14 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	if o.RouterDetailTransitRouterHandler == nil {
 		unregistered = append(unregistered, "router.DetailTransitRouterHandler")
 	}
+	if o.IdentityDisableIdentityHandler == nil {
+		unregistered = append(unregistered, "identity.DisableIdentityHandler")
+	}
 	if o.IdentityDisassociateIdentitysServiceConfigsHandler == nil {
 		unregistered = append(unregistered, "identity.DisassociateIdentitysServiceConfigsHandler")
+	}
+	if o.IdentityEnableIdentityHandler == nil {
+		unregistered = append(unregistered, "identity.EnableIdentityHandler")
 	}
 	if o.CurrentIdentityEnrollMfaHandler == nil {
 		unregistered = append(unregistered, "current_identity.EnrollMfaHandler")
@@ -2055,10 +2071,18 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/transit-routers/{id}"] = router.NewDetailTransitRouter(o.context, o.RouterDetailTransitRouterHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/identities/{id}/disable"] = identity.NewDisableIdentity(o.context, o.IdentityDisableIdentityHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/identities/{id}/service-configs"] = identity.NewDisassociateIdentitysServiceConfigs(o.context, o.IdentityDisassociateIdentitysServiceConfigsHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/identities/{id}/enable"] = identity.NewEnableIdentity(o.context, o.IdentityEnableIdentityHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

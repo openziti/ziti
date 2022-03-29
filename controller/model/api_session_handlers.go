@@ -247,6 +247,13 @@ func (handler *ApiSessionHandler) VisitFingerprintsForApiSession(tx *bbolt.Tx, i
 	return nil
 }
 
+func (handler *ApiSessionHandler) DeleteByIdentityId(identityId string) error {
+	return handler.GetEnv().GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+		query := fmt.Sprintf(`%s = "%s"`, persistence.FieldApiSessionIdentity, identityId)
+		return handler.Store.DeleteWhere(boltz.NewMutateContext(tx), query)
+	})
+}
+
 type ApiSessionListResult struct {
 	handler     *ApiSessionHandler
 	ApiSessions []*ApiSession

@@ -2349,6 +2349,107 @@ func init() {
         }
       ]
     },
+    "/external-jwt-signers": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of external JWT signers for authentication",
+        "tags": [
+          "External JWT Signer"
+        ],
+        "summary": "List Client Authentication External JWT",
+        "operationId": "listExternalJwtSigners",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of External JWT Signers",
+            "schema": {
+              "$ref": "#/definitions/listClientExternalJwtSignersEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/posture-response": {
       "post": {
         "security": [
@@ -4067,6 +4168,39 @@ func init() {
         }
       }
     },
+    "clientExternalJwtSignerDetail": {
+      "description": "A External JWT Signer resource",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "externalAuthUrl"
+          ],
+          "properties": {
+            "externalAuthUrl": {
+              "type": "string",
+              "format": "url"
+            },
+            "name": {
+              "type": "string",
+              "example": "MyApps Signer"
+            }
+          }
+        }
+      ]
+    },
+    "clientExternalJwtSignerList": {
+      "description": "An array of External JWT Signers resources",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/clientExternalJwtSignerDetail"
+      }
+    },
     "commonEdgeRouterProperties": {
       "type": "object",
       "required": [
@@ -4625,7 +4759,8 @@ func init() {
             "serviceHostingCosts",
             "defaultHostingCost",
             "authPolicyId",
-            "externalId"
+            "externalId",
+            "disabled"
           ],
           "properties": {
             "appData": {
@@ -4642,6 +4777,19 @@ func init() {
             },
             "defaultHostingPrecedence": {
               "$ref": "#/definitions/terminatorPrecedence"
+            },
+            "disabled": {
+              "type": "boolean"
+            },
+            "disabledAt": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
+            },
+            "disabledUntil": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"
@@ -4836,6 +4984,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/authenticatorList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listClientExternalJwtSignersEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/clientExternalJwtSignerList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -8091,6 +8254,107 @@ func init() {
         }
       ]
     },
+    "/external-jwt-signers": {
+      "get": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Retrieves a list of external JWT signers for authentication",
+        "tags": [
+          "External JWT Signer"
+        ],
+        "summary": "List Client Authentication External JWT",
+        "operationId": "listExternalJwtSigners",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "type": "integer",
+            "name": "offset",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "filter",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of External JWT Signers",
+            "schema": {
+              "$ref": "#/definitions/listClientExternalJwtSignersEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/posture-response": {
       "post": {
         "security": [
@@ -9885,6 +10149,39 @@ func init() {
         }
       }
     },
+    "clientExternalJwtSignerDetail": {
+      "description": "A External JWT Signer resource",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/baseEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "name",
+            "externalAuthUrl"
+          ],
+          "properties": {
+            "externalAuthUrl": {
+              "type": "string",
+              "format": "url"
+            },
+            "name": {
+              "type": "string",
+              "example": "MyApps Signer"
+            }
+          }
+        }
+      ]
+    },
+    "clientExternalJwtSignerList": {
+      "description": "An array of External JWT Signers resources",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/clientExternalJwtSignerDetail"
+      }
+    },
     "commonEdgeRouterProperties": {
       "type": "object",
       "required": [
@@ -10444,7 +10741,8 @@ func init() {
             "serviceHostingCosts",
             "defaultHostingCost",
             "authPolicyId",
-            "externalId"
+            "externalId",
+            "disabled"
           ],
           "properties": {
             "appData": {
@@ -10461,6 +10759,19 @@ func init() {
             },
             "defaultHostingPrecedence": {
               "$ref": "#/definitions/terminatorPrecedence"
+            },
+            "disabled": {
+              "type": "boolean"
+            },
+            "disabledAt": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
+            },
+            "disabledUntil": {
+              "type": "string",
+              "format": "date-time",
+              "x-nullable": true
             },
             "enrollment": {
               "$ref": "#/definitions/identityEnrollments"
@@ -10655,6 +10966,21 @@ func init() {
       "properties": {
         "data": {
           "$ref": "#/definitions/authenticatorList"
+        },
+        "meta": {
+          "$ref": "#/definitions/meta"
+        }
+      }
+    },
+    "listClientExternalJwtSignersEnvelope": {
+      "type": "object",
+      "required": [
+        "meta",
+        "data"
+      ],
+      "properties": {
+        "data": {
+          "$ref": "#/definitions/clientExternalJwtSignerList"
         },
         "meta": {
           "$ref": "#/definitions/meta"

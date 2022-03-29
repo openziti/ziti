@@ -47,6 +47,25 @@ func MapExternalJwtSignerToRestEntity(_ *env.AppEnv, _ *response.RequestContext,
 	return restModel, nil
 }
 
+func MapClientExtJwtSignersToRestEntity(_ *env.AppEnv, _ *response.RequestContext, signers []*model.ExternalJwtSigner) ([]*rest_model.ClientExternalJWTSignerDetail, error) {
+	var ret []*rest_model.ClientExternalJWTSignerDetail
+
+	for _, signer := range signers {
+		ret = append(ret, MapClientExternalJwtSignerToRestModel(signer))
+	}
+
+	return ret, nil
+}
+
+func MapClientExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ClientExternalJWTSignerDetail {
+	ret := &rest_model.ClientExternalJWTSignerDetail{
+		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
+		ExternalAuthURL: externalJwtSigner.ExternalAuthUrl,
+		Name:            &externalJwtSigner.Name,
+	}
+	return ret
+}
+
 func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner) *rest_model.ExternalJWTSignerDetail {
 	notAfter := strfmt.DateTime(externalJwtSigner.NotAfter)
 	notBefore := strfmt.DateTime(externalJwtSigner.NotBefore)

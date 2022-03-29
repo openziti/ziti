@@ -20,11 +20,13 @@
 package tests
 
 import (
+	"github.com/golang-jwt/jwt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/rest_model"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func S(s string) *string {
@@ -1007,6 +1009,308 @@ func Test_AuthPolicies(t *testing.T) {
 
 			ctx.Req.Equal(*authPolicy.Secondary.RequireTotp, *authPolicyDetail.Secondary.RequireTotp)
 			ctx.Req.Equal(authPolicy.Secondary.RequireExtJWTSigner, authPolicyDetail.Secondary.RequireExtJWTSigner)
+		})
+	})
+
+	t.Run("disabled auth modules stop authentication", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		authPolicy := &rest_model.AuthPolicyCreate{
+			Name: S("Original Name 1 - Stops Auth"),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: B(true),
+					Allowed:           B(false),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					Allowed:        B(false),
+					AllowedSigners: []string{},
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                B(false),
+					MaxAttempts:            I(5),
+					MinPasswordLength:      I(5),
+					LockoutDurationMinutes: I(0),
+					RequireMixedCase:       B(true),
+					RequireNumberChar:      B(true),
+					RequireSpecialChar:     B(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: nil,
+				RequireTotp:         B(false),
+			},
+		}
+
+		authPolicyCreated := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
+
+		identityType := rest_model.IdentityTypeDevice
+
+		t.Run("cert authentication fails", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			identityOtt := &rest_model.IdentityCreate{
+				AuthPolicyID: &authPolicyCreated.Data.ID,
+				IsAdmin:      B(false),
+				Name:         S("test-identity-auth-policy-cert-not-allowed"),
+				Type:         &identityType,
+				Enrollment: &rest_model.IdentityCreateEnrollment{
+					Ott: true,
+				},
+			}
+
+			identityOttCreated := &rest_model.CreateEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityOtt).SetResult(identityOttCreated).Post("/identities")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityOtt, resp.Body())
+			ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
+
+			certAuthenticator := ctx.completeOttEnrollment(identityOttCreated.Data.ID)
+
+			apiSession, err := certAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.Error(err)
+			ctx.Req.Nil(apiSession)
+		})
+
+		t.Run("updb authentication fails", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			username := "test-identity-auth-policy-updb"
+			password := "123abcABC#%!#"
+
+			identityUpdb := &rest_model.IdentityCreate{
+				AuthPolicyID: &authPolicyCreated.Data.ID,
+				IsAdmin:      B(false),
+				Name:         S("test-identity-auth-policy-updb-not-allowed"),
+				Type:         &identityType,
+				Enrollment: &rest_model.IdentityCreateEnrollment{
+					Updb: username,
+				},
+			}
+
+			identityUpdbCreated := &rest_model.CreateEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityUpdb).SetResult(identityUpdbCreated).Post("/identities")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityUpdb, resp.Body())
+			ctx.Req.NotEmpty(identityUpdbCreated.Data.ID)
+
+			ctx.completeUpdbEnrollment(identityUpdbCreated.Data.ID, password)
+
+			passwordAuthenticator := &updbAuthenticator{
+				Username: username,
+				Password: password,
+			}
+
+			apiSession, err := passwordAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.Error(err)
+			ctx.Req.Nil(apiSession)
+		})
+
+		t.Run("ext jwt authentication fails", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 01")
+
+			jwtSigningCertFingerprint := nfpem.FingerprintFromCertificate(jwtSignerCert)
+
+			extJwtSigner := &rest_model.ExternalJWTSignerCreate{
+				CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
+				Enabled: B(true),
+				Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
+			}
+
+			extJwtSignerCreated := &rest_model.CreateEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreated).Post("/external-jwt-signers")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+			ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
+
+			identityExtJwt := &rest_model.IdentityCreate{
+				AuthPolicyID: &authPolicyCreated.Data.ID,
+				IsAdmin:      B(false),
+				Name:         S("test-identity-auth-policy-ext-jwt-not-allowed"),
+				Type:         &identityType,
+			}
+
+			identityExtJwtCreated := &rest_model.CreateEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+			ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
+
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.StandardClaims{
+				Audience:  "ziti.controller",
+				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+				Id:        time.Now().String(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "fake.issuer",
+				NotBefore: time.Now().Unix(),
+				Subject:   identityExtJwtCreated.Data.ID,
+			}
+
+			jwtToken.Header["kid"] = jwtSigningCertFingerprint
+
+			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivate)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err = ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+
+		})
+
+	})
+
+	t.Run("auth module limits valid ext-jwt signers", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtSignerCertAllowed, jwtSignerPrivateAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Allowed 01")
+
+		jwtSigningCertFingerprintAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertAllowed)
+
+		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
+			CertPem: S(nfpem.EncodeToString(jwtSignerCertAllowed)),
+			Enabled: B(true),
+			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
+		}
+
+		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSignerAllowed).SetResult(extJwtSignerCreatedAllowed).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSignerAllowed, resp.Body())
+		ctx.Req.NotEmpty(extJwtSignerCreatedAllowed.Data.ID)
+
+		jwtSignerCertNotAllowed, jwtSignerPrivateNotAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 02")
+
+		jwtSigningCertFingerprintNotAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertNotAllowed)
+
+		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
+			CertPem: S(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
+			Enabled: B(true),
+			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
+		}
+
+		extJwtSignerCreatedNotAllowed := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSigner).SetResult(extJwtSignerCreatedNotAllowed).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
+		ctx.Req.NotEmpty(extJwtSignerCreatedNotAllowed.Data.ID)
+
+		authPolicy := &rest_model.AuthPolicyCreate{
+			Name: S("Original Name 1 - Limits ext-jwt signers"),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: B(true),
+					Allowed:           B(false),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					Allowed: B(true),
+					AllowedSigners: []string{
+						extJwtSignerCreatedAllowed.Data.ID,
+					},
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                B(false),
+					MaxAttempts:            I(5),
+					MinPasswordLength:      I(5),
+					LockoutDurationMinutes: I(0),
+					RequireMixedCase:       B(true),
+					RequireNumberChar:      B(true),
+					RequireSpecialChar:     B(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: nil,
+				RequireTotp:         B(false),
+			},
+		}
+
+		authPolicyCreated := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
+
+		identityType := rest_model.IdentityTypeDevice
+
+		identityExtJwt := &rest_model.IdentityCreate{
+			AuthPolicyID: &authPolicyCreated.Data.ID,
+			IsAdmin:      B(false),
+			Name:         S("test-identity-auth-policy-ext-jwt-not-allowed 02"),
+			Type:         &identityType,
+		}
+
+		identityExtJwtCreated := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+		ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
+
+		t.Run("can authenticate with approved external jwt signer", func(t *testing.T) {
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.StandardClaims{
+				Audience:  "ziti.controller",
+				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+				Id:        time.Now().String(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "fake.issuer",
+				NotBefore: time.Now().Unix(),
+				Subject:   identityExtJwtCreated.Data.ID,
+			}
+
+			jwtToken.Header["kid"] = jwtSigningCertFingerprintAllowed
+
+			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivateAllowed)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err = ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+		})
+
+		t.Run("cannot authenticate with unapproved external jwt signer", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			jwtToken := jwt.New(jwt.SigningMethodES256)
+			jwtToken.Claims = jwt.StandardClaims{
+				Audience:  "ziti.controller",
+				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+				Id:        time.Now().String(),
+				IssuedAt:  time.Now().Unix(),
+				Issuer:    "fake.issuer",
+				NotBefore: time.Now().Unix(),
+				Subject:   identityExtJwtCreated.Data.ID,
+			}
+
+			jwtToken.Header["kid"] = jwtSigningCertFingerprintNotAllowed
+
+			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivateNotAllowed)
+			ctx.Req.NoError(err)
+			ctx.Req.NotEmpty(jwtStrSigned)
+
+			result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err = ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
 		})
 	})
 }

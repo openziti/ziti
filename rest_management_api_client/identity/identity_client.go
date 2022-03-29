@@ -64,7 +64,11 @@ type ClientService interface {
 
 	DetailIdentityType(params *DetailIdentityTypeParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailIdentityTypeOK, error)
 
+	DisableIdentity(params *DisableIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DisableIdentityOK, error)
+
 	DisassociateIdentitysServiceConfigs(params *DisassociateIdentitysServiceConfigsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DisassociateIdentitysServiceConfigsOK, error)
+
+	EnableIdentity(params *EnableIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*EnableIdentityOK, error)
 
 	GetIdentityAuthenticators(params *GetIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityAuthenticatorsOK, error)
 
@@ -305,6 +309,48 @@ func (a *Client) DetailIdentityType(params *DetailIdentityTypeParams, authInfo r
 }
 
 /*
+  DisableIdentity sets an identity as disabled
+
+  Allows an admin disable an identity for a set amount of time or indefinitely.
+
+*/
+func (a *Client) DisableIdentity(params *DisableIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DisableIdentityOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewDisableIdentityParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "disableIdentity",
+		Method:             "POST",
+		PathPattern:        "/identities/{id}/disable",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &DisableIdentityReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*DisableIdentityOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for disableIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
   DisassociateIdentitysServiceConfigs removes associated service configs from a specific identity
 
   Remove service configs from a specific identity
@@ -342,6 +388,48 @@ func (a *Client) DisassociateIdentitysServiceConfigs(params *DisassociateIdentit
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for disassociateIdentitysServiceConfigs: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  EnableIdentity clears all disabled state from an identity
+
+  Allows an admin to remove disabled statuses from an identity.
+
+*/
+func (a *Client) EnableIdentity(params *EnableIdentityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*EnableIdentityOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewEnableIdentityParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "enableIdentity",
+		Method:             "POST",
+		PathPattern:        "/identities/{id}/enable",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &EnableIdentityReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*EnableIdentityOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for enableIdentity: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

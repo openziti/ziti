@@ -466,9 +466,19 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation router.DetailTransitRouter has not yet been implemented")
 		})
 	}
+	if api.IdentityDisableIdentityHandler == nil {
+		api.IdentityDisableIdentityHandler = identity.DisableIdentityHandlerFunc(func(params identity.DisableIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.DisableIdentity has not yet been implemented")
+		})
+	}
 	if api.IdentityDisassociateIdentitysServiceConfigsHandler == nil {
 		api.IdentityDisassociateIdentitysServiceConfigsHandler = identity.DisassociateIdentitysServiceConfigsHandlerFunc(func(params identity.DisassociateIdentitysServiceConfigsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.DisassociateIdentitysServiceConfigs has not yet been implemented")
+		})
+	}
+	if api.IdentityEnableIdentityHandler == nil {
+		api.IdentityEnableIdentityHandler = identity.EnableIdentityHandlerFunc(func(params identity.EnableIdentityParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.EnableIdentity has not yet been implemented")
 		})
 	}
 	if api.CurrentIdentityEnrollMfaHandler == nil {

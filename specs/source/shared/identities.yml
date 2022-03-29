@@ -31,6 +31,7 @@ definitions:
           - defaultHostingCost
           - authPolicyId
           - externalId
+          - disabled
         properties:
           name:
             type: string
@@ -72,6 +73,16 @@ definitions:
             $ref: 'base-entity.yml#/definitions/tags'
           externalId:
             type: string
+          disabled:
+            type: boolean
+          disabledAt:
+            type: string
+            format: date-time
+            x-nullable: true
+          disabledUntil:
+            type: string
+            format: date-time
+            x-nullable: true
   identityAuthenticators:
     type: object
     properties:

@@ -62,6 +62,18 @@ type IdentityDetail struct {
 	// default hosting precedence
 	DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
+	// disabled
+	// Required: true
+	Disabled *bool `json:"disabled"`
+
+	// disabled at
+	// Format: date-time
+	DisabledAt *strfmt.DateTime `json:"disabledAt,omitempty"`
+
+	// disabled until
+	// Format: date-time
+	DisabledUntil *strfmt.DateTime `json:"disabledUntil,omitempty"`
+
 	// enrollment
 	// Required: true
 	Enrollment *IdentityEnrollments `json:"enrollment"`
@@ -144,6 +156,12 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
+		Disabled *bool `json:"disabled"`
+
+		DisabledAt *strfmt.DateTime `json:"disabledAt,omitempty"`
+
+		DisabledUntil *strfmt.DateTime `json:"disabledUntil,omitempty"`
+
 		Enrollment *IdentityEnrollments `json:"enrollment"`
 
 		EnvInfo *EnvInfo `json:"envInfo"`
@@ -187,6 +205,12 @@ func (m *IdentityDetail) UnmarshalJSON(raw []byte) error {
 	m.DefaultHostingCost = dataAO1.DefaultHostingCost
 
 	m.DefaultHostingPrecedence = dataAO1.DefaultHostingPrecedence
+
+	m.Disabled = dataAO1.Disabled
+
+	m.DisabledAt = dataAO1.DisabledAt
+
+	m.DisabledUntil = dataAO1.DisabledUntil
 
 	m.Enrollment = dataAO1.Enrollment
 
@@ -241,6 +265,12 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 
 		DefaultHostingPrecedence TerminatorPrecedence `json:"defaultHostingPrecedence,omitempty"`
 
+		Disabled *bool `json:"disabled"`
+
+		DisabledAt *strfmt.DateTime `json:"disabledAt,omitempty"`
+
+		DisabledUntil *strfmt.DateTime `json:"disabledUntil,omitempty"`
+
 		Enrollment *IdentityEnrollments `json:"enrollment"`
 
 		EnvInfo *EnvInfo `json:"envInfo"`
@@ -281,6 +311,12 @@ func (m IdentityDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.DefaultHostingCost = m.DefaultHostingCost
 
 	dataAO1.DefaultHostingPrecedence = m.DefaultHostingPrecedence
+
+	dataAO1.Disabled = m.Disabled
+
+	dataAO1.DisabledAt = m.DisabledAt
+
+	dataAO1.DisabledUntil = m.DisabledUntil
 
 	dataAO1.Enrollment = m.Enrollment
 
@@ -346,6 +382,18 @@ func (m *IdentityDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateDefaultHostingPrecedence(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisabled(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisabledAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisabledUntil(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -500,6 +548,41 @@ func (m *IdentityDetail) validateDefaultHostingPrecedence(formats strfmt.Registr
 		} else if ce, ok := err.(*errors.CompositeError); ok {
 			return ce.ValidateName("defaultHostingPrecedence")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateDisabled(formats strfmt.Registry) error {
+
+	if err := validate.Required("disabled", "body", m.Disabled); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateDisabledAt(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DisabledAt) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("disabledAt", "body", "date-time", m.DisabledAt.String(), formats); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *IdentityDetail) validateDisabledUntil(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.DisabledUntil) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("disabledUntil", "body", "date-time", m.DisabledUntil.String(), formats); err != nil {
 		return err
 	}
 

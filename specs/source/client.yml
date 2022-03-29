@@ -77,6 +77,9 @@ paths:
   '/enroll/extend/router':
     $ref: 'client/enroll.yml#/paths/enroll-extend-router'
 
+  '/external-jwt-signers':
+    $ref: 'client/ext-jwt-signers.yml#/paths/external-jwt-signers'
+
   '/posture-response':
     $ref: 'client/posture-response.yml#/paths/posture-response'
   '/posture-response-bulk':

@@ -403,7 +403,51 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
-
+  identities-id-enable:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    post:
+      summary: Clears all disabled state from an identity
+      description: |
+        Allows an admin to remove disabled statuses from an identity.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+      operationId: enableIdentity
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  identities-id-disable:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    post:
+      summary: Set an identity as disabled
+      description: |
+        Allows an admin disable an identity for a set amount of time or indefinitely.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+      operationId: disableIdentity
+      parameters:
+        - name: disable
+          in: body
+          required: true
+          description: Disable parameters
+          schema:
+            $ref: '#/definitions/disableParams'
+      responses:
+        '200':
+          $ref: '../shared/standard-responses.yml#/responses/emptyResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
 responses:
   listIdentities:
     description: A list of identities
@@ -435,6 +479,13 @@ responses:
       $ref: '#/definitions/traceDetailEnvelope'
 
 definitions:
+  disableParams:
+    type: object
+    required:
+      - durationMinutes
+    properties:
+      durationMinutes:
+        type: integer
   listIdentitiesEnvelope:
     type: object
     required:

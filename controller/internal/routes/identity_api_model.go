@@ -254,6 +254,21 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 	if appData.SubTags == nil {
 		appData.SubTags = map[string]interface{}{}
 	}
+
+	var disabledAt *strfmt.DateTime
+
+	if identity.DisabledAt != nil {
+		at := strfmt.DateTime(*identity.DisabledAt)
+		disabledAt = &at
+	}
+
+	var disabledUntil *strfmt.DateTime
+
+	if identity.DisabledUntil != nil {
+		until := strfmt.DateTime(*identity.DisabledUntil)
+		disabledUntil = &until
+	}
+
 	ret := &rest_model.IdentityDetail{
 		BaseEntity:                BaseEntityToRestModel(identity, IdentityLinkFactory),
 		IsAdmin:                   &identity.IsAdmin,
@@ -271,6 +286,9 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		IsMfaEnabled:              &isMfaEnabled,
 		AppData:                   &appData,
 		AuthPolicyID:              &identity.AuthPolicyId,
+		Disabled:                  &identity.Disabled,
+		DisabledAt:                disabledAt,
+		DisabledUntil:             disabledUntil,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

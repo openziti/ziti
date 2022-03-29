@@ -35,7 +35,6 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 
 	// create a bunch of signers to use
-
 	validJwtSignerCommonName := "valid signer"
 	validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert(validJwtSignerCommonName)
 	validJwtSignerCertPem := nfpem.EncodeToString(validJwtSignerCert)

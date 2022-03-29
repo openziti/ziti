@@ -40,6 +40,7 @@ import (
 	"github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_client_api_server/operations/current_identity"
 	"github.com/openziti/edge/rest_client_api_server/operations/enroll"
+	"github.com/openziti/edge/rest_client_api_server/operations/external_jwt_signer"
 	"github.com/openziti/edge/rest_client_api_server/operations/informational"
 	"github.com/openziti/edge/rest_client_api_server/operations/posture_checks"
 	"github.com/openziti/edge/rest_client_api_server/operations/service"
@@ -282,6 +283,11 @@ func configureAPI(api *operations.ZitiEdgeClientAPI) http.Handler {
 	if api.CurrentAPISessionListCurrentIdentityAuthenticatorsHandler == nil {
 		api.CurrentAPISessionListCurrentIdentityAuthenticatorsHandler = current_api_session.ListCurrentIdentityAuthenticatorsHandlerFunc(func(params current_api_session.ListCurrentIdentityAuthenticatorsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation current_api_session.ListCurrentIdentityAuthenticators has not yet been implemented")
+		})
+	}
+	if api.ExternalJWTSignerListExternalJWTSignersHandler == nil {
+		api.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer.ListExternalJWTSignersParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation external_jwt_signer.ListExternalJWTSigners has not yet been implemented")
 		})
 	}
 	if api.InformationalListProtocolsHandler == nil {
