@@ -119,10 +119,10 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		return nil
 	}
 
-	starTime := time.Now()
+	startTime := time.Now()
 
 	defer func() {
-		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerRun).UpdateSince(starTime)
+		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerRun).UpdateSince(startTime)
 	}()
 
 	result, err := enforcer.appEnv.GetHandlers().Session.Query("")
