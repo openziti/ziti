@@ -18,7 +18,6 @@ package cmd
 
 import (
 	"fmt"
-	
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/viper"
