@@ -138,10 +138,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 		if i == len(self.Links)-1 {
 			// egress
 			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt}
-			routeMessage.Egress = &ctrl_pb.Route_Egress{
-				Binding:     terminator.GetBinding(),
-				Address:     self.EgressId,
-				Destination: terminator.GetAddress(),
+			if attempt != SmartRerouteAttempt {
+				routeMessage.Egress = &ctrl_pb.Route_Egress{
+					Binding:     terminator.GetBinding(),
+					Address:     self.EgressId,
+					Destination: terminator.GetAddress(),
+				}
 			}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.EgressId,

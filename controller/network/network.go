@@ -611,7 +611,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 }
 
 func (network *Network) RemoveCircuit(circuitId string, now bool) error {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
 	if ss, found := network.circuitController.get(circuitId); found {
 		for _, r := range ss.Path.Nodes {
@@ -629,7 +629,7 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
 		}
 
-		log.Debugf("removed circuit [s/%s]", ss.Id)
+		log.Debug("removed circuit")
 
 		return nil
 	}
@@ -792,10 +792,11 @@ func (network *Network) rerouteLink(l *Link) error {
 }
 
 func (network *Network) rerouteCircuit(circuit *Circuit) error {
+	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 	if circuit.Rerouting.CompareAndSwap(false, true) {
 		defer circuit.Rerouting.Set(false)
 
-		logrus.Warnf("rerouting [s/%s]", circuit.Id)
+		log.Warn("rerouting circuit")
 
 		if cq, err := network.UpdatePath(circuit.Path); err == nil {
 			circuit.Path = cq
@@ -804,11 +805,11 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 
 			for i := 0; i < len(cq.Nodes); i++ {
 				if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {
-					logrus.Errorf("error sending route to [r/%s] (%s)", cq.Nodes[i].Id, err)
+					log.WithError(err).Errorf("error sending route to [r/%s]", cq.Nodes[i].Id)
 				}
 			}
 
-			logrus.Infof("rerouted circuit [s/%s]", circuit.Id)
+			log.Info("rerouted circuit")
 
 			network.CircuitEvent(CircuitUpdated, circuit)
 			return nil
@@ -816,7 +817,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 			return err
 		}
 	} else {
-		logrus.Infof("not rerouting [s/%s], already in progress", circuit.Id)
+		log.Info("not rerouting circuit, already in progress")
 		return nil
 	}
 }
