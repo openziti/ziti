@@ -25,6 +25,7 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/foundation/util/stringz"
 	"net/http"
 	"time"
 )
@@ -86,6 +87,23 @@ func (router *CurrentSessionRouter) Register(ae *env.AppEnv) {
 
 func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	apiSession := MapToCurrentApiSessionRestModel(ae, rc.ApiSession, ae.Config.SessionTimeoutDuration())
+
+	if rc.AuthStatus.SecondaryExtJwtSignerId != "" && !rc.AuthStatus.PassedSecondaryExtJwtSignerId {
+		extJwtSigner, err := ae.GetHandlers().ExternalJwtSigner.Read(rc.AuthStatus.SecondaryExtJwtSignerId)
+
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		authQuery := &rest_model.AuthQueryDetail{
+			TypeID:  "EXT-JWT",
+			HTTPURL: stringz.OrEmpty(extJwtSigner.ExternalAuthUrl),
+		}
+
+		apiSession.AuthQueries = append(apiSession.AuthQueries, authQuery)
+	}
+
 	rc.Respond(rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}, http.StatusOK)
 }
 

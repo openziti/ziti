@@ -100,7 +100,15 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	return signerRecord.cert.PublicKey, nil
 }
 
-func (a AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+func (a *AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+	return a.process(context, true)
+}
+
+func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+	return a.process(context, false)
+}
+
+func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identityId, externalId, authenticatorId string, err error) {
 	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
 
 	headers := map[string]interface{}{}
@@ -109,7 +117,11 @@ func (a AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, 
 		headers[strings.ToLower(key)] = value
 	}
 
-	authHeaders := headers["authorization"].([]string)
+	var authHeaders []string
+
+	if authHeaderVal, ok := headers["authorization"]; ok {
+		authHeaders = authHeaderVal.([]string)
+	}
 
 	if len(authHeaders) != 1 {
 		logger.Error("no authorization header found")
@@ -177,7 +189,7 @@ func (a AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, 
 			logger.WithError(err).Error("encountered unhandled nil auth policy during authentication")
 			return "", "", "", apierror.NewInvalidAuth()
 		}
-
+		externaJwtSignerId := ""
 		if identity.Disabled {
 			logger.
 				WithField("disabledAt", identity.DisabledAt).
@@ -191,27 +203,36 @@ func (a AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, 
 			return "", "", "", apierror.NewInvalidAuth()
 		}
 
-		if len(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners) > 0 {
-			found := false
-			for _, allowedId := range authPolicy.Primary.ExtJwt.AllowedExtJwtSigners {
-				if allowedId == extJwt.Id {
-					found = true
-					break
+		if isPrimary {
+			if len(authPolicy.Primary.ExtJwt.AllowedExtJwtSigners) > 0 {
+				found := false
+				for _, allowedId := range authPolicy.Primary.ExtJwt.AllowedExtJwtSigners {
+					if allowedId == extJwt.Id {
+						externaJwtSignerId = allowedId
+						found = true
+						break
+					}
+				}
+
+				if !found {
+					logger.
+						WithField("allowedSigners", authPolicy.Primary.ExtJwt.AllowedExtJwtSigners).
+						Error("auth policy does not allow specified signer")
+					return "", "", "", apierror.NewInvalidAuth()
 				}
 			}
-
-			if !found {
-				logger.
-					WithField("allowedSigners", authPolicy.Primary.ExtJwt.AllowedExtJwtSigners).
-					Error("auth policy does not allow specified signer")
+		} else if authPolicy.Secondary.RequiredExtJwtSigner != nil {
+			if extJwt.Id != *authPolicy.Secondary.RequiredExtJwtSigner {
 				return "", "", "", apierror.NewInvalidAuth()
 			}
+
+			externaJwtSignerId = extJwt.Id
 		}
 
 		if extJwt.UseExternalId {
-			return "", identityId, AuthMethodExtJwt, nil
+			return "", identityId, externaJwtSignerId, nil
 		}
-		return identityId, "", AuthMethodExtJwt, nil
+		return identityId, "", externaJwtSignerId, nil
 	}
 
 	logger.Error("authorization failed, jwt did not verify")

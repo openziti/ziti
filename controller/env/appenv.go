@@ -278,11 +278,43 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 	}
 
 	if rc.Identity != nil {
-		if !rc.ApiSession.MfaRequired || rc.ApiSession.MfaComplete {
-			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
+		var err error
+		rc.AuthPolicy, err = ae.GetHandlers().AuthPolicy.Read(rc.Identity.AuthPolicyId)
 
-		} else {
+		if err != nil {
+			if boltz.IsErrNotFoundErr(err) {
+				apiErr := errorz.NewUnauthorized()
+				apiErr.Cause = fmt.Errorf("associated auth policy %s not found", rc.Identity.AuthPolicyId)
+				apiErr.AppendCause = true
+				return apiErr
+			} else {
+				return err
+			}
+		}
+
+		if rc.AuthPolicy == nil {
+			err := fmt.Errorf("unahndled scenario, nil auth policy [%s] found on identity [%s]", rc.Identity.AuthPolicyId, rc.Identity.Id)
+			logger.Error(err)
+			return err
+		}
+
+		totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
+
+		isPartialAuth := false
+		if totpRequired && !rc.ApiSession.MfaComplete {
+			isPartialAuth = true
+		}
+
+		if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {
+			if !processSecondaryJwtSigner(ae, rc) {
+				isPartialAuth = true
+			}
+		}
+
+		if isPartialAuth {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.PartiallyAuthenticatePermission)
+		} else {
+			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
 		}
 
 		if rc.Identity.IsAdmin {
@@ -290,6 +322,34 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 		}
 	}
 	return nil
+}
+
+func processSecondaryJwtSigner(ae *AppEnv, rc *response.RequestContext) bool {
+	if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {
+		rc.AuthStatus.SecondaryExtJwtSignerId = *rc.AuthPolicy.Secondary.RequiredExtJwtSigner
+		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
+		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
+		if extJwtAuth != nil {
+			identityId, externalId, extJwtSignerId, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil))
+
+			if err != nil {
+				return false
+			}
+
+			if rc.AuthStatus.SecondaryExtJwtSignerId != extJwtSignerId {
+				return false
+			}
+
+			if (identityId != "" && identityId == rc.Identity.Id) || (externalId != "" && rc.Identity.ExternalId != nil && externalId == *rc.Identity.ExternalId) {
+				rc.AuthStatus.PassedSecondaryExtJwtSignerId = true
+				return true
+			}
+		}
+
+		return false
+	}
+
+	return true
 }
 
 func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
