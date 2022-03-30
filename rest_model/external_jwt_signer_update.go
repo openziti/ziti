@@ -57,6 +57,10 @@ type ExternalJWTSignerUpdate struct {
 	// external auth Url
 	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
 
+	// kid
+	// Required: true
+	Kid *string `json:"kid"`
+
 	// name
 	// Example: MyApps Signer
 	// Required: true
@@ -78,6 +82,10 @@ func (m *ExternalJWTSignerUpdate) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateEnabled(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateKid(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -107,6 +115,15 @@ func (m *ExternalJWTSignerUpdate) validateCertPem(formats strfmt.Registry) error
 func (m *ExternalJWTSignerUpdate) validateEnabled(formats strfmt.Registry) error {
 
 	if err := validate.Required("enabled", "body", m.Enabled); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerUpdate) validateKid(formats strfmt.Registry) error {
+
+	if err := validate.Required("kid", "body", m.Kid); err != nil {
 		return err
 	}
 

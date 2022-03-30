@@ -54,6 +54,9 @@ type ExternalJWTSignerPatch struct {
 	// external auth Url
 	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
 
+	// kid
+	Kid *string `json:"kid,omitempty"`
+
 	// name
 	// Example: MyApps Signer
 	Name *string `json:"name,omitempty"`

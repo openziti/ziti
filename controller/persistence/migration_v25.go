@@ -39,10 +39,10 @@ func (m *Migrations) addSystemAuthPolicies(step *boltz.MigrationStep) {
 			Updb: AuthPolicyUpdb{
 				Allowed:            true,
 				MinPasswordLength:  DefaultUpdbMinPasswordLength,
-				RequireSpecialChar: true,
-				RequireNumberChar:  true,
-				RequireMixedCase:   true,
-				MaxAttempts:        5,
+				RequireSpecialChar: false,
+				RequireNumberChar:  false,
+				RequireMixedCase:   false,
+				MaxAttempts:        0,
 			},
 			ExtJwt: AuthPolicyExtJwt{
 				Allowed:              true,

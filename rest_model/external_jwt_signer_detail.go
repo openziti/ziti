@@ -68,6 +68,10 @@ type ExternalJWTSignerDetail struct {
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
 
+	// kid
+	// Required: true
+	Kid *string `json:"kid"`
+
 	// name
 	// Example: MyApps Signer
 	// Required: true
@@ -111,6 +115,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 
 		Fingerprint *string `json:"fingerprint"`
 
+		Kid *string `json:"kid"`
+
 		Name *string `json:"name"`
 
 		NotAfter *strfmt.DateTime `json:"notAfter"`
@@ -134,6 +140,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	m.ExternalAuthURL = dataAO1.ExternalAuthURL
 
 	m.Fingerprint = dataAO1.Fingerprint
+
+	m.Kid = dataAO1.Kid
 
 	m.Name = dataAO1.Name
 
@@ -168,6 +176,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 
 		Fingerprint *string `json:"fingerprint"`
 
+		Kid *string `json:"kid"`
+
 		Name *string `json:"name"`
 
 		NotAfter *strfmt.DateTime `json:"notAfter"`
@@ -188,6 +198,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.ExternalAuthURL = m.ExternalAuthURL
 
 	dataAO1.Fingerprint = m.Fingerprint
+
+	dataAO1.Kid = m.Kid
 
 	dataAO1.Name = m.Name
 
@@ -235,6 +247,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateFingerprint(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateKid(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -308,6 +324,15 @@ func (m *ExternalJWTSignerDetail) validateExternalAuthURL(formats strfmt.Registr
 func (m *ExternalJWTSignerDetail) validateFingerprint(formats strfmt.Registry) error {
 
 	if err := validate.Required("fingerprint", "body", m.Fingerprint); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateKid(formats strfmt.Registry) error {
+
+	if err := validate.Required("kid", "body", m.Kid); err != nil {
 		return err
 	}
 
