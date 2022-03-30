@@ -225,6 +225,7 @@ definitions:
     type: object
     required:
       - requireTotp
+      - requireExtJwtSigner
     properties:
       requireTotp:
         type: boolean

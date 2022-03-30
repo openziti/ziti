@@ -21,6 +21,7 @@ package tests
 
 import (
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/rest_model"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"net/http"
@@ -40,12 +41,12 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	validJwtSignerCertPem := nfpem.EncodeToString(validJwtSignerCert)
 	validJwtSignerName := "Test JWT Signer - Enabled"
 	validJwtSignerEnabled := true
-	validJwtSignerFingerprint := nfpem.FingerprintFromCertificate(validJwtSignerCert)
 
 	validJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem: &validJwtSignerCertPem,
 		Enabled: &validJwtSignerEnabled,
 		Name:    &validJwtSignerName,
+		Kid:     S(uuid.NewString()),
 	}
 
 	createResponseEnv := &rest_model.CreateEnvelope{}
@@ -59,12 +60,12 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	notEnabledJwtSignerCertPem := nfpem.EncodeToString(notEnabledJwtSignerCert)
 	notEnabledJwtSignerName := "Test JWT Signer - Not Enabled"
 	notEnabledJwtSignerEnabled := false
-	notEnabledJwtSignerFingerprint := nfpem.FingerprintFromCertificate(notEnabledJwtSignerCert)
 
 	notEnabledJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem: &notEnabledJwtSignerCertPem,
 		Enabled: &notEnabledJwtSignerEnabled,
 		Name:    &notEnabledJwtSignerName,
+		Kid:     S(uuid.NewString()),
 	}
 
 	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(notEnabledJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
@@ -89,7 +90,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			Subject:   ctx.AdminManagementSession.identityId,
 		}
 
-		jwtToken.Header["kid"] = validJwtSignerFingerprint
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
 
 		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
 		ctx.Req.NoError(err)
@@ -120,7 +121,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			Subject:   ctx.AdminManagementSession.identityId,
 		}
 
-		jwtToken.Header["kid"] = notEnabledJwtSignerFingerprint
+		jwtToken.Header["kid"] = *notEnabledJwtSigner.Kid
 
 		jwtStrSigned, err := jwtToken.SignedString(notEnabledJwtSignerPrivateKey)
 		ctx.Req.NoError(err)
@@ -172,7 +173,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			Subject:   ctx.AdminManagementSession.identityId,
 		}
 
-		jwtToken.Header["kid"] = validJwtSignerFingerprint
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
 
 		jwtStrSigned, err := jwtToken.SignedString(invalidJwtSignerPrivateKey)
 		ctx.Req.NoError(err)

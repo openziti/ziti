@@ -21,6 +21,7 @@ package tests
 
 import (
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/rest_model"
 	nfpem "github.com/openziti/foundation/util/pem"
@@ -55,6 +56,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -245,6 +247,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy Patch"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -350,6 +353,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy Patch1"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -547,6 +551,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert1)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Delete Scenarios 1"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated1 := &rest_model.CreateEnvelope{}
@@ -561,6 +566,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert2)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Delete Scenarios 2"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated2 := &rest_model.CreateEnvelope{}
@@ -807,6 +813,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Update Default"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -925,6 +932,7 @@ func Test_AuthPolicies(t *testing.T) {
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy 08"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -1116,12 +1124,11 @@ func Test_AuthPolicies(t *testing.T) {
 
 			jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 01")
 
-			jwtSigningCertFingerprint := nfpem.FingerprintFromCertificate(jwtSignerCert)
-
 			extJwtSigner := &rest_model.ExternalJWTSignerCreate{
 				CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 				Enabled: B(true),
 				Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
+				Kid:     S(uuid.NewString()),
 			}
 
 			extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -1156,7 +1163,7 @@ func Test_AuthPolicies(t *testing.T) {
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
-			jwtToken.Header["kid"] = jwtSigningCertFingerprint
+			jwtToken.Header["kid"] = *extJwtSigner.Kid
 
 			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivate)
 			ctx.Req.NoError(err)
@@ -1177,12 +1184,11 @@ func Test_AuthPolicies(t *testing.T) {
 
 		jwtSignerCertAllowed, jwtSignerPrivateAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Allowed 01")
 
-		jwtSigningCertFingerprintAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertAllowed)
-
 		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
 			CertPem: S(nfpem.EncodeToString(jwtSignerCertAllowed)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
@@ -1194,12 +1200,11 @@ func Test_AuthPolicies(t *testing.T) {
 
 		jwtSignerCertNotAllowed, jwtSignerPrivateNotAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 02")
 
-		jwtSigningCertFingerprintNotAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertNotAllowed)
-
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem: S(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreatedNotAllowed := &rest_model.CreateEnvelope{}
@@ -1273,7 +1278,7 @@ func Test_AuthPolicies(t *testing.T) {
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
-			jwtToken.Header["kid"] = jwtSigningCertFingerprintAllowed
+			jwtToken.Header["kid"] = *extJwtSignerAllowed.Kid
 
 			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivateAllowed)
 			ctx.Req.NoError(err)
@@ -1300,7 +1305,7 @@ func Test_AuthPolicies(t *testing.T) {
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
 
-			jwtToken.Header["kid"] = jwtSigningCertFingerprintNotAllowed
+			jwtToken.Header["kid"] = *extJwtSigner.Kid
 
 			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivateNotAllowed)
 			ctx.Req.NoError(err)
@@ -1319,13 +1324,12 @@ func Test_AuthPolicies(t *testing.T) {
 
 		jwtSignerCertAllowed, validJwtSignerPrivateKey := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT FA 01")
 
-		jwtSigningCertFingerprintAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertAllowed)
-
 		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
 			CertPem:         S(nfpem.EncodeToString(jwtSignerCertAllowed)),
 			Enabled:         B(true),
 			Name:            S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT FA 01"),
 			ExternalAuthURL: S("https://get.some.jwt.here"),
+			Kid:             S(uuid.NewString()),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
@@ -1432,7 +1436,7 @@ func Test_AuthPolicies(t *testing.T) {
 					Subject:   identityExtJwtCreated.Data.ID,
 				}
 
-				jwtToken.Header["kid"] = jwtSigningCertFingerprintAllowed
+				jwtToken.Header["kid"] = *extJwtSignerAllowed.Kid
 
 				jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
 				ctx.Req.NoError(err)

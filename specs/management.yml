@@ -12462,6 +12462,7 @@ definitions:
     type: object
     required:
     - requireTotp
+    - requireExtJwtSigner
     properties:
       requireExtJwtSigner:
         type: string
@@ -13732,6 +13733,7 @@ definitions:
     - name
     - certPem
     - enabled
+    - kid
     properties:
       certPem:
         type: string
@@ -13744,6 +13746,8 @@ definitions:
         type: string
         format: url
         x-nullable: true
+      kid:
+        type: string
       name:
         type: string
         example: MyApps Signer
@@ -13769,6 +13773,7 @@ definitions:
       - externalAuthUrl
       - claimsProperty
       - useExternalId
+      - kid
       properties:
         certPem:
           type: string
@@ -13782,6 +13787,8 @@ definitions:
           type: string
           format: url
         fingerprint:
+          type: string
+        kid:
           type: string
         name:
           type: string
@@ -13815,6 +13822,9 @@ definitions:
         type: string
         format: url
         x-nullable: true
+      kid:
+        type: string
+        x-nullable: true
       name:
         type: string
         x-nullable: true
@@ -13830,6 +13840,7 @@ definitions:
     - name
     - certPem
     - enabled
+    - kid
     properties:
       certPem:
         type: string
@@ -13842,6 +13853,8 @@ definitions:
         type: string
         format: url
         x-nullable: true
+      kid:
+        type: string
       name:
         type: string
         example: MyApps Signer

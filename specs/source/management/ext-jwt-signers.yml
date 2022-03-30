@@ -177,6 +177,7 @@ definitions:
           - externalAuthUrl
           - claimsProperty
           - useExternalId
+          - kid
         properties:
           name:
             type: string
@@ -202,6 +203,8 @@ definitions:
             type: string
           useExternalId:
             type: boolean
+          kid:
+            type: string
   externalJwtSignerCreate:
     description: A create Certificate Authority (CA) object
     type: object
@@ -209,6 +212,7 @@ definitions:
       - name
       - certPem
       - enabled
+      - kid
     properties:
       name:
         type: string
@@ -221,6 +225,8 @@ definitions:
         type: string
         format: url
         x-nullable: true
+      kid:
+        type: string
       claimsProperty:
         type: string
         x-nullable: true
@@ -235,6 +241,7 @@ definitions:
       - name
       - certPem
       - enabled
+      - kid
     properties:
       name:
         type: string
@@ -243,6 +250,8 @@ definitions:
         type: string
       enabled:
         type: boolean
+      kid:
+        type: string
       externalAuthUrl:
         type: string
         format: url
@@ -267,6 +276,9 @@ definitions:
         x-nullable: true
       enabled:
         type: boolean
+        x-nullable: true
+      kid:
+        type: string
         x-nullable: true
       externalAuthUrl:
         type: string

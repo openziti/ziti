@@ -82,6 +82,7 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 		NotAfter:        &notAfter,
 		NotBefore:       &notBefore,
 		UseExternalID:   &externalJwtSigner.UseExternalId,
+		Kid:             &externalJwtSigner.Kid,
 	}
 	return ret
 }
@@ -95,6 +96,7 @@ func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreat
 		ExternalAuthUrl: signer.ExternalAuthURL,
 		ClaimsProperty:  signer.ClaimsProperty,
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
+		Kid:             *signer.Kid,
 	}
 }
 
@@ -116,6 +118,7 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
 		ClaimsProperty:  signer.ClaimsProperty,
 		ExternalAuthUrl: signer.ExternalAuthURL,
+		Kid:             *signer.Kid,
 	}
 }
 
@@ -137,5 +140,6 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 		ExternalAuthUrl: signer.ExternalAuthURL,
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
 		ClaimsProperty:  signer.ClaimsProperty,
+		Kid:             stringz.OrEmpty(signer.Kid),
 	}
 }

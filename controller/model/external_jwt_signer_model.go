@@ -41,6 +41,7 @@ type ExternalJwtSigner struct {
 	Fingerprint string
 	NotAfter    time.Time
 	NotBefore   time.Time
+	Kid         string
 }
 
 func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
@@ -66,6 +67,7 @@ func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
 		ExternalAuthUrl: entity.ExternalAuthUrl,
 		UseExternalId:   entity.UseExternalId,
 		ClaimsProperty:  entity.ClaimsProperty,
+		Kid:             entity.Kid,
 	}
 
 	return signer, nil
@@ -88,6 +90,7 @@ func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.
 		ExternalAuthUrl: entity.ExternalAuthUrl,
 		UseExternalId:   entity.UseExternalId,
 		ClaimsProperty:  entity.ClaimsProperty,
+		Kid:             entity.Kid,
 	}
 
 	if entity.CertPem != "" {
@@ -125,5 +128,6 @@ func (entity *ExternalJwtSigner) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity bol
 	entity.ExternalAuthUrl = boltExternalJwtSigner.ExternalAuthUrl
 	entity.ClaimsProperty = boltExternalJwtSigner.ClaimsProperty
 	entity.UseExternalId = boltExternalJwtSigner.UseExternalId
+	entity.Kid = boltExternalJwtSigner.Kid
 	return nil
 }

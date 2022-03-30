@@ -17233,7 +17233,8 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp"
+        "requireTotp",
+        "requireExtJwtSigner"
       ],
       "properties": {
         "requireExtJwtSigner": {
@@ -19041,7 +19042,8 @@ func init() {
       "required": [
         "name",
         "certPem",
-        "enabled"
+        "enabled",
+        "kid"
       ],
       "properties": {
         "certPem": {
@@ -19058,6 +19060,9 @@ func init() {
           "type": "string",
           "format": "url",
           "x-nullable": true
+        },
+        "kid": {
+          "type": "string"
         },
         "name": {
           "type": "string",
@@ -19091,7 +19096,8 @@ func init() {
             "notBefore",
             "externalAuthUrl",
             "claimsProperty",
-            "useExternalId"
+            "useExternalId",
+            "kid"
           ],
           "properties": {
             "certPem": {
@@ -19111,6 +19117,9 @@ func init() {
               "format": "url"
             },
             "fingerprint": {
+              "type": "string"
+            },
+            "kid": {
               "type": "string"
             },
             "name": {
@@ -19159,6 +19168,10 @@ func init() {
           "format": "url",
           "x-nullable": true
         },
+        "kid": {
+          "type": "string",
+          "x-nullable": true
+        },
         "name": {
           "type": "string",
           "x-nullable": true,
@@ -19178,7 +19191,8 @@ func init() {
       "required": [
         "name",
         "certPem",
-        "enabled"
+        "enabled",
+        "kid"
       ],
       "properties": {
         "certPem": {
@@ -19195,6 +19209,9 @@ func init() {
           "type": "string",
           "format": "url",
           "x-nullable": true
+        },
+        "kid": {
+          "type": "string"
         },
         "name": {
           "type": "string",
@@ -40026,7 +40043,8 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp"
+        "requireTotp",
+        "requireExtJwtSigner"
       ],
       "properties": {
         "requireExtJwtSigner": {
@@ -41838,7 +41856,8 @@ func init() {
       "required": [
         "name",
         "certPem",
-        "enabled"
+        "enabled",
+        "kid"
       ],
       "properties": {
         "certPem": {
@@ -41855,6 +41874,9 @@ func init() {
           "type": "string",
           "format": "url",
           "x-nullable": true
+        },
+        "kid": {
+          "type": "string"
         },
         "name": {
           "type": "string",
@@ -41888,7 +41910,8 @@ func init() {
             "notBefore",
             "externalAuthUrl",
             "claimsProperty",
-            "useExternalId"
+            "useExternalId",
+            "kid"
           ],
           "properties": {
             "certPem": {
@@ -41908,6 +41931,9 @@ func init() {
               "format": "url"
             },
             "fingerprint": {
+              "type": "string"
+            },
+            "kid": {
               "type": "string"
             },
             "name": {
@@ -41956,6 +41982,10 @@ func init() {
           "format": "url",
           "x-nullable": true
         },
+        "kid": {
+          "type": "string",
+          "x-nullable": true
+        },
         "name": {
           "type": "string",
           "x-nullable": true,
@@ -41975,7 +42005,8 @@ func init() {
       "required": [
         "name",
         "certPem",
-        "enabled"
+        "enabled",
+        "kid"
       ],
       "properties": {
         "certPem": {
@@ -41992,6 +42023,9 @@ func init() {
           "type": "string",
           "format": "url",
           "x-nullable": true
+        },
+        "kid": {
+          "type": "string"
         },
         "name": {
           "type": "string",

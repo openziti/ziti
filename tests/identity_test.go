@@ -530,12 +530,11 @@ func Test_Identity(t *testing.T) {
 
 		jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Identity Disabled Test 01")
 
-		jwtSigningCertFingerprint := nfpem.FingerprintFromCertificate(jwtSignerCert)
-
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
 			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
 			Enabled: B(true),
 			Name:    S("Test JWT Signer - Auth Policy - Identity Disable Test 01"),
+			Kid:     S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -573,7 +572,7 @@ func Test_Identity(t *testing.T) {
 				Subject:   identityCreated.Data.ID,
 			}
 
-			jwtToken.Header["kid"] = jwtSigningCertFingerprint
+			jwtToken.Header["kid"] = *extJwtSigner.Kid
 
 			jwtStrSigned, err := jwtToken.SignedString(jwtSignerPrivate)
 			ctx.Req.NoError(err)

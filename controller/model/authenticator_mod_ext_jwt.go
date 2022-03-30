@@ -38,7 +38,7 @@ const (
 type AuthModuleExtJwt struct {
 	env     Env
 	method  string
-	signers cmap.ConcurrentMap //map[fingerprint string]*signer
+	signers cmap.ConcurrentMap //map[kid string]*signer
 }
 
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
@@ -65,7 +65,7 @@ func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
 func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
-	fingerprintToSignerRectInterface := a.getKnownSignerRecords()
+	kidToSignerRectInterface := a.getKnownSignerRecords()
 
 	kidVal, ok := token.Header["kid"]
 
@@ -81,7 +81,7 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	signerRecordInterface, ok := fingerprintToSignerRectInterface[kid]
+	signerRecordInterface, ok := kidToSignerRectInterface[kid]
 
 	if !ok {
 		pfxlog.Logger().Error("unknown kid")
@@ -252,7 +252,7 @@ func (a *AuthModuleExtJwt) onExternalSignerCreateOrUpdate(args ...interface{}) {
 
 	certs := nfPem.PemStringToCertificates(signer.CertPem)
 
-	a.signers.Set(signer.Fingerprint, &signerRecord{
+	a.signers.Set(signer.Kid, &signerRecord{
 		externalJwtSigner: signer,
 		cert:              certs[0],
 	})
@@ -265,7 +265,7 @@ func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
 		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
 	}
 
-	a.signers.Remove(signer.Fingerprint)
+	a.signers.Remove(signer.Kid)
 }
 
 func (a *AuthModuleExtJwt) loadExistingSigners() {
