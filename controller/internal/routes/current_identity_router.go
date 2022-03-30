@@ -61,21 +61,21 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.ClientApi.CurrentIdentityDetailMfaHandler = clientCurrentIdentity.DetailMfaHandlerFunc(func(params clientCurrentIdentity.DetailMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ClientApi.CurrentIdentityEnrollMfaHandler = clientCurrentIdentity.EnrollMfaHandlerFunc(func(params clientCurrentIdentity.EnrollMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ClientApi.CurrentIdentityVerifyMfaHandler = clientCurrentIdentity.VerifyMfaHandlerFunc(func(params clientCurrentIdentity.VerifyMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.verifyMfa(ae, rc, params.MfaValidation)
-		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		}, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ClientApi.CurrentIdentityDetailMfaQrCodeHandler = clientCurrentIdentity.DetailMfaQrCodeHandlerFunc(func(params clientCurrentIdentity.DetailMfaQrCodeParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ClientApi.CurrentIdentityCreateMfaRecoveryCodesHandler = clientCurrentIdentity.CreateMfaRecoveryCodesHandlerFunc(func(params clientCurrentIdentity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {
@@ -108,21 +108,21 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 	})
 
 	ae.ManagementApi.CurrentIdentityDetailMfaHandler = managementCurrentIdentity.DetailMfaHandlerFunc(func(params managementCurrentIdentity.DetailMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.detailMfa, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ManagementApi.CurrentIdentityEnrollMfaHandler = managementCurrentIdentity.EnrollMfaHandlerFunc(func(params managementCurrentIdentity.EnrollMfaParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.createMfa, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ManagementApi.CurrentIdentityVerifyMfaHandler = managementCurrentIdentity.VerifyMfaHandlerFunc(func(params managementCurrentIdentity.VerifyMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
 			r.verifyMfa(ae, rc, params.MfaValidation)
-		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		}, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ManagementApi.CurrentIdentityDetailMfaQrCodeHandler = managementCurrentIdentity.DetailMfaQrCodeHandlerFunc(func(params managementCurrentIdentity.DetailMfaQrCodeParams, i interface{}) middleware.Responder {
-		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.IsAuthenticated())
+		return ae.IsAllowed(r.detailMfaQrCode, params.HTTPRequest, "", "", permissions.NewRequireOne(permissions.AuthenticatedPermission, permissions.PartiallyAuthenticatePermission))
 	})
 
 	ae.ManagementApi.CurrentIdentityCreateMfaRecoveryCodesHandler = managementCurrentIdentity.CreateMfaRecoveryCodesHandlerFunc(func(params managementCurrentIdentity.CreateMfaRecoveryCodesParams, i interface{}) middleware.Responder {

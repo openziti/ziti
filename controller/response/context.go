@@ -33,6 +33,8 @@ type RequestContext struct {
 	Id                string
 	ApiSession        *model.ApiSession
 	Identity          *model.Identity
+	AuthPolicy        *model.AuthPolicy
+	AuthStatus        AuthStatus
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
@@ -41,6 +43,11 @@ type RequestContext struct {
 	entitySubId       string
 	Body              []byte
 	StartTime         time.Time
+}
+
+type AuthStatus struct {
+	SecondaryExtJwtSignerId       string
+	PassedSecondaryExtJwtSignerId bool
 }
 
 func (rc *RequestContext) GetId() string {

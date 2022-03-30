@@ -1313,4 +1313,137 @@ func Test_AuthPolicies(t *testing.T) {
 			ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
 		})
 	})
+
+	t.Run("auth policy with secondary ext jwt signer", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtSignerCertAllowed, validJwtSignerPrivateKey := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT FA 01")
+
+		jwtSigningCertFingerprintAllowed := nfpem.FingerprintFromCertificate(jwtSignerCertAllowed)
+
+		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
+			CertPem:         S(nfpem.EncodeToString(jwtSignerCertAllowed)),
+			Enabled:         B(true),
+			Name:            S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT FA 01"),
+			ExternalAuthURL: S("https://get.some.jwt.here"),
+		}
+
+		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(extJwtSignerAllowed).SetResult(extJwtSignerCreatedAllowed).Post("/external-jwt-signers")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSignerAllowed, resp.Body())
+		ctx.Req.NotEmpty(extJwtSignerCreatedAllowed.Data.ID)
+
+		authPolicy := &rest_model.AuthPolicyCreate{
+			Name: S("Original Name 1 - ext jwt FA 01"),
+			Primary: &rest_model.AuthPolicyPrimary{
+				Cert: &rest_model.AuthPolicyPrimaryCert{
+					AllowExpiredCerts: B(true),
+					Allowed:           B(true),
+				},
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWT{
+					Allowed:        B(true),
+					AllowedSigners: []string{},
+				},
+				Updb: &rest_model.AuthPolicyPrimaryUpdb{
+					Allowed:                B(false),
+					MaxAttempts:            I(5),
+					MinPasswordLength:      I(5),
+					LockoutDurationMinutes: I(0),
+					RequireMixedCase:       B(true),
+					RequireNumberChar:      B(true),
+					RequireSpecialChar:     B(true),
+				},
+			},
+			Secondary: &rest_model.AuthPolicySecondary{
+				RequireExtJWTSigner: &extJwtSignerCreatedAllowed.Data.ID,
+				RequireTotp:         B(false),
+			},
+		}
+
+		authPolicyCreated := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicy).SetResult(authPolicyCreated).Post("/auth-policies")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", authPolicy, resp.Body())
+		ctx.Req.NotEmpty(authPolicyCreated.Data.ID)
+
+		identityType := rest_model.IdentityTypeDevice
+
+		identityExtJwt := &rest_model.IdentityCreate{
+			AuthPolicyID: &authPolicyCreated.Data.ID,
+			IsAdmin:      B(false),
+			Name:         S("test-identity-auth-policy-ext-jwt-FA 01"),
+			Type:         &identityType,
+			Enrollment: &rest_model.IdentityCreateEnrollment{
+				Ott: true,
+			},
+		}
+
+		identityExtJwtCreated := &rest_model.CreateEnvelope{}
+
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityExtJwt).SetResult(identityExtJwtCreated).Post("/identities")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", identityExtJwt, resp.Body())
+		ctx.Req.NotEmpty(identityExtJwtCreated.Data.ID)
+
+		certAuthenticator := ctx.completeOttEnrollment(identityExtJwtCreated.Data.ID)
+		ctx.Req.NotNil(certAuthenticator)
+
+		t.Run("authenticating returns jwt auth query", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			apiSession, err := certAuthenticator.AuthenticateClientApi(ctx)
+			ctx.Req.NoError(err)
+			ctx.Req.NotNil(apiSession)
+
+			currentApiSessionEnv := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+			resp, err = apiSession.newAuthenticatedRequest().SetResult(currentApiSessionEnv).Get("current-api-session")
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+			ctx.Req.NotNil(currentApiSessionEnv.Data)
+
+			ctx.Req.NotEmpty(currentApiSessionEnv.Data.AuthQueries)
+
+			ctx.Req.Equal("EXT-JWT", currentApiSessionEnv.Data.AuthQueries[0].TypeID)
+			ctx.Req.Equal(*extJwtSignerAllowed.ExternalAuthURL, currentApiSessionEnv.Data.AuthQueries[0].HTTPURL)
+
+			t.Run("without bearer token partially authenticated", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				resp, err := apiSession.newAuthenticatedRequest().Get("services")
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+			})
+
+			t.Run("with bearer token full access is granted", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				jwtToken := jwt.New(jwt.SigningMethodES256)
+				jwtToken.Claims = jwt.StandardClaims{
+					Audience:  "ziti.controller",
+					ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+					Id:        time.Now().String(),
+					IssuedAt:  time.Now().Unix(),
+					Issuer:    "fake.issuer",
+					NotBefore: time.Now().Unix(),
+					Subject:   identityExtJwtCreated.Data.ID,
+				}
+
+				jwtToken.Header["kid"] = jwtSigningCertFingerprintAllowed
+
+				jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
+				ctx.Req.NoError(err)
+				ctx.Req.NotEmpty(jwtStrSigned)
+
+				resp, err := apiSession.newAuthenticatedRequest().SetHeader("Authorization", "Bearer "+jwtStrSigned).Get("services")
+				ctx.Req.NoError(err)
+				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			})
+		})
+
+	})
 }
