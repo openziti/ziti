@@ -225,12 +225,12 @@ definitions:
     type: object
     required:
       - requireTotp
-      - requireExtJwtSigner
     properties:
       requireTotp:
         type: boolean
       requireExtJwtSigner:
         type: string
+        x-omit-empty: false
         x-nullable: true
 
   authPolicyPrimaryPatch:

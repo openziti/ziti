@@ -17233,13 +17233,13 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp",
-        "requireExtJwtSigner"
+        "requireTotp"
       ],
       "properties": {
         "requireExtJwtSigner": {
           "type": "string",
-          "x-nullable": true
+          "x-nullable": true,
+          "x-omit-empty": false
         },
         "requireTotp": {
           "type": "boolean"
@@ -40043,13 +40043,13 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp",
-        "requireExtJwtSigner"
+        "requireTotp"
       ],
       "properties": {
         "requireExtJwtSigner": {
           "type": "string",
-          "x-nullable": true
+          "x-nullable": true,
+          "x-omit-empty": false
         },
         "requireTotp": {
           "type": "boolean"

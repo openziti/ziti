@@ -12462,11 +12462,11 @@ definitions:
     type: object
     required:
     - requireTotp
-    - requireExtJwtSigner
     properties:
       requireExtJwtSigner:
         type: string
         x-nullable: true
+        x-omit-empty: false
       requireTotp:
         type: boolean
   authPolicySecondaryPatch:

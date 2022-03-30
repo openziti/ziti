@@ -44,8 +44,7 @@ import (
 type AuthPolicySecondary struct {
 
 	// require ext Jwt signer
-	// Required: true
-	RequireExtJWTSigner *string `json:"requireExtJwtSigner"`
+	RequireExtJWTSigner *string `json:"requireExtJwtSigner,omitempty"`
 
 	// require totp
 	// Required: true
@@ -56,10 +55,6 @@ type AuthPolicySecondary struct {
 func (m *AuthPolicySecondary) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateRequireExtJWTSigner(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateRequireTotp(formats); err != nil {
 		res = append(res, err)
 	}
@@ -67,15 +62,6 @@ func (m *AuthPolicySecondary) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *AuthPolicySecondary) validateRequireExtJWTSigner(formats strfmt.Registry) error {
-
-	if err := validate.Required("requireExtJwtSigner", "body", m.RequireExtJWTSigner); err != nil {
-		return err
-	}
-
 	return nil
 }
 
