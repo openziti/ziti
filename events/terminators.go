@@ -6,7 +6,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/cowslice"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"

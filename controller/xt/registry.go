@@ -17,7 +17,7 @@
 package xt
 
 import (
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"sync"
 	"sync/atomic"
 )

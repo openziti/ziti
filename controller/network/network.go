@@ -38,7 +38,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/sequence"

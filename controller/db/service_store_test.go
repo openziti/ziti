@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 

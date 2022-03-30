@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	log "github.com/sirupsen/logrus"
 	"math"
 )
