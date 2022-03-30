@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/link"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"sort"
 )
 

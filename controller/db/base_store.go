@@ -17,7 +17,7 @@
 package db
 
 import (
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 )
 
 const (

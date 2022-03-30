@@ -5,7 +5,7 @@ import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"

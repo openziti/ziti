@@ -19,7 +19,7 @@ package xctrl
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/config"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 )
 
 type Xctrl interface {
