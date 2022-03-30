@@ -12,7 +12,7 @@ go 1.17
 
 //replace github.com/openziti/sdk-golang => ../sdk-golang
 
-replace github.com/openziti/edge => ../edge
+//replace github.com/openziti/edge => ../edge
 
 //replace github.com/michaelquigley/pfxlog => ../pfxlog
 
