@@ -165,7 +165,7 @@ require (
 
 require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
-	github.com/openziti/edge v0.21.159
+	github.com/openziti/edge v0.21.160
 	github.com/openziti/fabric v0.17.81
 	github.com/rivo/uniseg v0.2.0 // indirect
 )
