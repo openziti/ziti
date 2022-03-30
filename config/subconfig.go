@@ -14,19 +14,12 @@
 	limitations under the License.
 */
 
-package xctrl
+package config
 
-import (
-	"github.com/openziti/channel"
-	"github.com/openziti/fabric/config"
-	"github.com/openziti/foundation/storage/boltz"
-)
+type Configurable interface {
+	Configure(sub Subconfig) error
+}
 
-type Xctrl interface {
-	config.Subconfig
-	channel.BindHandler
-	Enabled() bool
-	Run(ctrl channel.Channel, db boltz.Db, done chan struct{}) error
-	NotifyOfReconnect()
-	GetTraceDecoders() []channel.TraceMessageDecoder
+type Subconfig interface {
+	LoadConfig(cfgmap map[interface{}]interface{}) error
 }
