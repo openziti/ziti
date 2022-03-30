@@ -18,13 +18,13 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-
+	
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/viper"
 	"gopkg.in/AlecAivazis/survey.v1"
+	"os"
+	"path/filepath"
 )
 
 var ZITI_COMPONENTS = []string{
