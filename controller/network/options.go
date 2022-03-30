@@ -18,14 +18,15 @@ package network
 
 import (
 	"errors"
-	"github.com/sirupsen/logrus"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const (
 	DefaultNetworkOptionsCycleSeconds            = 60
 	DefaultNetworkOptionsRouteTimeout            = 10 * time.Second
-	DefaultNetworkOptionsCreateCircuitRetries    = 3
+	DefaultNetworkOptionsCreateCircuitRetries    = 2
 	DefaultNetworkOptionsCtrlChanLatencyInterval = 10 * time.Second
 	DefaultNetworkOptionsPendingLinkTimeout      = 10 * time.Second
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
