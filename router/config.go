@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/config"
+	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
