@@ -1,3 +1,12 @@
+# Release 0.25.4
+* Enhancement: Add additional logging information to tunnel edge routers. Now adds the local address to the router/link chain.
+* Enhancement: Add additional metrics for terminator errors. 
+    - `service.dial.terminator.timeout`: Raised when the terminator times out when connecting with it's configured endpoint
+    - `service.dial.terminator.connection_refused`: Raised when the terminator cannot connect to it's configured endpoint
+    - `service.dial.terminator.invalid`: Raised when the edge router is unable to get or access the terminator
+    - `service.dial.terminator.misconfigured`: Raised when the fabric is unable to find or create the terminator
+  
+
 # Release 0.25.3
 
 * Enhancement: Add cost and precedence to host.v1 and host.v2 config types. This allows router-embedded tunnelers the ability to handle HA failover scenarios.
