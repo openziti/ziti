@@ -646,6 +646,9 @@ func Test_ExternalJWTSigner(t *testing.T) {
 
 			createResponseEnv := &rest_model.CreateEnvelope{}
 
+			b, _ := jwtSigner.MarshalBinary()
+			println(b)
+
 			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(jwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
 			ctx.Req.NoError(err)
 			ctx.Req.Equal(http.StatusCreated, resp.StatusCode())

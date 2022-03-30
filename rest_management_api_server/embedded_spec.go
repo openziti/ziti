@@ -17233,7 +17233,8 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp"
+        "requireTotp",
+        "requireExtJwtSigner"
       ],
       "properties": {
         "requireExtJwtSigner": {
@@ -40042,7 +40043,8 @@ func init() {
     "authPolicySecondary": {
       "type": "object",
       "required": [
-        "requireTotp"
+        "requireTotp",
+        "requireExtJwtSigner"
       ],
       "properties": {
         "requireExtJwtSigner": {

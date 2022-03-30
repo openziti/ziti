@@ -12462,6 +12462,7 @@ definitions:
     type: object
     required:
     - requireTotp
+    - requireExtJwtSigner
     properties:
       requireExtJwtSigner:
         type: string
