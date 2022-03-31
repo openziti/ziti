@@ -325,11 +325,11 @@ function generateEnvFile {
     export ZITI_BIN_ROOT="${ZITI_HOME-}/ziti-bin"
   fi
 
+  export ENV_FILE="${ZITI_HOME-}/${ZITI_NETWORK-}.env"
+
   if ! ziti_createEnvFile; then
     return 1
   fi
-
-  export ENV_FILE="${ZITI_HOME-}/${ZITI_NETWORK-}.env"
 
   echo -e "environment file sourced from: $(BLUE "${ENV_FILE}")"
 }
@@ -935,7 +935,9 @@ function ziti_createEnvFile {
   fi
   if [[ "${ZITI_EDGE_CONTROLLER_PORT-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_PORT="1280"; fi
 
+  echo "ZITI_CONTROLLER_HOSTNAME is currently ${ZITI_CONTROLLER_HOSTNAME}"
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+  echo "Now ZITI_CONTROLLER_HOSTNAME is ${ZITI_CONTROLLER_HOSTNAME}"
   if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CONTROLLER_HOSTNAME}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
   if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
