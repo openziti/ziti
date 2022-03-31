@@ -21,8 +21,8 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"time"
 )

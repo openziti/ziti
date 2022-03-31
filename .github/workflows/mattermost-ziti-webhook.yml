@@ -15,6 +15,7 @@ jobs:
   mattermost-ziti-webhook:
     runs-on: macos-latest
     name: POST Webhook
+    if: github.actor!= 'dependabot[bot]'
     steps:
     - uses: openziti/ziti-webhook-action@main
       with:

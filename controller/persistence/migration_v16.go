@@ -3,8 +3,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 )
 
 func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {

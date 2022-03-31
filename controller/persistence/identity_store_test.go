@@ -3,7 +3,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"

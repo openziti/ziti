@@ -3,7 +3,7 @@ package persistence
 import (
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"testing"
 )

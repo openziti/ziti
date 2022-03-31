@@ -2,8 +2,8 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 )
 
 //Removes all ApiSession and Session from the edge. Necessary from 0.18 -> 0.19

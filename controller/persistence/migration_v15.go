@@ -1,7 +1,7 @@
 package persistence
 
 import (
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 )
 
 func (m *Migrations) updateServerV1Config(step *boltz.MigrationStep) {

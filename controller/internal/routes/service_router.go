@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"strings"
 	"time"
 

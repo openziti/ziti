@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_server/operations/edge_router"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/storage/ast"
 )
 
 func init() {

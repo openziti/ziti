@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"net"

@@ -44,10 +44,12 @@ require (
 	github.com/miekg/dns v1.1.47
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.18
-	github.com/openziti/fabric v0.17.82
+	github.com/openziti/channel v0.18.20
+	github.com/openziti/fabric v0.17.85
 	github.com/openziti/foundation v0.17.20
-	github.com/openziti/sdk-golang v0.16.36
+	github.com/openziti/sdk-golang v0.16.38
+	github.com/openziti/storage v0.1.1
+	github.com/openziti/transport v0.1.1
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -62,7 +64,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220328115105-d36c6a25d886
+	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b

@@ -19,8 +19,8 @@ package persistence
 import (
 	"encoding/json"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
