@@ -1,7 +1,0 @@
-version: "~> 1.0"
-
-import:
-  - source: netfoundry/ziti-ci:ziti-go-defaults.yml@v1
-  - source: trigger_downstreams.yml
-    if: type != pull_request and branch != update-dependency
-
