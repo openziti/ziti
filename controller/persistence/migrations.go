@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 26
+	CurrentDbVersion = 27
 	FieldVersion     = "version"
 )
 
