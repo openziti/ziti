@@ -18,7 +18,7 @@ package xgress
 
 import (
 	"errors"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 )
 
 func ReadUntilNewline(peer transport.Connection) ([]byte, error) {

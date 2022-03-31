@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 )
 
 type listener struct {

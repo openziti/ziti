@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 )
 
 // Registry contains known link instances and manages link de-duplication

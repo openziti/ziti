@@ -35,10 +35,10 @@ import (
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/profiler"
 	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/sirupsen/logrus"
 )

@@ -41,9 +41,9 @@ import (
 	"github.com/Jeffail/gabs/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller"
-	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/transport/tcp"
-	"github.com/openziti/foundation/transport/tls"
+	"github.com/openziti/transport"
+	"github.com/openziti/transport/tcp"
+	"github.com/openziti/transport/tls"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )

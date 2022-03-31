@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/pkg/errors"
 )
 

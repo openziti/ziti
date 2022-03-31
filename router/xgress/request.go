@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/pkg/errors"
 	"io"
 	"time"

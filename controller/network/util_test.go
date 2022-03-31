@@ -25,8 +25,8 @@ import (
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/transport/tcp"
+	"github.com/openziti/transport"
+	"github.com/openziti/transport/tcp"
 )
 
 func newTestEntityHelper(ctx *db.TestContext, network *Network) *testEntityHelper {

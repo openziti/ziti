@@ -14,7 +14,7 @@ import (
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/tests/testutil"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/sirupsen/logrus"
 	"io"
 	"testing"

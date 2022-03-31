@@ -20,7 +20,7 @@ import (
 	"errors"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 )
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error

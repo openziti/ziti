@@ -5,7 +5,7 @@ package tests
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"testing"
 )
 
