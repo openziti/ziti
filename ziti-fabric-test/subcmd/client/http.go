@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/fabric/router/xgress_transport"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net"

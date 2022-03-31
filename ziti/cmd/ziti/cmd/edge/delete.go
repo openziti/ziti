@@ -18,7 +18,7 @@ package edge
 
 import (
 	"github.com/fatih/color"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
 	"net/url"
