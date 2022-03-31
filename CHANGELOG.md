@@ -15,13 +15,14 @@
 Authentication policies are configuration that allows administrators to enforce authentication requirements. A single
 authentication policy is assigned to each identity in the system. This assignment is controlled on the `Identity`
 entities within the Ziti Edge Management API. If an authentication policy is not specified, a system default policy is
-applied that represents the behavior of Ziti v0.25.3 and earlier.
+applied that. The default policy represents the behavior of Ziti v0.25.3 and earlier and may be updated to the network's
+requirements.
 
 ### Assignment
 
 The `Identity` entity now supports a new field `authPolicyId`. In the REST Edge API this field is optional during create
 and existing calls to `POST /identities` will succeed. Every identity must have exactly one authentication policy
-assigned to it. If one is not assigned, the `default` authentication policy will be used.
+assigned to it. If one is not assigned, the default authentication policy will be used (`authPolicyId` == `default`)
 
 Example w/o `authPolicyId`:
 
@@ -120,19 +121,19 @@ The following endpoints were added to support CRUD operations:
 
 And have the following properties:
 
-- name: a name for the policy
-- primary.cert.allowed - allow certificate based authentication
-- primary.cert.allowExpiredCerts - allows clients with expired certificates to authenticate
-- primary.extJwt.allowed - allow external JWT authentication
-- primary.extJwt.allowedSigners - a specific set of external jwt signers that are allowed, if not set all enabled signers are allowed
-- primary.updb.allowed - allow username/password authentication
-- primary.updb.lockoutDurationMinutes - the number of minutes to lock an identity after exceeding maxAttempts, 0 = indefinite
-- primary.updb.minPasswordLength - the minimum lengths passwords must be, currently a placeholder
-- primary.updb.requireMixedCase - requires passwords to include mixed cases, currently a placeholder
-- primary.updb.requireNumberChar - requires passwords to include at least 1 number, currently a placeholder
-- primary.updb.requireSpecialChar - requires passwords to include at least 1 special character, currently a placeholder
-- secondary.requireExtJwtSigner - requires an additional JWT bearer token be provided on all API requests, null is disabled
-- secondary.requireTotp - requires Totp (fka MFA enrollment) enrollment to be completed and in use
+- `name`: a unique name for the policy
+- `primary.cert.allowed` - allow certificate based authentication
+- `primary.cert.allowExpiredCerts` - allows clients with expired certificates to authenticate
+- `primary.extJwt.allowed` - allow external JWT authentication
+- `primary.extJwt.allowedSigners` - a specific set of external jwt signers that are allowed, if not set all enabled signers are allowed
+- `primary.updb.allowed` - allow username/password authentication
+- `primary.updb.lockoutDurationMinutes` - the number of minutes to lock an identity after exceeding `maxAttempts`, 0 = indefinite
+- `primary.updb.minPasswordLength` - the minimum lengths passwords must be, currently a placeholder
+- `primary.updb.requireMixedCase` - requires passwords to include mixed cases, currently a placeholder
+- `primary.updb.requireNumberChar` - requires passwords to include at least 1 number, currently a placeholder
+- `primary.updb.requireSpecialChar` - requires passwords to include at least 1 special character, currently a placeholder
+- `secondary.requireExtJwtSigner` - requires an additional JWT bearer token be provided on all API requests, null is disabled
+- `secondary.requireTotp` - requires TOTP (fka MFA enrollment) enrollment to be completed and in use
 Example Create:
 
 ```json
@@ -173,6 +174,7 @@ Example Create:
 
 A new primary authentication mechanism is available in addition to `cert` and `passsword` (UPDB). The internal
 method name is `ext-jwt` and it allows authentication by providing a bearer token by a known external JWT signer.
+A new entity `External JWT Singer` has been introduced and is defined in subsequent sections.
 
 Successful primary authentication requires:
 
@@ -180,17 +182,17 @@ Successful primary authentication requires:
 2) The JWT provided must include a `kid` that matches the `kid` defined on an external JWT signer
 3) The JWT provided must include a `sub` (or configured claim) that matches the identity's `id` or `externalId` (see below)
 4) The JWT provided must be properly signed by the signer defined by `kid`
-5) The JWT be unexpired
+5) The JWT provided must be unexpired
 6) The encoded JWT must be provided during the initial authentication in the `Authorization` header with the prefix `Bearer ` and subsequent API calls
 
-A new secondary factor authentication mechanism is available in addition to `totp` (fka MFA). Both `totp` and `ext-jwt`
+A new secondary factor authentication mechanism is available in addition to TOTP (fka MFA). Both TOTP and `ext-jwt`
 secondary authentication factors can be enabled at the same time for a "nFA" setup.
 
 Successful secondary authentication requires all the same JWT token validation items, but as a secondary
 factor, not providing a valid JWT bearer token on API requests will drop the request's access to 
 "partially authenticated" - which has reduced access. Access can be restored by providing a valid JWT bearer token.
-Additionally, to turn on the functionality, an authentication policy that has the `requireExtJwtSigner` field to be
-set to a valid external JWT signer id.
+Additionally, to turn on the functionality, an authentication policy that has the `requireExtJwtSigner` field must be
+set to a valid external JWT signer and assigned to the target identity(ies).
 
 ### External JWT Signers 
 
@@ -205,13 +207,13 @@ External JWT Signers can be managed on the following new REST Edge Management AP
 
 And support the following properties:
 
-- name - a unique name for the signer
-- certPem - a unique PEM x509 certificate for the signer
-- enabled - whether the signer is currently enabled or disabled
-- externalAuthUrl - the URL clients should use to obtain a JWT
-- claimsProperty - the property to alternatively use for the target identity's `id` or `externalId`
-- useExternalId - whether to match the `claimsProperty` to `id` (false) or `externalId` (true)
-- kid - a unique `kid` value that will be present in valid JWT's `kid` header
+- `name` - a unique name for the signer
+- `certPem` - a unique PEM x509 certificate for the signer
+- `enabled` - whether the signer is currently enabled or disabled
+- `externalAuthUrl` - the URL clients should use to obtain a JWT
+- `claimsProperty` - the property to alternatively use for the target identity's `id` or `externalId`
+- `useExternalId` - whether to match the `claimsProperty` to `id` (false) or `externalId` (true)
+- `kid` - a unique `kid` value that will be present in a valid JWT's `kid` header
 
 Example Create:
 
@@ -237,13 +239,9 @@ a JWT from `https://my-jwt-provide/auth`. The JWT that is returned from `https:/
 
 Ziti identity's have a new optional field named `externalId`. All existing identities will have this value defaulted
 to `null`. This value is unique if set and is currently only used for external JWT signer authentication. Ziti treats 
-the value as an case-sensitive opaque string.
+the value as a case-sensitive opaque string.
 
 It has standard CRUD access on the `edge/v1/management/identities` endpoints for `POST`, `PUT`, `PATCH`, and `GET`.
-
-### Enhancement: JWT Secondary Authentication
-
-In addition to primary authentication, external JWTs can also be used as a multi-factor authentication mechanism.
 
 ## Required TOTP (fka MFA) Enrollment
 
@@ -299,9 +297,9 @@ a single link between routers, unless you use the new link types feature.
     * Support for multiple link types
     * Existing link notifications
     * Link heartbeats/latency have changed
-    * Inspect and ps upport for links
+    * Inspect and ps support for links
     * Router version dissemination
-    * Distributed control preparatione
+    * Distributed control preparation
 * Enhancement: `ziti fabric list routers` now includes the link listener types and advertise addresses
 
 ## Router Link Refactor
