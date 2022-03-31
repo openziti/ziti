@@ -87,6 +87,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (string, string, stri
 
 			if err != nil {
 				logger.WithError(err).Error("could not lookup identity and auth policy for cert authentication")
+				return "", "", "", apierror.NewInvalidAuth()
 			}
 
 			logger = logger.WithField("authPolicyId", authPolicy.Id)
