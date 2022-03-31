@@ -1,2 +1,0 @@
-after_script:
-  - ziti-ci trigger-travis-build openziti/edge update-dependency
