@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
 	"runtime/debug"
 	"time"

@@ -36,8 +36,8 @@ import (
 	_ "github.com/openziti/edge/controller/internal/routes"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
-	"github.com/openziti/foundation/config"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/fabric/config"
+	"github.com/openziti/storage/boltz"
 )
 
 type Controller struct {
@@ -216,7 +216,7 @@ func (c *Controller) Initialize() {
 	log := pfxlog.Logger()
 
 	log.Info("initializing edge")
-	
+
 	//should be done after all modules that add migrations have been added (i.e. AuthRegistry)
 	if err := c.AppEnv.InitPersistence(); err != nil {
 		log.Fatalf("error initializing persistence: %+v", err)

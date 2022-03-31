@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 )
 
 const (

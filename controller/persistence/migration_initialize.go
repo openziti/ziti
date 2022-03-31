@@ -18,7 +18,7 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"math"
 	"time"
 )

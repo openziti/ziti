@@ -18,8 +18,8 @@ package model
 
 import (
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 )
 
 func NewExternalJwtSignerHandler(env Env) *ExternalJwtSignerHandler {

@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
 	"time"

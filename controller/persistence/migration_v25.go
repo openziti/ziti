@@ -17,7 +17,7 @@
 package persistence
 
 import (
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"time"
 )
 

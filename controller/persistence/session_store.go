@@ -17,8 +17,8 @@
 package persistence
 
 import (
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"

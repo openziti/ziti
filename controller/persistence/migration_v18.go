@@ -1,8 +1,8 @@
 package persistence
 
 import (
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 )
 
 //Primes API Session's lastActivityAt proper to their previous updatedAt value

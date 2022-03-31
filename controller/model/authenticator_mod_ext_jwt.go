@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	nfPem "github.com/openziti/foundation/util/pem"
 	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"

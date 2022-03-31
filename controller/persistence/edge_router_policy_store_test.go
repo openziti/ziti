@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/sirupsen/logrus"

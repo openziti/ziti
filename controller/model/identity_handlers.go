@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"

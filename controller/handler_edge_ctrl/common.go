@@ -14,7 +14,7 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"

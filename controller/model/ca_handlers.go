@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/storage/ast"
-	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"strings"
 )

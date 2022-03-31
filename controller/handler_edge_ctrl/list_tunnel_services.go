@@ -6,7 +6,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/storage/ast"
+	"github.com/openziti/storage/ast"
 	"github.com/sirupsen/logrus"
 	"time"
 )
