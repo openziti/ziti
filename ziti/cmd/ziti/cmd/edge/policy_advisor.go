@@ -208,13 +208,13 @@ func runPolicyAdvisorForIdentities(o *policyAdvisorOptions) error {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterEntitiesOfType("identities", filter, false, o.Out, o.Options.Timeout, o.Options.Verbose)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		for _, child := range children {
 			identityId, _ := child.S("id").Data().(string)
 			if err := runPolicyAdvisorForIdentity(identityId, o); err != nil {
-				panic(err)
+				return err
 			}
 		}
 		skip += len(children)
@@ -238,13 +238,13 @@ func runPolicyAdvisorForServices(o *policyAdvisorOptions) error {
 		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterEntitiesOfType("services", filter, false, o.Out, o.Options.Timeout, o.Options.Verbose)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		for _, child := range children {
 			serviceId, _ := child.S("id").Data().(string)
 			if err := runPolicyAdvisorForService(serviceId, o); err != nil {
-				panic(err)
+				return err
 			}
 		}
 		skip += len(children)
@@ -269,13 +269,13 @@ func runPolicyAdvisorForIdentity(identityId string, o *policyAdvisorOptions) err
 		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterSubEntitiesOfType("identities", "services", identityId, filter, &o.Options)
 		if err != nil {
-			panic(err)
+			return err
 		}
 
 		for _, child := range children {
 			serviceId, _ := child.S("id").Data().(string)
 			if err := runPolicyAdvisorForIdentityAndService(identityId, serviceId, o); err != nil {
-				panic(err)
+				return err
 			}
 		}
 		skip += len(children)

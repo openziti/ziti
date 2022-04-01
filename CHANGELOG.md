@@ -1,5 +1,7 @@
 # Release 0.25.4
 
+**NOTE**: Link management is undergoing some restructuring to support better link costing and multiple interfaces. The link types introduced in 0.25 should not be used. A more complete replacement is coming soon.
+
 * Enhancement: Add additional logging information to tunnel edge routers. Now adds the local address to the router/link chain.
 * Enhancement: Add additional metrics for terminator errors. 
     - `service.dial.terminator.timeout`: Raised when the terminator times out when connecting with it's configured endpoint
@@ -9,6 +11,12 @@
 * Enhancement: Authentication Policies
 * Enhancement: JWT Primary/Secondary Authentication
 * Enhancement: Required TOTP (fka MFA) Enrollment
+* Bug fix: Fix router panic which can happen on link bind
+* Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
+* Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
+* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
+* Change: Support for link types removed
 
 ## Authentication Policies
 
@@ -253,6 +261,110 @@ TOTP MFA is completed.
 Due to this, it is now possible to enroll in TOTP MFA while "partially authenticated". It is not possible to manipulate
 an existing completed enrollment.
 
+## Circuit Inspection
+Here is an example of the kind of information you can get with the new circuit inspection factility
+
+```
+$ ziti fabric inspect .* circuit:GrtfcCjzD -j | jq
+{
+  "errors": null,
+  "success": true,
+  "values": [
+    {
+      "appId": "aKYdwbTf7l",
+      "name": "circuit:GrtfcCjzD",
+      "value": {
+        "Destinations": {
+          "1LKMInhzapHdurbaABaa50": {
+            "dest": "CX1kmb0fAl",
+            "id": "1LKMInhzapHdurbaABaa50",
+            "protocol": "tls",
+            "split": true,
+            "type": "link"
+          },
+          "wPBx": {
+            "addr": "wPBx",
+            "originator": "Initiator",
+            "recvBuffer": {
+              "lastSizeSent": 21,
+              "size": 0
+            },
+            "sendBuffer": {
+              "accumulator": 47,
+              "acquiredSafely": true,
+              "blockedByLocalWindow": false,
+              "blockedByRemoteWindow": false,
+              "closeWhenEmpty": false,
+              "closed": false,
+              "duplicateAcks": 0,
+              "linkRecvBufferSize": 23,
+              "linkSendBufferSize": 0,
+              "retransmits": 0,
+              "retxScale": 2,
+              "retxThreshold": 100,
+              "successfulAcks": 3,
+              "timeSinceLastRetx": "1m17.563s",
+              "windowsSize": 16384
+            },
+            "timeSinceLastLinkRx": "1m11.451s",
+            "type": "xgress"
+          }
+        },
+        "Forwards": {
+          "1LKMInhzapHdurbaABaa50": "wPBx",
+          "wPBx": "1LKMInhzapHdurbaABaa50"
+        }
+      }
+    },
+    {
+      "appId": "CX1kmb0fAl",
+      "name": "circuit:GrtfcCjzD",
+      "value": {
+        "Destinations": {
+          "1LKMInhzapHdurbaABaa50": {
+            "dest": "aKYdwbTf7l",
+            "id": "1LKMInhzapHdurbaABaa50",
+            "protocol": "tls",
+            "split": true,
+            "type": "link"
+          },
+          "MZ9x": {
+            "addr": "MZ9x",
+            "originator": "Terminator",
+            "recvBuffer": {
+              "lastSizeSent": 23,
+              "size": 0
+            },
+            "sendBuffer": {
+              "accumulator": 45,
+              "acquiredSafely": true,
+              "blockedByLocalWindow": false,
+              "blockedByRemoteWindow": false,
+              "closeWhenEmpty": false,
+              "closed": false,
+              "duplicateAcks": 0,
+              "linkRecvBufferSize": 21,
+              "linkSendBufferSize": 0,
+              "retransmits": 0,
+              "retxScale": 2,
+              "retxThreshold": 102,
+              "successfulAcks": 2,
+              "timeSinceLastRetx": "457983h26m1.336s",
+              "windowsSize": 16384
+            },
+            "timeSinceLastLinkRx": "1m16.555s",
+            "type": "xgress"
+          }
+        },
+        "Forwards": {
+          "1LKMInhzapHdurbaABaa50": "MZ9x",
+          "MZ9x": "1LKMInhzapHdurbaABaa50"
+        }
+      }
+    }
+  ]
+}
+```
 
 # Release 0.25.3
 

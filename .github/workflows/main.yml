@@ -103,8 +103,6 @@ jobs:
       - name: Build and Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
-          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
@@ -132,6 +130,8 @@ jobs:
         if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github
