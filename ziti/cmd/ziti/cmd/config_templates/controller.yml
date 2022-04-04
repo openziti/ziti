@@ -27,7 +27,7 @@ ctrl:
   #connectTimeoutMs:       {{ .Controller.DefaultConnectTimeout.Milliseconds }}
   listener:             tls:{{ .Controller.ListenerAddress }}:{{ .Controller.Port }}
 
-# the endpoint that management tools connect to the controller over.
+# used for some streaming operations, such as streaming circuit events and metrics, distinct from the edge mgmt REST API which binding is configured later under "web"
 mgmt:
   #options:
   # (optional) settings
@@ -119,6 +119,7 @@ web:
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
+        #
         address: {{ .Controller.Edge.AdvertisedHostPort }}
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
@@ -161,7 +162,7 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: edge-management
-        # options - arg optional/required
+        # options - arg (optional|required)
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the 'edge-api' and contains both optional values and
         # required values.
