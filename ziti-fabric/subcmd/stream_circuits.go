@@ -18,11 +18,12 @@ package subcmd
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/spf13/cobra"
-	"time"
 )
 
 func init() {
@@ -83,8 +84,13 @@ func (*circuitsHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	if event.EventType == mgmt_pb.StreamCircuitEventType_CircuitDeleted {
 		fmt.Printf("%v: circuitId: %v\n", eventType, event.CircuitId)
 	} else if event.EventType == mgmt_pb.StreamCircuitEventType_CircuitCreated {
-		fmt.Printf("%v: circuitId: %v, clientId: %v, serviceId: %v, path: %v\n",
-			eventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path.CalculateDisplayPath())
+		fmt.Printf("%v: circuitId: %v, clientId: %v, serviceId: %v, path: %v%s\n",
+			eventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path.CalculateDisplayPath(), func() string {
+				if event.CreationTimespan == nil {
+					return ""
+				}
+				return fmt.Sprintf(", creationTimespan: %s", time.Duration(*event.CreationTimespan))
+			}())
 	} else if event.EventType == mgmt_pb.StreamCircuitEventType_PathUpdated {
 		fmt.Printf("%v: circuitId: %v, path: %v\n",
 			eventType, event.CircuitId, event.Path.CalculateDisplayPath())
