@@ -98,9 +98,13 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
-			peerData, cleanups, err = self.handleRouteSend(attempt, path, strategy, status, terminator, logger)
+			var tmpPeerData xt.PeerData
+			tmpPeerData, cleanups, err = self.handleRouteSend(attempt, path, strategy, status, terminator, logger)
 			if err != nil {
 				return nil, cleanups, err
+			}
+			if status.Router.Id == terminator.GetRouterId() {
+				peerData = tmpPeerData
 			}
 
 		case <-time.After(timeout):
@@ -152,13 +156,13 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 			logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
 		}
 	}
-	tr := path.Nodes[len(path.Nodes)-1]
+
 	if status.Success {
 		if status.Attempt == attempt {
 			logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)
 
 			self.attendance[status.Router.Id] = true
-			if status.Router == tr {
+			if status.Router.Id == terminator.GetRouterId() {
 				peerData = status.PeerData
 				strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 				self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
@@ -171,7 +175,7 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 		if status.Attempt == attempt {
 			logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
 
-			if status.Router == tr {
+			if status.Router.Id == terminator.GetRouterId() {
 				strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 				self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
 			}
