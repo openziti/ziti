@@ -18,6 +18,11 @@ package subcmd
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
@@ -25,10 +30,6 @@ import (
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func init() {
@@ -77,8 +78,10 @@ func run(cmd *cobra.Command, args []string) {
 	if cliAgentEnabled {
 		options := agent.Options{Addr: cliAgentAddr}
 		fabricController.RegisterDefaultAgentOps()
-		options.CustomOps = map[byte]func(conn io.ReadWriter) error{
-			agent.CustomOp: fabricController.HandleCustomAgentOp,
+		options.CustomOps = map[byte]func(conn net.Conn) error{
+			agent.CustomOp: func(conn net.Conn) error {
+				return fabricController.HandleCustomAgentOp(conn)
+			},
 		}
 		if err := agent.Listen(options); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")

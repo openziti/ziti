@@ -555,7 +555,7 @@ func EdgeControllerLogin(url string, cert string, authentication string, out io.
 		Post(url + "/authenticate")
 
 	if err != nil {
-		return nil, fmt.Errorf("unable to authentiate to %v. Error: %v", url, err)
+		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", url, err)
 	}
 
 	if resp.StatusCode() != http.StatusOK {

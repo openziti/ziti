@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:rolling
 
 RUN apt update && \
     apt install jq curl netcat-openbsd vim inetutils-ping net-tools -y

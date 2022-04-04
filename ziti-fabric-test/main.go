@@ -22,13 +22,12 @@ import (
 	"math/rand"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/transport"
-	"github.com/openziti/foundation/transport/quic"
-	"github.com/openziti/foundation/transport/tcp"
-	"github.com/openziti/foundation/transport/tls"
-	"github.com/openziti/foundation/transport/transwarp"
-	"github.com/openziti/foundation/transport/transwarptls"
-	"github.com/openziti/foundation/transport/wss"
+	"github.com/openziti/transport"
+	"github.com/openziti/transport/tcp"
+	"github.com/openziti/transport/tls"
+	"github.com/openziti/transport/transwarp"
+	"github.com/openziti/transport/transwarptls"
+	"github.com/openziti/transport/wss"
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/client"
@@ -39,7 +38,6 @@ import (
 
 func init() {
 	pfxlog.GlobalInit(logrus.InfoLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").NoColor())
-	transport.AddAddressParser(quic.AddressParser{})
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
 	transport.AddAddressParser(transwarp.AddressParser{})

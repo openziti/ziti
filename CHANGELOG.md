@@ -1,3 +1,371 @@
+# Release 0.25.4
+
+**NOTE**: Link management is undergoing some restructuring to support better link costing and multiple interfaces. The link types introduced in 0.25 should not be used. A more complete replacement is coming soon.
+
+* Enhancement: Add additional logging information to tunnel edge routers. Now adds the local address to the router/link chain.
+* Enhancement: Add additional metrics for terminator errors. 
+    - `service.dial.terminator.timeout`: Raised when the terminator times out when connecting with it's configured endpoint
+    - `service.dial.terminator.connection_refused`: Raised when the terminator cannot connect to it's configured endpoint
+    - `service.dial.terminator.invalid`: Raised when the edge router is unable to get or access the terminator
+    - `service.dial.terminator.misconfigured`: Raised when the fabric is unable to find or create the terminator
+* Enhancement: Authentication Policies
+* Enhancement: JWT Primary/Secondary Authentication
+* Enhancement: Required TOTP (fka MFA) Enrollment
+* Bug fix: Fix router panic which can happen on link bind
+* Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
+* Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
+* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
+* Change: Support for link types removed
+
+## Authentication Policies
+
+Authentication policies are configuration that allows administrators to enforce authentication requirements. A single
+authentication policy is assigned to each identity in the system. This assignment is controlled on the `Identity`
+entities within the Ziti Edge Management API. If an authentication policy is not specified, a system default policy is
+applied that. The default policy represents the behavior of Ziti v0.25.3 and earlier and may be updated to the network's
+requirements.
+
+### Assignment
+
+The `Identity` entity now supports a new field `authPolicyId`. In the REST Edge API this field is optional during create
+and existing calls to `POST /identities` will succeed. Every identity must have exactly one authentication policy
+assigned to it. If one is not assigned, the default authentication policy will be used (`authPolicyId` == `default`)
+
+Example w/o `authPolicyId`:
+
+`POST /edge/v1/management/identities`
+```json
+
+{
+    "name": "zde",
+    "type": "User",
+    "isAdmin": false,
+    "enrollment": {
+        "ott": "true"
+    },
+    "roleAttributes": [
+        "dial"
+    ]
+}
+```
+
+Example w/ `authPolicyId`:
+
+`POST /edge/v1/management/identities`
+```json
+{
+    "name": "zde",
+    "type": "User",
+    "isAdmin": false,
+    "enrollment": {
+        "ott": "true"
+    },
+    "roleAttributes": [
+        "dial"
+    ],
+    "authPolicyId": "xyak1."
+}
+```
+
+### Default Authentication Policy
+
+Ziti contains a single default authentication policy that is marked as a "system" definition. It cannot be deleted,
+but it can be updated. This authentication policy has a well known id of `default`. It can be viewed according to the
+following example:
+
+`GET /edge/v1/management/auth-policies/default`
+```json
+{
+  "data": {
+    "_links": {
+      "self": {
+        "href": "./auth-policies/default"
+      }
+    },
+    "createdAt": "2022-03-30T17:54:55.785Z",
+    "id": "default",
+    "tags": {},
+    "updatedAt": "2022-03-30T17:54:55.785Z",
+    "name": "Default",
+    "primary": {
+      "cert": {
+        "allowExpiredCerts": true,
+        "allowed": true
+      },
+      "extJwt": {
+        "allowed": true,
+        "allowedSigners": null
+      },
+      "updb": {
+        "allowed": true,
+        "lockoutDurationMinutes": 0,
+        "maxAttempts": 0,
+        "minPasswordLength": 5,
+        "requireMixedCase": false,
+        "requireNumberChar": false,
+        "requireSpecialChar": false
+      }
+    },
+    "secondary": {
+      "requireExtJwtSigner": null,
+      "requireTotp": false
+    }
+  },
+  "meta": {}
+}
+```
+
+### AuthPolicy Endpoints
+
+The following endpoints were added to support CRUD operations:
+
+- List `GET /edge/v1/management/auth-policies`
+- Create `POST /edge/v1/management/auth-policies`
+- Detail `GET /edge/v1/management/auth-policies/{id}`
+- Replace `PUT /edge/v1/management/auth-policies/{id}`
+- Patch `PATCH /edge/v1/management/auth-policies/{id}`
+- Delete `Delete /edge/v1/management/auth-policies/{id}`
+
+And have the following properties:
+
+- `name`: a unique name for the policy
+- `primary.cert.allowed` - allow certificate based authentication
+- `primary.cert.allowExpiredCerts` - allows clients with expired certificates to authenticate
+- `primary.extJwt.allowed` - allow external JWT authentication
+- `primary.extJwt.allowedSigners` - a specific set of external jwt signers that are allowed, if not set all enabled signers are allowed
+- `primary.updb.allowed` - allow username/password authentication
+- `primary.updb.lockoutDurationMinutes` - the number of minutes to lock an identity after exceeding `maxAttempts`, 0 = indefinite
+- `primary.updb.minPasswordLength` - the minimum lengths passwords must be, currently a placeholder
+- `primary.updb.requireMixedCase` - requires passwords to include mixed cases, currently a placeholder
+- `primary.updb.requireNumberChar` - requires passwords to include at least 1 number, currently a placeholder
+- `primary.updb.requireSpecialChar` - requires passwords to include at least 1 special character, currently a placeholder
+- `secondary.requireExtJwtSigner` - requires an additional JWT bearer token be provided on all API requests, null is disabled
+- `secondary.requireTotp` - requires TOTP (fka MFA enrollment) enrollment to be completed and in use
+Example Create:
+
+```json
+{
+    "name": "Original Name 1",
+    "primary": {
+        "cert": {
+            "allowExpiredCerts": true,
+            "allowed": true
+        },
+        "extJwt": {
+            "allowed": true,
+            "allowedSigners": [
+                "2BurseGARW"
+            ]
+        },
+        "updb": {
+            "allowed": true,
+            "lockoutDurationMinutes": 0,
+            "maxAttempts": 5,
+            "minPasswordLength": 5,
+            "requireMixedCase": true,
+            "requireNumberChar": true,
+            "requireSpecialChar": true
+        }
+    },
+    "secondary": {
+        "requireExtJwtSigner": null,
+        "requireTotp": false
+    },
+    "tags": {
+        "originalTag1Name": "originalTag1Value"
+    }
+}
+```
+
+## JWT Primary/Secondary Authentication
+
+A new primary authentication mechanism is available in addition to `cert` and `passsword` (UPDB). The internal
+method name is `ext-jwt` and it allows authentication by providing a bearer token by a known external JWT signer.
+A new entity `External JWT Singer` has been introduced and is defined in subsequent sections.
+
+Successful primary authentication requires:
+
+1) The target identity must have an authentication policy that allows primary external JWT signer authentication
+2) The JWT provided must include a `kid` that matches the `kid` defined on an external JWT signer
+3) The JWT provided must include a `sub` (or configured claim) that matches the identity's `id` or `externalId` (see below)
+4) The JWT provided must be properly signed by the signer defined by `kid`
+5) The JWT provided must be unexpired
+6) The encoded JWT must be provided during the initial authentication in the `Authorization` header with the prefix `Bearer ` and subsequent API calls
+
+A new secondary factor authentication mechanism is available in addition to TOTP (fka MFA). Both TOTP and `ext-jwt`
+secondary authentication factors can be enabled at the same time for a "nFA" setup.
+
+Successful secondary authentication requires all the same JWT token validation items, but as a secondary
+factor, not providing a valid JWT bearer token on API requests will drop the request's access to 
+"partially authenticated" - which has reduced access. Access can be restored by providing a valid JWT bearer token.
+Additionally, to turn on the functionality, an authentication policy that has the `requireExtJwtSigner` field must be
+set to a valid external JWT signer and assigned to the target identity(ies).
+
+### External JWT Signers 
+
+External JWT Signers can be managed on the following new REST Edge Management API endpoints:
+
+- List `GET /edge/v1/management/ext-jwt-signers`
+- Create `POST /edge/v1/management/ext-jwt-signers`
+- Detail `GET /edge/v1/management/ext-jwt-signers/{id}`
+- Replace `PUT /edge/v1/management/ext-jwt-signers/{id}`
+- Patch `PATCH /edge/v1/management/ext-jwt-signers/{id}`
+- Delete `Delete /edge/v1/management/ext-jwt-signers/{id}`
+
+And support the following properties:
+
+- `name` - a unique name for the signer
+- `certPem` - a unique PEM x509 certificate for the signer
+- `enabled` - whether the signer is currently enabled or disabled
+- `externalAuthUrl` - the URL clients should use to obtain a JWT
+- `claimsProperty` - the property to alternatively use for the target identity's `id` or `externalId`
+- `useExternalId` - whether to match the `claimsProperty` to `id` (false) or `externalId` (true)
+- `kid` - a unique `kid` value that will be present in a valid JWT's `kid` header
+
+Example Create:
+
+`POST /edge/v1/management/ext-jwt-signers`
+```json
+{
+    "certPem": "-----BEGIN CERTIFICATE-----\nMIIBizC ...",
+    "enabled": true,
+    "kid": "c7e2081d-b8f0-44b1-80fa-d73872692fd6",
+    "name": "Test JWT Signer Pre-Patch Kid",
+    "externalAuthUrl" : "https://my-jwt-provide/auth",
+    "claimsProperty": "email",
+    "useExternalId": "true"
+}
+```
+
+The above example creates a new signer that is enabled and that will instruct clients that they can attempt to obtain
+a JWT from `https://my-jwt-provide/auth`. The JWT that is returned from `https://my-jwt-provide/auth` should have a
+`kid` header of `c7e2081d-b8f0-44b1-80fa-d73872692fd6` and the `email` claim will be matched against Ziti identity's
+`externalId` field.
+
+### Identity ExternalId
+
+Ziti identity's have a new optional field named `externalId`. All existing identities will have this value defaulted
+to `null`. This value is unique if set and is currently only used for external JWT signer authentication. Ziti treats 
+the value as a case-sensitive opaque string.
+
+It has standard CRUD access on the `edge/v1/management/identities` endpoints for `POST`, `PUT`, `PATCH`, and `GET`.
+
+## Required TOTP (fka MFA) Enrollment
+
+With authentication policies, it is now possible to enforce MFA enrollment at authentication. Prior to this release,
+it was only possible to restrict access to service(s) via posture checks. The authentication policy value
+`secondary.requireTotp` being set to true will now force identities into a "partially authenticated" state unless
+TOTP MFA is completed.
+
+Due to this, it is now possible to enroll in TOTP MFA while "partially authenticated". It is not possible to manipulate
+an existing completed enrollment.
+
+## Circuit Inspection
+Here is an example of the kind of information you can get with the new circuit inspection factility
+
+```
+$ ziti fabric inspect .* circuit:GrtfcCjzD -j | jq
+{
+  "errors": null,
+  "success": true,
+  "values": [
+    {
+      "appId": "aKYdwbTf7l",
+      "name": "circuit:GrtfcCjzD",
+      "value": {
+        "Destinations": {
+          "1LKMInhzapHdurbaABaa50": {
+            "dest": "CX1kmb0fAl",
+            "id": "1LKMInhzapHdurbaABaa50",
+            "protocol": "tls",
+            "split": true,
+            "type": "link"
+          },
+          "wPBx": {
+            "addr": "wPBx",
+            "originator": "Initiator",
+            "recvBuffer": {
+              "lastSizeSent": 21,
+              "size": 0
+            },
+            "sendBuffer": {
+              "accumulator": 47,
+              "acquiredSafely": true,
+              "blockedByLocalWindow": false,
+              "blockedByRemoteWindow": false,
+              "closeWhenEmpty": false,
+              "closed": false,
+              "duplicateAcks": 0,
+              "linkRecvBufferSize": 23,
+              "linkSendBufferSize": 0,
+              "retransmits": 0,
+              "retxScale": 2,
+              "retxThreshold": 100,
+              "successfulAcks": 3,
+              "timeSinceLastRetx": "1m17.563s",
+              "windowsSize": 16384
+            },
+            "timeSinceLastLinkRx": "1m11.451s",
+            "type": "xgress"
+          }
+        },
+        "Forwards": {
+          "1LKMInhzapHdurbaABaa50": "wPBx",
+          "wPBx": "1LKMInhzapHdurbaABaa50"
+        }
+      }
+    },
+    {
+      "appId": "CX1kmb0fAl",
+      "name": "circuit:GrtfcCjzD",
+      "value": {
+        "Destinations": {
+          "1LKMInhzapHdurbaABaa50": {
+            "dest": "aKYdwbTf7l",
+            "id": "1LKMInhzapHdurbaABaa50",
+            "protocol": "tls",
+            "split": true,
+            "type": "link"
+          },
+          "MZ9x": {
+            "addr": "MZ9x",
+            "originator": "Terminator",
+            "recvBuffer": {
+              "lastSizeSent": 23,
+              "size": 0
+            },
+            "sendBuffer": {
+              "accumulator": 45,
+              "acquiredSafely": true,
+              "blockedByLocalWindow": false,
+              "blockedByRemoteWindow": false,
+              "closeWhenEmpty": false,
+              "closed": false,
+              "duplicateAcks": 0,
+              "linkRecvBufferSize": 21,
+              "linkSendBufferSize": 0,
+              "retransmits": 0,
+              "retxScale": 2,
+              "retxThreshold": 102,
+              "successfulAcks": 2,
+              "timeSinceLastRetx": "457983h26m1.336s",
+              "windowsSize": 16384
+            },
+            "timeSinceLastLinkRx": "1m16.555s",
+            "type": "xgress"
+          }
+        },
+        "Forwards": {
+          "1LKMInhzapHdurbaABaa50": "MZ9x",
+          "MZ9x": "1LKMInhzapHdurbaABaa50"
+        }
+      }
+    }
+  ]
+}
+```
+
 # Release 0.25.3
 
 * Enhancement: Add cost and precedence to host.v1 and host.v2 config types. This allows router-embedded tunnelers the ability to handle HA failover scenarios.
@@ -41,7 +409,7 @@ a single link between routers, unless you use the new link types feature.
     * Support for multiple link types
     * Existing link notifications
     * Link heartbeats/latency have changed
-    * Inspect and ps upport for links
+    * Inspect and ps support for links
     * Router version dissemination
     * Distributed control preparation
 * Enhancement: `ziti fabric list routers` now includes the link listener types and advertise addresses

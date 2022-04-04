@@ -18,6 +18,11 @@ package subcmd
 
 import (
 	"fmt"
+	"net"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/router/debugops"
@@ -33,10 +38,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"io"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var forceEnrollmentExtension *bool
@@ -99,8 +100,10 @@ func run(cmd *cobra.Command, args []string) {
 		if debugOpsEnabled {
 			r.RegisterDefaultDebugOps()
 			debugops.RegisterEdgeRouterDebugOps(r, stateManager)
-			options.CustomOps = map[byte]func(conn io.ReadWriter) error{
-				agent.CustomOp: r.HandleDebug,
+			options.CustomOps = map[byte]func(conn net.Conn) error{
+				agent.CustomOp: func(conn net.Conn) error {
+					return r.HandleDebug(conn)
+				},
 			}
 		}
 		if err := agent.Listen(options); err != nil {

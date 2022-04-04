@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/transport"
+	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
