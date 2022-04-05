@@ -180,15 +180,16 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	columnConfigs := make([]table.ColumnConfig, 9)
-	columnConfigs[4] = table.ColumnConfig{Align: text.AlignRight}
-	columnConfigs[5] = table.ColumnConfig{Align: text.AlignRight}
+	columnConfigs := []table.ColumnConfig{
+		{Number: 5, Align: text.AlignRight},
+		{Number: 6, Align: text.AlignRight},
+		{Number: 8, Align: text.AlignRight},
+	}
 	t.SetColumnConfigs(columnConfigs)
-	t.AppendHeader(table.Row{"ID", "Type", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
+	t.AppendHeader(table.Row{"ID", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
-		linkType := entity.Path("type").Data().(string)
 		srcRouter := entity.Path("sourceRouter.name").Data().(string)
 		dstRouter := entity.Path("destRouter.name").Data().(string)
 		staticCost := entity.Path("staticCost").Data().(float64)
@@ -203,9 +204,9 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 			status = "down"
 		}
 
-		t.AppendRow(table.Row{id, linkType, srcRouter, dstRouter, staticCost,
-			fmt.Sprintf("%.2vms", srcLatency),
-			fmt.Sprintf("%.2vms", dstLatency),
+		t.AppendRow(table.Row{id, srcRouter, dstRouter, staticCost,
+			fmt.Sprintf("%.1fms", srcLatency),
+			fmt.Sprintf("%.1fms", dstLatency),
 			state, status, cost})
 	}
 
@@ -314,8 +315,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 			children, _ := listenerAddresses.Children()
 			for idx, child := range children {
 				addr := child.Path("address").Data().(string)
-				linkType := child.Path("type").Data().(string)
-				listeners = append(listeners, fmt.Sprintf("%v: %v (%v)", idx+1, addr, linkType))
+				listeners = append(listeners, fmt.Sprintf("%v: %v", idx+1, addr))
 			}
 		}
 		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version, strings.Join(listeners, "\n")})
