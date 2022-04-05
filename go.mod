@@ -36,13 +36,13 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/channel v0.18.20
-	github.com/openziti/edge v0.21.169
-	github.com/openziti/fabric v0.17.88
+	github.com/openziti/channel v0.18.23
+	github.com/openziti/edge v0.21.174
+	github.com/openziti/fabric v0.17.93
 	github.com/openziti/foundation v0.17.22
-	github.com/openziti/sdk-golang v0.16.41
-	github.com/openziti/storage v0.1.2
-	github.com/openziti/transport v0.1.1
+	github.com/openziti/sdk-golang v0.16.44
+	github.com/openziti/storage v0.1.4
+	github.com/openziti/transport v0.1.3
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
@@ -123,7 +123,7 @@ require (
 	github.com/mdlayher/netlink v1.6.0 // indirect
 	github.com/mdlayher/socket v0.1.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/miekg/dns v1.1.47 // indirect
+	github.com/miekg/dns v1.1.48 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
@@ -157,7 +157,7 @@ require (
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f // indirect
+	golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect
