@@ -19,10 +19,10 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/channel"
 )
 
 type removeTerminatorHandler struct {
@@ -52,14 +52,18 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel
 func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	_, err := h.network.Terminators.Read(request.TerminatorId)
+	terminator, err := h.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
 	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
-		log.Infof("removed terminator [t/%s]", request.TerminatorId)
+		log.
+			WithField("routerId", ch.Id().Token).
+			WithField("serviceId", terminator.Service).
+			WithField("terminator", request.TerminatorId).
+			Info("removed terminator")
 		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
