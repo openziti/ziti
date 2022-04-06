@@ -42,6 +42,9 @@ import (
 // swagger:model externalJwtSignerPatch
 type ExternalJWTSignerPatch struct {
 
+	// audience
+	Audience *string `json:"audience,omitempty"`
+
 	// cert pem
 	CertPem *string `json:"certPem,omitempty"`
 
@@ -53,6 +56,9 @@ type ExternalJWTSignerPatch struct {
 
 	// external auth Url
 	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
+
+	// issuer
+	Issuer *string `json:"issuer,omitempty"`
 
 	// kid
 	Kid *string `json:"kid,omitempty"`

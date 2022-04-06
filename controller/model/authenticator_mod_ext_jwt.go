@@ -21,8 +21,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/storage/boltz"
 	nfPem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -136,12 +136,11 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 	jwtStr := strings.Replace(authHeader, "Bearer ", "", 1)
 
+	//pubKeyLookup also handles extJwtSigner.enabled checking
 	jwtToken, err := jwt.Parse(jwtStr, a.pubKeyLookup)
 
 	if err == nil && jwtToken.Valid {
-		claimsProperty := "sub"
 		mapClaims := jwtToken.Claims.(jwt.MapClaims)
-
 		extJwt := mapClaims[ExtJwtInternalClaim].(*persistence.ExternalJwtSigner)
 
 		if extJwt == nil {
@@ -151,13 +150,65 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 		logger = logger.WithField("externalJwtSignerId", extJwt.Id)
 
-		if extJwt.ClaimsProperty != nil {
-			claimsProperty = *extJwt.ClaimsProperty
+		issuer := ""
+		if issuerVal, ok := mapClaims["iss"]; ok {
+			issuer, ok = issuerVal.(string)
+			if !ok {
+				logger.Error("issuer in claims was not a string")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
 		}
 
-		logger = logger.WithField("claimsProperty", claimsProperty)
+		logger = logger.WithField("claimsIssuer", issuer)
 
-		identityIdInterface, ok := mapClaims[claimsProperty]
+		if extJwt.Issuer != nil && *extJwt.Issuer != issuer {
+			logger.WithField("expectedIssuer", *extJwt.Issuer).Error("invalid issuer")
+			return "", "", "", apierror.NewInvalidAuth()
+		}
+
+		if extJwt.Audience != nil {
+			audValues := mapClaims["aud"]
+
+			if audValues == nil {
+				logger.WithField("audience", audValues).Error("audience is missing")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
+
+			audSlice, ok := audValues.([]string)
+
+			if !ok {
+				audString, ok := audValues.(string)
+
+				if !ok {
+					logger.WithField("audience", audValues).Error("audience is not a string or array of strings")
+					return "", "", "", apierror.NewInvalidAuth()
+				}
+
+				audSlice = []string{audString}
+			}
+
+			found := false
+			for _, validAud := range audSlice {
+				if validAud == *extJwt.Audience {
+					found = true
+					break
+				}
+			}
+
+			if !found {
+				logger.WithField("expectedAudience", *extJwt.Audience).WithField("claimsAudiences", audSlice).Error("invalid audience")
+				return "", "", "", apierror.NewInvalidAuth()
+			}
+		}
+
+		idClaimProperty := "sub"
+		if extJwt.ClaimsProperty != nil {
+			idClaimProperty = *extJwt.ClaimsProperty
+		}
+
+		logger = logger.WithField("idClaimProperty", idClaimProperty)
+
+		identityIdInterface, ok := mapClaims[idClaimProperty]
 
 		if !ok {
 			logger.Error("claims property on external jwt signer not found in claims")
@@ -189,7 +240,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 			logger.WithError(err).Error("encountered unhandled nil auth policy during authentication")
 			return "", "", "", apierror.NewInvalidAuth()
 		}
-		externaJwtSignerId := ""
+		externalJwtSignerId := ""
 		if identity.Disabled {
 			logger.
 				WithField("disabledAt", identity.DisabledAt).
@@ -208,7 +259,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 				found := false
 				for _, allowedId := range authPolicy.Primary.ExtJwt.AllowedExtJwtSigners {
 					if allowedId == extJwt.Id {
-						externaJwtSignerId = allowedId
+						externalJwtSignerId = allowedId
 						found = true
 						break
 					}
@@ -226,13 +277,13 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 				return "", "", "", apierror.NewInvalidAuth()
 			}
 
-			externaJwtSignerId = extJwt.Id
+			externalJwtSignerId = extJwt.Id
 		}
 
 		if extJwt.UseExternalId {
-			return "", identityId, externaJwtSignerId, nil
+			return "", identityId, externalJwtSignerId, nil
 		}
-		return identityId, "", externaJwtSignerId, nil
+		return identityId, "", externalJwtSignerId, nil
 	}
 
 	logger.Error("authorization failed, jwt did not verify")

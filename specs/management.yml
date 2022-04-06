@@ -13735,6 +13735,9 @@ definitions:
     - enabled
     - kid
     properties:
+      audience:
+        type: string
+        x-nullable: true
       certPem:
         type: string
       claimsProperty:
@@ -13745,6 +13748,9 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      issuer:
+        type: string
         x-nullable: true
       kid:
         type: string
@@ -13774,7 +13780,11 @@ definitions:
       - claimsProperty
       - useExternalId
       - kid
+      - issuer
+      - audience
       properties:
+        audience:
+          type: string
         certPem:
           type: string
         claimsProperty:
@@ -13787,6 +13797,8 @@ definitions:
           type: string
           format: url
         fingerprint:
+          type: string
+        issuer:
           type: string
         kid:
           type: string
@@ -13809,6 +13821,9 @@ definitions:
   externalJwtSignerPatch:
     type: object
     properties:
+      audience:
+        type: string
+        x-nullable: true
       certPem:
         type: string
         x-nullable: true
@@ -13821,6 +13836,9 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      issuer:
+        type: string
         x-nullable: true
       kid:
         type: string
@@ -13842,6 +13860,9 @@ definitions:
     - enabled
     - kid
     properties:
+      audience:
+        type: string
+        x-nullable: true
       certPem:
         type: string
       claimsProperty:
@@ -13852,6 +13873,9 @@ definitions:
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      issuer:
+        type: string
         x-nullable: true
       kid:
         type: string

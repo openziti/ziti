@@ -36,17 +36,18 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 
 	// create a bunch of signers to use
-	validJwtSignerCommonName := "valid signer"
-	validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert(validJwtSignerCommonName)
+
+	//valid signer with issuer and audience
+	validJwtSignerCert, validJwtSignerPrivateKey := newSelfSignedCert("valid signer")
 	validJwtSignerCertPem := nfpem.EncodeToString(validJwtSignerCert)
-	validJwtSignerName := "Test JWT Signer - Enabled"
-	validJwtSignerEnabled := true
 
 	validJwtSigner := &rest_model.ExternalJWTSignerCreate{
-		CertPem: &validJwtSignerCertPem,
-		Enabled: &validJwtSignerEnabled,
-		Name:    &validJwtSignerName,
-		Kid:     S(uuid.NewString()),
+		CertPem:  &validJwtSignerCertPem,
+		Enabled:  B(true),
+		Name:     S("Test JWT Signer - Enabled"),
+		Kid:      S(uuid.NewString()),
+		Issuer:   S("the-very-best-iss"),
+		Audience: S("the-very-best-aud"),
 	}
 
 	createResponseEnv := &rest_model.CreateEnvelope{}
@@ -55,16 +56,30 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
 
-	notEnabledJwtSignerCommonName := "not enabled signer"
-	notEnabledJwtSignerCert, notEnabledJwtSignerPrivateKey := newSelfSignedCert(notEnabledJwtSignerCommonName)
+	//valid signer no issuer no audienceS
+	validJwtSignerNoIssNoAudCert, validJwtSignerNoIssNoAudPrivateKey := newSelfSignedCert("valid signer")
+	validJwtSignerCertPemNoIssNoAud := nfpem.EncodeToString(validJwtSignerNoIssNoAudCert)
+
+	validJwtSignerNoIssNoAud := &rest_model.ExternalJWTSignerCreate{
+		CertPem: &validJwtSignerCertPemNoIssNoAud,
+		Enabled: B(true),
+		Name:    S("Test JWT Signer - Enabled No Iss No Aud"),
+		Kid:     S(uuid.NewString()),
+	}
+
+	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwtSignerNoIssNoAud).SetResult(createResponseEnv).Post("/external-jwt-signers")
+	ctx.Req.NoError(err)
+	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+
+	createResponseEnv = &rest_model.CreateEnvelope{}
+
+	notEnabledJwtSignerCert, notEnabledJwtSignerPrivateKey := newSelfSignedCert("not enabled signer")
 	notEnabledJwtSignerCertPem := nfpem.EncodeToString(notEnabledJwtSignerCert)
-	notEnabledJwtSignerName := "Test JWT Signer - Not Enabled"
-	notEnabledJwtSignerEnabled := false
 
 	notEnabledJwtSigner := &rest_model.ExternalJWTSignerCreate{
 		CertPem: &notEnabledJwtSignerCertPem,
-		Enabled: &notEnabledJwtSignerEnabled,
-		Name:    &notEnabledJwtSignerName,
+		Enabled: B(false),
+		Name:    S("Test JWT Signer - Not Enabled"),
 		Kid:     S(uuid.NewString()),
 	}
 
@@ -81,11 +96,11 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 
 		jwtToken := jwt.New(jwt.SigningMethodES256)
 		jwtToken.Claims = jwt.StandardClaims{
-			Audience:  "ziti.controller",
+			Audience:  *validJwtSigner.Audience,
 			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
 			Id:        time.Now().String(),
 			IssuedAt:  time.Now().Unix(),
-			Issuer:    "fake.issuer",
+			Issuer:    *validJwtSigner.Issuer,
 			NotBefore: time.Now().Unix(),
 			Subject:   ctx.AdminManagementSession.identityId,
 		}
@@ -93,6 +108,37 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		jwtToken.Header["kid"] = *validJwtSigner.Kid
 
 		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(jwtStrSigned)
+
+		result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+		resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		ctx.Req.NotNil(result)
+		ctx.Req.NotNil(result.Data)
+		ctx.Req.NotNil(result.Data.Token)
+	})
+
+	t.Run("authenticating with a valid jwt succeeds and no iss no aud succeeds", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtToken := jwt.New(jwt.SigningMethodES256)
+		jwtToken.Claims = jwt.StandardClaims{
+			Audience:  "i do not matter",
+			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+			Id:        time.Now().String(),
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "i do not matter",
+			NotBefore: time.Now().Unix(),
+			Subject:   ctx.AdminManagementSession.identityId,
+		}
+
+		jwtToken.Header["kid"] = *validJwtSignerNoIssNoAud.Kid
+
+		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerNoIssNoAudPrivateKey)
 		ctx.Req.NoError(err)
 		ctx.Req.NotEmpty(jwtStrSigned)
 
@@ -124,6 +170,60 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		jwtToken.Header["kid"] = *notEnabledJwtSigner.Kid
 
 		jwtStrSigned, err := jwtToken.SignedString(notEnabledJwtSignerPrivateKey)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(jwtStrSigned)
+
+		result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+		resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+	})
+
+	t.Run("authenticating with an invalid issuer jwt fails", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtToken := jwt.New(jwt.SigningMethodES256)
+		jwtToken.Claims = jwt.StandardClaims{
+			Audience:  *validJwtSigner.Audience,
+			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+			Id:        time.Now().String(),
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    "i will cause this to fail",
+			NotBefore: time.Now().Unix(),
+			Subject:   ctx.AdminManagementSession.identityId,
+		}
+
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
+
+		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
+		ctx.Req.NoError(err)
+		ctx.Req.NotEmpty(jwtStrSigned)
+
+		result := &rest_model.CurrentAPISessionDetailEnvelope{}
+
+		resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusUnauthorized, resp.StatusCode())
+	})
+
+	t.Run("authenticating with an invalid audience jwt fails", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		jwtToken := jwt.New(jwt.SigningMethodES256)
+		jwtToken.Claims = jwt.StandardClaims{
+			Audience:  "this test shall not succeed",
+			ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
+			Id:        time.Now().String(),
+			IssuedAt:  time.Now().Unix(),
+			Issuer:    *validJwtSigner.Issuer,
+			NotBefore: time.Now().Unix(),
+			Subject:   ctx.AdminManagementSession.identityId,
+		}
+
+		jwtToken.Header["kid"] = *validJwtSigner.Kid
+
+		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
 		ctx.Req.NoError(err)
 		ctx.Req.NotEmpty(jwtStrSigned)
 

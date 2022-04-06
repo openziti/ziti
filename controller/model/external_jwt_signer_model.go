@@ -20,8 +20,8 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -32,16 +32,18 @@ type ExternalJwtSigner struct {
 	models.BaseEntity
 	Name            string
 	CertPem         string
+	Kid             string
 	Enabled         bool
 	ExternalAuthUrl *string
 	UseExternalId   bool
 	ClaimsProperty  *string
+	Issuer          *string
+	Audience        *string
 
 	CommonName  string
 	Fingerprint string
 	NotAfter    time.Time
 	NotBefore   time.Time
-	Kid         string
 }
 
 func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
@@ -68,6 +70,8 @@ func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
 		UseExternalId:   entity.UseExternalId,
 		ClaimsProperty:  entity.ClaimsProperty,
 		Kid:             entity.Kid,
+		Issuer:          entity.Issuer,
+		Audience:        entity.Audience,
 	}
 
 	return signer, nil
@@ -91,6 +95,8 @@ func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.
 		UseExternalId:   entity.UseExternalId,
 		ClaimsProperty:  entity.ClaimsProperty,
 		Kid:             entity.Kid,
+		Issuer:          entity.Issuer,
+		Audience:        entity.Issuer,
 	}
 
 	if entity.CertPem != "" {
@@ -129,5 +135,7 @@ func (entity *ExternalJwtSigner) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity bol
 	entity.ClaimsProperty = boltExternalJwtSigner.ClaimsProperty
 	entity.UseExternalId = boltExternalJwtSigner.UseExternalId
 	entity.Kid = boltExternalJwtSigner.Kid
+	entity.Issuer = boltExternalJwtSigner.Issuer
+	entity.Audience = boltExternalJwtSigner.Audience
 	return nil
 }
