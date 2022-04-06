@@ -2,10 +2,11 @@ package events
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/pkg/errors"
 	"reflect"
 	"time"
+
+	"github.com/openziti/fabric/controller/network"
+	"github.com/pkg/errors"
 )
 
 func registerCircuitEventHandler(val interface{}, config map[interface{}]interface{}) error {
@@ -70,18 +71,24 @@ func (self *fabricCircuitTypeFilterEventAdapter) AcceptCircuitEvent(event *netwo
 }
 
 type CircuitEvent struct {
-	Namespace string    `json:"namespace"`
-	EventType string    `json:"event_type"`
-	CircuitId string    `json:"circuit_id"`
-	Timestamp time.Time `json:"timestamp"`
-	ClientId  string    `json:"client_id"`
-	ServiceId string    `json:"service_id"`
-	Path      string    `json:"path"`
+	Namespace        string         `json:"namespace"`
+	EventType        string         `json:"event_type"`
+	CircuitId        string         `json:"circuit_id"`
+	Timestamp        time.Time      `json:"timestamp"`
+	ClientId         string         `json:"client_id"`
+	ServiceId        string         `json:"service_id"`
+	CreationTimespan *time.Duration `json:"creation_timespan"`
+	Path             string         `json:"path"`
 }
 
 func (event *CircuitEvent) String() string {
-	return fmt.Sprintf("%v.%v circuitId=%v clientId=%v serviceId=%v path=%v",
-		event.Namespace, event.EventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path)
+	return fmt.Sprintf("%v.%v circuitId=%v clientId=%v serviceId=%v path=%v%s",
+		event.Namespace, event.EventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path, func() string {
+			if event.CreationTimespan == nil {
+				return ""
+			}
+			return fmt.Sprintf(" creationTimespan=%s", *event.CreationTimespan)
+		}())
 }
 
 type CircuitEventHandler interface {
@@ -112,13 +119,14 @@ func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.Circuit
 		eventType = "deleted"
 	}
 	event := &CircuitEvent{
-		Namespace: "fabric.circuits",
-		EventType: eventType,
-		CircuitId: netEvent.CircuitId,
-		Timestamp: time.Now(),
-		ClientId:  netEvent.ClientId,
-		ServiceId: netEvent.ServiceId,
-		Path:      netEvent.Path.String(),
+		Namespace:        "fabric.circuits",
+		EventType:        eventType,
+		CircuitId:        netEvent.CircuitId,
+		Timestamp:        time.Now(),
+		ClientId:         netEvent.ClientId,
+		ServiceId:        netEvent.ServiceId,
+		CreationTimespan: netEvent.CreationTimespan,
+		Path:             netEvent.Path.String(),
 	}
 
 	adapter.handler.AcceptCircuitEvent(event)

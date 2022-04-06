@@ -69,12 +69,19 @@ func (handler *CircuitsStreamHandler) AcceptCircuitEvent(netEvent *network.Circu
 		eventType = mgmt_pb.StreamCircuitEventType_CircuitDeleted
 	}
 
+	var cts *int64
+	if netEvent.CreationTimespan != nil {
+		ctsv := int64(*netEvent.CreationTimespan)
+		cts = &ctsv
+	}
+
 	event := &mgmt_pb.StreamCircuitsEvent{
-		EventType: eventType,
-		CircuitId: netEvent.CircuitId,
-		ClientId:  netEvent.ClientId,
-		ServiceId: netEvent.ServiceId,
-		Path:      NewPath(netEvent.Path),
+		EventType:        eventType,
+		CircuitId:        netEvent.CircuitId,
+		ClientId:         netEvent.ClientId,
+		ServiceId:        netEvent.ServiceId,
+		CreationTimespan: cts,
+		Path:             NewPath(netEvent.Path),
 	}
 	handler.sendEvent(event)
 }

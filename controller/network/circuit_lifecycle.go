@@ -17,6 +17,8 @@
 package network
 
 import (
+	"time"
+
 	"github.com/openziti/foundation/util/cowslice"
 )
 
@@ -50,11 +52,12 @@ func (self CircuitEventType) String() string {
 var CircuitTypes = []CircuitEventType{CircuitCreated, CircuitUpdated, CircuitDeleted}
 
 type CircuitEvent struct {
-	Type      CircuitEventType
-	CircuitId string
-	ClientId  string
-	ServiceId string
-	Path      *Path
+	Type             CircuitEventType
+	CircuitId        string
+	ClientId         string
+	ServiceId        string
+	CreationTimespan *time.Duration
+	Path             *Path
 }
 
 func (event *CircuitEvent) Handle() {
@@ -68,13 +71,14 @@ type CircuitEventHandler interface {
 	AcceptCircuitEvent(event *CircuitEvent)
 }
 
-func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit) {
+func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit, creationTimespan *time.Duration) {
 	event := &CircuitEvent{
-		Type:      eventType,
-		CircuitId: circuit.Id,
-		ClientId:  circuit.ClientId,
-		ServiceId: circuit.Service.Id,
-		Path:      circuit.Path,
+		Type:             eventType,
+		CircuitId:        circuit.Id,
+		ClientId:         circuit.ClientId,
+		ServiceId:        circuit.Service.Id,
+		CreationTimespan: creationTimespan,
+		Path:             circuit.Path,
 	}
 	network.eventDispatcher.Dispatch(event)
 }

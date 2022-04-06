@@ -297,6 +297,7 @@ message StreamCircuitsEvent {
   string clientId = 3;
   string serviceId = 4;
   Path path = 5;
+  optional int64 creationTimespan = 6;
 }
 
 message ToggleCircuitTracesRequest {

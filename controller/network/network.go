@@ -38,10 +38,10 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/sequence"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -373,6 +373,7 @@ func (network *Network) LinkChanged(l *Link) {
 }
 
 func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context) (*Circuit, error) {
+	startTime := time.Now()
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.circuitController.nextCircuitId()
 	if err != nil {
@@ -489,7 +490,8 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			PeerData:   peerData,
 		}
 		network.circuitController.add(circuit)
-		network.CircuitEvent(CircuitCreated, circuit)
+		creationTimespan := time.Since(startTime)
+		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan)
 
 		logger.WithField("path", circuit.Path).Debug("created circuit")
 		return circuit, nil
@@ -621,7 +623,7 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 			}
 		}
 		network.circuitController.remove(ss)
-		network.CircuitEvent(CircuitDeleted, ss)
+		network.CircuitEvent(CircuitDeleted, ss, nil)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
@@ -811,7 +813,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 
 			log.Info("rerouted circuit")
 
-			network.CircuitEvent(CircuitUpdated, circuit)
+			network.CircuitEvent(CircuitUpdated, circuit, nil)
 			return nil
 		} else {
 			return err
@@ -837,7 +839,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 		}
 
 		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
-		network.CircuitEvent(CircuitUpdated, s)
+		network.CircuitEvent(CircuitUpdated, s, nil)
 		return nil
 
 	} else {
