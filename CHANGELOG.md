@@ -1,3 +1,8 @@
+# Release 0.25.6
+
+* Enhancement: Updated Control Channel to use new heartbeat logging mirroring Links in Release `0.25.0`
+* Enhancement: Added Circuit Creation Timespan which denotes how long the fabric took to construct a requested circuit.
+
 # Release 0.25.5
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
