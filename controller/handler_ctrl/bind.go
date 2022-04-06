@@ -17,6 +17,9 @@
 package handler_ctrl
 
 import (
+	"time"
+
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/latency"
 	"github.com/openziti/fabric/controller/network"
@@ -24,7 +27,7 @@ import (
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/metrics"
-	"time"
+	"github.com/openziti/foundation/util/concurrenz"
 )
 
 type bindHandler struct {
@@ -38,6 +41,11 @@ func newBindHandler(router *network.Router, network *network.Network, xctrls []x
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	log := pfxlog.Logger().WithFields(map[string]interface{}{
+		"routerId":      self.router.Id,
+		"routerVersion": self.router.VersionInfo.Version,
+	})
+
 	traceDispatchWrapper := trace.NewDispatchWrapper(self.network.GetEventDispatcher().Dispatch)
 	binding.AddTypedReceiveHandler(newCircuitRequestHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newRouteResultHandler(self.network, self.router))
@@ -56,18 +64,31 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController(), traceDispatchWrapper))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
-	if self.router.VersionInfo.HasMinimumVersion("0.18.7") {
-		roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
-		queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
+	doHeartbeat := self.router.VersionInfo.HasMinimumVersion("0.25.5")
+
+	roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
+	queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		roundTripHistogram.Dispose()
+		queueTimeHistogram.Dispose()
+	}))
+
+	if doHeartbeat {
+		log.Info("router supports heartbeats")
+		cb := &heartbeatCallback{
+			latencyMetric:    roundTripHistogram,
+			queueTimeMetric:  queueTimeHistogram,
+			ch:               binding.GetChannel(),
+			latencySemaphore: concurrenz.NewSemaphore(2),
+		}
+		channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+	} else if self.router.VersionInfo.HasMinimumVersion("0.18.7") {
+		log.Info("router does not support heartbeats, using latency probe")
 		latencyHandler := &ctrlChannelLatencyHandler{
 			roundTripHistogram: roundTripHistogram,
 			queueTimeHistogram: queueTimeHistogram,
 		}
 		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler.HandleLatency)
-		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-			roundTripHistogram.Dispose()
-			queueTimeHistogram.Dispose()
-		}))
 	}
 
 	xctrlDone := make(chan struct{})
@@ -97,5 +118,62 @@ func (self *ctrlChannelLatencyHandler) HandleLatency(latencyType latency.Type, e
 		self.roundTripHistogram.Update(elapsed.Nanoseconds())
 	} else if latencyType == latency.BeforeSendType {
 		self.queueTimeHistogram.Update(elapsed.Nanoseconds())
+	}
+}
+
+type heartbeatCallback struct {
+	latencyMetric    metrics.Histogram
+	queueTimeMetric  metrics.Histogram
+	firstSent        int64
+	lastResponse     int64
+	ch               channel.Channel
+	latencySemaphore concurrenz.Semaphore
+}
+
+func (self *heartbeatCallback) HeartbeatTx(int64) {
+	if self.firstSent == 0 {
+		self.firstSent = time.Now().UnixMilli()
+	}
+}
+
+func (self *heartbeatCallback) HeartbeatRx(int64) {}
+
+func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
+
+func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
+	now := time.Now()
+	self.lastResponse = now.UnixMilli()
+	self.latencyMetric.Update(now.UnixNano() - ts)
+}
+
+func (self *heartbeatCallback) CheckHeartBeat() {
+	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
+	now := time.Now().UnixMilli()
+	if self.firstSent != 0 && (now-self.firstSent > 30000) && (now-self.lastResponse > 30000) {
+		log.Error("heartbeat not received in time, closing link")
+		if err := self.ch.Close(); err != nil {
+			log.WithError(err).Error("error while closing link")
+		}
+	}
+	go self.checkQueueTime()
+}
+
+func (self *heartbeatCallback) checkQueueTime() {
+	log := pfxlog.Logger().WithField("bindingId", self.ch.Id().Token)
+	if !self.latencySemaphore.TryAcquire() {
+		log.Warn("unable to check queue time, too many check already running")
+		return
+	}
+
+	defer self.latencySemaphore.Release()
+
+	sendTracker := &latency.SendTimeTracker{
+		Handler: func(latencyType latency.Type, latency time.Duration) {
+			self.queueTimeMetric.Update(latency.Nanoseconds())
+		},
+		StartTime: time.Now(),
+	}
+	if err := self.ch.Send(sendTracker); err != nil && !self.ch.IsClosed() {
+		log.WithError(err).Error("unable to send queue time tracer")
 	}
 }
