@@ -3,6 +3,8 @@ set -eo pipefail
 
 echo "${SHELL}"
 
+# This method is required for users bash prior to version 4. More specifically this is to support Mac users as Mac uses
+# an older version of bash.
 myrealpath() {
   OURPWD=$PWD
   cd "$(dirname "$1")"
