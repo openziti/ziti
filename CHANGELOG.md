@@ -1,3 +1,7 @@
+# Release 0.25.5
+
+* Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
+
 # Release 0.25.4
 
 **NOTE**: Link management is undergoing some restructuring to support better link costing and multiple interfaces. The link types introduced in 0.25 should not be used. A more complete replacement is coming soon.
