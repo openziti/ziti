@@ -1,0 +1,24 @@
+name: Jenkins Smoketest
+on:
+  workflow_dispatch:  # triggered by a step in the main workflow
+    inputs:
+      ziti_version:
+        description: 'Semantic Version from ziti-ci'
+        required: true
+        # default: 'UNKNOWN'
+jobs:
+  jenkins-smoketest:
+    runs-on: macos-latest  # only MacOS binary installed
+    name: POST Webhook to Jenkinstest
+    steps:
+      - name: Trigger Smoketest
+        if: ${{ env.ZITI_JENKINS_WEBHOOK_URL != null }}
+        env:
+          ZITI_JENKINS_WEBHOOK_URL: ${{ secrets.ZITI_JENKINS_WEBHOOK_URL }}
+        uses: openziti/ziti-webhook-action@with-input-data  # FIXME: uses v0.2.0 after webhook action PR is merged
+        with:
+          ziti-id: ${{ secrets.ZITI_JENKINS_IDENTITY }}
+          webhook-url: ${{ secrets.ZITI_JENKINS_WEBHOOK_URL }}
+          webhook-secret: ${{ secrets.ZITI_JENKINS_WEBHOOK_SECRET }}
+          data: |
+            ziti-version=${{ github.event.inputs.ziti_version }}

@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - release-v*
-  pull_request:
+  pull_request:  # should we remove this trigger because it fires whenever forks send pull requests, and so many steps must exclude this type of event with an 'if' conditional -Ken
   workflow_dispatch:
 
 env:
@@ -79,9 +79,12 @@ jobs:
 
   tag-and-publish:
     name: Build and Publish Linux Binaries and Docker Image
+    env:
+      DOCKER_HUB_API_USER: ${{ secrets.DOCKER_HUB_API_USER }}
     runs-on: ubuntu-18.04
     needs: [ mac-os-build, windows-build ]
     steps:
+      # BEGIN linux-build-steps
       - name: Git Checkout
         uses: actions/checkout@v2
         with:
@@ -125,9 +128,8 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
 
-      # remaining steps in job only run on the upstream repo, not forks
       - name: Publish
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        if: ${{ env.ziti_ci_gpg_key_id != null }}  # only upstream runs this step
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
@@ -136,64 +138,100 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
-      - name: Trigger Smoketest
-        if: github.repository_owner == 'openziti'
+      - name: Get Ziti Version
+        id: get_version
         env:
-          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
-          jenkins_user: ${{ secrets.JENKINS_USER }}
-          jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
-          jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
-          $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leading 'v', if any
+          ZITI_VERSION=${ZITI_VERSION#v}
+          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # fail the job because we could not obtain the current version from ziti-ci
+            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
+            exit 1
+          else
+            # Set output parameters.
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti_version::${ZITI_VERSION}
+          fi
 
+      # END linux-build-steps
+
+
+      # BEGIN smoketest-steps
+      #
+      # Any event that triggers this main workflow also triggers the smoketest steps,
+      # but only if at least one of the needed secrets is present. This avoids
+      # running job steps that can't succeed without the secrets e.g. in PR
+      # builds from repo forks.
+      #
+      - name: Publish to Artifactory
+        if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
+        run: |
+          $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
+        env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Trigger in another workflow because Ziti webhook action is currently MacOS-only
+      - name: Trigger Smoketest
+        if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
+        run: gh workflow --repo ${{ github.repository }} run --ref ${{ github.ref_name }} --raw-field ziti_version=${{ steps.get_version.outputs.ziti_version }} jenkins-smoketest.yml
+        env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # END smoketest-steps
+
+
+      # BEGIN docker-steps
+      #
+      # The container images should be built and pushed for some branches prior
+      # to release, but not necessarily all branches. This optimizes for
+      # catching problems early, but not overwhelming Docker Hub's limited
+      # storage and tags with numerous pushes from non-release branches.
+      # The 'main' and 'release-v*' branches give us this coverage, but the
+      # container image build needn't run for pull requests.
+      #
       - name: Set up QEMU
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        # this env var is assigned at the job level because it is re-used in several conditionals below
+        if: ${{ env.DOCKER_HUB_API_USER != null && github.event_name != 'pull_request' && github.repository == 'openziti/ziti'  }}
         uses: docker/setup-qemu-action@master
         with:
           platforms: amd64,arm64,arm
 
       - name: Set up Docker BuildKit
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        if: ${{ env.DOCKER_HUB_API_USER != null && github.event_name != 'pull_request' && github.repository == 'openziti/ziti'  }}
         id: buildx
         uses: docker/setup-buildx-action@master
 
       - name: Login to Docker Hub
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        if: ${{ env.DOCKER_HUB_API_USER != null && github.event_name != 'pull_request' && github.repository == 'openziti/ziti'  }}
         uses: docker/login-action@v1
         with:
           username: ${{ secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
       - name: Set up Docker image tags
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        if: ${{ env.DOCKER_HUB_API_USER != null && github.event_name != 'pull_request' && github.repository == 'openziti/ziti'  }}
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
+          ZITI_VERSION: ${{ steps.publish.outputs.ziti_version }}
         id: tagprep
         run: |
           # the Docker cross-build only runs on branches main or release-v*
-          # where ziti-ci always computes and pushes a new release tag
-          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          ZITI_VERSION=${ZITI_VERSION#v}
+          # where ziti-ci always computes and publishes a new release tag
           DOCKER_TAGS=""
-          if [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
-              DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
-            done
-          else
-            # fail the job because we could not obtain the current version from ziti-ci
-            exit 1
-          fi
-          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char, if exists
-          # Set output parameters.
+          for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
+            DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
+          done
+          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo ::set-output name=tags::${DOCKER_TAGS}
 
       - name: Build & Push Multi-Platform Container Image to Hub
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        if: ${{ env.DOCKER_HUB_API_USER != null && github.event_name != 'pull_request' && github.repository == 'openziti/ziti'  }}
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -204,3 +242,4 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.tagprep.outputs.tags }}
+      # END docker-steps
