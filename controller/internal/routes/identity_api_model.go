@@ -33,8 +33,7 @@ import (
 )
 
 const (
-	EntityNameIdentity              = "identities"
-	EntityNameIdentityServiceConfig = "service-configs"
+	EntityNameIdentity = "identities"
 )
 
 type PermissionsApi []string

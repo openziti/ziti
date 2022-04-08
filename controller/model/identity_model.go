@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -176,6 +176,7 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 		ExternalId:                entity.ExternalId,
 		DisabledAt:                entity.DisabledAt,
 		DisabledUntil:             entity.DisabledUntil,
+		IsAdmin:                   entity.IsAdmin,
 	}
 
 	_, currentType := handler.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
