@@ -50,9 +50,9 @@ import (
 	"github.com/openziti/foundation/common/constants"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
@@ -317,7 +317,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AuthenticatedPermission)
 		}
 
-		if rc.Identity.IsAdmin {
+		if rc.Identity.IsAdmin || rc.Identity.IsDefaultAdmin {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
 		}
 	}
