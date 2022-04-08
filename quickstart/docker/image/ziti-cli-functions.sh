@@ -127,6 +127,36 @@ function checkHostsFile {
   fi
 }
 
+function verifyZitiVersionExists {
+  setupZitiHome
+
+  if ! setOs; then
+    return 1
+  fi
+
+  ZITI_ARCH="amd64"
+  if [[ "$(uname -a)" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" == "darwin" ]]; then
+    echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
+  elif [[ "$(uname -a)" == *"arm"* ]]; then
+    ZITI_ARCH="arm"
+  fi
+
+  unset ZITI_BINARIES_VERSION
+
+  ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
+  # shellcheck disable=SC2155
+  export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
+  # shellcheck disable=SC2155
+  export ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
+
+  # Check if there was an error while trying to get the requested version
+  if [[ "${ZITI_BINARIES_VERSION-}" == "null" ]]; then
+    return 1
+  fi
+
+  echo "ZITI_BINARIES_VERSION: ${ZITI_BINARIES_VERSION}"
+}
+
 function getLatestZitiVersion {
   setupZitiHome
 
@@ -135,7 +165,9 @@ function getLatestZitiVersion {
   fi
 
   ZITI_ARCH="amd64"
-  if [[ "$(uname -a)" == *"arm"* ]]; then
+  if [[ "$(uname -a)" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" == "darwin" ]]; then
+    echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
+  elif [[ "$(uname -a)" == *"arm"* ]]; then
     ZITI_ARCH="arm"
   fi
 
@@ -151,7 +183,7 @@ function getLatestZitiVersion {
   echo "ZITI_BINARIES_VERSION: ${ZITI_BINARIES_VERSION}"
 }
 
-function getLatestZiti {
+function getZiti {
   setupZitiHome
   checkEnvVariable ZITI_HOME
   retVal=$?
@@ -167,8 +199,17 @@ function getLatestZiti {
 
   mkdir -p "${ziti_bin_root}"
 
-  if ! getLatestZitiVersion; then
-    return 1
+  # Get the latest version unless a specific version is specified
+  if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]]; then
+    if ! getLatestZitiVersion; then
+      return 1
+    fi
+  else
+      # Check if an error occurred while trying to pull desired version (happens with incorrect version or formatting issue)
+      if ! verifyZitiVersionExists; then
+          echo -e "  * $(RED "ERROR: This version of ziti (${ZITI_VERSION_OVERRIDE}) could not be found. Please check the version and try again. The version should follow the format \"vx.x.x\".") "
+          return 1
+      fi
   fi
 
   if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"; else echo "Using ZITI_BIN_DIR: ${ZITI_BIN_DIR}"; fi
@@ -342,7 +383,37 @@ function ziti_expressConfiguration {
     echo " "
     if [[ "${REPLY}" == [Yy]* ]]; then
       echo -e "$(GREEN "Clearing existing Ziti variables and continuing with express install")"
+
+      # Check if the user chose a specific version
+      specifiedVersion=""
+      if [[ "${ZITI_VERSION_OVERRIDE-}" != "" ]] && [[ "${ZITI_VERSION_OVERRIDE-}" != "${ZITI_BINARIES_VERSION-}" ]]; then
+        # Don't allow overriding the version if ziti quickstart was already run, the DB may not be compatible
+        echo -e "$(RED "  --- Overriding the ziti version is not supported if the version differs from one already installed. ---")"
+        echo -en "Would you like to continue by using the latest version. (y/N)?"
+        read -r
+        echo " "
+        if [[ "${REPLY}" == [Yy]* ]]; then
+          unset ZITI_VERSION_OVERRIDE
+        else
+          return 1
+        fi
+      elif [[ "${ZITI_VERSION_OVERRIDE-}" != "" ]]; then
+        echo -e "$(RED "  --- You have set the ZITI_VERSION_OVERRIDE value to ${ZITI_VERSION_OVERRIDE}. ---")"
+        echo -en "Would you like to use this version again, choosing no will pull the latest version. (y/N)?"
+        read -r
+        echo " "
+        if [[ "${REPLY}" == [Yy]* ]]; then
+          specifiedVersion="${ZITI_VERSION_OVERRIDE}"
+        fi
+      fi
+
+      # Silently clear ziti variables
       unsetZitiEnv "-s"
+
+      if [[ "${specifiedVersion}" != "" ]]; then
+        export ZITI_VERSION_OVERRIDE="${specifiedVersion}"
+      fi
+
       # Stop any devices currently running to avoid port collisions
       stopAllEdgeRouters
       stopZitiController
@@ -384,8 +455,8 @@ function ziti_expressConfiguration {
   setupZitiHome
   echo -e "ZITI HOME SET TO: $(BLUE "${ZITI_HOME}")"
 
-  if ! getLatestZiti "no"; then
-    echo -e "$(RED "getLatestZiti failed")"
+  if ! getZiti "no"; then
+    echo -e "$(RED "getZiti failed")"
     return 1
   fi
   if ! generateEnvFile; then
