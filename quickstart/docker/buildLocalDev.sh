@@ -1,9 +1,31 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
+echo "${SHELL}"
+
+# This method is required for users bash prior to version 4. More specifically this is to support Mac users as Mac uses
+# an older version of bash.
+myrealpath() {
+  OURPWD=$PWD
+  cd "$(dirname "$1")"
+  LINK=$(readlink "$(basename "$1")")
+  while [ "$LINK" ]; do
+    cd "$(dirname "$LINK")"
+    LINK=$(readlink "$(basename "$1")")
+  done
+  REALPATH="$PWD/$(basename "$1")"
+  cd "$OURPWD"
+  echo "$REALPATH"
+}
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-ZITI_QUICKSTART_ROOT="$(realpath ${SCRIPT_DIR}/..)"
-ZITI_ROOT="$(realpath ${ZITI_QUICKSTART_ROOT}/..)"
+if [ "${BASH_VERSINFO:-0}" -lt 4 ]; then
+  ZITI_QUICKSTART_ROOT="$(myrealpath "${SCRIPT_DIR}"/..)"
+  ZITI_ROOT="$(myrealpath "${ZITI_QUICKSTART_ROOT}"/..)"
+else
+  ZITI_QUICKSTART_ROOT="$(realpath "${SCRIPT_DIR}"/..)"
+  ZITI_ROOT="$(realpath "${ZITI_QUICKSTART_ROOT}"/..)"
+fi
 ZITI_DOCKER_ROOT="${ZITI_QUICKSTART_ROOT}/docker"
 
 echo "SCRIPT_DIR           :$SCRIPT_DIR"

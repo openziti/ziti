@@ -366,11 +366,11 @@ function generateEnvFile {
     export ZITI_BIN_ROOT="${ZITI_HOME-}/ziti-bin"
   fi
 
+  export ENV_FILE="${ZITI_HOME-}/${ZITI_NETWORK-}.env"
+
   if ! ziti_createEnvFile; then
     return 1
   fi
-
-  export ENV_FILE="${ZITI_HOME-}/${ZITI_NETWORK-}.env"
 
   echo -e "environment file sourced from: $(BLUE "${ENV_FILE}")"
 }
