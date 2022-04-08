@@ -25,10 +25,9 @@ import (
 	"strings"
 )
 
-// TODO: make this code more DRY
-type ZitiCreateConfigAction struct{}
+type ZitiUpdateConfigAction struct{}
 
-func (self *ZitiCreateConfigAction) Execute(ctx *tutorial.ActionContext) error {
+func (self *ZitiUpdateConfigAction) Execute(ctx *tutorial.ActionContext) error {
 	if strings.EqualFold("true", ctx.Headers["templatize"]) {
 		body, err := ctx.Runner.Template(ctx.Body)
 		if err != nil {
@@ -37,12 +36,11 @@ func (self *ZitiCreateConfigAction) Execute(ctx *tutorial.ActionContext) error {
 		ctx.Body = body
 	}
 	name := ctx.Headers["name"]
-	configType := ctx.Headers["type"]
 
 	buf := &strings.Builder{}
 	buf.WriteString("About to execute:\n\n")
 
-	line := fmt.Sprintf("ziti edge create config %v %v '%v'", name, configType, ctx.Body)
+	line := fmt.Sprintf("ziti edge update config %v --data '%v'", name, ctx.Body)
 	params := tutorial.ParseArgumentsWithStrings(line)
 	if params[0] != "ziti" {
 		return errors.Errorf("invalid parameter for ziti action, must start with 'ziti': %v", ctx.Body)
@@ -70,7 +68,7 @@ func (self *ZitiCreateConfigAction) Execute(ctx *tutorial.ActionContext) error {
 	_, _ = c.Printf("$ %v\n", line)
 	done := false
 	for !done {
-		if err := tutorial.Exec(os.Args[0], colorStdOut, "edge", "create", "config", name, configType, ctx.Body); err != nil {
+		if err := tutorial.Exec(os.Args[0], colorStdOut, "edge", "update", "config", name, "--data", ctx.Body); err != nil {
 			if failOk {
 				return nil
 			}

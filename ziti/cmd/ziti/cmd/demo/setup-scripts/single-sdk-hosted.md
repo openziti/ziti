@@ -1,7 +1,6 @@
 # Purpose
 
-This script sets up an echo service which is hosted by an SDK application and
-is accessed by another sdk application.
+This script sets up an echo service which is hosted by an SDK application.
 
 # Prerequisites
 

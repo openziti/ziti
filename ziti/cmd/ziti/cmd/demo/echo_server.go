@@ -109,10 +109,31 @@ func (self *echoServer) run(*cobra.Command, []string) {
 
 		zitiContext := ziti.NewContextWithConfig(zitiConfig)
 
-		log.Infof("ziti: starting listener for service (%v)", self.service)
+		zitiIdentity, err := zitiContext.GetCurrentIdentity()
+		if err != nil {
+			log.WithError(err).Fatal("unable to get current ziti identity from controller")
+		}
+
 		listenOptions := ziti.DefaultListenOptions()
 		listenOptions.BindUsingEdgeIdentity = self.bindWithIdentity
+		listenOptions.Cost = zitiIdentity.DefaultHostingCost
+		listenOptions.Precedence = ziti.GetPrecedenceForLabel(zitiIdentity.DefaultHostingPrecedence)
 
+		svc, found := zitiContext.GetService(self.service)
+		if !found {
+			log.WithError(err).Fatalf("ziti: unable to lookup service [%v]", self.service)
+		}
+
+		if cost, found := zitiIdentity.ServiceHostingCosts[svc.Id]; found {
+			listenOptions.Cost = uint16(cost.(float64))
+		}
+
+		if precedence, found := zitiIdentity.ServiceHostingPrecedences[svc.Id]; found {
+			listenOptions.Precedence = ziti.GetPrecedenceForLabel(precedence.(string))
+		}
+
+		log.Infof("ziti: hosting %v with addressable=%v, cost=%v, precedence=%v",
+			self.service, self.bindWithIdentity, listenOptions.Cost, listenOptions.Precedence)
 		listener, err := zitiContext.ListenWithOptions(self.service, listenOptions)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: failed to host service [%v]", self.service)

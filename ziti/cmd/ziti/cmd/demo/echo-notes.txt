@@ -25,11 +25,21 @@ Part 2 - multi-router, single server
 6. Do tunneler demo
 7. Show multiple terminators
 
-Part 3 - multi-router, multi-server, HS
+Part 3 - multi-router, multi-server, SDK hosted, HS
 1. Do sdk demo
 2. Show terminators
 3. Do sdk demo again with addressable terminators
 4. Show terminators
    a. Because it's the initiating router, cost will be lower to terminate on the same router
+
+Part 4 - multi-router, multi-server, SDK hosted, HA
+1. Update identity
+ a. ziti edge update identity echo-host-1 --service-precedences echo=required
+
+Part 5 - multi-router, multi-server, tunneler hosted, HS
+1. Talk through config
+2. Do demo
+3. Show with addressable
+4. Show with precedences
 
 

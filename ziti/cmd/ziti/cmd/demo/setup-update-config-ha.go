@@ -28,25 +28,25 @@ import (
 	"time"
 )
 
-//go:embed setup-scripts/single-router-tunneler-hosted.md
-var singleRouterTunnelerHostedScriptSource []byte
+//go:embed setup-scripts/update-config-ha.md
+var updateConfigHASource []byte
 
-type singleRouterTunnelerHosted struct {
+type updateConfigHA struct {
 	api.Options
 	tutorial2.TutorialOptions
 	interactive bool
 }
 
-func newSingleRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Command {
-	options := &singleRouterTunnelerHosted{
+func newUpdateConfigHACmd(p common.OptionsProvider) *cobra.Command {
+	options := &updateConfigHA{
 		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "single-router-tunneler-hosted",
-		Short: "Walks you through hosting configuration for a simple echo service, hosted by a single router-embedded tunneler",
+		Use:   "update-config-ha",
+		Short: "Updates the echo service hosting configuration to run in a primary/failover setup",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -69,7 +69,7 @@ func newSingleRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *singleRouterTunnelerHosted) run() error {
+func (self *updateConfigHA) run() error {
 	t := tutorial.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
@@ -80,8 +80,8 @@ func (self *singleRouterTunnelerHosted) run() error {
 	})
 	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
 	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
-	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
+	t.RegisterActionHandler("ziti-update-config", &actions.ZitiUpdateConfigAction{})
 	t.RegisterActionHandler("ziti-for-each", &actions.ZitiForEach{})
 
-	return t.Run(singleRouterTunnelerHostedScriptSource)
+	return t.Run(updateConfigHASource)
 }

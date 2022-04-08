@@ -58,7 +58,10 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	echoCmd.AddCommand(newClientCmd(p))
 	echoCmd.AddCommand(newSingleSdkHostedCmd(p))
 	echoCmd.AddCommand(newMultiSdkHostedCmd(p))
-	echoCmd.AddCommand(newSingleEchoRouterTunnelerHostedCmd(p))
+	echoCmd.AddCommand(newSingleRouterTunnelerHostedCmd(p))
+	echoCmd.AddCommand(newMultiRouterTunnelerHostedCmd(p))
+	echoCmd.AddCommand(newUpdateConfigAddressableCmd(p))
+	echoCmd.AddCommand(newUpdateConfigHACmd(p))
 
 	return cmd
 }
