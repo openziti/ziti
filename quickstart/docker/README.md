@@ -22,6 +22,5 @@ Build Docker Image For Publication
 2. 
 Push Docker Image to dockerhub
 ------------------
-1. retag the image locally to match the expected version: `docker push openziti/quickstart:0.19.3`
-1. push the latest: `docker push openziti/quickstart`
-1. push the versioned tag: `docker push openziti/quickstart:0.19.3`
+1. source `./image/ziti-cli-functions.sh`
+1. just run `./pushLatestDocker.sh`
