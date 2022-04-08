@@ -2,11 +2,6 @@
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
 * Bug fix: Fixes an issue where Edge administrator checks would not take default admin flag into account
-* Bug fix: Fix an issue with docker-compose quickstart not properly loading env vars
-* Enhancement: Add support for Apple M1 using the ziti quickstart CLI script
-* Enhancement: Use an env file for docker-compose quickstart for easier version changes and other duplicated field values
-* Enhancement: Allow for version override using the ziti quickstart CLI script
-* Change: Renamed `pushDevBuild.sh` to `buildLocalDev.sh`, the script used for building a local dev version of the docker quickstart image
 
 # Release 0.25.4
 
