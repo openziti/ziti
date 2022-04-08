@@ -112,6 +112,62 @@ func Test_Identity(t *testing.T) {
 		ctx.AdminManagementSession.validateEntityWithLookup(identity)
 	})
 
+	t.Run("can patch is admin to false", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		identity := newTestIdentity(true)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
+
+		identityPatch := &rest_model.IdentityPatch{
+			IsAdmin: B(false),
+		}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identity.Id)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		t.Run("has the proper values set", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			identityDetail := &rest_model.DetailIdentityEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityDetail).Get("/identities/" + identity.Id)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			ctx.Req.Equal(identity.name, *identityDetail.Data.Name)
+			ctx.Req.Equal(identity.identityType, *identityDetail.Data.TypeID)
+			ctx.Req.Equal(*identityPatch.IsAdmin, *identityDetail.Data.IsAdmin)
+		})
+	})
+
+	t.Run("can patch is admin to true", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		identity := newTestIdentity(false)
+		identity.Id = ctx.AdminManagementSession.requireCreateEntity(identity)
+
+		identityPatch := &rest_model.IdentityPatch{
+			IsAdmin: B(true),
+		}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityPatch).Patch("/identities/" + identity.Id)
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+		t.Run("has the proper values set", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			identityDetail := &rest_model.DetailIdentityEnvelope{}
+
+			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityDetail).Get("/identities/" + identity.Id)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+
+			ctx.Req.Equal(identity.name, *identityDetail.Data.Name)
+			ctx.Req.Equal(identity.identityType, *identityDetail.Data.TypeID)
+			ctx.Req.Equal(*identityPatch.IsAdmin, *identityDetail.Data.IsAdmin)
+		})
+	})
+
 	t.Run("role attributes should not be changed on PATCH if not sent", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()
