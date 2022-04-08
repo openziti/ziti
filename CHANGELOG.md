@@ -1,6 +1,7 @@
 # Release 0.25.5
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
+* Bug fix: Fixes an issue where Edge administrator checks would not take default admin flag into account
 
 # Release 0.25.4
 
