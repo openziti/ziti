@@ -179,6 +179,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -211,6 +212,7 @@ func newListServicesCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().StringSliceVar(&configTypes, "config-types", nil, "Override which config types to view on services")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -240,6 +242,7 @@ func newListEdgeRoutersCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -268,6 +271,7 @@ func newListIdentitiesCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -293,6 +297,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 
 	return cmd
 }
@@ -509,19 +514,24 @@ func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *api.
 		return nil
 	}
 
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		encryptionRequired, _ := entity.Path("encryptionRequired").Data().(bool)
-		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
-		roleAttributes := entity.Path("roleAttributes").String()
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Encryption Required", "Terminator Strategy", "Attributes"})
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 3, WidthMax: 10},
+	})
 
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    encryption required: %v    terminator strategy: %v    role attributes: %v\n", id, name, encryptionRequired, terminatorStrategy, roleAttributes)
-		if err != nil {
-			return err
-		}
+	for _, entity := range children {
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.Bool("encryptionRequired"),
+			wrapper.String("terminatorStrategy"),
+			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
