@@ -7,7 +7,7 @@
 * Enhancement: Use an env file for docker-compose quickstart for easier version changes and other duplicated field values
 * Enhancement: Allow for version override using the ziti quickstart CLI script
 * Change: Renamed `pushDevBuild.sh` to `buildLocalDev.sh`, the script used for building a local dev version of the docker quickstart image
-* Buf fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
+* Bug fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
 
 # Release 0.25.4
 
