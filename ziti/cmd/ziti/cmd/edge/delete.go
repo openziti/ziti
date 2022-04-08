@@ -153,7 +153,7 @@ func runDeleteEntityOfTypeWhere(options *api.Options, entityType string) error {
 	}
 
 	options.Printf("filter returned ")
-	pageInfo.output(options)
+	pageInfo.Output(options)
 
 	var ids []string
 	for _, entity := range children {

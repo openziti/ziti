@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -35,7 +36,9 @@ func (self *KeepSessionAliveAction) Execute(ctx *tutorial.ActionContext) error {
 			interval = d
 		}
 	}
-	fmt.Printf("Running session refresh every %v\n", interval)
+	if !strings.EqualFold("true", ctx.Headers["quiet"]) {
+		fmt.Printf("Running session refresh every %v\n", interval)
+	}
 	go func() {
 		ticker := time.NewTicker(interval)
 		for {

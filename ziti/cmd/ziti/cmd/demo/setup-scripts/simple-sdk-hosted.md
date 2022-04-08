@@ -10,7 +10,7 @@ You can use the quick-start script found [here](https://github.com/openziti/ziti
 
 # Setup
 
-First, ensure we're logged into the controller.
+## Ensure we're logged into the controller.
 
 ```action:ziti-login allowRetry=true
 ziti edge login
@@ -20,41 +20,33 @@ ziti edge login
 If your session times out you can run ziti edge login again.
 ```
 
-Remove any entities from previous runs.
+## Remove any entities from previous runs.
 
 ```action:ziti
 ziti edge delete service echo
 ziti edge delete config echo-host
-ziti edge delete identities zcat echo-host
-ziti edge delete service-policies echo-dial echo-bind
+ziti edge delete identities echo-host
+ziti edge delete service-policies echo-bind
 ziti edge delete edge-router-policies echo
 ziti edge delete service-edge-router-policies echo 
 ```
 
-Create the echo service
+## Create the echo service
 
 ```action:ziti
-ziti edge create service echo
+ziti edge create service echo -a echo
 ```
 
-Create and enroll the hosting identity
+## Create and enroll the hosting identity
 
 ```action:ziti
 ziti edge create identity service echo-host -a echo,echo-host -o echo-host.jwt
 ziti edge enroll --rm echo-host.jwt
 ```
 
-Create and enroll the client app identity
+# Configure policies
 
 ```action:ziti
-ziti edge create identity service zcat -a echo,echo-client -o zcat.jwt
-ziti edge enroll --rm zcat.jwt
-```
-
-Configure policies
-
-```action:ziti
-ziti edge create service-policy echo-dial Dial --service-roles @echo --identity-roles #echo-client
 ziti edge create service-policy echo-bind Bind --service-roles @echo --identity-roles #echo-host
 ziti edge create edge-router-policy echo --identity-roles #echo --edge-router-roles #all
 ziti edge create service-edge-router-policy echo --service-roles @echo --edge-router-roles #all

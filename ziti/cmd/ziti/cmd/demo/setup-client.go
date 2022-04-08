@@ -28,25 +28,25 @@ import (
 	"time"
 )
 
-//go:embed setup-scripts/simple-sdk-hosted.md
-var simpleSdkHostedScriptSource []byte
+//go:embed setup-scripts/client.md
+var clientScriptSource []byte
 
-type simpleSdkHosted struct {
+type client struct {
 	api.Options
 	tutorial2.TutorialOptions
 	interactive bool
 }
 
-func newSimpleSdkHostedCmd(p common.OptionsProvider) *cobra.Command {
-	options := &simpleSdkHosted{
+func newClientCmd(p common.OptionsProvider) *cobra.Command {
+	options := &client{
 		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "simple-sdk-hosted",
-		Short: "Walks you through hosting configuration for a simple sdk hosted echo service",
+		Use:   "client",
+		Short: "Walks you through configuration for an echo service client (zcat)",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -69,7 +69,7 @@ func newSimpleSdkHostedCmd(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *simpleSdkHosted) run() error {
+func (self *client) run() error {
 	t := tutorial.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
@@ -81,5 +81,5 @@ func (self *simpleSdkHosted) run() error {
 	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
 	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
 
-	return t.Run(simpleSdkHostedScriptSource)
+	return t.Run(clientScriptSource)
 }

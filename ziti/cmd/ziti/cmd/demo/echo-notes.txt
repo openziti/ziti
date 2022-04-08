@@ -1,0 +1,17 @@
+Before start
+
+1. reset controller
+2. start controller
+3. login
+
+Part 1 - single router, single server
+1. show zcat and echo-server
+2. create first edge router
+3. client setup
+4. do sdk demo
+5. look at terminators
+6. do tunneler demo
+7. look at terminators
+
+Part 2 - multi-router, single server
+

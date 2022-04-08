@@ -32,10 +32,32 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	setupCmd := &cobra.Command{
+		Use:   "setup",
+		Short: "Setup various demos/examples",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := cmd.Help()
+			helpers.CheckErr(err)
+		},
+	}
+
+	echoCmd := &cobra.Command{
+		Use:   "echo",
+		Short: "Setup various echo service demos/examples",
+		Run: func(cmd *cobra.Command, args []string) {
+			err := cmd.Help()
+			helpers.CheckErr(err)
+		},
+	}
+
 	cmd.AddCommand(newEchoServerCmd(p))
 	cmd.AddCommand(newZcatCmd(p))
-	cmd.AddCommand(newSimpleEchoSdkHostedCmd(p))
-	cmd.AddCommand(newSimpleEchoRouterTunnelerHostedCmd(p))
+
+	cmd.AddCommand(setupCmd)
+	setupCmd.AddCommand(echoCmd)
+	echoCmd.AddCommand(newClientCmd(p))
+	echoCmd.AddCommand(newSimpleSdkHostedCmd(p))
+	echoCmd.AddCommand(newSimpleEchoRouterTunnelerHostedCmd(p))
 
 	return cmd
 }

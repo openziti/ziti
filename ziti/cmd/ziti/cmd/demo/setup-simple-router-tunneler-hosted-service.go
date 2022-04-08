@@ -28,25 +28,25 @@ import (
 	"time"
 )
 
-//go:embed setup-scripts/simple-echo-router-tunneler-hosted.md
-var simpleEchoRouterTunnelerHostedScriptSource []byte
+//go:embed setup-scripts/simple-router-tunneler-hosted.md
+var simpleRouterTunnelerHostedScriptSource []byte
 
-type simpleEchoRouterTunnelerHosted struct {
+type simpleRouterTunnelerHosted struct {
 	api.Options
 	tutorial2.TutorialOptions
 	interactive bool
 }
 
 func newSimpleEchoRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Command {
-	options := &simpleEchoRouterTunnelerHosted{
+	options := &simpleRouterTunnelerHosted{
 		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "setup-simple-echo-router-tunneler-hosted",
-		Short: "Walks you through configuration for a simple echo service, hosted by a router-embedded tunneler",
+		Use:   "simple-router-tunneler-hosted",
+		Short: "Walks you through hosting configuration for a simple echo service, hosted by a router-embedded tunneler",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -69,7 +69,7 @@ func newSimpleEchoRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Comma
 	return cmd
 }
 
-func (self *simpleEchoRouterTunnelerHosted) run() error {
+func (self *simpleRouterTunnelerHosted) run() error {
 	t := tutorial.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
@@ -82,5 +82,5 @@ func (self *simpleEchoRouterTunnelerHosted) run() error {
 	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
 	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
 
-	return t.Run(simpleEchoRouterTunnelerHostedScriptSource)
+	return t.Run(simpleRouterTunnelerHostedScriptSource)
 }
