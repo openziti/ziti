@@ -371,7 +371,7 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, paging, err := api.ListEntitiesOfType("edge", "edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, paging, err := api.ListEntitiesOfType(util.EdgeAPI, "edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -679,16 +679,19 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		typeName, _ := entity.Path("type.name").Data().(string)
-		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    role attributes: %v\n", id, name, typeName, roleAttributes); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.String("type.name"),
+			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }

@@ -22,7 +22,7 @@ ziti edge login
 ```action:ziti
 ziti edge delete service echo
 ziti edge delete config echo-host
-ziti edge delete identities zcat echo-host
+ziti edge delete identities echo-host
 ziti edge delete service-policies echo-bind
 ziti edge delete edge-router-policies echo
 ziti edge delete service-edge-router-policies echo 
@@ -48,18 +48,13 @@ ziti edge delete service-edge-router-policies echo
 ziti edge create service echo -c echo-host -a echo
 ```
 
-## Select an edge router to host this service on
+## Update edge-routers
 
-```action:select-edge-router
-Pick the name of an edge router to use. It will be referenced in this tutorial as ${edgeRouterName}
-```
+Make sure demo edge routers are tunneler enabled and the associated identity has the `echo-host` attribute
 
-## Update edge router attributes
-
-Update the select edge router with the `echo-host` attribute, so it gets tied into the policies.
-
-```action:ziti templatize=true
-ziti edge update identity ${edgeRouterName} -a echo-host
+```action:ziti-for-each type=edge-routers minCount=1 maxCount=2 filter='anyOf(roleAttributes)="demo"'
+ziti edge update edge-router ${entityName} --tunneler-enabled
+ziti edge update identity ${entityName} --role-attributes echo-host 
 ```
 
 ## Configure policies

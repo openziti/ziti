@@ -6,7 +6,7 @@ Before start
 
 Part 1 - single router, single server
 1. show zcat and echo-server
-2. create first edge router
+2. create first edge router, mark with demo attribute
 3. client setup
 4. do sdk demo
 5. look at terminators
@@ -14,4 +14,16 @@ Part 1 - single router, single server
 7. look at terminators
 
 Part 2 - multi-router, single server
+1. Add additional edge router, mark with demo attribute
+2. start edge router 2
+3. Do sdk demo
+4. show multiple terminators
+5. Make sure it's tunneler ready
+   a. make sure it's a tunneler
+   b. Add identity attributes: ziti edge update identity edge-router-2 -a echo,echo-host
+6. Do tunneler demo
+7. Show multiple terminators
+
+Part 3 - multi-router, multi-server, HS
+
 

@@ -81,6 +81,7 @@ func (self *simpleRouterTunnelerHosted) run() error {
 	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
 	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
 	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
+	t.RegisterActionHandler("ziti-for-each", &actions.ZitiForEach{})
 
 	return t.Run(simpleRouterTunnelerHostedScriptSource)
 }
