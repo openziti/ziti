@@ -44,10 +44,10 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.23
+	github.com/openziti/channel v0.18.24
 	github.com/openziti/fabric v0.17.96
 	github.com/openziti/foundation v0.17.22
-	github.com/openziti/sdk-golang v0.16.44
+	github.com/openziti/sdk-golang v0.16.45
 	github.com/openziti/storage v0.1.4
 	github.com/openziti/transport v0.1.3
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
