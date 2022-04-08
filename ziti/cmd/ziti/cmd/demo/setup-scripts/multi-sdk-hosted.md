@@ -1,6 +1,6 @@
 # Purpose
 
-This script sets up an echo service which is hosted by an SDK application and
+This script sets up an echo service which is hosted by two SDK applications and
 is accessed by another sdk application.
 
 # Prerequisites
@@ -25,7 +25,7 @@ If your session times out you can run ziti edge login again.
 ```action:ziti
 ziti edge delete service echo
 ziti edge delete config echo-host
-ziti edge delete identities echo-host
+ziti edge delete identities echo-host-1 echo-host-2
 ziti edge delete service-policies echo-bind
 ziti edge delete edge-router-policies echo
 ziti edge delete service-edge-router-policies echo 
@@ -37,11 +37,14 @@ ziti edge delete service-edge-router-policies echo
 ziti edge create service echo -a echo
 ```
 
-## Create and enroll the hosting identity
+## Create and enroll the hosting identities
 
 ```action:ziti
-ziti edge create identity service echo-host -a echo,echo-host -o echo-host.jwt
-ziti edge enroll --rm echo-host.jwt
+ziti edge create identity service echo-host-1 -a echo,echo-host -o echo-host-1.jwt
+ziti edge enroll --rm echo-host-1.jwt
+
+ziti edge create identity service echo-host-2 -a echo,echo-host -o echo-host-2.jwt
+ziti edge enroll --rm echo-host-2.jwt
 ```
 
 # Configure policies

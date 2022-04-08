@@ -18,6 +18,7 @@ Part 2 - multi-router, single server
 2. start edge router 2
 3. Do sdk demo
 4. show multiple terminators
+  a. stop/restart router, show terminator there, but unused. Show terminator replaced.
 5. Make sure it's tunneler ready
    a. make sure it's a tunneler
    b. Add identity attributes: ziti edge update identity edge-router-2 -a echo,echo-host
@@ -25,5 +26,10 @@ Part 2 - multi-router, single server
 7. Show multiple terminators
 
 Part 3 - multi-router, multi-server, HS
+1. Do sdk demo
+2. Show terminators
+3. Do sdk demo again with addressable terminators
+4. Show terminators
+   a. Because it's the initiating router, cost will be lower to terminate on the same router
 
 

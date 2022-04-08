@@ -22,7 +22,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -30,14 +29,15 @@ import (
 )
 
 type echoServer struct {
-	port         uint16
-	verbose      bool
-	logFormatter string
-	configFile   string
-	service      string
+	port             uint16
+	verbose          bool
+	logFormatter     string
+	configFile       string
+	service          string
+	bindWithIdentity bool
 }
 
-func newEchoServerCmd(common.OptionsProvider) *cobra.Command {
+func newEchoServerCmd() *cobra.Command {
 	server := &echoServer{}
 
 	cmd := &cobra.Command{
@@ -54,6 +54,7 @@ func newEchoServerCmd(common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVar(&server.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&server.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().StringVarP(&server.service, "service", "s", "echo", "Ziti service to bind. Defaults to 'echo'")
+	cmd.Flags().BoolVar(&server.bindWithIdentity, "addressable", false, "Specify if this application should be addressable by the edge identity")
 	cmd.Flags().SetInterspersed(true)
 
 	return cmd
@@ -109,7 +110,10 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		zitiContext := ziti.NewContextWithConfig(zitiConfig)
 
 		log.Infof("ziti: starting listener for service (%v)", self.service)
-		listener, err := zitiContext.Listen(self.service)
+		listenOptions := ziti.DefaultListenOptions()
+		listenOptions.BindUsingEdgeIdentity = self.bindWithIdentity
+
+		listener, err := zitiContext.ListenWithOptions(self.service, listenOptions)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: failed to host service [%v]", self.service)
 		}

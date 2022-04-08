@@ -21,13 +21,13 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 type zcat struct {
@@ -36,7 +36,7 @@ type zcat struct {
 	configFile   string
 }
 
-func newZcatCmd(common.OptionsProvider) *cobra.Command {
+func newZcatCmd() *cobra.Command {
 	server := &zcat{}
 
 	cmd := &cobra.Command{
@@ -102,8 +102,18 @@ func (self *zcat) run(_ *cobra.Command, args []string) {
 			log.WithError(cfgErr).Fatalf("unable to load ziti identity from [%v]", self.configFile)
 		}
 
+		dialIdentifier := ""
+		if atIdx := strings.IndexByte(addr, '@'); atIdx > 0 {
+			dialIdentifier = addr[:atIdx]
+			addr = addr[atIdx+1:]
+		}
+
 		zitiContext := ziti.NewContextWithConfig(zitiConfig)
-		conn, err = zitiContext.Dial(addr)
+		dialOptions := &ziti.DialOptions{
+			ConnectTimeout: 5 * time.Second,
+			Identity:       dialIdentifier,
+		}
+		conn, err = zitiContext.DialWithOptions(addr, dialOptions)
 	} else {
 		log.Fatalf("invalid network '%v'. valid values are ['ziti', 'tcp', 'udp']", network)
 	}

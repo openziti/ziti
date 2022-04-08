@@ -50,14 +50,15 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newEchoServerCmd(p))
-	cmd.AddCommand(newZcatCmd(p))
+	cmd.AddCommand(newEchoServerCmd())
+	cmd.AddCommand(newZcatCmd())
 
 	cmd.AddCommand(setupCmd)
 	setupCmd.AddCommand(echoCmd)
 	echoCmd.AddCommand(newClientCmd(p))
-	echoCmd.AddCommand(newSimpleSdkHostedCmd(p))
-	echoCmd.AddCommand(newSimpleEchoRouterTunnelerHostedCmd(p))
+	echoCmd.AddCommand(newSingleSdkHostedCmd(p))
+	echoCmd.AddCommand(newMultiSdkHostedCmd(p))
+	echoCmd.AddCommand(newSingleEchoRouterTunnelerHostedCmd(p))
 
 	return cmd
 }

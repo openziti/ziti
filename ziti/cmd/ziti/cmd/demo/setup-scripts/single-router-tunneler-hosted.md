@@ -22,7 +22,7 @@ ziti edge login
 ```action:ziti
 ziti edge delete service echo
 ziti edge delete config echo-host
-ziti edge delete identities echo-host
+ziti edge delete identities echo-host-1 echo-host-2
 ziti edge delete service-policies echo-bind
 ziti edge delete edge-router-policies echo
 ziti edge delete service-edge-router-policies echo 

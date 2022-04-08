@@ -28,25 +28,25 @@ import (
 	"time"
 )
 
-//go:embed setup-scripts/simple-router-tunneler-hosted.md
-var simpleRouterTunnelerHostedScriptSource []byte
+//go:embed setup-scripts/multi-sdk-hosted.md
+var multiSdkHostedScriptSource []byte
 
-type simpleRouterTunnelerHosted struct {
+type multiSdkHosted struct {
 	api.Options
 	tutorial2.TutorialOptions
 	interactive bool
 }
 
-func newSimpleEchoRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Command {
-	options := &simpleRouterTunnelerHosted{
+func newMultiSdkHostedCmd(p common.OptionsProvider) *cobra.Command {
+	options := &multiSdkHosted{
 		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "simple-router-tunneler-hosted",
-		Short: "Walks you through hosting configuration for a simple echo service, hosted by a router-embedded tunneler",
+		Use:   "multi-sdk-hosted",
+		Short: "Walks you through hosting configuration for an echo service hosted by a multiple sdk applications",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -69,7 +69,7 @@ func newSimpleEchoRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Comma
 	return cmd
 }
 
-func (self *simpleRouterTunnelerHosted) run() error {
+func (self *multiSdkHosted) run() error {
 	t := tutorial.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
@@ -79,9 +79,6 @@ func (self *simpleRouterTunnelerHosted) run() error {
 		LoginParams: &self.TutorialOptions,
 	})
 	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
-	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
-	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
-	t.RegisterActionHandler("ziti-for-each", &actions.ZitiForEach{})
 
-	return t.Run(simpleRouterTunnelerHostedScriptSource)
+	return t.Run(multiSdkHostedScriptSource)
 }
