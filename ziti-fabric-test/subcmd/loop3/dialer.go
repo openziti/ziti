@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/transport"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -180,9 +180,11 @@ func (cmd *dialerCmd) connect() net.Conn {
 			panic(err)
 		}
 
-		_, id, err := dotziti.LoadIdentity(cmd.identity)
-		if err != nil {
-			panic(err)
+		id := &identity.TokenId{Token: "test"}
+		if endpoint.Type() != "tcp" || !cmd.direct {
+			if _, id, err = dotziti.LoadIdentity(cmd.identity); err != nil {
+				panic(err)
+			}
 		}
 
 		if cmd.direct {

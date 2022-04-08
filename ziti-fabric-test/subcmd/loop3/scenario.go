@@ -37,14 +37,16 @@ type Workload struct {
 }
 
 type Test struct {
-	TxRequests       int32  `yaml:"txRequests"`
-	TxPacing         int32  `yaml:"txPacing"`
-	TxMaxJitter      int32  `yaml:"txMaxJitter"`
-	RxTimeout        int32  `yaml:"rxTimeout"`
-	PayloadMinBytes  int32  `yaml:"payloadMinBytes"`
-	PayloadMaxBytes  int32  `yaml:"payloadMaxBytes"`
-	LatencyFrequency int32  `yaml:"latencyFrequency"`
-	BlockType        string `yaml:"blockType"`
+	TxRequests       int32         `yaml:"txRequests"`
+	TxPacing         int32         `yaml:"txPacing"`
+	TxMaxJitter      int32         `yaml:"txMaxJitter"`
+	RxTimeout        int32         `yaml:"rxTimeout"`
+	RxPacing         time.Duration `yaml:"rxPacing"`
+	RxMaxJitter      time.Duration `yaml:"rxMaxJitter"`
+	PayloadMinBytes  int32         `yaml:"payloadMinBytes"`
+	PayloadMaxBytes  int32         `yaml:"payloadMaxBytes"`
+	LatencyFrequency int32         `yaml:"latencyFrequency"`
+	BlockType        string        `yaml:"blockType"`
 }
 
 func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
@@ -54,6 +56,8 @@ func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 		TxPacing:         workload.Dialer.TxPacing,
 		TxMaxJitter:      workload.Dialer.TxMaxJitter,
 		RxRequests:       workload.Listener.TxRequests,
+		RxPacing:         workload.Dialer.RxPacing.String(),
+		RxMaxJitter:      workload.Dialer.RxMaxJitter.String(),
 		RxTimeout:        workload.Dialer.RxTimeout,
 		RxSeqBlockSize:   workload.Listener.PayloadMinBytes,
 		PayloadMinBytes:  workload.Dialer.PayloadMinBytes,
@@ -69,6 +73,8 @@ func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 		TxPacing:         workload.Listener.TxPacing,
 		TxMaxJitter:      workload.Listener.TxMaxJitter,
 		RxRequests:       workload.Dialer.TxRequests,
+		RxPacing:         workload.Listener.RxPacing.String(),
+		RxMaxJitter:      workload.Listener.RxMaxJitter.String(),
 		RxTimeout:        workload.Listener.RxTimeout,
 		RxSeqBlockSize:   workload.Dialer.PayloadMinBytes,
 		PayloadMinBytes:  workload.Listener.PayloadMinBytes,

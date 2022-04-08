@@ -20,7 +20,9 @@ import (
 	goflag "flag"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/fabric"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial"
 	"io"
 	"os"
 	"path/filepath"
@@ -136,6 +138,8 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 	pkiCommands := NewCmdPKI(f, out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(f, out, err)
+	tutorialCmd := tutorial.NewTutorialCmd(p)
+	demoCmd := demo.NewDemoCmd(p)
 	logFilter := NewCmdLogFormat(f, out, err)
 	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(f, out, err)
 
@@ -179,6 +183,13 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 			Message: "Utilities",
 			Commands: []*cobra.Command{
 				logFilter,
+			},
+		},
+		{
+			Message: "Learning Ziti",
+			Commands: []*cobra.Command{
+				demoCmd,
+				tutorialCmd,
 			},
 		},
 	}

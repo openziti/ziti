@@ -18,13 +18,15 @@ package edge
 
 import (
 	"github.com/openziti/ziti/common/enrollment"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"io"
 
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
+
+var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
 
 // NewCmdEdge creates a command object for the "controller" command
 func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
@@ -34,7 +36,6 @@ func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comma
 }
 
 func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
-	p := common.NewOptionsProvider(out, errOut)
 	cmd.AddCommand(newCreateCmd(f, out, errOut))
 	cmd.AddCommand(newDeleteCmd(out, errOut))
 	cmd.AddCommand(newLoginCmd(out, errOut))
@@ -48,7 +49,12 @@ func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cm
 	cmd.AddCommand(newDbCmd(out, errOut))
 	cmd.AddCommand(enrollment.NewEnrollCommand())
 	cmd.AddCommand(newTraceCmd(out, errOut))
-	cmd.AddCommand(newTutorialCmd(p))
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
+
+	p := common.NewOptionsProvider(out, errOut)
+	for _, cmdF := range ExtraEdgeCommands {
+		cmd.AddCommand(cmdF(p))
+	}
+
 	return cmd
 }

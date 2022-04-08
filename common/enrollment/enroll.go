@@ -34,6 +34,7 @@ import (
 
 // global state used by all subcommands are located here for easy discovery
 var verbose bool
+var removeJwt bool
 var keyAlg config.KeyAlgVar
 var jwtpath, outpath, keyPath, certPath, idname, caOverride, username, password string
 
@@ -85,6 +86,7 @@ func NewEnrollCommand() *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
 	enrollSubCmd.Flags().StringVarP(&username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
 	enrollSubCmd.Flags().StringVarP(&password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
+	enrollSubCmd.Flags().BoolVar(&removeJwt, "rm", false, "Remove the JWT on success")
 
 	keyAlg.Set("RSA") // set default
 	enrollSubCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
@@ -170,7 +172,13 @@ func processEnrollment() error {
 			flags.Password = password
 		}
 
-		return enroll.EnrollUpdb(flags)
+		err = enroll.EnrollUpdb(flags)
+		if err == nil {
+			if rmErr := os.Remove(jwtpath); rmErr != nil {
+				pfxlog.Logger().WithError(rmErr).Warnf("unable to remove JWT file as requested: %v", jwtpath)
+			}
+		}
+		return err
 	}
 
 	conf, err := enroll.Enroll(flags)
@@ -187,6 +195,10 @@ func processEnrollment() error {
 	enc := json.NewEncoder(output)
 	enc.SetEscapeHTML(false)
 	encErr := enc.Encode(&conf)
+
+	if err = os.Remove(jwtpath); err != nil {
+		pfxlog.Logger().WithError(err).Warnf("unable to remove JWT file as requested: %v", jwtpath)
+	}
 
 	if encErr == nil {
 		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", outpath)

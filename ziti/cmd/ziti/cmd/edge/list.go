@@ -318,30 +318,30 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 	return cmd
 }
 
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
 func listEntitiesWithOptions(entityType string, options *api.Options) ([]*gabs.Container, *paging, error) {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
 	}
 
-	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	return ListEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 }
 
-func listEntitiesWithFilter(entityType string, filter string) ([]*gabs.Container, *paging, error) {
+func ListEntitiesWithFilter(entityType string, filter string) ([]*gabs.Container, *paging, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, false, nil, 5, false)
+	return ListEntitiesOfType(entityType, params, false, nil, 5, false)
 }
 
 func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, logJSON, out, timeout, verbose)
+	return ListEntitiesOfType(entityType, params, logJSON, out, timeout, verbose)
 }
 
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
+func ListEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
 	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out, timeout, verbose)
 
 	if err != nil {
@@ -379,7 +379,7 @@ func getPaging(c *gabs.Container) *paging {
 	return pagingInfo
 }
 
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
 func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *api.Options) ([]*gabs.Container, *paging, error) {
 	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 
@@ -405,7 +405,7 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, paging, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, paging, err := ListEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -528,7 +528,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, pagingInfo, err := ListEntitiesOfType("services", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -697,7 +697,7 @@ func runListIdentities(roleFilters []string, roleSemantic string, options *api.O
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, pagingInfo, err := ListEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}

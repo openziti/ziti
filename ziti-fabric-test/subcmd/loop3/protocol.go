@@ -32,16 +32,18 @@ import (
 )
 
 type protocol struct {
-	test       *loop3_pb.Test
-	blocks     chan Block
-	rxSequence uint64
-	peer       io.ReadWriteCloser
-	rxBlocks   chan Block
-	txCount    int32
-	rxCount    int32
-	lastRx     int64
-	latencies  chan *time.Time
-	errors     chan error
+	test        *loop3_pb.Test
+	blocks      chan Block
+	rxSequence  uint64
+	rxPacing    time.Duration
+	rxMaxJitter time.Duration
+	peer        io.ReadWriteCloser
+	rxBlocks    chan Block
+	txCount     int32
+	rxCount     int32
+	lastRx      int64
+	latencies   chan *time.Time
+	errors      chan error
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
@@ -83,6 +85,18 @@ func (p *protocol) run(test *loop3_pb.Test) error {
 	} else {
 		panic(errors.Errorf("unknown rx block type %v", test.RxBlockType))
 	}
+
+	rxPacing, err := time.ParseDuration(p.test.RxPacing)
+	if err != nil {
+		panic(err)
+	}
+	p.rxPacing = rxPacing
+
+	rxMaxJitter, err := time.ParseDuration(p.test.RxMaxJitter)
+	if err != nil {
+		panic(err)
+	}
+	p.rxMaxJitter = rxMaxJitter
 
 	rxerDone := make(chan bool)
 	go p.rxer(rxerDone, rxBlock)
@@ -155,6 +169,7 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 	defer func() { done <- true }()
 	defer log.Debug("complete")
 
+	lastRx := time.Now()
 	for p.rxCount < p.test.RxRequests {
 		block, err := rxBlock()
 		if err != nil {
@@ -166,6 +181,22 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 		atomic.AddInt32(&p.rxCount, 1)
 		atomic.StoreInt64(&p.lastRx, info.NowInMilliseconds())
 		p.rxBlocks <- block
+
+		if p.rxPacing > 0 {
+			jitter := time.Duration(0)
+			if p.rxMaxJitter > 0 {
+				jitter = time.Duration(rand.Intn(int(p.rxMaxJitter)))
+			}
+
+			now := time.Now()
+			nextRx := lastRx.Add(p.rxPacing + jitter)
+			if nextRx.After(now) {
+				time.Sleep(nextRx.Sub(now))
+				lastRx = nextRx
+			} else {
+				lastRx = now
+			}
+		}
 	}
 
 	close(p.rxBlocks)
