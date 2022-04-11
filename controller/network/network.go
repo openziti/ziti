@@ -720,7 +720,7 @@ func (network *Network) AddRouterPresenceHandler(h RouterPresenceHandler) {
 }
 
 func (network *Network) Run() {
-	defer logrus.Error("exited")
+	defer logrus.Info("exited")
 	logrus.Info("started")
 
 	for {
