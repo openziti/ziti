@@ -114,6 +114,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
 	latency.AddLatencyProbeResponder(binding)
 
+	cb := &heartbeatCallback{}
+
+	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+
 	if self.traceHandler != nil {
 		binding.AddPeekHandler(self.traceHandler)
 	}
@@ -126,3 +130,15 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	return nil
 }
+
+type heartbeatCallback struct{}
+
+func (self *heartbeatCallback) HeartbeatTx(int64) {}
+
+func (self *heartbeatCallback) HeartbeatRx(int64) {}
+
+func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
+
+func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {}
+
+func (self *heartbeatCallback) CheckHeartBeat() {}
