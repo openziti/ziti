@@ -44,6 +44,10 @@ import (
 type ExternalJWTSignerDetail struct {
 	BaseEntity
 
+	// audience
+	// Required: true
+	Audience *string `json:"audience"`
+
 	// cert pem
 	// Required: true
 	CertPem *string `json:"certPem"`
@@ -67,6 +71,10 @@ type ExternalJWTSignerDetail struct {
 	// fingerprint
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
+
+	// issuer
+	// Required: true
+	Issuer *string `json:"issuer"`
 
 	// kid
 	// Required: true
@@ -103,6 +111,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		Audience *string `json:"audience"`
+
 		CertPem *string `json:"certPem"`
 
 		ClaimsProperty *string `json:"claimsProperty"`
@@ -114,6 +124,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 		ExternalAuthURL *string `json:"externalAuthUrl"`
 
 		Fingerprint *string `json:"fingerprint"`
+
+		Issuer *string `json:"issuer"`
 
 		Kid *string `json:"kid"`
 
@@ -129,6 +141,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 
+	m.Audience = dataAO1.Audience
+
 	m.CertPem = dataAO1.CertPem
 
 	m.ClaimsProperty = dataAO1.ClaimsProperty
@@ -140,6 +154,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	m.ExternalAuthURL = dataAO1.ExternalAuthURL
 
 	m.Fingerprint = dataAO1.Fingerprint
+
+	m.Issuer = dataAO1.Issuer
 
 	m.Kid = dataAO1.Kid
 
@@ -164,6 +180,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		Audience *string `json:"audience"`
+
 		CertPem *string `json:"certPem"`
 
 		ClaimsProperty *string `json:"claimsProperty"`
@@ -176,6 +194,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 
 		Fingerprint *string `json:"fingerprint"`
 
+		Issuer *string `json:"issuer"`
+
 		Kid *string `json:"kid"`
 
 		Name *string `json:"name"`
@@ -186,6 +206,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 
 		UseExternalID *bool `json:"useExternalId"`
 	}
+
+	dataAO1.Audience = m.Audience
 
 	dataAO1.CertPem = m.CertPem
 
@@ -198,6 +220,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.ExternalAuthURL = m.ExternalAuthURL
 
 	dataAO1.Fingerprint = m.Fingerprint
+
+	dataAO1.Issuer = m.Issuer
 
 	dataAO1.Kid = m.Kid
 
@@ -226,6 +250,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateAudience(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateCertPem(formats); err != nil {
 		res = append(res, err)
 	}
@@ -247,6 +275,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateFingerprint(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateIssuer(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -273,6 +305,15 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateAudience(formats strfmt.Registry) error {
+
+	if err := validate.Required("audience", "body", m.Audience); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -324,6 +365,15 @@ func (m *ExternalJWTSignerDetail) validateExternalAuthURL(formats strfmt.Registr
 func (m *ExternalJWTSignerDetail) validateFingerprint(formats strfmt.Registry) error {
 
 	if err := validate.Required("fingerprint", "body", m.Fingerprint); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateIssuer(formats strfmt.Registry) error {
+
+	if err := validate.Required("issuer", "body", m.Issuer); err != nil {
 		return err
 	}
 

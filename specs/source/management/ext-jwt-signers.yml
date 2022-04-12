@@ -178,6 +178,8 @@ definitions:
           - claimsProperty
           - useExternalId
           - kid
+          - issuer
+          - audience
         properties:
           name:
             type: string
@@ -204,6 +206,10 @@ definitions:
           useExternalId:
             type: boolean
           kid:
+            type: string
+          issuer:
+            type: string
+          audience:
             type: string
   externalJwtSignerCreate:
     description: A create Certificate Authority (CA) object
@@ -232,6 +238,12 @@ definitions:
         x-nullable: true
       useExternalId:
         type: boolean
+        x-nullable: true
+      issuer:
+        type: string
+        x-nullable: true
+      audience:
+        type: string
         x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
@@ -262,6 +274,12 @@ definitions:
       useExternalId:
         type: boolean
         x-nullable: true
+      issuer:
+        type: string
+        x-nullable: true
+      audience:
+        type: string
+        x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   externalJwtSignerPatch:
@@ -289,6 +307,12 @@ definitions:
         x-nullable: true
       useExternalId:
         type: boolean
+        x-nullable: true
+      issuer:
+        type: string
+        x-nullable: true
+      audience:
+        type: string
         x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'

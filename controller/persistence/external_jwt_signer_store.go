@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"strings"
 	"time"
 )
 
@@ -36,6 +37,8 @@ const (
 	FieldExternalJwtSignerClaimsProperty  = "claimsProperty"
 	FieldExternalJwtSignerUseExternalId   = "useExternalId"
 	FieldExternalJwtSignerKid             = "kid"
+	FieldExternalJwtSignerIssuer          = "issuer"
+	FieldExternalJwtSignerAudience        = "audience"
 
 	DefaultClaimsProperty = "sub"
 )
@@ -53,6 +56,8 @@ type ExternalJwtSigner struct {
 	ExternalAuthUrl *string
 	ClaimsProperty  *string
 	UseExternalId   bool
+	Issuer          *string
+	Audience        *string
 }
 
 func (entity *ExternalJwtSigner) GetName() string {
@@ -72,6 +77,8 @@ func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.Typ
 	entity.ExternalAuthUrl = bucket.GetString(FieldExternalJwtSignerExternalAuthUrl)
 	entity.ClaimsProperty = bucket.GetString(FieldExternalJwtSignerClaimsProperty)
 	entity.UseExternalId = bucket.GetBoolWithDefault(FieldExternalJwtSignerUseExternalId, false)
+	entity.Issuer = bucket.GetString(FieldExternalJwtSignerIssuer)
+	entity.Audience = bucket.GetString(FieldExternalJwtSignerAudience)
 }
 
 func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
@@ -84,15 +91,28 @@ func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetTimeP(FieldExternalJwtSignerNotAfter, entity.NotAfter)
 	ctx.SetTimeP(FieldExternalJwtSignerNotBefore, entity.NotBefore)
 	ctx.SetBool(FieldExternalJwtSignerEnabled, entity.Enabled)
-	ctx.SetStringP(FieldExternalJwtSignerExternalAuthUrl, entity.ExternalAuthUrl)
 	ctx.SetBool(FieldExternalJwtSignerUseExternalId, entity.UseExternalId)
 
-	if entity.ClaimsProperty == nil || *entity.ClaimsProperty == "" {
+	if entity.ExternalAuthUrl != nil && strings.TrimSpace(*entity.ExternalAuthUrl) == "" {
+		entity.ExternalAuthUrl = nil
+	}
+	ctx.SetStringP(FieldExternalJwtSignerExternalAuthUrl, entity.ExternalAuthUrl)
+
+	if entity.Issuer != nil && strings.TrimSpace(*entity.Issuer) == "" {
+		entity.Issuer = nil
+	}
+	ctx.SetStringP(FieldExternalJwtSignerIssuer, entity.Issuer)
+
+	if entity.Audience != nil && strings.TrimSpace(*entity.Audience) == "" {
+		entity.Audience = nil
+	}
+	ctx.SetStringP(FieldExternalJwtSignerAudience, entity.Audience)
+
+	if entity.ClaimsProperty == nil || strings.TrimSpace(*entity.ClaimsProperty) == "" {
 		ctx.SetString(FieldExternalJwtSignerClaimsProperty, DefaultClaimsProperty)
 	} else {
 		ctx.SetStringP(FieldExternalJwtSignerClaimsProperty, entity.ClaimsProperty)
 	}
-
 }
 
 func (entity *ExternalJwtSigner) GetEntityType() string {

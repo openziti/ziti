@@ -19046,6 +19046,10 @@ func init() {
         "kid"
       ],
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string"
         },
@@ -19059,6 +19063,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
@@ -19097,9 +19105,14 @@ func init() {
             "externalAuthUrl",
             "claimsProperty",
             "useExternalId",
-            "kid"
+            "kid",
+            "issuer",
+            "audience"
           ],
           "properties": {
+            "audience": {
+              "type": "string"
+            },
             "certPem": {
               "type": "string"
             },
@@ -19117,6 +19130,9 @@ func init() {
               "format": "url"
             },
             "fingerprint": {
+              "type": "string"
+            },
+            "issuer": {
               "type": "string"
             },
             "kid": {
@@ -19151,6 +19167,10 @@ func init() {
     "externalJwtSignerPatch": {
       "type": "object",
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string",
           "x-nullable": true
@@ -19166,6 +19186,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
@@ -19195,6 +19219,10 @@ func init() {
         "kid"
       ],
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string"
         },
@@ -19208,6 +19236,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
@@ -41860,6 +41892,10 @@ func init() {
         "kid"
       ],
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string"
         },
@@ -41873,6 +41909,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
@@ -41911,9 +41951,14 @@ func init() {
             "externalAuthUrl",
             "claimsProperty",
             "useExternalId",
-            "kid"
+            "kid",
+            "issuer",
+            "audience"
           ],
           "properties": {
+            "audience": {
+              "type": "string"
+            },
             "certPem": {
               "type": "string"
             },
@@ -41931,6 +41976,9 @@ func init() {
               "format": "url"
             },
             "fingerprint": {
+              "type": "string"
+            },
+            "issuer": {
               "type": "string"
             },
             "kid": {
@@ -41965,6 +42013,10 @@ func init() {
     "externalJwtSignerPatch": {
       "type": "object",
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string",
           "x-nullable": true
@@ -41980,6 +42032,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
@@ -42009,6 +42065,10 @@ func init() {
         "kid"
       ],
       "properties": {
+        "audience": {
+          "type": "string",
+          "x-nullable": true
+        },
         "certPem": {
           "type": "string"
         },
@@ -42022,6 +42082,10 @@ func init() {
         "externalAuthUrl": {
           "type": "string",
           "format": "url",
+          "x-nullable": true
+        },
+        "issuer": {
+          "type": "string",
           "x-nullable": true
         },
         "kid": {
