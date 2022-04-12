@@ -172,6 +172,7 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              *identity.AuthPolicyID,
+		ExternalId:                identity.ExternalID,
 	}
 
 	return ret
@@ -193,6 +194,7 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
 		AppData:                   TagsOrDefault(identity.AppData),
 		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
+		ExternalId:                identity.ExternalID,
 	}
 
 	return ret
@@ -288,6 +290,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		Disabled:                  &identity.Disabled,
 		DisabledAt:                disabledAt,
 		DisabledUntil:             disabledUntil,
+		ExternalID:                identity.ExternalId,
 	}
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 

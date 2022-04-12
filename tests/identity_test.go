@@ -269,6 +269,71 @@ func Test_Identity(t *testing.T) {
 		ctx.Req.False(stringz.Contains(list, role5))
 	})
 
+	t.Run("can create identity", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		terminatorCost := rest_model.TerminatorCost(1)
+		identityType := rest_model.IdentityTypeDevice
+
+		identityCreate := &rest_model.IdentityCreate{
+			AppData: &rest_model.Tags{
+				SubTags: map[string]interface{}{
+					"key1": "value1",
+				},
+			},
+			AuthPolicyID:             S("default"),
+			DefaultHostingCost:       &terminatorCost,
+			DefaultHostingPrecedence: rest_model.TerminatorPrecedenceFailed,
+			Enrollment: &rest_model.IdentityCreateEnrollment{
+				Ott: true,
+			},
+			ExternalID:     S("hello-there-external-id"),
+			IsAdmin:        B(true),
+			Name:           S("hello-there-name"),
+			RoleAttributes: &rest_model.Attributes{"attribute1"},
+			Tags: &rest_model.Tags{
+				SubTags: map[string]interface{}{
+					"key1": "value1",
+				},
+			},
+			Type: &identityType,
+		}
+
+		identityCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(identityCreate).SetResult(identityCreateResult).Post("/identities")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+		ctx.Req.NotEmpty(identityCreateResult.Data.ID)
+
+		t.Run("get identity values match create value", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			identityDetailResult := &rest_model.CurrentIdentityDetailEnvelope{}
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityDetailResult).Get("/identities/" + identityCreateResult.Data.ID)
+			ctx.Req.NoError(err)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode(), "response body: %s", resp.Body())
+			ctx.Req.NotNil(identityDetailResult.Data)
+
+			identityDetail := identityDetailResult.Data
+
+			ctx.Req.Equal(identityCreate.AppData.SubTags["key1"], identityDetail.AppData.SubTags["key1"])
+			ctx.Req.Equal(*identityCreate.AuthPolicyID, *identityDetail.AuthPolicyID)
+			ctx.Req.Equal(*identityCreate.DefaultHostingCost, *identityDetail.DefaultHostingCost)
+			ctx.Req.Equal(identityCreate.DefaultHostingPrecedence, identityDetail.DefaultHostingPrecedence)
+			ctx.Req.NotNil(identityDetail.Enrollment.Ott)
+			ctx.Req.Nil(identityDetail.Enrollment.Updb)
+			ctx.Req.Nil(identityDetail.Enrollment.Ottca)
+			ctx.Req.Equal(*identityCreate.ExternalID, *identityDetail.ExternalID)
+			ctx.Req.Equal(*identityCreate.IsAdmin, *identityDetail.IsAdmin)
+			ctx.Req.Equal(*identityCreate.Name, *identityDetail.Name)
+			ctx.Req.Equal((*identityCreate.RoleAttributes)[0], (*identityDetail.RoleAttributes)[0])
+			ctx.Req.Equal(identityCreate.Tags.SubTags["key1"], identityDetail.Tags.SubTags["key1"])
+			ctx.Req.NotNil(identityDetail.Type)
+			ctx.Req.Equal(string(*identityCreate.Type), identityDetail.Type.Name)
+		})
+	})
+
 	t.Run("update (PUT) an identity", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		enrolledId, _ := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
@@ -356,6 +421,7 @@ func Test_Identity(t *testing.T) {
 			_, _ = updateContent.SetP(map[string]interface{}{}, "tags")
 			_, _ = updateContent.SetP(false, "isAdmin")
 			_, _ = updateContent.SetP("", "authPolicyId")
+			_, _ = updateContent.SetP("new-external-id", "externalId")
 
 			resp := ctx.AdminManagementSession.updateEntityOfType(identityId, "identities", updateContent.String(), false)
 			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -374,6 +440,13 @@ func Test_Identity(t *testing.T) {
 				ctx.Req.Equal(true, updatedIdentity.ExistsP("data.isAdmin"))
 				newIsAdmin := updatedIdentity.Path("data.isAdmin").Data().(bool)
 				ctx.Req.Equal(false, newIsAdmin)
+			})
+
+			t.Run("externalId", func(t *testing.T) {
+				ctx.testContextChanged(t)
+				ctx.Req.Equal(true, updatedIdentity.ExistsP("data.externalId"))
+				newExternalId := updatedIdentity.Path("data.externalId").Data().(string)
+				ctx.Req.Equal("new-external-id", newExternalId)
 			})
 		})
 
