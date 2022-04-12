@@ -217,12 +217,12 @@ set to a valid external JWT signer and assigned to the target identity(ies).
 
 External JWT Signers can be managed on the following new REST Edge Management API endpoints:
 
-- List `GET /edge/v1/management/ext-jwt-signers`
-- Create `POST /edge/v1/management/ext-jwt-signers`
-- Detail `GET /edge/v1/management/ext-jwt-signers/{id}`
-- Replace `PUT /edge/v1/management/ext-jwt-signers/{id}`
-- Patch `PATCH /edge/v1/management/ext-jwt-signers/{id}`
-- Delete `Delete /edge/v1/management/ext-jwt-signers/{id}`
+- List `GET /edge/v1/management/external-jwt-signers`
+- Create `POST /edge/v1/management/external-jwt-signers`
+- Detail `GET /edge/v1/management/external-jwt-signers/{id}`
+- Replace `PUT /edge/v1/management/external-jwt-signers/{id}`
+- Patch `PATCH /edge/v1/management/external-jwt-signers/{id}`
+- Delete `Delete /edge/v1/management/external-jwt-signers/{id}`
 
 And support the following properties:
 
@@ -236,7 +236,7 @@ And support the following properties:
 
 Example Create:
 
-`POST /edge/v1/management/ext-jwt-signers`
+`POST /edge/v1/management/external-jwt-signers`
 ```json
 {
     "certPem": "-----BEGIN CERTIFICATE-----\nMIIBizC ...",
