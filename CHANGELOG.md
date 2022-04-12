@@ -8,6 +8,17 @@
 * Enhancement: Allow for version override using the ziti quickstart CLI script
 * Change: Renamed `pushDevBuild.sh` to `buildLocalDev.sh`, the script used for building a local dev version of the docker quickstart image
 * Bug fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
+* Bug Fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
+* Enhancement: External JWT Signer Issuer & Audience Validation
+
+
+## External JWT Signer Issuer & Audience Validation
+
+External JWT Signers (endpoint `/external-jwt-signers`) now support `issuer` and `audience` optional string fields.
+These fields may be set to `null` on `POST`/`PUT`/`PATCH` or omitted; which will result in no validation of incoming
+JWT's `aud` and `iss` fields. If `issuer` is defined, JWT `iss` fields will be validated. If `audience` is defined, JWT
+`aud` fields will be validated. If a JWT contains multiple audience values as an array of strings and will be validated,
+validation will check if the External JWT Signer's `audience` value is present as one of the values.
 
 # Release 0.25.4
 
