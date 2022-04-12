@@ -40,7 +40,7 @@ ziti edge delete service-edge-router-policies echo
             "protocol" : "tcp",
             "portChecks" : [
                 {
-                     "address" : "localhost:1234",
+                     "address" : "localhost:2234",
                      "interval" : "1s",
                      "timeout" : "100ms",
                      "actions" : [
@@ -56,7 +56,7 @@ ziti edge delete service-edge-router-policies echo
             "protocol" : "tcp",
             "portChecks" : [
                 {
-                     "address" : "localhost:1235",
+                     "address" : "localhost:2235",
                      "interval" : "1s",
                      "timeout" : "100ms",
                      "actions" : [
@@ -95,10 +95,11 @@ ziti edge create service-edge-router-policy echo --service-roles @echo --edge-ro
 
 ## Summary
 
-You should now be to run the echo server with
+You should now be to run two instances of the echo server with
 
 ```
-ziti demo echo-server -p 1234
+ziti demo echo-server -p 1234 --health-check-addr 0.0.0.0:2234
+ziti demo echo-server -p 1235 --health-check-addr 0.0.0.0:2235
 ```
 
 and the zcat client using

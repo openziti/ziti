@@ -14,55 +14,57 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
 )
 
-// PsMemstatsOptions the options for the create spring command
-type PsMemstatsOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentPprofHeapAction struct {
+	AgentOptions
 }
 
-// NewCmdPsMemstats creates a command object for the "create" command
-func NewCmdPsMemstats(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsMemstatsOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewPprofHeapCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentPprofHeapAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "memstats <optional-target>",
-		Short: "Returns memory use summary of the target application",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "pprof-heap",
+		Short: "Returns a memory heap pprof of the target application",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsMemstatsOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentPprofHeapAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.MemStats, nil, os.Stdout)
+
+	var out io.WriteCloser = os.Stdout
+	if len(self.Args) > 1 {
+		out, err = os.Create(self.Args[1])
+		if err != nil {
+			return err
+		}
+		defer out.Close()
+	}
+
+	return agent.MakeRequest(addr, agent.HeapProfile, nil, out)
 }

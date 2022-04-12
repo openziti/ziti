@@ -25,7 +25,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -39,10 +38,10 @@ type updateServiceOptions struct {
 	configs            []string
 }
 
-func newUpdateServiceCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServiceOptions{
 		Options: api.Options{
-			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
 

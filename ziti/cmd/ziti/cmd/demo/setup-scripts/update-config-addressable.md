@@ -28,7 +28,7 @@ ziti edge login
             "protocol" : "tcp",
             "portChecks" : [
                 {
-                     "address" : "localhost:1234",
+                     "address" : "localhost:2234",
                      "interval" : "1s",
                      "timeout" : "100ms",
                      "actions" : [
@@ -47,7 +47,7 @@ ziti edge login
             "protocol" : "tcp",
             "portChecks" : [
                 {
-                     "address" : "localhost:1235",
+                     "address" : "localhost:2235",
                      "interval" : "1s",
                      "timeout" : "100ms",
                      "actions" : [

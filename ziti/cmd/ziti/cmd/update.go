@@ -21,7 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 )
@@ -48,12 +47,11 @@ var (
 )
 
 // NewCmdUpdate creates a command object for the "update" command
-func NewCmdUpdate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUpdate(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpdateOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 

@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/openziti/ziti/ziti/ansible"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
@@ -50,13 +49,12 @@ type InstallAnsibleOptions struct {
 var installOptions = &ansible.InstallOptions{}
 
 // NewCmdInstallAnsible defines the command
-func NewCmdInstallAnsible(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstallAnsible(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallAnsibleOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

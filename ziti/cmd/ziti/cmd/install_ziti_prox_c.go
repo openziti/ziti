@@ -21,7 +21,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/version"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -48,13 +47,12 @@ type InstallZitiProxCOptions struct {
 }
 
 // NewCmdInstallZitiProxC defines the command
-func NewCmdInstallZitiProxC(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstallZitiProxC(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallZitiProxCOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
@@ -73,7 +71,7 @@ func NewCmdInstallZitiProxC(f cmdutil.Factory, out io.Writer, errOut io.Writer) 
 		},
 	}
 	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to install")
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 	return cmd
 }
 

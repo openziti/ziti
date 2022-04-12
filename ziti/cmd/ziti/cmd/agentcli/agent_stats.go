@@ -14,53 +14,47 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-// PsTraceOptions the options for the create spring command
-type PsTraceOptions struct {
-	PsOptions
+type AgentStatsAction struct {
+	AgentOptions
 }
 
-// NewCmdPsTrace creates a command object for the "create" command
-func NewCmdPsTrace(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsTraceOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewStatsCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentStatsAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "trace",
-		Short: "Turn tracing on for 5 seconds in the target application",
+		Use:   "stats <optional-target>",
+		Short: "Emits some runtime information (# go-routines, threads, cpus, etc) from the target application",
+		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsTraceOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentStatsAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.Trace, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.Stats, nil, os.Stdout)
 }

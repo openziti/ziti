@@ -14,38 +14,32 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
+	"bytes"
 	"encoding/binary"
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
-	"strconv"
 )
 
-// PsSetgcOptions the options for the create spring command
-type PsSetgcOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentClearChannelLogLevelAction struct {
+	AgentOptions
 }
 
-// NewCmdPsSetgc creates a command object for the "create" command
-func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsSetgcOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewClearChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
+	options := &AgentClearChannelLogLevelAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "setgc target gc-percentage",
-		Short: "Sets the GC percentage in the target application",
+		Use:   "clear-channel-log-level target channel",
+		Short: "Clears a channel-specific log level in the target application",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -55,34 +49,31 @@ func NewCmdPsSetgc(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	options.addCommonFlags(cmd)
-
 	return cmd
 }
 
 // Run implements the command
-func (o *PsSetgcOptions) Run() error {
+func (self *AgentClearChannelLogLevelAction) Run() error {
 	var addr string
 	var err error
-	var pctArg string
-	if len(o.Args) == 1 {
+	var channelArg string
+	if len(self.Args) == 1 {
 		addr, err = agent.ParseGopsAddress(nil)
-		pctArg = o.Args[0]
+		channelArg = self.Args[0]
 	} else {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		pctArg = o.Args[1]
+		addr, err = agent.ParseGopsAddress(self.Args)
+		channelArg = self.Args[1]
 	}
 
 	if err != nil {
 		return err
 	}
 
-	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)
-	if err != nil {
-		return err
-	}
-	buf := make([]byte, binary.MaxVarintLen64)
-	binary.PutVarint(buf, perc)
+	lenBuf := make([]byte, 8)
+	lenLen := binary.PutVarint(lenBuf, int64(len(channelArg)))
+	buf := &bytes.Buffer{}
+	buf.Write(lenBuf[:lenLen])
+	buf.Write([]byte(channelArg))
 
-	return agent.MakeRequest(addr, agent.SetGCPercent, buf, os.Stdout)
+	return agent.MakeRequest(addr, agent.ClearChannelLogLevel, buf.Bytes(), os.Stdout)
 }

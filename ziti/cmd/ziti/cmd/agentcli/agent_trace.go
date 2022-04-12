@@ -14,55 +14,46 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-// PsGcOptions the options for the create spring command
-type PsGcOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentTraceAction struct {
+	AgentOptions
 }
 
-// NewCmdPsGc creates a command object for the "create" command
-func NewCmdPsGc(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsGcOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewTraceCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentTraceAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "gc <optional-target>",
-		Short: "Run garbage collection in the target application",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "trace",
+		Short: "Turn tracing on for 5 seconds in the target application",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsGcOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentTraceAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.GC, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.Trace, nil, os.Stdout)
 }

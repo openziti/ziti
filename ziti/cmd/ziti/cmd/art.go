@@ -20,7 +20,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 
 	"github.com/spf13/cobra"
@@ -32,12 +31,11 @@ type ArtOptions struct {
 	CommonOptions
 }
 
-func NewCmdArt(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdArt(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &ArtOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -51,7 +49,7 @@ func NewCmdArt(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 			cmdhelper.CheckErr(err)
 		},
 	}
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

@@ -22,13 +22,12 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 // newListCmd creates a command object for the "controller list" command
-func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "creates various entities managed by the Ziti Edge Controller",
@@ -38,16 +37,16 @@ func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
-	cmd.AddCommand(newCreateAuthenticatorCmd(f, out, errOut))
-	cmd.AddCommand(newCreateCaCmd(f, out, errOut))
-	cmd.AddCommand(newCreateConfigCmd(f, out, errOut))
-	cmd.AddCommand(newCreateConfigTypeCmd(f, out, errOut))
-	cmd.AddCommand(newCreateEdgeRouterCmd(f, out, errOut))
-	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(f, out, errOut))
-	cmd.AddCommand(newCreateTerminatorCmd(f, out, errOut))
-	cmd.AddCommand(newCreateIdentityCmd(f, out, errOut))
-	cmd.AddCommand(newCreateServiceCmd(f, out, errOut))
-	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(f, out, errOut))
+	cmd.AddCommand(newCreateAuthenticatorCmd(out, errOut))
+	cmd.AddCommand(newCreateCaCmd(out, errOut))
+	cmd.AddCommand(newCreateConfigCmd(out, errOut))
+	cmd.AddCommand(newCreateConfigTypeCmd(out, errOut))
+	cmd.AddCommand(newCreateEdgeRouterCmd(out, errOut))
+	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(out, errOut))
+	cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
+	cmd.AddCommand(newCreateIdentityCmd(out, errOut))
+	cmd.AddCommand(newCreateServiceCmd(out, errOut))
+	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateServicePolicyCmd(out, errOut))
 	cmd.AddCommand(newCreatePostureCheckCmd(out, errOut))
 

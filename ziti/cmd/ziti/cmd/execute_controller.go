@@ -22,7 +22,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -50,13 +49,12 @@ type ExecuteControllerOptions struct {
 }
 
 // NewCmdExecuteController creates a command object for the "create" command
-func NewCmdExecuteController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdExecuteController(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &ExecuteControllerOptions{
 		ExecuteOptions: ExecuteOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
@@ -77,7 +75,7 @@ func NewCmdExecuteController(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 
 	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", false, "Enable CLI Agent (use in dev only)")
 
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

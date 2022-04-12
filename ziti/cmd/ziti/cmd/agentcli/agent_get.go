@@ -14,34 +14,28 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/shirou/gopsutil/process"
 	"github.com/spf13/cobra"
-	"io"
 	"strconv"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 )
 
-// PsGetOptions the options for the create spring command
-type PsGetOptions struct {
-	PsOptions
-
-	CtrlListener string
+type AgentGetOptionsAction struct {
+	AgentOptions
+	Pid string
 }
 
-// NewCmdPsGet creates a command object for the "create" command
-func NewCmdPsGet(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsGetOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewGetCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentGetOptionsAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
@@ -49,23 +43,22 @@ func NewCmdPsGet(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "get",
 		Short: "Returns information about the target process",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	options.addCommonFlags(cmd)
-	cmd.Flags().StringVarP(&options.Flags.Pid, "pid", "", "", "pid (target of sub-cmd)")
+	cmd.Flags().StringVarP(&action.Pid, "pid", "", "", "pid (target of sub-cmd)")
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsGetOptions) Run() error {
-	pidStr := o.Args[0]
-	_, err := strconv.Atoi(o.Args[0])
+func (self *AgentGetOptionsAction) Run() error {
+	pidStr := self.Args[0]
+	_, err := strconv.Atoi(self.Args[0])
 	if err != nil {
 		return err
 	}

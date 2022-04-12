@@ -17,13 +17,14 @@
 package demo
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
-	cmd := &cobra.Command{
+	demoCmd := &cobra.Command{
 		Use:   "demo",
 		Short: "Demos and examples for learning about Ziti",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -50,10 +51,23 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(newEchoServerCmd())
-	cmd.AddCommand(newZcatCmd())
+	agentCmd := agentcli.NewAgentCmd(p)
+	echoServerAgentCmd := &cobra.Command{
+		Use:   "echo-server",
+		Short: "Interact with an echo-server process using the IPC agent",
+		Run: func(cmd *cobra.Command, args []string) {
+			helpers.CheckErr(cmd.Help())
+		},
+	}
 
-	cmd.AddCommand(setupCmd)
+	agentCmd.AddCommand(echoServerAgentCmd)
+	echoServerAgentCmd.AddCommand(NewAgentEchoServerUpdateTerminatorCmd(p))
+
+	demoCmd.AddCommand(newEchoServerCmd())
+	demoCmd.AddCommand(newZcatCmd())
+	demoCmd.AddCommand(agentCmd)
+
+	demoCmd.AddCommand(setupCmd)
 	setupCmd.AddCommand(echoCmd)
 	echoCmd.AddCommand(newClientCmd(p))
 	echoCmd.AddCommand(newSingleSdkHostedCmd(p))
@@ -63,5 +77,5 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	echoCmd.AddCommand(newUpdateConfigAddressableCmd(p))
 	echoCmd.AddCommand(newUpdateConfigHACmd(p))
 
-	return cmd
+	return demoCmd
 }

@@ -19,7 +19,6 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -45,13 +44,12 @@ type UnInstallZitiRouterOptions struct {
 }
 
 // NewCmdUnInstallZitiRouter defines the command
-func NewCmdUnInstallZitiRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUnInstallZitiRouter(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UnInstallZitiRouterOptions{
 		UnInstallOptions: UnInstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

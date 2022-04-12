@@ -14,30 +14,25 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
 )
 
-// PsPprofCpuOptions the options for the create spring command
-type PsPprofCpuOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentPprofCpuAction struct {
+	AgentOptions
 }
 
-// NewCmdPsPprofCpu creates a command object for the "create" command
-func NewCmdPsPprofCpu(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsPprofCpuOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewPprofCpuCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentPprofCpuAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
@@ -46,28 +41,26 @@ func NewCmdPsPprofCpu(out io.Writer, errOut io.Writer) *cobra.Command {
 		Short: "Runs and emits a 30 second pprof from the target application",
 		Args:  cobra.MaximumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsPprofCpuOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentPprofCpuAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
 
 	var out io.WriteCloser = os.Stdout
-	if len(o.Args) > 1 {
-		out, err = os.Create(o.Args[1])
+	if len(self.Args) > 1 {
+		out, err = os.Create(self.Args[1])
 		if err != nil {
 			return err
 		}

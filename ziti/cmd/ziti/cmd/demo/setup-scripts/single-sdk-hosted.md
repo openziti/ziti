@@ -54,7 +54,7 @@ ziti edge create service-edge-router-policy echo --service-roles @echo --edge-ro
 You should now be to run the echo server with
 
 ```
-ziti demo echo-server -i echo-host.json
+ziti demo echo-server -i echo-host-1.json
 ```
 
 and

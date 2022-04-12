@@ -24,7 +24,6 @@ import (
 	"path/filepath"
 
 	"github.com/openziti/ziti/ziti/ansible"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -37,12 +36,11 @@ type AdhocOptions struct {
 var adhocOptions = &ansible.Options{}
 
 // NewCmdAdhoc creates the command
-func NewCmdAdhoc(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdAdhoc(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &AdhocOptions{
 		CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 

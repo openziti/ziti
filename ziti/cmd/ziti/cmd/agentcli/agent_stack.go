@@ -14,32 +14,26 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"time"
 )
 
-// PsStackOptions the options for the create spring command
-type PsStackOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentStackAction struct {
+	AgentOptions
 	StackTimeout time.Duration
 }
 
-// NewCmdPsStack creates a command object for the "create" command
-func NewCmdPsStack(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsStackOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewStackCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentStackAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
@@ -48,21 +42,20 @@ func NewCmdPsStack(out io.Writer, errOut io.Writer) *cobra.Command {
 		Use:   "stack [<optional-target>]",
 		Short: "Emits a go-routine stack dump from the target application",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	options.addCommonFlags(cmd)
-	cmd.Flags().DurationVar(&options.StackTimeout, "stack-timeout", 5*time.Second, "Timeout for stack operation")
+	cmd.Flags().DurationVar(&action.StackTimeout, "stack-timeout", 5*time.Second, "Timeout for stack operation")
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsStackOptions) Run() error {
+func (o *AgentStackAction) Run() error {
 	time.AfterFunc(o.StackTimeout, func() {
 		os.Exit(-1)
 	})

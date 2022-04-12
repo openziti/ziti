@@ -14,55 +14,48 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-// PsStatsOptions the options for the create spring command
-type PsStatsOptions struct {
-	PsOptions
+type AgentGoVersionAction struct {
+	AgentOptions
 	CtrlListener string
 }
 
-// NewCmdPsStats creates a command object for the "create" command
-func NewCmdPsStats(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsStatsOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewGoVersionCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentGoVersionAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "stats <optional-target>",
-		Short: "Emits some runtime information (# go-routines, threads, cpus, etc) from the target application",
+		Use:   "goversion <optional-target>",
+		Short: "Returns the golang version of the target application",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsStatsOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentGoVersionAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.Stats, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.Version, nil, os.Stdout)
 }

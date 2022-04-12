@@ -17,24 +17,42 @@
 package demo
 
 import (
-	"errors"
+	"bufio"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/foundation/agent"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
 	"net"
+	"net/http"
+	"strings"
+	"time"
+)
+
+const (
+	EchoServerAppId            = 100
+	EchoServerUpdateTerminator = 1000
+	EchoServerPrecedenceHeader = 1000
+	EchoServerCostHeader       = 1001
 )
 
 type echoServer struct {
 	port             uint16
+	healthCheckAddr  string
 	verbose          bool
 	logFormatter     string
 	configFile       string
 	service          string
 	bindWithIdentity bool
+	zitiIdentity     identity.Identity
+	zitiListener     edge.Listener
 }
 
 func newEchoServerCmd() *cobra.Command {
@@ -50,6 +68,7 @@ func newEchoServerCmd() *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().Uint16VarP(&server.port, "port", "p", 0, "Specify the port to listen on. If not specified the TCP listener won't be started")
+	cmd.Flags().StringVar(&server.healthCheckAddr, "health-check-addr", "", "Specify the ip:port on which to serve the health check endpoint. If not specified, a health check endpoint will not be started")
 	cmd.Flags().BoolVarP(&server.verbose, "verbose", "v", false, "Enable verbose logging")
 	cmd.Flags().StringVar(&server.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	cmd.Flags().StringVarP(&server.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
@@ -90,6 +109,15 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		log.Fatalf("No port specified and no ziti identity specified. Not starting either listener, so nothing to do. exiting.")
 	}
 
+	if self.healthCheckAddr != "" {
+		err := http.ListenAndServe(self.healthCheckAddr, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			writer.WriteHeader(200)
+		}))
+		if err != nil {
+			log.WithError(err).Fatalf("unable to start health check endpoint on addr [%v]", self.healthCheckAddr)
+		}
+	}
+
 	if self.port > 0 {
 		addr := fmt.Sprintf("0.0.0.0:%v", self.port)
 		log.Infof("tcp: starting listener on address [%v]", addr)
@@ -97,7 +125,6 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		if err != nil {
 			log.WithError(err).Fatalf("unable to start TCP listener on addr [%v]", addr)
 		}
-
 		go self.accept("tcp", listener)
 	}
 
@@ -105,6 +132,10 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		zitiConfig, err := config.NewFromFile(self.configFile)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to load ziti identity from [%v]", self.configFile)
+		}
+		self.zitiIdentity, err = identity.LoadIdentity(zitiConfig.ID)
+		if err != nil {
+			log.WithError(err).Fatalf("ziti: unable to create ziti identity from [%v]", self.configFile)
 		}
 
 		zitiContext := ziti.NewContextWithConfig(zitiConfig)
@@ -137,6 +168,20 @@ func (self *echoServer) run(*cobra.Command, []string) {
 		listener, err := zitiContext.ListenWithOptions(self.service, listenOptions)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: failed to host service [%v]", self.service)
+		}
+
+		self.zitiListener = listener
+
+		shutdownClean := false
+		agentOptions := agent.Options{
+			ShutdownCleanup: &shutdownClean,
+			CustomOps: map[byte]func(conn net.Conn) error{
+				agent.CustomOpAsync: self.HandleCustomAgentAsyncOp,
+			},
+		}
+
+		if err = agent.Listen(agentOptions); err != nil {
+			log.WithError(err).Warn("failed to start agent")
 		}
 
 		go self.accept("ziti", listener)
@@ -188,4 +233,98 @@ func (self *echoServer) echo(connType string, conn io.ReadWriteCloser) {
 		}
 		log.Infof("%v: wrote %v bytes", connType, n)
 	}
+}
+
+func (self *echoServer) HandleCustomAgentAsyncOp(conn net.Conn) error {
+	logrus.Debug("received agent operation request")
+
+	appIdBuf := []byte{0}
+	_, err := io.ReadFull(conn, appIdBuf)
+	if err != nil {
+		return err
+	}
+	appId := appIdBuf[0]
+
+	if appId != EchoServerAppId {
+		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
+		return errors.New("invalid operation for controller")
+	}
+
+	options := channel.DefaultOptions()
+	options.ConnectTimeout = time.Second
+	tId := &identity.TokenId{Identity: self.zitiIdentity, Token: "echo-server"}
+	listener := channel.NewExistingConnListener(tId, conn, nil)
+	_, err = channel.NewChannel("agent", listener, channel.BindHandlerF(self.bindAgentChannel), options)
+	return err
+}
+
+func (self *echoServer) bindAgentChannel(binding channel.Binding) error {
+	binding.AddReceiveHandlerF(EchoServerUpdateTerminator, self.HandleUpdateTerminator)
+	return nil
+}
+
+func (self *echoServer) HandleUpdateTerminator(msg *channel.Message, ch channel.Channel) {
+	log := pfxlog.Logger()
+	precedenceLabel, hasPrecedence := msg.GetStringHeader(EchoServerPrecedenceHeader)
+	var precedence edge.Precedence
+
+	if hasPrecedence {
+		if strings.EqualFold("default", precedenceLabel) {
+			precedence = edge.PrecedenceDefault
+		} else if strings.EqualFold("required", precedenceLabel) {
+			precedence = edge.PrecedenceRequired
+		} else if strings.EqualFold("failed", precedenceLabel) {
+			precedence = edge.PrecedenceFailed
+		} else {
+			err := errors.Errorf("invalid precedence [%v]", precedenceLabel)
+			self.SendOpResult(msg, ch, "update-precedence", err.Error(), false)
+			return
+		}
+	}
+
+	cost, hasCost := msg.GetUint16Header(EchoServerCostHeader)
+
+	var err error
+	if hasPrecedence && hasCost {
+		log.Infof("updating precedence=%v, cost=%v", precedenceLabel, cost)
+		err = self.zitiListener.UpdateCostAndPrecedence(cost, precedence)
+	} else if hasPrecedence {
+		log.Infof("updating precedence=%v", precedenceLabel)
+
+		err = self.zitiListener.UpdatePrecedence(precedence)
+	} else if hasCost {
+		log.Infof("updating cost=%v", cost)
+		err = self.zitiListener.UpdateCost(cost)
+	} else {
+		err = errors.New("neither precedence nor cost provided, nothing to do")
+	}
+
+	if err == nil {
+		self.SendOpResult(msg, ch, "update-precedence", "", true)
+	} else {
+		self.SendOpResult(msg, ch, "update-precedence", err.Error(), false)
+	}
+}
+
+func (self *echoServer) SendOpResult(request *channel.Message, ch channel.Channel, op string, message string, success bool) {
+	log := pfxlog.ContextLogger(ch.Label()).WithField("operation", op)
+	if !success {
+		log.Errorf("%v error performing %v: (%s)", ch.LogicalName(), op, message)
+	}
+
+	response := channel.NewResult(success, message)
+	response.ReplyTo(request)
+	if err := response.WithTimeout(time.Second).SendAndWaitForWire(ch); err != nil {
+		log.WithError(err).Error("failed to send result")
+	}
+}
+
+func (self *echoServer) handleResult(err error, bconn *bufio.ReadWriter) error {
+	if err != nil {
+		return err
+	}
+	if _, err = bconn.WriteString("OK"); err != nil {
+		return err
+	}
+	return bconn.Flush()
 }

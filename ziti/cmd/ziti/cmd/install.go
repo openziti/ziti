@@ -19,7 +19,6 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
@@ -42,12 +41,11 @@ var (
 )
 
 // NewCmdInstall creates the command
-func NewCmdInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallOptions{
 		CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -66,20 +64,20 @@ func NewCmdInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 		SuggestFor: []string{"up"},
 	}
 
-	cmd.AddCommand(NewCmdInstallZitiALL(f, out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiALL(out, errOut))
 
-	cmd.AddCommand(NewCmdInstallZitiController(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiFabric(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiRouter(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiProxC(f, out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiController(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiFabric(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiRouter(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiTunnel(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiProxC(out, errOut))
 
-	// cmd.AddCommand(NewCmdInstallAnsible(f, out, errOut))		// Disable/hide this for now
+	// cmd.AddCommand(NewCmdInstallAnsible(out, errOut))		// Disable/hide this for now
 
-	cmd.AddCommand(NewCmdInstallTerraformProviderEdgeController(f, out, errOut))
+	cmd.AddCommand(NewCmdInstallTerraformProviderEdgeController(out, errOut))
 
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 
 	return cmd
 }

@@ -19,15 +19,14 @@ package lets_encrypt
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
 
 // NewCmdLE creates a command object for the "le" sub-command of the "pki" cmd
-func NewCmdLE(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdLE(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("le", "Interact with Let's Encrypt infra")
-	populateLECommands(f, out, errOut, cmd)
+	populateLECommands(out, errOut, cmd)
 
 	return cmd
 }
@@ -58,11 +57,10 @@ type leOptions struct {
 // type leFlags struct {
 // }
 
-func populateLECommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
-
-	cmd.AddCommand(newCreateCmd(f, out, errOut))
-	cmd.AddCommand(newRevokeCmd(f, out, errOut))
-	cmd.AddCommand(newRenewCmd(f, out, errOut))
-	cmd.AddCommand(newListCmd(f, out, errOut))
+func populateLECommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
+	cmd.AddCommand(newCreateCmd(out, errOut))
+	cmd.AddCommand(newRevokeCmd(out, errOut))
+	cmd.AddCommand(newRenewCmd(out, errOut))
+	cmd.AddCommand(newListCmd(out, errOut))
 	return cmd
 }

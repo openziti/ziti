@@ -30,7 +30,6 @@ import (
 
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -47,8 +46,6 @@ type MainOptions struct {
 }
 
 type RootCmd struct {
-	factory cmdutil.Factory
-
 	configFile string
 
 	RegistryPath string
@@ -85,13 +82,10 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	factory := cmdutil.NewFactory()
-	rootCommand.factory = factory
-	NewCmdRoot(factory, os.Stdin, os.Stdout, os.Stderr)
-
+	NewCmdRoot(os.Stdin, os.Stdout, os.Stderr)
 }
 
-func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Command {
+func NewCmdRoot(in io.Reader, out, err io.Writer) *cobra.Command {
 
 	cmd := rootCommand.cobraCommand
 
@@ -129,24 +123,24 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 
 	p := common.NewOptionsProvider(out, err)
 
-	initCommands := NewCmdInit(f, out, err)
-	createCommands := NewCmdCreate(f, out, err)
-	updateCommands := NewCmdUpdate(f, out, err)
-	executeCommands := NewCmdExecute(f, out, err)
-	agentCommands := NewAgentCmd(out, err)
-	psCommands := NewCmdPs(out, err)
-	pkiCommands := NewCmdPKI(f, out, err)
+	initCommands := NewCmdInit(out, err)
+	createCommands := NewCmdCreate(out, err)
+	updateCommands := NewCmdUpdate(out, err)
+	executeCommands := NewCmdExecute(out, err)
+	agentCommands := NewAgentCmd(p)
+	psCommands := NewCmdPs(p)
+	pkiCommands := NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
-	edgeCommand := edge.NewCmdEdge(f, out, err)
+	edgeCommand := edge.NewCmdEdge(out, err)
 	tutorialCmd := tutorial.NewTutorialCmd(p)
 	demoCmd := demo.NewDemoCmd(p)
-	logFilter := NewCmdLogFormat(f, out, err)
-	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(f, out, err)
+	logFilter := NewCmdLogFormat(out, err)
+	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(out, err)
 
 	installCommands := []*cobra.Command{
-		NewCmdInstall(f, out, err),
-		NewCmdUnInstall(f, out, err),
-		NewCmdUpgrade(f, out, err),
+		NewCmdInstall(out, err),
+		NewCmdUnInstall(out, err),
+		NewCmdUpgrade(out, err),
 	}
 
 	groups := templates.CommandGroups{
@@ -196,14 +190,14 @@ func NewCmdRoot(f cmdutil.Factory, in io.Reader, out, err io.Writer) *cobra.Comm
 
 	groups.Add(cmd)
 
-	cmd.AddCommand(NewCmdVersion(f, out, err))
+	cmd.AddCommand(NewCmdVersion(out, err))
 	cmd.Version = version.GetVersion()
 	cmd.SetVersionTemplate("{{printf .Version}}\n")
-	cmd.AddCommand(NewCmdArt(f, out, err))
-	cmd.AddCommand(NewCmdPlaybook(f, out, err))
-	cmd.AddCommand(NewCmdPing(f, out, err))
-	cmd.AddCommand(NewCmdAdhoc(f, out, err))
-	cmd.AddCommand(NewCmdUse(f, out, err))
+	cmd.AddCommand(NewCmdArt(out, err))
+	cmd.AddCommand(NewCmdPlaybook(out, err))
+	cmd.AddCommand(NewCmdPing(out, err))
+	cmd.AddCommand(NewCmdAdhoc(out, err))
+	cmd.AddCommand(NewCmdUse(out, err))
 
 	return cmd
 }

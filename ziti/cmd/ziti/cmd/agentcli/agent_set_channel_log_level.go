@@ -14,64 +14,61 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
+	"bytes"
+	"encoding/binary"
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"strings"
 )
 
-// PsSetgcOptions the options for the create spring command
-type PsSetLogLevelOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentSetChannelLogLevelAction struct {
+	AgentOptions
 }
 
-// NewCmdPsLogLevel creates a command object for the "create" command
-func NewCmdPsSetLogLevel(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsSetLogLevelOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewSetChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentSetChannelLogLevelAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "set-log-level target log-level (panic, fatal, error, warn, info, debug, trace)",
-		Short: "Sets the global logrus logging level in the target application",
-		Args:  cobra.MinimumNArgs(1),
+		Use:   "set-channel-log-level target channel log-level (panic, fatal, error, warn, info, debug, trace)",
+		Short: "Sets a channel-specific log level in the target application",
+		Args:  cobra.MinimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsSetLogLevelOptions) Run() error {
+func (self *AgentSetChannelLogLevelAction) Run() error {
 	var addr string
 	var err error
+	var channelArg string
 	var levelArg string
-	if len(o.Args) == 1 {
+	if len(self.Args) == 2 {
 		addr, err = agent.ParseGopsAddress(nil)
-		levelArg = o.Args[0]
+		channelArg = self.Args[0]
+		levelArg = self.Args[1]
 	} else {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		levelArg = o.Args[1]
+		addr, err = agent.ParseGopsAddress(self.Args)
+		channelArg = self.Args[1]
+		levelArg = self.Args[2]
 	}
 
 	if err != nil {
@@ -91,6 +88,12 @@ func (o *PsSetLogLevelOptions) Run() error {
 		return errors.Errorf("invalid log level %v", levelArg)
 	}
 
-	buf := []byte{byte(level)}
-	return agent.MakeRequest(addr, agent.SetLogLevel, buf, os.Stdout)
+	lenBuf := make([]byte, 8)
+	lenLen := binary.PutVarint(lenBuf, int64(len(channelArg)))
+	buf := &bytes.Buffer{}
+	buf.Write(lenBuf[:lenLen])
+	buf.Write([]byte(channelArg))
+	buf.WriteByte(byte(level))
+
+	return agent.MakeRequest(addr, agent.SetChannelLogLevel, buf.Bytes(), os.Stdout)
 }

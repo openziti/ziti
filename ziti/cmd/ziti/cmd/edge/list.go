@@ -41,9 +41,9 @@ import (
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "Lists various entities managed by the Ziti Edge Controller",
-		Long:  "Lists various entities managed by the Ziti Edge Controller",
+		Use:     "list",
+		Short:   "Lists various entities managed by the Ziti Edge Controller",
+		Aliases: []string{"ls"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)

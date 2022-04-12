@@ -14,55 +14,47 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-// PsGoversionOptions the options for the create spring command
-type PsGoversionOptions struct {
-	PsOptions
-	CtrlListener string
+type AgentGcAction struct {
+	AgentOptions
 }
 
-// NewCmdPsGoversion creates a command object for the "create" command
-func NewCmdPsGoversion(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsGoversionOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewGcCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentGcAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "goversion <optional-target>",
-		Short: "Returns the golang version of the target application",
+		Use:   "gc <optional-target>",
+		Short: "Run garbage collection in the target application",
 		Args:  cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *PsGoversionOptions) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentGcAction) Run() error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.Version, nil, os.Stdout)
+	return agent.MakeRequest(addr, agent.GC, nil, os.Stdout)
 }

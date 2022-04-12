@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
 )
@@ -29,20 +28,20 @@ import (
 var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
 
 // NewCmdEdge creates a command object for the "controller" command
-func NewCmdEdge(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdEdge(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
-	populateEdgeCommands(f, out, errOut, cmd)
+	populateEdgeCommands(out, errOut, cmd)
 	return cmd
 }
 
-func populateEdgeCommands(f cmdutil.Factory, out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
-	cmd.AddCommand(newCreateCmd(f, out, errOut))
+func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *cobra.Command {
+	cmd.AddCommand(newCreateCmd(out, errOut))
 	cmd.AddCommand(newDeleteCmd(out, errOut))
 	cmd.AddCommand(newLoginCmd(out, errOut))
 	cmd.AddCommand(newLogoutCmd(out, errOut))
 	cmd.AddCommand(newUseCmd(out, errOut))
 	cmd.AddCommand(newListCmd(out, errOut))
-	cmd.AddCommand(newUpdateCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateCmd(out, errOut))
 	cmd.AddCommand(newVersionCmd(out, errOut))
 	cmd.AddCommand(newPolicyAdivsorCmd(out, errOut))
 	cmd.AddCommand(newVerifyCmd(out, errOut))

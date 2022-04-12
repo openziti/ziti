@@ -33,8 +33,9 @@ import (
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(p common.OptionsProvider) *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "Lists various entities managed by the Ziti Controller",
+		Use:     "list",
+		Short:   "Lists various entities managed by the Ziti Controller",
+		Aliases: []string{"ls"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
