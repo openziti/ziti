@@ -48,7 +48,7 @@ func (linkController *linkController) has(link *Link) bool {
 	return linkController.linkTable.has(link)
 }
 
-func (linkController *linkController) routerReportedLink(linkId, linkType string, src, dst *Router) (*Link, bool) {
+func (linkController *linkController) routerReportedLink(linkId, linkProtocol string, src, dst *Router) (*Link, bool) {
 	linkController.lock.Lock()
 	defer linkController.lock.Unlock()
 
@@ -56,7 +56,7 @@ func (linkController *linkController) routerReportedLink(linkId, linkType string
 		return link, false
 	}
 
-	link := newLink(linkId, linkType)
+	link := newLink(linkId, linkProtocol)
 	link.Src = src
 	link.Dst = dst
 	link.addState(newLinkState(Connected))

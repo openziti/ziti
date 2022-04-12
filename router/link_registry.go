@@ -39,11 +39,11 @@ func (self *linkRegistryImpl) ControlChannel() channel.Channel {
 	return self.ctrlCh
 }
 
-func (self *linkRegistryImpl) GetLink(routerId, linkType string) (xlink.Xlink, bool) {
+func (self *linkRegistryImpl) GetLink(routerId, linkProtocol string) (xlink.Xlink, bool) {
 	self.Lock()
 	defer self.Unlock()
 
-	key := self.getLookupKey(routerId, linkType)
+	key := self.getLookupKey(routerId, linkProtocol)
 	val, found := self.linkMap[key]
 	if found {
 		return val, true
@@ -106,8 +106,8 @@ func (self *linkRegistryImpl) getLinkLookupKey(link xlink.Xlink) string {
 	return self.getLookupKey(link.DestinationId(), link.LinkProtocol())
 }
 
-func (self *linkRegistryImpl) getLookupKey(routerId, linkType string) string {
-	key := fmt.Sprintf("%v#%v", routerId, linkType)
+func (self *linkRegistryImpl) getLookupKey(routerId, linkProtocol string) string {
+	key := fmt.Sprintf("%v#%v", routerId, linkProtocol)
 	return key
 }
 

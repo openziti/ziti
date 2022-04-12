@@ -316,12 +316,12 @@ func (network *Network) DisconnectRouter(r *Router) {
 	}
 }
 
-func (network *Network) NotifyExistingLink(id, linkType string, srcRouter *Router, dstRouterId string) (bool, error) {
+func (network *Network) NotifyExistingLink(id, linkProtocol string, srcRouter *Router, dstRouterId string) (bool, error) {
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
 		return false, errors.New("destination router not connected")
 	}
-	_, created := network.linkController.routerReportedLink(id, linkType, srcRouter, dst)
+	_, created := network.linkController.routerReportedLink(id, linkProtocol, srcRouter, dst)
 	return created, nil
 }
 
