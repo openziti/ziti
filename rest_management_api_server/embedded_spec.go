@@ -55,7 +55,7 @@ func init() {
   "info": {
     "title": "Ziti Edge Management",
     "contact": {},
-    "version": "0.19.12"
+    "version": "0.25.5"
   },
   "host": "demo.ziti.dev",
   "basePath": "/edge/management/v1",
@@ -22807,7 +22807,7 @@ func init() {
   "info": {
     "title": "Ziti Edge Management",
     "contact": {},
-    "version": "0.19.12"
+    "version": "0.25.5"
   },
   "host": "demo.ziti.dev",
   "basePath": "/edge/management/v1",
