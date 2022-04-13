@@ -414,7 +414,10 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	dialer := channel.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
+	if "" != self.config.Ctrl.LocalBinding {
+		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
+	}
+	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, self.config.Ctrl.Endpoint, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
 
 	bindHandler := handler_ctrl.NewBindHandler(
 		self.config.Id,

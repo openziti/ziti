@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/transport"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"reflect"
 )
 
@@ -103,6 +104,20 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 		}
 	}
 
+	if value, found := data["bind"]; found {
+		logrus.Debugf("Parsing dialer bind config")
+		if addressString, ok := value.(string); ok {
+			_, err := transport.ResolveInterface(addressString)
+			if err != nil {
+				return nil, errors.Errorf("invalid 'bind' address in dialer config (%s)", err)
+			}
+			config.localBinding = addressString
+			logrus.Debugf("Using local bind address %s", config.localBinding)
+		} else {
+			return nil, fmt.Errorf("invalid 'bind' address in dialer config (%s)", reflect.TypeOf(value))
+		}
+	}
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -119,6 +134,7 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 }
 
 type dialerConfig struct {
-	split   bool
-	options *channel.Options
+	split        bool
+	localBinding string
+	options      *channel.Options
 }

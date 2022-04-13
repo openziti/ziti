@@ -64,7 +64,7 @@ func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
 func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with split payload/ack channels [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(PayloadChannel)},
@@ -89,7 +89,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 
 	logrus.Debugf("dialing ack channel for [l/%s]", linkId.Token)
 
-	ackDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	ackDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderType:          {byte(AckChannel)},
@@ -108,7 +108,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Address, connId string, dial xlink.Dial) (xlink.Xlink, error) {
 	logrus.Debugf("dialing link with single channel [l/%s]", linkId.Token)
 
-	payloadDialer := channel.NewClassicDialer(linkId, address, map[int32][]byte{
+	payloadDialer := channel.NewClassicDialerWithBindAddress(linkId, address, self.config.localBinding, map[int32][]byte{
 		LinkHeaderRouterId:      []byte(self.id.Token),
 		LinkHeaderConnId:        []byte(connId),
 		LinkHeaderRouterVersion: []byte(dial.GetRouterVersion()),

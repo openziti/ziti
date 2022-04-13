@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/config"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/transport"
 	"github.com/pkg/errors"
@@ -51,6 +51,9 @@ const (
 
 	// CtrlEndpointMapKey is the string key for the ctrl.endpoint section
 	CtrlEndpointMapKey = "endpoint"
+
+	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
+	CtrlEndpointBindMapKey = "bind"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -98,6 +101,7 @@ type Config struct {
 	}
 	Ctrl struct {
 		Endpoint              *UpdatableAddress
+		LocalBinding          string
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
 	}
@@ -294,6 +298,10 @@ func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.D
 	return c.getWrapped().Dial(name, i, timeout, tcfg)
 }
 
+func (c *UpdatableAddress) DialWithLocalBinding(name string, binding string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+	return c.getWrapped().DialWithLocalBinding(name, binding, i, timeout, tcfg)
+}
+
 // getWrapped loads the current transport.Address
 func (c *UpdatableAddress) getWrapped() transport.Address {
 	return c.wrapped.Load().(transport.Address)
@@ -398,6 +406,13 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
 				}
 				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
+			}
+			if value, found := submap[CtrlEndpointBindMapKey]; found {
+				_, err := transport.ResolveInterface(value.(string))
+				if err != nil {
+					return nil, fmt.Errorf("cannot parse [ctrl/bind] (%s)", err)
+				}
+				cfg.Ctrl.LocalBinding = value.(string)
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
