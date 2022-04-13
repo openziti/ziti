@@ -49,7 +49,7 @@ require (
 	github.com/openziti/foundation v0.17.22
 	github.com/openziti/sdk-golang v0.16.47
 	github.com/openziti/storage v0.1.4
-	github.com/openziti/transport v0.1.4
+	github.com/openziti/transport v0.1.5
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
