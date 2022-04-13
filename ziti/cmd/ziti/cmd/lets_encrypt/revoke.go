@@ -20,13 +20,12 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 // newListCmd creates a command object for the "controller list" command
-func newRevokeCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newRevokeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &leOptions{}
 
 	cmd := &cobra.Command{

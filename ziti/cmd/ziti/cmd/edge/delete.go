@@ -147,13 +147,13 @@ func runDeleteEntityOfTypeWhere(options *api.Options, entityType string) error {
 	params := url.Values{}
 	params.Add("filter", filter)
 
-	children, pageInfo, err := listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, pageInfo, err := ListEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
 
 	options.Printf("filter returned ")
-	pageInfo.output(options)
+	pageInfo.Output(options)
 
 	var ids []string
 	for _, entity := range children {

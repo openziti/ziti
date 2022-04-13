@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/foundation/identity/identity"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
@@ -17,7 +16,7 @@ type IdentityConfigFile struct {
 	ConfigTypes []string        `json:"configTypes"`
 }
 
-func NewUnwrapIdentityFileCommand(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewUnwrapIdentityFileCommand(out io.Writer, errOut io.Writer) *cobra.Command {
 	outCertFile := ""
 	outKeyFile := ""
 	outCaFile := ""

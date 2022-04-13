@@ -27,7 +27,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -40,10 +39,10 @@ type updateConfigOptions struct {
 }
 
 // newUpdateConfigCmd updates the 'edge controller update service-policy' command
-func newUpdateConfigCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateConfigCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateConfigOptions{
 		Options: api.Options{
-			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
 

@@ -21,7 +21,6 @@ import (
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/registration"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/spf13/cobra"
@@ -51,7 +50,7 @@ func (u *AcmeUser) GetPrivateKey() crypto.PrivateKey {
 }
 
 // newCreateCmd creates the 'edge controller create ca local' command for the given entity type
-func newCreateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &leOptions{}
 
 	cmd := &cobra.Command{

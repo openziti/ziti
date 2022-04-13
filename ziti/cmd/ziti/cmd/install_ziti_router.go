@@ -19,13 +19,12 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/blang/semver"
+	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
-	"github.com/openziti/ziti/common/version"
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 )
 
@@ -48,13 +47,12 @@ type InstallZitiRouterOptions struct {
 }
 
 // NewCmdInstallZitiRouter defines the command
-func NewCmdInstallZitiRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstallZitiRouter(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallZitiRouterOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
@@ -73,7 +71,7 @@ func NewCmdInstallZitiRouter(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 		},
 	}
 	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to install")
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 	return cmd
 }
 

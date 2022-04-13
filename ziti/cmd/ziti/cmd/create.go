@@ -17,7 +17,6 @@
 package cmd
 
 import (
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/spf13/cobra"
 	"io"
 
@@ -33,7 +32,7 @@ var (
 )
 
 // NewCmdCreate creates a command object for the "create" command
-func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdCreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create a new resource",
@@ -44,13 +43,13 @@ func NewCmdCreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 	}
 
 	cmd.AddCommand(NewCmdCreateConfig())
-	cmd.AddCommand(NewCmdCreateEnvironment(f, out, errOut))
+	cmd.AddCommand(NewCmdCreateEnvironment(out, errOut))
 
-	cmd.AddCommand(NewCmdPKICreateCA(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateIntermediate(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateServer(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateClient(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateCSR(f, out, errOut))
+	cmd.AddCommand(NewCmdPKICreateCA(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateIntermediate(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateServer(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateClient(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateCSR(out, errOut))
 
 	return cmd
 }

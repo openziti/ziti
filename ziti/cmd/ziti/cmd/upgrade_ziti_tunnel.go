@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/openziti/ziti/common/version"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -46,12 +45,11 @@ type UpgradeZitiTunnelOptions struct {
 }
 
 // NewCmdUpgradeZitiTunnel defines the command
-func NewCmdUpgradeZitiTunnel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUpgradeZitiTunnel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpgradeZitiTunnelOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -69,7 +67,7 @@ func NewCmdUpgradeZitiTunnel(f cmdutil.Factory, out io.Writer, errOut io.Writer)
 		},
 	}
 	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to upgrade to")
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 	return cmd
 }
 

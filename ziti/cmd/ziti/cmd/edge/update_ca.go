@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/pkg/errors"
@@ -47,10 +46,10 @@ type updateCaOptions struct {
 }
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
-func newUpdateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := updateCaOptions{
 		Options: api.Options{
-			CommonOptions:      common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions:      common.CommonOptions{Out: out, Err: errOut},
 			OutputJSONResponse: false,
 		},
 		verify: false,

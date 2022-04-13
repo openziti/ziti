@@ -21,7 +21,6 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/pki"
@@ -34,14 +33,13 @@ type PKICreateCSROptions struct {
 }
 
 // NewCmdPKICreateCSR creates a command object for the "create" command
-func NewCmdPKICreateCSR(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateCSROptions{
 		PKICreateOptions: PKICreateOptions{
 			PKIOptions: PKIOptions{
 				CommonOptions: CommonOptions{
-					Factory: f,
-					Out:     out,
-					Err:     errOut,
+					Out: out,
+					Err: errOut,
 				},
 			},
 		},

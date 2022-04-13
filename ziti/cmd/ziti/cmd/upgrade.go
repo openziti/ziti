@@ -19,7 +19,6 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
@@ -42,12 +41,11 @@ var (
 )
 
 // NewCmdUpgrade creates the command
-func NewCmdUpgrade(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUpgrade(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UpgradeOptions{
 		CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -66,13 +64,13 @@ func NewCmdUpgrade(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 		SuggestFor: []string{"up"},
 	}
 
-	cmd.AddCommand(NewCmdUpgradeZiti(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiController(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiFabric(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiRouter(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiProxC(f, out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiEdgeTunnel(f, out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZiti(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiController(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiFabric(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiRouter(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiTunnel(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiProxC(out, errOut))
+	cmd.AddCommand(NewCmdUpgradeZitiEdgeTunnel(out, errOut))
 
 	return cmd
 }

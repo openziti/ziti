@@ -19,7 +19,6 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/table"
 	"github.com/spf13/cobra"
 	"io"
 	"time"
@@ -28,10 +27,6 @@ import (
 type Printer interface {
 	Printf(format string, args ...interface{})
 	Println(val interface{})
-}
-
-type Factory interface {
-	CreateTable(out io.Writer) table.Table
 }
 
 type OptionsProvider func() CommonOptions
@@ -47,7 +42,6 @@ func NewOptionsProvider(out, err io.Writer) OptionsProvider {
 
 // CommonOptions contains common options and helper methods
 type CommonOptions struct {
-	Factory        Factory
 	Out            io.Writer
 	Err            io.Writer
 	Cmd            *cobra.Command

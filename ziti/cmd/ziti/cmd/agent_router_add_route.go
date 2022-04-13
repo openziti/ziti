@@ -22,26 +22,22 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-// PsRouteOptions the options for the create spring command
-type PsRouteOptions struct {
-	PsOptions
+type AgentRouteAction struct {
+	agentcli.AgentOptions
 	CtrlListener string
 }
 
-// NewCmdPsRoute creates a command object for the "create" command
-func NewCmdPsRoute(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsRouteOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
+	options := &AgentRouteAction{
+		AgentOptions: agentcli.AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
@@ -56,19 +52,17 @@ func NewCmdPsRoute(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	options.addCommonFlags(cmd)
-
 	return cmd
 }
 
 // Run implements the command
-func (o *PsRouteOptions) Run() error {
+func (self *AgentRouteAction) Run() error {
 	var addr string
 	var err error
 
 	offset := 0
-	if len(o.Args) == 4 {
-		addr, err = agent.ParseGopsAddress(o.Args)
+	if len(self.Args) == 4 {
+		addr, err = agent.ParseGopsAddress(self.Args)
 		if err != nil {
 			return err
 		}
@@ -76,11 +70,11 @@ func (o *PsRouteOptions) Run() error {
 	}
 
 	route := &ctrl_pb.Route{
-		CircuitId: o.Args[offset],
+		CircuitId: self.Args[offset],
 		Forwards: []*ctrl_pb.Route_Forward{
 			{
-				SrcAddress: o.Args[offset+1],
-				DstAddress: o.Args[offset+2],
+				SrcAddress: self.Args[offset+1],
+				DstAddress: self.Args[offset+2],
 			},
 		},
 	}

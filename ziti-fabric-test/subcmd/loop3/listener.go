@@ -22,9 +22,9 @@ import (
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/transport"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -70,7 +70,7 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	var err error
 	shutdownClean := false
 	if err = agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
-		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+		log.WithError(err).Error("unable to start CLI agent")
 	}
 
 	var scenario *Scenario
@@ -96,17 +96,21 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 		defer close(closer)
 	}
 
+	log.Infof("binding to address '%v'", cmd.bindAddress)
 	if strings.HasPrefix(cmd.bindAddress, "edge") {
 		cmd.listenEdge()
 	} else {
-		_, id, err := dotziti.LoadIdentity(cmd.identity)
+		bindAddress, err := transport.ParseAddress(cmd.bindAddress)
 		if err != nil {
 			panic(err)
 		}
 
-		bindAddress, err := transport.ParseAddress(cmd.bindAddress)
-		if err != nil {
-			panic(err)
+		id := &identity.TokenId{Token: "test"}
+		if bindAddress.Type() != "tcp" {
+			_, id, err = dotziti.LoadIdentity(cmd.identity)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		cmd.listen(bindAddress, id)

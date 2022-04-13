@@ -28,7 +28,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -48,11 +47,11 @@ type createIdentityOptions struct {
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
-func newCreateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newCreateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *createIdentityOptions {
 		return &createIdentityOptions{
 			Options: api.Options{
-				CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 			},
 		}
 	}

@@ -27,3 +27,4 @@ linux-build
 *.log
 /build/
 go.work
+go.work.sum

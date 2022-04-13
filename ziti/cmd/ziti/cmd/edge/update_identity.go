@@ -28,7 +28,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -45,10 +44,10 @@ type updateIdentityOptions struct {
 	appData                  map[string]string
 }
 
-func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
 		Options: api.Options{
-			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
 

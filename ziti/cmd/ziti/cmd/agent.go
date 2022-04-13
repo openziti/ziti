@@ -20,9 +20,10 @@ import (
 	"github.com/openziti/edge/router/debugops"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 )
 
 type AgentAppId byte
@@ -32,14 +33,8 @@ const (
 	AgentAppRouter     = AgentAppId(router.AgentAppId)
 )
 
-func NewAgentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	agentCmd := &cobra.Command{
-		Use:   "agent",
-		Short: "Interact with ziti processes using the the IPC agent",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmdhelper.CheckErr(cmd.Help())
-		},
-	}
+func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
+	agentCmd := agentcli.NewAgentCmd(p)
 
 	ctrlCmd := &cobra.Command{
 		Use:     "controller",
@@ -51,7 +46,7 @@ func NewAgentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	agentCmd.AddCommand(ctrlCmd)
-	ctrlCmd.AddCommand(NewSimpleAgentCustomCmd("snapshot-db", AgentAppController, controller.AgentOpSnapshotDbSnaps, out, errOut))
+	ctrlCmd.AddCommand(NewSimpleAgentCustomCmd("snapshot-db", AgentAppController, controller.AgentOpSnapshotDbSnaps, p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",
@@ -64,25 +59,12 @@ func NewAgentCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	agentCmd.AddCommand(routerCmd)
 
-	routerCmd.AddCommand(NewCmdPsRoute(out, errOut))
-	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-routes", AgentAppRouter, router.DumpForwarderTables, out, errOut))
-	routerCmd.AddCommand(NewSimpleAgentCustomCmd("disconnect", AgentAppRouter, router.CloseControlChannel, out, errOut))
-	routerCmd.AddCommand(NewSimpleAgentCustomCmd("reconnect", AgentAppRouter, router.OpenControlChannel, out, errOut))
-	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-api-sessions", AgentAppRouter, debugops.DumpApiSessions, out, errOut))
-	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-links", AgentAppRouter, router.DumpLinks, out, errOut))
-
-	agentCmd.AddCommand(NewCmdPsGoversion(out, errOut))
-	agentCmd.AddCommand(NewCmdPsGc(out, errOut))
-	agentCmd.AddCommand(NewCmdPsSetgc(out, errOut))
-	agentCmd.AddCommand(NewCmdPsStack(out, errOut))
-	agentCmd.AddCommand(NewCmdPsMemstats(out, errOut))
-	agentCmd.AddCommand(NewCmdPsStats(out, errOut))
-	agentCmd.AddCommand(NewCmdPsPprofHeap(out, errOut))
-	agentCmd.AddCommand(NewCmdPsPprofCpu(out, errOut))
-	agentCmd.AddCommand(NewCmdPsTrace(out, errOut))
-	agentCmd.AddCommand(NewCmdPsSetLogLevel(out, errOut))
-	agentCmd.AddCommand(NewCmdPsSetChannelLogLevel(out, errOut))
-	agentCmd.AddCommand(NewCmdPsClearChannelLogLevel(out, errOut))
+	routerCmd.AddCommand(NewRouteCmd(p))
+	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-routes", AgentAppRouter, router.DumpForwarderTables, p))
+	routerCmd.AddCommand(NewSimpleAgentCustomCmd("disconnect", AgentAppRouter, router.CloseControlChannel, p))
+	routerCmd.AddCommand(NewSimpleAgentCustomCmd("reconnect", AgentAppRouter, router.OpenControlChannel, p))
+	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-api-sessions", AgentAppRouter, debugops.DumpApiSessions, p))
+	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-links", AgentAppRouter, router.DumpLinks, p))
 
 	return agentCmd
 }
