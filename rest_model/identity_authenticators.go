@@ -180,6 +180,9 @@ type IdentityAuthenticatorsCert struct {
 
 	// fingerprint
 	Fingerprint string `json:"fingerprint,omitempty"`
+
+	// id
+	ID string `json:"id,omitempty"`
 }
 
 // Validate validates this identity authenticators cert
@@ -214,6 +217,9 @@ func (m *IdentityAuthenticatorsCert) UnmarshalBinary(b []byte) error {
 //
 // swagger:model IdentityAuthenticatorsUpdb
 type IdentityAuthenticatorsUpdb struct {
+
+	// id
+	ID string `json:"id,omitempty"`
 
 	// username
 	Username string `json:"username,omitempty"`

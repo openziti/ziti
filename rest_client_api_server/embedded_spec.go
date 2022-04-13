@@ -4719,12 +4719,18 @@ func init() {
           "properties": {
             "fingerprint": {
               "type": "string"
+            },
+            "id": {
+              "type": "string"
             }
           }
         },
         "updb": {
           "type": "object",
           "properties": {
+            "id": {
+              "type": "string"
+            },
             "username": {
               "type": "string"
             }
@@ -9705,12 +9711,18 @@ func init() {
       "properties": {
         "fingerprint": {
           "type": "string"
+        },
+        "id": {
+          "type": "string"
         }
       }
     },
     "IdentityAuthenticatorsUpdb": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string"
+        },
         "username": {
           "type": "string"
         }
@@ -10701,12 +10713,18 @@ func init() {
           "properties": {
             "fingerprint": {
               "type": "string"
+            },
+            "id": {
+              "type": "string"
             }
           }
         },
         "updb": {
           "type": "object",
           "properties": {
+            "id": {
+              "type": "string"
+            },
             "username": {
               "type": "string"
             }
