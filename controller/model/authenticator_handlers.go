@@ -21,16 +21,17 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
 	edgeCert "github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"reflect"
 	"strings"
@@ -592,6 +593,94 @@ func (handler AuthenticatorHandler) VerifyExtendCertForIdentity(identityId, auth
 	})
 
 	return err
+}
+
+// ReEnroll converts the given authenticator `id` back to an enrollment of the same type with the same
+// constraints that expires at the time specified by `expiresAt`. The result is a string id of the new enrollment
+// or an error.
+func (handler AuthenticatorHandler) ReEnroll(id string, expiresAt time.Time) (string, error) {
+	authenticator, err := handler.Read(id)
+
+	enrollment := &Enrollment{
+		IdentityId: &authenticator.IdentityId,
+		Token:      uuid.NewString(),
+	}
+	switch authenticator.Method {
+	case persistence.MethodAuthenticatorCert:
+		certAuth := authenticator.ToCert()
+
+		caId := getCaId(handler.env, certAuth)
+
+		if caId != "" {
+			enrollment.Method = persistence.MethodEnrollOttCa
+			enrollment.CaId = &caId
+		} else {
+			enrollment.Method = persistence.MethodEnrollOtt
+		}
+
+	case persistence.MethodAuthenticatorUpdb:
+		updbAuthenticator := authenticator.ToUpdb()
+		enrollment.Method = persistence.MethodEnrollUpdb
+		enrollment.IdentityId = &updbAuthenticator.IdentityId
+		enrollment.Username = &updbAuthenticator.Username
+		enrollment.Token = uuid.NewString()
+	}
+
+	if err := enrollment.FillJwtInfoWithExpiresAt(handler.env, authenticator.IdentityId, expiresAt); err != nil {
+		return "", err
+	}
+
+	enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntity(enrollment)
+
+	if err != nil {
+		return "", err
+	}
+
+	if err = handler.Delete(id); err != nil {
+		_ = handler.env.GetHandlers().Enrollment.Delete(enrollmentId)
+		return "", err
+	}
+
+	return enrollmentId, err
+}
+
+// getCaId returns the string id of the issuing Ziti 3rd Party CA or empty string
+func getCaId(env Env, auth *AuthenticatorCert) string {
+	certs := nfpem.PemStringToCertificates(auth.Pem)
+
+	if len(certs) == 0 {
+		return ""
+	}
+
+	cert := certs[0]
+
+	caId := ""
+	env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		for cursor := env.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
+			ca, err := env.GetStores().Ca.LoadOneById(tx, string(cursor.Current()))
+			if err != nil {
+				continue
+			}
+
+			pool := x509.NewCertPool()
+			pool.AppendCertsFromPEM([]byte(ca.CertPem))
+			chains, err := cert.Verify(x509.VerifyOptions{
+				Roots: pool,
+			})
+
+			if err != nil {
+				continue
+			}
+
+			if len(chains) > 0 {
+				caId = ca.Id
+				break
+			}
+		}
+		return nil
+	})
+
+	return caId
 }
 
 type HashedPassword struct {

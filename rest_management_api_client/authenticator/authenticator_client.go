@@ -64,6 +64,8 @@ type ClientService interface {
 
 	PatchAuthenticator(params *PatchAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*PatchAuthenticatorOK, error)
 
+	ReEnrollAuthenticator(params *ReEnrollAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReEnrollAuthenticatorCreated, error)
+
 	UpdateAuthenticator(params *UpdateAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*UpdateAuthenticatorOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
@@ -199,7 +201,7 @@ func (a *Client) DetailAuthenticator(params *DetailAuthenticatorParams, authInfo
   ListAuthenticators lists authenticators
 
   Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.
-This endpoint requries admin access.
+This endpoint requires admin access.
 
 */
 func (a *Client) ListAuthenticators(params *ListAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListAuthenticatorsOK, error) {
@@ -276,6 +278,51 @@ func (a *Client) PatchAuthenticator(params *PatchAuthenticatorParams, authInfo r
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for patchAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  ReEnrollAuthenticator reverts an authenticator to an enrollment
+
+  Allows an authenticator to be reverted to an enrollment and allows re-enrollment to occur. On success the
+created enrollment record response is provided and the source authenticator record will be deleted. The
+enrollment created depends on the authenticator. UPDB authenticators result in UPDB enrollments, CERT
+authenticators result in OTT enrollments, CERT + CA authenticators result in OTTCA enrollments.
+
+*/
+func (a *Client) ReEnrollAuthenticator(params *ReEnrollAuthenticatorParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ReEnrollAuthenticatorCreated, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewReEnrollAuthenticatorParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "reEnrollAuthenticator",
+		Method:             "POST",
+		PathPattern:        "/authenticators/{id}/re-enroll",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &ReEnrollAuthenticatorReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*ReEnrollAuthenticatorCreated)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for reEnrollAuthenticator: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

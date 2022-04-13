@@ -1117,7 +1117,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.\nThis endpoint requries admin access.\n",
+        "description": "Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.\nThis endpoint requires admin access.\n",
         "tags": [
           "Authenticator"
         ],
@@ -1642,6 +1642,99 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/authenticators/{id}/re-enroll": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an authenticator to be reverted to an enrollment and allows re-enrollment to occur. On success the \ncreated enrollment record response is provided and the source authenticator record will be deleted. The \nenrollment created depends on the authenticator. UPDB authenticators result in UPDB enrollments, CERT\nauthenticators result in OTT enrollments, CERT + CA authenticators result in OTTCA enrollments.\n",
+        "tags": [
+          "Authenticator"
+        ],
+        "summary": "Reverts an authenticator to an enrollment",
+        "operationId": "reEnrollAuthenticator",
+        "parameters": [
+          {
+            "description": "A reEnrollment request",
+            "name": "reEnroll",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/reEnroll"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "401": {
@@ -18898,7 +18991,7 @@ func init() {
       }
     },
     "enrollmentDetail": {
-      "description": "An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
+      "description": "An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
       "type": "object",
       "allOf": [
         {
@@ -18933,6 +19026,9 @@ func init() {
               "$ref": "#/definitions/entityRef"
             },
             "identityId": {
+              "type": "string"
+            },
+            "jwt": {
               "type": "string"
             },
             "method": {
@@ -21645,6 +21741,18 @@ func init() {
         }
       }
     },
+    "reEnroll": {
+      "type": "object",
+      "required": [
+        "expiresAt"
+      ],
+      "properties": {
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
     "roleAttributesList": {
       "description": "An array of role attributes",
       "type": "array",
@@ -23874,7 +23982,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.\nThis endpoint requries admin access.\n",
+        "description": "Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.\nThis endpoint requires admin access.\n",
         "tags": [
           "Authenticator"
         ],
@@ -24399,6 +24507,99 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The requested resource does not exist",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {
+                      "id": "71a3000f-7dda-491a-9b90-a19f4ee6c406"
+                    }
+                  },
+                  "cause": null,
+                  "causeMessage": "",
+                  "code": "NOT_FOUND",
+                  "message": "The resource requested was not found or is no longer available",
+                  "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "parameters": [
+        {
+          "type": "string",
+          "description": "The id of the requested resource",
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ]
+    },
+    "/authenticators/{id}/re-enroll": {
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Allows an authenticator to be reverted to an enrollment and allows re-enrollment to occur. On success the \ncreated enrollment record response is provided and the source authenticator record will be deleted. The \nenrollment created depends on the authenticator. UPDB authenticators result in UPDB enrollments, CERT\nauthenticators result in OTT enrollments, CERT + CA authenticators result in OTTCA enrollments.\n",
+        "tags": [
+          "Authenticator"
+        ],
+        "summary": "Reverts an authenticator to an enrollment",
+        "operationId": "reEnrollAuthenticator",
+        "parameters": [
+          {
+            "description": "A reEnrollment request",
+            "name": "reEnroll",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/reEnroll"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "401": {
@@ -41755,7 +41956,7 @@ func init() {
       }
     },
     "enrollmentDetail": {
-      "description": "An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
+      "description": "An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
       "type": "object",
       "allOf": [
         {
@@ -41790,6 +41991,9 @@ func init() {
               "$ref": "#/definitions/entityRef"
             },
             "identityId": {
+              "type": "string"
+            },
+            "jwt": {
               "type": "string"
             },
             "method": {
@@ -44499,6 +44703,18 @@ func init() {
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "reEnroll": {
+      "type": "object",
+      "required": [
+        "expiresAt"
+      ],
+      "properties": {
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     },

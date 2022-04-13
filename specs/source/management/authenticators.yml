@@ -6,7 +6,7 @@ paths:
       summary: List authenticators
       description: |
         Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.
-        This endpoint requries admin access.
+        This endpoint requires admin access.
       security:
         - ztSession: [ ]
       tags:
@@ -131,3 +131,41 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  authenticators-id-re-enroll:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    post:
+      summary: Reverts an authenticator to an enrollment
+      description: |
+        Allows an authenticator to be reverted to an enrollment and allows re-enrollment to occur. On success the 
+        created enrollment record response is provided and the source authenticator record will be deleted. The 
+        enrollment created depends on the authenticator. UPDB authenticators result in UPDB enrollments, CERT
+        authenticators result in OTT enrollments, CERT + CA authenticators result in OTTCA enrollments.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Authenticator
+      operationId: reEnrollAuthenticator
+      parameters:
+        - name: reEnroll
+          in: body
+          required: true
+          description: A reEnrollment request
+          schema:
+            $ref: '#/definitions/reEnroll'
+      responses:
+        '201':
+          $ref: '../shared/standard-responses.yml#/responses/createResponse'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+definitions:
+  reEnroll:
+    type: object
+    required:
+      - expiresAt
+    properties:
+      expiresAt:
+        type: string
+        format: date-time

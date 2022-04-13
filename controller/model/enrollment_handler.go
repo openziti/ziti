@@ -17,7 +17,6 @@
 package model
 
 import (
-	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/foundation/util/errorz"
@@ -164,13 +163,9 @@ func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) err
 		return errorz.NewFieldError("must be after the current date and time", "expiresAt", expiresAt)
 	}
 
-	fmt.Printf("\n\nOld1: %s\n", enrollment.Jwt)
-
 	if err := enrollment.FillJwtInfoWithExpiresAt(handler.env, *enrollment.IdentityId, expiresAt); err != nil {
 		return err
 	}
-
-	fmt.Printf("New1: %s\n", enrollment.Jwt)
 
 	err = handler.patchEntity(enrollment, boltz.MapFieldChecker{
 		persistence.FieldEnrollmentJwt:       struct{}{},
