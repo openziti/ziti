@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_client_api_client"
 	"github.com/openziti/edge/rest_client_api_server"
+	"github.com/openziti/edge/rest_management_api_server"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/xweb"
 	"github.com/pkg/errors"
@@ -155,6 +156,17 @@ func (clientApi ClientApiHandler) newHandler(ae *env.AppEnv) http.Handler {
 		r.URL.Path = strings.Replace(r.URL.Path, controller.LegacyClientRestApiBaseUrlV1, controller.ClientRestApiBaseUrlLatest, 1)
 
 		if r.URL.Path == controller.ClientRestApiSpecUrl {
+
+			//work around for: https://github.com/go-openapi/runtime/issues/226
+			if referer := r.Header.Get("Referer"); referer != "" {
+				if strings.Contains(referer, controller.ManagementRestApiBaseUrlLatest) {
+					rw.Header().Set("content-type", "application/json")
+					rw.WriteHeader(http.StatusOK)
+					_, _ = rw.Write(rest_management_api_server.SwaggerJSON)
+					return
+				}
+			}
+
 			rw.Header().Set("content-type", "application/json")
 			rw.WriteHeader(http.StatusOK)
 			_, _ = rw.Write(rest_client_api_server.SwaggerJSON)

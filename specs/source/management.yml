@@ -1,7 +1,7 @@
 ---
 swagger: '2.0'
 info:
-  version: 0.19.12
+  version: 0.25.5
   title: Ziti Edge Management
   contact: {}
 host: demo.ziti.dev
