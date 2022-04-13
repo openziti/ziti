@@ -830,8 +830,6 @@ github.com/openziti/storage v0.1.4 h1:horz3P0fABJH6R2Orvl2OLksmhXHpCaHP+0TCKfbGP
 github.com/openziti/storage v0.1.4/go.mod h1:aMf2fqWAyXjXH7N0CxfpeGMrlLIDCT7nRSR3cGrsEoI=
 github.com/openziti/transport v0.1.5 h1:+MgLyUDOsDdixm7GT9TgHd2pBIREf2AHsPa2D6mMNhY=
 github.com/openziti/transport v0.1.5/go.mod h1:NK1wWR16q1IBgvItzruGtvDc2C7AaJpRQqryC2tGIgA=
-github.com/openziti/ziti-db-explorer v1.1.0 h1:nc7HFXllhkHV+2mtCaHsUg5XrRrrk8rfbrGXz0SkHHQ=
-github.com/openziti/ziti-db-explorer v1.1.0/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
 github.com/openziti/ziti-db-explorer v1.1.1 h1:G0eoTby+aIjjt5TxEfR+FMI2CWd4RvZFjzaIMX2lEBw=
 github.com/openziti/ziti-db-explorer v1.1.1/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
