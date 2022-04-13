@@ -36,13 +36,13 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/channel v0.18.25
+	github.com/openziti/channel v0.18.27
 	github.com/openziti/edge v0.21.186
-	github.com/openziti/fabric v0.17.97
+	github.com/openziti/fabric v0.17.102
 	github.com/openziti/foundation v0.17.22
 	github.com/openziti/sdk-golang v0.16.47
 	github.com/openziti/storage v0.1.4
-	github.com/openziti/transport v0.1.4
+	github.com/openziti/transport v0.1.5
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
