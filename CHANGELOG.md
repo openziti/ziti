@@ -10,7 +10,7 @@
 * Bug fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
 * Bug Fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
 * Enhancement: External JWT Signer Issuer & Audience Validation
-
+* Enhancement: Add ability to define local interface binding for link and controller dial
 
 ## External JWT Signer Issuer & Audience Validation
 
@@ -19,6 +19,21 @@ These fields may be set to `null` on `POST`/`PUT`/`PATCH` or omitted; which will
 JWT's `aud` and `iss` fields. If `issuer` is defined, JWT `iss` fields will be validated. If `audience` is defined, JWT
 `aud` fields will be validated. If a JWT contains multiple audience values as an array of strings and will be validated,
 validation will check if the External JWT Signer's `audience` value is present as one of the values.
+
+## Add ability to define local interface binding for link and controller dial
+
+The network interface used to dial the controller and router links can be provided in the router configuration file.  The interface can be provided as either a name or an IP address.  
+
+```yaml
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+  bind:                 wlp5s0
+
+link:
+  dialers:
+    - binding:          transport
+      bind:            192.168.1.11
+```
 
 # Release 0.25.4
 
