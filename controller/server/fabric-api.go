@@ -76,3 +76,24 @@ func (self *fabricWrapper) WrapHttpHandler(handler http.Handler) http.Handler {
 
 	return api.TimeoutHandler(api.WrapCorsHandler(wrapped), 10*time.Second, apierror.NewTimeoutError(), response.EdgeResponseMapper{})
 }
+
+func (self *fabricWrapper) WrapWsHandler(handler http.Handler) http.Handler {
+	wrapped := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		rc := self.ae.CreateRequestContext(rw, r)
+
+		err := self.ae.FillRequestContext(rc)
+		if err != nil {
+			rc.RespondWithError(err)
+			return
+		}
+
+		if !permissions.IsAdmin().IsAllowed(rc.ActivePermissions...) {
+			rc.RespondWithApiError(errorz.NewUnauthorized())
+			return
+		}
+
+		handler.ServeHTTP(rw, r)
+	})
+
+	return wrapped
+}
