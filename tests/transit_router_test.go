@@ -40,6 +40,8 @@ func Test_TransitRouters(t *testing.T) {
 	t.Run("transit routers can be created, enrolled, and started", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		ctx.createEnrollAndStartTransitRouter()
+
+		ctx.Req.NoError(ctx.router.Shutdown())
 	})
 
 	t.Run("transit routers can be created, enrolled, and listed", func(t *testing.T) {

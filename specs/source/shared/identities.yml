@@ -88,12 +88,16 @@ definitions:
     properties:
       updb:
         properties:
+          id:
+            type: string
           username:
             type: string
         type: object
       cert:
         type: object
         properties:
+          id:
+            type: string
           fingerprint:
             type: string
   identityEnrollments:

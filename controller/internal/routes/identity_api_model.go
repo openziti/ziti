@@ -298,12 +298,14 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 	if err = ae.GetHandlers().Identity.CollectAuthenticators(identity.Id, func(entity *model.Authenticator) error {
 		if entity.Method == persistence.MethodAuthenticatorUpdb {
 			ret.Authenticators.Updb = &rest_model.IdentityAuthenticatorsUpdb{
+				ID:       entity.Id,
 				Username: entity.ToUpdb().Username,
 			}
 		}
 
 		if entity.Method == persistence.MethodAuthenticatorCert {
 			ret.Authenticators.Cert = &rest_model.IdentityAuthenticatorsCert{
+				ID:          entity.Id,
 				Fingerprint: entity.ToCert().Fingerprint,
 			}
 		}
