@@ -69,7 +69,7 @@ const (
 	ArgLimit = "--limit"
 )
 
-func KeySuggester(state *zdelib.State, d prompt.Document) []prompt.Suggest {
+func KeySuggester(state *zdelib.State, _ prompt.Document) []prompt.Suggest {
 	var suggestions []prompt.Suggest
 	for _, entry := range state.ListEntries() {
 		suggestions = append(suggestions, prompt.Suggest{Text: entry.Name})
