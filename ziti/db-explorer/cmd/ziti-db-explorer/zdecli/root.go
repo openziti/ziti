@@ -15,10 +15,10 @@ package zdecli
 import (
 	"fmt"
 	"github.com/c-bata/go-prompt"
+	"github.com/openziti/ziti-db-explorer/zdelib"
 	"log"
 	"os"
 	"strings"
-	"ziti-db-explorer/zdelib"
 )
 
 // CommandName allow usage and such to be altered to fit a hosting executable

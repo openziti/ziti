@@ -14,8 +14,8 @@ package zdecli
 
 import (
 	"github.com/c-bata/go-prompt"
+	"github.com/openziti/ziti-db-explorer/zdelib"
 	"strings"
-	"ziti-db-explorer/zdelib"
 )
 
 var CmdQuit = &Command{"quit", []string{"q"}, "leave this horrible place", nil}
