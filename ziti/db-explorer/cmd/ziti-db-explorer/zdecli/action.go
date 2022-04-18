@@ -15,8 +15,8 @@ package zdecli
 import (
 	"errors"
 	"github.com/c-bata/go-prompt"
+	"github.com/openziti/ziti-db-explorer/zdelib"
 	"sort"
-	"ziti-db-explorer/zdelib"
 )
 
 // ActionHandler is a function which can take an unparsed CLI string, parse it, and process an action

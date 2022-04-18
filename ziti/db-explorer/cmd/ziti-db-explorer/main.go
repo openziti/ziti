@@ -13,9 +13,9 @@
 package main
 
 import (
+	"github.com/openziti/ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
 	"log"
 	"os"
-	"ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
 )
 
 func main() {

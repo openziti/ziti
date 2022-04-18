@@ -16,11 +16,11 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti-db-explorer/zdelib"
 	"github.com/rodaine/table"
 	"regexp"
 	"strconv"
 	"strings"
-	"ziti-db-explorer/zdelib"
 )
 
 func PrintUsage() {
