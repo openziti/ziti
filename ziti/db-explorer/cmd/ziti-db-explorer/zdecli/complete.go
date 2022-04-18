@@ -50,16 +50,20 @@ func (completer *StateCompleter) Complete(d prompt.Document) []prompt.Suggest {
 	firstWord := completer.FirstWord(d)
 
 	completer.Registry.GetCommand(firstWord)
-	switch {
-	case CmdCd.Matches(firstWord):
-		for _, entry := range completer.State.ListEntries() {
-			suggestions = append(suggestions, prompt.Suggest{Text: entry.Name})
+
+	found := false
+
+	for _, cmd := range completer.Registry.CommandTextToCommand {
+		if cmd.Matches(firstWord) {
+			found = true
+			for _, sug := range cmd.Suggest(completer.State, d) {
+				suggestions = append(suggestions, sug)
+			}
+			break
 		}
-	case CmdList.Matches(firstWord):
-		for _, sug := range CmdList.Suggest(d) {
-			suggestions = append(suggestions, sug)
-		}
-	case strings.IndexByte(d.Text, ' ') == -1:
+	}
+
+	if !found && strings.IndexByte(d.Text, ' ') == -1 {
 		for _, key := range completer.Registry.CommandTexts {
 			action := completer.Registry.CommandTextToAction[key]
 			if action.IsSuggested {
