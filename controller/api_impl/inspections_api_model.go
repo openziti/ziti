@@ -17,8 +17,10 @@
 package api_impl
 
 import (
+	"encoding/json"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
+	"strings"
 )
 
 const EntityNameInspect = "inspections"
@@ -29,10 +31,27 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 		Success: &inspectResult.Success,
 	}
 	for _, val := range inspectResult.Results {
+		var emitVal interface{}
+		if strings.HasPrefix(val.Value, "{") {
+			mapVal := map[string]interface{}{}
+			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
+				emitVal = mapVal
+			}
+		} else if strings.HasPrefix(val.Value, "[") {
+			var arrayVal []interface{}
+			if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
+				emitVal = arrayVal
+			}
+		}
+
+		if emitVal == nil {
+			emitVal = val.Value
+		}
+
 		resp.Values = append(resp.Values, &rest_model.InspectResponseValue{
 			AppID: &val.AppId,
 			Name:  &val.Name,
-			Value: &val.Value,
+			Value: emitVal,
 		})
 	}
 	return resp

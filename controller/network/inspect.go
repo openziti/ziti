@@ -17,14 +17,12 @@
 package network
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/util/concurrenz"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 )
@@ -32,7 +30,7 @@ import (
 type InspectResultValue struct {
 	AppId string
 	Name  string
-	Value interface{}
+	Value string
 }
 
 type InspectResult struct {
@@ -115,7 +113,7 @@ func (ctx *inspectRequestContext) inspectLocal() {
 			for _, requested := range ctx.requestedValues {
 				result := ctx.network.Inspect(requested)
 				if result != nil {
-					ctx.appendValue(ctx.network.GetAppId(), requested, result)
+					ctx.appendValue(ctx.network.GetAppId(), requested, *result)
 				}
 			}
 			close(notifier)
@@ -160,27 +158,11 @@ func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier
 	}
 
 	for _, val := range resp.Values {
-		handled := false
-		if strings.HasPrefix(val.Value, "{") {
-			mapVal := map[string]interface{}{}
-			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
-				ctx.appendValue(router.Id, val.Name, mapVal)
-				handled = true
-			}
-		} else if strings.HasPrefix(val.Value, "[") {
-			var arrayVal []interface{}
-			if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
-				ctx.appendValue(router.Id, val.Name, arrayVal)
-				handled = true
-			}
-		}
-		if !handled {
-			ctx.appendValue(router.Id, val.Name, val.Value)
-		}
+		ctx.appendValue(router.Id, val.Name, val.Value)
 	}
 }
 
-func (ctx *inspectRequestContext) appendValue(appId string, name string, value interface{}) {
+func (ctx *inspectRequestContext) appendValue(appId string, name string, value string) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
 	if !ctx.complete {

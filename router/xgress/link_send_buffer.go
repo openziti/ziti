@@ -18,6 +18,7 @@ package xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
@@ -335,39 +336,38 @@ func (buffer *LinkSendBuffer) scale(factor float64) {
 	}
 }
 
-func (buffer *LinkSendBuffer) inspect() map[string]interface{} {
-	result := map[string]interface{}{}
-	result["windowsSize"] = buffer.windowsSize
-	result["linkSendBufferSize"] = buffer.linkSendBufferSize
-	result["linkRecvBufferSize"] = buffer.linkRecvBufferSize
-	result["accumulator"] = buffer.accumulator
-	result["successfulAcks"] = buffer.successfulAcks
-	result["duplicateAcks"] = buffer.duplicateAcks
-	result["retransmits"] = buffer.retransmits
-	result["closed"] = buffer.closed.Get()
-	result["blockedByLocalWindow"] = buffer.blockedByLocalWindow
-	result["blockedByRemoteWindow"] = buffer.blockedByRemoteWindow
-	result["retxScale"] = buffer.retxScale
-	result["retxThreshold"] = buffer.retxThreshold
-
+func (buffer *LinkSendBuffer) inspect() *inspect.XgressSendBufferDetail {
 	timeSinceLastRetransmit := time.Duration(info.NowInMilliseconds()-buffer.lastRetransmitTime) * time.Millisecond
-	result["timeSinceLastRetx"] = timeSinceLastRetransmit.String()
-	result["closeWhenEmpty"] = buffer.closeWhenEmpty.Get()
-
+	result := &inspect.XgressSendBufferDetail{
+		WindowSize:            buffer.windowsSize,
+		LinkSendBufferSize:    buffer.linkSendBufferSize,
+		LinkRecvBufferSize:    buffer.linkRecvBufferSize,
+		Accumulator:           buffer.accumulator,
+		SuccessfulAcks:        buffer.successfulAcks,
+		DuplicateAcks:         buffer.duplicateAcks,
+		Retransmits:           buffer.retransmits,
+		Closed:                buffer.closed.Get(),
+		BlockedByLocalWindow:  buffer.blockedByLocalWindow,
+		BlockedByRemoteWindow: buffer.blockedByRemoteWindow,
+		RetxScale:             buffer.retxScale,
+		RetxThreshold:         buffer.retxThreshold,
+		TimeSinceLastRetx:     timeSinceLastRetransmit.String(),
+		CloseWhenEmpty:        buffer.closeWhenEmpty.Get(),
+	}
 	return result
 }
 
-func (buffer *LinkSendBuffer) Inspect() map[string]interface{} {
+func (buffer *LinkSendBuffer) Inspect() *inspect.XgressSendBufferDetail {
 	timeout := time.After(25 * time.Millisecond)
 	inspectEvent := &InspectEvent{
-		notifyComplete: make(chan map[string]interface{}, 1),
+		notifyComplete: make(chan *inspect.XgressSendBufferDetail, 1),
 	}
 
 	select {
 	case buffer.inspectRequests <- inspectEvent:
 		select {
 		case result := <-inspectEvent.notifyComplete:
-			result["acquiredSafely"] = true
+			result.AcquiredSafely = true
 			return result
 		case <-timeout:
 		}
@@ -375,12 +375,12 @@ func (buffer *LinkSendBuffer) Inspect() map[string]interface{} {
 	}
 
 	result := buffer.inspect()
-	result["acquiredSafely"] = false
+	result.AcquiredSafely = false
 	return result
 }
 
 type InspectEvent struct {
-	notifyComplete chan map[string]interface{}
+	notifyComplete chan *inspect.XgressSendBufferDetail
 }
 
 func (self *InspectEvent) handle(buffer *LinkSendBuffer) {

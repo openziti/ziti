@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -580,16 +581,15 @@ func (self *Xgress) SendEmptyAck() {
 	acker.ack(ack, self.address)
 }
 
-func (self *Xgress) Inspect() map[string]interface{} {
-	result := map[string]interface{}{}
-	result["type"] = "xgress"
-	result["addr"] = string(self.address)
-	result["originator"] = self.originator.String()
-
+func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
-	result["timeSinceLastLinkRx"] = timeSinceLastRxFromLink.String()
-	result["sendBuffer"] = self.payloadBuffer.Inspect()
-	result["recvBuffer"] = self.linkRxBuffer.Inspect()
+	xgressDetail := &inspect.XgressDetail{
+		Address:             string(self.address),
+		Originator:          self.originator.String(),
+		TimeSinceLastLinkRx: timeSinceLastRxFromLink.String(),
+		SendBufferDetail:    *self.payloadBuffer.Inspect(),
+		RecvBufferDetail:    self.linkRxBuffer.Inspect(),
+	}
 
-	return result
+	detail.XgressDetails[string(self.address)] = xgressDetail
 }

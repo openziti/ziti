@@ -938,10 +938,10 @@ func (network *Network) showOptions() {
 	}
 }
 
-func (network *Network) Inspect(name string) interface{} {
+func (network *Network) Inspect(name string) *string {
 	if strings.ToLower(name) == "stackdump" {
 		result := debugz.GenerateStack()
-		return result
+		return &result
 	}
 	return nil
 }

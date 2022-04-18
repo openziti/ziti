@@ -20,6 +20,7 @@ import (
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/inspect"
 	"sync/atomic"
 )
 
@@ -84,9 +85,9 @@ func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
 	return atomic.LoadUint32(&buffer.lastBufferSizeSent)
 }
 
-func (buffer *LinkReceiveBuffer) Inspect() map[string]interface{} {
-	result := map[string]interface{}{}
-	result["size"] = buffer.Size()
-	result["lastSizeSent"] = buffer.getLastBufferSizeSent()
-	return result
+func (buffer *LinkReceiveBuffer) Inspect() inspect.XgressRecvBufferDetail {
+	return inspect.XgressRecvBufferDetail{
+		Size:         buffer.Size(),
+		LastSizeSent: buffer.getLastBufferSizeSent(),
+	}
 }

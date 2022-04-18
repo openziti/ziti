@@ -18,6 +18,7 @@ package xlink
 
 import (
 	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/transport"
@@ -89,7 +90,8 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	HandleCloseNotification(f func())
-	Inspect() map[string]interface{}
+	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
+	InspectLink() *inspect.LinkInspectDetail
 }
 
 type Forwarder interface {
