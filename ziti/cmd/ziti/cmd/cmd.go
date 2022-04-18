@@ -20,6 +20,7 @@ import (
 	goflag "flag"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/database"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial"
@@ -136,6 +137,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer) *cobra.Command {
 	demoCmd := demo.NewDemoCmd(p)
 	logFilter := NewCmdLogFormat(out, err)
 	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(out, err)
+	dbCommand := database.NewCmdDb(out, err)
 
 	installCommands := []*cobra.Command{
 		NewCmdInstall(out, err),
@@ -177,6 +179,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer) *cobra.Command {
 			Message: "Utilities",
 			Commands: []*cobra.Command{
 				logFilter,
+				dbCommand,
 			},
 		},
 		{
