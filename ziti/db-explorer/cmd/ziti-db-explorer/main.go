@@ -13,94 +13,23 @@
 package main
 
 import (
-	"github.com/c-bata/go-prompt"
 	"log"
 	"os"
-	"strings"
 	"ziti-db-explorer/cmd/ziti-db-explorer/zdecli"
-	"ziti-db-explorer/zdelib"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Printf("Error: Invalid number of arguments, got %d expected %d", len(os.Args), 2)
+	command := ""
+
+	if len(os.Args) > 1 {
+		command = os.Args[1]
+	}
+
+	if err := zdecli.Run("", command); err != nil {
+		log.Printf("Error: %s", err)
 		zdecli.PrintUsage()
 		os.Exit(-1)
-	}
-
-	if os.Args[1] == "help" {
-		zdecli.PrintUsage()
+	} else {
 		os.Exit(0)
-	}
-
-	if os.Args[1] == "version" {
-		zdecli.PrintVersion()
-		os.Exit(0)
-	}
-
-	log.Printf("opening db file: %s", os.Args[1])
-
-	registry := zdecli.NewCommandRegistry()
-
-	registry.Add(zdecli.CmdQuit, func(state *zdelib.State, _ *zdecli.CommandRegistry, _ string) error {
-		os.Exit(0)
-		return nil
-	})
-
-	registry.Add(zdecli.CmdList, zdecli.ListCurrentBucket)
-	registry.Add(zdecli.CmdListAll, zdecli.ListCurrentBucketAll)
-	registry.Add(zdecli.CmdCd, zdecli.CdBucket)
-	registry.Add(zdecli.CmdCount, zdecli.PrintCurrentCount)
-	registry.Add(zdecli.CmdBack, zdecli.NavBackOne)
-	registry.Add(zdecli.CmdRoot, zdecli.NavToRoot)
-	registry.Add(zdecli.CmdPwd, zdecli.PrintPath)
-	registry.Add(zdecli.CmdStatsBucket, zdecli.PrintBucketStats)
-	registry.Add(zdecli.CmdStatsDb, zdecli.PrintDbStats)
-	registry.Add(zdecli.CmdClear, zdecli.ClearConsole)
-	registry.Add(zdecli.CmdShow, zdecli.PrintValue)
-	registry.Add(zdecli.CmdHelp, zdecli.PrintHelp)
-
-	state, err := zdelib.NewState(os.Args[1])
-
-	if err != nil {
-		log.Printf("Error: %v", err)
-		zdecli.PrintUsage()
-		os.Exit(-1)
-	}
-
-	defer state.Done()
-
-	completer := &zdecli.StateCompleter{
-		State:    state,
-		Registry: registry,
-	}
-
-	for true {
-		input := prompt.Input(zdecli.PathPrompt(state)+" ", completer.Complete, prompt.OptionPrefixTextColor(prompt.Cyan))
-		input = strings.TrimSpace(input)
-
-		index := strings.IndexByte(input, ' ')
-		cmd := input
-		args := ""
-		if index != -1 {
-			cmd = input[0:index]
-			args = input[index:]
-		}
-
-		if action, ok := registry.CommandTextToAction[cmd]; ok {
-			if err := action.Do(state, registry, args); err != nil {
-				log.Printf("Error: %v", err)
-			}
-		} else {
-			if strings.HasPrefix(input, "\"") && strings.HasSuffix(input, "\"") {
-				input = input[1 : len(input)-1]
-			}
-
-			err := state.Enter(input)
-
-			if err != nil {
-				log.Printf("Error: unknown command or bucket name")
-			}
-		}
 	}
 }
