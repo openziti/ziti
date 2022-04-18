@@ -110,7 +110,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(api_impl.NewManagementApiFactory(c.config.Id, c.network)); err != nil {
+	if err := c.RegisterXWebHandlerFactory(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 }

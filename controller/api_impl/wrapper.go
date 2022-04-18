@@ -31,6 +31,7 @@ type RequestHandler func(network *network.Network, rc api.RequestContext)
 type RequestWrapper interface {
 	WrapRequest(handler RequestHandler, request *http.Request, entityId, entitySubId string) openApiMiddleware.Responder
 	WrapHttpHandler(handler http.Handler) http.Handler
+	WrapWsHandler(handler http.Handler) http.Handler
 }
 
 type FabricRequestWrapper struct {
@@ -88,6 +89,20 @@ func (self *FabricRequestWrapper) WrapHttpHandler(handler http.Handler) http.Han
 	})
 
 	return api.TimeoutHandler(api.WrapCorsHandler(wrapper), 10*time.Second, apierror.NewTimeoutError(), fabricResponseMapper{})
+}
+
+func (self *FabricRequestWrapper) WrapWsHandler(handler http.Handler) http.Handler {
+	wrapper := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		if err := self.verifyCert(r); err != nil {
+			rc := NewRequestContext(rw, r)
+			rc.RespondWithError(apierror.NewInvalidAuth())
+			return
+		}
+
+		handler.ServeHTTP(rw, r)
+	})
+
+	return wrapper
 }
 
 func (self *FabricRequestWrapper) verifyCert(r *http.Request) error {
