@@ -20,7 +20,7 @@ import (
 )
 
 // ActionHandler is a function which can take an unparsed CLI string, parse it, and process an action
-type ActionHandler func(state *zdelib.State, args string) error
+type ActionHandler func(state *zdelib.State, registry *CommandRegistry, args string) error
 
 // Action is prompt.Suggest with additional values to control suggestion listing as well as to couple it to an
 // ActionHandler.
@@ -33,7 +33,7 @@ type Action struct {
 // NewAction creates a default action with an ActionHandler that will simply print a message.
 func NewAction(text, desc string, do ActionHandler) *Action {
 	if do == nil {
-		do = func(state *zdelib.State, _ string) error {
+		do = func(state *zdelib.State, _ *CommandRegistry, _ string) error {
 			return errors.New("nothing to do")
 		}
 	}

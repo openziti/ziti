@@ -15,14 +15,39 @@ func PrintUsage() {
 	println("")
 	println("'ziti-db-explorer' is an interactive shell for exploring Ziti Controller database files")
 	println("")
-	println("Usage: ")
-	println("\tziti-db-explorer <ctrl.db> [-h]")
 	println("")
+	println("Usage: ")
+	println("\tziti-db-explorer [help|version|<ctrl.db>]")
+	println("")
+}
+
+func PrintVersion() {
+	println("")
+	fmt.Printf("Version: %s\n", zdelib.Version)
+	fmt.Printf("BuildDate: %s\n", zdelib.BuildDate)
+	fmt.Printf("Commit: %s\n", zdelib.Commit)
+	fmt.Printf("Branch: %s\n", zdelib.Branch)
+	println("")
+}
+
+func PrintHelp(state *zdelib.State, registry *CommandRegistry, _ string) error {
+	tbl := table.New("command", "description")
+	for _, cmdText := range registry.CommandTexts {
+		action := registry.CommandTextToAction[cmdText]
+
+		if action.IsSuggested {
+			tbl.AddRow(action.Text, action.Description)
+		}
+
+	}
+
+	tbl.Print()
+	return nil
 }
 
 // PrintValue will attempt to print the value from a given `key` in the current bucket location determined by
 // `state`.
-func PrintValue(state *zdelib.State, key string) error {
+func PrintValue(state *zdelib.State, _ *CommandRegistry, key string) error {
 	key = strings.TrimSpace(key)
 
 	println(state.GetValue(key))
@@ -31,23 +56,23 @@ func PrintValue(state *zdelib.State, key string) error {
 }
 
 // ClearConsole will output ASCII control characters that clear the console on modern terminals.
-func ClearConsole(_ *zdelib.State, _ string) error {
+func ClearConsole(_ *zdelib.State, _ *CommandRegistry, _ string) error {
 	fmt.Printf("\033[H\033[2J")
 	return nil
 }
 
 // CdBucket is an ActionHandler to `cd <bucket`. Will update the provided `state`'s location.
-func CdBucket(state *zdelib.State, bucketName string) error {
+func CdBucket(state *zdelib.State, registry *CommandRegistry, bucketName string) error {
 	bucketName = strings.TrimSpace(bucketName)
 
 	if bucketName == ".." {
-		return NavBackOne(state, bucketName)
+		return NavBackOne(state, registry, bucketName)
 	}
 	return state.Enter(bucketName)
 }
 
 // PrintCurrentCount is an ActionHandler that will print the key count for the provided `state`'s location.
-func PrintCurrentCount(state *zdelib.State, _ string) error {
+func PrintCurrentCount(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	count := state.CurrentBucketKeyCount()
 
 	println("")
@@ -58,7 +83,7 @@ func PrintCurrentCount(state *zdelib.State, _ string) error {
 }
 
 // PrintDbStats is an ActionHandler that will print the bbolt database stats the current `state` has open.
-func PrintDbStats(state *zdelib.State, _ string) error {
+func PrintDbStats(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	stats := state.DbStats()
 
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
@@ -106,7 +131,7 @@ func PrintDbStats(state *zdelib.State, _ string) error {
 }
 
 // PrintBucketStats is an ActionHandler that will print the provided `state`'s current bucket location's stats.
-func PrintBucketStats(state *zdelib.State, _ string) error {
+func PrintBucketStats(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	stats := state.BucketStats()
 
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
@@ -144,7 +169,7 @@ func PrintBucketStats(state *zdelib.State, _ string) error {
 }
 
 // PrintPath is an ActionHandler that will print the provided `state`'s bucket location.
-func PrintPath(state *zdelib.State, _ string) error {
+func PrintPath(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	if len(state.Path) == 0 {
 		println("root")
 	} else {
@@ -155,7 +180,7 @@ func PrintPath(state *zdelib.State, _ string) error {
 }
 
 // NavToRoot is an ActionHandler that will navigate the provided `state` to the root bucket.
-func NavToRoot(state *zdelib.State, _ string) error {
+func NavToRoot(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	state.Path = []string{}
 	return nil
 }
@@ -179,7 +204,7 @@ func PathPrompt(state *zdelib.State) string {
 }
 
 // NavBackOne is an ActionHandler that will navigate the provided `state` one bucket level back if possible.
-func NavBackOne(state *zdelib.State, _ string) error {
+func NavBackOne(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	return state.Back()
 }
 
@@ -264,12 +289,12 @@ func ListCurrentBucketWithLimits(state *zdelib.State, skip int64, limit int64) e
 
 // ListCurrentBucketAll is an ActionHandler that will print a table of the provided `state`'s location's keys
 // and values. It will print all keys from first to last.
-func ListCurrentBucketAll(state *zdelib.State, _ string) error {
+func ListCurrentBucketAll(state *zdelib.State, _ *CommandRegistry, _ string) error {
 	return ListCurrentBucketWithLimits(state, 0, -1)
 }
 
 // ListCurrentBucket is an ActionHandler that will parse `args` in order to call ListCurrentBucketWithLimits.
-func ListCurrentBucket(state *zdelib.State, args string) error {
+func ListCurrentBucket(state *zdelib.State, _ *CommandRegistry, args string) error {
 	noSpaces := regexp.MustCompile(`\s\s+`)
 	args = noSpaces.ReplaceAllString(args, " ")
 	splits := strings.Split(args, " ")

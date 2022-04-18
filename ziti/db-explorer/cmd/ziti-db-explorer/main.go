@@ -28,8 +28,13 @@ func main() {
 		os.Exit(-1)
 	}
 
-	if os.Args[1] == "-h" {
+	if os.Args[1] == "help" {
 		zdecli.PrintUsage()
+		os.Exit(0)
+	}
+
+	if os.Args[1] == "version" {
+		zdecli.PrintVersion()
 		os.Exit(0)
 	}
 
@@ -37,7 +42,7 @@ func main() {
 
 	registry := zdecli.NewCommandRegistry()
 
-	registry.Add(zdecli.CmdQuit, func(state *zdelib.State, _ string) error {
+	registry.Add(zdecli.CmdQuit, func(state *zdelib.State, _ *zdecli.CommandRegistry, _ string) error {
 		os.Exit(0)
 		return nil
 	})
@@ -53,6 +58,7 @@ func main() {
 	registry.Add(zdecli.CmdStatsDb, zdecli.PrintDbStats)
 	registry.Add(zdecli.CmdClear, zdecli.ClearConsole)
 	registry.Add(zdecli.CmdShow, zdecli.PrintValue)
+	registry.Add(zdecli.CmdHelp, zdecli.PrintHelp)
 
 	state, err := zdelib.NewState(os.Args[1])
 
@@ -82,7 +88,7 @@ func main() {
 		}
 
 		if action, ok := registry.CommandTextToAction[cmd]; ok {
-			if err := action.Do(state, args); err != nil {
+			if err := action.Do(state, registry, args); err != nil {
 				log.Printf("Error: %v", err)
 			}
 		} else {
