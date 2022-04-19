@@ -20,7 +20,4 @@ createControllerConfig
 # create a place for the internal db
 mkdir -p $ZITI_HOME/db
 
-#"${ZITI_SCRIPTS}/create-fabric-identity.sh"
-createFabricIdentity
-
 "${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/ziti-edge-controller.yaml"

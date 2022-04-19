@@ -885,20 +885,6 @@ function createEdgeRouterConfig {
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
 }
 
-function createFabricIdentity {
-  output_file="${ZITI_HOME}/identities.yml"
-cat > "${output_file}" <<IdentitiesJsonHereDoc
----
-default:
-  caCert:   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
-  cert:     "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_NETWORK-}-dotzeet.cert"
-  key:      "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"
-  endpoint: tls:${ZITI_CTRL_MGMT_HOST_PORT}
-IdentitiesJsonHereDoc
-
-echo -e "identities file written to: $(BLUE "${output_file}")"
-}
-
 # shellcheck disable=SC2120
 function createControllerConfig {
   # Allow controller name to be passed in as arg
