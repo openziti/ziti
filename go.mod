@@ -2,18 +2,6 @@ module github.com/openziti/edge
 
 go 1.17
 
-//replace github.com/openziti/channel => ../channel
-
-//replace github.com/openziti/foundation => ../foundation
-
-//replace github.com/openziti/fabric => ../fabric
-
-//replace github.com/openziti/sdk-golang => ../sdk-golang
-
-//replace github.com/kataras/go-events => ../go-events
-
-//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
@@ -45,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.28
-	github.com/openziti/fabric v0.17.103
+	github.com/openziti/fabric v0.17.104
 	github.com/openziti/foundation v0.17.22
 	github.com/openziti/sdk-golang v0.16.47
 	github.com/openziti/storage v0.1.4
@@ -61,10 +49,10 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20220321153916-2c7772ba3064
+	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220330033206-e17cdc41300f
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
@@ -88,6 +76,7 @@ require (
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -114,7 +103,7 @@ require (
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
