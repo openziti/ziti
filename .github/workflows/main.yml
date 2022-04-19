@@ -77,10 +77,12 @@ jobs:
           path: release/
           retention-days: 5
 
-  tag-and-publish:
+  linux-build:
     name: Build and Publish Linux Binaries and Docker Image
     runs-on: ubuntu-18.04
     needs: [ mac-os-build, windows-build ]
+    outputs:
+      ziti_version: ${{ steps.get_version.outputs.ziti_version }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -136,17 +138,31 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
-      - name: Trigger Smoketest
-        if: github.repository_owner == 'openziti'
+      - name: Get Ziti Version
+        id: get_version
         env:
-          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
-          jenkins_user: ${{ secrets.JENKINS_USER }}
-          jenkins_user_token: ${{ secrets.JENKINS_USER_TOKEN }}
-          jenkins_job_token: ${{ secrets.JENKINS_JOB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leading 'v', if any
+          ZITI_VERSION=${ZITI_VERSION#v}
+          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # fail the job because we could not obtain the current version from ziti-ci
+            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
+            exit 1
+          else
+            # Set output parameters.
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti_version::${ZITI_VERSION}
+          fi
+
+      - name: Publish to Artifactory
+        if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
+        run: |
           $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
-          $(go env GOPATH)/bin/ziti-ci trigger-jenkins-smoke-build
+        env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
@@ -171,24 +187,16 @@ jobs:
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
+          ZITI_VERSION: ${{ steps.get_version.outputs.ziti_version }}
         id: tagprep
         run: |
           # the Docker cross-build only runs on branches main or release-v*
-          # where ziti-ci always computes and pushes a new release tag
-          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          ZITI_VERSION=${ZITI_VERSION#v}
+          # where ziti-ci always computes and publishes a new release tag
           DOCKER_TAGS=""
-          if [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
-              DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
-            done
-          else
-            # fail the job because we could not obtain the current version from ziti-ci
-            exit 1
-          fi
-          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char, if exists
-          # Set output parameters.
+          for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
+            DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
+          done
+          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo ::set-output name=tags::${DOCKER_TAGS}
 
@@ -204,3 +212,20 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.tagprep.outputs.tags }}
+
+      # END linux-build-steps
+
+  smoketest:
+      # BEGIN smoketest-job
+      #
+      # Any event that triggers this main workflow also triggers the smoketest steps,
+      # but only if at least one of the needed secrets is present. This avoids
+      # running job steps that can't succeed without the secrets e.g. in PR
+      # builds from repo forks.
+      #
+    needs: linux-build
+    if: ${{ github.repository == 'openziti/ziti' }}
+    name: Trigger Smoketest
+    uses: ./.github/workflows/jenkins-smoketest.yml
+    with:
+      ziti_version: ${{ needs.linux-build.outputs.ziti_version }} 
