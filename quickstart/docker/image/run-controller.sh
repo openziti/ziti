@@ -24,5 +24,3 @@ mkdir -p $ZITI_HOME/db
 createFabricIdentity
 
 "${ZITI_BIN_DIR}/ziti-controller" run "${ZITI_HOME}/ziti-edge-controller.yaml"
-
-${ZITI_HOME}/pki/ziti-controller-intermediate/keys/ziti-dotzeet.key
