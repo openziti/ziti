@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd creates a command object for the "controller list" command
+// newCreateCmd creates a command object for the "list" command
 func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",

@@ -13,6 +13,10 @@
 * Enhancement: Add ability to define local interface binding for link and controller dial
 * Bug fix: Edge Management REST API Doc shows Edge Client REST API Doc
 * Enhancement: `ziti db explore <ctrl.db>` command has been added to explore offline database files
+* Enhancement: The mgmt API is now available via websocket. The stream commands are now available on `ziti fabric`
+* Enhancement: Most list commands have been updated with tabular output
+* Enhancement: `ziti edge show` is now available with subcommands `config-definition` and `config-type-schema`
+* Enhancement: `ziti edge update config-type` is now available
 
 ## External JWT Signer Issuer & Audience Validation
 
