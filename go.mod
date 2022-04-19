@@ -44,8 +44,8 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/mitchellh/mapstructure v1.4.3
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.27
-	github.com/openziti/fabric v0.17.102
+	github.com/openziti/channel v0.18.28
+	github.com/openziti/fabric v0.17.103
 	github.com/openziti/foundation v0.17.22
 	github.com/openziti/sdk-golang v0.16.47
 	github.com/openziti/storage v0.1.4

@@ -608,11 +608,11 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTmOf0Erfk+hxe8=
 github.com/openziti/channel v0.18.25/go.mod h1:WT35GAbpPEhzwtgEU6KYkStUZVoNuk5XEDbv5SYnVtM=
-github.com/openziti/channel v0.18.27 h1:g9Iv/1XridsRRdoTXYNKpbSvu8ctXQTbNcnwV/jP5T0=
-github.com/openziti/channel v0.18.27/go.mod h1:YDGdH2I8tJ76WQgHTprgHX6dV9MBlrc1nOYpMY8h8+A=
+github.com/openziti/channel v0.18.28 h1:LTsp+ywYp9uIr0OIPzeUBYoAIKA70CU0QsJqXa+YkJA=
+github.com/openziti/channel v0.18.28/go.mod h1:YDGdH2I8tJ76WQgHTprgHX6dV9MBlrc1nOYpMY8h8+A=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/fabric v0.17.102 h1:oXlmQvCvt3MY/SnUp8GcuGqL7bIWCCkgEN1grF0j+D0=
-github.com/openziti/fabric v0.17.102/go.mod h1:rIY7oVE5ea5mnmbP326v3lgQxJoVQsecwWcm5CSvN1k=
+github.com/openziti/fabric v0.17.103 h1:pKS0jHYmPAe5s4QNxHqdDowKhtHuFTIioLsQBI+EbLE=
+github.com/openziti/fabric v0.17.103/go.mod h1:ALkOP6s6/mk9oqvYEVOcCTCH55SdsbfMS2TA3aVLp30=
 github.com/openziti/foundation v0.17.22 h1:zFfgNHdLocEcoBqtognpJnYsVQaTm28EwqMNjBw8avk=
 github.com/openziti/foundation v0.17.22/go.mod h1:Nnr0vsqovHJimkdBHf2s4ZJAgvNhg6UdVqP+s0nY3P4=
 github.com/openziti/sdk-golang v0.16.47 h1:mN5gK2+rh7IUZbYYoLW1DnUTlssHaXKtuzP97KQUy8M=
