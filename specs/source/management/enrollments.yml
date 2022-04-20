@@ -61,9 +61,7 @@ paths:
       summary: Refreshes an enrollment record's expiration window
       description: >-
           For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated
-          and must be used for the enrollment. If the `validFrom` value is not provided it will default to
-          now. If the `validTo` value is not provided it will default to `validFrom`  the controller's
-          configured enrollment timeout.
+          and must be used for the enrollment.
       security:
         - ztSession: [ ]
       tags:
@@ -77,7 +75,7 @@ paths:
           schema:
             $ref: '#/definitions/enrollmentRefresh'
       responses:
-        '201':
+        '200':
           $ref: '../shared/standard-responses.yml#/responses/createResponse'
         '400':
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
@@ -182,10 +180,9 @@ definitions:
 
   enrollmentRefresh:
     type: object
+    required:
+      - expiresAt
     properties:
-      validFrom:
-        type: string
-        format: date-time
-      validTo:
+      expiresAt:
         type: string
         format: date-time

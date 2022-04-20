@@ -60,7 +60,7 @@ type ClientService interface {
 
 	ListEnrollments(params *ListEnrollmentsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*ListEnrollmentsOK, error)
 
-	RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentCreated, error)
+	RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -192,9 +192,9 @@ func (a *Client) ListEnrollments(params *ListEnrollmentsParams, authInfo runtime
 /*
   RefreshEnrollment refreshes an enrollment record s expiration window
 
-  For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the `validFrom` value is not provided it will default to now. If the `validTo` value is not provided it will default to `validFrom`  the controller's configured enrollment timeout.
+  For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment.
 */
-func (a *Client) RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentCreated, error) {
+func (a *Client) RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewRefreshEnrollmentParams()
@@ -220,7 +220,7 @@ func (a *Client) RefreshEnrollment(params *RefreshEnrollmentParams, authInfo run
 	if err != nil {
 		return nil, err
 	}
-	success, ok := result.(*RefreshEnrollmentCreated)
+	success, ok := result.(*RefreshEnrollmentOK)
 	if ok {
 		return success, nil
 	}

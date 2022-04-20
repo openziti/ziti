@@ -43,24 +43,17 @@ import (
 // swagger:model enrollmentRefresh
 type EnrollmentRefresh struct {
 
-	// valid from
+	// expires at
+	// Required: true
 	// Format: date-time
-	ValidFrom strfmt.DateTime `json:"validFrom,omitempty"`
-
-	// valid to
-	// Format: date-time
-	ValidTo strfmt.DateTime `json:"validTo,omitempty"`
+	ExpiresAt *strfmt.DateTime `json:"expiresAt"`
 }
 
 // Validate validates this enrollment refresh
 func (m *EnrollmentRefresh) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateValidFrom(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateValidTo(formats); err != nil {
+	if err := m.validateExpiresAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -70,24 +63,13 @@ func (m *EnrollmentRefresh) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *EnrollmentRefresh) validateValidFrom(formats strfmt.Registry) error {
-	if swag.IsZero(m.ValidFrom) { // not required
-		return nil
-	}
+func (m *EnrollmentRefresh) validateExpiresAt(formats strfmt.Registry) error {
 
-	if err := validate.FormatOf("validFrom", "body", "date-time", m.ValidFrom.String(), formats); err != nil {
+	if err := validate.Required("expiresAt", "body", m.ExpiresAt); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (m *EnrollmentRefresh) validateValidTo(formats strfmt.Registry) error {
-	if swag.IsZero(m.ValidTo) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("validTo", "body", "date-time", m.ValidTo.String(), formats); err != nil {
+	if err := validate.FormatOf("expiresAt", "body", "date-time", m.ExpiresAt.String(), formats); err != nil {
 		return err
 	}
 

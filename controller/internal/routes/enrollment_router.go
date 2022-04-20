@@ -22,6 +22,9 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/enrollment"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
+	"time"
 )
 
 func init() {
@@ -52,6 +55,12 @@ func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
 	ae.ManagementApi.EnrollmentListEnrollmentsHandler = enrollment.ListEnrollmentsHandlerFunc(func(params enrollment.ListEnrollmentsParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.List, params.HTTPRequest, "", "", permissions.IsAdmin())
 	})
+
+	ae.ManagementApi.EnrollmentRefreshEnrollmentHandler = enrollment.RefreshEnrollmentHandlerFunc(func(params enrollment.RefreshEnrollmentParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.Refresh(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
 }
 
 func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -64,4 +73,29 @@ func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	DeleteWithHandler(rc, ae.Handlers.Enrollment)
+}
+
+func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, params enrollment.RefreshEnrollmentParams) {
+	id, err := rc.GetEntityId()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if id == "" {
+		rc.RespondWithError(errors.New("entity id missing"))
+		return
+	}
+
+	if err := ae.Handlers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt)); err != nil {
+		if fe, ok := err.(*errorz.FieldError); ok {
+			rc.RespondWithFieldError(fe)
+			return
+		}
+		rc.RespondWithError(err)
+		return
+	}
+
+	rc.RespondWithEmptyOk()
 }

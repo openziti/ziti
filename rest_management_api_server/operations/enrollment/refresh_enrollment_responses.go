@@ -37,14 +37,14 @@ import (
 	"github.com/openziti/edge/rest_model"
 )
 
-// RefreshEnrollmentCreatedCode is the HTTP code returned for type RefreshEnrollmentCreated
-const RefreshEnrollmentCreatedCode int = 201
+// RefreshEnrollmentOKCode is the HTTP code returned for type RefreshEnrollmentOK
+const RefreshEnrollmentOKCode int = 200
 
-/*RefreshEnrollmentCreated The create request was successful and the resource has been added at the following location
+/*RefreshEnrollmentOK The create request was successful and the resource has been added at the following location
 
-swagger:response refreshEnrollmentCreated
+swagger:response refreshEnrollmentOK
 */
-type RefreshEnrollmentCreated struct {
+type RefreshEnrollmentOK struct {
 
 	/*
 	  In: Body
@@ -52,27 +52,27 @@ type RefreshEnrollmentCreated struct {
 	Payload *rest_model.CreateEnvelope `json:"body,omitempty"`
 }
 
-// NewRefreshEnrollmentCreated creates RefreshEnrollmentCreated with default headers values
-func NewRefreshEnrollmentCreated() *RefreshEnrollmentCreated {
+// NewRefreshEnrollmentOK creates RefreshEnrollmentOK with default headers values
+func NewRefreshEnrollmentOK() *RefreshEnrollmentOK {
 
-	return &RefreshEnrollmentCreated{}
+	return &RefreshEnrollmentOK{}
 }
 
-// WithPayload adds the payload to the refresh enrollment created response
-func (o *RefreshEnrollmentCreated) WithPayload(payload *rest_model.CreateEnvelope) *RefreshEnrollmentCreated {
+// WithPayload adds the payload to the refresh enrollment o k response
+func (o *RefreshEnrollmentOK) WithPayload(payload *rest_model.CreateEnvelope) *RefreshEnrollmentOK {
 	o.Payload = payload
 	return o
 }
 
-// SetPayload sets the payload to the refresh enrollment created response
-func (o *RefreshEnrollmentCreated) SetPayload(payload *rest_model.CreateEnvelope) {
+// SetPayload sets the payload to the refresh enrollment o k response
+func (o *RefreshEnrollmentOK) SetPayload(payload *rest_model.CreateEnvelope) {
 	o.Payload = payload
 }
 
 // WriteResponse to the client
-func (o *RefreshEnrollmentCreated) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+func (o *RefreshEnrollmentOK) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
 
-	rw.WriteHeader(201)
+	rw.WriteHeader(200)
 	if o.Payload != nil {
 		payload := o.Payload
 		if err := producer.Produce(rw, payload); err != nil {

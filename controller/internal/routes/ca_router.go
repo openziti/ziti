@@ -29,8 +29,8 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/certificate_authority"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"
 )

@@ -22,9 +22,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -46,8 +46,14 @@ type Enrollment struct {
 }
 
 func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
-	now := time.Now()
-	expiresAt := now.Add(env.GetConfig().Enrollment.EdgeIdentity.Duration)
+	expiresAt := time.Now().Add(env.GetConfig().Enrollment.EdgeIdentity.Duration).UTC()
+	return entity.FillJwtInfoWithExpiresAt(env, subject, expiresAt)
+}
+
+func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expiresAt time.Time) error {
+	now := time.Now().UTC()
+	expiresAt = expiresAt.UTC()
+
 	entity.IssuedAt = &now
 	entity.ExpiresAt = &expiresAt
 
@@ -79,7 +85,10 @@ func (entity *Enrollment) FillJwtInfo(env Env, subject string) error {
 		return err
 	}
 
+	fmt.Printf("\nOld2: %s\n", entity.Jwt)
+	fmt.Printf("New2: %s\n", signedJwt)
 	entity.Jwt = signedJwt
+	fmt.Printf("New2: %s\n", entity.Jwt)
 
 	return nil
 }
