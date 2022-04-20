@@ -99,4 +99,5 @@ const (
 	ZitiEdgeCtrlAdvertisedHostPortVarDescription = "Host and port of the Ziti Edge Controller API"
 	ZitiEdgeCtrlAdvertisedPortVarName            = "ZITI_EDGE_CONTROLLER_PORT"
 	ZitiEdgeCtrlAdvertisedPortVarDescription     = "The advertised port of the edge controller"
+	ExternalDNSVarName                           = "EXTERNAL_DNS"
 )

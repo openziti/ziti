@@ -496,9 +496,6 @@ function ziti_expressConfiguration {
 
   if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
     echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
-  elif [[ "${EXTERNAL_DNS-}" != "" ]]; then
-    export ZITI_EDGE_ROUTER_RAWNAME="${EXTERNAL_DNS}"
-    echo "ZITI_EDGE_ROUTER_RAWNAME set to EXTERNAL_DNS: $ZITI_EDGE_ROUTER_RAWNAME"
   else
     ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"
   fi
