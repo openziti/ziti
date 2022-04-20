@@ -85,8 +85,8 @@ func (buffer *LinkReceiveBuffer) getLastBufferSizeSent() uint32 {
 	return atomic.LoadUint32(&buffer.lastBufferSizeSent)
 }
 
-func (buffer *LinkReceiveBuffer) Inspect() inspect.XgressRecvBufferDetail {
-	return inspect.XgressRecvBufferDetail{
+func (buffer *LinkReceiveBuffer) Inspect() *inspect.XgressRecvBufferDetail {
+	return &inspect.XgressRecvBufferDetail{
 		Size:         buffer.Size(),
 		LastSizeSent: buffer.getLastBufferSizeSent(),
 	}

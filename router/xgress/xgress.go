@@ -587,7 +587,7 @@ func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 		Address:             string(self.address),
 		Originator:          self.originator.String(),
 		TimeSinceLastLinkRx: timeSinceLastRxFromLink.String(),
-		SendBufferDetail:    *self.payloadBuffer.Inspect(),
+		SendBufferDetail:    self.payloadBuffer.Inspect(),
 		RecvBufferDetail:    self.linkRxBuffer.Inspect(),
 	}
 

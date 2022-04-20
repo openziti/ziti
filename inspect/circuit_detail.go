@@ -24,11 +24,11 @@ type CircuitInspectDetail struct {
 }
 
 type XgressDetail struct {
-	Address             string                 `json:"address"`
-	Originator          string                 `json:"originator"`
-	TimeSinceLastLinkRx string                 `json:"timeSinceLastLinkRx"`
-	SendBufferDetail    XgressSendBufferDetail `json:"sendBufferDetail"`
-	RecvBufferDetail    XgressRecvBufferDetail `json:"recvBufferDetail"`
+	Address             string                  `json:"address"`
+	Originator          string                  `json:"originator"`
+	TimeSinceLastLinkRx string                  `json:"timeSinceLastLinkRx"`
+	SendBufferDetail    *XgressSendBufferDetail `json:"sendBufferDetail"`
+	RecvBufferDetail    *XgressRecvBufferDetail `json:"recvBufferDetail"`
 }
 
 type XgressSendBufferDetail struct {
