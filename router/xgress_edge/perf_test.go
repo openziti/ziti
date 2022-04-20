@@ -4,6 +4,7 @@ import (
 	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_xgress"
@@ -37,7 +38,10 @@ type mirrorLink struct {
 	acks chan *xgress.Acknowledgement
 }
 
-func (link *mirrorLink) Inspect() map[string]interface{} {
+func (link *mirrorLink) InspectCircuit(circuitDetail *inspect.CircuitInspectDetail) {
+}
+
+func (link *mirrorLink) InspectLink() *inspect.LinkInspectDetail {
 	return nil
 }
 
