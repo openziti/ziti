@@ -18,6 +18,7 @@ package xlink_transport
 
 import (
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -91,12 +92,16 @@ func (self *splitImpl) HandleCloseNotification(f func()) {
 	}
 }
 
-func (self *splitImpl) Inspect() map[string]interface{} {
-	return map[string]interface{}{
-		"type":     "link",
-		"split":    true,
-		"id":       self.Id().Token,
-		"dest":     self.DestinationId(),
-		"protocol": self.LinkProtocol(),
+func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
+	detail.LinkDetails[self.id.Token] = self.InspectLink()
+}
+
+func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
+	return &inspect.LinkInspectDetail{
+		Id:          self.Id().Token,
+		Split:       true,
+		Protocol:    self.LinkProtocol(),
+		Dest:        self.DestinationId(),
+		DestVersion: self.DestVersion(),
 	}
 }

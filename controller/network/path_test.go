@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/stretchr/testify/require"
 	"runtime"
 	"testing"
 	"time"
@@ -570,4 +571,69 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	req.Len(path, 0)
 
 	req.Equal(int64(0), cost)
+}
+
+func TestRouterCost(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := require.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 10, true)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 100, false)
+	network.Routers.markConnected(r1)
+
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 200, false)
+	network.Routers.markConnected(r2)
+
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 20, true)
+	network.Routers.markConnected(r3)
+
+	newTestLink(network, "l0", r0, r1)
+	newTestLink(network, "l1", r0, r2)
+	newTestLink(network, "l2", r1, r3)
+	newTestLink(network, "l3", r2, r3)
+
+	path, cost, err := network.shortestPath(r0, r3)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Len(path, 3)
+	req.Equal("r0", path[0].Id)
+	req.Equal("r1", path[1].Id)
+	req.Equal("r3", path[2].Id)
+
+	req.Equal(int64(122), cost)
+
+	r1.Cost = 300
+
+	path, cost, err = network.shortestPath(r0, r3)
+	req.NoError(err)
+	req.NotNil(t, path)
+	req.Len(path, 3)
+	req.Equal("r0", path[0].Id)
+	req.Equal("r2", path[1].Id)
+	req.Equal("r3", path[2].Id)
+
+	req.Equal(int64(222), cost)
+}
+
+func newTestLink(network *Network, id string, srcR, destR *Router) *Link {
+	l := newLink(id, "tls")
+	l.Src = srcR
+	l.Dst = destR
+	l.addState(newLinkState(Connected))
+	network.linkController.add(l)
+	return l
 }

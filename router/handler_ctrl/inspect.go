@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xlink"
@@ -85,14 +86,9 @@ func (context *inspectRequestContext) processLocal() {
 		if strings.ToLower(lc) == "stackdump" {
 			context.appendValue(requested, debugz.GenerateStack())
 		} else if strings.ToLower(lc) == "links" {
-			var result []*linkInspectResult
+			result := &inspect.LinksInspectResult{}
 			for link := range context.handler.xlinkRegistry.Iter() {
-				result = append(result, &linkInspectResult{
-					Id:          link.Id().Token,
-					Protocol:    link.LinkProtocol(),
-					Dest:        link.DestinationId(),
-					DestVersion: link.DestVersion(),
-				})
+				result.Links = append(result.Links, link.InspectLink())
 			}
 			js, err := json.Marshal(result)
 			if err != nil {
@@ -139,11 +135,4 @@ func (context *inspectRequestContext) appendValue(name string, value string) {
 func (context *inspectRequestContext) appendError(err string) {
 	context.response.Success = false
 	context.response.Errors = append(context.response.Errors, err)
-}
-
-type linkInspectResult struct {
-	Id          string `json:"id"`
-	Protocol    string `json:"protocol"`
-	Dest        string `json:"dest"`
-	DestVersion string `json:"destVersion"`
 }

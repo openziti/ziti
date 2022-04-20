@@ -33,27 +33,26 @@ func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.Bind
 }
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
-	network := bindHandler.network
+	binding.AddTypedReceiveHandler(newInspectHandler(bindHandler.network))
+	binding.AddTypedReceiveHandler(newCreateRouterHandler(bindHandler.network))
+	binding.AddTypedReceiveHandler(newListServicesHandler(bindHandler.network))
 
-	binding.AddTypedReceiveHandler(newCreateRouterHandler(network))
-	binding.AddTypedReceiveHandler(newListServicesHandler(network))
-
-	streamMetricHandler := newStreamMetricsHandler(network)
+	streamMetricHandler := newStreamMetricsHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(streamMetricHandler)
 	binding.AddCloseHandler(streamMetricHandler)
 
-	streamCircuitsHandler := newStreamCircuitsHandler(network)
+	streamCircuitsHandler := newStreamCircuitsHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(streamCircuitsHandler)
 	binding.AddCloseHandler(streamCircuitsHandler)
 
-	streamTracesHandler := newStreamTracesHandler(network)
+	streamTracesHandler := newStreamTracesHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(streamTracesHandler)
 	binding.AddCloseHandler(streamTracesHandler)
 
-	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(network))
+	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
 
-	traceDispatchWrapper := trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(network.GetAppId(), binding.GetChannel(), network.GetTraceController(), traceDispatchWrapper))
+	traceDispatchWrapper := trace.NewDispatchWrapper(bindHandler.network.GetEventDispatcher().Dispatch)
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController(), traceDispatchWrapper))
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts {

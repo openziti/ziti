@@ -20,7 +20,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
-	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
@@ -39,13 +38,7 @@ func (*streamCircuitsHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_StreamCircuitsRequestType)
 }
 
-func (handler *streamCircuitsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	request := &mgmt_pb.StreamCircuitsRequest{}
-	if err := proto.Unmarshal(msg.Body, request); err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
-		return
-	}
-
+func (handler *streamCircuitsHandler) HandleReceive(_ *channel.Message, ch channel.Channel) {
 	circuitsStreamHandler := &CircuitsStreamHandler{ch: ch}
 	handler.streamHandlers = append(handler.streamHandlers, circuitsStreamHandler)
 	events.AddCircuitEventHandler(circuitsStreamHandler)

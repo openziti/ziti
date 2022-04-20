@@ -18,6 +18,7 @@ package forwarder
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
@@ -44,7 +45,7 @@ type Destination interface {
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
-	Inspect() map[string]interface{}
+	InspectCircuit(detail *inspect.CircuitInspectDetail)
 }
 
 type XgressDestination interface {
@@ -282,11 +283,13 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 	return nil
 }
 
-func (forwarder *Forwarder) InspectCircuit(circuitId string) *CircuitReport {
+func (forwarder *Forwarder) InspectCircuit(circuitId string) *inspect.CircuitInspectDetail {
 	if val, found := forwarder.circuits.circuits.Get(circuitId); found {
-		result := &CircuitReport{
-			Forwards:     map[string]string{},
-			Destinations: map[string]map[string]interface{}{},
+		result := &inspect.CircuitInspectDetail{
+			CircuitId:     circuitId,
+			Forwards:      map[string]string{},
+			XgressDetails: map[string]*inspect.XgressDetail{},
+			LinkDetails:   map[string]*inspect.LinkInspectDetail{},
 		}
 
 		ft := val.(*forwardTable)
@@ -296,20 +299,10 @@ func (forwarder *Forwarder) InspectCircuit(circuitId string) *CircuitReport {
 
 		for _, addr := range result.Forwards {
 			if dest, _ := forwarder.destinations.getDestination(xgress.Address(addr)); dest != nil {
-				result.Destinations[addr] = dest.Inspect()
-			} else {
-				result.Destinations[addr] = map[string]interface{}{
-					"type": "missing",
-					"addr": string(addr),
-				}
+				dest.InspectCircuit(result)
 			}
 		}
 		return result
 	}
 	return nil
-}
-
-type CircuitReport struct {
-	Forwards     map[string]string
-	Destinations map[string]map[string]interface{}
 }
