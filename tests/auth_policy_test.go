@@ -30,18 +30,6 @@ import (
 	"time"
 )
 
-func S(s string) *string {
-	return &s
-}
-
-func B(b bool) *bool {
-	return &b
-}
-
-func I(i int64) *int64 {
-	return &i
-}
-
 func Test_AuthPolicies(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()

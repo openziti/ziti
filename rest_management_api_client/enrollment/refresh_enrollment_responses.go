@@ -47,8 +47,8 @@ type RefreshEnrollmentReader struct {
 // ReadResponse reads a server response into the received o.
 func (o *RefreshEnrollmentReader) ReadResponse(response runtime.ClientResponse, consumer runtime.Consumer) (interface{}, error) {
 	switch response.Code() {
-	case 201:
-		result := NewRefreshEnrollmentCreated()
+	case 200:
+		result := NewRefreshEnrollmentOK()
 		if err := result.readResponse(response, consumer, o.formats); err != nil {
 			return nil, err
 		}
@@ -70,27 +70,27 @@ func (o *RefreshEnrollmentReader) ReadResponse(response runtime.ClientResponse, 
 	}
 }
 
-// NewRefreshEnrollmentCreated creates a RefreshEnrollmentCreated with default headers values
-func NewRefreshEnrollmentCreated() *RefreshEnrollmentCreated {
-	return &RefreshEnrollmentCreated{}
+// NewRefreshEnrollmentOK creates a RefreshEnrollmentOK with default headers values
+func NewRefreshEnrollmentOK() *RefreshEnrollmentOK {
+	return &RefreshEnrollmentOK{}
 }
 
-/* RefreshEnrollmentCreated describes a response with status code 201, with default header values.
+/* RefreshEnrollmentOK describes a response with status code 200, with default header values.
 
 The create request was successful and the resource has been added at the following location
 */
-type RefreshEnrollmentCreated struct {
+type RefreshEnrollmentOK struct {
 	Payload *rest_model.CreateEnvelope
 }
 
-func (o *RefreshEnrollmentCreated) Error() string {
-	return fmt.Sprintf("[POST /enrollments/{id}/refresh][%d] refreshEnrollmentCreated  %+v", 201, o.Payload)
+func (o *RefreshEnrollmentOK) Error() string {
+	return fmt.Sprintf("[POST /enrollments/{id}/refresh][%d] refreshEnrollmentOK  %+v", 200, o.Payload)
 }
-func (o *RefreshEnrollmentCreated) GetPayload() *rest_model.CreateEnvelope {
+func (o *RefreshEnrollmentOK) GetPayload() *rest_model.CreateEnvelope {
 	return o.Payload
 }
 
-func (o *RefreshEnrollmentCreated) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+func (o *RefreshEnrollmentOK) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.CreateEnvelope)
 

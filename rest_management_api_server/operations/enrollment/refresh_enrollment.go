@@ -57,7 +57,7 @@ func NewRefreshEnrollment(ctx *middleware.Context, handler RefreshEnrollmentHand
 
 Refreshes an enrollment record's expiration window
 
-For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the `validFrom` value is not provided it will default to now. If the `validTo` value is not provided it will default to `validFrom`  the controller's configured enrollment timeout.
+For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment.
 
 */
 type RefreshEnrollment struct {

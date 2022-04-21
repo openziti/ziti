@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/eid"
@@ -88,7 +89,29 @@ func init() {
 	transport.AddAddressParser(tcp.AddressParser{})
 }
 
+func S(s string) *string {
+	return &s
+}
+
+func B(b bool) *bool {
+	return &b
+}
+
+func I(i int64) *int64 {
+	return &i
+}
+
+func T(t time.Time) *time.Time {
+	return &t
+}
+
+func ST(t time.Time) *strfmt.DateTime {
+	st := strfmt.DateTime(t)
+	return &st
+}
+
 type TestContext struct {
+	*require.Assertions
 	ApiHost                string
 	AdminAuthenticator     *updbAuthenticator
 	AdminManagementSession *session
@@ -125,6 +148,7 @@ func NewTestContext(t *testing.T) *TestContext {
 		LogLevel: os.Getenv("ZITI_TEST_LOG_LEVEL"),
 		Req:      require.New(t),
 	}
+	ret.Assertions = ret.Req
 	ret.testContextChanged(t)
 
 	return ret
@@ -140,6 +164,7 @@ func GetTestContext() *TestContext {
 func (ctx *TestContext) testContextChanged(t *testing.T) {
 	ctx.testing = t
 	ctx.Req = require.New(t)
+	ctx.Assertions = ctx.Req
 }
 
 func (ctx *TestContext) T() *testing.T {

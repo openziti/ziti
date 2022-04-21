@@ -7543,7 +7543,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the ` + "`" + `validFrom` + "`" + ` value is not provided it will default to now. If the ` + "`" + `validTo` + "`" + ` value is not provided it will default to ` + "`" + `validFrom` + "`" + `  the controller's configured enrollment timeout.",
+        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment.",
         "tags": [
           "Enrollment"
         ],
@@ -7561,7 +7561,7 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
+          "200": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -18989,12 +18989,11 @@ func init() {
     },
     "enrollmentRefresh": {
       "type": "object",
+      "required": [
+        "expiresAt"
+      ],
       "properties": {
-        "validFrom": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "validTo": {
+        "expiresAt": {
           "type": "string",
           "format": "date-time"
         }
@@ -30301,7 +30300,7 @@ func init() {
             "ztSession": []
           }
         ],
-        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment. If the ` + "`" + `validFrom` + "`" + ` value is not provided it will default to now. If the ` + "`" + `validTo` + "`" + ` value is not provided it will default to ` + "`" + `validFrom` + "`" + `  the controller's configured enrollment timeout.",
+        "description": "For expired or unexpired enrollments, reset the expiration window. A new JWT will be generated and must be used for the enrollment.",
         "tags": [
           "Enrollment"
         ],
@@ -30319,7 +30318,7 @@ func init() {
           }
         ],
         "responses": {
-          "201": {
+          "200": {
             "description": "The create request was successful and the resource has been added at the following location",
             "schema": {
               "$ref": "#/definitions/createEnvelope"
@@ -41847,12 +41846,11 @@ func init() {
     },
     "enrollmentRefresh": {
       "type": "object",
+      "required": [
+        "expiresAt"
+      ],
       "properties": {
-        "validFrom": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "validTo": {
+        "expiresAt": {
           "type": "string",
           "format": "date-time"
         }
