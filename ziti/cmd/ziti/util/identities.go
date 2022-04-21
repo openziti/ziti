@@ -54,6 +54,7 @@ type RestClientIdentity interface {
 	GetBaseUrlForApi(api API) (string, error)
 	NewEdgeManagementClient(clientOpts ClientOpts) (*rest_management_api_client.ZitiEdgeManagement, error)
 	NewFabricManagementClient(clientOpts ClientOpts) (*fabric_rest_client.ZitiFabric, error)
+	NewWsHeader() http.Header
 }
 
 func NewRequest(restClientIdentity RestClientIdentity, timeoutInSeconds int, verbose bool) (*resty.Request, error) {
@@ -160,6 +161,12 @@ func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientO
 	return fabric_rest_client.New(clientRuntime, nil), nil
 }
 
+func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
+	result := http.Header{}
+	result.Set(constants.ZitiSession, self.Token)
+	return result
+}
+
 type RestClientFabricIdentity struct {
 	Url        string `json:"url"`
 	CaCert     string `json:"caCert,omitempty"`
@@ -225,6 +232,10 @@ func (self *RestClientFabricIdentity) NewFabricManagementClient(clientOpts Clien
 	clientRuntime := httptransport.NewWithClient(parsedHost.Host, fabric_rest_client.DefaultBasePath, fabric_rest_client.DefaultSchemes, httpClient)
 
 	return fabric_rest_client.New(clientRuntime, nil), nil
+}
+
+func (self *RestClientFabricIdentity) NewWsHeader() http.Header {
+	return http.Header{}
 }
 
 func LoadRestClientConfig() (*RestClientConfig, string, error) {

@@ -78,6 +78,7 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/DataDog/datadog-go v3.2.0+incompatible/go.mod h1:LButxg5PwREeZtORoXG3tL4fMGNddJ+vMq1mwgfaqoQ=
 github.com/Jeffail/gabs v1.4.0 h1://5fYRRTq1edjfIrQGvdkcd22pkYUrHZ5YC/H2GJVAo=
 github.com/Jeffail/gabs v1.4.0/go.mod h1:6xMvQMK4k33lb7GUUpaAPh6nKMmemQeg5d4gn7/bOXc=
+github.com/Jeffail/gabs/v2 v2.6.1 h1:wwbE6nTQTwIMsMxzi6XFQQYRZ6wDc1mSdxoAN+9U4Gk=
 github.com/Jeffail/gabs/v2 v2.6.1/go.mod h1:xCn81vdHKxFUuWWAaD5jCTQDNPBMh5pPs9IJ+NcziBI=
 github.com/MakeNowJust/heredoc v1.0.0 h1:cXCdzVdstXyiTqTvfqk9SDHpKNjxuom+DOlyEeQ4pzQ=
 github.com/MakeNowJust/heredoc v1.0.0/go.mod h1:mG5amYoWBHf8vpLOuehzbGGw0EHxpZZ6lCpQ4fNJ8LE=
@@ -818,8 +819,8 @@ github.com/openziti/channel v0.18.28 h1:LTsp+ywYp9uIr0OIPzeUBYoAIKA70CU0QsJqXa+Y
 github.com/openziti/channel v0.18.28/go.mod h1:YDGdH2I8tJ76WQgHTprgHX6dV9MBlrc1nOYpMY8h8+A=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.21.193 h1:LEqyMpAIP1qQWwcYpMLmwVcwhALVFQ4WjQxVx25MpJs=
-github.com/openziti/edge v0.21.193/go.mod h1:+lFaGB00kayZir8egSqJRJMB4Cp6174twkM3lx4X7ZA=
+github.com/openziti/edge v0.21.194 h1:aU9qRRFoptarh/gqhyE18h74Ok+VudE3bOM4LK+U/II=
+github.com/openziti/edge v0.21.194/go.mod h1:+lFaGB00kayZir8egSqJRJMB4Cp6174twkM3lx4X7ZA=
 github.com/openziti/fabric v0.17.105 h1:8gjvAHBDZuLLtaqkSux4rEvKPrifZSwj2Y7ILsgKYG0=
 github.com/openziti/fabric v0.17.105/go.mod h1:aWW8KTuitUrwpRo2d2IAXVip2L1+kgIbGjdT2sdTPtI=
 github.com/openziti/foundation v0.17.22 h1:zFfgNHdLocEcoBqtognpJnYsVQaTm28EwqMNjBw8avk=
