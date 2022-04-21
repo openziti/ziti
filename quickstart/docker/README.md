@@ -22,5 +22,5 @@ Build Docker Image For Publication
 2. 
 Push Docker Image to dockerhub
 ------------------
-1. source `./image/ziti-cli-functions.sh`
+1. `source ./image/ziti-cli-functions.sh`
 1. just run `./pushLatestDocker.sh`
