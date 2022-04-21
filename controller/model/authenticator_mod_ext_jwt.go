@@ -335,7 +335,7 @@ func (a *AuthModuleExtJwt) loadExistingSigners() {
 
 			certs := nfPem.PemStringToCertificates(signer.CertPem)
 
-			a.signers.Set(signer.Fingerprint, certs[0])
+			a.signers.Set(signer.Kid, certs[0])
 		}
 
 		return nil
