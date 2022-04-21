@@ -11,6 +11,7 @@
 * Bug Fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
 * Enhancement: External JWT Signer Issuer & Audience Validation
 * Enhancement: Add ability to define local interface binding for link and controller dial
+* Enhancement: `ziti db explore <ctrl.db>` command has been added to explore offline database files
 
 ## External JWT Signer Issuer & Audience Validation
 
