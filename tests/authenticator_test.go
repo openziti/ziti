@@ -329,45 +329,45 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			ctx.NotNil(session)
 			ctx.NotEmpty(session.token)
 		})
+	})
 
-		t.Run("can issue re-enroll request for a cert authenticator", func(t *testing.T) {
-			ctx.testContextChanged(t)
-			identityId, _ := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, eid.New())
+	t.Run("can issue re-enroll request for a cert authenticator", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		identityId, _ := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false, eid.New())
 
-			authenticatorList := &rest_model.ListAuthenticatorsEnvelope{}
-			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authenticatorList).Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode())
-			ctx.NotEmpty(authenticatorList.Data)
-			ctx.NotNil(authenticatorList.Data[0].ID)
+		authenticatorList := &rest_model.ListAuthenticatorsEnvelope{}
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(authenticatorList).Get(fmt.Sprintf(`/authenticators?filter=identity="%s"`, identityId))
+		ctx.NoError(err)
+		ctx.Equal(http.StatusOK, resp.StatusCode())
+		ctx.NotEmpty(authenticatorList.Data)
+		ctx.NotNil(authenticatorList.Data[0].ID)
 
-			reEnroll := &rest_model.ReEnroll{
-				ExpiresAt: ST(time.Now().Add(1 * time.Hour).UTC()),
-			}
-			enrollmentCreateEnvelope := &rest_model.CreateEnvelope{}
-			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(enrollmentCreateEnvelope).SetBody(reEnroll).Post("/authenticators/" + *authenticatorList.Data[0].ID + "/re-enroll")
-			ctx.NoError(err)
-			ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
-			ctx.NotNil(enrollmentCreateEnvelope.Data)
-			ctx.NotEmpty(enrollmentCreateEnvelope.Data.ID)
+		reEnroll := &rest_model.ReEnroll{
+			ExpiresAt: ST(time.Now().Add(1 * time.Hour).UTC()),
+		}
+		enrollmentCreateEnvelope := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(enrollmentCreateEnvelope).SetBody(reEnroll).Post("/authenticators/" + *authenticatorList.Data[0].ID + "/re-enroll")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(enrollmentCreateEnvelope.Data)
+		ctx.NotEmpty(enrollmentCreateEnvelope.Data.ID)
 
-			enrollmentDetailEnvelope := &rest_model.DetailEnrollmentEnvelope{}
-			resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(enrollmentDetailEnvelope).Get("/enrollments/" + enrollmentCreateEnvelope.Data.ID)
-			ctx.NoError(err)
-			ctx.Equal(http.StatusOK, resp.StatusCode())
-			ctx.NotNil(enrollmentDetailEnvelope.Data)
-			ctx.NotEmpty(enrollmentDetailEnvelope.Data.JWT)
+		enrollmentDetailEnvelope := &rest_model.DetailEnrollmentEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(enrollmentDetailEnvelope).Get("/enrollments/" + enrollmentCreateEnvelope.Data.ID)
+		ctx.NoError(err)
+		ctx.Equal(http.StatusOK, resp.StatusCode())
+		ctx.NotNil(enrollmentDetailEnvelope.Data)
+		ctx.NotEmpty(enrollmentDetailEnvelope.Data.JWT)
 
-			t.Run("can re-enroll with a new password", func(t *testing.T) {
-				newCertAuthenticator := ctx.completeOttEnrollment(identityId)
+		t.Run("can re-enroll with a new password", func(t *testing.T) {
+			newCertAuthenticator := ctx.completeOttEnrollment(identityId)
 
-				t.Run("can authenticate with new certificate", func(t *testing.T) {
-					session, err := newCertAuthenticator.AuthenticateClientApi(ctx)
+			t.Run("can authenticate with new certificate", func(t *testing.T) {
+				session, err := newCertAuthenticator.AuthenticateClientApi(ctx)
 
-					ctx.NoError(err)
-					ctx.NotNil(session)
-					ctx.NotEmpty(session.token)
-				})
+				ctx.NoError(err)
+				ctx.NotNil(session)
+				ctx.NotEmpty(session.token)
 			})
 		})
 	})
