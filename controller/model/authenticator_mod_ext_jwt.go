@@ -301,6 +301,10 @@ func (a *AuthModuleExtJwt) onExternalSignerCreateOrUpdate(args ...interface{}) {
 		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
 	}
 
+	a.addSigner(signer)
+}
+
+func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
 	certs := nfPem.PemStringToCertificates(signer.CertPem)
 
 	a.signers.Set(signer.Kid, &signerRecord{
@@ -333,9 +337,7 @@ func (a *AuthModuleExtJwt) loadExistingSigners() {
 				return err
 			}
 
-			certs := nfPem.PemStringToCertificates(signer.CertPem)
-
-			a.signers.Set(signer.Kid, certs[0])
+			a.addSigner(signer)
 		}
 
 		return nil
