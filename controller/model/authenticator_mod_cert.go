@@ -270,6 +270,11 @@ func getAuthPolicyByIdentityId(env Env, authMethod string, authenticatorId strin
 		return nil, nil, apierror.NewInvalidAuth()
 	}
 
+	if identity == nil {
+		logger.Errorf("identity not found by identityId")
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
 	logger = logger.WithField("authPolicyId", identity.AuthPolicyId)
 
 	authPolicy, err := env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
@@ -291,6 +296,11 @@ func getAuthPolicyByExternalId(env Env, authMethod string, authenticatorId strin
 
 	if err != nil {
 		logger.WithError(err).Errorf("encountered error during %s auth when looking up authenticator", authMethod)
+		return nil, nil, apierror.NewInvalidAuth()
+	}
+
+	if identity == nil {
+		logger.Errorf("identity not found by externalId")
 		return nil, nil, apierror.NewInvalidAuth()
 	}
 
