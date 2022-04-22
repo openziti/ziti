@@ -17,6 +17,7 @@
 * Enhancement: Most list commands have been updated with tabular output
 * Enhancement: `ziti edge show` is now available with subcommands `config-definition` and `config-type-schema`
 * Enhancement: `ziti edge update config-type` is now available
+* Enhancement: `ziti edge create|update identity` now supports `--external-id`
 * Bug fix: Fixes an issue where the router config would use hostname instead of the DNS name
 
 ## External JWT Signer Issuer & Audience Validation
