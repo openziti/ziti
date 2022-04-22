@@ -110,12 +110,14 @@ func (self *echoServer) run(*cobra.Command, []string) {
 	}
 
 	if self.healthCheckAddr != "" {
-		err := http.ListenAndServe(self.healthCheckAddr, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			writer.WriteHeader(200)
-		}))
-		if err != nil {
-			log.WithError(err).Fatalf("unable to start health check endpoint on addr [%v]", self.healthCheckAddr)
-		}
+		go func() {
+			err := http.ListenAndServe(self.healthCheckAddr, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.WriteHeader(200)
+			}))
+			if err != nil {
+				log.WithError(err).Fatalf("unable to start health check endpoint on addr [%v]", self.healthCheckAddr)
+			}
+		}()
 	}
 
 	if self.port > 0 {

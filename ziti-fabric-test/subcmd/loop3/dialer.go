@@ -50,7 +50,7 @@ func newDialerCmd() *dialerCmd {
 	result := &dialerCmd{
 		cmd: &cobra.Command{
 			Use:   "dialer <scenarioFile>",
-			Short: "Start loop2 dialer",
+			Short: "Start loop3 dialer",
 			Args:  cobra.ExactArgs(1),
 		},
 	}

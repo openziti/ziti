@@ -8,9 +8,15 @@
 * Enhancement: Allow for version override using the ziti quickstart CLI script
 * Change: Renamed `pushDevBuild.sh` to `buildLocalDev.sh`, the script used for building a local dev version of the docker quickstart image
 * Bug fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
-* Bug Fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
+* Bug fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
 * Enhancement: External JWT Signer Issuer & Audience Validation
 * Enhancement: Add ability to define local interface binding for link and controller dial
+* Bug fix: Edge Management REST API Doc shows Edge Client REST API Doc
+* Enhancement: `ziti db explore <ctrl.db>` command has been added to explore offline database files
+* Enhancement: The mgmt API is now available via websocket. The stream commands are now available on `ziti fabric`
+* Enhancement: Most list commands have been updated with tabular output
+* Enhancement: `ziti edge show` is now available with subcommands `config-definition` and `config-type-schema`
+* Enhancement: `ziti edge update config-type` is now available
 
 ## External JWT Signer Issuer & Audience Validation
 
