@@ -44,6 +44,7 @@ type createIdentityOptions struct {
 	servicePrecedences       map[string]string
 	tags                     map[string]string
 	appData                  map[string]string
+	externalId               string
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
@@ -88,6 +89,7 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().BoolVarP(&options.isAdmin, "admin", "A", false, "Give the new identity admin privileges")
 	cmd.Flags().StringVar(&options.username, "updb", "", "username to give the identity, will create a UPDB enrollment")
+	cmd.Flags().StringVar(&options.externalId, "external-id", "e", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new identity")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the identity")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
@@ -117,6 +119,10 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
 	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.appData, "appData")
+
+	if o.externalId != "" {
+		api.SetJSONValue(entityData, o.externalId, "externalId")
+	}
 
 	if o.defaultHostingPrecedence != "" {
 		prec, err := normalizeAndValidatePrecedence(o.defaultHostingPrecedence)
