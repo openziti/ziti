@@ -42,6 +42,7 @@ type updateIdentityOptions struct {
 	servicePrecedences       map[string]string
 	tags                     map[string]string
 	appData                  map[string]string
+	externalId               string
 }
 
 func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -69,6 +70,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
@@ -92,6 +94,11 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 
 	if o.Cmd.Flags().Changed("name") {
 		api.SetJSONValue(entityData, o.name, "name")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("external-id") {
+		api.SetJSONValue(entityData, o.externalId, "externalId")
 		change = true
 	}
 
