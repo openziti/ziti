@@ -18,8 +18,8 @@ jobs:
     steps:
     - uses: openziti/ziti-webhook-action@main
       env:
-        ZITI_MATTERMOST_IDENTITY: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-      if: ${{ github.actor!= 'dependabot[bot]' && github.repository_owner == 'openziti' && github.event_name != 'pull_request' && env.ZITI_MATTERMOST_IDENTITY != null }}
+        ZITI_MATTERMOST_WEBHOOK_URL: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
+      if: ${{ github.actor!= 'dependabot[bot]' && github.repository_owner == 'openziti' && env.ZITI_MATTERMOST_WEBHOOK_URL != null }}
       with:
         ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
         webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
