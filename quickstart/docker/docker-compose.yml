@@ -3,7 +3,7 @@ services:
   ziti-controller:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     env_file:
-      - ./default.env
+      - ./.env
     ports:
       - "1280:1280"
     networks:

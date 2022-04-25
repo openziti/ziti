@@ -17,9 +17,9 @@
 package edge
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"io"
 	"net/url"
 	"reflect"
@@ -165,7 +165,6 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 	cmd := &cobra.Command{
 		Use:     entityType + " <filter>?",
 		Short:   "lists " + entityType + " managed by the Ziti Edge Controller",
-		Long:    "lists " + entityType + " managed by the Ziti Edge Controller",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: aliases,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -420,10 +419,12 @@ func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, paging
 		return nil
 	}
 
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Edge Router Roles", "Identity Roles"})
 
+	for _, entity := range children {
+		wrapper := api.Wrap(entity)
 		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
@@ -434,12 +435,14 @@ func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, paging
 			return err
 		}
 
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(edgeRouterRoles, " "),
+			strings.Join(identityRoles, " "),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -456,6 +459,10 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Identity", "Cost", "Precedence", "Dynamic Cost"})
+
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
 		service := entity.Path("service.name").Data().(string)
@@ -466,13 +473,10 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 		staticCost := entity.Path("cost").Data().(float64)
 		precedence := entity.Path("precedence").Data().(string)
 		dynamicCost := entity.Path("dynamicCost").Data().(float64)
-		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    identity: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
-			id, service, router, binding, address, identity, staticCost, precedence, dynamicCost)
-		if err != nil {
-			return err
-		}
+
+		t.AppendRow(table.Row{id, service, router, binding, address, identity, staticCost, precedence, dynamicCost})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -540,17 +544,18 @@ func outputServiceConfigs(o *api.Options, children []*gabs.Container, pagingInfo
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"Service Name", "Config Name"})
+
 	for _, entity := range children {
-		service, _ := entity.Path("service").Data().(string)
-		serviceName, _ := mapIdToName("services", service, *o)
-		config, _ := entity.Path("config").Data().(string)
-		configName, _ := mapIdToName("configs", config, *o)
-		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
-		if err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("service.name"),
+			wrapper.String("config.name"),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -567,23 +572,30 @@ func outputServiceEdgeRouterPolicies(o *api.Options, children []*gabs.Container,
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Service Roles", "Edge Router Roles"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
-		if err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
 		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
+
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
 		if err != nil {
 			return err
 		}
+
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(serviceRoles, " "),
+			strings.Join(edgeRouterRoles, " "),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -600,31 +612,37 @@ func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInf
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Service Roles", "Identity Roles", "Posture Check Roles"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		policyType, _ := entity.Path("type").Data().(string)
+		wrapper := api.Wrap(entity)
+
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
+		if err != nil {
+			return err
+		}
 
 		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
 		}
 
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
-		if err != nil {
-			return err
-		}
 		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles")
 		if err != nil {
 			return err
 		}
 
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v posture check roles: %v\n", id, name, policyType, serviceRoles, identityRoles, postureCheckRoles)
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(serviceRoles, " "),
+			strings.Join(identityRoles, " "),
+			strings.Join(postureCheckRoles, " "),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -921,14 +939,19 @@ func runListConfigTypes(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Schema"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id:   %v    name: %v\n", id, name); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
@@ -945,20 +968,20 @@ func outputConfigs(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Config Type"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		configType, _ := entity.Path("configType.name").Data().(string)
-		data, _ := entity.Path("data").Data().(map[string]interface{})
-		formattedData, err := json.MarshalIndent(data, "      ", "    ")
-		if err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(o.Out, "id:   %v\nname: %v\ntype: %v\ndata: %v\n\n", id, name, configType, string(formattedData)); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.String("configType.name"),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
@@ -972,16 +995,21 @@ func runListApiSessions(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Token", "Identity Name"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		sessionToken, _ := entity.Path("token").Data().(string)
-		identityName, _ := entity.Path("identity.name").Data().(string)
-		if _, err = fmt.Fprintf(o.Out, "id: %v    token: %v    identity: %v\n", id, sessionToken, identityName); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("token"),
+			wrapper.String("identity.name"),
+		})
 	}
-	pagingInfo.Output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListSessions(o *api.Options) error {
@@ -995,17 +1023,22 @@ func runListSessions(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "API Session ID", "Service Name", "Type"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		sessionId, _ := entity.Path("apiSession.id").Data().(string)
-		serviceName, _ := entity.Path("service.name").Data().(string)
-		sessionType, _ := entity.Path("type").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("apiSession.id"),
+			wrapper.String("service.name"),
+			wrapper.String("type"),
+		})
 	}
-	pagingInfo.Output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListTransitRouters(o *api.Options) error {
@@ -1019,15 +1052,20 @@ func runListTransitRouters(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v\n", id, name); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+		})
 	}
-	pagingInfo.Output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListEdgeRouterRoleAttributes(o *api.Options) error {
@@ -1053,13 +1091,18 @@ func runListRoleAttributes(entityType string, o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"Role Attribute"})
+
 	for _, entity := range children {
-		if _, err := fmt.Fprintf(o.Out, "role-attribute: %v\n", entity.Data().(string)); err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			fmt.Sprintf("%v", entity.Data()),
+		})
 	}
-	pagingInfo.Output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListChilden(parentType, childType string, o *api.Options, outputF outputFunction) error {
@@ -1102,7 +1145,9 @@ func runListPostureChecks(o *api.Options) error {
 
 func runListSummary(o *api.Options) error {
 	jsonParsed, err := util.EdgeControllerList("summary", url.Values{}, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
-
+	if err != nil {
+		return err
+	}
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -1120,13 +1165,16 @@ func runListSummary(o *api.Options) error {
 
 	sort.Strings(keys)
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.SetColumnConfigs([]table.ColumnConfig{{Number: 2, Align: text.AlignRight}})
+	t.AppendHeader(table.Row{"Entity Type", "Count"})
+
 	for _, k := range keys {
 		v := children[k]
-		_, err = fmt.Fprintf(o.Out, "%v: %v\n", k, v.Data())
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{k, fmt.Sprintf("%v", v.Data())})
 	}
+	api.RenderTable(o, t, nil)
 
 	return nil
 }
@@ -1156,16 +1204,22 @@ func runListPostureCheckTypes(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Operating Systems"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
+		wrapper := api.Wrap(entity)
 		operatingSystems, _ := entity.Path("operatingSystems").Children()
 		osInfo := postureCheckOsToStrings(operatingSystems)
 
-		if _, err := fmt.Fprintf(o.Out, "id: %-8s    os: %s\n", id, strings.Join(osInfo, ",")); err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			strings.Join(osInfo, ","),
+		})
 	}
-	pagingInfo.Output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return err
 }
 

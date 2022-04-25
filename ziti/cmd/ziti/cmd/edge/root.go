@@ -49,6 +49,7 @@ func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *
 	cmd.AddCommand(enrollment.NewEnrollCommand())
 	cmd.AddCommand(newTraceCmd(out, errOut))
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
+	cmd.AddCommand(newShowCmd(out, errOut))
 
 	p := common.NewOptionsProvider(out, errOut)
 	for _, cmdF := range ExtraEdgeCommands {
