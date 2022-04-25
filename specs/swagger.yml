@@ -1545,7 +1545,7 @@ definitions:
       meta:
         $ref: '#/definitions/meta'
       data:
-        $ref: '#/definitions/linkList'
+        $ref: '#/definitions/circuitList'
   detailCircuitEnvelope:
     type: object
     required:

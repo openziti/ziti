@@ -1470,7 +1470,7 @@ func init() {
       ],
       "properties": {
         "data": {
-          "$ref": "#/definitions/linkList"
+          "$ref": "#/definitions/circuitList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
@@ -5562,7 +5562,7 @@ func init() {
       ],
       "properties": {
         "data": {
-          "$ref": "#/definitions/linkList"
+          "$ref": "#/definitions/circuitList"
         },
         "meta": {
           "$ref": "#/definitions/meta"
