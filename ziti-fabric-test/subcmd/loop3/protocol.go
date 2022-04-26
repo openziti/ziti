@@ -32,18 +32,24 @@ import (
 )
 
 type protocol struct {
-	test        *loop3_pb.Test
-	blocks      chan Block
-	rxSequence  uint64
-	rxPacing    time.Duration
-	rxMaxJitter time.Duration
-	peer        io.ReadWriteCloser
-	rxBlocks    chan Block
-	txCount     int32
-	rxCount     int32
-	lastRx      int64
-	latencies   chan *time.Time
-	errors      chan error
+	test         *loop3_pb.Test
+	blocks       chan Block
+	rxSequence   uint64
+	txPacing     time.Duration
+	txMaxJitter  time.Duration
+	txPauseEvery time.Duration
+	txPauseFor   time.Duration
+	rxPacing     time.Duration
+	rxMaxJitter  time.Duration
+	rxPauseEvery time.Duration
+	rxPauseFor   time.Duration
+	peer         io.ReadWriteCloser
+	rxBlocks     chan Block
+	txCount      int32
+	rxCount      int32
+	lastRx       int64
+	latencies    chan *time.Time
+	errors       chan error
 }
 
 var MagicHeader = []byte{0xCA, 0xFE, 0xF0, 0x0D}
@@ -86,17 +92,23 @@ func (p *protocol) run(test *loop3_pb.Test) error {
 		panic(errors.Errorf("unknown rx block type %v", test.RxBlockType))
 	}
 
-	rxPacing, err := time.ParseDuration(p.test.RxPacing)
-	if err != nil {
-		panic(err)
+	parseTime := func(val string) time.Duration {
+		t, err := time.ParseDuration(val)
+		if err != nil {
+			panic(err)
+		}
+		return t
 	}
-	p.rxPacing = rxPacing
 
-	rxMaxJitter, err := time.ParseDuration(p.test.RxMaxJitter)
-	if err != nil {
-		panic(err)
-	}
-	p.rxMaxJitter = rxMaxJitter
+	p.txPacing = parseTime(p.test.TxPacing)
+	p.txMaxJitter = parseTime(p.test.TxMaxJitter)
+	p.txPauseEvery = parseTime(p.test.TxPauseEvery)
+	p.txPauseFor = parseTime(p.test.TxPauseFor)
+
+	p.rxPacing = parseTime(p.test.RxPacing)
+	p.rxMaxJitter = parseTime(p.test.RxMaxJitter)
+	p.rxPauseEvery = parseTime(p.test.RxPauseEvery)
+	p.rxPauseFor = parseTime(p.test.RxPauseFor)
 
 	rxerDone := make(chan bool)
 	go p.rxer(rxerDone, rxBlock)
@@ -125,18 +137,23 @@ func (p *protocol) txer(done chan bool) {
 	defer log.Debug("complete")
 
 	var lastSend time.Time
+	lastPause := time.Now()
 	for p.txCount < p.test.TxRequests {
+		now := time.Now()
+		if p.txPauseEvery > 0 && now.Sub(lastPause) > p.txPauseEvery {
+			time.Sleep(p.txPauseFor)
+			lastPause = time.Now()
+		}
 		select {
 		case block := <-p.blocks:
 			if block != nil {
-				if p.test.TxPacing > 0 {
-					jitter := 0
-					if p.test.TxMaxJitter > 0 {
-						jitter = rand.Intn(int(p.test.TxMaxJitter))
+				if p.txPacing > 0 {
+					jitter := time.Duration(0)
+					if p.txMaxJitter > 0 {
+						jitter = time.Duration(rand.Intn(int(p.txMaxJitter)))
 					}
 
-					nextSend := lastSend.Add(time.Duration(int(p.test.TxPacing)+jitter) * time.Millisecond)
-					now := time.Now()
+					nextSend := lastSend.Add(p.txPacing + jitter)
 					if nextSend.After(now) {
 						time.Sleep(nextSend.Sub(now))
 						lastSend = nextSend
@@ -170,7 +187,13 @@ func (p *protocol) rxer(done chan bool, rxBlock func() (Block, error)) {
 	defer log.Debug("complete")
 
 	lastRx := time.Now()
+	lastPause := time.Now()
 	for p.rxCount < p.test.RxRequests {
+		now := time.Now()
+		if p.rxPauseEvery > 0 && now.Sub(lastPause) > p.rxPauseEvery {
+			time.Sleep(p.rxPauseFor)
+			lastPause = time.Now()
+		}
 		block, err := rxBlock()
 		if err != nil {
 			p.errors <- err

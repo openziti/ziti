@@ -1,5 +1,13 @@
 v: 3
 
+network:
+  # Sets router minimum cost. Defaults to 10
+  minRouterCost: 10
+
+  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
+  # Defaults to 1 minute
+  routerConnectChurnLimit: 1m
+
 #trace:
 #  path:                 ctrl.trace
 

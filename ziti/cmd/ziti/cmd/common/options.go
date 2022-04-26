@@ -60,6 +60,18 @@ func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelF
 	return context.WithTimeout(context.Background(), timeout)
 }
 
+func (options *CommonOptions) GetFilter() *string {
+	if len(options.Args) > 0 {
+		return &options.Args[0]
+	}
+	return nil
+}
+
+func (options *CommonOptions) GetContext() context.Context {
+	ctx, _ := context.WithTimeout(context.Background(), time.Second*time.Duration(options.Timeout))
+	return ctx
+}
+
 func (options *CommonOptions) Printf(format string, args ...interface{}) {
 	if _, err := fmt.Fprintf(options.Out, format, args...); err != nil {
 		panic(err)

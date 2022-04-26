@@ -65,6 +65,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd.AddCommand(NewSimpleAgentCustomCmd("reconnect", AgentAppRouter, router.OpenControlChannel, p))
 	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-api-sessions", AgentAppRouter, debugops.DumpApiSessions, p))
 	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-links", AgentAppRouter, router.DumpLinks, p))
+	routerCmd.AddCommand(NewForgetLinkAgentCmd(p))
 
 	return agentCmd
 }

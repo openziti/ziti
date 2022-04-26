@@ -29,6 +29,11 @@ ziti edge delete edge-router-policies echo
 ziti edge delete service-edge-router-policies echo 
 ```
 
+```action:ziti-for-each type=edge-routers minCount=1 maxCount=2 filter='anyOf(roleAttributes)="demo"'
+ziti edge update edge-router ${entityName} --tunneler-enabled
+ziti edge update identity ${entityName} --role-attributes not-hosting
+```
+
 ## Create the echo-host config
 
 ```action:ziti-create-config name=echo-host type=host.v2
@@ -49,22 +54,6 @@ ziti edge delete service-edge-router-policies echo
                      ]
                 }
            ]
-        },
-        {
-            "address" : "localhost",
-            "port" : 1235,
-            "protocol" : "tcp",
-            "portChecks" : [
-                {
-                     "address" : "localhost:2235",
-                     "interval" : "1s",
-                     "timeout" : "100ms",
-                     "actions" : [
-                         { "trigger" : "fail", "action" : "mark unhealthy" },
-                         { "trigger" : "pass", "action" : "mark healthy" }
-                     ]
-                }
-           ]
         }
     ]
 }
@@ -76,14 +65,14 @@ ziti edge delete service-edge-router-policies echo
 ziti edge create service echo -c echo-host -a echo
 ```
 
-## Update edge-routers
+## Create and enroll the hosting identities
 
-Make sure demo edge routers are tunneler enabled and the associated identity has the `echo-host` attribute
-Only routers with the `demo` role attribute will be updated.
+```action:ziti
+ziti edge create identity service echo-host-1 -a echo,echo-host -o echo-host-1.jwt
+ziti edge enroll --rm echo-host-1.jwt
 
-```action:ziti-for-each type=edge-routers minCount=1 maxCount=2 filter='anyOf(roleAttributes)="demo"'
-ziti edge update edge-router ${entityName} --tunneler-enabled
-ziti edge update identity ${entityName} --role-attributes echo-host 
+ziti edge create identity service echo-host-2 -a echo,echo-host -o echo-host-2.jwt
+ziti edge enroll --rm echo-host-2.jwt
 ```
 
 ## Configure policies
