@@ -30,7 +30,7 @@ require (
 	github.com/mdlayher/netlink v1.6.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/miekg/dns v1.1.48
-	github.com/mitchellh/mapstructure v1.4.3
+	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.28
 	github.com/openziti/fabric v0.17.106
