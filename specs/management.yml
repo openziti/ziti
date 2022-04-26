@@ -12809,6 +12809,8 @@ definitions:
           kllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE
           1ZG1zveyMvsYsH04C9FndE6w2MLvlA==
           -----END CERTIFICATE-----
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaim'
       identityNameFormat:
         type: string
       identityRoles:
@@ -12846,6 +12848,8 @@ definitions:
       properties:
         certPem:
           type: string
+        externalIdClaim:
+          $ref: '#/definitions/externalIdClaim'
         fingerprint:
           type: string
         identityNameFormat:
@@ -12877,6 +12881,8 @@ definitions:
   caPatch:
     type: object
     properties:
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaimPatch'
       identityNameFormat:
         type: string
         x-nullable: true
@@ -12910,6 +12916,8 @@ definitions:
     - identityRoles
     - identityNameFormat
     properties:
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaim'
       identityNameFormat:
         type: string
       identityRoles:
@@ -13893,6 +13901,79 @@ definitions:
         type: string
       osVersion:
         type: string
+  externalIdClaim:
+    type: object
+    required:
+    - location
+    - matcher
+    - matcherCriteria
+    - parser
+    - parserCriteria
+    - index
+    properties:
+      index:
+        type: integer
+        x-nullable: true
+      location:
+        type: string
+        enum:
+        - COMMON_NAME
+        - SAN_URI
+        - SAN_EMAIL
+        x-nullable: true
+      matcher:
+        type: string
+        enum:
+        - ALL
+        - PREFIX
+        - SUFFIX
+        - SCHEME
+        x-nullable: true
+      matcherCriteria:
+        type: string
+        x-nullable: true
+      parser:
+        type: string
+        enum:
+        - NONE
+        - SPLIT
+        x-nullable: true
+      parserCriteria:
+        type: string
+        x-nullable: true
+  externalIdClaimPatch:
+    type: object
+    properties:
+      index:
+        type: integer
+        x-nullable: true
+      location:
+        type: string
+        enum:
+        - COMMON_NAME
+        - SAN_URI
+        - SAN_EMAIL
+        x-nullable: true
+      matcher:
+        type: string
+        enum:
+        - ALL
+        - PREFIX
+        - SUFFIX
+        - SCHEME
+        x-nullable: true
+      matcherCriteria:
+        type: string
+        x-nullable: true
+      parser:
+        type: string
+        enum:
+        - NONE
+        - SPLIT
+        x-nullable: true
+      parserCriteria:
+        type: string
+        x-nullable: true
   externalJwtSignerCreate:
     description: A create Certificate Authority (CA) object
     type: object

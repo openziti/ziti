@@ -26,7 +26,7 @@ import (
 	"testing"
 )
 
-func Test_UpdbEnrollment(t *testing.T) {
+func Test_EnrollmentUpdb(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()

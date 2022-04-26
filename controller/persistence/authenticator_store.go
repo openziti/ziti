@@ -18,9 +18,9 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 )
 
@@ -40,6 +40,11 @@ const (
 
 	MethodAuthenticatorUpdb = "updb"
 	MethodAuthenticatorCert = "cert"
+	// MethodAuthenticatorCertCaExternalId represents authentication with a certificate that isn't directly
+	// registered with an authenticator. Instead, it uses `externalId` values on identities and matches them to a
+	// "x509 claim" (custom values stuffed into SANs or other x509 properties). This type will never actually
+	// be stored for persistence and is defined here for as tobe near the other authenticator methods.
+	MethodAuthenticatorCertCaExternalId = "certCaExternalId"
 )
 
 type AuthenticatorSubType interface {

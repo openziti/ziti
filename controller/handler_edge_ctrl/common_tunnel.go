@@ -135,7 +135,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 		}
 
 		var err error
-		apiSession.Id, err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession)
+		apiSession.Id, err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession, nil)
 		if err != nil {
 			self.err = internalError(err)
 			return false

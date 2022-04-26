@@ -23,16 +23,36 @@ import (
 )
 
 const (
-	//Fields
-	FieldCaFingerprint               = "fingerprint"
-	FieldCaCertPem                   = "certPem"
-	FieldCaIsVerified                = "isVerified"
-	FieldCaVerificationToken         = "verificationToken"
-	FieldCaIsAutoCaEnrollmentEnabled = "isAutoCaEnrollmentEnabled"
-	FieldCaIsOttCaEnrollmentEnabled  = "isOttCaEnrollmentEnabled"
-	FieldCaIsAuthEnabled             = "isAuthEnabled"
-	FieldCaIdentityNameFormat        = "identityNameFormat"
-	FieldCaEnrollments               = "enrollments"
+	FieldCaFingerprint                    = "fingerprint"
+	FieldCaCertPem                        = "certPem"
+	FieldCaIsVerified                     = "isVerified"
+	FieldCaVerificationToken              = "verificationToken"
+	FieldCaIsAutoCaEnrollmentEnabled      = "isAutoCaEnrollmentEnabled"
+	FieldCaIsOttCaEnrollmentEnabled       = "isOttCaEnrollmentEnabled"
+	FieldCaIsAuthEnabled                  = "isAuthEnabled"
+	FieldCaIdentityNameFormat             = "identityNameFormat"
+	FieldCaEnrollments                    = "enrollments"
+	FieldCaExternalIdClaim                = "externalIdClaim"
+	FieldCaExternalIdClaimLocation        = "externalIdClaim.location"
+	FieldCaExternalIdClaimIndex           = "externalIdClaim.index"
+	FieldCaExternalIdClaimMatcher         = "externalIdClaim.matcher"
+	FieldCaExternalIdClaimMatcherCriteria = "externalIdClaim.matcherCriteria"
+	FieldCaExternalIdClaimParser          = "externalIdClaim.parser"
+	FieldCaExternalIdClaimParserCriteria  = "externalIdClaim.parserSeparator"
+)
+
+const (
+	ExternalIdClaimLocCommonName = "COMMON_NAME"
+	ExternalIdClaimLocSanUri     = "SAN_URI"
+	ExternalIdClaimLocSanEmail   = "SAN_EMAIL"
+
+	ExternalIdClaimMatcherAll    = "ALL"
+	ExternalIdClaimMatcherSuffix = "SUFFIX"
+	ExternalIdClaimMatcherPrefix = "PREFIX"
+	ExternalIdClaimMatcherScheme = "SCHEME"
+
+	ExternalIdClaimParserNone  = "NONE"
+	ExternalIdClaimParserSplit = "SPLIT"
 )
 
 type Ca struct {
@@ -47,6 +67,16 @@ type Ca struct {
 	IsAuthEnabled             bool
 	IdentityRoles             []string
 	IdentityNameFormat        string
+	ExternalIdClaim           *ExternalIdClaim
+}
+
+type ExternalIdClaim struct {
+	Location        string
+	Matcher         string
+	MatcherCriteria string
+	Parser          string
+	ParserCriteria  string
+	Index           int64
 }
 
 func (entity *Ca) GetName() string {
@@ -66,6 +96,16 @@ func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 	entity.IdentityNameFormat = bucket.GetStringWithDefault(FieldCaIdentityNameFormat, "")
 
+	if externalField := bucket.GetBucket(FieldCaExternalIdClaim); externalField != nil {
+		entity.ExternalIdClaim = &ExternalIdClaim{}
+		entity.ExternalIdClaim.Location = externalField.GetStringWithDefault(FieldCaExternalIdClaimLocation, "")
+		entity.ExternalIdClaim.Matcher = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcher, "")
+		entity.ExternalIdClaim.MatcherCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcherCriteria, "")
+		entity.ExternalIdClaim.Parser = externalField.GetStringWithDefault(FieldCaExternalIdClaimParser, "")
+		entity.ExternalIdClaim.ParserCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimParserCriteria, "")
+		entity.ExternalIdClaim.Index = externalField.GetInt64WithDefault(FieldCaExternalIdClaimIndex, 0)
+	}
+
 }
 
 func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
@@ -80,6 +120,19 @@ func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
 	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
 	ctx.SetString(FieldCaIdentityNameFormat, entity.IdentityNameFormat)
+
+	if entity.ExternalIdClaim != nil {
+		externalField := ctx.Bucket.GetOrCreateBucket(FieldCaExternalIdClaim)
+		externalField.SetString(FieldCaExternalIdClaimLocation, entity.ExternalIdClaim.Location, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimMatcher, entity.ExternalIdClaim.Matcher, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimMatcherCriteria, entity.ExternalIdClaim.MatcherCriteria, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimParser, entity.ExternalIdClaim.Parser, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimParserCriteria, entity.ExternalIdClaim.ParserCriteria, ctx.FieldChecker)
+		externalField.SetInt64(FieldCaExternalIdClaimIndex, entity.ExternalIdClaim.Index, ctx.FieldChecker)
+	} else {
+		_ = ctx.Bucket.DeleteBucket([]byte(FieldCaExternalIdClaim))
+	}
+
 }
 
 func (entity *Ca) GetEntityType() string {

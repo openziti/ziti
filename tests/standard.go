@@ -26,7 +26,7 @@ import (
 )
 
 func standardJsonResponseTests(response *resty.Response, expectedStatusCode int, t *testing.T) {
-	t.Run("has standard json response ("+response.Request.URL+")", func(t *testing.T) {
+	t.Run("has standard json response", func(t *testing.T) {
 		t.Run("response has content type application/json", func(t *testing.T) {
 			parts := strings.Split(response.Header().Get("content-type"), ";")
 			require.New(t).Equal("application/json", parts[0])
@@ -38,7 +38,7 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 			out := map[string]interface{}{}
 			err := json.Unmarshal(body, &out)
 
-			require.New(t).NoError(err)
+			require.New(t).NoError(err, "json length was %d value was: %s", len(body), string(body))
 		})
 
 		t.Run("response body is a valid envelope", func(t *testing.T) {
@@ -102,7 +102,7 @@ func standardJsonResponseTests(response *resty.Response, expectedStatusCode int,
 }
 
 func standardErrorJsonResponseTests(response *resty.Response, expectedErrorCode string, expectedStatusCode int, t *testing.T) {
-	t.Run("has standard json error response ("+response.Request.URL+")", func(t *testing.T) {
+	t.Run("has standard json error response", func(t *testing.T) {
 		t.Run("response has content type application/json", func(t *testing.T) {
 			parts := strings.Split(response.Header().Get("content-type"), ";")
 			require.New(t).Equal("application/json", parts[0])

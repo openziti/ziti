@@ -17701,6 +17701,9 @@ func init() {
           "type": "string",
           "example": "-----BEGIN CERTIFICATE-----\nMIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT\nAlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk\nTmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy\nNTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D\nMRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg\nRXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z\nIaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/\n3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh\nMB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG\nuc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB\nhjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms\nkllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE\n1ZG1zveyMvsYsH04C9FndE6w2MLvlA==\n-----END CERTIFICATE-----\n"
         },
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaim"
+        },
         "identityNameFormat": {
           "type": "string"
         },
@@ -17752,6 +17755,9 @@ func init() {
             "certPem": {
               "type": "string"
             },
+            "externalIdClaim": {
+              "$ref": "#/definitions/externalIdClaim"
+            },
             "fingerprint": {
               "type": "string"
             },
@@ -17798,6 +17804,9 @@ func init() {
     "caPatch": {
       "type": "object",
       "properties": {
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaimPatch"
+        },
         "identityNameFormat": {
           "type": "string",
           "x-nullable": true
@@ -17841,6 +17850,9 @@ func init() {
         "identityNameFormat"
       ],
       "properties": {
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaim"
+        },
         "identityNameFormat": {
           "type": "string"
         },
@@ -19258,6 +19270,102 @@ func init() {
         },
         "osVersion": {
           "type": "string"
+        }
+      }
+    },
+    "externalIdClaim": {
+      "type": "object",
+      "required": [
+        "location",
+        "matcher",
+        "matcherCriteria",
+        "parser",
+        "parserCriteria",
+        "index"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "COMMON_NAME",
+            "SAN_URI",
+            "SAN_EMAIL"
+          ],
+          "x-nullable": true
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "PREFIX",
+            "SUFFIX",
+            "SCHEME"
+          ],
+          "x-nullable": true
+        },
+        "matcherCriteria": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "parser": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "SPLIT"
+          ],
+          "x-nullable": true
+        },
+        "parserCriteria": {
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "externalIdClaimPatch": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "COMMON_NAME",
+            "SAN_URI",
+            "SAN_EMAIL"
+          ],
+          "x-nullable": true
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "PREFIX",
+            "SUFFIX",
+            "SCHEME"
+          ],
+          "x-nullable": true
+        },
+        "matcherCriteria": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "parser": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "SPLIT"
+          ],
+          "x-nullable": true
+        },
+        "parserCriteria": {
+          "type": "string",
+          "x-nullable": true
         }
       }
     },
@@ -40792,6 +40900,9 @@ func init() {
           "type": "string",
           "example": "-----BEGIN CERTIFICATE-----\nMIICUjCCAdmgAwIBAgIJANooo7NB+dZZMAoGCCqGSM49BAMCMF4xCzAJBgNVBAYT\nAlVTMQswCQYDVQQIDAJOQzETMBEGA1UECgwKTmV0Rm91bmRyeTEtMCsGA1UEAwwk\nTmV0Rm91bmRyeSBaaXRpIEV4dGVybmFsIEFQSSBSb290IENBMB4XDTE4MTExNTEy\nNTcwOVoXDTM4MTExMDEyNTcwOVowXjELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAk5D\nMRMwEQYDVQQKDApOZXRGb3VuZHJ5MS0wKwYDVQQDDCROZXRGb3VuZHJ5IFppdGkg\nRXh0ZXJuYWwgQVBJIFJvb3QgQ0EwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAARwq61Z\nIaqbaw0PDt3frJZaHjkxfZhwYrykI1GlbRNd/jix03lVG9qvpN5Og9fQfFFcFmD/\n3vCE9S6O0npm0mADQxcBcxbMRAH5dtBuCuiJW6qAAbPgiM32vqSxBiFt0KejYzBh\nMB0GA1UdDgQWBBRx1OVGuc/jdltDc8YBtkw8Tbr4fjAfBgNVHSMEGDAWgBRx1OVG\nuc/jdltDc8YBtkw8Tbr4fjAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIB\nhjAKBggqhkjOPQQDAgNnADBkAjBDRxNZUaIVpkQKnAgJukl3ysd3/i7Z6hDyIEms\nkllz/+ZvmdBp9iedV5o5BvJUggACMCv+UBFlJH7pmsOCo/F45Kk178YsCC7gaMxE\n1ZG1zveyMvsYsH04C9FndE6w2MLvlA==\n-----END CERTIFICATE-----\n"
         },
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaim"
+        },
         "identityNameFormat": {
           "type": "string"
         },
@@ -40843,6 +40954,9 @@ func init() {
             "certPem": {
               "type": "string"
             },
+            "externalIdClaim": {
+              "$ref": "#/definitions/externalIdClaim"
+            },
             "fingerprint": {
               "type": "string"
             },
@@ -40889,6 +41003,9 @@ func init() {
     "caPatch": {
       "type": "object",
       "properties": {
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaimPatch"
+        },
         "identityNameFormat": {
           "type": "string",
           "x-nullable": true
@@ -40932,6 +41049,9 @@ func init() {
         "identityNameFormat"
       ],
       "properties": {
+        "externalIdClaim": {
+          "$ref": "#/definitions/externalIdClaim"
+        },
         "identityNameFormat": {
           "type": "string"
         },
@@ -42353,6 +42473,102 @@ func init() {
         },
         "osVersion": {
           "type": "string"
+        }
+      }
+    },
+    "externalIdClaim": {
+      "type": "object",
+      "required": [
+        "location",
+        "matcher",
+        "matcherCriteria",
+        "parser",
+        "parserCriteria",
+        "index"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "COMMON_NAME",
+            "SAN_URI",
+            "SAN_EMAIL"
+          ],
+          "x-nullable": true
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "PREFIX",
+            "SUFFIX",
+            "SCHEME"
+          ],
+          "x-nullable": true
+        },
+        "matcherCriteria": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "parser": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "SPLIT"
+          ],
+          "x-nullable": true
+        },
+        "parserCriteria": {
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
+    "externalIdClaimPatch": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "integer",
+          "x-nullable": true
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "COMMON_NAME",
+            "SAN_URI",
+            "SAN_EMAIL"
+          ],
+          "x-nullable": true
+        },
+        "matcher": {
+          "type": "string",
+          "enum": [
+            "ALL",
+            "PREFIX",
+            "SUFFIX",
+            "SCHEME"
+          ],
+          "x-nullable": true
+        },
+        "matcherCriteria": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "parser": {
+          "type": "string",
+          "enum": [
+            "NONE",
+            "SPLIT"
+          ],
+          "x-nullable": true
+        },
+        "parserCriteria": {
+          "type": "string",
+          "x-nullable": true
         }
       }
     },

@@ -34,66 +34,64 @@ func Test_PostureChecks_Domain(t *testing.T) {
 	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
 
-	t.Run("can CRUD domain posture checks", func(t *testing.T) {
+	ctx.testContextChanged(t)
+	domain := "domain1"
+	postureCheckRole := uuid.New().String()
+
+	t.Run("CRUD domain posture checks can create a posture check", func(t *testing.T) {
 		ctx.testContextChanged(t)
-		domain := "domain1"
-		postureCheckRole := uuid.New().String()
+		postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
 
-		t.Run("can create a posture check", func(t *testing.T) {
+		t.Run("created posture check can have name patched", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			postureCheck := ctx.AdminManagementSession.requireNewPostureCheckDomain(s(domain), s(postureCheckRole))
+			putContainer := gabs.New()
+			newName := "newName-" + uuid.New().String()
+			_, _ = putContainer.Set(newName, "name")
+			_, _ = putContainer.Set(postureCheck.typeId, "typeId")
 
-			t.Run("created posture check can have name patched", func(t *testing.T) {
-				ctx.testContextChanged(t)
-				putContainer := gabs.New()
-				newName := "newName-" + uuid.New().String()
-				_, _ = putContainer.Set(newName, "name")
-				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
+			resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+			ctx.Req.NotNil(resp)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-				resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
-				ctx.Req.NotNil(resp)
-				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+			updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
 
-				updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
+			ctx.Req.Equal(newName, updatedContainer.Path("data.name").Data().(string), "name is patched")
+			domains, err := updatedContainer.Path("data.domains").Children()
+			ctx.Req.NoError(err)
+			ctx.Req.Len(domains, 1)
+			ctx.Req.Equal(domain, domains[0].Data().(string), "domain is previous value")
 
-				ctx.Req.Equal(newName, updatedContainer.Path("data.name").Data().(string), "name is patched")
-				domains, err := updatedContainer.Path("data.domains").Children()
-				ctx.Req.NoError(err)
-				ctx.Req.Len(domains, 1)
-				ctx.Req.Equal(domain, domains[0].Data().(string), "domain is previous value")
+		})
 
-			})
+		t.Run("created posture check can have tags patched", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			putContainer := gabs.New()
 
-			t.Run("created posture check can have tags patched", func(t *testing.T) {
-				ctx.testContextChanged(t)
-				putContainer := gabs.New()
+			tags := map[string]string{
+				"tag1": "value1",
+			}
+			_, _ = putContainer.Set(tags, "tags")
+			_, _ = putContainer.Set(postureCheck.typeId, "typeId")
 
-				tags := map[string]string{
-					"tag1": "value1",
-				}
-				_, _ = putContainer.Set(tags, "tags")
-				_, _ = putContainer.Set(postureCheck.typeId, "typeId")
+			resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
+			ctx.Req.NotNil(resp)
+			ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-				resp := ctx.AdminManagementSession.updateEntityOfType(postureCheck.id, postureCheck.getEntityType(), putContainer.String(), true)
-				ctx.Req.NotNil(resp)
-				ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+			updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
 
-				updatedContainer := ctx.AdminManagementSession.requireQuery("/posture-checks/" + postureCheck.id)
+			updatedDomains, err := updatedContainer.Path("data.domains").Children()
+			ctx.Req.NoError(err)
+			ctx.Req.Len(updatedDomains, 1)
+			ctx.Req.Equal(domain, updatedDomains[0].Data().(string), "domain is previous value")
 
-				updatedDomains, err := updatedContainer.Path("data.domains").Children()
-				ctx.Req.NoError(err)
-				ctx.Req.Len(updatedDomains, 1)
-				ctx.Req.Equal(domain, updatedDomains[0].Data().(string), "domain is previous value")
+			updatedTags, ok := updatedContainer.Path("data.tags").Data().(map[string]interface{})
+			ctx.Req.True(ok, "has a data.tags attribute")
+			ctx.Req.Equal("value1", updatedTags["tag1"], "has the updated tag values")
+		})
 
-				updatedTags, ok := updatedContainer.Path("data.tags").Data().(map[string]interface{})
-				ctx.Req.True(ok, "has a data.tags attribute")
-				ctx.Req.Equal("value1", updatedTags["tag1"], "has the updated tag values")
-			})
-
-			t.Run("created posture check can be deleted", func(t *testing.T) {
-				ctx.testContextChanged(t)
-				ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
-			})
+		t.Run("created posture check can be deleted", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			ctx.AdminManagementSession.requireDeleteEntity(postureCheck)
 		})
 	})
 

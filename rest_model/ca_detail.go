@@ -48,6 +48,9 @@ type CaDetail struct {
 	// Required: true
 	CertPem *string `json:"certPem"`
 
+	// external Id claim
+	ExternalIDClaim *ExternalIDClaim `json:"externalIdClaim,omitempty"`
+
 	// fingerprint
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
@@ -102,6 +105,8 @@ func (m *CaDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		CertPem *string `json:"certPem"`
 
+		ExternalIDClaim *ExternalIDClaim `json:"externalIdClaim,omitempty"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		IdentityNameFormat *string `json:"identityNameFormat"`
@@ -125,6 +130,8 @@ func (m *CaDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.CertPem = dataAO1.CertPem
+
+	m.ExternalIDClaim = dataAO1.ExternalIDClaim
 
 	m.Fingerprint = dataAO1.Fingerprint
 
@@ -159,6 +166,8 @@ func (m CaDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		CertPem *string `json:"certPem"`
 
+		ExternalIDClaim *ExternalIDClaim `json:"externalIdClaim,omitempty"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		IdentityNameFormat *string `json:"identityNameFormat"`
@@ -179,6 +188,8 @@ func (m CaDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.CertPem = m.CertPem
+
+	dataAO1.ExternalIDClaim = m.ExternalIDClaim
 
 	dataAO1.Fingerprint = m.Fingerprint
 
@@ -216,6 +227,10 @@ func (m *CaDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateCertPem(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateExternalIDClaim(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -265,6 +280,26 @@ func (m *CaDetail) validateCertPem(formats strfmt.Registry) error {
 
 	if err := validate.Required("certPem", "body", m.CertPem); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (m *CaDetail) validateExternalIDClaim(formats strfmt.Registry) error {
+
+	if swag.IsZero(m.ExternalIDClaim) { // not required
+		return nil
+	}
+
+	if m.ExternalIDClaim != nil {
+		if err := m.ExternalIDClaim.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("externalIdClaim")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("externalIdClaim")
+			}
+			return err
+		}
 	}
 
 	return nil
@@ -373,6 +408,10 @@ func (m *CaDetail) ContextValidate(ctx context.Context, formats strfmt.Registry)
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateExternalIDClaim(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -380,6 +419,22 @@ func (m *CaDetail) ContextValidate(ctx context.Context, formats strfmt.Registry)
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CaDetail) contextValidateExternalIDClaim(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ExternalIDClaim != nil {
+		if err := m.ExternalIDClaim.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("externalIdClaim")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("externalIdClaim")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 

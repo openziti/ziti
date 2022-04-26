@@ -35,6 +35,8 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
+	var signerIds []string
+
 	// create a bunch of signers to use
 
 	//valid signer with issuer and audience
@@ -55,6 +57,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+	signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 	//valid signer no issuer no audienceS
 	validJwtSignerNoIssNoAudCert, validJwtSignerNoIssNoAudPrivateKey := newSelfSignedCert("valid signer")
@@ -70,6 +73,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(validJwtSignerNoIssNoAud).SetResult(createResponseEnv).Post("/external-jwt-signers")
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+	signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 	createResponseEnv = &rest_model.CreateEnvelope{}
 
@@ -86,10 +90,22 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(notEnabledJwtSigner).SetResult(createResponseEnv).Post("/external-jwt-signers")
 	ctx.Req.NoError(err)
 	ctx.Req.Equal(http.StatusCreated, resp.StatusCode())
+	signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 	invalidJwtSignerCommonName := "invalid signer"
 	invalidJwtSignerCert, invalidJwtSignerPrivateKey := newSelfSignedCert(invalidJwtSignerCommonName)
 	invalidJwtSignerCertFingerprint := nfpem.FingerprintFromCertificate(invalidJwtSignerCert)
+
+	authPolicyPatch := &rest_model.AuthPolicyPatch{
+		Primary: &rest_model.AuthPolicyPrimaryPatch{
+			ExtJWT: &rest_model.AuthPolicyPrimaryExtJWTPatch{
+				AllowedSigners: signerIds,
+			},
+		},
+	}
+	resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/default")
+	ctx.NoError(err)
+	ctx.Equal(http.StatusOK, resp.StatusCode())
 
 	t.Run("authenticating with a valid jwt succeeds", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -116,6 +132,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 		resp, err := ctx.newAnonymousClientApiRequest().SetResult(result).SetHeader("Authorization", "Bearer "+jwtStrSigned).Post("/authenticate?method=ext-jwt")
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
+		signerIds = append(signerIds, createResponseEnv.Data.ID)
 
 		ctx.Req.NotNil(result)
 		ctx.Req.NotNil(result.Data)

@@ -22,9 +22,21 @@ import (
 	"net/http"
 )
 
+type AuthResult interface {
+	IdentityId() string
+	ExternalId() string
+	AuthenticatorId() string
+	SessionCerts() []*x509.Certificate
+	Identity() *Identity
+	Authenticator() *Authenticator
+	AuthPolicy() *AuthPolicy
+	AuthPolicyId() string
+	IsSuccessful() bool
+}
+
 type AuthProcessor interface {
 	CanHandle(method string) bool
-	Process(context AuthContext) (identityId, externalId, authenticatorId string, err error)
+	Process(context AuthContext) (AuthResult, error)
 }
 
 type AuthRegistry interface {
@@ -96,4 +108,69 @@ func (context *AuthContextHttp) GetHeaders() map[string]interface{} {
 
 func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
 	return context.Certs
+}
+
+var _ AuthResult = &AuthResultBase{}
+
+type AuthResultBase struct {
+	identityId      string
+	externalId      string
+	identity        *Identity
+	authenticatorId string
+	authenticator   *Authenticator
+	sessionCerts    []*x509.Certificate
+	authPolicyId    string
+	authPolicy      *AuthPolicy
+	env             Env
+}
+
+func (a *AuthResultBase) IdentityId() string {
+	return a.identityId
+}
+
+func (a *AuthResultBase) ExternalId() string {
+	return a.externalId
+}
+
+func (a *AuthResultBase) AuthenticatorId() string {
+	return a.authenticatorId
+}
+
+func (a *AuthResultBase) SessionCerts() []*x509.Certificate {
+	return a.sessionCerts
+}
+
+func (a *AuthResultBase) Identity() *Identity {
+	if a.identity == nil {
+		if a.identityId != "" {
+			a.identity, _ = a.env.GetHandlers().Identity.Read(a.identityId)
+		} else if a.externalId != "" {
+			a.identity, _ = a.env.GetHandlers().Identity.ReadByExternalId(a.externalId)
+		}
+
+	}
+	return a.identity
+}
+
+func (a *AuthResultBase) Authenticator() *Authenticator {
+	if a.authenticator == nil {
+		a.authenticator, _ = a.env.GetHandlers().Authenticator.Read(a.authenticatorId)
+	}
+	return a.authenticator
+}
+
+func (a *AuthResultBase) AuthPolicy() *AuthPolicy {
+	if a.authPolicy == nil {
+		a.authPolicy, _ = a.env.GetHandlers().AuthPolicy.Read(a.authPolicyId)
+	}
+
+	return a.authPolicy
+}
+
+func (a *AuthResultBase) AuthPolicyId() string {
+	return a.authPolicyId
+}
+
+func (a *AuthResultBase) IsSuccessful() bool {
+	return a.identityId != ""
 }

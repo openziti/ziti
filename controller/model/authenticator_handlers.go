@@ -65,31 +65,15 @@ func (handler AuthenticatorHandler) newModelEntity() boltEntitySink {
 	return &Authenticator{}
 }
 
-func (handler AuthenticatorHandler) IsAuthorized(authContext AuthContext) (*Identity, string, error) {
+func (handler AuthenticatorHandler) Authorize(authContext AuthContext) (AuthResult, error) {
 
 	authModule := handler.env.GetAuthRegistry().GetByMethod(authContext.GetMethod())
 
 	if authModule == nil {
-		return nil, "", apierror.NewInvalidAuthMethod()
+		return nil, apierror.NewInvalidAuthMethod()
 	}
 
-	identityId, externalId, authenticatorId, err := authModule.Process(authContext)
-
-	if err != nil {
-		return nil, "", err
-	}
-
-	if externalId != "" {
-		identity, err := handler.env.GetHandlers().Identity.ReadByExternalId(externalId)
-		return identity, authenticatorId, err
-	}
-
-	if identityId != "" {
-		identity, err := handler.env.GetHandlers().Identity.Read(identityId)
-		return identity, authenticatorId, err
-	}
-
-	return nil, "", apierror.NewInvalidAuth()
+	return authModule.Process(authContext)
 }
 
 func (handler AuthenticatorHandler) ReadFingerprints(authenticatorId string) ([]string, error) {

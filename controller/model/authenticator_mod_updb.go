@@ -49,7 +49,7 @@ func (handler *AuthModuleUpdb) CanHandle(method string) bool {
 	return method == handler.method
 }
 
-func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, string, error) {
+func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", handler.method)
 
 	data := context.GetData()
@@ -65,7 +65,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 	}
 
 	if username == "" || password == "" {
-		return "", "", "", errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
+		return nil, errorz.NewCouldNotValidate(errors.New("username and password fields are required"))
 	}
 
 	logger = logger.WithField("username", username)
@@ -73,12 +73,12 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 
 	if err != nil {
 		logger.WithError(err).Error("could not authenticate, authenticator lookup by username errored")
-		return "", "", "", err
+		return nil, err
 	}
 
 	if authenticator == nil {
 		logger.WithError(err).Error("could not authenticate, authenticator lookup returned nil")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	logger = logger.
@@ -89,12 +89,12 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 
 	if err != nil {
 		logger.WithError(err).Errorf("could not look up auth policy by identity id")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	if authPolicy == nil {
 		logger.Error("auth policy look up returned nil")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	if identity.Disabled {
@@ -102,14 +102,14 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 			WithField("disabledAt", identity.DisabledAt).
 			WithField("disabledUntil", identity.DisabledUntil).
 			Error("authentication failed, identity is disabled")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	logger = logger.WithField("authPolicyId", authPolicy.Id)
 
 	if !authPolicy.Primary.Updb.Allowed {
 		logger.Error("auth policy does not allow updb authentication")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	attempts := int64(0)
@@ -130,7 +130,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	updb := authenticator.ToUpdb()
@@ -138,17 +138,23 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (string, string, str
 	salt, err := decodeSalt(updb.Salt)
 
 	if err != nil {
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	hr := handler.env.GetHandlers().Authenticator.ReHashPassword(password, salt)
 
 	if updb.Password != hr.Password {
 
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
-	return updb.IdentityId, "", authenticator.Id, nil
+	return &AuthResultBase{
+		identity:        identity,
+		identityId:      updb.IdentityId,
+		authenticator:   authenticator,
+		authenticatorId: authenticator.IdentityId,
+		env:             handler.env,
+	}, nil
 }
 
 func decodeSalt(s string) ([]byte, error) {
