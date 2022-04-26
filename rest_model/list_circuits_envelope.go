@@ -45,7 +45,7 @@ type ListCircuitsEnvelope struct {
 
 	// data
 	// Required: true
-	Data LinkList `json:"data"`
+	Data CircuitList `json:"data"`
 
 	// meta
 	// Required: true
