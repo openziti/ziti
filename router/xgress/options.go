@@ -160,7 +160,7 @@ func DefaultOptions() *Options {
 		RxBufferSize:           4 * 1024 * 1024,
 		RetxStartMs:            200,
 		RetxScale:              2.0,
-		RetxAddMs:              100,
+		RetxAddMs:              0,
 		MaxCloseWait:           30 * time.Second,
 		GetCircuitTimeout:      30 * time.Second,
 		CircuitStartTimeout:    3 * time.Minute,
