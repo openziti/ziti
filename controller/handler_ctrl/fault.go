@@ -53,12 +53,13 @@ func (h *faultHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 }
 
 func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault *ctrl_pb.Fault) {
-	log := pfxlog.ContextLogger(ch.Label())
+	log := pfxlog.ContextLogger(ch.Label()).Entry
 
 	switch fault.Subject {
 	case ctrl_pb.FaultSubject_LinkFault:
 		linkId := fault.Id
 		if link, found := h.network.GetLink(linkId); found {
+			log = log.WithField("linkId", linkId)
 			wasConnected := link.IsUsable()
 			if err := h.network.LinkConnected(linkId, false); err == nil {
 				h.network.LinkChanged(link)
@@ -70,13 +71,15 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 				if wasConnected {
 					if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Get() {
 						if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
-							log.WithField("linkId", linkId).WithField("routerId", otherRouter.Id).
+							log.WithField("routerId", otherRouter.Id).
 								WithError(err).Error("failed to forward link fault to other router")
 						}
 					}
 				}
 
-				log.Infof("link fault [l/%s]", linkId)
+				log.Info("link fault")
+			} else {
+				log.WithError(err).Error("error handling link fault")
 			}
 		}
 

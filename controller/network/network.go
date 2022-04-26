@@ -326,21 +326,16 @@ func (network *Network) NotifyExistingLink(id, linkProtocol string, srcRouter *R
 }
 
 func (network *Network) LinkConnected(id string, connected bool) error {
-	log := pfxlog.Logger().WithField("linkId", id)
-
 	if l, found := network.linkController.get(id); found {
 		if connected {
 			if state := l.CurrentState(); state != nil && state.Mode != Pending {
-				log.Infof("link is %v not pending, cannot mark connected", state.Mode)
-				return nil
+				return errors.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", id, state.Mode)
 			}
 
 			l.addState(newLinkState(Connected))
-			log.Info("link connected")
 			return nil
 		}
 		l.addState(newLinkState(Failed))
-		log.Info("link failed")
 		return nil
 	}
 	return errors.Errorf("no such link [l/%s]", id)
