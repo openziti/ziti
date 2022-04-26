@@ -330,6 +330,11 @@ func (network *Network) LinkConnected(id string, connected bool) error {
 
 	if l, found := network.linkController.get(id); found {
 		if connected {
+			if state := l.CurrentState(); state != nil && state.Mode != Pending {
+				log.Infof("link is %v not pending, cannot mark connected", state.Mode)
+				return nil
+			}
+
 			l.addState(newLinkState(Connected))
 			log.Info("link connected")
 			return nil
