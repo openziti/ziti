@@ -86,19 +86,20 @@ func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress
 }
 
 func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
+	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
-				pfxlog.Logger().Debugf("unregistering destination [@/%v] for [s/%v]", address, circuitId)
+				log.Debugf("unregistering destination [@/%v] for circuit", address)
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Unrouted()
 			} else {
-				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, circuitId)
+				log.Debugf("no destinations found for [@/%v] for circuit", address)
 			}
 		}
 		forwarder.destinations.unlinkCircuit(circuitId)
 	} else {
-		pfxlog.Logger().Debugf("found no addresses to unregister for [s/%v]", circuitId)
+		log.Debug("found no addresses to unregister for circuit")
 	}
 }
 

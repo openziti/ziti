@@ -39,7 +39,7 @@ func (h *unrouteHandler) ContentType() int32 {
 func (h *unrouteHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	removeRoute := &ctrl_pb.Unroute{}
 	if err := proto.Unmarshal(msg.Body, removeRoute); err == nil {
-		pfxlog.ContextLogger(ch.Label()).Debugf("received unroute for [s/%v]", removeRoute.CircuitId)
+		pfxlog.ContextLogger(ch.Label()).WithField("circuitId", removeRoute.CircuitId).Debug("received unroute")
 		h.forwarder.Unroute(removeRoute.CircuitId, removeRoute.Now)
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%v)", err)

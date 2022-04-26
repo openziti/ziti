@@ -149,7 +149,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 
 		if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 			log.Info("link registered")
-		} else {
+		} else if existingLink != nil {
 			log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
 		}
 	}
@@ -224,7 +224,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, rou
 
 	if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 		log.Info("link registered")
-	} else {
+	} else if existingLink != nil {
 		log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
 	}
 
