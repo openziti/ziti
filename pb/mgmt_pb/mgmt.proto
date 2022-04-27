@@ -60,6 +60,9 @@ enum ContentType {
 
   // Snapshot db
   SnapshotDbRequestType = 10070;
+
+  // Router Mgmt
+  RouterDebugForgetLinkRequestType = 10071;
 }
 
 //

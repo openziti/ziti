@@ -17,6 +17,7 @@
 package forwarder
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -28,6 +29,7 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"strings"
 	"time"
 )
 
@@ -120,7 +122,7 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
 	forwarder.destinations.removeDestination(xgress.Address(link.Id().Token))
 }
 
-func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
+func (forwarder *Forwarder) Route(route *ctrl_pb.Route) error {
 	circuitId := route.CircuitId
 	var circuitFt *forwardTable
 	if ft, found := forwarder.circuits.getForwardTable(circuitId); found {
@@ -129,9 +131,15 @@ func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
 		circuitFt = newForwardTable()
 	}
 	for _, forward := range route.Forwards {
+		// the initiating Xgress isn't established until we return from routing, so that won't exist yet.
+		// Everything else (links and the terminating xgress) should exist at the time of routing
+		if !strings.HasSuffix(forward.DstAddress, "I") && !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
+			return InvalidDestinationError(forward.DstAddress)
+		}
 		circuitFt.setForwardAddress(xgress.Address(forward.SrcAddress), xgress.Address(forward.DstAddress))
 	}
 	forwarder.circuits.setForwardTable(circuitId, circuitFt)
+	return nil
 }
 
 func (forwarder *Forwarder) Unroute(circuitId string, now bool) {
@@ -317,4 +325,10 @@ func (forwarder *Forwarder) InspectCircuit(circuitId string) *inspect.CircuitIns
 		return result
 	}
 	return nil
+}
+
+type InvalidDestinationError string
+
+func (self InvalidDestinationError) Error() string {
+	return fmt.Sprintf("invalid destination [%v]", string(self))
 }

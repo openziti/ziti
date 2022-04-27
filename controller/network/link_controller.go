@@ -148,6 +148,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 						if err != nil {
 							return nil, err
 						}
+						id = id + "L"
 						link := newLink(id, listener.Protocol())
 						link.Src = srcR
 						link.Dst = dstR

@@ -85,9 +85,10 @@ func SetConfigMapFlags(cfgmap map[interface{}]interface{}, flags map[string]*pfl
 }
 
 type Config struct {
-	Id        *identity.TokenId
-	Forwarder *forwarder.Options
-	Trace     struct {
+	Id             *identity.TokenId
+	EnableDebugOps bool
+	Forwarder      *forwarder.Options
+	Trace          struct {
 		Handler *channel.TraceHandler
 	}
 	Profile struct {
@@ -343,6 +344,12 @@ func LoadConfig(path string) (*Config, error) {
 
 	if value, found := cfgmap[PathMapKey]; found {
 		cfg.path = value.(string)
+	}
+
+	if value, found := cfgmap["enableDebugOps"]; found {
+		if bVal, ok := value.(bool); ok {
+			cfg.EnableDebugOps = bVal
+		}
 	}
 
 	cfg.Forwarder = forwarder.DefaultOptions()

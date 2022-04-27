@@ -19,7 +19,6 @@ package router
 import (
 	"bufio"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
@@ -51,7 +50,6 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
 	"math/rand"
 	"plugin"
 	"time"
@@ -79,6 +77,7 @@ type Router struct {
 
 	xwebs               []xweb.Xweb
 	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
+	agentBindHandlers   []channel.BindHandler
 }
 
 func (self *Router) MetricsRegistry() metrics.UsageRegistry {
@@ -479,138 +478,6 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	}
 
 	return h, nil
-}
-
-const (
-	AgentAppId byte = 2
-
-	DumpForwarderTables byte = 1
-	UpdateRoute         byte = 2
-	CloseControlChannel byte = 3
-	OpenControlChannel  byte = 4
-	DumpLinks           byte = 5
-)
-
-func (self *Router) RegisterDefaultDebugOps() {
-	self.debugOperations[DumpForwarderTables] = self.debugOpWriteForwarderTables
-	self.debugOperations[UpdateRoute] = self.debugOpUpdateRouter
-	self.debugOperations[CloseControlChannel] = self.debugOpCloseControlChannel
-	self.debugOperations[OpenControlChannel] = self.debugOpOpenControlChannel
-	self.debugOperations[DumpLinks] = self.debugOpWriteLinks
-}
-
-func (self *Router) RegisterDebugOp(opId byte, f func(c *bufio.ReadWriter) error) {
-	self.debugOperations[opId] = f
-}
-
-func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
-	tables := self.forwarder.Debug()
-	_, err := c.Write([]byte(tables))
-	return err
-}
-
-func (self *Router) debugOpWriteLinks(c *bufio.ReadWriter) error {
-	noLinks := true
-	for link := range self.xlinkRegistry.Iter() {
-		line := fmt.Sprintf("id: %v dest: %v protocol: %v\n", link.Id().Token, link.DestinationId(), link.LinkProtocol())
-		_, err := c.WriteString(line)
-		if err != nil {
-			return err
-		}
-		noLinks = false
-	}
-	if noLinks {
-		_, err := c.WriteString("no links\n")
-		return err
-	}
-	return nil
-}
-
-func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
-	logrus.Error("received debug operation to update routes")
-	sizeBuf := make([]byte, 4)
-	if _, err := c.Read(sizeBuf); err != nil {
-		return err
-	}
-	size := binary.LittleEndian.Uint32(sizeBuf)
-	messageBuf := make([]byte, size)
-
-	if _, err := c.Read(messageBuf); err != nil {
-		return err
-	}
-
-	route := &ctrl_pb.Route{}
-	if err := proto.Unmarshal(messageBuf, route); err != nil {
-		return err
-	}
-
-	logrus.Errorf("updating with route: %+v", route)
-	logrus.Errorf("updating with route: %v", route)
-
-	self.forwarder.Route(route)
-	_, _ = c.WriteString("route added")
-	return nil
-}
-
-func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: closing")
-	_, _ = c.WriteString("control channel: closing\n")
-	if toggleable, ok := self.ctrl.Underlay().(connectionToggle); ok {
-		if err := toggleable.Disconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to close")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
-		} else {
-			logrus.Warn("control channel: closed")
-			_, _ = c.WriteString("control channel: closed")
-		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
-	return nil
-}
-
-func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: reconnecting")
-	if togglable, ok := self.ctrl.Underlay().(connectionToggle); ok {
-		if err := togglable.Reconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to reconnect")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
-		} else {
-			logrus.Warn("control channel: reconnected")
-			_, _ = c.WriteString("control channel: reconnected")
-		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
-	return nil
-}
-
-func (self *Router) HandleDebug(conn io.ReadWriter) error {
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-	appId, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if appId != AgentAppId {
-		return errors.Errorf("invalid operation for router")
-	}
-
-	op, err := bconn.ReadByte()
-
-	if err != nil {
-		return err
-	}
-
-	if opF, ok := self.debugOperations[op]; ok {
-		if err := opF(bconn); err != nil {
-			return err
-		}
-		return bconn.Flush()
-	}
-	return errors.Errorf("invalid operation %v", op)
 }
 
 func (self *Router) RegisterXweb(x xweb.Xweb) error {

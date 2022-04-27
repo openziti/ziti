@@ -18,6 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -55,17 +56,18 @@ func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ ch
 }
 
 func (self *circuitConfirmationHandler) sendUnroute(circuitId string) {
+	log := pfxlog.Logger().WithField("circuitId", circuitId).WithField("routerId", self.r.Id)
 	unroute := &ctrl_pb.Unroute{}
 	unroute.CircuitId = circuitId
 	unroute.Now = true
 	if body, err := proto.Marshal(unroute); err == nil {
 		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-		if err := self.r.Control.Send(msg); err == nil {
-			logrus.Infof("sent unroute to [r/%s] for [s/%s]", self.r.Id, circuitId)
+		if err = self.r.Control.Send(msg); err == nil {
+			log.Info("sent unroute to router for circuit")
 		} else {
-			logrus.Errorf("error sending unroute to [r/%s] for [s/%s] (%v)", self.r.Id, circuitId, err)
+			log.WithError(err).Error("error sending unroute to router for circuit")
 		}
 	} else {
-		logrus.Errorf("error marshalling unroute to [r/%s] for [s/%s] (%v)", self.r.Id, circuitId, err)
+		log.WithError(err).Error("error marshalling unroute to router for circuit")
 	}
 }
