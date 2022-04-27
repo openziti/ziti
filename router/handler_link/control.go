@@ -44,12 +44,11 @@ func (self *controlHandler) ContentType() int32 {
 func (self *controlHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	control, err := xgress.UnmarshallControl(msg)
-	if err == nil {
-		if err := self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
+	if control, err := xgress.UnmarshallControl(msg); err == nil {
+		if err = self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
 			log.WithError(err).Debug("unable to forward")
 		}
 	} else {
-		log.Errorf("unexpected error (%v)", err)
+		log.WithError(err).Errorf("unexpected error marshalling control instance")
 	}
 }

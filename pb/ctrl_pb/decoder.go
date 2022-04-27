@@ -251,6 +251,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 			for i, forward := range route.Forwards {
 				meta[fmt.Sprintf("forward[%d].srcAddress", i)] = forward.SrcAddress
 				meta[fmt.Sprintf("forward[%d].dstAddress", i)] = forward.DstAddress
+				meta[fmt.Sprintf("forward[%d].dstType", i)] = forward.DstType.String()
 			}
 
 			data, err := meta.MarshalTraceMessageDecode()

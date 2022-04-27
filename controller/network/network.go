@@ -643,13 +643,11 @@ func (network *Network) CreatePath(srcR, dstR *Router) (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	ingressId += "I"
 
 	egressId, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
 	}
-	egressId += "O"
 
 	path := &Path{
 		Links:     make([]*Link, 0),
@@ -668,13 +666,11 @@ func (network *Network) CreatePathWithNodes(nodes []*Router) (*Path, error) {
 	if err != nil {
 		return nil, err
 	}
-	ingressId += "I"
 
 	egressId, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
 	}
-	egressId += "O"
 
 	path := &Path{
 		Nodes:     nodes,

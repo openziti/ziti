@@ -17,7 +17,6 @@
 package forwarder
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -29,7 +28,6 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"strings"
 	"time"
 )
 
@@ -131,10 +129,15 @@ func (forwarder *Forwarder) Route(route *ctrl_pb.Route) error {
 		circuitFt = newForwardTable()
 	}
 	for _, forward := range route.Forwards {
-		// the initiating Xgress isn't established until we return from routing, so that won't exist yet.
-		// Everything else (links and the terminating xgress) should exist at the time of routing
-		if !strings.HasSuffix(forward.DstAddress, "I") && !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
-			return InvalidDestinationError(forward.DstAddress)
+		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
+			if forward.DstType == ctrl_pb.DestType_Link {
+				forwarder.faulter.notifyInvalidLink(forward.DstAddress)
+				return errors.Errorf("invalid link destination %v", forward.DstAddress)
+			}
+			if forward.DstType == ctrl_pb.DestType_End {
+				return errors.Errorf("invalid egress destination %v", forward.DstAddress)
+			}
+			// It's an ingress destination, which isn't established until after routing has completed
 		}
 		circuitFt.setForwardAddress(xgress.Address(forward.SrcAddress), xgress.Address(forward.DstAddress))
 	}
@@ -325,10 +328,4 @@ func (forwarder *Forwarder) InspectCircuit(circuitId string) *inspect.CircuitIns
 		return result
 	}
 	return nil
-}
-
-type InvalidDestinationError string
-
-func (self InvalidDestinationError) Error() string {
-	return fmt.Sprintf("invalid destination [%v]", string(self))
 }

@@ -99,7 +99,7 @@ func (r *DatabaseRouter) CheckDatastoreIntegrity(n *network.Network, rc api.Requ
 }
 
 func (r *DatabaseRouter) GetCheckProgress(_ *network.Network, rc api.RequestContext) {
-	integrityCheck := r.integrityCheck
+	integrityCheck := &r.integrityCheck
 
 	integrityCheck.lock.Lock()
 	defer integrityCheck.lock.Unlock()

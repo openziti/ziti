@@ -17,9 +17,7 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/foundation/util/goroutines"
-	"strings"
 	"syscall"
 	"time"
 
@@ -101,16 +99,6 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 
 func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
 	if err := rh.forwarder.Route(route); err != nil {
-		var ide forwarder.InvalidDestinationError
-		if errors.As(err, &ide) {
-			linkId := string(ide)
-			if strings.HasSuffix(linkId, "L") {
-				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
-				if sendErr := protobufs.MarshalTyped(fault).Send(rh.ctrl.Channel()); sendErr != nil {
-					log.WithError(err).WithField("linkId", linkId).Error("failed to notify of invalid link")
-				}
-			}
-		}
 		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
 		return
 	}

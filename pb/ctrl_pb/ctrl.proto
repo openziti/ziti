@@ -31,7 +31,7 @@ enum ContentType {
   RouterLinksType = 1035;
 
   ListenersHeader = 10;
-  TerminatorLocalAddressHeader   = 1100;
+  TerminatorLocalAddressHeader = 1100;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.
@@ -137,6 +137,12 @@ message Context {
   uint32 channelMask = 2;
 }
 
+enum DestType {
+  Start = 0;
+  End = 1;
+  Link = 2;
+}
+
 message Route {
   string circuitId = 1;
   uint32 attempt = 2;
@@ -152,6 +158,7 @@ message Route {
   message Forward {
     string srcAddress = 1;
     string dstAddress = 2;
+    DestType dstType = 3;
   }
   repeated Forward forwards = 4;
   Context context = 5;
