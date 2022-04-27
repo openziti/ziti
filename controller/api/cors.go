@@ -12,7 +12,8 @@ func WrapCorsHandler(innerHandler http.Handler) http.Handler {
 		handlers.OptionStatusCode(200),
 		handlers.AllowedHeaders([]string{
 			"content-type",
-			"Accept",
+			"accept",
+			"authorization",
 			constants.ZitiSession,
 		}),
 		handlers.AllowedMethods([]string{
