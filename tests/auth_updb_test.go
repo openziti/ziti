@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -21,7 +22,7 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/foundation/common/constants"
+	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
