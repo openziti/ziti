@@ -318,6 +318,7 @@ const (
 	ControlTimestamp = 4
 	ControlCustom1   = 5
 	ControlCustom2   = 6
+	ControlError     = 7
 )
 
 type Control struct {

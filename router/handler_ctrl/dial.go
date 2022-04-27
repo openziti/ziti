@@ -103,7 +103,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 				if err := self.sendLinkMessage(dial.LinkId); err != nil {
 					log.WithError(err).Error("error sending link message ")
 				}
-			} else {
+			} else if existingLink != nil {
 				log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
 			}
 		} else {

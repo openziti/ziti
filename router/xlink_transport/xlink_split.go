@@ -92,6 +92,10 @@ func (self *splitImpl) HandleCloseNotification(f func()) {
 	}
 }
 
+func (self *splitImpl) IsClosed() bool {
+	return self.payloadCh.IsClosed() || self.ackCh.IsClosed()
+}
+
 func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	detail.LinkDetails[self.id.Token] = self.InspectLink()
 }

@@ -133,12 +133,17 @@ func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool
 }
 
 func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
+	log := logrus.WithField("dest", link.DestinationId()).
+		WithField("linkProtocol", link.LinkProtocol()).
+		WithField("newLinkId", link.Id().Token)
+
 	key := self.getLinkLookupKey(link)
+	if link.IsClosed() {
+		log.Info("link being registered, but is already closed, skipping registration")
+		return nil, false
+	}
 	if existing := self.linkMap[key]; existing != nil {
-		log := logrus.WithField("dest", link.DestinationId()).
-			WithField("linkProtocol", link.LinkProtocol()).
-			WithField("currentLinkId", existing.Id().Token).
-			WithField("newLinkId", link.Id().Token)
+		log = log.WithField("currentLinkId", existing.Id().Token)
 		if existing.Id().Token < link.Id().Token {
 			log.Info("duplicate link detected. closing new link (new link id is > than current link id)")
 			self.sendRouterLinkMessage(existing)

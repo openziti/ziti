@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -86,19 +87,20 @@ func (forwarder *Forwarder) RegisterDestination(circuitId string, address xgress
 }
 
 func (forwarder *Forwarder) UnregisterDestinations(circuitId string) {
+	log := pfxlog.Logger().WithField("circuitId", circuitId)
 	if addresses, found := forwarder.destinations.getAddressesForCircuit(circuitId); found {
 		for _, address := range addresses {
 			if destination, found := forwarder.destinations.getDestination(address); found {
-				pfxlog.Logger().Debugf("unregistering destination [@/%v] for [s/%v]", address, circuitId)
+				log.Debugf("unregistering destination [@/%v] for circuit", address)
 				forwarder.destinations.removeDestination(address)
 				go destination.(XgressDestination).Unrouted()
 			} else {
-				pfxlog.Logger().Debugf("no destinations found for [@/%v] for [s/%v]", address, circuitId)
+				log.Debugf("no destinations found for [@/%v] for circuit", address)
 			}
 		}
 		forwarder.destinations.unlinkCircuit(circuitId)
 	} else {
-		pfxlog.Logger().Debugf("found no addresses to unregister for [s/%v]", circuitId)
+		log.Debug("found no addresses to unregister for circuit")
 	}
 }
 
@@ -195,9 +197,11 @@ func (forwarder *Forwarder) ForwardAcknowledgement(srcAddr xgress.Address, ackno
 }
 
 func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgress.Control) error {
-	log := pfxlog.ContextLogger(string(srcAddr))
-
 	circuitId := control.CircuitId
+	log := pfxlog.ContextLogger(string(srcAddr)).WithField("circuitId", circuitId)
+
+	var err error
+
 	if forwardTable, found := forwarder.circuits.getForwardTable(circuitId); found {
 		if dstAddr, found := forwardTable.getForwardAddress(srcAddr); found {
 			if dst, found := forwarder.destinations.getDestination(dstAddr); found {
@@ -208,23 +212,31 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 						return forwarder.ForwardControl(dstAddr, resp)
 					}
 				}
-				if err := dst.SendControl(control); err != nil {
-					return err
-				}
+				err = dst.SendControl(control)
 				log.Debugf("=> %s", string(dstAddr))
-				return nil
-
 			} else {
-				return errors.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
+				err = errors.Errorf("cannot forward control, no destination for circuit=%v src=%v dst=%v", circuitId, srcAddr, dstAddr)
 			}
-
 		} else {
-			return errors.Errorf("cannot forward control, no destination address for circuit=%v src=%v", circuitId, srcAddr)
+			err = errors.Errorf("cannot forward control, no destination address for circuit=%v src=%v", circuitId, srcAddr)
 		}
-
 	} else {
-		return errors.Errorf("cannot forward control, no forward table for circuit=%v src=%v", circuitId, srcAddr)
+		err = errors.Errorf("cannot forward control, no forward table for circuit=%v src=%v", circuitId, srcAddr)
 	}
+
+	if err != nil && control.IsTypeTraceRoute() {
+		resp := control.CreateTraceResponse("forwarder", forwarder.metricsRegistry.SourceId())
+		resp.Headers.PutStringHeader(xgress.ControlError, err.Error())
+		if dst, found := forwarder.destinations.getDestination(srcAddr); found {
+			if fwdErr := dst.SendControl(resp); fwdErr != nil {
+				log.WithError(errorz.MultipleErrors{err, fwdErr}).Error("error sending trace error response")
+			}
+		} else {
+			log.WithError(err).Error("unable to send trace error response as destination for source not found")
+		}
+	}
+
+	return err
 }
 
 func (forwarder *Forwarder) ReportForwardingFault(circuitId string) {

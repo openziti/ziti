@@ -90,6 +90,7 @@ type Xlink interface {
 	DestVersion() string
 	LinkProtocol() string
 	HandleCloseNotification(f func())
+	IsClosed() bool
 	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
 	InspectLink() *inspect.LinkInspectDetail
 }

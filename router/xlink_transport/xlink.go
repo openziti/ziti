@@ -76,6 +76,10 @@ func (self *impl) HandleCloseNotification(f func()) {
 	}
 }
 
+func (self *impl) IsClosed() bool {
+	return self.ch.IsClosed()
+}
+
 func (self *impl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	detail.LinkDetails[self.id.Token] = self.InspectLink()
 }
