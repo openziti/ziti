@@ -120,7 +120,7 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
 	forwarder.destinations.removeDestination(xgress.Address(link.Id().Token))
 }
 
-func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
+func (forwarder *Forwarder) Route(route *ctrl_pb.Route) error {
 	circuitId := route.CircuitId
 	var circuitFt *forwardTable
 	if ft, found := forwarder.circuits.getForwardTable(circuitId); found {
@@ -129,9 +129,20 @@ func (forwarder *Forwarder) Route(route *ctrl_pb.Route) {
 		circuitFt = newForwardTable()
 	}
 	for _, forward := range route.Forwards {
+		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
+			if forward.DstType == ctrl_pb.DestType_Link {
+				forwarder.faulter.notifyInvalidLink(forward.DstAddress)
+				return errors.Errorf("invalid link destination %v", forward.DstAddress)
+			}
+			if forward.DstType == ctrl_pb.DestType_End {
+				return errors.Errorf("invalid egress destination %v", forward.DstAddress)
+			}
+			// It's an ingress destination, which isn't established until after routing has completed
+		}
 		circuitFt.setForwardAddress(xgress.Address(forward.SrcAddress), xgress.Address(forward.DstAddress))
 	}
 	forwarder.circuits.setForwardTable(circuitId, circuitFt)
+	return nil
 }
 
 func (forwarder *Forwarder) Unroute(circuitId string, now bool) {

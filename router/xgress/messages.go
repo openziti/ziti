@@ -306,19 +306,29 @@ func (payload *Payload) GetLoggerFields() logrus.Fields {
 
 type ControlType byte
 
+func (self ControlType) String() string {
+	switch self {
+	case ControlTypeTraceRoute:
+		return "traceroute"
+	case ControlTypeTraceRouteResponse:
+		return "traceroute_response"
+	default:
+		return fmt.Sprintf("unhandled: %v", byte(self))
+	}
+}
+
 const (
 	ControlTypeTraceRoute         ControlType = 1
 	ControlTypeTraceRouteResponse             = 2
 )
 
 const (
-	ControlHopCount  = 1
-	ControlHopType   = 2
-	ControlHopId     = 3
-	ControlTimestamp = 4
-	ControlCustom1   = 5
-	ControlCustom2   = 6
-	ControlError     = 7
+	ControlHopCount  = 20
+	ControlHopType   = 21
+	ControlHopId     = 22
+	ControlTimestamp = 23
+	ControlUserVal   = 24
+	ControlError     = 25
 )
 
 type Control struct {

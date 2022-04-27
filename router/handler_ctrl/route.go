@@ -83,22 +83,26 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				log.Warnf("destination exists for [%s]", route.Egress.Address)
-				rh.success(msg, int(route.Attempt), route, nil, log)
+				rh.completeRoute(msg, int(route.Attempt), route, nil, log)
 				return
 			} else {
 				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx)
 				return
 			}
 		} else {
-			rh.success(msg, int(route.Attempt), route, nil, log)
+			rh.completeRoute(msg, int(route.Attempt), route, nil, log)
 		}
 	} else {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshaling")
 	}
 }
 
-func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
-	rh.forwarder.Route(route)
+func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
+	if err := rh.forwarder.Route(route); err != nil {
+		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
+		return
+	}
+
 	log.Debug("forwarder updated with route")
 
 	response := ctrl_msg.NewRouteResultSuccessMsg(route.CircuitId, attempt)
@@ -117,7 +121,7 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 }
 
 func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, errorHeader byte, log *logrus.Entry) {
-	log.WithError(err).Error("failed to connect egress")
+	log.WithError(err).Error("failure while handling route update")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
 	response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, errorHeader)
@@ -154,7 +158,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				}
 
 				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
-					rh.success(msg, attempt, route, peerData, log)
+					rh.completeRoute(msg, attempt, route, peerData, log)
 				} else {
 					var errCode byte
 

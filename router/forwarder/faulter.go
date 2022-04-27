@@ -17,6 +17,7 @@
 package forwarder
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -48,6 +49,14 @@ func (self *Faulter) SetCtrl(ch channel.Channel) {
 func (self *Faulter) report(circuitId string) {
 	if self.interval > 0 {
 		self.circuitIds.Set(circuitId, struct{}{})
+	}
+}
+
+func (self *Faulter) notifyInvalidLink(linkId string) {
+	log := pfxlog.Logger()
+	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
+	if err := protobufs.MarshalTyped(fault).Send(self.ctrl); err != nil {
+		log.WithError(err).WithField("linkId", linkId).Error("failed to notify of invalid link")
 	}
 }
 

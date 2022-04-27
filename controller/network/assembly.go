@@ -76,7 +76,7 @@ func (network *Network) clean() {
 		}
 	}
 	for _, lr := range lRemove {
-		log.WithField("linkId", lr.Id).Info("removing failed link", lr.Id)
+		log.WithField("linkId", lr.Id).Info("removing failed link")
 		network.linkController.remove(lr)
 	}
 }

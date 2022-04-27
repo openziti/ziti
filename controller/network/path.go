@@ -94,10 +94,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 			SrcAddress: self.IngressId,
 			DstAddress: self.EgressId,
+			DstType:    ctrl_pb.DestType_End,
 		})
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 			SrcAddress: self.EgressId,
 			DstAddress: self.IngressId,
+			DstType:    ctrl_pb.DestType_Start,
 		})
 		routeMessage.Egress = &ctrl_pb.Route_Egress{
 			Binding:     terminator.GetBinding(),
@@ -114,10 +116,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.IngressId,
 				DstAddress: link.Id,
+				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
 				DstAddress: self.IngressId,
+				DstType:    ctrl_pb.DestType_Start,
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}
@@ -128,10 +132,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
 				DstAddress: nextLink.Id,
+				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: nextLink.Id,
 				DstAddress: link.Id,
+				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}
@@ -148,10 +154,12 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.EgressId,
 				DstAddress: link.Id,
+				DstType:    ctrl_pb.DestType_Link,
 			})
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
 				DstAddress: self.EgressId,
+				DstType:    ctrl_pb.DestType_End,
 			})
 			routeMessages = append(routeMessages, routeMessage)
 		}

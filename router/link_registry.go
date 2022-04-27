@@ -118,6 +118,18 @@ func (self *linkRegistryImpl) DialFailed(dial xlink.Dial) {
 	delete(self.dialLocks, key)
 }
 
+func (self *linkRegistryImpl) DebugForgetLink(linkId string) bool {
+	self.Lock()
+	defer self.Unlock()
+	if link := self.linkByIdMap[linkId]; link != nil {
+		key := self.getLinkLookupKey(link)
+		delete(self.linkByIdMap, linkId)
+		delete(self.linkMap, key)
+		return true
+	}
+	return false
+}
+
 func (self *linkRegistryImpl) LinkAccepted(link xlink.Xlink) (xlink.Xlink, bool) {
 	self.Lock()
 	defer self.Unlock()

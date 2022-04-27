@@ -46,6 +46,9 @@ type Registry interface {
 	Iter() <-chan Xlink
 	// Shutdown frees any resources owned by the registry
 	Shutdown()
+
+	// DebugForgetLink will remove the link from the registry to inject an error condition
+	DebugForgetLink(linkId string) bool
 }
 
 // A Factory creates link listeners and link dialers
