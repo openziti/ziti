@@ -362,6 +362,7 @@ type Service struct {
 	DialIdentityProvider TemplateFunc
 	SourceAddrProvider   TemplateFunc
 	cleanupActions       []func()
+	reconnectAction      func()
 	lock                 sync.Mutex
 }
 
@@ -371,12 +372,30 @@ func (self *Service) AddCleanupAction(f func()) {
 	self.cleanupActions = append(self.cleanupActions, f)
 }
 
+func (self *Service) SetReconnectAction(f func()) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+	self.reconnectAction = f
+}
+
 func (self *Service) RunCleanupActions() {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	for _, action := range self.cleanupActions {
 		action()
+	}
+
+	self.cleanupActions = nil
+	self.reconnectAction = nil
+}
+
+func (self *Service) RunReconnectAction() {
+	self.lock.Lock()
+	reconnectAction := self.reconnectAction
+	self.lock.Unlock()
+	if reconnectAction != nil {
+		reconnectAction()
 	}
 }
 

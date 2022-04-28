@@ -17,14 +17,15 @@
 package xgress_edge_tunnel
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -46,6 +47,8 @@ type Factory struct {
 }
 
 func (self *Factory) NotifyOfReconnect() {
+	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
+	self.tunneler.servicePoller.serviceListener.NotifyOfReconnect()
 }
 
 func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {

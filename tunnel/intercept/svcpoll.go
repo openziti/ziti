@@ -87,6 +87,9 @@ func (self *ServiceListener) HandleProviderReady(provider tunnel.FabricProvider)
 }
 
 func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventType, service *edge.Service) {
+	self.Lock()
+	defer self.Unlock()
+
 	tunnelerService := &entities.Service{Service: *service}
 
 	log := logrus.WithField("service", service.Name)
@@ -231,6 +234,12 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 	}
 	svc.AddCleanupAction(stopHook)
 
+	svc.SetReconnectAction(func() {
+		logger.Info("re-establishing hosting after reconnect")
+		stopHook()
+		self.host(svc, tracker)
+	})
+
 	for idx, hostContext := range hostContexts {
 		hostControl, err := self.provider.HostService(hostContext)
 		if err != nil {
@@ -254,6 +263,14 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 			hostContext.OnClose()
 			return
 		}
+	}
+}
+
+func (self *ServiceListener) NotifyOfReconnect() {
+	self.Lock()
+	defer self.Unlock()
+	for _, svc := range self.services {
+		svc.RunReconnectAction()
 	}
 }
 
