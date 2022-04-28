@@ -159,7 +159,7 @@ func DefaultOptions() *Options {
 		TxPortalDupAckScale:    0.9,
 		RxBufferSize:           4 * 1024 * 1024,
 		RetxStartMs:            200,
-		RetxScale:              2.0,
+		RetxScale:              1.5,
 		RetxAddMs:              0,
 		MaxCloseWait:           30 * time.Second,
 		GetCircuitTimeout:      30 * time.Second,
