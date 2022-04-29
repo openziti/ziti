@@ -191,7 +191,7 @@ func (buffer *LinkSendBuffer) run() {
 
 	for {
 		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
-		// if we're blocked, but empty, let one payload to reduce the chances of a stall
+		// if we're blocked, but empty, let one payload in to reduce the chances of a stall
 		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() && buffer.linkSendBufferSize != 0 {
 			buffered = nil
 		} else {
@@ -285,9 +285,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 			duplicateAcksMeter.Mark(1)
 			buffer.duplicateAcks++
 			if buffer.duplicateAcks >= buffer.x.Options.TxPortalDupAckThresh {
-				// buffer.accumulator = 0
 				buffer.duplicateAcks = 0
-				// buffer.scale(buffer.x.Options.TxPortalDupAckScale)
 				buffer.retxScale += 0.2
 			}
 		}
