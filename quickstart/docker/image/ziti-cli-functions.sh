@@ -772,20 +772,9 @@ function createPki {
   pki_create_intermediate "${ZITI_SIGNING_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
-  if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"; then
-    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-    "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
-          --client-file="${ZITI_NETWORK-}-dotzeet" \
-          --client-name "${ZITI_NETWORK-} Management"
-  else
-    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-    echo "key exists"
-  fi
   echo " "
-
   pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}"
   pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}"
-
 }
 
 
@@ -894,20 +883,6 @@ function createEdgeRouterConfig {
 
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
-}
-
-function createFabricIdentity {
-  output_file="${ZITI_HOME}/identities.yml"
-cat > "${output_file}" <<IdentitiesJsonHereDoc
----
-default:
-  caCert:   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
-  cert:     "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_NETWORK-}-dotzeet.cert"
-  key:      "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"
-  endpoint: tls:${ZITI_CTRL_MGMT_HOST_PORT}
-IdentitiesJsonHereDoc
-
-echo -e "identities file written to: $(BLUE "${output_file}")"
 }
 
 # shellcheck disable=SC2120
