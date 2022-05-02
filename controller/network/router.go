@@ -20,14 +20,15 @@ import (
 	"reflect"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -45,6 +46,7 @@ type Router struct {
 	Listeners   []Listener
 	Control     channel.Channel
 	Connected   concurrenz.AtomicBoolean
+	ConnectTime time.Time
 	VersionInfo *common.VersionInfo
 	routerLinks RouterLinks
 	Cost        uint16
@@ -142,13 +144,29 @@ func newRouterController(controllers *Controllers) *RouterController {
 }
 
 func (ctrl *RouterController) markConnected(r *Router) {
+	if val, _ := ctrl.connected.Get(r.Id); val != nil {
+		if router, ok := val.(*Router); ok {
+			if ch := router.Control; ch != nil {
+				if err := ch.Close(); err != nil {
+					pfxlog.Logger().WithError(err).Error("error closing control channel")
+				}
+			}
+		}
+	}
+
 	r.Connected.Set(true)
 	ctrl.connected.Set(r.Id, r)
 }
 
 func (ctrl *RouterController) markDisconnected(r *Router) {
 	r.Connected.Set(false)
-	ctrl.connected.Remove(r.Id)
+	ctrl.connected.RemoveCb(r.Id, func(key string, v interface{}, exists bool) bool {
+		if exists && v != r {
+			pfxlog.Logger().WithField("routerId", r.Id).Info("router not current connect, not clearing from connected map")
+			return false
+		}
+		return exists
+	})
 	r.routerLinks.Clear()
 }
 
@@ -295,6 +313,10 @@ func (ctrl *RouterController) UpdateCachedRouter(id string) {
 		ctrl.cache.RemoveCb(id, updateCb)
 		ctrl.connected.RemoveCb(id, updateCb)
 	}
+}
+
+func (ctrl *RouterController) RemoveFromCache(id string) {
+	ctrl.cache.Remove(id)
 }
 
 type RouterLinks struct {

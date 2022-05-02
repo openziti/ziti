@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/transport"
 	"github.com/pkg/errors"
+	"time"
 )
 
 type CtrlAccepter struct {
@@ -114,6 +115,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		}
 
 		r.Control = ch
+		r.ConnectTime = time.Now()
 		if err := binding.Bind(newBindHandler(r, self.network, self.xctrls)); err != nil {
 			return errors.Wrap(err, "error binding router")
 		}

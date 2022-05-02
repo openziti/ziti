@@ -17,7 +17,7 @@
 package network
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"math"
 	"time"
 
@@ -31,6 +31,7 @@ const (
 	DefaultNetworkOptionsCtrlChanLatencyInterval = 10 * time.Second
 	DefaultNetworkOptionsPendingLinkTimeout      = 10 * time.Second
 	DefaultNetworkOptionsMinRouterCost           = 10
+	DefaultNetworkOptionsRouterConnectChurnLimit = time.Minute
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
 	DefaultNetworkOptionsSmartRerouteCap         = 4
 )
@@ -46,6 +47,7 @@ type Options struct {
 	CtrlChanLatencyInterval time.Duration
 	PendingLinkTimeout      time.Duration
 	MinRouterCost           uint16
+	RouterConnectChurnLimit time.Duration
 }
 
 func DefaultOptions() *Options {
@@ -56,6 +58,7 @@ func DefaultOptions() *Options {
 		CtrlChanLatencyInterval: DefaultNetworkOptionsCtrlChanLatencyInterval,
 		PendingLinkTimeout:      DefaultNetworkOptionsPendingLinkTimeout,
 		MinRouterCost:           DefaultNetworkOptionsMinRouterCost,
+		RouterConnectChurnLimit: DefaultNetworkOptionsRouterConnectChurnLimit,
 	}
 	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
 	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
@@ -138,6 +141,18 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.MinRouterCost = uint16(minRouterCost)
 		} else {
 			logrus.Fatalf("invalid network.minRouterCost value. Must be between number between 0 and %v", math.MaxUint16)
+		}
+	}
+
+	if value, found := src["routerConnectChurnLimit"]; found {
+		if routerConnectChurnLimitStr, ok := value.(string); ok {
+			val, err := time.ParseDuration(routerConnectChurnLimitStr)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid value for 'routerConnectChurnLimit'")
+			}
+			options.RouterConnectChurnLimit = val
+		} else {
+			return nil, errors.New("invalid value for 'routerConnectChurnLimit'")
 		}
 	}
 
