@@ -17,18 +17,30 @@
 package inspect
 
 type CircuitInspectDetail struct {
-	CircuitId     string                        `json:"circuitId"`
-	Forwards      map[string]string             `json:"forwards"`
-	XgressDetails map[string]*XgressDetail      `json:"xgressDetails"`
-	LinkDetails   map[string]*LinkInspectDetail `json:"linkDetails"`
+	CircuitId         string                        `json:"circuitId"`
+	Forwards          map[string]string             `json:"forwards"`
+	XgressDetails     map[string]*XgressDetail      `json:"xgressDetails"`
+	LinkDetails       map[string]*LinkInspectDetail `json:"linkDetails"`
+	includeGoroutines bool
+}
+
+func (self *CircuitInspectDetail) SetIncludeGoroutines(includeGoroutines bool) {
+	self.includeGoroutines = includeGoroutines
+}
+
+func (self *CircuitInspectDetail) IncludeGoroutines() bool {
+	return self.includeGoroutines
 }
 
 type XgressDetail struct {
-	Address             string                  `json:"address"`
-	Originator          string                  `json:"originator"`
-	TimeSinceLastLinkRx string                  `json:"timeSinceLastLinkRx"`
-	SendBufferDetail    *XgressSendBufferDetail `json:"sendBufferDetail"`
-	RecvBufferDetail    *XgressRecvBufferDetail `json:"recvBufferDetail"`
+	Address               string                  `json:"address"`
+	Originator            string                  `json:"originator"`
+	TimeSinceLastLinkRx   string                  `json:"timeSinceLastLinkRx"`
+	SendBufferDetail      *XgressSendBufferDetail `json:"sendBufferDetail"`
+	RecvBufferDetail      *XgressRecvBufferDetail `json:"recvBufferDetail"`
+	XgressPointer         string                  `json:"xgressPointer"`
+	LinkSendBufferPointer string                  `json:"linkSendBufferPointer"`
+	Goroutines            []string                `json:"goroutines"`
 }
 
 type XgressSendBufferDetail struct {

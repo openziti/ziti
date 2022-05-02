@@ -98,7 +98,18 @@ func (context *inspectRequestContext) processLocal() {
 			}
 		} else if strings.HasPrefix(lc, "circuit:") {
 			circuitId := requested[len("circuit:"):]
-			result := context.handler.fwd.InspectCircuit(circuitId)
+			result := context.handler.fwd.InspectCircuit(circuitId, false)
+			if result != nil {
+				js, err := json.Marshal(result)
+				if err != nil {
+					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
+				} else {
+					context.appendValue(requested, string(js))
+				}
+			}
+		} else if strings.HasPrefix(lc, "circuitandstacks:") {
+			circuitId := requested[len("circuitAndStacks:"):]
+			result := context.handler.fwd.InspectCircuit(circuitId, true)
 			if result != nil {
 				js, err := json.Marshal(result)
 				if err != nil {
