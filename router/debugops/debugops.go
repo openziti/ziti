@@ -9,6 +9,6 @@ const (
 	DumpApiSessions byte = 128
 )
 
-func RegisterEdgeRouterDebugOps(router *router.Router, sm fabric.StateManager) {
-	router.RegisterDebugOp(DumpApiSessions, sm.DumpApiSessions)
+func RegisterEdgeRouterAgentOps(router *router.Router, sm fabric.StateManager, debugEnabled bool) {
+	router.RegisterAgentOp(DumpApiSessions, sm.DumpApiSessions)
 }

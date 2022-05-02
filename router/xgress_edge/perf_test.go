@@ -38,6 +38,10 @@ type mirrorLink struct {
 	acks chan *xgress.Acknowledgement
 }
 
+func (link *mirrorLink) IsClosed() bool {
+	return false
+}
+
 func (link *mirrorLink) InspectCircuit(circuitDetail *inspect.CircuitInspectDetail) {
 }
 

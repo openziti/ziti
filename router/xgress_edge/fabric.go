@@ -117,9 +117,13 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		hop, _ := headers.GetUint32Header(xgress.ControlHopCount)
 		hopType, _ := headers.GetStringHeader(xgress.ControlHopType)
 		hopId, _ := headers.GetStringHeader(xgress.ControlHopId)
-		requestSeq, _ := headers.GetUint32Header(xgress.ControlCustom1)
+		requestSeq, _ := headers.GetUint32Header(xgress.ControlUserVal)
 
 		msg := edge.NewTraceRouteResponseMsg(self.Id(), hop, ts, hopType, hopId)
+		if traceErr, hasErr := headers.GetStringHeader(xgress.ControlError); hasErr {
+			msg.PutStringHeader(edge.TraceError, traceErr)
+		}
+
 		msg.PutUint32Header(channel.ReplyForHeader, requestSeq)
 
 		self.TraceMsg("write", msg)
@@ -137,7 +141,7 @@ func (self *edgeXgressConn) HandleControlMsg(controlType xgress.ControlType, hea
 		}
 
 		ts, _ := headers.GetUint64Header(xgress.ControlTimestamp)
-		requestSeq, _ := headers.GetUint32Header(xgress.ControlCustom1)
+		requestSeq, _ := headers.GetUint32Header(xgress.ControlUserVal)
 
 		msg := edge.NewTraceRouteMsg(self.Id(), hop-1, ts)
 		msg.PutUint32Header(edge.TraceSourceRequestIdHeader, requestSeq)
@@ -270,9 +274,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 		headers.PutUint64Header(xgress.ControlTimestamp, ts)
 		headers.PutUint32Header(xgress.ControlHopCount, hops)
 
-		headers.PutUint32Header(xgress.ControlCustom1, uint32(msg.Sequence()))
+		headers.PutUint32Header(xgress.ControlUserVal, uint32(msg.Sequence()))
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, channel.Headers(headers))
+		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRoute, headers)
 	} else if msg.ContentType == edge.ContentTypeTraceRouteResponse {
 		headers := channel.Headers{}
 		ts, _ := msg.GetUint64Header(edge.TimestampHeader)
@@ -285,9 +289,9 @@ func (self *edgeXgressConn) Accept(msg *channel.Message) {
 		headers.PutUint32Header(xgress.ControlHopCount, hopCount)
 		headers.PutStringHeader(xgress.ControlHopType, hopType)
 		headers.PutStringHeader(xgress.ControlHopId, hopId)
-		headers.PutUint32Header(xgress.ControlCustom1, sourceRequestId)
+		headers.PutUint32Header(xgress.ControlUserVal, sourceRequestId)
 
-		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, channel.Headers(headers))
+		self.ctrlRx.HandleControlReceive(xgress.ControlTypeTraceRouteResponse, headers)
 	} else {
 		if err := self.seq.Push(msg); err != nil {
 			pfxlog.Logger().WithFields(edge.GetLoggerFields(msg)).Errorf("failed to dispatch to fabric: (%v)", err)

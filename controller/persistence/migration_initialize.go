@@ -516,6 +516,10 @@ var hostV2ConfigType = &ConfigType{
 				"$ref": "#/definitions/terminatorList",
 			},
 		},
+		"required": []string{
+			"terminators",
+		},
+		"additionalProperties": false,
 	},
 }
 
