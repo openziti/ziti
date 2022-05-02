@@ -1,6 +1,21 @@
 # Release 0.25.5
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
+* Enhancement: Updated Control Channel to use new heartbeat logging mirroring Links in Release `0.25.0`
+* Enhancement: Added Circuit Creation Timespan which denotes how long the fabric took to construct a requested circuit.
+```json
+{
+    "namespace": "namespace",
+    "event_type": "event_type",
+    "circuit_id": "circuit_id",
+    "timestamp": "2022-04-07T14:00:52.0500632-05:00",
+    "client_id": "client_id",
+    "service_id": "service_id",
+    "creation_timespan": 5000000, //Timespan in nanoseconds
+    "path": "path"
+}
+```
+
 * Bug fix: Fixes an issue where Edge administrator checks would not take default admin flag into account
 * Bug fix: Fix an issue with docker-compose quickstart not properly loading env vars
 * Enhancement: Add support for Apple M1 using the ziti quickstart CLI script
