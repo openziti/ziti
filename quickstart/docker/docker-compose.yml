@@ -126,6 +126,7 @@ services:
     ports:
       - "1408:1408"
       - "8443:8443"
+    working_dir: /usr/src/app
     volumes:
       - ziti-fs:/openziti
 
@@ -135,8 +136,9 @@ services:
 
 networks:
   zitired:
+    driver: bridge
   zitiblue:
-
+    driver: bridge
 volumes:
   ziti-fs:
 
