@@ -28,7 +28,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -43,12 +42,13 @@ type updateIdentityOptions struct {
 	servicePrecedences       map[string]string
 	tags                     map[string]string
 	appData                  map[string]string
+	externalId               string
 }
 
-func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
 		Options: api.Options{
-			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
 
@@ -70,6 +70,7 @@ func newUpdateIdentityCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *c
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
+	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
@@ -93,6 +94,11 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 
 	if o.Cmd.Flags().Changed("name") {
 		api.SetJSONValue(entityData, o.name, "name")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("external-id") {
+		api.SetJSONValue(entityData, o.externalId, "externalId")
 		change = true
 	}
 

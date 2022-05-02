@@ -22,13 +22,14 @@ import (
 	"github.com/openziti/foundation/agent"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/transport"
 	loop3_pb "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop3/pb"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net"
+	"net/http"
 	"strings"
 )
 
@@ -38,18 +39,19 @@ func init() {
 }
 
 type listenerCmd struct {
-	cmd            *cobra.Command
-	identity       string
-	bindAddress    string
-	edgeConfigFile string
-	test           *loop3_pb.Test
+	cmd             *cobra.Command
+	identity        string
+	bindAddress     string
+	edgeConfigFile  string
+	healthCheckAddr string
+	test            *loop3_pb.Test
 }
 
 func newListenerCmd() *listenerCmd {
 	result := &listenerCmd{
 		cmd: &cobra.Command{
 			Use:   "listener",
-			Short: "Start loop2 listener",
+			Short: "Start loop3 listener",
 			Args:  cobra.MaximumNArgs(1),
 		},
 	}
@@ -60,6 +62,7 @@ func newListenerCmd() *listenerCmd {
 	flags.StringVarP(&result.identity, "identity", "i", "default", ".ziti/identities.yml name")
 	flags.StringVarP(&result.bindAddress, "bind", "b", "tcp:127.0.0.1:8171", "Listener bind address")
 	flags.StringVarP(&result.edgeConfigFile, "config-file", "c", "", "Edge SDK config file")
+	flags.StringVar(&result.healthCheckAddr, "health-check-addr", "", "Edge SDK config file")
 
 	return result
 }
@@ -70,7 +73,18 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 	var err error
 	shutdownClean := false
 	if err = agent.Listen(agent.Options{ShutdownCleanup: &shutdownClean}); err != nil {
-		pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
+		log.WithError(err).Error("unable to start CLI agent")
+	}
+
+	if cmd.healthCheckAddr != "" {
+		go func() {
+			err = http.ListenAndServe(cmd.healthCheckAddr, http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+				writer.WriteHeader(200)
+			}))
+			if err != nil {
+				log.WithError(err).Fatalf("unable to start health check endpoint on addr [%v]", cmd.healthCheckAddr)
+			}
+		}()
 	}
 
 	var scenario *Scenario
@@ -96,17 +110,21 @@ func (cmd *listenerCmd) run(_ *cobra.Command, args []string) {
 		defer close(closer)
 	}
 
+	log.Infof("binding to address '%v'", cmd.bindAddress)
 	if strings.HasPrefix(cmd.bindAddress, "edge") {
 		cmd.listenEdge()
 	} else {
-		_, id, err := dotziti.LoadIdentity(cmd.identity)
+		bindAddress, err := transport.ParseAddress(cmd.bindAddress)
 		if err != nil {
 			panic(err)
 		}
 
-		bindAddress, err := transport.ParseAddress(cmd.bindAddress)
-		if err != nil {
-			panic(err)
+		id := &identity.TokenId{Token: "test"}
+		if bindAddress.Type() != "tcp" {
+			_, id, err = dotziti.LoadIdentity(cmd.identity)
+			if err != nil {
+				panic(err)
+			}
 		}
 
 		cmd.listen(bindAddress, id)

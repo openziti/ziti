@@ -17,8 +17,9 @@
 package edge
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"io"
 	"net/url"
 	"reflect"
@@ -40,9 +41,9 @@ import (
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "Lists various entities managed by the Ziti Edge Controller",
-		Long:  "Lists various entities managed by the Ziti Edge Controller",
+		Use:     "list",
+		Short:   "Lists various entities managed by the Ziti Edge Controller",
+		Aliases: []string{"ls"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
@@ -127,45 +128,23 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
-type paging struct {
-	limit  int64
-	offset int64
-	count  int64
-	errorz.ErrorHolderImpl
-}
-
-func newPagingInfo(meta *rest_model.Meta) paging {
+func newPagingInfo(meta *rest_model.Meta) *api.Paging {
 	if meta != nil && meta.Pagination != nil {
-		pagingInfo := paging{
-			limit:  *meta.Pagination.Limit,
-			offset: *meta.Pagination.Offset,
-			count:  *meta.Pagination.TotalCount,
+		pagingInfo := &api.Paging{
+			Limit:  *meta.Pagination.Limit,
+			Offset: *meta.Pagination.Offset,
+			Count:  *meta.Pagination.TotalCount,
 		}
 
 		return pagingInfo
 	}
 
-	return paging{}
-}
-
-func (p *paging) output(o *api.Options) {
-	if p.HasError() {
-		_, _ = fmt.Fprintf(o.Out, "unable to retrieve paging information: %v\n", p.Err)
-	} else if p.count == 0 {
-		_, _ = fmt.Fprintln(o.Out, "results: none")
-	} else {
-		first := p.offset + 1
-		last := p.offset + p.limit
-		if last > p.count || last < 0 { // if p.limit is maxint, last will rollover and be negative
-			last = p.count
-		}
-		_, _ = fmt.Fprintf(o.Out, "results: %v-%v of %v\n", first, last, p.count)
-	}
+	return &api.Paging{}
 }
 
 type listCommandRunner func(*api.Options) error
 
-type outputFunction func(o *api.Options, children []*gabs.Container, pagingInfo *paging) error
+type outputFunction func(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error
 
 func newEntityListRootCmd(entityType string, aliases ...string) *cobra.Command {
 	desc := fmt.Sprintf("list entities related to a %v instance managed by the Ziti Edge Controller", entityType)
@@ -186,7 +165,6 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 	cmd := &cobra.Command{
 		Use:     entityType + " <filter>?",
 		Short:   "lists " + entityType + " managed by the Ziti Edge Controller",
-		Long:    "lists " + entityType + " managed by the Ziti Edge Controller",
 		Args:    cobra.MaximumNArgs(1),
 		Aliases: aliases,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -200,6 +178,7 @@ func newListCmdForEntityType(entityType string, command listCommandRunner, optio
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -232,6 +211,7 @@ func newListServicesCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().StringSliceVar(&configTypes, "config-types", nil, "Override which config types to view on services")
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -261,6 +241,7 @@ func newListEdgeRoutersCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -289,6 +270,7 @@ func newListIdentitiesCmd(options *api.Options) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringSliceVar(&roleFilters, "role-filters", nil, "Allow filtering by roles")
 	cmd.Flags().StringVar(&roleSemantic, "role-semantic", "", "Specify which roles semantic to use ")
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -314,34 +296,35 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
+	cmd.Flags().BoolVar(&options.OutputCSV, "csv", false, "Output CSV instead of a formatted table")
 
 	return cmd
 }
 
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesWithOptions(entityType string, options *api.Options) ([]*gabs.Container, *paging, error) {
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
+func listEntitiesWithOptions(entityType string, options *api.Options) ([]*gabs.Container, *api.Paging, error) {
 	params := url.Values{}
 	if len(options.Args) > 0 {
 		params.Add("filter", options.Args[0])
 	}
 
-	return listEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	return ListEntitiesOfType(entityType, params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 }
 
-func listEntitiesWithFilter(entityType string, filter string) ([]*gabs.Container, *paging, error) {
+func ListEntitiesWithFilter(entityType string, filter string) ([]*gabs.Container, *api.Paging, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, false, nil, 5, false)
+	return ListEntitiesOfType(entityType, params, false, nil, 5, false)
 }
 
-func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
+func filterEntitiesOfType(entityType string, filter string, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *api.Paging, error) {
 	params := url.Values{}
 	params.Add("filter", filter)
-	return listEntitiesOfType(entityType, params, logJSON, out, timeout, verbose)
+	return ListEntitiesOfType(entityType, params, logJSON, out, timeout, verbose)
 }
 
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
-func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *paging, error) {
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
+func ListEntitiesOfType(entityType string, params url.Values, logJSON bool, out io.Writer, timeout int, verbose bool) ([]*gabs.Container, *api.Paging, error) {
 	jsonParsed, err := util.EdgeControllerList(entityType, params, logJSON, out, timeout, verbose)
 
 	if err != nil {
@@ -349,7 +332,7 @@ func listEntitiesOfType(entityType string, params url.Values, logJSON bool, out 
 	}
 
 	children, err := jsonParsed.S("data").Children()
-	return children, getPaging(jsonParsed), err
+	return children, api.GetPaging(jsonParsed), err
 }
 
 func toInt64(c *gabs.Container, path string, errorHolder errorz.ErrorHolder) int64 {
@@ -366,21 +349,8 @@ func toInt64(c *gabs.Container, path string, errorHolder errorz.ErrorHolder) int
 	return int64(val)
 }
 
-func getPaging(c *gabs.Container) *paging {
-	pagingInfo := &paging{}
-	pagination := c.S("meta", "pagination")
-	if pagination != nil {
-		pagingInfo.limit = toInt64(pagination, "limit", pagingInfo)
-		pagingInfo.offset = toInt64(pagination, "offset", pagingInfo)
-		pagingInfo.count = toInt64(pagination, "totalCount", pagingInfo)
-	} else {
-		pagingInfo.SetError(errors.New("meta.pagination section not found in result"))
-	}
-	return pagingInfo
-}
-
-// listEntitiesOfType queries the Ziti Controller for entities of the given type
-func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *api.Options) ([]*gabs.Container, *paging, error) {
+// ListEntitiesOfType queries the Ziti Controller for entities of the given type
+func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *api.Options) ([]*gabs.Container, *api.Paging, error) {
 	jsonParsed, err := util.EdgeControllerListSubEntities(entityType, subType, entityId, filter, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 
 	if err != nil {
@@ -389,9 +359,9 @@ func filterSubEntitiesOfType(entityType, subType, entityId, filter string, o *ap
 
 	children, err := jsonParsed.S("data").Children()
 	if err == gabs.ErrNotObjOrArray {
-		return nil, getPaging(jsonParsed), nil
+		return nil, api.GetPaging(jsonParsed), nil
 	}
-	return children, getPaging(jsonParsed), err
+	return children, api.GetPaging(jsonParsed), err
 }
 
 func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.Options) error {
@@ -405,7 +375,7 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, paging, err := listEntitiesOfType("edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, paging, err := api.ListEntitiesOfType(util.EdgeAPI, "edge-routers", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -413,23 +383,26 @@ func runListEdgeRouters(roleFilters []string, roleSemantic string, options *api.
 	return outputEdgeRouters(options, children, paging)
 }
 
-func outputEdgeRouters(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputEdgeRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Online", "Allow Transit", "Cost", "Attributes"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		isOnline, _ := entity.Path("isOnline").Data().(bool)
-		cost, _ := entity.Path("cost").Data().(float64)
-		roleAttributes := entity.Path("roleAttributes").String()
-		noTraversal, _ := entity.Path("noTraversal").Data().(bool)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    isOnline: %v    cost: %v    noTraversal: %t    role attributes: %v\n", id, name, isOnline, cost, noTraversal, roleAttributes); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.Bool("isOnline"),
+			!wrapper.Bool("noTraversal"),
+			wrapper.Float64("cost"),
+			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -441,15 +414,17 @@ func runListEdgeRouterPolicies(o *api.Options) error {
 	return outputEdgeRouterPolicies(o, children, paging)
 }
 
-func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Edge Router Roles", "Identity Roles"})
 
+	for _, entity := range children {
+		wrapper := api.Wrap(entity)
 		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
@@ -460,12 +435,14 @@ func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, paging
 			return err
 		}
 
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    identity roles: %v\n", id, name, edgeRouterRoles, identityRoles)
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(edgeRouterRoles, " "),
+			strings.Join(identityRoles, " "),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -477,10 +454,14 @@ func runListTerminators(o *api.Options) error {
 	return outputTerminators(o, children, pagingInfo)
 }
 
-func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Identity", "Cost", "Precedence", "Dynamic Cost"})
 
 	for _, entity := range children {
 		id, _ := entity.Path("id").Data().(string)
@@ -492,13 +473,10 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *p
 		staticCost := entity.Path("cost").Data().(float64)
 		precedence := entity.Path("precedence").Data().(string)
 		dynamicCost := entity.Path("dynamicCost").Data().(float64)
-		_, err := fmt.Fprintf(o.Out, "id: %v    service: %v    router: %v    binding: %v    address: %v    identity: %v    cost: %v    precedence: %v    dynamic-cost: %v\n",
-			id, service, router, binding, address, identity, staticCost, precedence, dynamicCost)
-		if err != nil {
-			return err
-		}
+
+		t.AppendRow(table.Row{id, service, router, binding, address, identity, staticCost, precedence, dynamicCost})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -528,50 +506,56 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("services", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, pagingInfo, err := ListEntitiesOfType("services", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
 	return outputServices(options, children, pagingInfo)
 }
 
-func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
-	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		encryptionRequired, _ := entity.Path("encryptionRequired").Data().(bool)
-		terminatorStrategy, _ := entity.Path("terminatorStrategy").Data().(string)
-		roleAttributes := entity.Path("roleAttributes").String()
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Encryption Required", "Terminator Strategy", "Attributes"})
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 3, WidthMax: 10},
+	})
 
-		_, err := fmt.Fprintf(o.Out, "id: %v    name: %v    encryption required: %v    terminator strategy: %v    role attributes: %v\n", id, name, encryptionRequired, terminatorStrategy, roleAttributes)
-		if err != nil {
-			return err
-		}
+	for _, entity := range children {
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.Bool("encryptionRequired"),
+			wrapper.String("terminatorStrategy"),
+			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
-func outputServiceConfigs(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputServiceConfigs(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"Service Name", "Config Name"})
+
 	for _, entity := range children {
-		service, _ := entity.Path("service").Data().(string)
-		serviceName, _ := mapIdToName("services", service, *o)
-		config, _ := entity.Path("config").Data().(string)
-		configName, _ := mapIdToName("configs", config, *o)
-		_, err := fmt.Fprintf(o.Out, "service: %v    config: %v\n", serviceName, configName)
-		if err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("service.name"),
+			wrapper.String("config.name"),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -583,28 +567,35 @@ func runListServiceEdgeRouterPolices(o *api.Options) error {
 	return outputServiceEdgeRouterPolicies(o, children, pagingInfo)
 }
 
-func outputServiceEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputServiceEdgeRouterPolicies(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Service Roles", "Edge Router Roles"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
-		if err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
 		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    edge router roles: %v    service roles: %v\n", id, name, edgeRouterRoles, serviceRoles)
+
+		edgeRouterRoles, err := mapRoleIdsToNames(entity, "edgeRouterRoles")
 		if err != nil {
 			return err
 		}
+
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(serviceRoles, " "),
+			strings.Join(edgeRouterRoles, " "),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -616,36 +607,42 @@ func runListServicePolices(o *api.Options) error {
 	return outputServicePolicies(o, children, pagingInfo)
 }
 
-func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Service Roles", "Identity Roles", "Posture Check Roles"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		policyType, _ := entity.Path("type").Data().(string)
+		wrapper := api.Wrap(entity)
+
+		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
+		if err != nil {
+			return err
+		}
 
 		identityRoles, err := mapRoleIdsToNames(entity, "identityRoles")
 		if err != nil {
 			return err
 		}
 
-		serviceRoles, err := mapRoleIdsToNames(entity, "serviceRoles")
-		if err != nil {
-			return err
-		}
 		postureCheckRoles, err := mapRoleIdsToNames(entity, "postureCheckRoles")
 		if err != nil {
 			return err
 		}
 
-		_, err = fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    service roles: %v    identity roles: %v posture check roles: %v\n", id, name, policyType, serviceRoles, identityRoles, postureCheckRoles)
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			strings.Join(serviceRoles, " "),
+			strings.Join(identityRoles, " "),
+			strings.Join(postureCheckRoles, " "),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -697,7 +694,7 @@ func runListIdentities(roleFilters []string, roleSemantic string, options *api.O
 	if roleSemantic != "" {
 		params.Add("roleSemantic", roleSemantic)
 	}
-	children, pagingInfo, err := listEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
+	children, pagingInfo, err := ListEntitiesOfType("identities", params, options.OutputJSONResponse, options.Out, options.Timeout, options.Verbose)
 	if err != nil {
 		return err
 	}
@@ -705,21 +702,24 @@ func runListIdentities(roleFilters []string, roleSemantic string, options *api.O
 }
 
 // outputIdentities implements the command to list identities
-func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		typeName, _ := entity.Path("type.name").Data().(string)
-		roleAttributes := entity.Path("roleAttributes").String()
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v    type: %v    role attributes: %v\n", id, name, typeName, roleAttributes); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.String("type.name"),
+			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -824,7 +824,7 @@ func getEllipsesStrings(values []string, lead, lag int) []string {
 	return ret
 }
 
-func outputPostureChecks(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputPostureChecks(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -834,7 +834,7 @@ func outputPostureChecks(o *api.Options, children []*gabs.Container, pagingInfo 
 			return err
 		}
 	}
-	pagingInfo.output(o)
+	pagingInfo.Output(o)
 
 	return nil
 }
@@ -922,7 +922,7 @@ func runListCAs(o *api.Options) error {
 	}
 
 	pagingInfo := newPagingInfo(payload.Meta)
-	pagingInfo.output(o)
+	pagingInfo.Output(o)
 
 	_, _ = fmt.Fprint(o.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
 
@@ -939,14 +939,19 @@ func runListConfigTypes(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Schema"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id:   %v    name: %v\n", id, name); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
@@ -958,25 +963,25 @@ func runListConfigs(o *api.Options) error {
 	return outputConfigs(o, children, pagingInfo)
 }
 
-func outputConfigs(o *api.Options, children []*gabs.Container, pagingInfo *paging) error {
+func outputConfigs(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name", "Config Type"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		configType, _ := entity.Path("configType.name").Data().(string)
-		data, _ := entity.Path("data").Data().(map[string]interface{})
-		formattedData, err := json.MarshalIndent(data, "      ", "    ")
-		if err != nil {
-			return err
-		}
-		if _, err := fmt.Fprintf(o.Out, "id:   %v\nname: %v\ntype: %v\ndata: %v\n\n", id, name, configType, string(formattedData)); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+			wrapper.String("configType.name"),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return nil
 }
 
@@ -990,16 +995,21 @@ func runListApiSessions(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Token", "Identity Name"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		sessionToken, _ := entity.Path("token").Data().(string)
-		identityName, _ := entity.Path("identity.name").Data().(string)
-		if _, err = fmt.Fprintf(o.Out, "id: %v    token: %v    identity: %v\n", id, sessionToken, identityName); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("token"),
+			wrapper.String("identity.name"),
+		})
 	}
-	pagingInfo.output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListSessions(o *api.Options) error {
@@ -1013,17 +1023,22 @@ func runListSessions(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "API Session ID", "Service Name", "Type"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		sessionId, _ := entity.Path("apiSession.id").Data().(string)
-		serviceName, _ := entity.Path("service.name").Data().(string)
-		sessionType, _ := entity.Path("type").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    sessionId: %v    serviceName: %v     type: %v\n", id, sessionId, serviceName, sessionType); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("apiSession.id"),
+			wrapper.String("service.name"),
+			wrapper.String("type"),
+		})
 	}
-	pagingInfo.output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListTransitRouters(o *api.Options) error {
@@ -1037,15 +1052,20 @@ func runListTransitRouters(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Name"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		name, _ := entity.Path("name").Data().(string)
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v\n", id, name); err != nil {
-			return err
-		}
+		wrapper := api.Wrap(entity)
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			wrapper.String("name"),
+		})
 	}
-	pagingInfo.output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListEdgeRouterRoleAttributes(o *api.Options) error {
@@ -1071,13 +1091,18 @@ func runListRoleAttributes(entityType string, o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"Role Attribute"})
+
 	for _, entity := range children {
-		if _, err := fmt.Fprintf(o.Out, "role-attribute: %v\n", entity.Data().(string)); err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			fmt.Sprintf("%v", entity.Data()),
+		})
 	}
-	pagingInfo.output(o)
-	return err
+	api.RenderTable(o, t, pagingInfo)
+
+	return nil
 }
 
 func runListChilden(parentType, childType string, o *api.Options, outputF outputFunction) error {
@@ -1120,7 +1145,9 @@ func runListPostureChecks(o *api.Options) error {
 
 func runListSummary(o *api.Options) error {
 	jsonParsed, err := util.EdgeControllerList("summary", url.Values{}, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
-
+	if err != nil {
+		return err
+	}
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -1138,13 +1165,16 @@ func runListSummary(o *api.Options) error {
 
 	sort.Strings(keys)
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.SetColumnConfigs([]table.ColumnConfig{{Number: 2, Align: text.AlignRight}})
+	t.AppendHeader(table.Row{"Entity Type", "Count"})
+
 	for _, k := range keys {
 		v := children[k]
-		_, err = fmt.Fprintf(o.Out, "%v: %v\n", k, v.Data())
-		if err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{k, fmt.Sprintf("%v", v.Data())})
 	}
+	api.RenderTable(o, t, nil)
 
 	return nil
 }
@@ -1174,16 +1204,22 @@ func runListPostureCheckTypes(o *api.Options) error {
 		return nil
 	}
 
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Operating Systems"})
+
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
+		wrapper := api.Wrap(entity)
 		operatingSystems, _ := entity.Path("operatingSystems").Children()
 		osInfo := postureCheckOsToStrings(operatingSystems)
 
-		if _, err := fmt.Fprintf(o.Out, "id: %-8s    os: %s\n", id, strings.Join(osInfo, ",")); err != nil {
-			return err
-		}
+		t.AppendRow(table.Row{
+			wrapper.String("id"),
+			strings.Join(osInfo, ","),
+		})
 	}
-	pagingInfo.output(o)
+	api.RenderTable(o, t, pagingInfo)
+
 	return err
 }
 

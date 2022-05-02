@@ -29,9 +29,12 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityKey(r, routerName)
 	SetZitiRouterIdentityCA(r, routerName)
 
-	val := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
-	if val != "" {
-		r.Edge.Hostname = val
+	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
+	externalDNS := os.Getenv(constants.ExternalDNSVarName)
+	if externalDNS != "" {
+		r.Edge.Hostname = externalDNS
+	} else if edgeRouterRawName != "" {
+		r.Edge.Hostname = edgeRouterRawName
 	} else {
 		r.Edge.Hostname, _ = os.Hostname()
 	}

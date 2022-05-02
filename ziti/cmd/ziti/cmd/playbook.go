@@ -21,7 +21,6 @@ import (
 	"io"
 
 	"github.com/openziti/ziti/ziti/ansible"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/provisioner"
 
@@ -40,12 +39,11 @@ type PlaybookOptions struct {
 var playbookOptions = &ansible.Options{}
 var po = &provisioner.Options{}
 
-func NewCmdPlaybook(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPlaybook(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PlaybookOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -111,7 +109,7 @@ the user "root" and run in verbose mode, do this:
 			cmdhelper.CheckErr(err)
 		},
 	}
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 
 	cmd.Flags().StringVarP(&playbookOptions.SSHConfigFile, "ssh-config-file",
 		"s", "", "Path to ssh config file to use.")

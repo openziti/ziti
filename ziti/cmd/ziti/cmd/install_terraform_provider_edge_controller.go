@@ -19,12 +19,11 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
+	"github.com/blang/semver"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
-	"github.com/blang/semver"
 	"github.com/spf13/cobra"
 )
 
@@ -48,13 +47,12 @@ type InstallTerraformProviderEdgeControllerOptions struct {
 }
 
 // NewCmdInstallTerraformProviderEdgeController defines the command
-func NewCmdInstallTerraformProviderEdgeController(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstallTerraformProviderEdgeController(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallTerraformProviderEdgeControllerOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

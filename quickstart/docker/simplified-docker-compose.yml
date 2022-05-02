@@ -1,9 +1,9 @@
 version: '2.4'
 services:
   ziti-controller:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     env_file:
-      - ./default.env
+      - ./.env
     ports:
       - "1280:1280"
     networks:
@@ -19,9 +19,11 @@ services:
       - "/openziti/scripts/run-controller.sh"
 
   ziti-edge-router:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+    depends_on:
+      - ziti-controller
     ports:
       - "3022:3022"
     networks:
@@ -36,7 +38,9 @@ services:
     image: openziti/zac
     environment:
       - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
-      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key -it
+      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
+    depends_on:
+      - ziti-controller
     ports:
       - "1408:1408"
       - "8443:8443"

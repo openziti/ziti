@@ -4,8 +4,8 @@ Building and Deploying the Latest Quickstart Docker Image
 Build Docker Image for Local Dev (probably for docker-compose testing)
 ------------------
 1. change to this directory: `cd quickstart/docker`
-2. run the questionably named `./pushDevBuild.sh` which will create a `openziti/quickstart:dev` tag
-3. update `docker-compose.yml` and replace `:latest` with `:dev`
+2. run the script `./buildLocalDev.sh` which will create a `openziti/quickstart:dev` tag
+3. update `.env` and change the value for `ZITI_VERSION` to `dev`
 4. run `docker-compose` as normal
 
 Build Docker Image For Publication
@@ -22,6 +22,5 @@ Build Docker Image For Publication
 2. 
 Push Docker Image to dockerhub
 ------------------
-1. retag the image locally to match the expected version: `docker push openziti/quickstart:0.19.3`
-1. push the latest: `docker push openziti/quickstart`
-1. push the versioned tag: `docker push openziti/quickstart:0.19.3`
+1. `source ./image/ziti-cli-functions.sh`
+1. just run `./pushLatestDocker.sh`

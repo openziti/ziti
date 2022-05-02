@@ -19,75 +19,61 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/goprocess"
 )
 
-// PsOptions contains the command line options
-type PsOptions struct {
-	CommonOptions
-
-	Flags PsFlags
+type PsAction struct {
+	agentcli.AgentOptions
 }
-
-type PsFlags struct {
-	Pid string
-}
-
-var (
-	psLong = templates.LongDesc(`
-		Show information about currently running Ziti preocesses.
-	`)
-)
 
 // NewCmdPs Pss a command object for the "Ps" command
-func NewCmdPs(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &PsOptions{
-		CommonOptions: CommonOptions{
-			Out: out,
-			Err: errOut,
+func NewCmdPs(p common.OptionsProvider) *cobra.Command {
+	action := &PsAction{
+		AgentOptions: agentcli.AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
 		Use:   "ps",
 		Short: "Show Ziti process info",
-		Long:  psLong,
+		Long:  "Show information about currently running Ziti preocesses",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
 
-	cmd.AddCommand(NewCmdPsGet(out, errOut))
-	cmd.AddCommand(NewCmdPsGoversion(out, errOut))
-	cmd.AddCommand(NewCmdPsGc(out, errOut))
-	cmd.AddCommand(NewCmdPsSetgc(out, errOut))
-	cmd.AddCommand(NewCmdPsStack(out, errOut))
-	cmd.AddCommand(NewCmdPsMemstats(out, errOut))
-	cmd.AddCommand(NewCmdPsStats(out, errOut))
-	cmd.AddCommand(NewCmdPsPprofHeap(out, errOut))
-	cmd.AddCommand(NewCmdPsPprofCpu(out, errOut))
-	cmd.AddCommand(NewCmdPsTrace(out, errOut))
-	cmd.AddCommand(NewCmdPsSetLogLevel(out, errOut))
-	cmd.AddCommand(NewCmdPsSetChannelLogLevel(out, errOut))
-	cmd.AddCommand(NewCmdPsClearChannelLogLevel(out, errOut))
+	cmd.AddCommand(agentcli.NewGetCmd(p))
+	cmd.AddCommand(agentcli.NewGoVersionCmd(p))
+	cmd.AddCommand(agentcli.NewGcCmd(p))
+	cmd.AddCommand(agentcli.NewSetGcCmd(p))
+	cmd.AddCommand(agentcli.NewStackCmd(p))
+	cmd.AddCommand(agentcli.NewMemstatsCmd(p))
+	cmd.AddCommand(agentcli.NewStatsCmd(p))
+	cmd.AddCommand(agentcli.NewPprofHeapCmd(p))
+	cmd.AddCommand(agentcli.NewPprofCpuCmd(p))
+	cmd.AddCommand(agentcli.NewTraceCmd(p))
+	cmd.AddCommand(agentcli.NewSetLogLevelCmd(p))
+	cmd.AddCommand(agentcli.NewSetChannelLogLevelCmd(p))
+	cmd.AddCommand(agentcli.NewClearChannelLogLevelCmd(p))
 
 	return cmd
 }
 
 // Run implements this command
-func (o *PsOptions) Run() error {
+func (self *PsAction) Run() error {
 	fmt.Println("ps is running")
 	ps := goprocess.FindAll()
 

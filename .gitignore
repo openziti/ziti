@@ -27,3 +27,5 @@ linux-build
 *.log
 /build/
 go.work
+go.work.sum
+.github/workflows/localtest.yml

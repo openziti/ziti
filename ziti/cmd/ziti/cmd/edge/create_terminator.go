@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -39,13 +38,12 @@ type createTerminatorOptions struct {
 }
 
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
-func newCreateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newCreateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createTerminatorOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

@@ -33,8 +33,9 @@ import (
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(p common.OptionsProvider) *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "Lists various entities managed by the Ziti Controller",
+		Use:     "list",
+		Short:   "Lists various entities managed by the Ziti Controller",
+		Aliases: []string{"ls"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
@@ -133,7 +134,7 @@ func outputCircuits(o *api.Options, children []*gabs.Container, pagingInfo *api.
 		t.AppendRow(table.Row{id, client, service, path.String()})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -210,7 +211,7 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 			state, status, cost})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -245,7 +246,7 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 
 		t.AppendRow(table.Row{id, service, router, binding, address, identity, staticCost, precedence, dynamicCost})
 	}
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -273,7 +274,7 @@ func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *api.
 		t.AppendRow(table.Row{id, name, terminatorStrategy})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -321,20 +322,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version, strings.Join(listeners, "\n")})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
-}
-
-func renderTable(o *api.Options, t table.Writer, pagingInfo *api.Paging) {
-	if o.OutputCSV {
-		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.RenderCSV()); err != nil {
-			panic(err)
-		}
-	} else {
-		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.Render()); err != nil {
-			panic(err)
-		}
-		pagingInfo.Output(o)
-	}
 }

@@ -19,7 +19,6 @@ package edge
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ import (
 )
 
 // newUpdateCmd creates a command object for the "controller update" command
-func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update",
 		Short: "updates various entities managed by the Ziti Edge Controller",
@@ -39,17 +38,18 @@ func newUpdateCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Com
 		},
 	}
 
-	cmd.AddCommand(newUpdateAuthenticatorCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateConfigCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateCaCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateEdgeRouterCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateEdgeRouterPolicyCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateIdentityCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateIdentityConfigsCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateServiceCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateServicePolicyCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(f, out, errOut))
-	cmd.AddCommand(newUpdateTerminatorCmd(f, out, errOut))
+	cmd.AddCommand(newUpdateAuthenticatorCmd(out, errOut))
+	cmd.AddCommand(newUpdateConfigCmd(out, errOut))
+	cmd.AddCommand(newUpdateConfigTypeCmd(out, errOut))
+	cmd.AddCommand(newUpdateCaCmd(out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterCmd(out, errOut))
+	cmd.AddCommand(newUpdateEdgeRouterPolicyCmd(out, errOut))
+	cmd.AddCommand(newUpdateIdentityCmd(out, errOut))
+	cmd.AddCommand(newUpdateIdentityConfigsCmd(out, errOut))
+	cmd.AddCommand(newUpdateServiceCmd(out, errOut))
+	cmd.AddCommand(newUpdateServicePolicyCmd(out, errOut))
+	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(out, errOut))
+	cmd.AddCommand(newUpdateTerminatorCmd(out, errOut))
 	cmd.AddCommand(newUpdatePostureCheckCmd(out, errOut))
 
 	return cmd

@@ -26,7 +26,6 @@ import (
 
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
@@ -43,10 +42,10 @@ type updateEdgeRouterOptions struct {
 	noTraversal       bool
 }
 
-func newUpdateEdgeRouterCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterOptions{
 		Options: api.Options{
-			CommonOptions: common.CommonOptions{Factory: f, Out: out, Err: errOut},
+			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
 	}
 

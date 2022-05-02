@@ -1,8 +1,25 @@
+/*
+	Copyright NetFoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package api
 
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/pkg/errors"
@@ -32,16 +49,16 @@ func ListEntitiesOfType(api util.API, entityType string, params url.Values, logJ
 	}
 
 	children, err := jsonParsed.S("data").Children()
-	return children, getPaging(jsonParsed), err
+	return children, GetPaging(jsonParsed), err
 }
 
-func getPaging(c *gabs.Container) *Paging {
+func GetPaging(c *gabs.Container) *Paging {
 	pagingInfo := &Paging{}
 	pagination := c.S("meta", "pagination")
 	if pagination != nil {
-		pagingInfo.limit = toInt64(pagination, "limit", pagingInfo)
-		pagingInfo.offset = toInt64(pagination, "offset", pagingInfo)
-		pagingInfo.count = toInt64(pagination, "totalCount", pagingInfo)
+		pagingInfo.Limit = toInt64(pagination, "limit", pagingInfo)
+		pagingInfo.Offset = toInt64(pagination, "offset", pagingInfo)
+		pagingInfo.Count = toInt64(pagination, "totalCount", pagingInfo)
 	} else {
 		pagingInfo.SetError(errors.New("meta.pagination section not found in result"))
 	}
@@ -49,24 +66,24 @@ func getPaging(c *gabs.Container) *Paging {
 }
 
 type Paging struct {
-	limit  int64
-	offset int64
-	count  int64
+	Limit  int64
+	Offset int64
+	Count  int64
 	errorz.ErrorHolderImpl
 }
 
 func (p *Paging) Output(o *Options) {
 	if p.HasError() {
 		_, _ = fmt.Fprintf(o.Out, "unable to retrieve paging information: %v\n", p.Err)
-	} else if p.count == 0 {
+	} else if p.Count == 0 {
 		_, _ = fmt.Fprintln(o.Out, "results: none")
 	} else {
-		first := p.offset + 1
-		last := p.offset + p.limit
-		if last > p.count || last < 0 { // if p.limit is maxint, last will rollover and be negative
-			last = p.count
+		first := p.Offset + 1
+		last := p.Offset + p.Limit
+		if last > p.Count || last < 0 { // if p.Limit is maxint, last will rollover and be negative
+			last = p.Count
 		}
-		_, _ = fmt.Fprintf(o.Out, "results: %v-%v of %v\n", first, last, p.count)
+		_, _ = fmt.Fprintf(o.Out, "results: %v-%v of %v\n", first, last, p.Count)
 	}
 }
 
@@ -133,4 +150,19 @@ func MapNamesToIDs(api util.API, entityType string, o *Options, list ...string) 
 		}
 	}
 	return result, nil
+}
+
+func RenderTable(o *Options, t table.Writer, pagingInfo *Paging) {
+	if o.OutputCSV {
+		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.RenderCSV()); err != nil {
+			panic(err)
+		}
+	} else {
+		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.Render()); err != nil {
+			panic(err)
+		}
+		if pagingInfo != nil {
+			pagingInfo.Output(o)
+		}
+	}
 }

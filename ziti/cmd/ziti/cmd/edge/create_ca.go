@@ -21,7 +21,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -42,13 +41,12 @@ type createCaOptions struct {
 }
 
 // newCreateCaCmd creates the 'edge controller create ca local' command for the given entity type
-func newCreateCaCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createCaOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 		tags: make(map[string]string),

@@ -1,9 +1,9 @@
 version: '2.4'
 services:
   ziti-controller:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     env_file:
-      - ./default.env
+      - ./.env
     ports:
       - "1280:1280"
     networks:
@@ -19,10 +19,12 @@ services:
       - "/openziti/scripts/run-controller.sh"
 
   ziti-edge-router:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=ziti-controller
-      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
     ports:
       - "3022:3022"
@@ -35,10 +37,12 @@ services:
     command: "/openziti/scripts/run-router.sh edge"
 
   ziti-edge-router-wss:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=ziti-controller
-      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
     ports:
@@ -52,10 +56,12 @@ services:
     command: "/openziti/scripts/run-router.sh wss"
 
   ziti-fabric-router-br:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=ziti-controller
-      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
@@ -68,10 +74,12 @@ services:
     command: "/openziti/scripts/run-router.sh fabric"
 
   ziti-private-red:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=ziti-controller
-      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
     #ports:
     #  - 3025:3025
@@ -83,10 +91,12 @@ services:
     command: "/openziti/scripts/run-router.sh private"
 
   ziti-private-blue:
-    image: openziti/quickstart:latest
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=ziti-controller
-      - ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
     #ports:
     #  - 3026:3026
@@ -112,7 +122,7 @@ services:
     image: openziti/zac
     environment:
       - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
-      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key -it
+      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
     ports:
       - "1408:1408"
       - "8443:8443"

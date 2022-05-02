@@ -18,23 +18,21 @@ package cmd
 
 import (
 	"github.com/openziti/foundation/agent"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"io"
 	"os"
 )
 
-type SimpleAgentCmdOptions struct {
-	PsOptions
+type SimpleAgentAction struct {
+	agentcli.AgentOptions
 }
 
-func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &SimpleAgentCmdOptions{
-		PsOptions: PsOptions{
-			CommonOptions: CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
+func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.OptionsProvider) *cobra.Command {
+	action := &SimpleAgentAction{
+		AgentOptions: agentcli.AgentOptions{
+			CommonOptions: p(),
 		},
 	}
 
@@ -42,21 +40,19 @@ func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, out io.Writ
 		Args: cobra.MaximumNArgs(1),
 		Use:  name + " <optional-target> ",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run(appId, op)
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run(appId, op)
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	options.addCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *SimpleAgentCmdOptions) Run(appId AgentAppId, op byte) error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *SimpleAgentAction) Run(appId AgentAppId, op byte) error {
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}

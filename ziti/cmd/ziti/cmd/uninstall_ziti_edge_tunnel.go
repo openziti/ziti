@@ -19,7 +19,6 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -45,13 +44,12 @@ type UnInstallZitiEdgeTunnelOptions struct {
 }
 
 // NewCmdUnInstallZitiEdgeTunnel defines the command
-func NewCmdUnInstallZitiEdgeTunnel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUnInstallZitiEdgeTunnel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UnInstallZitiEdgeTunnelOptions{
 		UnInstallOptions: UnInstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

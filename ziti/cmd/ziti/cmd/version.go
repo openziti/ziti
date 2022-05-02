@@ -27,7 +27,6 @@ import (
 	// "strings"
 
 	"github.com/openziti/ziti/common/version"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -44,12 +43,11 @@ type VersionOptions struct {
 	NoVersionCheck bool
 }
 
-func NewCmdVersion(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdVersion(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &VersionOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -64,7 +62,7 @@ func NewCmdVersion(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 			cmdhelper.CheckErr(err)
 		},
 	}
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 
 	cmd.Flags().BoolVarP(&options.NoVersionCheck, "no-update", "n", false,
 		"disable update check")
