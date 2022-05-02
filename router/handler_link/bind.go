@@ -185,10 +185,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
 	now := time.Now().UnixMilli()
 	if self.firstSent != 0 && (now-self.firstSent > 30000) && (now-self.lastResponse > 30000) {
-		log.Error("heartbeat not received in time, closing link")
-		if err := self.ch.Close(); err != nil {
-			log.WithError(err).Error("error while closing link")
-		}
+		log.Warn("heartbeat not received in time, link may be unhealthy")
 	}
 	go self.checkQueueTime()
 }

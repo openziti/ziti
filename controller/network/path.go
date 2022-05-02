@@ -197,6 +197,8 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 	}
 	dist[srcR] = 0
 
+	minRouterCost := network.options.MinRouterCost
+
 	for len(unvisited) > 0 {
 		u := minCost(unvisited, dist)
 		if u == dstR { // if the dest router is the lowest cost next link, we can stop evaluating
@@ -210,7 +212,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 				var cost int64 = math.MaxInt32 + 1
 				if l, found := network.linkController.leastExpensiveLink(r, u); found {
 					if !r.NoTraversal || r == srcR || r == dstR {
-						cost = l.GetCost() + int64(r.Cost)
+						cost = l.GetCost() + int64(maxUint16(r.Cost, minRouterCost))
 					}
 				}
 
@@ -263,4 +265,11 @@ func minCost(q map[*Router]bool, dist map[*Router]int64) *Router {
 		}
 	}
 	return selected
+}
+
+func maxUint16(v1, v2 uint16) uint16 {
+	if v1 > v2 {
+		return v1
+	}
+	return v2
 }

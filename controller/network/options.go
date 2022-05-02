@@ -18,6 +18,7 @@ package network
 
 import (
 	"errors"
+	"math"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ const (
 	DefaultNetworkOptionsCreateCircuitRetries    = 2
 	DefaultNetworkOptionsCtrlChanLatencyInterval = 10 * time.Second
 	DefaultNetworkOptionsPendingLinkTimeout      = 10 * time.Second
+	DefaultNetworkOptionsMinRouterCost           = 10
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
 	DefaultNetworkOptionsSmartRerouteCap         = 4
 )
@@ -43,6 +45,7 @@ type Options struct {
 	CreateCircuitRetries    uint32
 	CtrlChanLatencyInterval time.Duration
 	PendingLinkTimeout      time.Duration
+	MinRouterCost           uint16
 }
 
 func DefaultOptions() *Options {
@@ -52,6 +55,7 @@ func DefaultOptions() *Options {
 		CreateCircuitRetries:    DefaultNetworkOptionsCreateCircuitRetries,
 		CtrlChanLatencyInterval: DefaultNetworkOptionsCtrlChanLatencyInterval,
 		PendingLinkTimeout:      DefaultNetworkOptionsPendingLinkTimeout,
+		MinRouterCost:           DefaultNetworkOptionsMinRouterCost,
 	}
 	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
 	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
@@ -123,6 +127,17 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.PendingLinkTimeout = time.Duration(pendingLinkTimeoutSeconds) * time.Second
 		} else {
 			return nil, errors.New("invalid value for 'pendingLinkTimeoutSeconds'")
+		}
+	}
+
+	if value, found := src["minRouterCost"]; found {
+		if minRouterCost, ok := value.(int); ok {
+			if minRouterCost < 0 || minRouterCost > math.MaxUint16 {
+				logrus.Fatalf("invalid network.minRouterCost value. Must be between 0 and %v", math.MaxUint16)
+			}
+			options.MinRouterCost = uint16(minRouterCost)
+		} else {
+			logrus.Fatalf("invalid network.minRouterCost value. Must be between number between 0 and %v", math.MaxUint16)
 		}
 	}
 

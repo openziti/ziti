@@ -34,7 +34,9 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 	closeNotify := make(chan struct{})
 	defer close(closeNotify)
 
-	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	options := DefaultOptions()
+	options.MinRouterCost = 0
+	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
