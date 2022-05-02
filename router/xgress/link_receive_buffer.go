@@ -48,7 +48,7 @@ func (buffer *LinkReceiveBuffer) ReceiveUnordered(payload *Payload, maxSize uint
 		return true
 	}
 
-	if buffer.size > maxSize && payload.Sequence > buffer.maxSequence {
+	if atomic.LoadUint32(&buffer.size) > maxSize && payload.Sequence > buffer.maxSequence {
 		droppedPayloadsMeter.Mark(1)
 		return false
 	}

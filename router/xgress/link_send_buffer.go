@@ -51,6 +51,7 @@ type LinkSendBuffer struct {
 	blockedByRemoteWindow bool
 	retxScale             float64
 	retxThreshold         uint32
+	lastRtt               uint16
 	lastRetransmitTime    int64
 	closeWhenEmpty        concurrenz.AtomicBoolean
 	inspectRequests       chan *InspectEvent
@@ -190,7 +191,8 @@ func (buffer *LinkSendBuffer) run() {
 
 	for {
 		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
-		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() {
+		// if we're blocked, but empty, let one payload in to reduce the chances of a stall
+		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() && buffer.linkSendBufferSize != 0 {
 			buffered = nil
 		} else {
 			buffered = buffer.newlyBuffered
@@ -283,9 +285,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 			duplicateAcksMeter.Mark(1)
 			buffer.duplicateAcks++
 			if buffer.duplicateAcks >= buffer.x.Options.TxPortalDupAckThresh {
-				buffer.accumulator = 0
 				buffer.duplicateAcks = 0
-				buffer.scale(buffer.x.Options.TxPortalDupAckScale)
 				buffer.retxScale += 0.2
 			}
 		}
@@ -294,6 +294,10 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 	buffer.linkRecvBufferSize = ack.RecvBufferSize
 	if ack.RTT > 0 {
 		rtt := uint16(info.NowInMilliseconds()) - ack.RTT
+		if buffer.lastRtt > 0 {
+			rtt = (rtt + buffer.lastRtt) >> 1
+		}
+		buffer.lastRtt = rtt
 		buffer.retxThreshold = uint32(float64(rtt)*buffer.retxScale) + buffer.x.Options.RetxAddMs
 	}
 }
