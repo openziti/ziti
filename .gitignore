@@ -3,3 +3,4 @@ github_deploy_key
 .DS_Store
 .vscode/
 go.work
+go.work.sum
