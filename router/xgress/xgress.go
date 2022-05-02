@@ -17,6 +17,8 @@
 package xgress
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -25,10 +27,12 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -584,12 +588,68 @@ func (self *Xgress) SendEmptyAck() {
 func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
 	xgressDetail := &inspect.XgressDetail{
-		Address:             string(self.address),
-		Originator:          self.originator.String(),
-		TimeSinceLastLinkRx: timeSinceLastRxFromLink.String(),
-		SendBufferDetail:    self.payloadBuffer.Inspect(),
-		RecvBufferDetail:    self.linkRxBuffer.Inspect(),
+		Address:               string(self.address),
+		Originator:            self.originator.String(),
+		TimeSinceLastLinkRx:   timeSinceLastRxFromLink.String(),
+		SendBufferDetail:      self.payloadBuffer.Inspect(),
+		RecvBufferDetail:      self.linkRxBuffer.Inspect(),
+		XgressPointer:         fmt.Sprintf("%p", self),
+		LinkSendBufferPointer: fmt.Sprintf("%p", self.payloadBuffer),
 	}
 
 	detail.XgressDetails[string(self.address)] = xgressDetail
+
+	if detail.IncludeGoroutines() {
+		xgressDetail.Goroutines = self.getRelatedGoroutines(xgressDetail.XgressPointer, xgressDetail.LinkSendBufferPointer)
+	}
+}
+
+func (self *Xgress) getRelatedGoroutines(contains ...string) []string {
+	reader := bytes.NewBufferString(debugz.GenerateStack())
+	scanner := bufio.NewScanner(reader)
+	var result []string
+	var buf *bytes.Buffer
+	xgressRelated := false
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "goroutine") && strings.HasSuffix(line, ":") {
+			result = self.addGoroutineIfRelated(buf, xgressRelated, result, contains...)
+			buf = &bytes.Buffer{}
+			xgressRelated = false
+		}
+
+		if buf != nil {
+			if strings.Contains(line, "xgress") {
+				xgressRelated = true
+			}
+			buf.WriteString(line)
+			buf.WriteByte('\n')
+		}
+	}
+	result = self.addGoroutineIfRelated(buf, xgressRelated, result, contains...)
+	if err := scanner.Err(); err != nil {
+		result = append(result, "goroutine parsing error: %v", err.Error())
+	}
+	return result
+}
+
+func (self *Xgress) addGoroutineIfRelated(buf *bytes.Buffer, xgressRelated bool, result []string, contains ...string) []string {
+	if !xgressRelated {
+		return result
+	}
+	if buf != nil {
+		gr := buf.String()
+		// ignore the current goroutine
+		if strings.Contains(gr, "GenerateStack") {
+			return result
+		}
+
+		for _, s := range contains {
+			if strings.Contains(gr, s) {
+				result = append(result, gr)
+				break
+			}
+		}
+	}
+	return result
 }
