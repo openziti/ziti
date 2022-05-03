@@ -28,6 +28,7 @@ Part 2 - multi-router, single server
 Part 3 - multi-router, multi-server, SDK hosted, HS
 1. Do sdk demo
 2. Show terminators
+   a. show updating precedence cost from inside sdk app
 3. Do sdk demo again with addressable terminators
 4. Show terminators
    a. Because it's the initiating router, cost will be lower to terminate on the same router
@@ -41,5 +42,10 @@ Part 5 - multi-router, multi-server, tunneler hosted, HS
 2. Do demo
 3. Show with addressable
 4. Show with precedences
+
+Part 6 - ziti-tunnel
+1. Talk through like SDK hosted + router/tunneler hosted. Need identity and configs
+2. Talk about how config is different b/c tunneler is usually co-located with server app
+3. Show
 
 
