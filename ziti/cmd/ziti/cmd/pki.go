@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/lets_encrypt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
@@ -70,12 +69,11 @@ Provide the components needed to manage a Ziti PKI.
 )
 
 // NewCmdPKI PKIs a command object for the "PKI" command
-func NewCmdPKI(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPKI(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKIOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -91,9 +89,9 @@ func NewCmdPKI(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Comman
 		},
 	}
 
-	cmd.AddCommand(NewCmdPKICreate(f, out, errOut))
+	cmd.AddCommand(NewCmdPKICreate(out, errOut))
 
-	cmd.AddCommand(lets_encrypt.NewCmdLE(f, out, errOut))
+	cmd.AddCommand(lets_encrypt.NewCmdLE(out, errOut))
 
 	return cmd
 }

@@ -1,0 +1,51 @@
+Before start
+
+1. reset controller
+2. start controller
+3. login
+
+Part 1 - single router, single server
+1. show zcat and echo-server
+2. create first edge router, mark with demo attribute
+3. client setup
+4. do sdk demo
+5. look at terminators
+6. do tunneler demo
+7. look at terminators
+
+Part 2 - multi-router, single server
+1. Add additional edge router, mark with demo attribute
+2. start edge router 2
+3. Do sdk demo
+4. show multiple terminators
+  a. stop/restart router, show terminator there, but unused. Show terminator replaced.
+5. Make sure it's tunneler ready
+   a. make sure it's a tunneler
+   b. Add identity attributes: ziti edge update identity edge-router-2 -a echo,echo-host
+6. Do tunneler demo
+7. Show multiple terminators
+
+Part 3 - multi-router, multi-server, SDK hosted, HS
+1. Do sdk demo
+2. Show terminators
+   a. show updating precedence cost from inside sdk app
+3. Do sdk demo again with addressable terminators
+4. Show terminators
+   a. Because it's the initiating router, cost will be lower to terminate on the same router
+
+Part 4 - multi-router, multi-server, SDK hosted, HA
+1. Update identity
+ a. ziti edge update identity echo-host-1 --service-precedences echo=required
+
+Part 5 - multi-router, multi-server, tunneler hosted, HS
+1. Talk through config
+2. Do demo
+3. Show with addressable
+4. Show with precedences
+
+Part 6 - ziti-tunnel
+1. Talk through like SDK hosted + router/tunneler hosted. Need identity and configs
+2. Talk about how config is different b/c tunneler is usually co-located with server app
+3. Show
+
+

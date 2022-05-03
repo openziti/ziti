@@ -34,6 +34,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
 	fabricCmd.AddCommand(newInspectCmd(p))
 	fabricCmd.AddCommand(newDbCmd(p))
+	fabricCmd.AddCommand(newStreamCommand(p))
 	return fabricCmd
 }
 
@@ -68,6 +69,33 @@ func newUpdateCommand(p common.OptionsProvider) *cobra.Command {
 	updateCmd.AddCommand(newUpdateTerminatorCmd(p))
 
 	return updateCmd
+}
+
+func newStreamCommand(p common.OptionsProvider) *cobra.Command {
+	streamCmd := &cobra.Command{
+		Use:   "stream",
+		Short: "stream fabric operational data",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
+
+	streamCmd.AddCommand(NewStreamMetricsCmd(p))
+	streamCmd.AddCommand(NewStreamCircuitsCmd(p))
+	streamTracesCmd := NewStreamTracesCmd(p)
+	streamCmd.AddCommand(streamTracesCmd)
+
+	var toggleTracesCmd = &cobra.Command{
+		Use:   "toggle",
+		Short: "Toggle traces on or off",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
+	streamTracesCmd.AddCommand(toggleTracesCmd)
+	toggleTracesCmd.AddCommand(NewStreamTogglePipeTracesCmd(p))
+
+	return streamCmd
 }
 
 // createEntityOfType create an entity of the given type on the Ziti Controller

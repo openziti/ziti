@@ -95,7 +95,7 @@ func (o *traceRouteOptions) Run() error {
 			return err
 		}
 
-		if result.Hops > 0 {
+		if result.Hops > 0 && result.Error == "" {
 			break
 		}
 
@@ -110,13 +110,21 @@ func (o *traceRouteOptions) Run() error {
 			}
 		}
 
+		hopErr := ""
+		if result.Error != "" {
+			hopErr = fmt.Sprintf("ERROR=%v", result.Error)
+		}
+
 		if hopLabel == "" {
-			fmt.Printf("%2v %25v %6v \n", currentHop, result.HopType, result.Time)
+			fmt.Printf("%2v %25v %6v %v\n", currentHop, result.HopType, result.Time, hopErr)
 		} else {
-			fmt.Printf("%2v %25v %6v \n", currentHop, fmt.Sprintf("%v[%v]", result.HopType, hopLabel), result.Time)
+			fmt.Printf("%2v %25v %6v %v\n", currentHop, fmt.Sprintf("%v[%v]", result.HopType, hopLabel), result.Time, hopErr)
 		}
 
 		currentHop++
+		if hopErr != "" {
+			break
+		}
 	}
 
 	if routerNameLookupsFailed {

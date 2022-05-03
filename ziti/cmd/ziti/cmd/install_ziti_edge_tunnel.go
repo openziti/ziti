@@ -21,7 +21,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/version"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -48,13 +47,12 @@ type InstallZitiEdgeTunnelOptions struct {
 }
 
 // NewCmdInstallZitiEdgeTunnel defines the command
-func NewCmdInstallZitiEdgeTunnel(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdInstallZitiEdgeTunnel(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallZitiEdgeTunnelOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
@@ -73,7 +71,7 @@ func NewCmdInstallZitiEdgeTunnel(f cmdutil.Factory, out io.Writer, errOut io.Wri
 		},
 	}
 	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to install")
-	options.addCommonFlags(cmd)
+	options.AddCommonFlags(cmd)
 	return cmd
 }
 

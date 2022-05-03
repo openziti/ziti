@@ -9,6 +9,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/valyala/fasttemplate"
 	"io"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +22,14 @@ const (
 	commentActionBlockEnd   = "-->"
 	actionMarker            = "f572d396fae9206628714fb2ce00f72e94f2258f"
 )
+
+var debug bool
+
+func init() {
+	if val, found := os.LookupEnv("DEBUG"); found && strings.EqualFold(val, "true") {
+		debug = true
+	}
+}
 
 func NewRunner() *Runner {
 	result := &Runner{
@@ -68,6 +77,10 @@ type Runner struct {
 
 func (self *Runner) AddVariable(name string, val interface{}) {
 	self.variables[name] = val
+}
+
+func (self *Runner) ClearVariable(name string) {
+	delete(self.variables, name)
 }
 
 func (self *Runner) Run(source []byte) error {
@@ -147,7 +160,10 @@ func (self *Runner) transformSource(source []byte) ([]byte, error) {
 				body = strings.TrimSpace(string(actionSource[nlIndex+1 : endIndex]))
 			}
 			actionDef := strings.TrimSpace(actionHeader)
-			action, headers := self.parseAction(actionDef)
+			action, headers, err := self.parseAction(actionDef)
+			if err != nil {
+				return nil, err
+			}
 
 			handler, ok := self.actionHandlers[action]
 			if !ok {
@@ -171,26 +187,74 @@ func (self *Runner) transformSource(source []byte) ([]byte, error) {
 	}
 }
 
-func (self *Runner) parseAction(s string) (string, map[string]string) {
+func (self *Runner) parseAction(s string) (string, map[string]string, error) {
 	var action string
 	headers := map[string]string{}
 
 	idx := strings.IndexByte(s, ' ')
 	if idx < 1 {
-		return s, headers
+		return s, headers, nil
 	}
 
 	action = s[:idx]
 	rest := s[idx+1:]
-	for _, kv := range strings.Split(rest, " ") {
-		vals := strings.Split(kv, "=")
-		if len(vals) < 2 {
-			headers[vals[0]] = ""
+	for len(rest) > 0 {
+		idx = strings.IndexByte(rest, '=')
+		if idx < 0 {
+			headers[rest] = ""
+			if debug {
+				fmt.Printf("%v: added %v=%v\n", action, rest, headers[rest])
+			}
+			rest = ""
+		} else if idx == 0 {
+			return "", nil, errors.Errorf("unable to parse action %v, unexpected =", action)
 		} else {
-			headers[vals[0]] = vals[1]
+			key := rest[:idx]
+			rest = rest[idx+1:]
+			if rest[0] == '\'' {
+				rest = rest[1:]
+				closingQuoteIdx := strings.IndexByte(rest, '\'')
+				if closingQuoteIdx < 0 {
+					return "", nil, errors.Errorf("unable to parse action %v, unclosed single-quote", action)
+				}
+				headers[key] = rest[:closingQuoteIdx]
+				if debug {
+					fmt.Printf("%v: added %v=%v\n", action, key, headers[key])
+				}
+				rest = rest[closingQuoteIdx+1:]
+				if len(rest) > 0 {
+					if rest[0] != ' ' {
+						return "", nil, errors.Errorf("unable to parse action %v, expected space after closing singe-quote", action)
+					} else {
+						rest = rest[1:]
+					}
+				}
+			} else {
+				idx = strings.IndexByte(rest, ' ')
+				if idx < 0 {
+					headers[key] = rest
+					if debug {
+						fmt.Printf("%v: added %v=%v\n", action, key, headers[key])
+					}
+					rest = ""
+				} else if idx == 0 {
+					headers[key] = ""
+					if debug {
+						fmt.Printf("%v: added %v=%v\n", action, key, headers[key])
+					}
+					rest = rest[1:]
+				} else {
+					headers[key] = rest[:idx]
+					if debug {
+						fmt.Printf("%v: added %v=%v\n", action, key, headers[key])
+					}
+					rest = rest[idx+1:]
+				}
+			}
 		}
 	}
-	return action, headers
+
+	return action, headers, nil
 }
 
 func (self *Runner) actionIds() []string {

@@ -23,7 +23,6 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -40,13 +39,12 @@ type updateTerminatorOptions struct {
 	precedence string
 }
 
-func newUpdateTerminatorCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newUpdateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateTerminatorOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

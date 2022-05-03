@@ -22,7 +22,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/openziti/ziti/common/version"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
@@ -39,13 +38,12 @@ type UseOptions struct {
 }
 
 // NewCmdUse creates the command
-func NewCmdUse(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUse(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UseOptions{
 		InstallOptions: InstallOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}

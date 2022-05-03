@@ -29,7 +29,6 @@ import (
 	"strings"
 	"time"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/viper"
@@ -41,13 +40,12 @@ type PKICreateOptions struct {
 }
 
 // NewCmdPKICreate creates a command object for the "create" command
-func NewCmdPKICreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &PKICreateOptions{
 		PKIOptions: PKIOptions{
 			CommonOptions: CommonOptions{
-				Factory: f,
-				Out:     out,
-				Err:     errOut,
+				Out: out,
+				Err: errOut,
 			},
 		},
 	}
@@ -62,12 +60,12 @@ func NewCmdPKICreate(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 		},
 	}
 
-	cmd.AddCommand(NewCmdPKICreateCA(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateIntermediate(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateKey(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateServer(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateClient(f, out, errOut))
-	cmd.AddCommand(NewCmdPKICreateCSR(f, out, errOut))
+	cmd.AddCommand(NewCmdPKICreateCA(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateIntermediate(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateKey(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateServer(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateClient(out, errOut))
+	cmd.AddCommand(NewCmdPKICreateCSR(out, errOut))
 
 	options.addPKICreateFlags(cmd)
 	return cmd

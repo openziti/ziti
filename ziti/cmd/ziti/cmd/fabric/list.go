@@ -33,8 +33,9 @@ import (
 // newListCmd creates a command object for the "controller list" command
 func newListCmd(p common.OptionsProvider) *cobra.Command {
 	listCmd := &cobra.Command{
-		Use:   "list",
-		Short: "Lists various entities managed by the Ziti Controller",
+		Use:     "list",
+		Short:   "Lists various entities managed by the Ziti Controller",
+		Aliases: []string{"ls"},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := cmd.Help()
 			cmdhelper.CheckErr(err)
@@ -133,7 +134,7 @@ func outputCircuits(o *api.Options, children []*gabs.Container, pagingInfo *api.
 		t.AppendRow(table.Row{id, client, service, path.String()})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -180,15 +181,16 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	columnConfigs := make([]table.ColumnConfig, 9)
-	columnConfigs[4] = table.ColumnConfig{Align: text.AlignRight}
-	columnConfigs[5] = table.ColumnConfig{Align: text.AlignRight}
+	columnConfigs := []table.ColumnConfig{
+		{Number: 5, Align: text.AlignRight},
+		{Number: 6, Align: text.AlignRight},
+		{Number: 8, Align: text.AlignRight},
+	}
 	t.SetColumnConfigs(columnConfigs)
-	t.AppendHeader(table.Row{"ID", "Type", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
+	t.AppendHeader(table.Row{"ID", "Dialer", "Acceptor", "Static Cost", "Src Latency", "Dst Latency", "State", "Status", "Full Cost"})
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
-		linkType := entity.Path("type").Data().(string)
 		srcRouter := entity.Path("sourceRouter.name").Data().(string)
 		dstRouter := entity.Path("destRouter.name").Data().(string)
 		staticCost := entity.Path("staticCost").Data().(float64)
@@ -203,13 +205,13 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 			status = "down"
 		}
 
-		t.AppendRow(table.Row{id, linkType, srcRouter, dstRouter, staticCost,
-			fmt.Sprintf("%.2vms", srcLatency),
-			fmt.Sprintf("%.2vms", dstLatency),
+		t.AppendRow(table.Row{id, srcRouter, dstRouter, staticCost,
+			fmt.Sprintf("%.1fms", srcLatency),
+			fmt.Sprintf("%.1fms", dstLatency),
 			state, status, cost})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -244,7 +246,7 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 
 		t.AppendRow(table.Row{id, service, router, binding, address, identity, staticCost, precedence, dynamicCost})
 	}
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 	return nil
 }
 
@@ -272,7 +274,7 @@ func outputServices(o *api.Options, children []*gabs.Container, pagingInfo *api.
 		t.AppendRow(table.Row{id, name, terminatorStrategy})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
 }
@@ -314,27 +316,13 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 			children, _ := listenerAddresses.Children()
 			for idx, child := range children {
 				addr := child.Path("address").Data().(string)
-				linkType := child.Path("type").Data().(string)
-				listeners = append(listeners, fmt.Sprintf("%v: %v (%v)", idx+1, addr, linkType))
+				listeners = append(listeners, fmt.Sprintf("%v: %v", idx+1, addr))
 			}
 		}
 		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version, strings.Join(listeners, "\n")})
 	}
 
-	renderTable(o, t, pagingInfo)
+	api.RenderTable(o, t, pagingInfo)
 
 	return nil
-}
-
-func renderTable(o *api.Options, t table.Writer, pagingInfo *api.Paging) {
-	if o.OutputCSV {
-		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.RenderCSV()); err != nil {
-			panic(err)
-		}
-	} else {
-		if _, err := fmt.Fprintln(o.Cmd.OutOrStdout(), t.Render()); err != nil {
-			panic(err)
-		}
-		pagingInfo.Output(o)
-	}
 }

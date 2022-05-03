@@ -16,7 +16,7 @@ if [ -d "${ZITI_BIN_ROOT}/image/ziti.ignore" ]; then
   rm -rf "${ZITI_BIN_ROOT}/image/ziti.ignore"
 fi
 
-getLatestZiti
+getZiti
 
 mv "${ZITI_BIN_DIR}" "${SCRIPT_DIR}/image/ziti.ignore/"
 docker build "${SCRIPT_DIR}/image" -t openziti/quickstart

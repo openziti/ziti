@@ -26,13 +26,12 @@ import (
 	"strings"
 
 	"github.com/go-acme/lego/v4/certcrypto"
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
 // newListCmd creates a command object for the "controller list" command
-func newListCmd(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &leOptions{}
 
 	cmd := &cobra.Command{

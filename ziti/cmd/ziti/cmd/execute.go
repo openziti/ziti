@@ -21,7 +21,6 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 )
@@ -47,12 +46,11 @@ var (
 )
 
 // NewCmdExecute Executes a command object for the "Execute" command
-func NewCmdExecute(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdExecute(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &ExecuteOptions{
 		CommonOptions: CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -69,7 +67,7 @@ func NewCmdExecute(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Co
 		},
 	}
 
-	cmd.AddCommand(NewCmdExecuteController(f, out, errOut))
+	cmd.AddCommand(NewCmdExecuteController(out, errOut))
 
 	options.addExecuteFlags(cmd)
 	return cmd

@@ -1,3 +1,80 @@
+# Release 0.25.5
+
+* Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
+* Enhancement: Updated Control Channel to use new heartbeat logging mirroring Links in Release `0.25.0`
+* Enhancement: Added Circuit Creation Timespan which denotes how long the fabric took to construct a requested circuit.
+```json
+{
+    "namespace": "namespace",
+    "event_type": "event_type",
+    "circuit_id": "circuit_id",
+    "timestamp": "2022-04-07T14:00:52.0500632-05:00",
+    "client_id": "client_id",
+    "service_id": "service_id",
+    "creation_timespan": 5000000, //Timespan in nanoseconds
+    "path": "path"
+}
+```
+
+* Bug fix: Fixes an issue where Edge administrator checks would not take default admin flag into account
+* Bug fix: Fix an issue with docker-compose quickstart not properly loading env vars
+* Enhancement: Add support for Apple M1 using the ziti quickstart CLI script
+* Enhancement: Use an env file for docker-compose quickstart for easier version changes and other duplicated field values
+* Enhancement: Allow for version override using the ziti quickstart CLI script
+* Change: Renamed `pushDevBuild.sh` to `buildLocalDev.sh`, the script used for building a local dev version of the docker quickstart image
+* Bug fix: Fixes an issues where `isAdmin` would always default to false on updates (put/patch)
+* Bug fix: Identity property `externalId` was not properly rendering on `GET` and not handled consistently on `PUT` and `PATCH`
+* Enhancement: External JWT Signer Issuer & Audience Validation
+* Enhancement: Add ability to define local interface binding for link and controller dial
+* Bug fix: Edge Management REST API Doc shows Edge Client REST API Doc
+* Enhancement: `ziti db explore <ctrl.db>` command has been added to explore offline database files
+* Enhancement: The mgmt API is now available via websocket. The stream commands are now available on `ziti fabric`
+* Enhancement: Most list commands have been updated with tabular output
+* Enhancement: `ziti edge show` is now available with subcommands `config` and `config-type`
+    * `ziti edge list configs` no longer shows the associated json. It can be viewed using `ziti edge show config <config name or id>`
+* Enhancement: `ziti edge update config-type` is now available
+* Enhancement: `ziti edge create|update identity` now supports `--external-id`
+* Bug fix: Fixes an issue where the router config would use hostname instead of the DNS name
+* Bug fix: When establishing links, a link could be closed while being registered, leading the controlller and router to get out of sync
+* Enhancement: Add min router cost. Helps to minimize unnecessary hops.
+    * Defaults to 10, configurable in the controller config with the minRouterCost value under `network:`
+* Enhancement: Can now see xgress instance and link send buffer pointer values in circuit inspections. This allows correlating to stackdumps
+* Enhancement: Can now see xgress related goroutines by using `ziti fabric inspect '.*' circuitAndStacks:<circuitId>`
+* Enhancement: If a router connects to the controller but is already connected, the new connection now takes precedence
+    * There is a configurable churn limit, which limits how often this can happen. 
+    * The default is 1 minute and is settable via `routerConnectChurnLimit` under `network`
+* Enhancement: Flow control changes
+    * Duplicate acks won't shrink window. Duplicate acks imply retransmits and the retransmits already affect the window size
+    * Drop min round trip time scaling to 1.5 as will get scaled up as needed by duplicate ack detection
+    * Drop round trip time addition to 0 from 100ms and rely purely on scaling
+    * Avoid potential stall by always allowing at least one payload into sender side, even when receiver is full.
+        * This way if receiver signal to sender is lost, we'll still having something trying to send
+* Enhancement: When router reconnects to controller, re-establish any embedded tunneler hosting on that router to ensure router and controller are in sync
+
+
+## External JWT Signer Issuer & Audience Validation
+
+External JWT Signers (endpoint `/external-jwt-signers`) now support `issuer` and `audience` optional string fields.
+These fields may be set to `null` on `POST`/`PUT`/`PATCH` or omitted; which will result in no validation of incoming
+JWT's `aud` and `iss` fields. If `issuer` is defined, JWT `iss` fields will be validated. If `audience` is defined, JWT
+`aud` fields will be validated. If a JWT contains multiple audience values as an array of strings and will be validated,
+validation will check if the External JWT Signer's `audience` value is present as one of the values.
+
+## Add ability to define local interface binding for link and controller dial
+
+The network interface used to dial the controller and router links can be provided in the router configuration file.  The interface can be provided as either a name or an IP address.  
+
+```yaml
+ctrl:
+  endpoint:             tls:127.0.0.1:6262
+  bind:                 wlp5s0
+
+link:
+  dialers:
+    - binding:          transport
+      bind:            192.168.1.11
+```
+
 # Release 0.25.4
 
 **NOTE**: Link management is undergoing some restructuring to support better link costing and multiple interfaces. The link types introduced in 0.25 should not be used. A more complete replacement is coming soon.
@@ -206,12 +283,12 @@ set to a valid external JWT signer and assigned to the target identity(ies).
 
 External JWT Signers can be managed on the following new REST Edge Management API endpoints:
 
-- List `GET /edge/v1/management/ext-jwt-signers`
-- Create `POST /edge/v1/management/ext-jwt-signers`
-- Detail `GET /edge/v1/management/ext-jwt-signers/{id}`
-- Replace `PUT /edge/v1/management/ext-jwt-signers/{id}`
-- Patch `PATCH /edge/v1/management/ext-jwt-signers/{id}`
-- Delete `Delete /edge/v1/management/ext-jwt-signers/{id}`
+- List `GET /edge/v1/management/external-jwt-signers`
+- Create `POST /edge/v1/management/external-jwt-signers`
+- Detail `GET /edge/v1/management/external-jwt-signers/{id}`
+- Replace `PUT /edge/v1/management/external-jwt-signers/{id}`
+- Patch `PATCH /edge/v1/management/external-jwt-signers/{id}`
+- Delete `Delete /edge/v1/management/external-jwt-signers/{id}`
 
 And support the following properties:
 
@@ -225,7 +302,7 @@ And support the following properties:
 
 Example Create:
 
-`POST /edge/v1/management/ext-jwt-signers`
+`POST /edge/v1/management/external-jwt-signers`
 ```json
 {
     "certPem": "-----BEGIN CERTIFICATE-----\nMIIBizC ...",

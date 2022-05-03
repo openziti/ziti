@@ -97,15 +97,17 @@ func run(cmd *cobra.Command, args []string) {
 
 	if cliAgentEnabled {
 		options := agent.Options{Addr: cliAgentAddr}
-		if debugOpsEnabled {
-			r.RegisterDefaultDebugOps()
-			debugops.RegisterEdgeRouterDebugOps(r, stateManager)
-			options.CustomOps = map[byte]func(conn net.Conn) error{
-				agent.CustomOp: func(conn net.Conn) error {
-					return r.HandleDebug(conn)
-				},
-			}
+		if config.EnableDebugOps {
+			enableDebugOps = true
 		}
+		r.RegisterDefaultAgentOps(enableDebugOps)
+		debugops.RegisterEdgeRouterAgentOps(r, stateManager, enableDebugOps)
+
+		options.CustomOps = map[byte]func(conn net.Conn) error{
+			agent.CustomOp:      r.HandleAgentOp,
+			agent.CustomOpAsync: r.HandleAgentAsyncOp,
+		}
+
 		if err := agent.Listen(options); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")
 		}

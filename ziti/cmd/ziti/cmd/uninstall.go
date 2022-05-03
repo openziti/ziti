@@ -19,7 +19,6 @@ package cmd
 import (
 	"io"
 
-	cmdutil "github.com/openziti/ziti/ziti/cmd/ziti/cmd/factory"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/spf13/cobra"
@@ -42,12 +41,11 @@ var (
 )
 
 // NewCmdUnInstall creates the command
-func NewCmdUnInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdUnInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &UnInstallOptions{
 		CommonOptions{
-			Factory: f,
-			Out:     out,
-			Err:     errOut,
+			Out: out,
+			Err: errOut,
 		},
 	}
 
@@ -66,12 +64,12 @@ func NewCmdUnInstall(f cmdutil.Factory, out io.Writer, errOut io.Writer) *cobra.
 		SuggestFor: []string{"up"},
 	}
 
-	cmd.AddCommand(NewCmdUnInstallZitiController(f, out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiFabric(f, out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiRouter(f, out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiEdgeTunnel(f, out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiProxC(f, out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiController(out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiFabric(out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiRouter(out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiTunnel(out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiEdgeTunnel(out, errOut))
+	cmd.AddCommand(NewCmdUnInstallZitiProxC(out, errOut))
 
 	return cmd
 }

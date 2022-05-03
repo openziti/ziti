@@ -8,11 +8,11 @@ Ziti represents the next generation of secure, open-source networking for your a
 * [Local Deployment](https://github.com/openziti/ziti/blob/master/doc/003-local-deploy.md)
 * [Release Notes](https://github.com/openziti/ziti/blob/master/CHANGELOG.md)
 
-## What is Ziti?
-* The Ziti fabric provides a scalable, plugable, networking mesh with built in smart routing
-* The Ziti edge components provide a secure, Zero Trust entry point into your network
-* The Ziti SDKs allow you to integrate Ziti directly into your applications
-* The Ziti tunnelers and proxies allow existing applications and networks to take advantage of a Ziti deployment 
+## What is OpenZiti?
+* The OpenZiti fabric provides a scalable, plugable, networking mesh with built in smart routing
+* The OpenZiti edge components provide a secure, Zero Trust entry point into your network
+* The OpenZiti SDKs allow you to integrate Ziti directly into your applications
+* The OpenZiti tunnelers and proxies allow existing applications and networks to take advantage of a Ziti deployment 
 
 **Security Features**
 * Zero Trust and Application Segmentation
@@ -25,7 +25,7 @@ Ziti represents the next generation of secure, open-source networking for your a
 
 **Developer Focus**
 * [Open source code, available with the Apache 2.0 license](https://github.com/openziti)
-* Fully programable REST management APIs
+* Fully programmable REST management APIs
 * [SDKs for a variety of programming languages](https://openziti.github.io/ziti/clients/sdks)
 * [Application specific configuration store allowing centralized management of configuration allowing you to add structured configuration specific to your application](https://openziti.github.io/ziti/config-store/overview)
 * An extensible fabric, allowing you to add your own 
@@ -76,8 +76,8 @@ End-to-end encryption means that even if systems between the client and server a
 ## Getting started with Ziti
 
 If you are looking to jump right in feet first you can follow along with one of our [up-and-running quickstart
-guides](~/ziti/quickstarts/quickstart-overview.md). The quickstart will leverage Amazon Web Services (AWS) and will have you
-launch an AMI which will get you up and running in no time.
+guides](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html). These guides are designed to get an 
+overlay network quickly and allow you to run it all locally, use docker or host it anywhere.
 
 This environment is perfect for evaluators to get to know Ziti and the capabilities it offers.  The environement was not
 designed for large scale deployment or for long-term usage. If you are looking for a managed service to help you run a
@@ -93,12 +93,13 @@ The Ziti project welcomes contributions including, but not limited to, code, doc
     * [foundation](https://github.com/openziti/foundation): project which contains library code used across multiple projects
     * SDKs
         * [ziti-sdk-c] (https://github.com/openziti/ziti-sdk-c): C SDK
-        * [ziti-sdk-csharp] (https://github.com/openziti/ziti-sdk-csharp): C# SDK
+        * [sdk-golang] (https://github.com/openziti/sdk-golang): Go SDK
         * [ziti-sdk-jvm] (https://github.com/openziti/ziti-sdk-jvm): SDK for JVM based languages
         * [ziti-sdk-swift] (https://github.com/openziti/ziti-sdk-swift): Swift SDK
         * [ziti-sdk-nodejs] (https://github.com/openziti/ziti-sdk-nodejs): NodeJS SDK
-        * [sdk-golang] (https://github.com/openziti/sdk-golang): Go SDK
-    * [ziti-doc](https://github.com/openziti/ziti-doc): Documention (which you are currently reading)
-* A [Discourse forum](https://openziti.discourse.group/) is available 
+        * [ziti-sdk-csharp] (https://github.com/openziti/ziti-sdk-csharp): C# SDK
+    * [ziti-doc](https://github.com/openziti/ziti-doc): Powers the static documentation site
+* A [Discourse forum](https://openziti.discourse.group/) is available, jump in and ask questions!
 
-Ziti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). Netfoundry continues to fund and contribute to Ziti. 
+Ziti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). NetFoundry continues to fund and 
+contribute to OpenZiti. 

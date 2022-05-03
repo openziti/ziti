@@ -15,6 +15,52 @@ identity:
   key:                  "{{ .Controller.IdentityKey }}"
   ca:                   "{{ .Controller.IdentityCA }}"
 
+# Network Configuration
+#
+# Configure how the controller will establish and manage the overlay network, and routing operations on top of
+# the network.
+#
+#network:
+
+  # routeTimeoutSeconds controls the number of seconds the controller will wait for a route attempt to succeed.
+  #routeTimeoutSeconds:  10
+
+  # createCircuitRetries controls the number of retries that will be attempted to create a path (and terminate it)
+  # for new circuits.
+  #createCircuitRetries: 2  
+
+  # pendingLinkTimeoutSeconds controls how long we'll wait before creating a new link between routers where
+  # there isn't an established link, but a link request has been sent
+  #pendingLinkTimeoutSeconds: 10
+
+  # Defines the period that the controller re-evaluates the performance of all of the circuits
+  # running on the network.
+  #
+  #cycleSeconds:         15
+  
+  # Sets router minimum cost. Defaults to 10
+  #minRouterCost: 10
+
+  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
+  # Defaults to 1 minute
+  #routerConnectChurnLimit: 1m
+
+  #smart:
+    #
+    # Defines the fractional upper limit of underperforming circuits that are candidates to be re-routed. If 
+    # smart routing detects 100 circuits that are underperforming, and `smart.rerouteFraction` is set to `0.02`,
+    # then the upper limit of circuits that will be re-routed in this `cycleSeconds` period will be limited to 
+    # 2 (2% of 100). 
+    #
+    #rerouteFraction:    0.02
+    # 
+    # Defines the hard upper limit of underperforming circuits that are candidates to be re-routed. If smart 
+    # routing detects 100 circuits that are underperforming, and `smart.rerouteCap` is set to `1`, and 
+    # `smart.rerouteFraction` is set to `0.02`, then the upper limit of circuits that will be re-routed in this 
+    # `cycleSeconds` period will be limited to 1.
+    #
+    #rerouteCap:         4  
+
 # the endpoint that routers will connect to the controller over.
 ctrl:
   #options:
@@ -88,14 +134,14 @@ edge:
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
-      # durationMinutes - optional, default {{ .Controller.EdgeIdentityDuration.Minutes }}m
+      # duration - optional, default {{ .Controller.EdgeIdentityDuration.Minutes }}m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
       duration: {{ .Controller.EdgeIdentityDuration.Minutes }}m
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
-      # durationMinutes - optional, default {{ .Controller.EdgeRouterDuration.Minutes }}m
+      # duration - optional, default {{ .Controller.EdgeRouterDuration.Minutes }}m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
       duration: {{ .Controller.EdgeRouterDuration.Minutes }}m
