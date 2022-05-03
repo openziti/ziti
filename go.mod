@@ -1,22 +1,6 @@
 module github.com/openziti/ziti
 
-go 1.17
-
-//replace github.com/openziti/foundation => ../foundation
-
-//replace github.com/openziti/channel => ../channel
-
-//replace github.com/openziti/dilithium => ../dilithium
-
-//replace github.com/openziti/fabric => ../fabric
-
-//replace github.com/openziti/sdk-golang => ../sdk-golang
-
-//replace github.com/openziti/edge => ../edge
-
-//replace github.com/michaelquigley/pfxlog => ../pfxlog
-
-//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
+go 1.18
 
 require (
 	github.com/Jeffail/gabs v1.4.0
