@@ -2,30 +2,34 @@ name: Jenkins Smoketest
 on:
   workflow_call:
     inputs:
-      ziti_version:
+      ziti-version:
         description: 'Semantic Version from `ziti-ci -q get-current-version`'
         type: string
-        required: false
+        required: true    # error if this workflow is called from main.yml and the ziti_version is missing
   workflow_dispatch:
     inputs:
-      ziti_version:
+      ziti-version:
         description: 'Semantic Version from `ziti-ci -q get-current-version`'
         type: string
-        required: false
+        required: false   # this allows manually triggering the smoketest with the UNKNOWN version default
 
 jobs:
   jenkins-smoketest:
     runs-on: ubuntu-latest
-    name: POST Webhook to Jenkinstest
+    name: Jenkins On-Demand Smoketest
     steps:
-      - name: Trigger Smoketest
+      - name: debug ziti-version input
+        run: |
+          echo ziti-version=${{ inputs.ziti-version || github.event.inputs.ziti-version }} 
+      - name: Send Webhook to Jenkinstest
+        uses: openziti/ziti-webhook-action@v2
         if: ${{ env.ZITI_JENKINS_WEBHOOK_URL != null }}
         env:
           ZITI_JENKINS_WEBHOOK_URL: ${{ secrets.ZITI_JENKINS_WEBHOOK_URL }}
-        uses: openziti/ziti-webhook-action@v2
         with:
           ziti-id: ${{ secrets.ZITI_JENKINS_IDENTITY }}
           webhook-url: ${{ secrets.ZITI_JENKINS_WEBHOOK_URL }}
           webhook-secret: ${{ secrets.ZITI_JENKINS_WEBHOOK_SECRET }}
           data: |
-            ziti-version=${{ github.event.inputs.ziti_version }}
+            ziti-version=${{ inputs.ziti-version || github.event.inputs.ziti-version }}
+            branch=${{ github.head_ref || github.ref }}
