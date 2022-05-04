@@ -8,6 +8,8 @@ Ziti represents the next generation of secure, open-source networking for your a
 * [Local Deployment](https://github.com/openziti/ziti/blob/master/doc/003-local-deploy.md)
 * [Release Notes](https://github.com/openziti/ziti/blob/master/CHANGELOG.md)
 
+---
+
 ## What is OpenZiti?
 * The OpenZiti fabric provides a scalable, plugable, networking mesh with built in smart routing
 * The OpenZiti edge components provide a secure, Zero Trust entry point into your network
@@ -73,7 +75,9 @@ If you take advantage of Ziti's developer SDKs and embed Ziti in your client and
 
 End-to-end encryption means that even if systems between the client and server are compromised, your traffic cannot be decrypted or tampered with.
 
-## Getting started with Ziti
+---
+ 
+## Getting started with OpenZiti
 
 If you are looking to jump right in feet first you can follow along with one of our [up-and-running quickstart
 guides](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html). These guides are designed to get an 
@@ -82,6 +86,23 @@ overlay network quickly and allow you to run it all locally, use docker or host 
 This environment is perfect for evaluators to get to know Ziti and the capabilities it offers.  The environement was not
 designed for large scale deployment or for long-term usage. If you are looking for a managed service to help you run a
 truly global, scalable network browse over to our website at http://netfoundry.io to learn more.
+
+---
+
+## Adopters
+
+Interested to see what companies are using OpenZiti? Check out [the list of projects and companies using OpenZiti here](./adopters.md). 
+Interested in adding your project to the list? Add an issue to github or better yet feel free to add a pull request! Instructions for
+getting your project added are included [on the adopters list](./adopters.md)
+
+---
+
+## Support
+
+We have a very active Discourse forum. Join the conversation! Help others if you can. If you want to ask a question or just check it out, 
+cruise on over to [the OpenZiti Discourse forum](https://openziti.discourse.group/). We love getting questions, jump in!
+
+---
 
 ### Contributing
 The Ziti project welcomes contributions including, but not limited to, code, documentation and bug reports.
@@ -99,7 +120,6 @@ The Ziti project welcomes contributions including, but not limited to, code, doc
         * [ziti-sdk-nodejs] (https://github.com/openziti/ziti-sdk-nodejs): NodeJS SDK
         * [ziti-sdk-csharp] (https://github.com/openziti/ziti-sdk-csharp): C# SDK
     * [ziti-doc](https://github.com/openziti/ziti-doc): Powers the static documentation site
-* A [Discourse forum](https://openziti.discourse.group/) is available, jump in and ask questions!
 
 Ziti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). NetFoundry continues to fund and 
 contribute to OpenZiti. 
