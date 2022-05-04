@@ -1,3 +1,8 @@
+# Release 0.25.6
+
+* Moving from Go 1.17 to 1.18
+* Bug fix: Fixes an issue in quickstart "Host it anywhere" where an EXTERNAL_DNS was not added to the PKI causing failures when attempting to use a router from outside the hosted environment.
+
 # Release 0.25.5
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last

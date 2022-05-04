@@ -28,7 +28,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: '~1.17.1'
+          go-version: '~1.18.1'
 
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
@@ -58,7 +58,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: '~1.17.1'
+          go-version: '~1.18.1'
 
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-18.04
     needs: [ mac-os-build, windows-build ]
     outputs:
-      ziti_version: ${{ steps.get_version.outputs.ziti_version }}
+      ziti-version: ${{ steps.get_version.outputs.ziti-version }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -92,7 +92,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: '~1.17.1'
+          go-version: '~1.18.1'
 
       - name: Install Python
         uses: actions/setup-python@v2
@@ -105,6 +105,8 @@ jobs:
       - name: Build and Test
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
@@ -153,7 +155,7 @@ jobs:
           else
             # Set output parameters.
             echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ::set-output name=ziti_version::${ZITI_VERSION}
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
           fi
 
       - name: Publish to Artifactory
@@ -187,7 +189,7 @@ jobs:
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
-          ZITI_VERSION: ${{ steps.get_version.outputs.ziti_version }}
+          ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
         id: tagprep
         run: |
           # the Docker cross-build only runs on branches main or release-v*
@@ -216,16 +218,13 @@ jobs:
       # END linux-build-steps
 
   smoketest:
-      # BEGIN smoketest-job
-      #
-      # Any event that triggers this main workflow also triggers the smoketest steps,
-      # but only if at least one of the needed secrets is present. This avoids
-      # running job steps that can't succeed without the secrets e.g. in PR
-      # builds from repo forks.
-      #
+    # BEGIN smoketest-job
+    #
+    # Any event that triggers this main workflow also triggers the smoketest
+    #
     needs: linux-build
-    if: ${{ github.repository == 'openziti/ziti' }}
-    name: Trigger Smoketest
+    name: Call the On-Demand Smoketest Workflow
     uses: ./.github/workflows/jenkins-smoketest.yml
+    secrets: inherit
     with:
-      ziti_version: ${{ needs.linux-build.outputs.ziti_version }} 
+      ziti-version: ${{ needs.linux-build.outputs.ziti-version }} 
