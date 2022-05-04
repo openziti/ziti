@@ -1,6 +1,7 @@
 # Release 0.25.6
 
-There are no features or bug fixes in the release. The only change is moving from Go 1.17 to 1.18
+* Moving from Go 1.17 to 1.18
+* Bug fix: Fixes an issue in quickstart "Host it anywhere" where an EXTERNAL_DNS was not added to the PKI causing failures when attempting to use a router from outside the hosted environment.
 
 # Release 0.25.5
 
