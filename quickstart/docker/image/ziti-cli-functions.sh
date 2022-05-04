@@ -611,10 +611,10 @@ function expressInstall {
 }
 
 function pki_client_server {
-  file_name=${1-}
-  allow_list=$2
-  ZITI_CA_NAME_local=$3
-  ip_local=$4
+  allow_list=${1-}
+  ZITI_CA_NAME_local=$2
+  ip_local=$3
+  file_name=$4
 
   if [[ "${ip_local}" == "" ]]; then
     ip_local="127.0.0.1"
@@ -718,7 +718,7 @@ function createRouterPki {
   export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
   export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
   export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
-  pki_client_server "${router_name}" "${router_name},localhost,$(hostname)" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
+  pki_client_server "${router_name},localhost,$(hostname)" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
 }
 
 function createPrivateRouterConfig {
@@ -776,8 +776,8 @@ function createPki {
   echo " "
   pki_allow_list="${ZITI_CONTROLLER_HOSTNAME},localhost"
   if [[ "$EXTERNAL_DNS" != "" ]]; then pki_allow_list="$pki_allow_list,$EXTERNAL_DNS"; fi
-  pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${pki_allow_list}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}"
-  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}"
+  pki_client_server "${pki_allow_list}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}" "${ZITI_CONTROLLER_HOSTNAME}"
+  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME},localhost" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
 }
 
 
