@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"fmt"
 	"github.com/openziti/foundation/identity/identity"
 	"net/http"
 	"testing"
@@ -45,6 +46,7 @@ func Test_ListServicesWithValidCert(t *testing.T) {
 	ctx.requireRestPort(5 * time.Second)
 	client := ctx.NewRestClientWithDefaults()
 	resp, err := client.R().Get("https://localhost:1281/fabric/v1/services")
+	fmt.Println(resp.String())
 	ctx.Req.NoError(err)
 	ctx.Req.True(resp.IsSuccess())
 }

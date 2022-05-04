@@ -17,18 +17,21 @@
 package tests
 
 import (
+	"context"
 	"crypto/sha1"
 	tls2 "crypto/tls"
+	"encoding/json"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"google.golang.org/protobuf/proto"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/api_impl"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/fabric/rest_client"
+	restClientRouter "github.com/openziti/fabric/rest_client/router"
+	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/fabric/rest_util"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -311,58 +314,52 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 	return createdAt
 }
 
-func (ctx *TestContext) createMgmtClient() *MgmtClient {
+func (ctx *TestContext) createFabricRestClient() *rest_client.ZitiFabric {
 	id, err := identity.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
 		"./testdata/valid_client_cert/client.key",
 		"./testdata/ca/intermediate/certs/ca-chain.cert.pem")
-
-	ctx.Req.NoError(err)
-	mgmtAddress, err := transport.ParseAddress("tls:localhost:10001")
-	ctx.Req.NoError(err)
-	dialer := channel.NewClassicDialer(id, mgmtAddress, nil)
-	ch, err := channel.NewChannel("mgmt", dialer, nil, nil)
 	ctx.Req.NoError(err)
 
-	return &MgmtClient{
+	client, err := rest_util.NewFabricClientWithIdentity(id, "https://localhost:1281/")
+	ctx.Req.NoError(err)
+	return client
+}
+
+func (ctx *TestContext) createTestFabricRestClient() *RestClient {
+	client := ctx.createFabricRestClient()
+	return &RestClient{
 		TestContext: ctx,
-		ch:          ch,
+		client:      client,
 	}
 }
 
-type MgmtClient struct {
+type RestClient struct {
 	*TestContext
-	ch channel.Channel
+	client *rest_client.ZitiFabric
 }
 
-func (self *MgmtClient) ListServices(query string) []*mgmt_pb.Service {
-	request := &mgmt_pb.ListServicesRequest{
-		Query: query,
-	}
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(5 * time.Second).SendForReply(self.ch)
-	self.Req.NoError(err)
-	self.Req.Equal(responseMsg.ContentType, int32(mgmt_pb.ContentType_ListServicesResponseType))
-	response := &mgmt_pb.ListServicesResponse{}
-	err = proto.Unmarshal(responseMsg.Body, response)
-	self.Req.NoError(err)
-	return response.Services
-}
-
-func (self *MgmtClient) EnrollRouter(id string, name string, certFile string) {
+func (self *RestClient) EnrollRouter(id string, name string, certFile string) {
 	cert, err := certtools.LoadCertFromFile(certFile)
 	self.Req.NoError(err)
 
-	request := &mgmt_pb.CreateRouterRequest{
-		Router: &mgmt_pb.Router{
-			Id:          id,
-			Name:        name,
-			Fingerprint: fmt.Sprintf("%x", sha1.Sum(cert[0].Raw)),
-		},
-	}
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(5 * time.Second).SendForReply(self.ch)
-	self.Req.NoError(err)
+	fingerprint := fmt.Sprintf("%x", sha1.Sum(cert[0].Raw))
 
-	self.Req.Equal(responseMsg.ContentType, int32(channel.ContentTypeResultType), "unexpected response type %v", responseMsg.ContentType)
-	result := channel.UnmarshalResult(responseMsg)
-	self.Req.True(result.Success, "expected success, msg: %v", result.Message)
+	timeoutContext, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	createRouterParams := &restClientRouter.CreateRouterParams{
+		Router: &rest_model.RouterCreate{
+			Cost:        util.Ptr(int64(0)),
+			Fingerprint: &fingerprint,
+			ID:          &id,
+			Name:        &name,
+			NoTraversal: util.Ptr(false),
+		},
+		Context: timeoutContext,
+	}
+	_, err = self.client.Router.CreateRouter(createRouterParams)
+	if err != nil {
+		js, _ := json.MarshalIndent(err, "", "    ")
+		fmt.Println(string(js))
+	}
+	self.Req.NoError(err)
 }

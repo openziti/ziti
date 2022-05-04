@@ -25,7 +25,6 @@ import (
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
-	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/controller/xctrl"
@@ -53,7 +52,6 @@ type Controller struct {
 	network            *network.Network
 	raftController     *raft.Controller
 	ctrlConnectHandler *handler_ctrl.ConnectHandler
-	mgmtConnectHandler *handler_mgmt.ConnectHandler
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
 
@@ -212,23 +210,6 @@ func (c *Controller) Run() error {
 
 	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
 	go ctrlAccepter.Run()
-	/* */
-
-	/**
-	 * mgmt listener/accepter.
-	 */
-	mgmtChannelListenerConfig := channel.ListenerConfig{
-		ConnectOptions:   c.config.Mgmt.Options.ConnectOptions,
-		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.mgmt"),
-		Headers:          headers,
-	}
-	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, mgmtChannelListenerConfig)
-	c.mgmtListener = mgmtListener
-	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
-		panic(err)
-	}
-	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.network, c.xmgmts, c.mgmtListener, c.config.Mgmt.Options)
-	go mgmtAccepter.Run()
 
 	if err := c.config.Configure(c.xweb); err != nil {
 		panic(err)
@@ -284,11 +265,6 @@ func (c *Controller) showOptions() error {
 	} else {
 		return err
 	}
-	if mgmt, err := json.MarshalIndent(c.config.Mgmt.Options, "", "  "); err == nil {
-		pfxlog.Logger().Infof("mgmt = %s", string(mgmt))
-	} else {
-		return err
-	}
 	return nil
 }
 
@@ -325,7 +301,6 @@ func (c *Controller) registerXts() {
 
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
-	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
 	return nil
 }
