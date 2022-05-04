@@ -12,6 +12,7 @@ If you're interested in getting your project added to the list either:
   * Link to project site
   * Description of project
   * Link to logo
+* Fork the repo and put up a pull request for this page! :)
 
 ## Adopters
 
@@ -19,6 +20,6 @@ Here's the list of projects using and adopting OpenZiti
 
 | Project Name              | Project Link                                  | Logo     | Description     |
 |---------------------------|-----------------------------------------------|----------|-----------------|
-| NetFoundry                | https://nfconsole.io/signup                   | <img src="https://netfoundry.io/logos/Logo-Dark-Backgrounds.jpg" width="100px"> | NetFoundry SaaS is built on OpenZiti, serving 100s of TBs of data per month with no breaches and 99.95% availability SLAs. |
+| NetFoundry                | https://nfconsole.io/signup                   | <img src="https://netfoundry.io/logos/Logo-Dark-Backgrounds.jpg" width="100px"> | NetFoundry SaaS provides management, orchestrations, support, and SLAs for OpenZiti networks. |
 
 
