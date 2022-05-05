@@ -91,9 +91,9 @@ truly global, scalable network browse over to our website at http://netfoundry.i
 
 ## Adopters
 
-Interested to see what companies are using OpenZiti? Check out [the list of projects and companies using OpenZiti here](./adopters.md). 
+Interested to see what companies are using OpenZiti? Check out [the list of projects and companies using OpenZiti here](./ADOPTERS.md). 
 Interested in adding your project to the list? Add an issue to github or better yet feel free to add a pull request! Instructions for
-getting your project added are included [on the adopters list](./adopters.md)
+getting your project added are included [on the adopters list](./ADOPTERS.md)
 
 ---
 
