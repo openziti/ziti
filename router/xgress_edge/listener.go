@@ -19,6 +19,8 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -28,10 +30,9 @@ import (
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/transport"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type listener struct {
@@ -97,6 +98,8 @@ func (self *edgeClientConn) HandleClose(_ channel.Channel) {
 	for _, terminator := range terminators {
 		if err := self.removeTerminator(terminator); err != nil {
 			log.Warnf("failed to remove terminator %v for session with token %v on channel close", terminator.terminatorId, terminator.token)
+		} else {
+			log.WithField("terminatorId", terminator.terminatorId).WithField("token", terminator.token).Info("Successfully removed terminator on channel close")
 		}
 	}
 	self.msgMux.Close()
