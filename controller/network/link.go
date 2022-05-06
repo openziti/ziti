@@ -19,8 +19,10 @@ package network
 import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
+	"math"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 type Link struct {
@@ -39,14 +41,17 @@ type Link struct {
 }
 
 func newLink(id string, linkProtocol string) *Link {
+	initialLatency := (time.Duration(math.MaxUint16) * time.Millisecond).Nanoseconds()
 	l := &Link{
 		Id:         id,
 		Protocol:   linkProtocol,
 		state:      make([]*LinkState, 0),
 		down:       false,
 		StaticCost: 1,
-		Cost:       1,
+		SrcLatency: initialLatency,
+		DstLatency: initialLatency,
 	}
+	l.recalculateCost()
 	l.addState(&LinkState{Mode: Pending, Timestamp: info.NowInMilliseconds()})
 	return l
 }

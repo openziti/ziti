@@ -49,12 +49,16 @@ func (network *Network) assemble() {
 						dial.RouterVersion = missingLink.Dst.VersionInfo.Version
 					}
 
-					if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
+					if err = protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
 						log.WithError(err).Error("unexpected error sending dial")
+					} else {
+						log.WithField("linkId", dial.LinkId).
+							WithField("srcRouterId", missingLink.Src.Id).
+							WithField("dstRouterId", missingLink.Dst.Id).
+							Info("sending link dial")
 					}
 				}
 			}
-
 		} else {
 			log.WithField("err", err).Error("missing link enumeration failed")
 		}

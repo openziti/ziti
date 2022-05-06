@@ -103,6 +103,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
 		})
 	}
+	if api.LinkDeleteLinkHandler == nil {
+		api.LinkDeleteLinkHandler = link.DeleteLinkHandlerFunc(func(params link.DeleteLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.DeleteLink has not yet been implemented")
+		})
+	}
 	if api.RouterDeleteRouterHandler == nil {
 		api.RouterDeleteRouterHandler = router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DeleteRouter has not yet been implemented")

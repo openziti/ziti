@@ -54,6 +54,10 @@ func (r *LinkRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Reque
 	fabricApi.LinkPatchLinkHandler = link.PatchLinkHandlerFunc(func(params link.PatchLinkParams) middleware.Responder {
 		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Patch(n, rc, params) }, params.HTTPRequest, params.ID, "")
 	})
+
+	fabricApi.LinkDeleteLinkHandler = link.DeleteLinkHandlerFunc(func(params link.DeleteLinkParams) middleware.Responder {
+		return wrapper.WrapRequest(func(n *network.Network, rc api.RequestContext) { r.Delete(n, rc) }, params.HTTPRequest, params.ID, "")
+	})
 }
 
 func (r *LinkRouter) ListLinks(n *network.Network, rc api.RequestContext) {
@@ -110,4 +114,11 @@ func (r *LinkRouter) Patch(n *network.Network, rc api.RequestContext, params lin
 		n.LinkChanged(l)
 		return nil
 	})
+}
+
+func (r *LinkRouter) Delete(network *network.Network, rc api.RequestContext) {
+	DeleteWithHandler(rc, DeleteHandlerF(func(id string) error {
+		network.RemoveLink(id)
+		return nil
+	}))
 }

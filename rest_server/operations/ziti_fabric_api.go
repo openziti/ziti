@@ -95,6 +95,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		CircuitDeleteCircuitHandler: circuit.DeleteCircuitHandlerFunc(func(params circuit.DeleteCircuitParams) middleware.Responder {
 			return middleware.NotImplemented("operation circuit.DeleteCircuit has not yet been implemented")
 		}),
+		LinkDeleteLinkHandler: link.DeleteLinkHandlerFunc(func(params link.DeleteLinkParams) middleware.Responder {
+			return middleware.NotImplemented("operation link.DeleteLink has not yet been implemented")
+		}),
 		RouterDeleteRouterHandler: router.DeleteRouterHandlerFunc(func(params router.DeleteRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.DeleteRouter has not yet been implemented")
 		}),
@@ -217,6 +220,8 @@ type ZitiFabricAPI struct {
 	DatabaseDataIntegrityResultsHandler database.DataIntegrityResultsHandler
 	// CircuitDeleteCircuitHandler sets the operation handler for the delete circuit operation
 	CircuitDeleteCircuitHandler circuit.DeleteCircuitHandler
+	// LinkDeleteLinkHandler sets the operation handler for the delete link operation
+	LinkDeleteLinkHandler link.DeleteLinkHandler
 	// RouterDeleteRouterHandler sets the operation handler for the delete router operation
 	RouterDeleteRouterHandler router.DeleteRouterHandler
 	// ServiceDeleteServiceHandler sets the operation handler for the delete service operation
@@ -362,6 +367,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.CircuitDeleteCircuitHandler == nil {
 		unregistered = append(unregistered, "circuit.DeleteCircuitHandler")
+	}
+	if o.LinkDeleteLinkHandler == nil {
+		unregistered = append(unregistered, "link.DeleteLinkHandler")
 	}
 	if o.RouterDeleteRouterHandler == nil {
 		unregistered = append(unregistered, "router.DeleteRouterHandler")
@@ -551,6 +559,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
 	o.handlers["DELETE"]["/circuits/{id}"] = circuit.NewDeleteCircuit(o.context, o.CircuitDeleteCircuitHandler)
+	if o.handlers["DELETE"] == nil {
+		o.handlers["DELETE"] = make(map[string]http.Handler)
+	}
+	o.handlers["DELETE"]["/links/{id}"] = link.NewDeleteLink(o.context, o.LinkDeleteLinkHandler)
 	if o.handlers["DELETE"] == nil {
 		o.handlers["DELETE"] = make(map[string]http.Handler)
 	}
