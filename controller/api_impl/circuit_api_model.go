@@ -50,7 +50,7 @@ func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *ne
 		path.Nodes = append(path.Nodes, ToEntityRef(node.Name, node, RouterLinkFactory))
 	}
 	for _, link := range circuit.Path.Links {
-		path.Links = append(path.Nodes, ToEntityRef(link.Id, link, LinkLinkFactory))
+		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
 	}
 	ret := &rest_model.CircuitDetail{
 		ID:         &circuit.Id,
