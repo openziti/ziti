@@ -38,7 +38,7 @@ import (
 	"github.com/go-openapi/validate"
 )
 
-// EnrollmentDetail An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the
+// EnrollmentDetail An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the
 // method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
 // use the username field, but not vice versa.
 //
@@ -68,6 +68,9 @@ type EnrollmentDetail struct {
 
 	// identity Id
 	IdentityID string `json:"identityId,omitempty"`
+
+	// jwt
+	JWT string `json:"jwt,omitempty"`
 
 	// method
 	// Required: true
@@ -110,6 +113,8 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 
 		IdentityID string `json:"identityId,omitempty"`
 
+		JWT string `json:"jwt,omitempty"`
+
 		Method *string `json:"method"`
 
 		Token *string `json:"token"`
@@ -135,6 +140,8 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 	m.Identity = dataAO1.Identity
 
 	m.IdentityID = dataAO1.IdentityID
+
+	m.JWT = dataAO1.JWT
 
 	m.Method = dataAO1.Method
 
@@ -171,6 +178,8 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 
 		IdentityID string `json:"identityId,omitempty"`
 
+		JWT string `json:"jwt,omitempty"`
+
 		Method *string `json:"method"`
 
 		Token *string `json:"token"`
@@ -193,6 +202,8 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Identity = m.Identity
 
 	dataAO1.IdentityID = m.IdentityID
+
+	dataAO1.JWT = m.JWT
 
 	dataAO1.Method = m.Method
 

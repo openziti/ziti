@@ -23,6 +23,9 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/authenticator"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
+	"time"
 )
 
 func init() {
@@ -63,6 +66,12 @@ func (r *AuthenticatorRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.AuthenticatorPatchAuthenticatorHandler = authenticator.PatchAuthenticatorHandlerFunc(func(params authenticator.PatchAuthenticatorParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) { r.Patch(ae, rc, params) }, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
+	ae.ManagementApi.AuthenticatorReEnrollAuthenticatorHandler = authenticator.ReEnrollAuthenticatorHandlerFunc(func(params authenticator.ReEnrollAuthenticatorParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.ReEnroll(ae, rc, params)
+		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 }
 
@@ -106,4 +115,29 @@ func (r *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext,
 
 		return ae.Handlers.Authenticator.Patch(model, fields.FilterMaps("tags"))
 	})
+}
+
+func (r *AuthenticatorRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext, params authenticator.ReEnrollAuthenticatorParams) {
+	id, err := rc.GetEntityId()
+
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
+	if id == "" {
+		rc.RespondWithError(errors.New("entity id missing"))
+		return
+	}
+
+	if id, err := ae.Handlers.Authenticator.ReEnroll(id, time.Time(*params.ReEnroll.ExpiresAt)); err == nil {
+		rc.RespondWithCreatedId(id, EnrollmentLinkFactory.SelfLinkFromId(id))
+	} else {
+		if fe, ok := err.(*errorz.FieldError); ok {
+			rc.RespondWithFieldError(fe)
+			return
+		}
+		rc.RespondWithError(err)
+		return
+	}
 }

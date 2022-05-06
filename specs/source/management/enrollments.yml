@@ -120,7 +120,7 @@ definitions:
   enrollmentDetail:
     type: object
     description: |
-      An enrollment object. Enrollments are tied to identities and portentially a CA. Depending on the
+      An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the
       method, different fields are utilized. For example ottca enrollments use the `ca` field and updb enrollments
       use the username field, but not vice versa.
     allOf:
@@ -152,6 +152,8 @@ definitions:
           transitRouter:
             $ref: '../shared/base-entity.yml#/definitions/entityRef'
           username:
+            type: string
+          jwt:
             type: string
           details:
             type: object

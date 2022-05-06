@@ -564,6 +564,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		RouterPatchTransitRouterHandler: router.PatchTransitRouterHandlerFunc(func(params router.PatchTransitRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation router.PatchTransitRouter has not yet been implemented")
 		}),
+		AuthenticatorReEnrollAuthenticatorHandler: authenticator.ReEnrollAuthenticatorHandlerFunc(func(params authenticator.ReEnrollAuthenticatorParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation authenticator.ReEnrollAuthenticator has not yet been implemented")
+		}),
 		EdgeRouterReEnrollEdgeRouterHandler: edge_router.ReEnrollEdgeRouterHandlerFunc(func(params edge_router.ReEnrollEdgeRouterParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router.ReEnrollEdgeRouter has not yet been implemented")
 		}),
@@ -1005,6 +1008,8 @@ type ZitiEdgeManagementAPI struct {
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
 	// RouterPatchTransitRouterHandler sets the operation handler for the patch transit router operation
 	RouterPatchTransitRouterHandler router.PatchTransitRouterHandler
+	// AuthenticatorReEnrollAuthenticatorHandler sets the operation handler for the re enroll authenticator operation
+	AuthenticatorReEnrollAuthenticatorHandler authenticator.ReEnrollAuthenticatorHandler
 	// EdgeRouterReEnrollEdgeRouterHandler sets the operation handler for the re enroll edge router operation
 	EdgeRouterReEnrollEdgeRouterHandler edge_router.ReEnrollEdgeRouterHandler
 	// EnrollmentRefreshEnrollmentHandler sets the operation handler for the refresh enrollment operation
@@ -1608,6 +1613,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.RouterPatchTransitRouterHandler == nil {
 		unregistered = append(unregistered, "router.PatchTransitRouterHandler")
+	}
+	if o.AuthenticatorReEnrollAuthenticatorHandler == nil {
+		unregistered = append(unregistered, "authenticator.ReEnrollAuthenticatorHandler")
 	}
 	if o.EdgeRouterReEnrollEdgeRouterHandler == nil {
 		unregistered = append(unregistered, "edge_router.ReEnrollEdgeRouterHandler")
@@ -2403,6 +2411,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/transit-routers/{id}"] = router.NewPatchTransitRouter(o.context, o.RouterPatchTransitRouterHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/authenticators/{id}/re-enroll"] = authenticator.NewReEnrollAuthenticator(o.context, o.AuthenticatorReEnrollAuthenticatorHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

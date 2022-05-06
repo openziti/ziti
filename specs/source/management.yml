@@ -37,6 +37,8 @@ paths:
     $ref: 'management/authenticators.yml#/paths/authenticators'
   '/authenticators/{id}':
     $ref: 'management/authenticators.yml#/paths/authenticators-id'
+  '/authenticators/{id}/re-enroll':
+    $ref: 'management/authenticators.yml#/paths/authenticators-id-re-enroll'
 
   '/auth-policies':
     $ref: 'management/auth-policies.yml#/paths/auth-policies'

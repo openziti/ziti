@@ -35,44 +35,46 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// ListAuthenticatorsHandlerFunc turns a function with the right signature into a list authenticators handler
-type ListAuthenticatorsHandlerFunc func(ListAuthenticatorsParams, interface{}) middleware.Responder
+// ReEnrollAuthenticatorHandlerFunc turns a function with the right signature into a re enroll authenticator handler
+type ReEnrollAuthenticatorHandlerFunc func(ReEnrollAuthenticatorParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn ListAuthenticatorsHandlerFunc) Handle(params ListAuthenticatorsParams, principal interface{}) middleware.Responder {
+func (fn ReEnrollAuthenticatorHandlerFunc) Handle(params ReEnrollAuthenticatorParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// ListAuthenticatorsHandler interface for that can handle valid list authenticators params
-type ListAuthenticatorsHandler interface {
-	Handle(ListAuthenticatorsParams, interface{}) middleware.Responder
+// ReEnrollAuthenticatorHandler interface for that can handle valid re enroll authenticator params
+type ReEnrollAuthenticatorHandler interface {
+	Handle(ReEnrollAuthenticatorParams, interface{}) middleware.Responder
 }
 
-// NewListAuthenticators creates a new http.Handler for the list authenticators operation
-func NewListAuthenticators(ctx *middleware.Context, handler ListAuthenticatorsHandler) *ListAuthenticators {
-	return &ListAuthenticators{Context: ctx, Handler: handler}
+// NewReEnrollAuthenticator creates a new http.Handler for the re enroll authenticator operation
+func NewReEnrollAuthenticator(ctx *middleware.Context, handler ReEnrollAuthenticatorHandler) *ReEnrollAuthenticator {
+	return &ReEnrollAuthenticator{Context: ctx, Handler: handler}
 }
 
-/* ListAuthenticators swagger:route GET /authenticators Authenticator listAuthenticators
+/* ReEnrollAuthenticator swagger:route POST /authenticators/{id}/re-enroll Authenticator reEnrollAuthenticator
 
-List authenticators
+Reverts an authenticator to an enrollment
 
-Returns a list of authenticators associated to identities. The resources can be sorted, filtered, and paginated.
-This endpoint requires admin access.
+Allows an authenticator to be reverted to an enrollment and allows re-enrollment to occur. On success the
+created enrollment record response is provided and the source authenticator record will be deleted. The
+enrollment created depends on the authenticator. UPDB authenticators result in UPDB enrollments, CERT
+authenticators result in OTT enrollments, CERT + CA authenticators result in OTTCA enrollments.
 
 
 */
-type ListAuthenticators struct {
+type ReEnrollAuthenticator struct {
 	Context *middleware.Context
-	Handler ListAuthenticatorsHandler
+	Handler ReEnrollAuthenticatorHandler
 }
 
-func (o *ListAuthenticators) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *ReEnrollAuthenticator) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		*r = *rCtx
 	}
-	var Params = NewListAuthenticatorsParams()
+	var Params = NewReEnrollAuthenticatorParams()
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
 		o.Context.Respond(rw, r, route.Produces, route, err)
