@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/spf13/cobra"
 	"net"
 	"strings"
@@ -210,7 +210,7 @@ func dialDirect(endpoint transport.Address, id *identity.TokenId) (net.Conn, err
 		return nil, err
 	}
 
-	return peer.Conn(), nil
+	return peer, nil
 }
 
 func dialIngress(endpoint transport.Address, id, serviceId *identity.TokenId) (net.Conn, error) {
@@ -219,5 +219,5 @@ func dialIngress(endpoint transport.Address, id, serviceId *identity.TokenId) (n
 		return nil, err
 	}
 
-	return peer.Conn(), nil
+	return peer, nil
 }

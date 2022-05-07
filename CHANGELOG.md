@@ -1,3 +1,46 @@
+# Release 0.25.7
+
+## Fabric
+
+### Link Verification changes
+In previous releases when a router recieved a link dial from another router, it would verify
+that the link was known to the controller and the dialing router was valid. Router validity
+was checked by making sure the fingerprints of the certs used to establish the link matched
+the fingerprints on record for the router.
+
+From this release forwards we will only verify that the router requesting the link is valid
+and won't check that the link is valid. This is because the router has more control over the
+links now, and in future, may take over more of link management. As long as we're getting
+link dials from a valid router, we don't care if they were controller initiated or router 
+initiated. For now they are all controller initiated, but this also covers the case where
+the controller times out a link, but the router still manages to initiate it. Now the router
+can report the link back to the controller and it will be used.
+
+### Remove ziti-fabric CLI command
+The previously deprecated ziti-fabric command will no longer be published as part of Ziti releases. 
+All of ziti-fabric's functionality is available in the `ziti` CLI under `ziti fabric`.
+
+### Add link delete
+If a link gets in a bad state (see bug below for how this could happen), you can now use 
+`ziti fabric delete link <link id>`. This will remove the link from the controller as well
+as send link faults to associated routers. If the link is not known to the controller, a 
+link fault will be sent to all connected routers.
+
+### Bug fix: always close channel if bind fails
+We were usually closing the channel, but not always. Move this logic into channel itself, 
+so if channel setup fails, the connection is always closed. This fixes a bug where if link 
+verification failed in a link listener, the link wouldn't get closed, leading the dialer 
+to believe the link was still valid.
+
+
+## Miscellaneous
+
+The `ziti-probe` tool will no longer be built and published as part of Ziti releases.
+
+### Other Bug Fixes
+
+* `ziti fabric list circuits` was showing the router id instead of the link id in the circuit path
+
 # Release 0.25.6
 
 * Moving from Go 1.17 to 1.18
