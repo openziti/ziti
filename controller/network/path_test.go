@@ -709,6 +709,9 @@ func newTestLink(network *Network, id string, srcR, destR *Router) *Link {
 	l := newLink(id, "tls")
 	l.Src = srcR
 	l.Dst = destR
+	l.SrcLatency = 0
+	l.DstLatency = 0
+	l.recalculateCost()
 	l.addState(newLinkState(Connected))
 	network.linkController.add(l)
 	return l

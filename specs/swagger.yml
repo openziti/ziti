@@ -467,6 +467,19 @@ paths:
           $ref: '#/responses/notFoundResponse'
         '401':
           $ref: '#/responses/unauthorizedResponse'
+    delete:
+      summary: Delete a link
+      description: Delete a link by id. Requires admin access.
+      tags:
+        - Link
+      operationId: deleteLink
+      responses:
+        '200':
+          $ref: '#/responses/deleteResponse'
+        '400':
+          $ref: '#/responses/badRequestResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
 
   ###################################################################
   # Circuits

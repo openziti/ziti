@@ -774,6 +774,40 @@ func (network *Network) GetCapabilities() []string {
 	return network.capabilities
 }
 
+func (network *Network) RemoveLink(linkId string) {
+	log := pfxlog.Logger().WithField("linkId", linkId)
+
+	link, _ := network.linkController.get(linkId)
+
+	var routerList []*Router
+	if link != nil {
+		routerList = []*Router{link.Src, link.Dst}
+		log = log.WithField("srcRouterId", link.Src.Id).WithField("dstRouterId", link.Dst.Id)
+		log.Info("deleting known link")
+	} else {
+		routerList = network.AllConnectedRouters()
+		log.Info("deleting unknown link (sending link fault to all connected routers)")
+	}
+
+	for _, router := range routerList {
+		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
+		if ctrl := router.Control; ctrl != nil {
+			if err := protobufs.MarshalTyped(fault).WithTimeout(15 * time.Second).Send(ctrl); err != nil {
+				log.WithField("faultDestRouterId", router.Id).WithError(err).
+					Error("failed to send link fault to router on link removal")
+			} else {
+				log.WithField("faultDestRouterId", router.Id).WithError(err).
+					Info("sent link fault to router on link removal")
+			}
+		}
+	}
+
+	if link != nil {
+		network.linkController.remove(link)
+		network.linkChanged <- link
+	}
+}
+
 func (network *Network) rerouteLink(l *Link) error {
 	circuits := network.circuitController.all()
 	for _, circuit := range circuits {

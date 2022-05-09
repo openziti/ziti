@@ -304,6 +304,25 @@ func init() {
           }
         }
       },
+      "delete": {
+        "description": "Delete a link by id. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Delete a link",
+        "operationId": "deleteLink",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/deleteResponse"
+          },
+          "400": {
+            "$ref": "#/responses/badRequestResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      },
       "patch": {
         "description": "Update the supplied fields on a link. Requires admin access.",
         "tags": [
@@ -2971,6 +2990,83 @@ func init() {
                   "code": "NOT_FOUND",
                   "message": "The resource requested was not found or is no longer available",
                   "requestId": "270908d6-f2ef-4577-b973-67bec18ae376"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete a link by id. Requires admin access.",
+        "tags": [
+          "Link"
+        ],
+        "summary": "Delete a link",
+        "operationId": "deleteLink",
+        "responses": {
+          "200": {
+            "description": "The delete request was successful and the resource has been removed",
+            "schema": {
+              "$ref": "#/definitions/empty"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
                 },
                 "meta": {
                   "apiEnrollmentVersion": "0.0.1",
