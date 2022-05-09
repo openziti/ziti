@@ -267,10 +267,13 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 }
 
 func (self *ServiceListener) NotifyOfReconnect() {
-	self.Lock()
-	defer self.Unlock()
-	for _, svc := range self.services {
-		svc.RunReconnectAction()
+	// might get called before we're fully initialized
+	if self != nil {
+		self.Lock()
+		defer self.Unlock()
+		for _, svc := range self.services {
+			svc.RunReconnectAction()
+		}
 	}
 }
 
