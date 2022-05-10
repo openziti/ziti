@@ -34,6 +34,10 @@ func (request *VerifyLink) GetContentType() int32 {
 	return int32(ContentType_VerifyLinkType)
 }
 
+func (request *VerifyRouter) GetContentType() int32 {
+	return int32(ContentType_VerifyRouterType)
+}
+
 func (request *Fault) GetContentType() int32 {
 	return int32(ContentType_FaultType)
 }
