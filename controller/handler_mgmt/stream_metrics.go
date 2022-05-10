@@ -17,8 +17,6 @@
 package handler_mgmt
 
 import (
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
@@ -27,7 +25,10 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"regexp"
+	"time"
 )
 
 type streamMetricsHandler struct {
@@ -189,9 +190,10 @@ func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metri
 					Name: name,
 				}
 				intervalMetric.Values = bucket.Values
-				intervalMetric.IntervalStartUTC = &timestamp.Timestamp{Seconds: bucket.IntervalStartUTC}
-				intervalEndSeconds := bucket.IntervalStartUTC + int64(interval.IntervalLength)
-				intervalMetric.IntervalEndUTC = &timestamp.Timestamp{Seconds: intervalEndSeconds}
+				intervalStart := time.UnixMilli(bucket.IntervalStartUTC * 1000)
+				intervalMetric.IntervalStartUTC = timestamppb.New(intervalStart)
+				intervalEnd := intervalStart.Add(time.Second * time.Duration(interval.IntervalLength))
+				intervalMetric.IntervalEndUTC = timestamppb.New(intervalEnd)
 
 				event.IntervalMetrics = append(event.IntervalMetrics, intervalMetric)
 			}

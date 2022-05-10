@@ -21,7 +21,7 @@ import (
 	tls2 "crypto/tls"
 	"fmt"
 	"github.com/go-resty/resty/v2"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/api_impl"

@@ -3,7 +3,7 @@
 package tests
 
 import (
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"

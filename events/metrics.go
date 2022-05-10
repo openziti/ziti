@@ -1,12 +1,12 @@
 package events
 
 import (
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"reflect"
 	"regexp"
 	"strings"
@@ -248,7 +248,7 @@ type MetricsEvent struct {
 	SourceAppId    string
 	SourceEntityId string
 	Version        uint32
-	Timestamp      *timestamp.Timestamp
+	Timestamp      *timestamppb.Timestamp
 	Metric         string
 	Metrics        map[string]interface{}
 	Tags           map[string]string
