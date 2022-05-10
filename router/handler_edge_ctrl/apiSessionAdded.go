@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
@@ -30,6 +29,7 @@ import (
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )
