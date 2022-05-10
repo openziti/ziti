@@ -5,6 +5,7 @@ package tests
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -32,7 +33,6 @@ func (self *testXlinkAcceptor) Accept(l xlink.Xlink) error {
 }
 
 func (self *testXlinkAcceptor) getLink() xlink.Xlink {
-	time.Sleep(time.Second)
 	return self.link
 }
 
@@ -122,9 +122,8 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 				Data:     []byte{1, 2, 3, 4},
 			}
 			err = xla.getLink().SendPayload(payload)
+			ctx.Req.NoError(err)
 		}
-		ctx.Req.Error(err)
-		ctx.Req.EqualError(err, "channel closed", "unexpected error: %v", err)
 	}
 }
 
@@ -228,6 +227,7 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	ctx.Teardown()
 
 	ctrlListener := ctx.NewControlChannelListener()
+	defer func() { _ = ctrlListener.Close() }()
 	ctx.startRouter(1)
 
 	acceptControl := func(id string) (channel.Channel, *testutil.MessageCollector) {
@@ -285,8 +285,12 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	ctx.Req.Equal(dial2.LinkId, fault.Id)
 
 	// disconnect and reconnect the router
+	log := pfxlog.Logger()
+	log.Info("---------- router 2: stopping ------------------------")
+	log.Infof("expecting close of link: %v", dial1.LinkId)
 	ctx.Req.NoError(router2.Shutdown())
 	ctx.Req.NoError(ctx.waitForPortClose("localhost:6005", 2*time.Second))
+	log.Info("---------- router 2: stopped  ------------------------")
 	router2 = ctx.startRouter(2)
 
 	router2cc, _ = acceptControl("router-2")

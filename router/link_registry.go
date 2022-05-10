@@ -196,9 +196,14 @@ func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 }
 
 func (self *linkRegistryImpl) Shutdown() {
+	log := pfxlog.Logger()
+	linkCount := 0
 	for link := range self.Iter() {
+		log.WithField("linkId", link.Id().Token).Info("closing link")
 		_ = link.Close()
+		linkCount++
 	}
+	log.WithField("linkCount", linkCount).Info("shutdown links in link registry")
 }
 
 func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
