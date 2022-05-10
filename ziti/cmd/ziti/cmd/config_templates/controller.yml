@@ -45,6 +45,10 @@ identity:
   # Defaults to 1 minute
   #routerConnectChurnLimit: 1m
 
+  # Sets the latency of link when it's first created. Will be overwritten as soon as latency from the link is actually
+  # reported from the routers. Defaults to 65 seconds.
+  #initialLinkLatency: 65s
+  
   #smart:
     #
     # Defines the fractional upper limit of underperforming circuits that are candidates to be re-routed. If 

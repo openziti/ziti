@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"encoding/binary"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/foundation/agent"

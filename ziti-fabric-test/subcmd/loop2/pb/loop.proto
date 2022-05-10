@@ -1,6 +1,7 @@
 syntax = "proto3";
 
-package loop2.pb;
+package ziti_test.loop2.pb;
+option go_package = "github.com/openziti//ziti/ziti-fabric-test/subcmd/loop2/loop2_pb";
 
 message Test {
     string name = 1;
