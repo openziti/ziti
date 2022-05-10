@@ -19,9 +19,9 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	"google.golang.org/protobuf/proto"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 

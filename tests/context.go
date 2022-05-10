@@ -66,9 +66,9 @@ import (
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
 	idlib "github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
-	"github.com/openziti/transport/tcp"
-	"github.com/openziti/transport/tls"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tcp"
+	"github.com/openziti/transport/v2/tls"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
