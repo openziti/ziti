@@ -21,19 +21,19 @@ import "github.com/pkg/errors"
 // API represents some "api" or "site" by binding name. Each API configuration is used against a WebHandlerFactoryRegistry
 // to locate the proper factory to generate a WebHandler. The options provided by this structure are parsed by the
 // WebHandlerFactory and the behavior, valid keys, and valid values are not defined by xweb components, but by that
-// WebHandlerFactory and it resulting WebHandler's.
+// WebHandlerFactory and its resulting WebHandler's.
 type API struct {
 	binding string
 	options map[interface{}]interface{}
 }
 
-// Binding returns the string that uniquely identifies bo the WebHandlerFactory and resulting WebHandler's that will be attached
-// to some WebListener and its resulting Server.
+// Binding returns the string that uniquely identifies bo the WebHandlerFactory and resulting WebHandler instances that
+// will be attached to some WebListener and its resulting Server.
 func (api *API) Binding() string {
 	return api.binding
 }
 
-// Options returns the options associated with thsi API binding.
+// Options returns the options associated with this API binding.
 func (api *API) Options() map[interface{}]interface{} {
 	return api.options
 }

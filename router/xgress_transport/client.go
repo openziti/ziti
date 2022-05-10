@@ -20,11 +20,11 @@ import (
 	"errors"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
 // ClientDial dials the given xgress address and handles authentication, returning an authed connection or an error
-func ClientDial(addr transport.Address, id *identity.TokenId, serviceId *identity.TokenId, tcfg transport.Configuration) (transport.Connection, error) {
+func ClientDial(addr transport.Address, id *identity.TokenId, serviceId *identity.TokenId, tcfg transport.Configuration) (transport.Conn, error) {
 	peer, err := addr.Dial("i/"+id.Token, id, 0, tcfg)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ func ClientDial(addr transport.Address, id *identity.TokenId, serviceId *identit
 		Id:        id.Token,
 		ServiceId: serviceId.Token,
 	}
-	err = xgress.SendRequest(request, peer.Writer())
+	err = xgress.SendRequest(request, peer)
 	if err != nil {
 		return nil, err
 	}

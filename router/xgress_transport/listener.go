@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
 type listener struct {
@@ -52,20 +52,10 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)
 	}
 
-	incomingPeers := make(chan transport.Connection)
-	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, incomingPeers, listener.tcfg))
-	go func() {
-		for {
-			select {
-			case peer := <-incomingPeers:
-				if peer != nil {
-					go listener.handleConnect(peer, bindHandler)
-				} else {
-					return
-				}
-			}
-		}
-	}()
+	acceptF := func(peer transport.Conn) {
+		go listener.handleConnect(peer, bindHandler)
+	}
+	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, acceptF, listener.tcfg))
 
 	return nil
 }
@@ -74,14 +64,14 @@ func (listener *listener) Close() error {
 	return listener.closeHelper.Close()
 }
 
-func (listener *listener) handleConnect(peer transport.Connection, bindHandler xgress.BindHandler) {
-	conn := &transportXgressConn{Connection: peer}
+func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.BindHandler) {
+	conn := &transportXgressConn{Conn: peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
 
 	request, err := xgress.ReceiveRequest(peer)
 	if err == nil {
 		response := xgress.CreateCircuit(listener.ctrl, conn, request, bindHandler, listener.options)
-		err = xgress.SendResponse(response, peer.Writer())
+		err = xgress.SendResponse(response, peer)
 		if err != nil {
 			log.Errorf("error sending response (%s)", err)
 		}

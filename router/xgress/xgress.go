@@ -385,7 +385,7 @@ func (self *Xgress) nextPayload() *Payload {
 	default:
 	}
 
-	// nothing was availabe in the txQueue, request more, then wait on txQueue
+	// nothing was available in the txQueue, request more, then wait on txQueue
 	payloadIngester.payloadSendReq <- self
 
 	select {

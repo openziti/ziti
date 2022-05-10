@@ -112,7 +112,7 @@ func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *
 
 	response.ReplyTo(msg)
 
-	log.Debug("sending sucess response")
+	log.Debug("sending success response")
 	if err := rh.ctrl.Channel().Send(response); err == nil {
 		log.Debug("handled route")
 	} else {

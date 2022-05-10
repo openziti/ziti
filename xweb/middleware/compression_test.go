@@ -222,7 +222,7 @@ func Test_getSupportedAcceptEncoding(t *testing.T) {
 				HttpHeaderAcceptEncoding: {
 					"text/html;q=1",
 					string(HttpEncodingDeflate) + ";q=0.9" + "," + string(HttpEncodingBr) + ";q=0.99",
-					string(HttpEncodingGzip) + ";q=1,random;q=1,wierd", //implicit q=1
+					string(HttpEncodingGzip) + ";q=1,random;q=1,weird", //implicit q=1
 					"text/xml",
 					"ambulance;q=1,quiver;q=1,doctor",
 				},

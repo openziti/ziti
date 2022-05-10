@@ -70,7 +70,7 @@ func newSettingsHandler(config CtrlAddressChanger) channel.TypedReceiveHandler {
 	}
 }
 
-// newCtrlAddress interrogates teh current configuration for controller ctrl address updates.
+// newCtrlAddress interrogates the current configuration for controller ctrl address updates.
 // If necessary it will create a backup of the current config, alter the runtime ctrl address,
 // and save a new version of the router configuration in place.
 func (handler *settingsHandler) newCtrlAddress(newAddress string) {

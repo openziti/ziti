@@ -2,8 +2,12 @@ package api
 
 import (
 	"github.com/gorilla/handlers"
-	"github.com/openziti/foundation/common/constants"
 	"net/http"
+)
+
+const (
+	// ZitiSession is the header value used to pass Ziti sessions around
+	ZitiSession = "zt-session"
 )
 
 func WrapCorsHandler(innerHandler http.Handler) http.Handler {
@@ -14,7 +18,8 @@ func WrapCorsHandler(innerHandler http.Handler) http.Handler {
 			"content-type",
 			"accept",
 			"authorization",
-			constants.ZitiSession,
+			// TODO: Not required for pure fabric. Is it worth having separate CorsHandlers for fabric and edge?
+			ZitiSession,
 		}),
 		handlers.AllowedMethods([]string{
 			http.MethodGet,

@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
@@ -275,13 +275,13 @@ func NewUpdatableAddress(address transport.Address) *UpdatableAddress {
 }
 
 // Listen implements transport.Address.Listen
-func (c *UpdatableAddress) Listen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) (io.Closer, error) {
-	return c.getWrapped().Listen(name, i, incoming, tcfg)
+func (c *UpdatableAddress) Listen(name string, i *identity.TokenId, acceptF func(transport.Conn), tcfg transport.Configuration) (io.Closer, error) {
+	return c.getWrapped().Listen(name, i, acceptF, tcfg)
 }
 
 // MustListen implements transport.Address.MustListen
-func (c *UpdatableAddress) MustListen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) io.Closer {
-	return c.getWrapped().MustListen(name, i, incoming, tcfg)
+func (c *UpdatableAddress) MustListen(name string, i *identity.TokenId, acceptF func(transport.Conn), tcfg transport.Configuration) io.Closer {
+	return c.getWrapped().MustListen(name, i, acceptF, tcfg)
 }
 
 // String implements transport.Address.String
@@ -295,11 +295,11 @@ func (c *UpdatableAddress) Type() string {
 }
 
 // Dial implements transport.Address.Dial
-func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Conn, error) {
 	return c.getWrapped().Dial(name, i, timeout, tcfg)
 }
 
-func (c *UpdatableAddress) DialWithLocalBinding(name string, binding string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+func (c *UpdatableAddress) DialWithLocalBinding(name string, binding string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Conn, error) {
 	return c.getWrapped().DialWithLocalBinding(name, binding, i, timeout, tcfg)
 }
 

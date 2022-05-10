@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
