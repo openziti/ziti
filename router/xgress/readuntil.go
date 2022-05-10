@@ -18,19 +18,19 @@ package xgress
 
 import (
 	"errors"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
-func ReadUntilNewline(peer transport.Connection) ([]byte, error) {
+func ReadUntilNewline(peer transport.Conn) ([]byte, error) {
 	return ReadUntil(peer, '\n')
 }
 
-func ReadUntil(peer transport.Connection, stop byte) ([]byte, error) {
+func ReadUntil(peer transport.Conn, stop byte) ([]byte, error) {
 	buffer := make([]byte, 0)
 	done := false
 	for !done {
 		next := make([]byte, 1)
-		n, err := peer.Reader().Read(next)
+		n, err := peer.Read(next)
 		if err != nil {
 			return nil, err
 		}

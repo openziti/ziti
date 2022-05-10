@@ -26,8 +26,8 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/transport"
-	"github.com/openziti/transport/tcp"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
 )
 

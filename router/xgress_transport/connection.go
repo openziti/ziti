@@ -19,12 +19,12 @@ package xgress_transport
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 
 type transportXgressConn struct {
-	transport.Connection
+	transport.Conn
 }
 
 func (c *transportXgressConn) LogContext() string {
@@ -33,7 +33,7 @@ func (c *transportXgressConn) LogContext() string {
 
 func (c *transportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	buffer := make([]byte, 10240)
-	n, err := c.Reader().Read(buffer)
+	n, err := c.Read(buffer)
 	if err == nil {
 		if n < (5 * 1024) {
 			buffer = append([]byte(nil), buffer[:n]...)
@@ -45,7 +45,7 @@ func (c *transportXgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 }
 
 func (c *transportXgressConn) WritePayload(p []byte, _ map[uint8][]byte) (n int, err error) {
-	return c.Writer().Write(p)
+	return c.Write(p)
 }
 
 func (self *transportXgressConn) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {

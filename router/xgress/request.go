@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"io"
 	"time"
@@ -87,7 +87,7 @@ func SendRequest(request *Request, peer io.Writer) error {
 	return nil
 }
 
-func ReceiveRequest(peer transport.Connection) (*Request, error) {
+func ReceiveRequest(peer transport.Conn) (*Request, error) {
 	line, err := ReadUntilNewline(peer)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func SendResponse(response *Response, peer io.Writer) error {
 	return nil
 }
 
-func ReceiveResponse(peer transport.Connection) (*Response, error) {
+func ReceiveResponse(peer transport.Conn) (*Response, error) {
 	line, err := ReadUntilNewline(peer)
 	if err != nil {
 		return nil, err

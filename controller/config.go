@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"

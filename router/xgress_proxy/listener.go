@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
 func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, tcfg transport.Configuration, service string) xgress.Listener {
@@ -45,25 +45,15 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 		return fmt.Errorf("cannot listen on invalid address [%s] (%s)", address, err)
 	}
 
-	incomingPeers := make(chan transport.Connection)
-	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, incomingPeers, listener.tcfg))
-	go func() {
-		for {
-			select {
-			case peer := <-incomingPeers:
-				if peer != nil {
-					go listener.handleConnect(peer, bindHandler)
-				} else {
-					return
-				}
-			}
-		}
-	}()
+	acceptF := func(peer transport.Conn) {
+		go listener.handleConnect(peer, bindHandler)
+	}
+	go listener.closeHelper.Init(txAddress.MustListen("tcp", listener.id, acceptF, listener.tcfg))
 
 	return nil
 }
 
-func (listener *listener) handleConnect(peer transport.Connection, bindHandler xgress.BindHandler) {
+func (listener *listener) handleConnect(peer transport.Conn, bindHandler xgress.BindHandler) {
 	conn := &proxyXgressConnection{peer}
 	log := pfxlog.ContextLogger(conn.LogContext())
 	request := &xgress.Request{ServiceId: listener.service}

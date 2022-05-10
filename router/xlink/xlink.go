@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
 // Registry contains known link instances and manages link de-duplication

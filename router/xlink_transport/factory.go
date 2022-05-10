@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 )
 
 type channelType byte

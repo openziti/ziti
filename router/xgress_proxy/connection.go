@@ -19,12 +19,12 @@ package xgress_proxy
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 
 type proxyXgressConnection struct {
-	transport.Connection
+	transport.Conn
 }
 
 func (c *proxyXgressConnection) LogContext() string {
@@ -33,16 +33,16 @@ func (c *proxyXgressConnection) LogContext() string {
 
 func (c *proxyXgressConnection) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	buffer := make([]byte, 10240)
-	n, err := c.Reader().Read(buffer)
+	n, err := c.Read(buffer)
 	return buffer[:n], nil, err
 }
 
 func (c *proxyXgressConnection) Write(p []byte) (n int, err error) {
-	return c.Writer().Write(p)
+	return c.Write(p)
 }
 
 func (c *proxyXgressConnection) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
-	return c.Writer().Write(p)
+	return c.Write(p)
 }
 
 func (self *proxyXgressConnection) HandleControlMsg(controlType xgress.ControlType, headers channel.Headers, responder xgress.ControlReceiver) error {

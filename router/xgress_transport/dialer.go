@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 
@@ -64,9 +64,9 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 		return nil, err
 	}
 
-	log.Infof("successful connection to %v from %v", destination, peer.Conn().LocalAddr())
+	log.Infof("successful connection to %v from %v", destination, peer.LocalAddr())
 
-	conn := &transportXgressConn{Connection: peer}
+	conn := &transportXgressConn{Conn: peer}
 	x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)
 	x.Start()
