@@ -19,7 +19,7 @@ package handler_ctrl
 import (
 	"bytes"
 	"encoding/binary"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
