@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.17
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -18,7 +18,6 @@ require (
 	github.com/go-openapi/swag v0.21.1
 	github.com/go-openapi/validate v0.21.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gopacket v1.1.19
 	github.com/google/uuid v1.3.0
@@ -33,7 +32,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.33
-	github.com/openziti/fabric v0.17.122
+	github.com/openziti/fabric v0.17.123
 	github.com/openziti/foundation v0.17.23
 	github.com/openziti/sdk-golang v0.16.63
 	github.com/openziti/storage v0.1.4
@@ -76,6 +75,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
