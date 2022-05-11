@@ -23,7 +23,7 @@ import (
 )
 
 func TestLifecycle(t *testing.T) {
-	linkController := newLinkController()
+	linkController := newLinkController(nil)
 
 	r0 := NewRouter("r0", "", "", 0, true)
 	r1 := NewRouter("r1", "", "", 0, true)
@@ -55,7 +55,7 @@ func TestLifecycle(t *testing.T) {
 }
 
 func TestNeighbors(t *testing.T) {
-	linkController := newLinkController()
+	linkController := newLinkController(nil)
 
 	r0 := newRouterForTest("r0", "", nil, nil, 0, true)
 	r1 := newRouterForTest("r1", "", nil, nil, 0, true)
@@ -70,4 +70,8 @@ func TestNeighbors(t *testing.T) {
 	neighbors := linkController.connectedNeighborsOfRouter(r0)
 	assert.Equal(t, 1, len(neighbors))
 	assert.Equal(t, r1, neighbors[0])
+}
+
+func newTestLink(id string, linkProtocol string) *Link {
+	return newLink(id, linkProtocol, 0)
 }

@@ -34,6 +34,7 @@ const (
 	DefaultNetworkOptionsRouterConnectChurnLimit = time.Minute
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
 	DefaultNetworkOptionsSmartRerouteCap         = 4
+	DefaultNetworkOptionsInitialLinkLatency      = 65 * time.Second
 )
 
 type Options struct {
@@ -48,6 +49,7 @@ type Options struct {
 	PendingLinkTimeout      time.Duration
 	MinRouterCost           uint16
 	RouterConnectChurnLimit time.Duration
+	InitialLinkLatency      time.Duration
 }
 
 func DefaultOptions() *Options {
@@ -59,6 +61,7 @@ func DefaultOptions() *Options {
 		PendingLinkTimeout:      DefaultNetworkOptionsPendingLinkTimeout,
 		MinRouterCost:           DefaultNetworkOptionsMinRouterCost,
 		RouterConnectChurnLimit: DefaultNetworkOptionsRouterConnectChurnLimit,
+		InitialLinkLatency:      DefaultNetworkOptionsInitialLinkLatency,
 	}
 	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
 	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
@@ -153,6 +156,18 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.RouterConnectChurnLimit = val
 		} else {
 			return nil, errors.New("invalid value for 'routerConnectChurnLimit'")
+		}
+	}
+
+	if value, found := src["initialLinkLatency"]; found {
+		if initialLinkLatencyStr, ok := value.(string); ok {
+			val, err := time.ParseDuration(initialLinkLatencyStr)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid value for 'initialLinkLatency'")
+			}
+			options.InitialLinkLatency = val
+		} else {
+			return nil, errors.New("invalid value for 'initialLinkLatency'")
 		}
 	}
 
