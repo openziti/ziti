@@ -12,7 +12,7 @@ func AcceptControl(id string, uf channel.UnderlayFactory, assertions *require.As
 	msgc := NewMessageCollector(id)
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddReceiveHandler(channel.AnyContentType, msgc)
-		binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_VerifyLinkType), func(msg *channel.Message, ch channel.Channel) {
+		binding.AddReceiveHandlerF(int32(ctrl_pb.ContentType_VerifyRouterType), func(msg *channel.Message, ch channel.Channel) {
 			handler_common.SendSuccess(msg, ch, "link success")
 		})
 		return nil

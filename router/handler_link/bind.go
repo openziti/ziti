@@ -57,7 +57,7 @@ type bindHandler struct {
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	ch := binding.GetChannel()
 	if self.listenerSide {
-		if err := self.verifyLink(self.xlink, ch); err != nil {
+		if err := self.verifyRouter(self.xlink, ch); err != nil {
 			return err
 		}
 	}
@@ -127,20 +127,20 @@ func (self *bindHandler) getDestVersionInfo() *common.VersionInfo {
 	}
 }
 
-func (self *bindHandler) verifyLink(l xlink.Xlink, ch channel.Channel) error {
+func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 	var fingerprints []string
 	for _, cert := range ch.Certificates() {
 		fingerprints = append(fingerprints, nfpem.FingerprintFromCertificate(cert))
 	}
 
-	verifyLink := &ctrl_pb.VerifyLink{
-		LinkId:       l.Id().Token,
+	verifyLink := &ctrl_pb.VerifyRouter{
+		RouterId:     l.DestinationId(),
 		Fingerprints: fingerprints,
 	}
 
 	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.Channel())
 	if err != nil {
-		return errors.Wrapf(err, "unable to verify link %v", l.Id().Token)
+		return errors.Wrapf(err, "unable to verify router %v for link %v", l.DestinationId(), l.Id().Token)
 	}
 
 	if reply.ContentType != channel.ContentTypeResultType {
@@ -149,7 +149,9 @@ func (self *bindHandler) verifyLink(l xlink.Xlink, ch channel.Channel) error {
 
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
-		logrus.WithField("linkId", l.Id().Token).Info("successfully verified link")
+		logrus.WithField("linkId", l.Id().Token).
+			WithField("routerId", l.DestinationId()).
+			Info("successfully verified router for link")
 		return nil
 	}
 

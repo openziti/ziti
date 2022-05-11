@@ -47,6 +47,7 @@ const (
 	ContentType_SettingsType                   ContentType = 1020
 	ContentType_CircuitConfirmationType        ContentType = 1034
 	ContentType_RouterLinksType                ContentType = 1035
+	ContentType_VerifyRouterType               ContentType = 1036
 	ContentType_ListenersHeader                ContentType = 10
 	ContentType_TerminatorLocalAddressHeader   ContentType = 1100
 )
@@ -74,6 +75,7 @@ var (
 		1020: "SettingsType",
 		1034: "CircuitConfirmationType",
 		1035: "RouterLinksType",
+		1036: "VerifyRouterType",
 		10:   "ListenersHeader",
 		1100: "TerminatorLocalAddressHeader",
 	}
@@ -98,6 +100,7 @@ var (
 		"SettingsType":                   1020,
 		"CircuitConfirmationType":        1034,
 		"RouterLinksType":                1035,
+		"VerifyRouterType":               1036,
 		"ListenersHeader":                10,
 		"TerminatorLocalAddressHeader":   1100,
 	}
@@ -1409,6 +1412,61 @@ func (x *VerifyLink) GetFingerprints() []string {
 	return nil
 }
 
+type VerifyRouter struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	RouterId     string   `protobuf:"bytes,1,opt,name=routerId,proto3" json:"routerId,omitempty"`
+	Fingerprints []string `protobuf:"bytes,2,rep,name=fingerprints,proto3" json:"fingerprints,omitempty"`
+}
+
+func (x *VerifyRouter) Reset() {
+	*x = VerifyRouter{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ctrl_proto_msgTypes[18]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VerifyRouter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyRouter) ProtoMessage() {}
+
+func (x *VerifyRouter) ProtoReflect() protoreflect.Message {
+	mi := &file_ctrl_proto_msgTypes[18]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyRouter.ProtoReflect.Descriptor instead.
+func (*VerifyRouter) Descriptor() ([]byte, []int) {
+	return file_ctrl_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *VerifyRouter) GetRouterId() string {
+	if x != nil {
+		return x.RouterId
+	}
+	return ""
+}
+
+func (x *VerifyRouter) GetFingerprints() []string {
+	if x != nil {
+		return x.Fingerprints
+	}
+	return nil
+}
+
 type Listener struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -1422,7 +1480,7 @@ type Listener struct {
 func (x *Listener) Reset() {
 	*x = Listener{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[18]
+		mi := &file_ctrl_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1435,7 +1493,7 @@ func (x *Listener) String() string {
 func (*Listener) ProtoMessage() {}
 
 func (x *Listener) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[18]
+	mi := &file_ctrl_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1448,7 +1506,7 @@ func (x *Listener) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listener.ProtoReflect.Descriptor instead.
 func (*Listener) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{18}
+	return file_ctrl_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *Listener) GetAddress() string {
@@ -1483,7 +1541,7 @@ type Listeners struct {
 func (x *Listeners) Reset() {
 	*x = Listeners{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[19]
+		mi := &file_ctrl_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1496,7 +1554,7 @@ func (x *Listeners) String() string {
 func (*Listeners) ProtoMessage() {}
 
 func (x *Listeners) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[19]
+	mi := &file_ctrl_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1509,7 +1567,7 @@ func (x *Listeners) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Listeners.ProtoReflect.Descriptor instead.
 func (*Listeners) Descriptor() ([]byte, []int) {
-	return file_ctrl_proto_rawDescGZIP(), []int{19}
+	return file_ctrl_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *Listeners) GetListeners() []*Listener {
@@ -1533,7 +1591,7 @@ type RouterLinks_RouterLink struct {
 func (x *RouterLinks_RouterLink) Reset() {
 	*x = RouterLinks_RouterLink{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[23]
+		mi := &file_ctrl_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1546,7 +1604,7 @@ func (x *RouterLinks_RouterLink) String() string {
 func (*RouterLinks_RouterLink) ProtoMessage() {}
 
 func (x *RouterLinks_RouterLink) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[23]
+	mi := &file_ctrl_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1604,7 +1662,7 @@ type Route_Egress struct {
 func (x *Route_Egress) Reset() {
 	*x = Route_Egress{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[25]
+		mi := &file_ctrl_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1617,7 +1675,7 @@ func (x *Route_Egress) String() string {
 func (*Route_Egress) ProtoMessage() {}
 
 func (x *Route_Egress) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[25]
+	mi := &file_ctrl_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1674,7 +1732,7 @@ type Route_Forward struct {
 func (x *Route_Forward) Reset() {
 	*x = Route_Forward{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[26]
+		mi := &file_ctrl_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1687,7 +1745,7 @@ func (x *Route_Forward) String() string {
 func (*Route_Forward) ProtoMessage() {}
 
 func (x *Route_Forward) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[26]
+	mi := &file_ctrl_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1736,7 +1794,7 @@ type InspectResponse_InspectValue struct {
 func (x *InspectResponse_InspectValue) Reset() {
 	*x = InspectResponse_InspectValue{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_ctrl_proto_msgTypes[28]
+		mi := &file_ctrl_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1749,7 +1807,7 @@ func (x *InspectResponse_InspectValue) String() string {
 func (*InspectResponse_InspectValue) ProtoMessage() {}
 
 func (x *InspectResponse_InspectValue) ProtoReflect() protoreflect.Message {
-	mi := &file_ctrl_proto_msgTypes[28]
+	mi := &file_ctrl_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1963,6 +2021,11 @@ var file_ctrl_proto_rawDesc = []byte{
 	0x6b, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06, 0x6c, 0x69, 0x6e, 0x6b, 0x49,
 	0x64, 0x12, 0x22, 0x0a, 0x0c, 0x66, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74,
 	0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0c, 0x66, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70,
+	0x72, 0x69, 0x6e, 0x74, 0x73, 0x22, 0x4e, 0x0a, 0x0c, 0x56, 0x65, 0x72, 0x69, 0x66, 0x79, 0x52,
+	0x6f, 0x75, 0x74, 0x65, 0x72, 0x12, 0x1a, 0x0a, 0x08, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x49,
+	0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x72, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x49,
+	0x64, 0x12, 0x22, 0x0a, 0x0c, 0x66, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70, 0x72, 0x69, 0x6e, 0x74,
+	0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x09, 0x52, 0x0c, 0x66, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70,
 	0x72, 0x69, 0x6e, 0x74, 0x73, 0x22, 0x5c, 0x0a, 0x08, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65,
 	0x72, 0x12, 0x18, 0x0a, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01,
 	0x28, 0x09, 0x52, 0x07, 0x61, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x12, 0x1a, 0x0a, 0x08, 0x70,
@@ -1973,7 +2036,7 @@ var file_ctrl_proto_rawDesc = []byte{
 	0x12, 0x34, 0x0a, 0x09, 0x6c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x18, 0x01, 0x20,
 	0x03, 0x28, 0x0b, 0x32, 0x16, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x63, 0x74, 0x72, 0x6c, 0x2e,
 	0x70, 0x62, 0x2e, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x52, 0x09, 0x6c, 0x69, 0x73,
-	0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x2a, 0xa4, 0x04, 0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x74, 0x65,
+	0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x2a, 0xbb, 0x04, 0x0a, 0x0b, 0x43, 0x6f, 0x6e, 0x74, 0x65,
 	0x6e, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x08, 0x0a, 0x04, 0x5a, 0x65, 0x72, 0x6f, 0x10, 0x00,
 	0x12, 0x17, 0x0a, 0x12, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65,
 	0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x10, 0xe8, 0x07, 0x12, 0x0d, 0x0a, 0x08, 0x44, 0x69, 0x61,
@@ -2004,29 +2067,30 @@ var file_ctrl_proto_rawDesc = []byte{
 	0x07, 0x12, 0x1c, 0x0a, 0x17, 0x43, 0x69, 0x72, 0x63, 0x75, 0x69, 0x74, 0x43, 0x6f, 0x6e, 0x66,
 	0x69, 0x72, 0x6d, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x79, 0x70, 0x65, 0x10, 0x8a, 0x08, 0x12,
 	0x14, 0x0a, 0x0f, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x4c, 0x69, 0x6e, 0x6b, 0x73, 0x54, 0x79,
-	0x70, 0x65, 0x10, 0x8b, 0x08, 0x12, 0x13, 0x0a, 0x0f, 0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65,
-	0x72, 0x73, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x10, 0x0a, 0x12, 0x21, 0x0a, 0x1c, 0x54, 0x65,
-	0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x4c, 0x6f, 0x63, 0x61, 0x6c, 0x41, 0x64, 0x64,
-	0x72, 0x65, 0x73, 0x73, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x10, 0xcc, 0x08, 0x2a, 0x35, 0x0a,
-	0x0c, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x54, 0x79, 0x70, 0x65, 0x73, 0x12, 0x11, 0x0a,
-	0x0d, 0x55, 0x6e, 0x75, 0x73, 0x65, 0x64, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x10, 0x00,
-	0x12, 0x12, 0x0a, 0x0e, 0x4e, 0x65, 0x77, 0x43, 0x74, 0x72, 0x6c, 0x41, 0x64, 0x64, 0x72, 0x65,
-	0x73, 0x73, 0x10, 0x01, 0x2a, 0x3d, 0x0a, 0x14, 0x54, 0x65, 0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74,
-	0x6f, 0x72, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65, 0x6e, 0x63, 0x65, 0x12, 0x0b, 0x0a, 0x07,
-	0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x00, 0x12, 0x0c, 0x0a, 0x08, 0x52, 0x65, 0x71,
-	0x75, 0x69, 0x72, 0x65, 0x64, 0x10, 0x01, 0x12, 0x0a, 0x0a, 0x06, 0x46, 0x61, 0x69, 0x6c, 0x65,
-	0x64, 0x10, 0x02, 0x2a, 0x52, 0x0a, 0x0c, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x53, 0x75, 0x62, 0x6a,
-	0x65, 0x63, 0x74, 0x12, 0x10, 0x0a, 0x0c, 0x49, 0x6e, 0x67, 0x72, 0x65, 0x73, 0x73, 0x46, 0x61,
-	0x75, 0x6c, 0x74, 0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b, 0x45, 0x67, 0x72, 0x65, 0x73, 0x73, 0x46,
-	0x61, 0x75, 0x6c, 0x74, 0x10, 0x01, 0x12, 0x0d, 0x0a, 0x09, 0x4c, 0x69, 0x6e, 0x6b, 0x46, 0x61,
-	0x75, 0x6c, 0x74, 0x10, 0x02, 0x12, 0x10, 0x0a, 0x0c, 0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64,
-	0x46, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x03, 0x2a, 0x28, 0x0a, 0x08, 0x44, 0x65, 0x73, 0x74, 0x54,
-	0x79, 0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x53, 0x74, 0x61, 0x72, 0x74, 0x10, 0x00, 0x12, 0x07,
-	0x0a, 0x03, 0x45, 0x6e, 0x64, 0x10, 0x01, 0x12, 0x08, 0x0a, 0x04, 0x4c, 0x69, 0x6e, 0x6b, 0x10,
-	0x02, 0x42, 0x27, 0x5a, 0x25, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f,
-	0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f, 0x66, 0x61, 0x62, 0x72, 0x69, 0x63, 0x2f,
-	0x70, 0x62, 0x2f, 0x63, 0x74, 0x72, 0x6c, 0x5f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
-	0x6f, 0x33,
+	0x70, 0x65, 0x10, 0x8b, 0x08, 0x12, 0x15, 0x0a, 0x10, 0x56, 0x65, 0x72, 0x69, 0x66, 0x79, 0x52,
+	0x6f, 0x75, 0x74, 0x65, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10, 0x8c, 0x08, 0x12, 0x13, 0x0a, 0x0f,
+	0x4c, 0x69, 0x73, 0x74, 0x65, 0x6e, 0x65, 0x72, 0x73, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72, 0x10,
+	0x0a, 0x12, 0x21, 0x0a, 0x1c, 0x54, 0x65, 0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x4c,
+	0x6f, 0x63, 0x61, 0x6c, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x48, 0x65, 0x61, 0x64, 0x65,
+	0x72, 0x10, 0xcc, 0x08, 0x2a, 0x35, 0x0a, 0x0c, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x54,
+	0x79, 0x70, 0x65, 0x73, 0x12, 0x11, 0x0a, 0x0d, 0x55, 0x6e, 0x75, 0x73, 0x65, 0x64, 0x53, 0x65,
+	0x74, 0x74, 0x69, 0x6e, 0x67, 0x10, 0x00, 0x12, 0x12, 0x0a, 0x0e, 0x4e, 0x65, 0x77, 0x43, 0x74,
+	0x72, 0x6c, 0x41, 0x64, 0x64, 0x72, 0x65, 0x73, 0x73, 0x10, 0x01, 0x2a, 0x3d, 0x0a, 0x14, 0x54,
+	0x65, 0x72, 0x6d, 0x69, 0x6e, 0x61, 0x74, 0x6f, 0x72, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65,
+	0x6e, 0x63, 0x65, 0x12, 0x0b, 0x0a, 0x07, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x00,
+	0x12, 0x0c, 0x0a, 0x08, 0x52, 0x65, 0x71, 0x75, 0x69, 0x72, 0x65, 0x64, 0x10, 0x01, 0x12, 0x0a,
+	0x0a, 0x06, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64, 0x10, 0x02, 0x2a, 0x52, 0x0a, 0x0c, 0x46, 0x61,
+	0x75, 0x6c, 0x74, 0x53, 0x75, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x12, 0x10, 0x0a, 0x0c, 0x49, 0x6e,
+	0x67, 0x72, 0x65, 0x73, 0x73, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x00, 0x12, 0x0f, 0x0a, 0x0b,
+	0x45, 0x67, 0x72, 0x65, 0x73, 0x73, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x01, 0x12, 0x0d, 0x0a,
+	0x09, 0x4c, 0x69, 0x6e, 0x6b, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x02, 0x12, 0x10, 0x0a, 0x0c,
+	0x46, 0x6f, 0x72, 0x77, 0x61, 0x72, 0x64, 0x46, 0x61, 0x75, 0x6c, 0x74, 0x10, 0x03, 0x2a, 0x28,
+	0x0a, 0x08, 0x44, 0x65, 0x73, 0x74, 0x54, 0x79, 0x70, 0x65, 0x12, 0x09, 0x0a, 0x05, 0x53, 0x74,
+	0x61, 0x72, 0x74, 0x10, 0x00, 0x12, 0x07, 0x0a, 0x03, 0x45, 0x6e, 0x64, 0x10, 0x01, 0x12, 0x08,
+	0x0a, 0x04, 0x4c, 0x69, 0x6e, 0x6b, 0x10, 0x02, 0x42, 0x27, 0x5a, 0x25, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f,
+	0x66, 0x61, 0x62, 0x72, 0x69, 0x63, 0x2f, 0x70, 0x62, 0x2f, 0x63, 0x74, 0x72, 0x6c, 0x5f, 0x70,
+	0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -2042,7 +2106,7 @@ func file_ctrl_proto_rawDescGZIP() []byte {
 }
 
 var file_ctrl_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_ctrl_proto_msgTypes = make([]protoimpl.MessageInfo, 30)
 var file_ctrl_proto_goTypes = []interface{}{
 	(ContentType)(0),                     // 0: ziti.ctrl.pb.ContentType
 	(SettingTypes)(0),                    // 1: ziti.ctrl.pb.SettingTypes
@@ -2067,34 +2131,35 @@ var file_ctrl_proto_goTypes = []interface{}{
 	(*InspectRequest)(nil),               // 20: ziti.ctrl.pb.InspectRequest
 	(*InspectResponse)(nil),              // 21: ziti.ctrl.pb.InspectResponse
 	(*VerifyLink)(nil),                   // 22: ziti.ctrl.pb.VerifyLink
-	(*Listener)(nil),                     // 23: ziti.ctrl.pb.Listener
-	(*Listeners)(nil),                    // 24: ziti.ctrl.pb.Listeners
-	nil,                                  // 25: ziti.ctrl.pb.Settings.DataEntry
-	nil,                                  // 26: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	nil,                                  // 27: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
-	(*RouterLinks_RouterLink)(nil),       // 28: ziti.ctrl.pb.RouterLinks.RouterLink
-	nil,                                  // 29: ziti.ctrl.pb.Context.FieldsEntry
-	(*Route_Egress)(nil),                 // 30: ziti.ctrl.pb.Route.Egress
-	(*Route_Forward)(nil),                // 31: ziti.ctrl.pb.Route.Forward
-	nil,                                  // 32: ziti.ctrl.pb.Route.Egress.PeerDataEntry
-	(*InspectResponse_InspectValue)(nil), // 33: ziti.ctrl.pb.InspectResponse.InspectValue
+	(*VerifyRouter)(nil),                 // 23: ziti.ctrl.pb.VerifyRouter
+	(*Listener)(nil),                     // 24: ziti.ctrl.pb.Listener
+	(*Listeners)(nil),                    // 25: ziti.ctrl.pb.Listeners
+	nil,                                  // 26: ziti.ctrl.pb.Settings.DataEntry
+	nil,                                  // 27: ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	nil,                                  // 28: ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	(*RouterLinks_RouterLink)(nil),       // 29: ziti.ctrl.pb.RouterLinks.RouterLink
+	nil,                                  // 30: ziti.ctrl.pb.Context.FieldsEntry
+	(*Route_Egress)(nil),                 // 31: ziti.ctrl.pb.Route.Egress
+	(*Route_Forward)(nil),                // 32: ziti.ctrl.pb.Route.Forward
+	nil,                                  // 33: ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	(*InspectResponse_InspectValue)(nil), // 34: ziti.ctrl.pb.InspectResponse.InspectValue
 }
 var file_ctrl_proto_depIdxs = []int32{
-	25, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
-	26, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
-	27, // 2: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
+	26, // 0: ziti.ctrl.pb.Settings.data:type_name -> ziti.ctrl.pb.Settings.DataEntry
+	27, // 1: ziti.ctrl.pb.CircuitRequest.peerData:type_name -> ziti.ctrl.pb.CircuitRequest.PeerDataEntry
+	28, // 2: ziti.ctrl.pb.CreateTerminatorRequest.peerData:type_name -> ziti.ctrl.pb.CreateTerminatorRequest.PeerDataEntry
 	2,  // 3: ziti.ctrl.pb.CreateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
 	10, // 4: ziti.ctrl.pb.ValidateTerminatorsRequest.terminators:type_name -> ziti.ctrl.pb.Terminator
 	2,  // 5: ziti.ctrl.pb.UpdateTerminatorRequest.precedence:type_name -> ziti.ctrl.pb.TerminatorPrecedence
-	28, // 6: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
+	29, // 6: ziti.ctrl.pb.RouterLinks.links:type_name -> ziti.ctrl.pb.RouterLinks.RouterLink
 	3,  // 7: ziti.ctrl.pb.Fault.subject:type_name -> ziti.ctrl.pb.FaultSubject
-	29, // 8: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
-	30, // 9: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
-	31, // 10: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
+	30, // 8: ziti.ctrl.pb.Context.fields:type_name -> ziti.ctrl.pb.Context.FieldsEntry
+	31, // 9: ziti.ctrl.pb.Route.egress:type_name -> ziti.ctrl.pb.Route.Egress
+	32, // 10: ziti.ctrl.pb.Route.forwards:type_name -> ziti.ctrl.pb.Route.Forward
 	17, // 11: ziti.ctrl.pb.Route.context:type_name -> ziti.ctrl.pb.Context
-	33, // 12: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
-	23, // 13: ziti.ctrl.pb.Listeners.listeners:type_name -> ziti.ctrl.pb.Listener
-	32, // 14: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
+	34, // 12: ziti.ctrl.pb.InspectResponse.values:type_name -> ziti.ctrl.pb.InspectResponse.InspectValue
+	24, // 13: ziti.ctrl.pb.Listeners.listeners:type_name -> ziti.ctrl.pb.Listener
+	33, // 14: ziti.ctrl.pb.Route.Egress.peerData:type_name -> ziti.ctrl.pb.Route.Egress.PeerDataEntry
 	4,  // 15: ziti.ctrl.pb.Route.Forward.dstType:type_name -> ziti.ctrl.pb.DestType
 	16, // [16:16] is the sub-list for method output_type
 	16, // [16:16] is the sub-list for method input_type
@@ -2326,7 +2391,7 @@ func file_ctrl_proto_init() {
 			}
 		}
 		file_ctrl_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Listener); i {
+			switch v := v.(*VerifyRouter); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -2338,6 +2403,18 @@ func file_ctrl_proto_init() {
 			}
 		}
 		file_ctrl_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Listener); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ctrl_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Listeners); i {
 			case 0:
 				return &v.state
@@ -2349,7 +2426,7 @@ func file_ctrl_proto_init() {
 				return nil
 			}
 		}
-		file_ctrl_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+		file_ctrl_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*RouterLinks_RouterLink); i {
 			case 0:
 				return &v.state
@@ -2361,7 +2438,7 @@ func file_ctrl_proto_init() {
 				return nil
 			}
 		}
-		file_ctrl_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_ctrl_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Route_Egress); i {
 			case 0:
 				return &v.state
@@ -2373,7 +2450,7 @@ func file_ctrl_proto_init() {
 				return nil
 			}
 		}
-		file_ctrl_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_ctrl_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Route_Forward); i {
 			case 0:
 				return &v.state
@@ -2385,7 +2462,7 @@ func file_ctrl_proto_init() {
 				return nil
 			}
 		}
-		file_ctrl_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+		file_ctrl_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*InspectResponse_InspectValue); i {
 			case 0:
 				return &v.state
@@ -2404,7 +2481,7 @@ func file_ctrl_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_ctrl_proto_rawDesc,
 			NumEnums:      5,
-			NumMessages:   29,
+			NumMessages:   30,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

@@ -365,6 +365,26 @@ func (network *Network) VerifyLinkSource(targetRouter *Router, linkId string, fi
 	return errors.Errorf("could not verify fingerprint for router %v on link %v", l.Src.Id, l.Id)
 }
 
+func (network *Network) VerifyRouter(routerId string, fingerprints []string) error {
+	router, err := network.GetRouter(routerId)
+	if err != nil {
+		return err
+	}
+
+	routerFingerprint := router.Fingerprint
+	if routerFingerprint == nil {
+		return errors.Errorf("invalid router %v, not yet enrolled", routerId)
+	}
+
+	for _, fp := range fingerprints {
+		if fp == *routerFingerprint {
+			return nil
+		}
+	}
+
+	return errors.Errorf("could not verify fingerprint for router %v", routerId)
+}
+
 func (network *Network) LinkChanged(l *Link) {
 	// This is called from Channel.rxer() and thus may not block
 	go func() {

@@ -29,6 +29,7 @@ enum ContentType {
   SettingsType = 1020;
   CircuitConfirmationType = 1034;
   RouterLinksType = 1035;
+  VerifyRouterType = 1036;
 
   ListenersHeader = 10;
   TerminatorLocalAddressHeader = 1100;
@@ -186,6 +187,11 @@ message InspectResponse {
 
 message VerifyLink {
   string linkId = 1;
+  repeated string fingerprints = 2;
+}
+
+message VerifyRouter {
+  string routerId = 1;
   repeated string fingerprints = 2;
 }
 
