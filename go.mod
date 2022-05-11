@@ -32,10 +32,10 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.33
-	github.com/openziti/fabric v0.17.123
+	github.com/openziti/fabric v0.17.124
 	github.com/openziti/foundation v0.17.23
 	github.com/openziti/sdk-golang v0.16.63
-	github.com/openziti/storage v0.1.4
+	github.com/openziti/storage v0.1.5
 	github.com/openziti/transport/v2 v2.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
