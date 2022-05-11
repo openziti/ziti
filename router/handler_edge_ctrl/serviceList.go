@@ -2,7 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/sdk-golang/ziti/edge"

@@ -19,7 +19,7 @@ package handler_edge_ctrl
 import (
 	"crypto/sha1"
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
