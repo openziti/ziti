@@ -59,7 +59,7 @@ type strategy struct {
 	xt_common.CostVisitor
 }
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
 	return terminators[0], nil
 }
 
