@@ -21,7 +21,6 @@ import (
 	"syscall"
 	"time"
 
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
@@ -34,6 +33,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type routeHandler struct {
@@ -62,24 +62,31 @@ func (rh *routeHandler) ContentType() int32 {
 
 func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	route := &ctrl_pb.Route{}
+
 	if err := proto.Unmarshal(msg.Body, route); err == nil {
-		var ctx logcontext.Context
-		if route.Context != nil {
-			ctx = logcontext.NewContextWith(route.Context.ChannelMask, route.Context.Fields)
-		} else {
-			ctx = logcontext.NewContext()
-		}
-		log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
-			WithField("context", ch.Label()).
-			WithField("circuitId", route.CircuitId).
-			WithField("attempt", route.Attempt)
+		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshaling")
+		return
+	}
 
-		if route.Egress != nil {
-			log = log.WithField("binding", route.Egress.Binding).WithField("destination", route.Egress.Destination)
-		}
+	var ctx logcontext.Context
+	if route.Context != nil {
+		ctx = logcontext.NewContextWith(route.Context.ChannelMask, route.Context.Fields)
+	} else {
+		ctx = logcontext.NewContext()
+	}
 
-		log.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.CircuitId)
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+		WithField("context", ch.Label()).
+		WithField("circuitId", route.CircuitId).
+		WithField("attempt", route.Attempt)
 
+	if route.Egress != nil {
+		log = log.WithField("binding", route.Egress.Binding).WithField("destination", route.Egress.Destination)
+	}
+
+	log.Debugf("attempt [#%d] for [s/%s]", route.Attempt, route.CircuitId)
+
+	workF := func() {
 		if route.Egress != nil {
 			if rh.forwarder.HasDestination(xgress.Address(route.Egress.Address)) {
 				log.Warnf("destination exists for [%s]", route.Egress.Address)
@@ -92,8 +99,13 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		} else {
 			rh.completeRoute(msg, int(route.Attempt), route, nil, log)
 		}
-	} else {
-		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshaling")
+	}
+
+	// if the queue is full, don't wait, we can't hold up the control channel processing
+	if err := rh.pool.QueueOrError(workF); err != nil {
+		log.WithError(err).Error("error queuing route processing to pool")
+		// don't send failure back. we can't delegate to another goroutine and if we sent from
+		// here we could block processing of incoming messages
 	}
 }
 
@@ -113,7 +125,7 @@ func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *
 	response.ReplyTo(msg)
 
 	log.Debug("sending success response")
-	if err := rh.ctrl.Channel().Send(response); err == nil {
+	if err := response.WithTimeout(rh.ctrl.DefaultRequestTimeout()).Send(rh.ctrl.Channel()); err == nil {
 		log.Debug("handled route")
 	} else {
 		log.WithError(err).Error("send response failed")
@@ -127,7 +139,7 @@ func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.R
 	response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, errorHeader)
 
 	response.ReplyTo(msg)
-	if err := rh.ctrl.Channel().Send(response); err != nil {
+	if err = response.WithTimeout(rh.ctrl.DefaultRequestTimeout()).Send(rh.ctrl.Channel()); err != nil {
 		log.WithError(err).Error("send failure response failed")
 	}
 }
@@ -142,54 +154,46 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 
 	log.Debug("route request received")
 
-	dialF := func() {
-		if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
-			if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-				circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
+	if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
+		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
+			circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
 
-				bindHandler := handler_xgress.NewBindHandler(
-					handler_xgress.NewReceiveHandler(rh.forwarder),
-					handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
-					rh.forwarder)
+			bindHandler := handler_xgress.NewBindHandler(
+				handler_xgress.NewReceiveHandler(rh.forwarder),
+				handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
+				rh.forwarder)
 
-				if rh.forwarder.Options.XgressDialDwellTime > 0 {
-					log.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
-					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
-				}
+			if rh.forwarder.Options.XgressDialDwellTime > 0 {
+				log.Infof("dwelling [%s] on dial", rh.forwarder.Options.XgressDialDwellTime)
+				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
+			}
 
-				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
-					rh.completeRoute(msg, attempt, route, peerData, log)
-				} else {
-					var errCode byte
-
-					switch {
-					case errors.Is(err, syscall.ECONNREFUSED):
-						errCode = ctrl_msg.ErrorTypeConnectionRefused
-					case errors.Is(err, syscall.ETIMEDOUT):
-						errCode = ctrl_msg.ErrorTypeDialTimedOut
-					case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
-						errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
-					case errors.As(err, &xgress.InvalidTerminatorError{}):
-						errCode = ctrl_msg.ErrorTypeInvalidTerminator
-					default:
-						errCode = ctrl_msg.ErrorTypeGeneric
-					}
-
-					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
-				}
+			if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
+				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {
-				var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
-				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), errCode, log)
+				var errCode byte
+
+				switch {
+				case errors.Is(err, syscall.ECONNREFUSED):
+					errCode = ctrl_msg.ErrorTypeConnectionRefused
+				case errors.Is(err, syscall.ETIMEDOUT):
+					errCode = ctrl_msg.ErrorTypeDialTimedOut
+				case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
+					errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
+				case errors.As(err, &xgress.InvalidTerminatorError{}):
+					errCode = ctrl_msg.ErrorTypeInvalidTerminator
+				default:
+					errCode = ctrl_msg.ErrorTypeGeneric
+				}
+
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 			}
 		} else {
 			var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
-			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), errCode, log)
 		}
-	}
-
-	if err := rh.pool.QueueWithTimeout(dialF, time.Second*15); err != nil {
-		log.WithError(err).Error("error queuing xgress dial to pool")
-		var errCode byte = ctrl_msg.ErrorTypeGeneric
+	} else {
+		var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
 		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 	}
 }
