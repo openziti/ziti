@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
@@ -28,7 +27,7 @@ import (
 	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
+	"google.golang.org/protobuf/proto"
 )
 
 type dialHandler struct {
@@ -62,16 +61,12 @@ func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel)
 		return
 	}
 
-	err := self.pool.QueueWithTimeout(func() {
+	err := self.pool.QueueOrError(func() {
 		self.handle(dial, ch)
-	}, 15*time.Second)
+	})
 
 	if err != nil {
-		log := self.getLogger(dial)
-		log.WithError(err).Error("error queuing link dial to pool")
-		if sendErr := self.sendLinkFault(dial.LinkId); err != nil {
-			log.WithError(sendErr).Error("error sending link fault")
-		}
+		self.getLogger(dial).WithError(err).Error("error queuing link dial to pool")
 	}
 }
 
