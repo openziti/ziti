@@ -20,21 +20,21 @@ import (
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/util/concurrenz"
 )
 
-var metricsEventHandlerRegistry = cowslice.NewCowSlice(make([]MessageHandler, 0))
+var metricsEventHandlerRegistry = &concurrenz.CopyOnWriteSlice[MessageHandler]{}
 
 func getMetricsEventHandlers() []MessageHandler {
-	return metricsEventHandlerRegistry.Value().([]MessageHandler)
+	return metricsEventHandlerRegistry.Value()
 }
 
 func AddMetricsEventHandler(handler MessageHandler) {
-	cowslice.Append(metricsEventHandlerRegistry, handler)
+	metricsEventHandlerRegistry.Append(handler)
 }
 
 func RemoveMetricsEventHandler(handler MessageHandler) {
-	cowslice.Delete(metricsEventHandlerRegistry, handler)
+	metricsEventHandlerRegistry.Delete(handler)
 }
 
 // MessageHandler represents a sink for metric events
@@ -68,8 +68,8 @@ func (dispatcherWrapper *eventDispatcherWrapper) AcceptMetrics(message *metrics_
 
 func InitMetricHandlers(cfg *metrics.Config) {
 	if cfg != nil {
-		for handler := range cfg.Handlers {
-			cowslice.Append(metricsEventHandlerRegistry, handler)
+		for _, handler := range cfg.Handlers {
+			metricsEventHandlerRegistry.Append(handler)
 		}
 	}
 }
