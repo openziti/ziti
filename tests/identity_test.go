@@ -660,10 +660,12 @@ func Test_Identity(t *testing.T) {
 		jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Identity Disabled Test 01")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Identity Disable Test 01"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Identity Disable Test 01"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S(uuid.NewString()),
+			Audience: S(uuid.NewString()),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -703,11 +705,11 @@ func Test_Identity(t *testing.T) {
 
 			jwtToken := jwt.New(jwt.SigningMethodES256)
 			jwtToken.Claims = jwt.StandardClaims{
-				Audience:  "ziti.controller",
+				Audience:  *extJwtSigner.Audience,
 				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
 				Id:        time.Now().String(),
 				IssuedAt:  time.Now().Unix(),
-				Issuer:    "fake.issuer",
+				Issuer:    *extJwtSigner.Issuer,
 				NotBefore: time.Now().Unix(),
 				Subject:   identityCreated.Data.ID,
 			}

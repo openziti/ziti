@@ -116,7 +116,7 @@ func TestPostureCheckModelProcess_Evaluate(t *testing.T) {
 		req.False(result)
 	})
 
-	t.Run("returns false if signers do not match", func(t *testing.T) {
+	t.Run("returns false if signerByIssuer do not match", func(t *testing.T) {
 		processCheck, postureData := newMatchingProcessCheckAndData()
 		postureData.Processes[0].SignerFingerprints = []string{"does not match"}
 

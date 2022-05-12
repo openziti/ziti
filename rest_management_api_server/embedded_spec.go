@@ -19380,9 +19380,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "certPem",
         "enabled",
-        "kid"
+        "issuer",
+        "audience"
       ],
       "properties": {
         "audience": {
@@ -19390,7 +19390,8 @@ func init() {
           "x-nullable": true
         },
         "certPem": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "claimsProperty": {
           "type": "string",
@@ -19405,11 +19406,16 @@ func init() {
           "x-nullable": true
         },
         "issuer": {
+          "type": "string"
+        },
+        "jwksEndpoint": {
           "type": "string",
+          "format": "uri",
           "x-nullable": true
         },
         "kid": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -19436,6 +19442,7 @@ func init() {
           "required": [
             "name",
             "certPem",
+            "jwksEndpoint",
             "enabled",
             "fingerprint",
             "commonName",
@@ -19453,7 +19460,8 @@ func init() {
               "type": "string"
             },
             "certPem": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "claimsProperty": {
               "type": "string"
@@ -19473,6 +19481,11 @@ func init() {
             },
             "issuer": {
               "type": "string"
+            },
+            "jwksEndpoint": {
+              "type": "string",
+              "format": "uri",
+              "x-nullable": true
             },
             "kid": {
               "type": "string"
@@ -19531,6 +19544,11 @@ func init() {
           "type": "string",
           "x-nullable": true
         },
+        "jwksEndpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-nullable": true
+        },
         "kid": {
           "type": "string",
           "x-nullable": true
@@ -19553,9 +19571,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "certPem",
         "enabled",
-        "kid"
+        "issuer",
+        "audience"
       ],
       "properties": {
         "audience": {
@@ -19563,7 +19581,8 @@ func init() {
           "x-nullable": true
         },
         "certPem": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "claimsProperty": {
           "type": "string",
@@ -19578,11 +19597,16 @@ func init() {
           "x-nullable": true
         },
         "issuer": {
+          "type": "string"
+        },
+        "jwksEndpoint": {
           "type": "string",
+          "format": "uri",
           "x-nullable": true
         },
         "kid": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -42589,9 +42613,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "certPem",
         "enabled",
-        "kid"
+        "issuer",
+        "audience"
       ],
       "properties": {
         "audience": {
@@ -42599,7 +42623,8 @@ func init() {
           "x-nullable": true
         },
         "certPem": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "claimsProperty": {
           "type": "string",
@@ -42614,11 +42639,16 @@ func init() {
           "x-nullable": true
         },
         "issuer": {
+          "type": "string"
+        },
+        "jwksEndpoint": {
           "type": "string",
+          "format": "uri",
           "x-nullable": true
         },
         "kid": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "name": {
           "type": "string",
@@ -42645,6 +42675,7 @@ func init() {
           "required": [
             "name",
             "certPem",
+            "jwksEndpoint",
             "enabled",
             "fingerprint",
             "commonName",
@@ -42662,7 +42693,8 @@ func init() {
               "type": "string"
             },
             "certPem": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "claimsProperty": {
               "type": "string"
@@ -42682,6 +42714,11 @@ func init() {
             },
             "issuer": {
               "type": "string"
+            },
+            "jwksEndpoint": {
+              "type": "string",
+              "format": "uri",
+              "x-nullable": true
             },
             "kid": {
               "type": "string"
@@ -42740,6 +42777,11 @@ func init() {
           "type": "string",
           "x-nullable": true
         },
+        "jwksEndpoint": {
+          "type": "string",
+          "format": "uri",
+          "x-nullable": true
+        },
         "kid": {
           "type": "string",
           "x-nullable": true
@@ -42762,9 +42804,9 @@ func init() {
       "type": "object",
       "required": [
         "name",
-        "certPem",
         "enabled",
-        "kid"
+        "issuer",
+        "audience"
       ],
       "properties": {
         "audience": {
@@ -42772,7 +42814,8 @@ func init() {
           "x-nullable": true
         },
         "certPem": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "claimsProperty": {
           "type": "string",
@@ -42787,11 +42830,16 @@ func init() {
           "x-nullable": true
         },
         "issuer": {
+          "type": "string"
+        },
+        "jwksEndpoint": {
           "type": "string",
+          "format": "uri",
           "x-nullable": true
         },
         "kid": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "name": {
           "type": "string",

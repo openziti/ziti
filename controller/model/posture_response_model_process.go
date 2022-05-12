@@ -86,7 +86,7 @@ func (pr *PostureResponseProcess) VerifyMultiCriteria(process *ProcessMulti) boo
 	foundValidSigner := false
 
 	if len(process.SignerFingerprints) == 0 {
-		foundValidSigner = true //no signers to check for
+		foundValidSigner = true //no signerByIssuer to check for
 	} else {
 		for _, validSigner := range process.SignerFingerprints {
 			validSigner := strings.ToLower(validSigner)

@@ -76,6 +76,11 @@ type ExternalJWTSignerDetail struct {
 	// Required: true
 	Issuer *string `json:"issuer"`
 
+	// jwks endpoint
+	// Required: true
+	// Format: uri
+	JwksEndpoint *strfmt.URI `json:"jwksEndpoint"`
+
 	// kid
 	// Required: true
 	Kid *string `json:"kid"`
@@ -127,6 +132,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 
 		Issuer *string `json:"issuer"`
 
+		JwksEndpoint *strfmt.URI `json:"jwksEndpoint"`
+
 		Kid *string `json:"kid"`
 
 		Name *string `json:"name"`
@@ -156,6 +163,8 @@ func (m *ExternalJWTSignerDetail) UnmarshalJSON(raw []byte) error {
 	m.Fingerprint = dataAO1.Fingerprint
 
 	m.Issuer = dataAO1.Issuer
+
+	m.JwksEndpoint = dataAO1.JwksEndpoint
 
 	m.Kid = dataAO1.Kid
 
@@ -196,6 +205,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 
 		Issuer *string `json:"issuer"`
 
+		JwksEndpoint *strfmt.URI `json:"jwksEndpoint"`
+
 		Kid *string `json:"kid"`
 
 		Name *string `json:"name"`
@@ -222,6 +233,8 @@ func (m ExternalJWTSignerDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Fingerprint = m.Fingerprint
 
 	dataAO1.Issuer = m.Issuer
+
+	dataAO1.JwksEndpoint = m.JwksEndpoint
 
 	dataAO1.Kid = m.Kid
 
@@ -279,6 +292,10 @@ func (m *ExternalJWTSignerDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateIssuer(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateJwksEndpoint(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -374,6 +391,19 @@ func (m *ExternalJWTSignerDetail) validateFingerprint(formats strfmt.Registry) e
 func (m *ExternalJWTSignerDetail) validateIssuer(formats strfmt.Registry) error {
 
 	if err := validate.Required("issuer", "body", m.Issuer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerDetail) validateJwksEndpoint(formats strfmt.Registry) error {
+
+	if err := validate.Required("jwksEndpoint", "body", m.JwksEndpoint); err != nil {
+		return err
+	}
+
+	if err := validate.FormatOf("jwksEndpoint", "body", "uri", m.JwksEndpoint.String(), formats); err != nil {
 		return err
 	}
 

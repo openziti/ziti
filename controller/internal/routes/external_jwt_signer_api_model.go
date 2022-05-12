@@ -72,36 +72,49 @@ func MapExternalJwtSignerToRestModel(externalJwtSigner *model.ExternalJwtSigner)
 
 	ret := &rest_model.ExternalJWTSignerDetail{
 		BaseEntity:      BaseEntityToRestModel(externalJwtSigner, ExternalJwtSignerLinkFactory),
-		CertPem:         &externalJwtSigner.CertPem,
 		ClaimsProperty:  externalJwtSigner.ClaimsProperty,
 		CommonName:      &externalJwtSigner.CommonName,
 		Enabled:         &externalJwtSigner.Enabled,
 		ExternalAuthURL: externalJwtSigner.ExternalAuthUrl,
-		Fingerprint:     &externalJwtSigner.Fingerprint,
+		Fingerprint:     externalJwtSigner.Fingerprint,
 		Name:            &externalJwtSigner.Name,
 		NotAfter:        &notAfter,
 		NotBefore:       &notBefore,
 		UseExternalID:   &externalJwtSigner.UseExternalId,
-		Kid:             &externalJwtSigner.Kid,
+		Kid:             externalJwtSigner.Kid,
 		Issuer:          externalJwtSigner.Issuer,
 		Audience:        externalJwtSigner.Audience,
+		CertPem:         externalJwtSigner.CertPem,
 	}
+
+	if externalJwtSigner.JwksEndpoint != nil {
+		jwks := strfmt.URI(*externalJwtSigner.JwksEndpoint)
+		ret.JwksEndpoint = &jwks
+	}
+
 	return ret
 }
 
 func MapCreateExternalJwtSignerToModel(signer *rest_model.ExternalJWTSignerCreate) *model.ExternalJwtSigner {
-	return &model.ExternalJwtSigner{
+	ret := &model.ExternalJwtSigner{
 		BaseEntity:      models.BaseEntity{},
 		Name:            *signer.Name,
-		CertPem:         *signer.CertPem,
 		Enabled:         *signer.Enabled,
 		ExternalAuthUrl: signer.ExternalAuthURL,
 		ClaimsProperty:  signer.ClaimsProperty,
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
-		Kid:             *signer.Kid,
+		Kid:             signer.Kid,
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
+		CertPem:         signer.CertPem,
 	}
+
+	if signer.JwksEndpoint != nil {
+		jwksEndpoint := signer.JwksEndpoint.String()
+		ret.JwksEndpoint = &jwksEndpoint
+	}
+
+	return ret
 }
 
 func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTSignerUpdate) *model.ExternalJwtSigner {
@@ -110,22 +123,29 @@ func MapUpdateExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWT
 		tags = signer.Tags.SubTags
 	}
 
-	return &model.ExternalJwtSigner{
+	ret := &model.ExternalJwtSigner{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
 			Tags:     tags,
 			IsSystem: false,
 		},
 		Name:            *signer.Name,
-		CertPem:         *signer.CertPem,
+		CertPem:         signer.CertPem,
 		Enabled:         *signer.Enabled,
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
 		ClaimsProperty:  signer.ClaimsProperty,
 		ExternalAuthUrl: signer.ExternalAuthURL,
-		Kid:             *signer.Kid,
+		Kid:             signer.Kid,
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
 	}
+
+	if signer.JwksEndpoint != nil {
+		jwksEndpoint := signer.JwksEndpoint.String()
+		ret.JwksEndpoint = &jwksEndpoint
+	}
+
+	return ret
 }
 
 func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTSignerPatch) *model.ExternalJwtSigner {
@@ -134,20 +154,27 @@ func MapPatchExternalJwtSignerToModel(id string, signer *rest_model.ExternalJWTS
 		tags = signer.Tags.SubTags
 	}
 
-	return &model.ExternalJwtSigner{
+	ret := &model.ExternalJwtSigner{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
 			Tags:     tags,
 			IsSystem: false,
 		},
 		Name:            stringz.OrEmpty(signer.Name),
-		CertPem:         stringz.OrEmpty(signer.CertPem),
+		CertPem:         signer.CertPem,
 		Enabled:         BoolOrDefault(signer.Enabled),
 		ExternalAuthUrl: signer.ExternalAuthURL,
 		UseExternalId:   BoolOrDefault(signer.UseExternalID),
 		ClaimsProperty:  signer.ClaimsProperty,
-		Kid:             stringz.OrEmpty(signer.Kid),
+		Kid:             signer.Kid,
 		Issuer:          signer.Issuer,
 		Audience:        signer.Audience,
 	}
+
+	if signer.JwksEndpoint != nil {
+		jwksEndpoint := signer.JwksEndpoint.String()
+		ret.JwksEndpoint = &jwksEndpoint
+	}
+
+	return ret
 }

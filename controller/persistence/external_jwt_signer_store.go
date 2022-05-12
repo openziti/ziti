@@ -18,6 +18,8 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -28,6 +30,7 @@ import (
 const (
 	FieldExternalJwtSignerFingerprint     = "fingerprint"
 	FieldExternalJwtSignerCertPem         = "certPem"
+	FieldExternalJwtSignerJwksEndpoint    = "jwksEndpoint"
 	FieldExternalJwtSignerCommonName      = "commonName"
 	FieldExternalJwtSignerNotAfter        = "notAfter"
 	FieldExternalJwtSignerNotBefore       = "notBefore"
@@ -46,9 +49,10 @@ const (
 type ExternalJwtSigner struct {
 	boltz.BaseExtEntity
 	Name            string
-	Fingerprint     string
-	Kid             string
-	CertPem         string
+	Fingerprint     *string
+	Kid             *string
+	CertPem         *string
+	JwksEndpoint    *string
 	CommonName      string
 	NotAfter        *time.Time
 	NotBefore       *time.Time
@@ -67,9 +71,10 @@ func (entity *ExternalJwtSigner) GetName() string {
 func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringWithDefault(FieldName, "")
-	entity.CertPem = bucket.GetStringWithDefault(FieldExternalJwtSignerCertPem, "")
-	entity.Fingerprint = bucket.GetStringWithDefault(FieldExternalJwtSignerFingerprint, "")
-	entity.Kid = bucket.GetStringWithDefault(FieldExternalJwtSignerKid, "")
+	entity.CertPem = bucket.GetString(FieldExternalJwtSignerCertPem)
+	entity.JwksEndpoint = bucket.GetString(FieldExternalJwtSignerJwksEndpoint)
+	entity.Fingerprint = bucket.GetString(FieldExternalJwtSignerFingerprint)
+	entity.Kid = bucket.GetString(FieldExternalJwtSignerKid)
 	entity.CommonName = bucket.GetStringWithDefault(FieldExternalJwtSignerCommonName, "")
 	entity.NotAfter = bucket.GetTime(FieldExternalJwtSignerNotAfter)
 	entity.NotBefore = bucket.GetTime(FieldExternalJwtSignerNotBefore)
@@ -84,9 +89,10 @@ func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.Typ
 func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldExternalJwtSignerCertPem, entity.CertPem)
-	ctx.SetString(FieldExternalJwtSignerFingerprint, entity.Fingerprint)
-	ctx.SetString(FieldExternalJwtSignerKid, entity.Kid)
+	ctx.SetStringP(FieldExternalJwtSignerCertPem, entity.CertPem)
+	ctx.SetStringP(FieldExternalJwtSignerJwksEndpoint, entity.JwksEndpoint)
+	ctx.SetStringP(FieldExternalJwtSignerFingerprint, entity.Fingerprint)
+	ctx.SetStringP(FieldExternalJwtSignerKid, entity.Kid)
 	ctx.SetString(FieldExternalJwtSignerCommonName, entity.CommonName)
 	ctx.SetTimeP(FieldExternalJwtSignerNotAfter, entity.NotAfter)
 	ctx.SetTimeP(FieldExternalJwtSignerNotBefore, entity.NotBefore)
@@ -112,6 +118,23 @@ func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 		ctx.SetString(FieldExternalJwtSignerClaimsProperty, DefaultClaimsProperty)
 	} else {
 		ctx.SetStringP(FieldExternalJwtSignerClaimsProperty, entity.ClaimsProperty)
+	}
+
+	jwksEndpoint := ctx.Bucket.GetString(FieldExternalJwtSignerJwksEndpoint)
+	certPem := ctx.Bucket.GetString(FieldExternalJwtSignerCertPem)
+
+	if (jwksEndpoint == nil || *jwksEndpoint == "") && (certPem == nil || *certPem == "") {
+		ctx.Bucket.SetError(apierror.NewBadRequestFieldError(*errorz.NewFieldError("jwksEndpoint or certPem is required", "certPem", certPem)))
+	}
+
+	if jwksEndpoint != nil && certPem != nil {
+		existingName := FieldExternalJwtSignerCertPem
+		existingValue := certPem
+		if jwksEndpoint != nil {
+			existingName = FieldExternalJwtSignerJwksEndpoint
+			existingValue = jwksEndpoint
+		}
+		ctx.Bucket.SetError(apierror.NewBadRequestFieldError(*errorz.NewFieldError("only one of jwksEndpoint or certPem may be defined", existingName, existingValue)))
 	}
 }
 
@@ -143,6 +166,8 @@ type externalJwtSignerStoreImpl struct {
 	fingerprintIndex   boltz.ReadIndex
 	symbolKid          boltz.EntitySymbol
 	kidIndex           boltz.ReadIndex
+	symbolIssuer       boltz.EntitySymbol
+	issuerIndex        boltz.ReadIndex
 }
 
 func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
@@ -154,10 +179,13 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.indexName = store.addUniqueNameField()
 
 	store.symbolFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
-	store.fingerprintIndex = store.AddUniqueIndex(store.symbolFingerprint)
+	store.fingerprintIndex = store.AddNullableUniqueIndex(store.symbolFingerprint)
 
 	store.symbolKid = store.AddSymbol(FieldExternalJwtSignerKid, ast.NodeTypeString)
-	store.kidIndex = store.AddUniqueIndex(store.symbolKid)
+	store.kidIndex = store.AddNullableUniqueIndex(store.symbolKid)
+
+	store.symbolIssuer = store.AddSymbol(FieldExternalJwtSignerIssuer, ast.NodeTypeString)
+	store.issuerIndex = store.AddUniqueIndex(store.symbolIssuer)
 
 	store.AddSymbol(FieldExternalJwtSignerCertPem, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerCommonName, ast.NodeTypeString)
@@ -166,6 +194,7 @@ func (store *externalJwtSignerStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
 	store.AddSymbol(FieldExternalJwtSignerClaimsProperty, ast.NodeTypeString)
 	store.AddSymbol(FieldExternalJwtSignerUseExternalId, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerAudience, ast.NodeTypeString)
 
 	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
 }

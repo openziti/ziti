@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
+	github.com/Jeffail/gabs/v2 v2.6.1
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/cenkalti/backoff/v4 v4.1.3
 	github.com/coreos/go-iptables v0.6.0
@@ -34,6 +35,7 @@ require (
 	github.com/openziti/channel v0.18.39
 	github.com/openziti/fabric v0.18.1
 	github.com/openziti/foundation v0.17.27
+	github.com/openziti/jwks v1.0.1
 	github.com/openziti/sdk-golang v0.16.76
 	github.com/openziti/storage v0.1.7
 	github.com/openziti/transport/v2 v2.0.4
@@ -61,7 +63,6 @@ require (
 )
 
 require (
-	github.com/Jeffail/gabs/v2 v2.6.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/armon/go-metrics v0.3.8 // indirect

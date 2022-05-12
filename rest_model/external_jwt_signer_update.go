@@ -44,11 +44,11 @@ import (
 type ExternalJWTSignerUpdate struct {
 
 	// audience
-	Audience *string `json:"audience,omitempty"`
+	// Required: true
+	Audience *string `json:"audience"`
 
 	// cert pem
-	// Required: true
-	CertPem *string `json:"certPem"`
+	CertPem *string `json:"certPem,omitempty"`
 
 	// claims property
 	ClaimsProperty *string `json:"claimsProperty,omitempty"`
@@ -61,11 +61,15 @@ type ExternalJWTSignerUpdate struct {
 	ExternalAuthURL *string `json:"externalAuthUrl,omitempty"`
 
 	// issuer
-	Issuer *string `json:"issuer,omitempty"`
+	// Required: true
+	Issuer *string `json:"issuer"`
+
+	// jwks endpoint
+	// Format: uri
+	JwksEndpoint *strfmt.URI `json:"jwksEndpoint,omitempty"`
 
 	// kid
-	// Required: true
-	Kid *string `json:"kid"`
+	Kid *string `json:"kid,omitempty"`
 
 	// name
 	// Example: MyApps Signer
@@ -83,7 +87,7 @@ type ExternalJWTSignerUpdate struct {
 func (m *ExternalJWTSignerUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateCertPem(formats); err != nil {
+	if err := m.validateAudience(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -91,7 +95,11 @@ func (m *ExternalJWTSignerUpdate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateKid(formats); err != nil {
+	if err := m.validateIssuer(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateJwksEndpoint(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -109,9 +117,9 @@ func (m *ExternalJWTSignerUpdate) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *ExternalJWTSignerUpdate) validateCertPem(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerUpdate) validateAudience(formats strfmt.Registry) error {
 
-	if err := validate.Required("certPem", "body", m.CertPem); err != nil {
+	if err := validate.Required("audience", "body", m.Audience); err != nil {
 		return err
 	}
 
@@ -127,9 +135,21 @@ func (m *ExternalJWTSignerUpdate) validateEnabled(formats strfmt.Registry) error
 	return nil
 }
 
-func (m *ExternalJWTSignerUpdate) validateKid(formats strfmt.Registry) error {
+func (m *ExternalJWTSignerUpdate) validateIssuer(formats strfmt.Registry) error {
 
-	if err := validate.Required("kid", "body", m.Kid); err != nil {
+	if err := validate.Required("issuer", "body", m.Issuer); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *ExternalJWTSignerUpdate) validateJwksEndpoint(formats strfmt.Registry) error {
+	if swag.IsZero(m.JwksEndpoint) { // not required
+		return nil
+	}
+
+	if err := validate.FormatOf("jwksEndpoint", "body", "uri", m.JwksEndpoint.String(), formats); err != nil {
 		return err
 	}
 
