@@ -31,10 +31,10 @@ require (
 	github.com/miekg/dns v1.1.48
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.33
+	github.com/openziti/channel v0.18.34
 	github.com/openziti/fabric v0.17.124
 	github.com/openziti/foundation v0.17.24
-	github.com/openziti/sdk-golang v0.16.64
+	github.com/openziti/sdk-golang v0.16.65
 	github.com/openziti/storage v0.1.5
 	github.com/openziti/transport/v2 v2.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -48,7 +48,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122
+	golang.org/x/crypto v0.0.0-20220511200225-c6db032c6c88
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6
