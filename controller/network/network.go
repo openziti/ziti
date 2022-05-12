@@ -511,7 +511,8 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		network.circuitController.add(circuit)
 		creationTimespan := time.Since(startTime)
-		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan)
+		cost := terminator.GetRouteCost()
+		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan, &cost)
 
 		logger.WithField("path", circuit.Path).Debug("created circuit")
 		return circuit, nil
@@ -532,7 +533,7 @@ func parseIdentityAndService(service string) (string, string) {
 	return identityId, serviceId
 }
 
-func (network *Network) selectPath(srcR *Router, svc *Service, identity string, ctx logcontext.Context) (xt.Strategy, xt.Terminator, []*Router, error) {
+func (network *Network) selectPath(srcR *Router, svc *Service, identity string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*Router, error) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
@@ -643,7 +644,7 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 			}
 		}
 		network.circuitController.remove(ss)
-		network.CircuitEvent(CircuitDeleted, ss, nil)
+		network.CircuitEvent(CircuitDeleted, ss, nil, nil)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
@@ -867,7 +868,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) err
 
 			log.Info("rerouted circuit")
 
-			network.CircuitEvent(CircuitUpdated, circuit, nil)
+			network.CircuitEvent(CircuitUpdated, circuit, nil, nil)
 			return nil
 		} else {
 			return err
@@ -893,7 +894,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path, deadline time.Time) e
 		}
 
 		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
-		network.CircuitEvent(CircuitUpdated, s, nil)
+		network.CircuitEvent(CircuitUpdated, s, nil, nil)
 		return nil
 
 	} else {

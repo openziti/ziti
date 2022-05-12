@@ -58,6 +58,7 @@ type CircuitEvent struct {
 	ServiceId        string
 	CreationTimespan *time.Duration
 	Path             *Path
+	Cost             *uint32
 }
 
 func (event *CircuitEvent) Handle() {
@@ -71,7 +72,7 @@ type CircuitEventHandler interface {
 	AcceptCircuitEvent(event *CircuitEvent)
 }
 
-func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit, creationTimespan *time.Duration) {
+func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit, creationTimespan *time.Duration, cost *uint32) {
 	event := &CircuitEvent{
 		Type:             eventType,
 		CircuitId:        circuit.Id,
@@ -79,6 +80,7 @@ func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circui
 		ServiceId:        circuit.Service.Id,
 		CreationTimespan: creationTimespan,
 		Path:             circuit.Path,
+		Cost:             cost,
 	}
 	network.eventDispatcher.Dispatch(event)
 }

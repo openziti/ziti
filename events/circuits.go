@@ -79,6 +79,8 @@ type CircuitEvent struct {
 	ServiceId        string         `json:"service_id"`
 	CreationTimespan *time.Duration `json:"creation_timespan"`
 	Path             string         `json:"path"`
+	LinkCount        int            `json:"link_count"`
+	Cost             *uint32        `json:"path_cost"`
 }
 
 func (event *CircuitEvent) String() string {
@@ -127,6 +129,8 @@ func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.Circuit
 		ServiceId:        netEvent.ServiceId,
 		CreationTimespan: netEvent.CreationTimespan,
 		Path:             netEvent.Path.String(),
+		LinkCount:        len(netEvent.Path.Links),
+		Cost:             netEvent.Cost,
 	}
 
 	adapter.handler.AcceptCircuitEvent(event)

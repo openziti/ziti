@@ -42,7 +42,7 @@ func (self *factory) NewStrategy() xt.Strategy {
 
 type strategy struct{}
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	count := len(terminators)
 	if count == 1 {

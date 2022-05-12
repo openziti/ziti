@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"math"
 	"testing"
@@ -297,7 +297,7 @@ func (t testStrategyFactory) NewStrategy() xt.Strategy {
 
 type testStrategy struct{}
 
-func (t testStrategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (t testStrategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
 	return terminators[0], nil
 }
 

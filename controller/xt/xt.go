@@ -59,7 +59,7 @@ type StrategyChangeEvent interface {
 }
 
 type Strategy interface {
-	Select(terminators []CostedTerminator) (Terminator, error)
+	Select(terminators []CostedTerminator) (CostedTerminator, error)
 	HandleTerminatorChange(event StrategyChangeEvent) error
 	NotifyEvent(event TerminatorEvent)
 }

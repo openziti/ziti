@@ -55,7 +55,7 @@ type strategy struct {
 	xt_common.CostVisitor
 }
 
-func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+func (self *strategy) Select(terminators []xt.CostedTerminator) (xt.CostedTerminator, error) {
 	terminators = xt.GetRelatedTerminators(terminators)
 	if len(terminators) == 1 {
 		return terminators[0], nil
