@@ -37,13 +37,13 @@ func newShowCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		},
 	}
 
-	showCmd.AddCommand(newShowConfigTypeSchemaAction(out, errOut))
-	showCmd.AddCommand(newShowConfigDefAction(out, errOut))
+	showCmd.AddCommand(newShowConfigTypeAction(out, errOut))
+	showCmd.AddCommand(newShowConfigAction(out, errOut))
 	return showCmd
 }
 
-func newShowConfigDefAction(out io.Writer, errOut io.Writer) *cobra.Command {
-	action := &showConfigDefAction{
+func newShowConfigAction(out io.Writer, errOut io.Writer) *cobra.Command {
+	action := &showConfigAction{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: out,
@@ -53,7 +53,7 @@ func newShowConfigDefAction(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	showConfigDefCmd := &cobra.Command{
-		Use:   "config-definition <id or name>",
+		Use:   "config <id or name>",
 		Short: "displays the JSON config definition for a given config",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,11 +68,11 @@ func newShowConfigDefAction(out io.Writer, errOut io.Writer) *cobra.Command {
 	return showConfigDefCmd
 }
 
-type showConfigDefAction struct {
+type showConfigAction struct {
 	api.Options
 }
 
-func (self *showConfigDefAction) run(command *cobra.Command, args []string) error {
+func (self *showConfigAction) run(_ *cobra.Command, args []string) error {
 	id, err := mapNameToID("configs", args[0], self.Options)
 	if err != nil {
 		return err
@@ -98,8 +98,8 @@ func (self *showConfigDefAction) run(command *cobra.Command, args []string) erro
 	return nil
 }
 
-func newShowConfigTypeSchemaAction(out io.Writer, errOut io.Writer) *cobra.Command {
-	action := &showConfigTypeSchemaAction{
+func newShowConfigTypeAction(out io.Writer, errOut io.Writer) *cobra.Command {
+	action := &showConfigTypeAction{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{
 				Out: out,
@@ -109,7 +109,7 @@ func newShowConfigTypeSchemaAction(out io.Writer, errOut io.Writer) *cobra.Comma
 	}
 
 	showConfigTypeSchemaCmd := &cobra.Command{
-		Use:   "config-type-schema <id or name>",
+		Use:   "config-type <id or name>",
 		Short: "displays the JSON schema for a given config type",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -124,11 +124,11 @@ func newShowConfigTypeSchemaAction(out io.Writer, errOut io.Writer) *cobra.Comma
 	return showConfigTypeSchemaCmd
 }
 
-type showConfigTypeSchemaAction struct {
+type showConfigTypeAction struct {
 	api.Options
 }
 
-func (self *showConfigTypeSchemaAction) run(command *cobra.Command, args []string) error {
+func (self *showConfigTypeAction) run(_ *cobra.Command, args []string) error {
 	id, err := mapNameToID("config-types", args[0], self.Options)
 	if err != nil {
 		return err

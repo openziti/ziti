@@ -10,19 +10,22 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
+	"sort"
+	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
 func newInspectCmd(p common.OptionsProvider) *cobra.Command {
-	listCmd := &ListCmd{Options: api.Options{CommonOptions: p()}}
+	listCmd := &InspectCmd{Options: api.Options{CommonOptions: p()}}
 	return listCmd.newCobraCmd()
 }
 
-type ListCmd struct {
+type InspectCmd struct {
 	api.Options
+	prettyPrint bool
 }
 
-func (self *ListCmd) newCobraCmd() *cobra.Command {
+func (self *InspectCmd) newCobraCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect runtime application values",
@@ -33,7 +36,7 @@ func (self *ListCmd) newCobraCmd() *cobra.Command {
 	return cmd
 }
 
-func (self *ListCmd) run(cmd *cobra.Command, args []string) error {
+func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
 	client, err := util.NewFabricManagementClient(self)
 	if err != nil {
 		return err
@@ -60,7 +63,8 @@ func (self *ListCmd) run(cmd *cobra.Command, args []string) error {
 		fmt.Printf("\nResults: (%d)\n", len(result.Values))
 		for _, value := range result.Values {
 			fmt.Printf("%v.%v\n", stringz.OrEmpty(value.AppID), stringz.OrEmpty(value.Name))
-			fmt.Printf("%+v\n\n", value.Value)
+			self.prettyPrintOutput(value.Value, 0)
+			fmt.Printf("\n")
 		}
 	} else {
 		fmt.Printf("\nEncountered errors: (%d)\n", len(result.Errors))
@@ -70,4 +74,46 @@ func (self *ListCmd) run(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+func (self *InspectCmd) prettyPrintOutput(val interface{}, indent int) {
+	if mapVal, ok := val.(map[string]interface{}); ok {
+		fmt.Printf("\n")
+		var sortedKeys []string
+		for k := range mapVal {
+			sortedKeys = append(sortedKeys, k)
+		}
+		sort.Strings(sortedKeys)
+		for _, k := range sortedKeys {
+			for i := 0; i < indent; i++ {
+				fmt.Printf(" ")
+			}
+			fmt.Printf("%v: ", k)
+			self.prettyPrintOutput(mapVal[k], indent+4)
+		}
+	} else if sliceVal, ok := val.([]interface{}); ok {
+		fmt.Println()
+		for _, v := range sliceVal {
+			for i := 0; i < indent; i++ {
+				fmt.Printf(" ")
+			}
+			fmt.Printf("    - ")
+			self.prettyPrintOutput(v, indent+6)
+		}
+	} else if strVal, ok := val.(string); ok {
+		if strings.IndexByte(strVal, '\n') > 0 {
+			lines := strings.Split(strVal, "\n")
+			fmt.Println(lines[0])
+			for _, line := range lines[1:] {
+				for i := 0; i < indent; i++ {
+					fmt.Printf(" ")
+				}
+				fmt.Println(line)
+			}
+		} else {
+			fmt.Printf("%v\n", val)
+		}
+	} else {
+		fmt.Printf("%v\n", val)
+	}
 }

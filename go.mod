@@ -1,22 +1,6 @@
 module github.com/openziti/ziti
 
-go 1.17
-
-//replace github.com/openziti/foundation => ../foundation
-
-//replace github.com/openziti/channel => ../channel
-
-//replace github.com/openziti/dilithium => ../dilithium
-
-//replace github.com/openziti/fabric => ../fabric
-
-//replace github.com/openziti/sdk-golang => ../sdk-golang
-
-//replace github.com/openziti/edge => ../edge
-
-//replace github.com/michaelquigley/pfxlog => ../pfxlog
-
-//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
+go 1.18
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -27,20 +11,20 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
-	github.com/go-openapi/runtime v0.23.3
+	github.com/go-openapi/runtime v0.24.0
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.8
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/jedib0t/go-pretty/v6 v6.2.4
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/channel v0.18.28
-	github.com/openziti/edge v0.21.196
-	github.com/openziti/fabric v0.17.105
+	github.com/openziti/channel v0.18.29
+	github.com/openziti/edge v0.21.200
+	github.com/openziti/fabric v0.17.116
 	github.com/openziti/foundation v0.17.22
-	github.com/openziti/sdk-golang v0.16.52
+	github.com/openziti/sdk-golang v0.16.55
 	github.com/openziti/storage v0.1.4
 	github.com/openziti/transport v0.1.5
 	github.com/openziti/ziti-db-explorer v1.1.1
@@ -84,7 +68,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
-	github.com/emirpasic/gods v1.12.0 // indirect
+	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -93,7 +77,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
 	github.com/go-openapi/loads v0.21.1 // indirect
-	github.com/go-openapi/spec v0.20.5 // indirect
+	github.com/go-openapi/spec v0.20.6 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-openapi/validate v0.21.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
@@ -128,7 +112,7 @@ require (
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.3 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/netfoundry/secretstream v0.1.2 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
@@ -157,11 +141,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
-	golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4 // indirect
+	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
+	golang.org/x/sys v0.0.0-20220502124256-b6088ccd6cba // indirect
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect

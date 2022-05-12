@@ -50,7 +50,8 @@ ziti edge create service echo -c echo-host -a echo
 
 ## Update edge-routers
 
-Make sure demo edge routers are tunneler enabled and the associated identity has the `echo-host` attribute
+Make sure demo edge routers are tunneler enabled and the associated identity has the `echo-host` attribute.
+Only routers with the `demo` role attribute will be updated.
 
 ```action:ziti-for-each type=edge-routers minCount=1 maxCount=2 filter='anyOf(roleAttributes)="demo"'
 ziti edge update edge-router ${entityName} --tunneler-enabled

@@ -56,7 +56,7 @@ function cleanZitiController {
 }
 function initializeController {
   log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log"
-"${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
   echo -e "ziti-controller initialized. see $(BLUE "${log_file}") for details"
 }
 function startZitiController {
@@ -611,33 +611,34 @@ function expressInstall {
 }
 
 function pki_client_server {
-  name_local=${1-}
+  allow_list=${1-}
   ZITI_CA_NAME_local=$2
   ip_local=$3
+  file_name=$4
 
   if [[ "${ip_local}" == "" ]]; then
     ip_local="127.0.0.1"
   fi
 
-  if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-server.key"; then
-    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
+  if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${file_name}-server.key"; then
+    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
     "${ZITI_BIN_DIR-}/ziti" pki create server --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
-          --server-file "${name_local}-server" \
-          --dns "${name_local},localhost" --ip "${ip_local}" \
-          --server-name "${name_local} server certificate"
+          --server-file "${file_name}-server" \
+          --dns "${allow_list}" --ip "${ip_local}" \
+          --server-name "${file_name} server certificate"
   else
-    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
+    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
     echo "key exists"
   fi
 
-  if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${name_local}-client.key"; then
-    echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
+  if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${file_name}-client.key"; then
+    echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
     "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
-          --client-file "${name_local}-client" \
-          --key-file "${name_local}-server" \
-          --client-name "${name_local}"
+          --client-file "${file_name}-client" \
+          --key-file "${file_name}-server" \
+          --client-name "${file_name}"
   else
-    echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${name_local}"
+    echo "Creating client cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
     echo "key exists"
   fi
   echo " "
@@ -717,7 +718,7 @@ function createRouterPki {
   export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
   export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
   export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
-  pki_client_server "${router_name}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}"
+  pki_client_server "${router_name},localhost,127.0.0.1,$(hostname)" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
 }
 
 function createPrivateRouterConfig {
@@ -772,20 +773,11 @@ function createPki {
   pki_create_intermediate "${ZITI_SIGNING_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
-  if ! test -f "${ZITI_PKI}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"; then
-    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-    "${ZITI_BIN_DIR-}/ziti" pki create client --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name="${ZITI_CONTROLLER_INTERMEDIATE_NAME}" \
-          --client-file="${ZITI_NETWORK-}-dotzeet" \
-          --client-name "${ZITI_NETWORK-} Management"
-  else
-    echo "Creating ziti-fabric client certificate for network: ${ZITI_NETWORK-}"
-    echo "key exists"
-  fi
   echo " "
-
-  pki_client_server "${ZITI_CONTROLLER_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}"
-  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}"
-
+  pki_allow_list="${ZITI_CONTROLLER_HOSTNAME},localhost,127.0.0.1"
+  if [[ "$EXTERNAL_DNS" != "" ]]; then pki_allow_list="$pki_allow_list,$EXTERNAL_DNS"; fi
+  pki_client_server "${pki_allow_list}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}" "${ZITI_CONTROLLER_HOSTNAME}"
+  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME},localhost,127.0.0.1" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
 }
 
 
@@ -894,20 +886,6 @@ function createEdgeRouterConfig {
 
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
-}
-
-function createFabricIdentity {
-  output_file="${ZITI_HOME}/identities.yml"
-cat > "${output_file}" <<IdentitiesJsonHereDoc
----
-default:
-  caCert:   "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"
-  cert:     "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_NETWORK-}-dotzeet.cert"
-  key:      "${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_NETWORK-}-dotzeet.key"
-  endpoint: tls:${ZITI_CTRL_MGMT_HOST_PORT}
-IdentitiesJsonHereDoc
-
-echo -e "identities file written to: $(BLUE "${output_file}")"
 }
 
 # shellcheck disable=SC2120

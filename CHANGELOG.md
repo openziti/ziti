@@ -1,6 +1,26 @@
+# Release 0.25.6
+
+* Moving from Go 1.17 to 1.18
+* Bug fix: Fixes an issue in quickstart "Host it anywhere" where an EXTERNAL_DNS was not added to the PKI causing failures when attempting to use a router from outside the hosted environment.
+
 # Release 0.25.5
 
 * Bug fix: Fixes an issue where dial could fail if the terminator router didn't response to routing last
+* Enhancement: Updated Control Channel to use new heartbeat logging mirroring Links in Release `0.25.0`
+* Enhancement: Added Circuit Creation Timespan which denotes how long the fabric took to construct a requested circuit.
+```json
+{
+    "namespace": "namespace",
+    "event_type": "event_type",
+    "circuit_id": "circuit_id",
+    "timestamp": "2022-04-07T14:00:52.0500632-05:00",
+    "client_id": "client_id",
+    "service_id": "service_id",
+    "creation_timespan": 5000000, //Timespan in nanoseconds
+    "path": "path"
+}
+```
+
 * Bug fix: Fixes an issue where Edge administrator checks would not take default admin flag into account
 * Bug fix: Fix an issue with docker-compose quickstart not properly loading env vars
 * Enhancement: Add support for Apple M1 using the ziti quickstart CLI script
@@ -15,10 +35,27 @@
 * Enhancement: `ziti db explore <ctrl.db>` command has been added to explore offline database files
 * Enhancement: The mgmt API is now available via websocket. The stream commands are now available on `ziti fabric`
 * Enhancement: Most list commands have been updated with tabular output
-* Enhancement: `ziti edge show` is now available with subcommands `config-definition` and `config-type-schema`
+* Enhancement: `ziti edge show` is now available with subcommands `config` and `config-type`
+    * `ziti edge list configs` no longer shows the associated json. It can be viewed using `ziti edge show config <config name or id>`
 * Enhancement: `ziti edge update config-type` is now available
 * Enhancement: `ziti edge create|update identity` now supports `--external-id`
 * Bug fix: Fixes an issue where the router config would use hostname instead of the DNS name
+* Bug fix: When establishing links, a link could be closed while being registered, leading the controlller and router to get out of sync
+* Enhancement: Add min router cost. Helps to minimize unnecessary hops.
+    * Defaults to 10, configurable in the controller config with the minRouterCost value under `network:`
+* Enhancement: Can now see xgress instance and link send buffer pointer values in circuit inspections. This allows correlating to stackdumps
+* Enhancement: Can now see xgress related goroutines by using `ziti fabric inspect '.*' circuitAndStacks:<circuitId>`
+* Enhancement: If a router connects to the controller but is already connected, the new connection now takes precedence
+    * There is a configurable churn limit, which limits how often this can happen. 
+    * The default is 1 minute and is settable via `routerConnectChurnLimit` under `network`
+* Enhancement: Flow control changes
+    * Duplicate acks won't shrink window. Duplicate acks imply retransmits and the retransmits already affect the window size
+    * Drop min round trip time scaling to 1.5 as will get scaled up as needed by duplicate ack detection
+    * Drop round trip time addition to 0 from 100ms and rely purely on scaling
+    * Avoid potential stall by always allowing at least one payload into sender side, even when receiver is full.
+        * This way if receiver signal to sender is lost, we'll still having something trying to send
+* Enhancement: When router reconnects to controller, re-establish any embedded tunneler hosting on that router to ensure router and controller are in sync
+
 
 ## External JWT Signer Issuer & Audience Validation
 

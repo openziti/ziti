@@ -37,27 +37,37 @@ type Workload struct {
 }
 
 type Test struct {
-	TxRequests       int32         `yaml:"txRequests"`
-	TxPacing         int32         `yaml:"txPacing"`
-	TxMaxJitter      int32         `yaml:"txMaxJitter"`
-	RxTimeout        int32         `yaml:"rxTimeout"`
-	RxPacing         time.Duration `yaml:"rxPacing"`
-	RxMaxJitter      time.Duration `yaml:"rxMaxJitter"`
-	PayloadMinBytes  int32         `yaml:"payloadMinBytes"`
-	PayloadMaxBytes  int32         `yaml:"payloadMaxBytes"`
-	LatencyFrequency int32         `yaml:"latencyFrequency"`
-	BlockType        string        `yaml:"blockType"`
+	TxRequests   int32         `yaml:"txRequests"`
+	TxPacing     time.Duration `yaml:"txPacing"`
+	TxMaxJitter  time.Duration `yaml:"txMaxJitter"`
+	TxPauseEvery time.Duration `yaml:"txPauseEvery"`
+	TxPauseFor   time.Duration `yaml:"txPauseFor"`
+
+	RxTimeout    int32         `yaml:"rxTimeout"`
+	RxPacing     time.Duration `yaml:"rxPacing"`
+	RxMaxJitter  time.Duration `yaml:"rxMaxJitter"`
+	RxPauseEvery time.Duration `yaml:"rxPauseEvery"`
+	RxPauseFor   time.Duration `yaml:"rxPauseFor"`
+
+	PayloadMinBytes  int32  `yaml:"payloadMinBytes"`
+	PayloadMaxBytes  int32  `yaml:"payloadMaxBytes"`
+	LatencyFrequency int32  `yaml:"latencyFrequency"`
+	BlockType        string `yaml:"blockType"`
 }
 
 func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 	local := &loop3_pb.Test{
 		Name:             workload.Name,
 		TxRequests:       workload.Dialer.TxRequests,
-		TxPacing:         workload.Dialer.TxPacing,
-		TxMaxJitter:      workload.Dialer.TxMaxJitter,
+		TxPacing:         workload.Dialer.TxPacing.String(),
+		TxMaxJitter:      workload.Dialer.TxMaxJitter.String(),
+		TxPauseEvery:     workload.Dialer.TxPauseEvery.String(),
+		TxPauseFor:       workload.Dialer.TxPauseFor.String(),
 		RxRequests:       workload.Listener.TxRequests,
 		RxPacing:         workload.Dialer.RxPacing.String(),
 		RxMaxJitter:      workload.Dialer.RxMaxJitter.String(),
+		RxPauseEvery:     workload.Dialer.RxPauseEvery.String(),
+		RxPauseFor:       workload.Dialer.RxPauseFor.String(),
 		RxTimeout:        workload.Dialer.RxTimeout,
 		RxSeqBlockSize:   workload.Listener.PayloadMinBytes,
 		PayloadMinBytes:  workload.Dialer.PayloadMinBytes,
@@ -70,12 +80,16 @@ func (workload *Workload) GetTests() (*loop3_pb.Test, *loop3_pb.Test) {
 	remote := &loop3_pb.Test{
 		Name:             workload.Name,
 		TxRequests:       workload.Listener.TxRequests,
-		TxPacing:         workload.Listener.TxPacing,
-		TxMaxJitter:      workload.Listener.TxMaxJitter,
+		TxPacing:         workload.Listener.TxPacing.String(),
+		TxMaxJitter:      workload.Listener.TxMaxJitter.String(),
+		TxPauseEvery:     workload.Listener.TxPauseEvery.String(),
+		TxPauseFor:       workload.Listener.TxPauseFor.String(),
 		RxRequests:       workload.Dialer.TxRequests,
 		RxPacing:         workload.Listener.RxPacing.String(),
 		RxMaxJitter:      workload.Listener.RxMaxJitter.String(),
 		RxTimeout:        workload.Listener.RxTimeout,
+		RxPauseEvery:     workload.Listener.RxPauseEvery.String(),
+		RxPauseFor:       workload.Listener.RxPauseFor.String(),
 		RxSeqBlockSize:   workload.Dialer.PayloadMinBytes,
 		PayloadMinBytes:  workload.Listener.PayloadMinBytes,
 		PayloadMaxBytes:  workload.Listener.PayloadMaxBytes,

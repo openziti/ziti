@@ -614,7 +614,7 @@ func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInf
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Service Roles", "Identity Roles", "Posture Check Roles"})
+	t.AppendHeader(table.Row{"ID", "Name", "Semantic", "Service Roles", "Identity Roles", "Posture Check Roles"})
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
@@ -637,6 +637,7 @@ func outputServicePolicies(o *api.Options, children []*gabs.Container, pagingInf
 		t.AppendRow(table.Row{
 			wrapper.String("id"),
 			wrapper.String("name"),
+			wrapper.String("semantic"),
 			strings.Join(serviceRoles, " "),
 			strings.Join(identityRoles, " "),
 			strings.Join(postureCheckRoles, " "),
@@ -717,7 +718,7 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 			wrapper.String("id"),
 			wrapper.String("name"),
 			wrapper.String("type.name"),
-			strings.Join(wrapper.StringSlice("roleAttributes"), "\n")})
+			strings.Join(wrapper.StringSlice("roleAttributes"), ",")})
 	}
 	api.RenderTable(o, t, pagingInfo)
 
