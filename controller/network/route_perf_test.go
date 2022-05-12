@@ -59,7 +59,7 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -185,7 +185,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -279,7 +279,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)
@@ -353,7 +353,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 
 	addLink := func(srcRouter, dstRouter *Router) {
 		if srcRouter != dstRouter {
-			link := newLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
+			link := newTestLink(fmt.Sprintf("link-%04d", linkIdx), "tls")
 			link.SetStaticCost(int32(nextCost()))
 			link.SetDstLatency(nextCost() * 100_000)
 			link.SetSrcLatency(nextCost() * 100_000)

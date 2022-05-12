@@ -26,15 +26,21 @@ import (
 )
 
 type linkController struct {
-	linkTable   *linkTable
-	idGenerator idgen.Generator
-	lock        sync.Mutex
+	linkTable      *linkTable
+	idGenerator    idgen.Generator
+	lock           sync.Mutex
+	initialLatency time.Duration
 }
 
-func newLinkController() *linkController {
+func newLinkController(options *Options) *linkController {
+	initialLatency := DefaultNetworkOptionsInitialLinkLatency
+	if options != nil {
+		initialLatency = options.InitialLinkLatency
+	}
 	return &linkController{
-		linkTable:   newLinkTable(),
-		idGenerator: idgen.NewGenerator(),
+		linkTable:      newLinkTable(),
+		idGenerator:    idgen.NewGenerator(),
+		initialLatency: initialLatency,
 	}
 }
 
@@ -56,7 +62,7 @@ func (linkController *linkController) routerReportedLink(linkId, linkProtocol st
 		return link, false
 	}
 
-	link := newLink(linkId, linkProtocol)
+	link := newLink(linkId, linkProtocol, linkController.initialLatency)
 	link.Src = src
 	link.Dst = dst
 	link.addState(newLinkState(Connected))
@@ -148,7 +154,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 						if err != nil {
 							return nil, err
 						}
-						link := newLink(id, listener.Protocol())
+						link := newLink(id, listener.Protocol(), linkController.initialLatency)
 						link.Src = srcR
 						link.Dst = dstR
 						missingLinks = append(missingLinks, link)

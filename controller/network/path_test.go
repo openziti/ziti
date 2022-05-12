@@ -54,7 +54,7 @@ func TestSimplePath2(t *testing.T) {
 	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r1)
 
-	l0 := newLink("l0", "tls")
+	l0 := newTestLink("l0", "tls")
 	l0.Src = r0
 	l0.Dst = r1
 	l0.addState(newLinkState(Connected))
@@ -122,13 +122,13 @@ func TestTransitPath2(t *testing.T) {
 	r2 := newRouterForTest("r2", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r2)
 
-	l0 := newLink("l0", "tls")
+	l0 := newTestLink("l0", "tls")
 	l0.Src = r0
 	l0.Dst = r1
 	l0.addState(newLinkState(Connected))
 	network.linkController.add(l0)
 
-	l1 := newLink("l1", "tls")
+	l1 := newTestLink("l1", "tls")
 	l1.Src = r1
 	l1.Dst = r2
 	l1.addState(newLinkState(Connected))
@@ -265,7 +265,7 @@ func TestShortestPath(t *testing.T) {
 	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
 	network.Routers.markConnected(r3)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -274,7 +274,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l1", "tls")
+	link = newTestLink("l1", "tls")
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
@@ -283,7 +283,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l2", "tls")
+	link = newTestLink("l2", "tls")
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
@@ -292,7 +292,7 @@ func TestShortestPath(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l3", "tls")
+	link = newTestLink("l3", "tls")
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
@@ -343,7 +343,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
 	network.Routers.markConnected(r3)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -352,7 +352,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l1", "tls")
+	link = newTestLink("l1", "tls")
 	link.SetStaticCost(5)
 	link.SetDstLatency(15 * 1_000_000)
 	link.SetSrcLatency(16 * 1_000_000)
@@ -361,7 +361,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l2", "tls")
+	link = newTestLink("l2", "tls")
 	link.SetStaticCost(9)
 	link.SetDstLatency(20 * 1_000_000)
 	link.SetSrcLatency(21 * 1_000_000)
@@ -370,7 +370,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l3", "tls")
+	link = newTestLink("l3", "tls")
 	link.SetStaticCost(13)
 	link.SetDstLatency(25 * 1_000_000)
 	link.SetSrcLatency(26 * 1_000_000)
@@ -415,7 +415,7 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -459,7 +459,7 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(3)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -506,7 +506,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
 	network.Routers.markConnected(r2)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -515,7 +515,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l1", "tls")
+	link = newTestLink("l1", "tls")
 	link.SetStaticCost(3)
 	link.SetDstLatency(12 * 1_000_000)
 	link.SetSrcLatency(15 * 1_000_000)
@@ -564,7 +564,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	r2 := newRouterForTest("r2", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r2)
 
-	link := newLink("l0", "tls")
+	link := newTestLink("l0", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -573,7 +573,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
-	link = newLink("l2", "tls")
+	link = newTestLink("l2", "tls")
 	link.SetStaticCost(2)
 	link.SetDstLatency(10 * 1_000_000)
 	link.SetSrcLatency(11 * 1_000_000)
@@ -620,10 +620,10 @@ func TestRouterCost(t *testing.T) {
 	r3 := newRouterForTest("r3", "", transportAddr, nil, 20, true)
 	network.Routers.markConnected(r3)
 
-	newTestLink(network, "l0", r0, r1)
-	newTestLink(network, "l1", r0, r2)
-	newTestLink(network, "l2", r1, r3)
-	newTestLink(network, "l3", r2, r3)
+	newPathTestLink(network, "l0", r0, r1)
+	newPathTestLink(network, "l1", r0, r2)
+	newPathTestLink(network, "l2", r1, r3)
+	newPathTestLink(network, "l3", r2, r3)
 
 	path, cost, err := network.shortestPath(r0, r3)
 	req.NoError(err)
@@ -678,10 +678,10 @@ func TestMinRouterCost(t *testing.T) {
 	r3 := newRouterForTest("r3", "", transportAddr, nil, 20, true)
 	network.Routers.markConnected(r3)
 
-	newTestLink(network, "l0", r0, r1)
-	newTestLink(network, "l1", r0, r2)
-	newTestLink(network, "l2", r1, r3)
-	newTestLink(network, "l3", r2, r3)
+	newPathTestLink(network, "l0", r0, r1)
+	newPathTestLink(network, "l1", r0, r2)
+	newPathTestLink(network, "l2", r1, r3)
+	newPathTestLink(network, "l3", r2, r3)
 
 	path, cost, err := network.shortestPath(r0, r3)
 	req.NoError(err)
@@ -706,8 +706,8 @@ func TestMinRouterCost(t *testing.T) {
 	req.Equal(int64(222), cost)
 }
 
-func newTestLink(network *Network, id string, srcR, destR *Router) *Link {
-	l := newLink(id, "tls")
+func newPathTestLink(network *Network, id string, srcR, destR *Router) *Link {
+	l := newTestLink(id, "tls")
 	l.Src = srcR
 	l.Dst = destR
 	l.SrcLatency = 0

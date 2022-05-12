@@ -98,7 +98,7 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 		nodeId:                nodeId,
 		options:               options,
 		routerChanged:         make(chan *Router, 16),
-		linkController:        newLinkController(),
+		linkController:        newLinkController(options),
 		linkChanged:           make(chan *Link, 16),
 		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
 		circuitController:     newCircuitController(),
