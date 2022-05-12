@@ -17,7 +17,9 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
+	"time"
+
+	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
@@ -25,7 +27,6 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/identity/identity"
-	"time"
 )
 
 type circuitRequestHandler struct {
@@ -59,7 +60,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 				}
 			}
 			log = log.WithField("serviceId", service)
-			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext()); err == nil {
+			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext(), time.Now().Add(network.DefaultNetworkOptionsRouteTimeout)); err == nil {
 				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 

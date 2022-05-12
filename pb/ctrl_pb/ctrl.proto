@@ -147,7 +147,6 @@ enum DestType {
 message Route {
   string circuitId = 1;
   uint32 attempt = 2;
-
   message Egress {
     string binding = 1;
     string address = 2;
@@ -155,7 +154,6 @@ message Route {
     map<uint32, bytes> peerData = 4;
   }
   Egress egress = 3;
-
   message Forward {
     string srcAddress = 1;
     string dstAddress = 2;
@@ -163,6 +161,7 @@ message Route {
   }
   repeated Forward forwards = 4;
   Context context = 5;
+  uint64 timeout = 6;
 }
 
 message Unroute {

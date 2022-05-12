@@ -18,16 +18,18 @@ package xgress_transport_udp
 
 import (
 	"fmt"
+	"net"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/identity/identity"
-	"net"
 )
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "transport_udp").
 		WithField("destination", destination)
@@ -39,7 +41,13 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	}
 
 	log.Debugf("dialing packet address [%v]", packetAddress)
-	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
+	deadlineTo := time.Until(deadline)
+	var conn net.Conn
+	if deadlineTo > 0 {
+		conn, err = net.DialTimeout(packetAddress.Network(), packetAddress.Address(), deadlineTo)
+	} else {
+		conn, err = net.Dial(packetAddress.Network(), packetAddress.Address())
+	}
 	if err != nil {
 		return nil, err
 	}

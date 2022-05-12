@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/foundation/util/goroutines"
 	"syscall"
 	"time"
 
@@ -31,6 +30,7 @@ import (
 	"github.com/openziti/fabric/router/handler_xgress"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -93,7 +93,7 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 				rh.completeRoute(msg, int(route.Attempt), route, nil, log)
 				return
 			} else {
-				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx)
+				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx, time.Now().Add(time.Duration(route.Timeout)))
 				return
 			}
 		} else {
@@ -144,7 +144,7 @@ func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.R
 	}
 }
 
-func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch channel.Channel, route *ctrl_pb.Route, ctx logcontext.Context) {
+func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch channel.Channel, route *ctrl_pb.Route, ctx logcontext.Context, deadline time.Time) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("context", ch.Label()).
 		WithField("circuitId", route.CircuitId).
@@ -168,7 +168,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 			}
 
-			if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
+			if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx, deadline); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {
 				var errCode byte

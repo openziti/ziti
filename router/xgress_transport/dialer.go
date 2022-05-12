@@ -17,6 +17,8 @@
 package xgress_transport
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
@@ -47,7 +49,7 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "transport").
 		WithField("destination", destination)
@@ -59,7 +61,12 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	log.Debug("dialing")
 
-	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, txd.options.ConnectTimeout, txd.tcfg)
+	to := txd.options.ConnectTimeout
+	timeToDeadline := time.Until(deadline)
+	if timeToDeadline > 0 && timeToDeadline < to {
+		to = timeToDeadline
+	}
+	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, to, txd.tcfg)
 	if err != nil {
 		return nil, err
 	}

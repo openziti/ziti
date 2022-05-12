@@ -17,6 +17,8 @@
 package network
 
 import (
+	"time"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,7 +32,7 @@ func (network *Network) fault(ffr *ForwardingFaultReport) {
 	for _, circuitId := range ffr.CircuitIds {
 		s, found := network.circuitController.get(circuitId)
 		if found {
-			if err := network.rerouteCircuit(s); err == nil {
+			if err := network.rerouteCircuit(s, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); err == nil {
 				logrus.Infof("rerouted [s/%s] in response to forwarding fault from [r/%s]", circuitId, ffr.R.Id)
 			} else {
 				logrus.Infof("error rerouting [s/%s] in response to forwarding fault from [r/%s] (should remove circuit?! probably not reachable...)", circuitId, ffr.R.Id)

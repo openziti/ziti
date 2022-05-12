@@ -20,6 +20,13 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
+	"math/rand"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xt"
@@ -30,12 +37,6 @@ import (
 	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/sirupsen/logrus"
-	"io"
-	"math/rand"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 const (
@@ -55,7 +56,7 @@ type Listener interface {
 }
 
 type Dialer interface {
-	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context) (xt.PeerData, error)
+	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context, deadline time.Time) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 
