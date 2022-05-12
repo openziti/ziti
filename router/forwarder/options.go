@@ -33,13 +33,13 @@ const (
 	DefaultXgressDialWorkerQueueLength = 1000
 	MinXgressDialWorkerQueueLength     = 1
 	MaxXgressDialWorkerQueueLength     = 10000
-	DefaultXgressDialWorkerCount       = 10
+	DefaultXgressDialWorkerCount       = 128
 	MinXgressDialWorkerCount           = 1
 	MaxXgressDialWorkerCount           = 10000
 	DefaultLinkDialQueueLength         = 1000
 	MinLinkDialWorkerQueueLength       = 1
 	MaxLinkDialWorkerQueueLength       = 10000
-	DefaultLinkDialWorkerCount         = 10
+	DefaultLinkDialWorkerCount         = 32
 	MinLinkDialWorkerCount             = 1
 	MaxLinkDialWorkerCount             = 10000
 )
