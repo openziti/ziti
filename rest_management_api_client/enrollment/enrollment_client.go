@@ -54,6 +54,8 @@ type ClientOption func(*runtime.ClientOperation)
 
 // ClientService is the interface for Client methods
 type ClientService interface {
+	CreateEnrollment(params *CreateEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateEnrollmentCreated, error)
+
 	DeleteEnrollment(params *DeleteEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DeleteEnrollmentOK, error)
 
 	DetailEnrollment(params *DetailEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DetailEnrollmentOK, error)
@@ -63,6 +65,47 @@ type ClientService interface {
 	RefreshEnrollment(params *RefreshEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*RefreshEnrollmentOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
+}
+
+/*
+  CreateEnrollment creates an outstanding enrollment for an identity
+
+  Creates a new OTT, OTTCA, or UPDB enrollment for a specific identity. If an enrollment of the same type is already outstanding the request will fail with a 409 conflict. If desired, an existing enrollment can be refreshed by `enrollments/:id/refresh` or deleted.
+*/
+func (a *Client) CreateEnrollment(params *CreateEnrollmentParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateEnrollmentCreated, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewCreateEnrollmentParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "createEnrollment",
+		Method:             "POST",
+		PathPattern:        "/enrollments",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &CreateEnrollmentReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*CreateEnrollmentCreated)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for createEnrollment: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
 }
 
 /*

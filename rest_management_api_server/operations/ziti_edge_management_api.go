@@ -138,6 +138,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		EdgeRouterPolicyCreateEdgeRouterPolicyHandler: edge_router_policy.CreateEdgeRouterPolicyHandlerFunc(func(params edge_router_policy.CreateEdgeRouterPolicyParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation edge_router_policy.CreateEdgeRouterPolicy has not yet been implemented")
 		}),
+		EnrollmentCreateEnrollmentHandler: enrollment.CreateEnrollmentHandlerFunc(func(params enrollment.CreateEnrollmentParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation enrollment.CreateEnrollment has not yet been implemented")
+		}),
 		ExternalJWTSignerCreateExternalJWTSignerHandler: external_jwt_signer.CreateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.CreateExternalJWTSignerParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation external_jwt_signer.CreateExternalJWTSigner has not yet been implemented")
 		}),
@@ -724,6 +727,8 @@ type ZitiEdgeManagementAPI struct {
 	EdgeRouterCreateEdgeRouterHandler edge_router.CreateEdgeRouterHandler
 	// EdgeRouterPolicyCreateEdgeRouterPolicyHandler sets the operation handler for the create edge router policy operation
 	EdgeRouterPolicyCreateEdgeRouterPolicyHandler edge_router_policy.CreateEdgeRouterPolicyHandler
+	// EnrollmentCreateEnrollmentHandler sets the operation handler for the create enrollment operation
+	EnrollmentCreateEnrollmentHandler enrollment.CreateEnrollmentHandler
 	// ExternalJWTSignerCreateExternalJWTSignerHandler sets the operation handler for the create external Jwt signer operation
 	ExternalJWTSignerCreateExternalJWTSignerHandler external_jwt_signer.CreateExternalJWTSignerHandler
 	// IdentityCreateIdentityHandler sets the operation handler for the create identity operation
@@ -1187,6 +1192,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.EdgeRouterPolicyCreateEdgeRouterPolicyHandler == nil {
 		unregistered = append(unregistered, "edge_router_policy.CreateEdgeRouterPolicyHandler")
+	}
+	if o.EnrollmentCreateEnrollmentHandler == nil {
+		unregistered = append(unregistered, "enrollment.CreateEnrollmentHandler")
 	}
 	if o.ExternalJWTSignerCreateExternalJWTSignerHandler == nil {
 		unregistered = append(unregistered, "external_jwt_signer.CreateExternalJWTSignerHandler")
@@ -1843,6 +1851,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}
 	o.handlers["POST"]["/edge-router-policies"] = edge_router_policy.NewCreateEdgeRouterPolicy(o.context, o.EdgeRouterPolicyCreateEdgeRouterPolicyHandler)
+	if o.handlers["POST"] == nil {
+		o.handlers["POST"] = make(map[string]http.Handler)
+	}
+	o.handlers["POST"]["/enrollments"] = enrollment.NewCreateEnrollment(o.context, o.EnrollmentCreateEnrollmentHandler)
 	if o.handlers["POST"] == nil {
 		o.handlers["POST"] = make(map[string]http.Handler)
 	}

@@ -105,6 +105,8 @@ func T(t time.Time) *time.Time {
 	return &t
 }
 
+// ST returns a pointer to a strfmt.Date time. A helper function
+// for creating rest_model types
 func ST(t time.Time) *strfmt.DateTime {
 	st := strfmt.DateTime(t)
 	return &st
@@ -566,7 +568,7 @@ func (ctx *TestContext) completeUpdbEnrollment(identityId string, password strin
 	ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 }
 
-func (ctx *TestContext) completeCaAutoEnrollment(certAuth *certAuthenticator) {
+func (ctx *TestContext) completeOttCaEnrollment(certAuth *certAuthenticator) {
 	trans := ctx.NewTransport()
 	trans.TLSClientConfig.Certificates = []cryptoTls.Certificate{
 		{

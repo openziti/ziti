@@ -171,6 +171,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation edge_router_policy.CreateEdgeRouterPolicy has not yet been implemented")
 		})
 	}
+	if api.EnrollmentCreateEnrollmentHandler == nil {
+		api.EnrollmentCreateEnrollmentHandler = enrollment.CreateEnrollmentHandlerFunc(func(params enrollment.CreateEnrollmentParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation enrollment.CreateEnrollment has not yet been implemented")
+		})
+	}
 	if api.ExternalJWTSignerCreateExternalJWTSignerHandler == nil {
 		api.ExternalJWTSignerCreateExternalJWTSignerHandler = external_jwt_signer.CreateExternalJWTSignerHandlerFunc(func(params external_jwt_signer.CreateExternalJWTSignerParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation external_jwt_signer.CreateExternalJWTSigner has not yet been implemented")

@@ -348,3 +348,23 @@ func NewCanNotDeleteReferencedEntity(localEntityType, remoteEntityType string, r
 		AppendCause: true,
 	}
 }
+
+func NewBadRequestFieldError(fieldError errorz.FieldError) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        ReferencedEntityNotFoundCode,
+		Message:     ReferencedEntityNotFoundMessage,
+		Status:      ReferencedEntityNotFoundStatus,
+		Cause:       fieldError,
+		AppendCause: true,
+	}
+}
+
+func NewEnrollmentExists(enrollmentMethod string) *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:        EnrollmentExistsCode,
+		Message:     EnrollmentExistsMessage,
+		Status:      EnrollmentExistsStatus,
+		Cause:       errorz.NewFieldError("enrollment of same method exists", "method", enrollmentMethod),
+		AppendCause: true,
+	}
+}

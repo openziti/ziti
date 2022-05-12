@@ -95,7 +95,7 @@ func Test_CA(t *testing.T) {
 		ctx.logJson(resp.Body())
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		ctx.completeCaAutoEnrollment(clientAuthenticator)
+		ctx.completeOttCaEnrollment(clientAuthenticator)
 
 		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
@@ -132,7 +132,7 @@ func Test_CA(t *testing.T) {
 		ctx.logJson(resp.Body())
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		ctx.completeCaAutoEnrollment(clientAuthenticator)
+		ctx.completeOttCaEnrollment(clientAuthenticator)
 
 		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 
@@ -171,7 +171,7 @@ func Test_CA(t *testing.T) {
 
 		//first firstIdentity, no issues
 		firstClientAuthenticator := ca.CreateSignedCert(eid.New())
-		ctx.completeCaAutoEnrollment(firstClientAuthenticator)
+		ctx.completeOttCaEnrollment(firstClientAuthenticator)
 
 		firstEnrolledSession, err := firstClientAuthenticator.AuthenticateClientApi(ctx)
 
@@ -182,7 +182,7 @@ func Test_CA(t *testing.T) {
 
 		//second firstIdentity that collides, becomes
 		secondClientAuthenticator := ca.CreateSignedCert(eid.New())
-		ctx.completeCaAutoEnrollment(secondClientAuthenticator)
+		ctx.completeOttCaEnrollment(secondClientAuthenticator)
 
 		secondEnrolledSession, err := secondClientAuthenticator.AuthenticateClientApi(ctx)
 
@@ -252,7 +252,7 @@ func Test_CA(t *testing.T) {
 		ctx.logJson(resp.Body())
 		ctx.Req.Equal(http.StatusOK, resp.StatusCode())
 
-		ctx.completeCaAutoEnrollment(clientAuthenticator)
+		ctx.completeOttCaEnrollment(clientAuthenticator)
 
 		enrolledSession, err := clientAuthenticator.AuthenticateClientApi(ctx)
 

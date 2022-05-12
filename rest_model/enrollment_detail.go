@@ -48,6 +48,9 @@ import (
 type EnrollmentDetail struct {
 	BaseEntity
 
+	// ca Id
+	CaID *string `json:"caId,omitempty"`
+
 	// details
 	// Required: true
 	Details map[string]string `json:"details"`
@@ -101,6 +104,8 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
+		CaID *string `json:"caId,omitempty"`
+
 		Details map[string]string `json:"details"`
 
 		EdgeRouter *EntityRef `json:"edgeRouter,omitempty"`
@@ -128,6 +133,8 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
+
+	m.CaID = dataAO1.CaID
 
 	m.Details = dataAO1.Details
 
@@ -166,6 +173,8 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
+		CaID *string `json:"caId,omitempty"`
+
 		Details map[string]string `json:"details"`
 
 		EdgeRouter *EntityRef `json:"edgeRouter,omitempty"`
@@ -190,6 +199,8 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 
 		Username string `json:"username,omitempty"`
 	}
+
+	dataAO1.CaID = m.CaID
 
 	dataAO1.Details = m.Details
 
