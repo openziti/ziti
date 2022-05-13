@@ -18,10 +18,11 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	"github.com/shirou/gopsutil/process"
-	"github.com/spf13/cobra"
 	"strconv"
+
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	"github.com/shirou/gopsutil/v3/process"
+	"github.com/spf13/cobra"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"

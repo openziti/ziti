@@ -33,7 +33,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil v2.21.11+incompatible
+	github.com/shirou/gopsutil/v3 v3.22.4
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
@@ -128,7 +128,6 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
-	github.com/shirou/gopsutil/v3 v3.22.4 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/spf13/afero v1.6.0 // indirect

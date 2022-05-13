@@ -122,6 +122,9 @@ link fault will be sent to all connected routers.
 
 The `ziti-probe` tool will no longer be built and published as part of Ziti releases.
 
+## Maintenance
+Improved MacOS compatibility with cert handling and ioKit.
+
 ### Bug Fixes
 
 * https://github.com/openziti/fabric/issues/393
