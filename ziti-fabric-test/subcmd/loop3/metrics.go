@@ -2,14 +2,14 @@ package loop3
 
 import (
 	"encoding/binary"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -115,7 +115,7 @@ func (r *zitiMetricsReporter) run(reportInterval time.Duration) {
 
 func (r *zitiMetricsReporter) createMetricsEvent() *mgmt_pb.StreamMetricsEvent {
 	event := &mgmt_pb.StreamMetricsEvent{
-		Timestamp:    ptypes.TimestampNow(),
+		Timestamp:    timestamppb.Now(),
 		SourceId:     r.clientId,
 		IntMetrics:   map[string]int64{},
 		FloatMetrics: map[string]float64{},

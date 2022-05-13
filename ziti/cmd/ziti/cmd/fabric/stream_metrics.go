@@ -18,13 +18,13 @@ package fabric
 
 import (
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"sort"
 	"time"
 )
@@ -92,7 +92,7 @@ func (self *streamMetricsAction) streamMetrics(_ *cobra.Command, args []string) 
 	<-closeNotify
 }
 
-func (self *streamMetricsAction) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *streamMetricsAction) HandleReceive(msg *channel.Message, _ channel.Channel) {
 	response := &mgmt_pb.StreamMetricsEvent{}
 	err := proto.Unmarshal(msg.Body, response)
 	if err != nil {
@@ -130,6 +130,6 @@ func (self *streamMetricsAction) HandleReceive(msg *channel.Message, ch channel.
 	fmt.Println()
 }
 
-func (self *streamMetricsAction) format(protobufTS *timestamp.Timestamp) string {
+func (self *streamMetricsAction) format(protobufTS *timestamppb.Timestamp) string {
 	return protobufTS.AsTime().Format(time.RFC3339)
 }

@@ -20,9 +20,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
 	"net"
@@ -114,22 +114,14 @@ func (cmd *listenerCmd) listen(bind transport.Address, i *identity.TokenId) {
 	defer log.Error("exited")
 	log.Info("started")
 
-	incoming := make(chan transport.Connection)
+	acceptF := func(peer transport.Conn) {
+		go cmd.handle(peer, peer.Detail().String())
+	}
 	go func() {
-		if _, err := bind.Listen("loop", i, incoming, nil); err != nil {
+		if _, err := bind.Listen("loop", i, acceptF, nil); err != nil {
 			panic(err)
 		}
 	}()
-	for {
-		select {
-		case peer := <-incoming:
-			if peer != nil {
-				go cmd.handle(peer.Conn(), peer.Detail().String())
-			} else {
-				return
-			}
-		}
-	}
 }
 
 func (cmd *listenerCmd) handle(conn net.Conn, context string) {

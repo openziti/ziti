@@ -70,14 +70,14 @@ mgmt:
   #url:                http://localhost:8086
   #database:           ziti
 
-#events:
-#  jsonLogger:
-#    subscriptions:
+events:
+  jsonLogger:
+    subscriptions:
 #      - type: fabric.routers
 #      - type: fabric.terminators
-#      - type: metrics
-#        sourceFilter: .*
-#        metricFilter: .*egress.*m1_rate*
+      - type: metrics
+        sourceFilter: .*
+        metricFilter: .*pool.*
 #      - type: fabric.circuits
 #        include:
 #          - created
@@ -90,10 +90,10 @@ mgmt:
 #      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: /tmp/ziti-events.log
 
 # xctrl_example
 #

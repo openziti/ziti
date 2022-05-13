@@ -21,11 +21,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/openziti/fabric/router/xgress_transport"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
+	"github.com/openziti/transport/v2"
+	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
 	"io/ioutil"
 	"net"
@@ -63,7 +63,7 @@ func doHttp(cmd *cobra.Command, args []string) {
 					serviceId := &identity.TokenId{Token: host}
 					if peer, err := xgress_transport.ClientDial(ingressAddr, id, serviceId, nil); err == nil {
 						pfxlog.Logger().Debug("connected")
-						return peer.Conn(), nil
+						return peer, nil
 					} else {
 						return nil, err
 					}
