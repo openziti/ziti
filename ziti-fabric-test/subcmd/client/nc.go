@@ -22,8 +22,8 @@ import (
 	"github.com/openziti/fabric/router/xgress_transport"
 	"github.com/openziti/foundation/identity/dotziti"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/transport"
 	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	"github.com/spf13/cobra"
 	"io"
@@ -66,8 +66,8 @@ func doNC(cmd *cobra.Command, args []string) {
 	fmt.Fprintf(os.Stderr, "Successfully authenticated to ingress %v. Beginning nc.\n", ncCmdIngress)
 
 	pfxlog.Logger().Debug("connected")
-	go Copy(conn.Writer(), os.Stdin)
-	Copy(os.Stdout, conn.Reader())
+	go Copy(conn, os.Stdin)
+	Copy(os.Stdout, conn)
 }
 
 func Copy(writer io.Writer, reader io.Reader) {

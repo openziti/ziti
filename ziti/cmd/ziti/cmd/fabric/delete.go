@@ -68,6 +68,7 @@ func newDeleteCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd.AddCommand(newDeleteCmdForEntityType("circuit", newOptions(true)))
+	cmd.AddCommand(newDeleteCmdForEntityType("link", newOptions(false)))
 	cmd.AddCommand(newDeleteCmdForEntityType("router", newOptions(false)))
 	cmd.AddCommand(newDeleteCmdForEntityType("service", newOptions(false)))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions(false)))

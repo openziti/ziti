@@ -80,7 +80,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	stateManager := fabric.NewStateManager()
 
-	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.MetricsRegistry())
+	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.GetMetricsRegistry())
 	xgress.GlobalRegistry().Register(edge_common.EdgeBinding, xgressEdgeFactory)
 	if err := r.RegisterXctrl(xgressEdgeFactory); err != nil {
 		logrus.WithError(err).Panic("error registering edge in framework")

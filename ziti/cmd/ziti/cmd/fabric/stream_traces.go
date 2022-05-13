@@ -19,7 +19,7 @@ package fabric
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
