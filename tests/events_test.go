@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -128,7 +129,7 @@ func Test_EventsTest(t *testing.T) {
 	conn.WriteString("hello, hello, how are you?", time.Second)
 
 	testServer.waitForDone(ctx, 5*time.Second)
-	ctx.router.MetricsRegistry().Flush()
+	ctx.router.GetMetricsRegistry().Flush()
 	err = ec.waitForUsage(2 * time.Minute)
 	ctx.Req.NoError(err)
 

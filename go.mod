@@ -31,10 +31,10 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.35
-	github.com/openziti/fabric v0.17.133
+	github.com/openziti/channel v0.18.36
+	github.com/openziti/fabric v0.17.134
 	github.com/openziti/foundation v0.17.25
-	github.com/openziti/sdk-golang v0.16.67
+	github.com/openziti/sdk-golang v0.16.68
 	github.com/openziti/storage v0.1.5
 	github.com/openziti/transport/v2 v2.0.1
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -96,7 +96,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.3 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.4 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
