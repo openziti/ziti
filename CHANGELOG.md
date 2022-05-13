@@ -1,3 +1,7 @@
+# Release 0.25.7
+
+* Enhancement: Added fabric deadline threading. This will limit overal time spent processing and will propagate the deadline to terminator dials.
+
 # Release 0.25.6
 
 * Moving from Go 1.17 to 1.18
