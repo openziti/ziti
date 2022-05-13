@@ -19,6 +19,7 @@ package xgress_edge
 import (
 	"encoding/binary"
 	"fmt"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"google.golang.org/protobuf/proto"
 	"time"
 
@@ -67,8 +68,14 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 
 	pfxlog.Logger().WithField("address", addr).Info("starting channel listener")
 
-	listener.underlayListener = channel.NewClassicListenerWithTransportConfiguration(
-		listener.id, addr, listener.options.channelOptions.ConnectOptions, listener.factory.edgeRouterConfig.Tcfg, listener.headers)
+	listenerConfig := channel.ListenerConfig{
+		ConnectOptions:   listener.options.channelOptions.ConnectOptions,
+		TransportConfig:  listener.factory.edgeRouterConfig.Tcfg,
+		Headers:          listener.headers,
+		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
+	}
+
+	listener.underlayListener = channel.NewClassicListener(listener.id, addr, listenerConfig)
 
 	if err := listener.underlayListener.Listen(); err != nil {
 		return err
