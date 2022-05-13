@@ -15,7 +15,11 @@ func (ctx *TestContext) NewControlChannelListener() channel.UnderlayListener {
 		channel.HelloVersionHeader: versionHeader,
 	}
 
-	ctrlListener := channel.NewClassicListener(config.Id, config.Ctrl.Listener, config.Ctrl.Options.ConnectOptions, headers)
+	ctrlChannelListenerConfig := channel.ListenerConfig{
+		ConnectOptions: config.Ctrl.Options.ConnectOptions,
+		Headers:        headers,
+	}
+	ctrlListener := channel.NewClassicListener(config.Id, config.Ctrl.Listener, ctrlChannelListenerConfig)
 	ctx.Req.NoError(ctrlListener.Listen())
 	return ctrlListener
 }

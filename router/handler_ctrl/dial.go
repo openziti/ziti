@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
@@ -38,13 +39,13 @@ type dialHandler struct {
 	pool     goroutines.Pool
 }
 
-func newDialHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialers []xlink.Dialer, pool goroutines.Pool, registry xlink.Registry) *dialHandler {
+func newDialHandler(env env.RouterEnv, pool goroutines.Pool) *dialHandler {
 	handler := &dialHandler{
-		id:       id,
-		ctrl:     ctrl,
-		dialers:  dialers,
+		id:       env.GetRouterId(),
+		ctrl:     env,
+		dialers:  env.GetXlinkDialer(),
 		pool:     pool,
-		registry: registry,
+		registry: env.GetXlinkRegistry(),
 	}
 
 	return handler

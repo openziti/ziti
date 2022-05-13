@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/fabric/router/env"
 	"syscall"
 	"time"
 
@@ -44,11 +45,11 @@ type routeHandler struct {
 	pool      goroutines.Pool
 }
 
-func newRouteHandler(id *identity.TokenId, ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
+func newRouteHandler(env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
 	handler := &routeHandler{
-		id:        id,
-		ctrl:      ctrl,
-		dialerCfg: dialerCfg,
+		id:        env.GetRouterId(),
+		ctrl:      env,
+		dialerCfg: env.GetDialerCfg(),
 		forwarder: forwarder,
 		pool:      pool,
 	}

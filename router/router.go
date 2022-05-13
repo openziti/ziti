@@ -23,7 +23,6 @@ import (
 	"fmt"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xctrl"
@@ -44,12 +43,14 @@ import (
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"plugin"
 	"time"
@@ -80,7 +81,35 @@ type Router struct {
 	agentBindHandlers   []channel.BindHandler
 }
 
-func (self *Router) MetricsRegistry() metrics.UsageRegistry {
+func (self *Router) GetRouterId() *identity.TokenId {
+	return self.config.Id
+}
+
+func (self *Router) GetDialerCfg() map[string]xgress.OptionsData {
+	return self.config.Dialers
+}
+
+func (self *Router) GetXlinkDialer() []xlink.Dialer {
+	return self.xlinkDialers
+}
+
+func (self *Router) GetXtrls() []xctrl.Xctrl {
+	return self.xctrls
+}
+
+func (self *Router) GetTraceHandler() *channel.TraceHandler {
+	return self.config.Trace.Handler
+}
+
+func (self *Router) GetXlinkRegistry() xlink.Registry {
+	return self.xlinkRegistry
+}
+
+func (self *Router) GetCloseNotify() <-chan struct{} {
+	return self.shutdownC
+}
+
+func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
@@ -143,10 +172,6 @@ func (self *Router) GetVersionInfo() common.VersionProvider {
 
 func (self *Router) GetConfig() *Config {
 	return self.config
-}
-
-func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
-	return self.metricsRegistry
 }
 
 func (self *Router) Start() error {
@@ -274,7 +299,7 @@ func (self *Router) registerComponents() error {
 		self.metricsRegistry,
 		self.xlinkRegistry,
 	)
-	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport, self.xlinkRegistry)
+	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport, self.xlinkRegistry, self.metricsRegistry)
 
 	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
@@ -418,18 +443,7 @@ func (self *Router) startControlPlane() error {
 	}
 	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, self.config.Ctrl.Endpoint, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
 
-	bindHandler := handler_ctrl.NewBindHandler(
-		self.config.Id,
-		self.config.Dialers,
-		self.xlinkDialers,
-		self,
-		self.forwarder,
-		self.xctrls,
-		self.config,
-		self.config.Trace.Handler,
-		self.xlinkRegistry,
-		self.shutdownC,
-	)
+	bindHandler := handler_ctrl.NewBindHandler(self, self.forwarder, self.config)
 
 	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {

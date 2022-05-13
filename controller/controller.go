@@ -34,6 +34,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
 	"github.com/openziti/fabric/xweb"
@@ -134,7 +135,12 @@ func (c *Controller) Run() error {
 	/**
 	 * ctrl listener/accepter.
 	 */
-	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
+	ctrlChannelListenerConfig := channel.ListenerConfig{
+		ConnectOptions:   c.config.Ctrl.Options.ConnectOptions,
+		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
+		Headers:          headers,
+	}
+	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
@@ -147,7 +153,12 @@ func (c *Controller) Run() error {
 	/**
 	 * mgmt listener/accepter.
 	 */
-	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
+	mgmtChannelListenerConfig := channel.ListenerConfig{
+		ConnectOptions:   c.config.Mgmt.Options.ConnectOptions,
+		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(c.network.GetMetricsRegistry(), "pool.listener.mgmt"),
+		Headers:          headers,
+	}
+	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, mgmtChannelListenerConfig)
 	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
