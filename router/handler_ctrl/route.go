@@ -63,7 +63,7 @@ func (rh *routeHandler) ContentType() int32 {
 func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	route := &ctrl_pb.Route{}
 
-	if err := proto.Unmarshal(msg.Body, route); err == nil {
+	if err := proto.Unmarshal(msg.Body, route); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshaling")
 		return
 	}
