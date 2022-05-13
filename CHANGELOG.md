@@ -1,3 +1,134 @@
+# Release 0.25.7
+
+## Fabric
+
+### Dial Timeout Propagation
+Currently each section of the dial logic has its own timeouts. It can easily happen that
+an early stage timeout expires while a later one doesn't, causing work to be done whose
+results will be ignored. A first pass has been completed at threading timeouts/deadline
+through the dial logic, spanning controller and routers, so that we use approximately
+the same timeout througout the dial process.
+
+### Link Initial Latency
+Previously links would start with a latency of 0, which they would keep until the latency
+was reported from the routers. Now, latency will be initialized to a default of 65 seconds,
+which it will stay at until an actual latency is reported. If a new link is the only 
+available one for a given path, this won't prevent the link from being used. However, if
+there are other paths available, this will bias the network to the existing paths until
+it can see what the actual link latency is. Latency should generally be reported
+within a minute or so. 
+
+This value can be adjusted in the controller config, under the `network` section.
+
+```
+network:
+  initialLinkLatency: 65s
+```
+
+### Link Verification changes
+In previous releases when a router recieved a link dial from another router, it would verify
+that the link was known to the controller and the dialing router was valid. Router validity
+was checked by making sure the fingerprints of the certs used to establish the link matched
+the fingerprints on record for the router.
+
+From this release forwards we will only verify that the router requesting the link is valid
+and won't check that the link is valid. This is because the router has more control over the
+links now, and in future, may take over more of link management. As long as we're getting
+link dials from a valid router, we don't care if they were controller initiated or router 
+initiated. For now they are all controller initiated, but this also covers the case where
+the controller times out a link, but the router still manages to initiate it. Now the router
+can report the link back to the controller and it will be used.
+
+### Add Goroutine Pool Metrics
+We use goroutine pools which are fed by queues in several places, to ensure that we have 
+guardrails on the number of concurrent activities. There are now metrics emitted for these
+pools.
+
+The pool types on the controller are:
+
+* pool.listener.ctrl
+* pool.listener.mgmt
+
+The pool types on router are:
+
+* pool.listener.link
+* pool.link.dialer
+* pool.route.handler
+* pool.listener.xgress_edge (if edge is enabled)
+
+Each pool has metrics for
+
+* Current worker count
+* Current queue size
+* Current active works
+* Work timer, which includes count of work performed, meter for work rate and histogram for work execution time
+
+
+An example of the metric names for pool.listener.link:
+
+```
+pool.listener.link.busy_workers
+pool.listener.link.queue_size
+pool.listener.link.work_timer.count
+pool.listener.link.work_timer.m15_rate
+pool.listener.link.work_timer.m1_rate
+pool.listener.link.work_timer.m5_rate
+pool.listener.link.work_timer.max
+pool.listener.link.work_timer.mean
+pool.listener.link.work_timer.mean_rate
+pool.listener.link.work_timer.min
+pool.listener.link.work_timer.p50
+pool.listener.link.work_timer.p75
+pool.listener.link.work_timer.p95
+pool.listener.link.work_timer.p99
+pool.listener.link.work_timer.p999
+pool.listener.link.work_timer.p9999
+pool.listener.link.work_timer.std_dev
+pool.listener.link.work_timer.variance
+```
+
+### Add Link Count and Cost to Circuit Events
+Link Count will now be available on all circuit events. Circuit cost will be available on
+circuit created events. The circuit cost is the full circuit cost (router costs + link costs
++ terminator costs). 
+
+Example:
+```
+{
+  "namespace": "fabric.circuits",
+  "event_type": "created",
+  "circuit_id": "XpSWLZB1P",
+  "timestamp": "2022-05-11T13:00:06.976266668-04:00",
+  "client_id": "cl31tuu93000iaugd57qv6hjc",
+  "service_id": "dstSybunfM",
+  "creation_timespan": 969933,
+  "path": "[r/h-DqbP927]->[l/1qp6LIzSlWkQM1jSSTJG1j]->[r/Ce1f5dDCey]",
+  "link_count": 1,
+  "path_cost": 890
+}
+```
+
+### Remove ziti-fabric CLI command
+The previously deprecated ziti-fabric command will no longer be published as part of Ziti releases. 
+All of ziti-fabric's functionality is available in the `ziti` CLI under `ziti fabric`.
+
+### Add link delete
+If a link gets in a bad state (see bug below for how this could happen), you can now use 
+`ziti fabric delete link <link id>`. This will remove the link from the controller as well
+as send link faults to associated routers. If the link is not known to the controller, a 
+link fault will be sent to all connected routers.
+
+## Miscellaneous
+
+The `ziti-probe` tool will no longer be built and published as part of Ziti releases.
+
+### Bug Fixes
+
+* https://github.com/openziti/fabric/issues/393
+* https://github.com/openziti/fabric/issues/395
+* https://github.com/openziti/channel/issues/50
+* `ziti fabric list circuits` was showing the router id instead of the link id in the circuit path
+
 # Release 0.25.6
 
 * Moving from Go 1.17 to 1.18
