@@ -400,6 +400,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		return nil, err
 	}
 	ctx.WithField("circuitId", circuitId)
+	ctx.WithField("serviceId", service)
 	ctx.WithField("attemptNumber", 1)
 	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
 	targetIdentity, serviceId := parseIdentityAndService(service)
@@ -415,6 +416,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
+		logger = logger.WithField("serviceName", svc.Name)
 
 		// 3: select terminator
 		strategy, terminator, pathNodes, err := network.selectPath(srcR, svc, targetIdentity, ctx)
