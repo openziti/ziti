@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -38,11 +40,17 @@ type listener struct {
 	tcfg               transport.Configuration
 	pendingLinks       map[string]*pendingLink
 	lock               sync.Mutex
+	metricsRegistry    metrics.Registry
 	xlinkRegistery     xlink.Registry
 }
 
 func (self *listener) Listen() error {
-	listener := channel.NewClassicListenerWithTransportConfiguration(self.id, self.config.bind, self.config.options.ConnectOptions, self.tcfg, nil)
+	config := channel.ListenerConfig{
+		ConnectOptions:   self.config.options.ConnectOptions,
+		TransportConfig:  self.tcfg,
+		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(self.metricsRegistry, "pool.listener.link"),
+	}
+	listener := channel.NewClassicListener(self.id, self.config.bind, config)
 
 	self.listener = listener
 	connectionHandler := &ConnectionHandler{self.id}

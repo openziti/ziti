@@ -3,7 +3,6 @@
 package tests
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -15,8 +14,10 @@ import (
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/tests/testutil"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/transport/v2"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"io"
 	"testing"
 	"time"
@@ -65,7 +66,8 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 	tcfg := transport.Configuration{
 		"split": false,
 	}
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry())
+	metricsRegistery := metrics.NewRegistry("test", nil)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(), metricsRegistery)
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
 	dial := &ctrl_pb.Dial{
@@ -99,7 +101,9 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	tcfg := transport.Configuration{
 		"split": false,
 	}
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry())
+
+	metricsRegistery := metrics.NewRegistry("test", nil)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(), metricsRegistery)
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
 	dial := &ctrl_pb.Dial{

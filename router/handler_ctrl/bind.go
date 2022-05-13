@@ -20,12 +20,10 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/latency"
-	"github.com/openziti/fabric/controller/xctrl"
+	"github.com/openziti/fabric/metrics"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -33,39 +31,16 @@ import (
 )
 
 type bindHandler struct {
-	id                 *identity.TokenId
-	dialerCfg          map[string]xgress.OptionsData
-	xlinkDialers       []xlink.Dialer
-	ctrl               xgress.CtrlChannel
+	env                env.RouterEnv
 	forwarder          *forwarder.Forwarder
-	xctrls             []xctrl.Xctrl
-	closeNotify        chan struct{}
 	ctrlAddressChanger CtrlAddressChanger
-	traceHandler       *channel.TraceHandler
-	linkRegistry       xlink.Registry
 }
 
-func NewBindHandler(id *identity.TokenId,
-	dialerCfg map[string]xgress.OptionsData,
-	xlinkDialers []xlink.Dialer,
-	ctrl xgress.CtrlChannel,
-	forwarder *forwarder.Forwarder,
-	xctrls []xctrl.Xctrl,
-	ctrlAddressChanger CtrlAddressChanger,
-	traceHandler *channel.TraceHandler,
-	linkRegistry xlink.Registry,
-	closeNotify chan struct{}) channel.BindHandler {
+func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger) channel.BindHandler {
 	return &bindHandler{
-		id:                 id,
-		dialerCfg:          dialerCfg,
-		xlinkDialers:       xlinkDialers,
-		ctrl:               ctrl,
+		env:                routerEnv,
 		forwarder:          forwarder,
-		xctrls:             xctrls,
-		closeNotify:        closeNotify,
 		ctrlAddressChanger: ctrlAddressChanger,
-		traceHandler:       traceHandler,
-		linkRegistry:       linkRegistry,
 	}
 }
 
@@ -75,11 +50,13 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		MinWorkers:  0,
 		MaxWorkers:  uint32(self.forwarder.Options.LinkDial.WorkerCount),
 		IdleTime:    30 * time.Second,
-		CloseNotify: self.closeNotify,
+		CloseNotify: self.env.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during link dial")
 		},
 	}
+
+	metrics.ConfigureGoroutinesPoolMetrics(self.env.GetMetricsRegistry(), "pool.link.dialer")
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
@@ -91,38 +68,40 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		MinWorkers:  0,
 		MaxWorkers:  uint32(self.forwarder.Options.XgressDial.WorkerCount),
 		IdleTime:    30 * time.Second,
-		CloseNotify: self.closeNotify,
+		CloseNotify: self.env.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during xgress dial")
 		},
 	}
 
+	metrics.ConfigureGoroutinesPoolMetrics(self.env.GetMetricsRegistry(), "pool.route.handler")
+
 	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating xgress dialer pool")
+		return errors.Wrap(err, "error creating xgress route handler pool")
 	}
 
-	binding.AddTypedReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, linkDialerPool, self.linkRegistry))
-	binding.AddTypedReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, xgDialerPool))
-	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
+	binding.AddTypedReceiveHandler(newDialHandler(self.env, linkDialerPool))
+	binding.AddTypedReceiveHandler(newRouteHandler(self.env, self.forwarder, xgDialerPool))
+	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
-	binding.AddTypedReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
-	binding.AddTypedReceiveHandler(newInspectHandler(self.id, self.linkRegistry, self.forwarder))
+	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController()))
+	binding.AddTypedReceiveHandler(newInspectHandler(self.env.GetRouterId(), self.env.GetXlinkRegistry(), self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
-	binding.AddTypedReceiveHandler(newFaultHandler(self.linkRegistry))
+	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
 	latency.AddLatencyProbeResponder(binding)
 
 	cb := &heartbeatCallback{}
 
 	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
 
-	if self.traceHandler != nil {
-		binding.AddPeekHandler(self.traceHandler)
+	if self.env.GetTraceHandler() != nil {
+		binding.AddPeekHandler(self.env.GetTraceHandler())
 	}
 
-	for _, x := range self.xctrls {
+	for _, x := range self.env.GetXtrls() {
 		if err := binding.Bind(x); err != nil {
 			return err
 		}

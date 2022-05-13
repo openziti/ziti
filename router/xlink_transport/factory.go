@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/transport/v2"
 )
 
@@ -45,12 +46,17 @@ func (self channelType) String() string {
 	return "invalid"
 }
 
-func NewFactory(accepter xlink.Acceptor, bindHandlerFactory BindHandlerFactory, c transport.Configuration, registry xlink.Registry) xlink.Factory {
+func NewFactory(accepter xlink.Acceptor,
+	bindHandlerFactory BindHandlerFactory,
+	c transport.Configuration,
+	xlinkRegistry xlink.Registry,
+	metricsRegistry metrics.Registry) xlink.Factory {
 	return &factory{
 		acceptor:           accepter,
 		bindHandlerFactory: bindHandlerFactory,
 		transportConfig:    c,
-		xlinkRegistry:      registry,
+		xlinkRegistry:      xlinkRegistry,
+		metricsRegistry:    metricsRegistry,
 	}
 }
 
@@ -67,6 +73,7 @@ func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, con
 		tcfg:               self.transportConfig,
 		pendingLinks:       map[string]*pendingLink{},
 		xlinkRegistery:     self.xlinkRegistry,
+		metricsRegistry:    self.metricsRegistry,
 	}, nil
 }
 
@@ -89,4 +96,5 @@ type factory struct {
 	bindHandlerFactory BindHandlerFactory
 	transportConfig    transport.Configuration
 	xlinkRegistry      xlink.Registry
+	metricsRegistry    metrics.Registry
 }

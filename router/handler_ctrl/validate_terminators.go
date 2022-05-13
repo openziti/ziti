@@ -17,22 +17,21 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
+	"google.golang.org/protobuf/proto"
 )
 
 type validateTerminatorsHandler struct {
-	ctrl      xgress.CtrlChannel
-	dialerCfg map[string]xgress.OptionsData
+	env env.RouterEnv
 }
 
-func newValidateTerminatorsHandler(ctrl xgress.CtrlChannel, dialerCfg map[string]xgress.OptionsData) *validateTerminatorsHandler {
+func newValidateTerminatorsHandler(env env.RouterEnv) *validateTerminatorsHandler {
 	return &validateTerminatorsHandler{
-		ctrl:      ctrl,
-		dialerCfg: dialerCfg,
+		env: env,
 	}
 }
 
@@ -55,7 +54,7 @@ func (handler *validateTerminatorsHandler) HandleReceive(msg *channel.Message, c
 }
 
 func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.ValidateTerminatorsRequest) {
-	log := pfxlog.ContextLogger(handler.ctrl.Channel().Label())
+	log := pfxlog.ContextLogger(handler.env.Channel().Label())
 
 	log.Debugf("validate terminators route request received: %v terminators", len(req.Terminators))
 	dialers := map[string]xgress.Dialer{}
@@ -64,7 +63,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		dialer := dialers[binding]
 		if dialer == nil {
 			if factory, err := xgress.GlobalRegistry().Factory(binding); err == nil {
-				if dialer, err = factory.CreateDialer(handler.dialerCfg[binding]); err == nil {
+				if dialer, err = factory.CreateDialer(handler.env.GetDialerCfg()[binding]); err == nil {
 					dialers[binding] = dialer
 				}
 			}
@@ -74,7 +73,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		//       rather than deleting them
 		if dialer == nil || !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
 			log.Infof("removing invalid terminator %v with binding: %v. had dialer? %v", terminator.Id, terminator.Binding, dialer != nil)
-			if err := xgress.RemoveTerminator(handler.ctrl, terminator.Id); err != nil {
+			if err := xgress.RemoveTerminator(handler.env, terminator.Id); err != nil {
 				log.Errorf("failed to remove invalid terminator %v (%v)", terminator.Id, err)
 			}
 		}
