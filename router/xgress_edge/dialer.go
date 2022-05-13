@@ -61,7 +61,7 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "edge").
 		WithField("destination", destination)
@@ -121,7 +121,13 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 		x.Start()
 
 		log.Debug("xgress start, sending dial to SDK")
-		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(5 * time.Second).SendForReply(listenConn.Channel)
+		to := 5 * time.Second
+
+		timeToDeadline := time.Until(deadline)
+		if timeToDeadline > 0 && timeToDeadline < to {
+			to = timeToDeadline
+		}
+		reply, err := dialRequest.WithPriority(channel.Highest).WithTimeout(to).SendForReply(listenConn.Channel)
 		if err != nil {
 			conn.close(false, err.Error())
 			x.Close()

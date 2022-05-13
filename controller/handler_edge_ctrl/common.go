@@ -2,7 +2,12 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"math"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
@@ -12,17 +17,13 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"math"
-	"strings"
-	"time"
 )
 
 type requestHandler interface {
@@ -479,7 +480,7 @@ func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, 
 
 		n := self.handler.getAppEnv().GetHostController().GetNetwork()
 		var err error
-		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId, self.logContext)
+		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId, self.logContext, time.Now().Add(network.DefaultNetworkOptionsRouteTimeout))
 		if err != nil {
 			self.err = internalError(err)
 		}

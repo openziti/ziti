@@ -17,6 +17,8 @@
 package xgress_edge_tunnel
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
@@ -34,7 +36,7 @@ func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
 	return found
 }
 
-func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "edge").
 		WithField("destination", destination)
@@ -50,6 +52,7 @@ func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, addr
 		return nil, err
 	}
 
+	//TODO: Figure out timeout
 	conn, halfClose, err := terminator.context.Dial(options)
 	if err != nil {
 		return nil, err
