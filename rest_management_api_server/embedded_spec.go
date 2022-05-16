@@ -7463,6 +7463,99 @@ func init() {
             }
           }
         }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates a new OTT, OTTCA, or UPDB enrollment for a specific identity. If an enrollment of the same type is already outstanding the request will fail with a 409 conflict. If desired, an existing enrollment can be refreshed by ` + "`" + `enrollments/:id/refresh` + "`" + ` or deleted.",
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Create an outstanding enrollment for an identity",
+        "operationId": "createEnrollment",
+        "parameters": [
+          {
+            "description": "An enrollment to create",
+            "name": "enrollment",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/enrollmentCreate"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/enrollments/{id}": {
@@ -18990,6 +19083,39 @@ func init() {
         }
       }
     },
+    "enrollmentCreate": {
+      "type": "object",
+      "required": [
+        "method",
+        "expiresAt",
+        "identityId"
+      ],
+      "properties": {
+        "caId": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "identityId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "ott",
+            "ottca",
+            "updb"
+          ]
+        },
+        "username": {
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
     "enrollmentDetail": {
       "description": "An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
       "type": "object",
@@ -19006,6 +19132,10 @@ func init() {
             "details"
           ],
           "properties": {
+            "caId": {
+              "type": "string",
+              "x-nullable": true
+            },
             "details": {
               "type": "object",
               "additionalProperties": {
@@ -30264,6 +30394,99 @@ func init() {
             "description": "A list of enrollments",
             "schema": {
               "$ref": "#/definitions/listEnrollmentsEnvelope"
+            }
+          },
+          "400": {
+            "description": "The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": {
+                    "details": {
+                      "context": "(root)",
+                      "field": "(root)",
+                      "property": "fooField3"
+                    },
+                    "field": "(root)",
+                    "message": "(root): fooField3 is required",
+                    "type": "required",
+                    "value": {
+                      "fooField": "abc",
+                      "fooField2": "def"
+                    }
+                  },
+                  "causeMessage": "schema validation failed",
+                  "code": "COULD_NOT_VALIDATE",
+                  "message": "The supplied request contains an invalid document",
+                  "requestId": "ac6766d6-3a09-44b3-8d8a-1b541d97fdd9"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "security": [
+          {
+            "ztSession": []
+          }
+        ],
+        "description": "Creates a new OTT, OTTCA, or UPDB enrollment for a specific identity. If an enrollment of the same type is already outstanding the request will fail with a 409 conflict. If desired, an existing enrollment can be refreshed by ` + "`" + `enrollments/:id/refresh` + "`" + ` or deleted.",
+        "tags": [
+          "Enrollment"
+        ],
+        "summary": "Create an outstanding enrollment for an identity",
+        "operationId": "createEnrollment",
+        "parameters": [
+          {
+            "description": "An enrollment to create",
+            "name": "enrollment",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/enrollmentCreate"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "The create request was successful and the resource has been added at the following location",
+            "schema": {
+              "$ref": "#/definitions/createEnvelope"
             }
           },
           "400": {
@@ -41955,6 +42178,39 @@ func init() {
         }
       }
     },
+    "enrollmentCreate": {
+      "type": "object",
+      "required": [
+        "method",
+        "expiresAt",
+        "identityId"
+      ],
+      "properties": {
+        "caId": {
+          "type": "string",
+          "x-nullable": true
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "identityId": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "ott",
+            "ottca",
+            "updb"
+          ]
+        },
+        "username": {
+          "type": "string",
+          "x-nullable": true
+        }
+      }
+    },
     "enrollmentDetail": {
       "description": "An enrollment object. Enrollments are tied to identities and potentially a CA. Depending on the\nmethod, different fields are utilized. For example ottca enrollments use the ` + "`" + `ca` + "`" + ` field and updb enrollments\nuse the username field, but not vice versa.\n",
       "type": "object",
@@ -41971,6 +42227,10 @@ func init() {
             "details"
           ],
           "properties": {
+            "caId": {
+              "type": "string",
+              "x-nullable": true
+            },
             "details": {
               "type": "object",
               "additionalProperties": {

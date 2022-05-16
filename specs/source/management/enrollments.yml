@@ -21,6 +21,31 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
         '400':
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+    post:
+      summary: Create an outstanding enrollment for an identity
+      description: >-
+        Creates a new OTT, OTTCA, or UPDB enrollment for a specific identity. If an enrollment of the same type
+        is already outstanding the request will fail with a 409 conflict. If desired, an existing enrollment
+        can be refreshed by `enrollments/:id/refresh` or deleted.
+      security:
+        - ztSession: [ ]
+      tags:
+        - Enrollment
+      operationId: createEnrollment
+      parameters:
+        - name: enrollment
+          in: body
+          required: true
+          description: An enrollment to create
+          schema:
+            $ref: '#/definitions/enrollmentCreate'
+      responses:
+        '201':
+          $ref: '../shared/standard-responses.yml#/responses/createResponse'
+        '400':
+          $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
   enrollments-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
@@ -141,6 +166,9 @@ definitions:
             format: date-time
           identityId:
             type: string
+          caId:
+            type: string
+            x-nullable: true
           identity:
             $ref: '../shared/base-entity.yml#/definitions/entityRef'
           edgeRouterId:
@@ -179,7 +207,30 @@ definitions:
             href: './identities/f047ac96-dc3a-408a-a6f2-0ba487c08ef9'
       ca:
       username: example-username
-
+  enrollmentCreate:
+    type: object
+    required:
+      - method
+      - expiresAt
+      - identityId
+    properties:
+      method:
+        type: string
+        enum:
+          - ott
+          - ottca
+          - updb
+      expiresAt:
+        type: string
+        format: date-time
+      identityId:
+        type: string
+      caId:
+        type: string
+        x-nullable: true
+      username:
+        type: string
+        x-nullable: true
   enrollmentRefresh:
     type: object
     required:

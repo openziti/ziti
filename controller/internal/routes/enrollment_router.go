@@ -20,10 +20,11 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/enrollment"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
-	"github.com/pkg/errors"
 	"time"
 )
 
@@ -61,6 +62,12 @@ func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
 			r.Refresh(ae, rc, params)
 		}, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
+
+	ae.ManagementApi.EnrollmentCreateEnrollmentHandler = enrollment.CreateEnrollmentHandlerFunc(func(params enrollment.CreateEnrollmentParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
+			r.Create(ae, rc, params)
+		}, params.HTTPRequest, "", "", permissions.IsAdmin())
+	})
 }
 
 func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
@@ -84,7 +91,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 	}
 
 	if id == "" {
-		rc.RespondWithError(errors.New("entity id missing"))
+		rc.RespondWithNotFound()
 		return
 	}
 
@@ -98,4 +105,23 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 	}
 
 	rc.RespondWithEmptyOk()
+}
+
+func (r *EnrollmentRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params enrollment.CreateEnrollmentParams) {
+	Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
+		return ae.Handlers.Enrollment.Create(MapCreateEnrollmentToModel(params.Enrollment))
+	})
+
+}
+
+func MapCreateEnrollmentToModel(create *rest_model.EnrollmentCreate) *model.Enrollment {
+	ret := &model.Enrollment{
+		Method:     *create.Method,
+		IdentityId: create.IdentityID,
+		ExpiresAt:  (*time.Time)(create.ExpiresAt),
+		CaId:       create.CaID,
+		Username:   create.Username,
+	}
+
+	return ret
 }

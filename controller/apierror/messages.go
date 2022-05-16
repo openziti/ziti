@@ -182,4 +182,12 @@ const (
 	CanNotDeleteReferencedEntityCode    string = "CAN_NOT_DELETE_REFERENCED_ENTITY"
 	CanNotDeleteReferencedEntityMessage string = "the entity cannot be deleted because it is referenced by another entity, see cause"
 	CanNotDeleteReferencedEntityStatus  int    = http.StatusConflict
+
+	ReferencedEntityNotFoundCode    string = "REFERENCED_ENTITY_NOT_FOUND"
+	ReferencedEntityNotFoundMessage string = "REFERENCED_ENTITY_NOT_FOUND"
+	ReferencedEntityNotFoundStatus  int    = http.StatusBadRequest
+
+	EnrollmentExistsCode    string = "ENROLLMENT_EXISTS"
+	EnrollmentExistsMessage string = "ENROLLMENT_EXISTS"
+	EnrollmentExistsStatus  int    = http.StatusConflict
 )

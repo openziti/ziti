@@ -17,8 +17,10 @@
 package model
 
 import (
+	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -174,4 +176,80 @@ func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) err
 	})
 
 	return err
+}
+
+func (handler *EnrollmentHandler) Query(query string) ([]*Enrollment, error) {
+	var enrollments []*Enrollment
+	if err := handler.list(query, func(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
+		for _, id := range ids {
+			enrollment, _ := handler.readInTx(tx, id)
+
+			if enrollment != nil {
+				enrollments = append(enrollments, enrollment)
+			}
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return enrollments, nil
+}
+
+func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
+	if model.IdentityId == nil {
+		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
+	}
+
+	identity, err := handler.env.GetHandlers().Identity.Read(*model.IdentityId)
+
+	if err != nil || identity == nil {
+		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
+	}
+
+	if model.ExpiresAt.Before(time.Now()) {
+		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("expiresAt must be in the future", "expiresAt", model.ExpiresAt))
+	}
+
+	expiresAt := model.ExpiresAt.UTC()
+	model.ExpiresAt = &expiresAt
+
+	switch model.Method {
+	case persistence.MethodEnrollOttCa:
+		if model.CaId == nil {
+			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
+		}
+
+		ca, err := handler.env.GetHandlers().Ca.Read(*model.CaId)
+
+		if err != nil || ca == nil {
+			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
+		}
+	case persistence.MethodAuthenticatorUpdb:
+		if model.Username == nil || *model.Username == "" {
+			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("username not provided", "username", model.Username))
+		}
+	case persistence.MethodEnrollOtt:
+	default:
+		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
+	}
+
+	enrollments, err := handler.Query(fmt.Sprintf(`identity="%s"`, identity.Id))
+
+	if err != nil {
+		return "", err
+	}
+
+	for _, enrollment := range enrollments {
+		if enrollment.Method == model.Method {
+			return "", apierror.NewEnrollmentExists(model.Method)
+		}
+	}
+
+	if err := model.FillJwtInfoWithExpiresAt(handler.env, identity.Id, *model.ExpiresAt); err != nil {
+		return "", err
+	}
+
+	return handler.createEntity(model)
 }

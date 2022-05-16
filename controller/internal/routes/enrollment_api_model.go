@@ -65,6 +65,7 @@ func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*re
 		TransitRouterID: stringz.OrEmpty(enrollment.TransitRouterId),
 		Username:        "",
 		JWT:             enrollment.Jwt,
+		CaID:            enrollment.CaId,
 	}
 
 	if enrollment.IdentityId != nil {
