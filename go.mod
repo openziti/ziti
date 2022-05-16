@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.17
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -32,7 +32,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.36
-	github.com/openziti/fabric v0.17.134
+	github.com/openziti/fabric v0.17.135
 	github.com/openziti/foundation v0.17.25
 	github.com/openziti/sdk-golang v0.16.68
 	github.com/openziti/storage v0.1.5
