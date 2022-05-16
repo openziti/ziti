@@ -1,3 +1,11 @@
+# Release 0.25.8
+
+## Fabric
+
+### Bug Fixes
+
+* https://github.com/openziti/fabric/pull/403
+
 # Release 0.25.7
 
 ## Fabric
