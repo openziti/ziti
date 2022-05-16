@@ -132,6 +132,7 @@ jobs:
       # remaining steps in job only run on the upstream repo, not forks
       - name: Publish
         if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+        uses: jfrog/setup-jfrog-cli@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
