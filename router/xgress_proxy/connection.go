@@ -37,10 +37,6 @@ func (c *proxyXgressConnection) ReadPayload() ([]byte, map[uint8][]byte, error) 
 	return buffer[:n], nil, err
 }
 
-func (c *proxyXgressConnection) Write(p []byte) (n int, err error) {
-	return c.Write(p)
-}
-
 func (c *proxyXgressConnection) WritePayload(p []byte, headers map[uint8][]byte) (n int, err error) {
 	return c.Write(p)
 }
