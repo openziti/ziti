@@ -129,6 +129,9 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
 
+      - name: Install Jfrog CLI
+        uses: jfrog/setup-jfrog-cli@v1
+
       # remaining steps in job only run on the upstream repo, not forks
       - name: Publish
         if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
