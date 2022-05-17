@@ -1,3 +1,14 @@
+# Release 0.25.8
+
+## Maintenance
+Improved MacOS compatibility with cert handling and ioKit.
+
+## Fabric
+
+### Bug Fixes
+
+* https://github.com/openziti/fabric/pull/403
+
 # Release 0.25.7
 
 ## Fabric

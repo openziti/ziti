@@ -7,9 +7,6 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
-	"github.com/fullsailor/pkcs7"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -17,6 +14,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
+
+	"github.com/fullsailor/pkcs7"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
+	"github.com/pkg/errors"
 )
 
 func WriteCert(p common.Printer, id string, cert []byte) (string, error) {
@@ -59,7 +61,7 @@ func ReadCert(id string) ([]byte, string, error) {
 func IsServerTrusted(host string) (bool, error) {
 	resp, err := http.DefaultClient.Get(fmt.Sprintf("%v/.well-known/est/cacerts", host))
 	if err != nil {
-		if ue, ok := err.(*url.Error); ok && errors.As(ue.Err, &x509.UnknownAuthorityError{}) {
+		if ue, ok := err.(*url.Error); ok && (errors.As(ue.Err, &x509.UnknownAuthorityError{}) || strings.Contains(err.Error(), "x509")) {
 			return false, nil
 		}
 		return false, err
