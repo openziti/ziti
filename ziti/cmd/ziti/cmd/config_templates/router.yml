@@ -25,7 +25,7 @@ link:
 {{ if .Router.IsPrivate }}#{{ end }}      options:
 {{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
 
-{{ if .Router.IsFabric .Router.IsPrivate }}#{{ end }}listeners:
+{{ if .Router.IsFabric }}#{{ end }}listeners:
 # bindings of edge and tunnel requires an "edge" section below
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
 {{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
