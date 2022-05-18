@@ -37,7 +37,7 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}    options:
 {{ if .Router.IsFabric }}#{{ end }}      mode: host #tproxy|host
 
-{{ if or .Router.IsFabric .Router.IsPrivate }}
+{{ if or .Router.IsFabric }}
 csr:
   country: US
   province: NC
