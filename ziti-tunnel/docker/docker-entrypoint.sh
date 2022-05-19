@@ -16,51 +16,73 @@ trap alldone exit
 # Ensure that ziti-tunnel's identity is stored on a volume
 # so we don't throw away the one-time enrollment token
 
-persisted_dir="/netfoundry"
-wc_lines=$(df / "${persisted_dir}" 2> /dev/null | uniq | wc -l)
-if [ "${wc_lines}" != "3" ]; then
-    echo "ERROR: please run this image with ${persisted_dir} mounted on a volume"
+IDENTITIES_DIR="/netfoundry"
+if ! mountpoint "${IDENTITIES_DIR}" &>/dev/null; then
+    echo "ERROR: please run this container with a volume mounted on ${IDENTITIES_DIR}" >&2
     exit 1
 fi
 
-# try to figure out the client name if it wasn't provided
-if [ -z "${NF_REG_NAME}" ]; then
-    if [ -n "${IOTEDGE_DEVICEID}" ]; then
-        echo "setting NF_REG_NAME to \${IOTEDGE_DEVICEID} (${IOTEDGE_DEVICEID})"
+# IOTEDGE_DEVICEID is a standard var assigned by Azure IoT
+if [[ -z "${NF_REG_NAME:-}" ]]; then
+    if [[ -n "${IOTEDGE_DEVICEID:-}" ]]; then
+        echo "DEBUG: setting NF_REG_NAME to \${IOTEDGE_DEVICEID} (${IOTEDGE_DEVICEID})"
         NF_REG_NAME="${IOTEDGE_DEVICEID}"
     fi
 fi
-if [ -z "${NF_REG_NAME}" ]; then
-    echo "ERROR: please set the NF_REG_NAME environment variable when running this image"
-    exit 1
-fi
 
-json="${persisted_dir}/${NF_REG_NAME}.json"
-if [ ! -f "${json}" ]; then
-    echo "WARN: identity configuration ${json} does not exist" >&2
-    for dir in  "/var/run/secrets/kubernetes.io/enrollment-token" \
-                "/enrollment-token" \
-                "${persisted_dir}";
-        do
-            [[ -d ${dir} ]] || {
-                echo "INFO: ${dir} is not a directory"
-                continue
-            }
-            _jwt="${dir}/${NF_REG_NAME}.jwt"
-            echo "INFO: looking for ${_jwt}"
-            if [ -f "${_jwt}" ]; then
-                jwt="${_jwt}"
+typeset -a TUNNEL_OPTS
+# if identity file name, else critical error
+if [[ -n "${NF_REG_NAME:-}" ]]; then
+    IDENTITY_FILE="${IDENTITIES_DIR}/${NF_REG_NAME}.json"
+    TUNNEL_OPTS=("--identity" "${IDENTITY_FILE}")
+    # if non-empty identity file
+    if [[ -s "${IDENTITY_FILE}" ]]; then
+        echo "DEBUG: found identity file ${IDENTITY_FILE}"
+    # look for enrollment token
+    else
+        echo "DEBUG: identity file ${IDENTITY_FILE} does not exist"
+        for dir in  "/var/run/secrets/netfoundry.io/enrollment-token" \
+                    "/enrollment-token" \
+                    "${IDENTITIES_DIR}"; do
+            JWT_CANDIDATE="${dir}/${NF_REG_NAME}.jwt"
+            echo "DEBUG: looking for ${JWT_CANDIDATE}"
+            if [[ -s "${JWT_CANDIDATE}" ]]; then
+                JWT_FILE="${JWT_CANDIDATE}"
                 break
-            else
-                echo "WARN: failed to find ${_jwt} in ${dir}" >&2
             fi
-    done
-    if [ -z "${jwt:-}" ]; then
-        echo "ERROR: ${NF_REG_NAME}.jwt was not found in the expected locations" >&2
-        exit 1
+        done
+        if [[ -n "${JWT_FILE:-}" ]]; then
+            echo "DEBUG: enrolling ${JWT_FILE}"
+            ziti-tunnel enroll --verbose --jwt "${JWT_FILE}" --identity "${IDENTITY_FILE}" || {
+                echo "ERROR: failed to enroll with token from ${JWT_FILE} ($(wc -c < "${JWT_FILE}")B)" >&2
+                exit 1
+            }
+        elif [[ -n "${NF_REG_TOKEN:-}" ]]; then
+            echo "DEBUG: attempting enrollment with NF_REG_TOKEN"
+            JWT_FILE=${IDENTITIES_DIR}/${NF_REG_NAME}.jwt
+            echo "${NF_REG_TOKEN}" >| ${JWT_FILE}
+            ziti-tunnel enroll --verbose --jwt ${JWT_FILE} --identity "${IDENTITY_FILE}" || {
+                echo "ERROR: failed to enroll with token from NF_REG_TOKEN ($(wc -c <<<"${NF_REG_TOKEN}")B)" >&2
+                exit 1
+            }
+        elif ! [[ -t 0 ]]; then
+            echo "DEBUG: trying to get token from stdin" >&2
+            JWT_FILE=${IDENTITIES_DIR}/${NF_REG_NAME}.jwt
+            while read -r; do
+                echo "$REPLY" >> ${JWT_FILE}
+            done
+            ziti-tunnel enroll --verbose --jwt ${JWT_FILE} --identity "${IDENTITY_FILE}" || {
+                echo "ERROR: failed to enroll with token from stdin, got $(wc -c < ${JWT_FILE})B" >&2
+                exit 1
+            }
+        else
+            echo "DEBUG: ${NF_REG_NAME}.jwt and env var \$NF_REG_TOKEN not found" >&2
+            exit 1
+        fi
     fi
-    echo "INFO: enrolling with token from file '${jwt}' and value '$(< ${jwt})'"
-    ziti-tunnel enroll --jwt "${jwt}" --out "${json}"
+else
+    echo "ERROR: need NF_REG_NAME env var to save the identity file in mounted volume as ${IDENTITY_FILE}" >&2
+    exit 1
 fi
 
 echo "INFO: probing iptables"
@@ -78,6 +100,6 @@ fi
 # optionally run an alternative shell CMD
 echo "running ziti-tunnel"
 set -x
-ziti-tunnel -i "${json}" "${@}" &
+ziti-tunnel "${TUNNEL_OPTS[@]}" "${@}" &
 ZITI_TUNNEL_PID=$!
 wait $ZITI_TUNNEL_PID
