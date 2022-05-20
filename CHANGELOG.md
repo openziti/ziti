@@ -1,3 +1,12 @@
+# Release 0.25.9
+
+## Fabric
+
+### Bug Fixes
+
+* https://github.com/openziti/fabric/issues/404
+    * Goroutine pool metrics for xgress and link dials not working
+
 # Release 0.25.8
 
 ## Maintenance
@@ -12,6 +21,10 @@ Improved MacOS compatibility with cert handling and ioKit.
 # Release 0.25.7
 
 ## Fabric
+
+### Xgress and Link Dial Defaults Updated
+The default size of the xgress dialer pool has been updated to 128 from 10.
+The default size of the link dialer pool has been updated to 32 from 10.
 
 ### Dial Timeout Propagation
 Currently each section of the dial logic has its own timeouts. It can easily happen that
