@@ -137,7 +137,7 @@ func (c *Controller) Run() error {
 	 */
 	ctrlChannelListenerConfig := channel.ListenerConfig{
 		ConnectOptions:   c.config.Ctrl.Options.ConnectOptions,
-		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
+		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
 		Headers:          headers,
 	}
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
@@ -155,7 +155,7 @@ func (c *Controller) Run() error {
 	 */
 	mgmtChannelListenerConfig := channel.ListenerConfig{
 		ConnectOptions:   c.config.Mgmt.Options.ConnectOptions,
-		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(c.network.GetMetricsRegistry(), "pool.listener.mgmt"),
+		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.mgmt"),
 		Headers:          headers,
 	}
 	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, mgmtChannelListenerConfig)

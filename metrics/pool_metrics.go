@@ -23,7 +23,11 @@ import (
 	"time"
 )
 
-func ConfigureGoroutinesPoolMetrics(registry metrics.Registry, poolType string) func(config *goroutines.PoolConfig) {
+func ConfigureGoroutinesPoolMetrics(config *goroutines.PoolConfig, registry metrics.Registry, poolType string) {
+	GoroutinesPoolMetricsConfigF(registry, poolType)(config)
+}
+
+func GoroutinesPoolMetricsConfigF(registry metrics.Registry, poolType string) func(config *goroutines.PoolConfig) {
 	return func(config *goroutines.PoolConfig) {
 		config.OnCreate = func(pool goroutines.Pool) {
 			registry.FuncGauge(poolType+".queue_size", func() int64 {

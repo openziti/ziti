@@ -56,7 +56,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		},
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(self.env.GetMetricsRegistry(), "pool.link.dialer")
+	metrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.env.GetMetricsRegistry(), "pool.link.dialer")
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
@@ -74,7 +74,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		},
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(self.env.GetMetricsRegistry(), "pool.route.handler")
+	metrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, self.env.GetMetricsRegistry(), "pool.route.handler")
 
 	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
 	if err != nil {
