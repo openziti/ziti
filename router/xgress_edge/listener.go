@@ -72,7 +72,7 @@ func (listener *listener) Listen(address string, bindHandler xgress.BindHandler)
 		ConnectOptions:   listener.options.channelOptions.ConnectOptions,
 		TransportConfig:  listener.factory.edgeRouterConfig.Tcfg,
 		Headers:          listener.headers,
-		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
+		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(listener.factory.metricsRegistry, "pool.listener.xgress_edge"),
 	}
 
 	listener.underlayListener = channel.NewClassicListener(listener.id, addr, listenerConfig)
