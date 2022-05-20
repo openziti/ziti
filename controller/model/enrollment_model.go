@@ -85,10 +85,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		return err
 	}
 
-	fmt.Printf("\nOld2: %s\n", entity.Jwt)
-	fmt.Printf("New2: %s\n", signedJwt)
 	entity.Jwt = signedJwt
-	fmt.Printf("New2: %s\n", entity.Jwt)
 
 	return nil
 }

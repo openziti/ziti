@@ -48,7 +48,8 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 		signers: cmap.New(),
 	}
 
-	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventCreate, ret.onExternalSignerCreateOrUpdate)
+	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventCreate, ret.onExternalSignerCreate)
+	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventUpdate, ret.onExternalSignerUpdate)
 	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventDelete, ret.onExternalSignerDelete)
 
 	ret.loadExistingSigners()
@@ -294,11 +295,35 @@ func (a *AuthModuleExtJwt) getKnownSignerRecords() map[string]interface{} {
 	return a.signers.Items()
 }
 
-func (a *AuthModuleExtJwt) onExternalSignerCreateOrUpdate(args ...interface{}) {
+func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
+	signer, ok := args[0].(*persistence.ExternalJwtSigner)
+
+	if !ok {
+		pfxlog.Logger().Errorf("error on external signature create for authentication module %T: expected %T got %T", a, signer, args[0])
+		return
+	}
+
+	a.addSigner(signer)
+}
+
+func (a *AuthModuleExtJwt) onExternalSignerUpdate(args ...interface{}) {
 	signer, ok := args[0].(*persistence.ExternalJwtSigner)
 
 	if !ok {
 		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
+		return
+	}
+
+	//read on update because patches can pass partial data
+	err := a.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		var err error
+		signer, err = a.env.GetStores().ExternalJwtSigner.LoadOneById(tx, signer.Id)
+
+		return err
+	})
+
+	if err != nil {
+		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: could not read entity: %v", a, err)
 	}
 
 	a.addSigner(signer)
@@ -307,10 +332,14 @@ func (a *AuthModuleExtJwt) onExternalSignerCreateOrUpdate(args ...interface{}) {
 func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
 	certs := nfPem.PemStringToCertificates(signer.CertPem)
 
-	a.signers.Set(signer.Kid, &signerRecord{
-		externalJwtSigner: signer,
-		cert:              certs[0],
-	})
+	if len(certs) > 0 {
+		a.signers.Set(signer.Kid, &signerRecord{
+			externalJwtSigner: signer,
+			cert:              certs[0],
+		})
+	} else {
+		pfxlog.Logger().Error("could not add signer, PEM did not parse to any certificates")
+	}
 }
 
 func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
@@ -318,6 +347,7 @@ func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
 
 	if !ok {
 		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
+		return
 	}
 
 	a.signers.Remove(signer.Kid)
