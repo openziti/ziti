@@ -48,7 +48,7 @@ func (self *listener) Listen() error {
 	config := channel.ListenerConfig{
 		ConnectOptions:   self.config.options.ConnectOptions,
 		TransportConfig:  self.tcfg,
-		PoolConfigurator: fabricMetrics.ConfigureGoroutinesPoolMetrics(self.metricsRegistry, "pool.listener.link"),
+		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(self.metricsRegistry, "pool.listener.link"),
 	}
 	listener := channel.NewClassicListener(self.id, self.config.bind, config)
 
