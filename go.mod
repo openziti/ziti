@@ -22,12 +22,12 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/channel v0.18.36
-	github.com/openziti/edge v0.21.213
+	github.com/openziti/edge v0.21.216-0.20220520195707-9dc15587296c
 	github.com/openziti/fabric v0.17.135
 	github.com/openziti/foundation v0.17.25
 	github.com/openziti/sdk-golang v0.16.68
 	github.com/openziti/storage v0.1.5
-	github.com/openziti/transport/v2 v2.0.1
+	github.com/openziti/transport/v2 v2.0.2-0.20220520191948-57b0616a395a
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1

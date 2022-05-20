@@ -637,8 +637,8 @@ github.com/openziti/channel v0.18.36 h1:x7TgEpw3ecIpginDsqAMGBTdhtCdMx2BR9m9wzXm
 github.com/openziti/channel v0.18.36/go.mod h1:97VgqsQ8BV9KZ9zKiaeCM9rTOn2Kft6yaS1c+fdec9A=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.21.213 h1:cxKvKR9Wlc4/O8DYOn+iGydJu+NYU9qxVnM2T5kyH70=
-github.com/openziti/edge v0.21.213/go.mod h1:L6oJlJh8/4zNOLrooUzWKhWlGDRllec2wdKcHQ42HVk=
+github.com/openziti/edge v0.21.216-0.20220520195707-9dc15587296c h1:3b4HB+9N8U1RbNkiiycHux8Mye4u/SH2ns/zO5L8qBA=
+github.com/openziti/edge v0.21.216-0.20220520195707-9dc15587296c/go.mod h1:HLmXbIC6FhyIUInKVvlHzYWuavBpfH17HZBLxWTuE5c=
 github.com/openziti/fabric v0.17.135 h1:I+wDG1Kz6V1/EFWUNzHWgGDRpFxHDqPPfLq8wx6bSqc=
 github.com/openziti/fabric v0.17.135/go.mod h1:6Yy/kSr3zl//g2RBAlXn/hrlMdG1IhzPlPf3SsCK1pA=
 github.com/openziti/foundation v0.17.25 h1:s7E7LIYHGeJQQqmQI1uLA2Ml3L2dgGbeTN+rD6Woo78=
@@ -647,8 +647,8 @@ github.com/openziti/sdk-golang v0.16.68 h1:40iL5BpYU9s4E4rJb7hiqs4xRXapRT61K9TQ9
 github.com/openziti/sdk-golang v0.16.68/go.mod h1:z83nTE+webbbRrgtvvEdr1sQWxaoC+jbeVmKW1c4JJI=
 github.com/openziti/storage v0.1.5 h1:Q13TaO7El1v9CJoGZjhLPdS/T/s897TGKegiWov3J4M=
 github.com/openziti/storage v0.1.5/go.mod h1:VvubFzlkqzxFJnQV+QawR++OhDQ1l283S7b2J8BPKmk=
-github.com/openziti/transport/v2 v2.0.1 h1:zLE5o1nUJrz+dVHz+smdswtLQlwyJa0OzZ15+2sPwAk=
-github.com/openziti/transport/v2 v2.0.1/go.mod h1:GeXnw3NDybPLKd8g3IMpXkYo8G8VXu+5+MT5g4BpmQY=
+github.com/openziti/transport/v2 v2.0.2-0.20220520191948-57b0616a395a h1:kntHctZtfzmtvdq35lHn5mjMVjMRG/+untsXB7mgqk8=
+github.com/openziti/transport/v2 v2.0.2-0.20220520191948-57b0616a395a/go.mod h1:DLW9bvW/QL7uCaGmy5s5rdQoKgFKfu/JJWPcc/syqSE=
 github.com/openziti/ziti-db-explorer v1.1.1 h1:G0eoTby+aIjjt5TxEfR+FMI2CWd4RvZFjzaIMX2lEBw=
 github.com/openziti/ziti-db-explorer v1.1.1/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
