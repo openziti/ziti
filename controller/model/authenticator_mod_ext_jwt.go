@@ -49,6 +49,7 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	}
 
 	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventCreate, ret.onExternalSignerCreateOrUpdate)
+	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventUpdate, ret.onExternalSignerCreateOrUpdate)
 	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventDelete, ret.onExternalSignerDelete)
 
 	ret.loadExistingSigners()
