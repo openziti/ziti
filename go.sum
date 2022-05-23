@@ -392,8 +392,8 @@ github.com/openziti/fabric v0.17.137 h1:3GPavC0qrGOQ70B+fEt3VHaFEBSd9FZG8fbglLhy
 github.com/openziti/fabric v0.17.137/go.mod h1:91EbauR7VOgADLzDOSuWxfhgzAJSqvRQdZ7XwPixhuc=
 github.com/openziti/foundation v0.17.25 h1:s7E7LIYHGeJQQqmQI1uLA2Ml3L2dgGbeTN+rD6Woo78=
 github.com/openziti/foundation v0.17.25/go.mod h1:YMalQrbDP3S5ptEcob4v3F+pyCngabaG/hQVoT9Pcxo=
-github.com/openziti/sdk-golang v0.16.69 h1:EnlDeNAK0nFcM8MKU5lcDJZ/p/xGT2oDtzJ6kmn6RrA=
-github.com/openziti/sdk-golang v0.16.69/go.mod h1:z83nTE+webbbRrgtvvEdr1sQWxaoC+jbeVmKW1c4JJI=
+github.com/openziti/sdk-golang v0.16.70 h1:hF7Bk+48zkg4ZwWb9Xrky0eE8d6HwJ092a5XclXISMc=
+github.com/openziti/sdk-golang v0.16.70/go.mod h1:QTR5a37mtyKRsl0r7NodmrmdYCrdqJv7zqShFwccoJs=
 github.com/openziti/storage v0.1.5 h1:Q13TaO7El1v9CJoGZjhLPdS/T/s897TGKegiWov3J4M=
 github.com/openziti/storage v0.1.5/go.mod h1:VvubFzlkqzxFJnQV+QawR++OhDQ1l283S7b2J8BPKmk=
 github.com/openziti/transport/v2 v2.0.2 h1:w01etEkf5V0tkgtd9Z0MOTGz+oH8yeEbXWMn38y/uP8=
