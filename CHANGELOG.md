@@ -1,3 +1,32 @@
+# Release 0.25.10
+
+## What's New
+- Edge
+  - N/A
+- Fabric
+  - Bug fixes
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Ziti CLI
+
+### CLI support for enrollments/authenticators/re-enrollment
+
+The CLI has been augmented to support the following commands:
+
+- `ziti edge list authenticators` - to generically list existing authenticators
+- `ziti edge list enrollments` - to generically list existing enrollments
+- `ziti edge delete enrollment <id>` - to generically delete existing enrollments
+- `ziti edge delete authenticator <id>` - to generically delete existing authenticator
+- `ziti edge create enrollment ott ...` - to create a new one-time-token enrollment for an existing identity
+- `ziti edge create enrollment ottca ...` - to create a new one-time-token enrollment for an existing identity for a 3rd party CA issued certificate
+- `ziti edge create enrollment updb ...` - to create a new updb (username/password) enrollment for an existing identity
+
+These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9
+changelog for details. For all arguments and options, please see their CLI related `-h`.
+
 # Release 0.25.9
 
 ## What's New

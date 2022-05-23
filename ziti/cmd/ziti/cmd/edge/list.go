@@ -57,11 +57,13 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newListCmdForEntityType("api-sessions", runListApiSessions, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("authenticators", runListAuthenticators, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
 	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
+	cmd.AddCommand(newListCmdForEntityType("enrollments", runListEnrollments, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -441,6 +443,79 @@ func outputEdgeRouterPolicies(o *api.Options, children []*gabs.Container, paging
 			strings.Join(edgeRouterRoles, " "),
 			strings.Join(identityRoles, " "),
 		})
+	}
+	api.RenderTable(o, t, pagingInfo)
+	return nil
+}
+
+func runListAuthenticators(o *api.Options) error {
+	children, pagingInfo, err := listEntitiesWithOptions("authenticators", o)
+	if err != nil {
+		return err
+	}
+	return outputAuthenticators(o, children, pagingInfo)
+}
+
+func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Username/Fingerprint", "Ca Id"})
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		method := entity.Path("method").Data().(string)
+		identityId := entity.Path("identityId").Data().(string)
+		identityName := entity.Path("identity.name").Data().(string)
+
+		caId := ""
+		if entity.Exists("caId") {
+			caId = entity.Path("caId").Data().(string)
+		}
+
+		printOrName := ""
+		if entity.Exists("username") {
+			printOrName = entity.Path("username").Data().(string)
+		} else if entity.Exists("fingerprint") {
+			printOrName = entity.Path("fingerprint").Data().(string)
+		}
+
+		t.AppendRow(table.Row{id, method, identityId, identityName, printOrName, caId})
+	}
+	api.RenderTable(o, t, pagingInfo)
+	return nil
+}
+
+func runListEnrollments(o *api.Options) error {
+	children, pagingInfo, err := listEntitiesWithOptions("enrollments", o)
+	if err != nil {
+		return err
+	}
+	return outputEnrollments(o, children, pagingInfo)
+}
+
+func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Expires At", "Token", "JWT"})
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		method := entity.Path("method").Data().(string)
+		identityId := entity.Path("identityId").Data().(string)
+		identityName := entity.Path("identity.name").Data().(string)
+		expiresAt := entity.Path("expiresAt").Data().(string)
+		token := entity.Path("token").Data().(string)
+		jwt := "See json"
+
+		t.AppendRow(table.Row{id, method, identityId, identityName, expiresAt, token, jwt})
 	}
 	api.RenderTable(o, t, pagingInfo)
 	return nil

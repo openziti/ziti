@@ -52,7 +52,8 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(newDeleteCmdForEntityType("api-session", newOptions()))
-	cmd.AddCommand(newDeleteAuthenticatorCmd("authenticator", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("authenticator", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("enrollment", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("ca", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("config", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("config-type", newOptions()))
@@ -119,7 +120,7 @@ func newDeleteWhereCmdForEntityType(entityType string, options *api.Options) *co
 func runDeleteEntityOfType(o *api.Options, entityType string) error {
 	var err error
 	ids := o.Args
-	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" {
+	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" && entityType != "authenticators" && entityType != "enrollments" {
 		ids, err = mapNamesToIDs(entityType, *o, ids...)
 	}
 	if err != nil {
