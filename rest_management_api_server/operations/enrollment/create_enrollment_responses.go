@@ -168,3 +168,47 @@ func (o *CreateEnrollmentUnauthorized) WriteResponse(rw http.ResponseWriter, pro
 		}
 	}
 }
+
+// CreateEnrollmentConflictCode is the HTTP code returned for type CreateEnrollmentConflict
+const CreateEnrollmentConflictCode int = 409
+
+/*CreateEnrollmentConflict The request could not be completed due to a conflict of configuration or state
+
+swagger:response createEnrollmentConflict
+*/
+type CreateEnrollmentConflict struct {
+
+	/*
+	  In: Body
+	*/
+	Payload *rest_model.APIErrorEnvelope `json:"body,omitempty"`
+}
+
+// NewCreateEnrollmentConflict creates CreateEnrollmentConflict with default headers values
+func NewCreateEnrollmentConflict() *CreateEnrollmentConflict {
+
+	return &CreateEnrollmentConflict{}
+}
+
+// WithPayload adds the payload to the create enrollment conflict response
+func (o *CreateEnrollmentConflict) WithPayload(payload *rest_model.APIErrorEnvelope) *CreateEnrollmentConflict {
+	o.Payload = payload
+	return o
+}
+
+// SetPayload sets the payload to the create enrollment conflict response
+func (o *CreateEnrollmentConflict) SetPayload(payload *rest_model.APIErrorEnvelope) {
+	o.Payload = payload
+}
+
+// WriteResponse to the client
+func (o *CreateEnrollmentConflict) WriteResponse(rw http.ResponseWriter, producer runtime.Producer) {
+
+	rw.WriteHeader(409)
+	if o.Payload != nil {
+		payload := o.Payload
+		if err := producer.Produce(rw, payload); err != nil {
+			panic(err) // let the recovery middleware deal with this
+		}
+	}
+}

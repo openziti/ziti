@@ -65,6 +65,12 @@ func (o *CreateEnrollmentReader) ReadResponse(response runtime.ClientResponse, c
 			return nil, err
 		}
 		return nil, result
+	case 409:
+		result := NewCreateEnrollmentConflict()
+		if err := result.readResponse(response, consumer, o.formats); err != nil {
+			return nil, err
+		}
+		return nil, result
 	default:
 		return nil, runtime.NewAPIError("response status code does not match any response statuses defined for this endpoint in the swagger spec", response, response.Code())
 	}
@@ -155,6 +161,38 @@ func (o *CreateEnrollmentUnauthorized) GetPayload() *rest_model.APIErrorEnvelope
 }
 
 func (o *CreateEnrollmentUnauthorized) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
+
+	o.Payload = new(rest_model.APIErrorEnvelope)
+
+	// response payload
+	if err := consumer.Consume(response.Body(), o.Payload); err != nil && err != io.EOF {
+		return err
+	}
+
+	return nil
+}
+
+// NewCreateEnrollmentConflict creates a CreateEnrollmentConflict with default headers values
+func NewCreateEnrollmentConflict() *CreateEnrollmentConflict {
+	return &CreateEnrollmentConflict{}
+}
+
+/* CreateEnrollmentConflict describes a response with status code 409, with default header values.
+
+The request could not be completed due to a conflict of configuration or state
+*/
+type CreateEnrollmentConflict struct {
+	Payload *rest_model.APIErrorEnvelope
+}
+
+func (o *CreateEnrollmentConflict) Error() string {
+	return fmt.Sprintf("[POST /enrollments][%d] createEnrollmentConflict  %+v", 409, o.Payload)
+}
+func (o *CreateEnrollmentConflict) GetPayload() *rest_model.APIErrorEnvelope {
+	return o.Payload
+}
+
+func (o *CreateEnrollmentConflict) readResponse(response runtime.ClientResponse, consumer runtime.Consumer, formats strfmt.Registry) error {
 
 	o.Payload = new(rest_model.APIErrorEnvelope)
 

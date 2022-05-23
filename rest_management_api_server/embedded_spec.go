@@ -7554,6 +7554,12 @@ func init() {
                 }
               }
             }
+          },
+          "409": {
+            "description": "The request could not be completed due to a conflict of configuration or state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            }
           }
         }
       }
@@ -30656,6 +30662,12 @@ func init() {
                   "apiVersion": "0.0.1"
                 }
               }
+            }
+          },
+          "409": {
+            "description": "The request could not be completed due to a conflict of configuration or state",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
             }
           }
         }
