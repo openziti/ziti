@@ -65,7 +65,6 @@ func NewCmdUnInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdUnInstallZitiController(out, errOut))
-	cmd.AddCommand(NewCmdUnInstallZitiFabric(out, errOut))
 	cmd.AddCommand(NewCmdUnInstallZitiRouter(out, errOut))
 	cmd.AddCommand(NewCmdUnInstallZitiTunnel(out, errOut))
 	cmd.AddCommand(NewCmdUnInstallZitiEdgeTunnel(out, errOut))

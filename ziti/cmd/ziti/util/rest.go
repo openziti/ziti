@@ -203,10 +203,20 @@ func GetLatestGitHubReleaseAsset(verbose bool, appName string) (string, error) {
 
 	result := (*resp.Result().(*GitHubReleasesData))
 
-	os := runtime.GOOS
+	arches := []string{runtime.GOARCH}
+	if strings.ToLower(runtime.GOARCH) == "amd64" {
+		arches = append(arches, "x86_64")
+	}
 
 	for _, asset := range result.Assets {
-		ok := strings.Contains(strings.ToLower(asset.BrowserDownloadURL), os)
+		ok := false
+		for _, arch := range arches {
+			if strings.Contains(strings.ToLower(asset.BrowserDownloadURL), arch) {
+				ok = true
+			}
+		}
+
+		ok = ok && strings.Contains(strings.ToLower(asset.BrowserDownloadURL), runtime.GOOS)
 		if ok {
 			return asset.BrowserDownloadURL, nil
 		}

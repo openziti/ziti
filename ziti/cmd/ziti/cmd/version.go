@@ -83,7 +83,6 @@ func (o *VersionOptions) Run() error {
 	t.AddRow(c.ZITI, info(version.GetBuildMetadata(o.Verbose)))
 
 	o.versionPrintZitiApp(c.ZITI_CONTROLLER, &t)
-	o.versionPrintZitiApp(c.ZITI_FABRIC, &t)
 	o.versionPrintZitiApp(c.ZITI_PROX_C, &t)
 	o.versionPrintZitiApp(c.ZITI_ROUTER, &t)
 	o.versionPrintZitiApp(c.ZITI_TUNNEL, &t)
@@ -129,7 +128,6 @@ func (o *VersionOptions) versionPrintZitiApp(zitiApp string, table *table.Table)
 func (o *VersionOptions) versionCheck() error {
 	o.versionCheckZitiApp(c.ZITI)
 	o.versionCheckZitiApp(c.ZITI_CONTROLLER)
-	o.versionCheckZitiApp(c.ZITI_FABRIC)
 	o.versionCheckZitiApp(c.ZITI_PROX_C)
 	o.versionCheckZitiApp(c.ZITI_ROUTER)
 	o.versionCheckZitiApp(c.ZITI_TUNNEL)
@@ -151,8 +149,6 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI)
 	case c.ZITI_CONTROLLER:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_CONTROLLER)
-	case c.ZITI_FABRIC:
-		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_FABRIC)
 	case c.ZITI_PROX_C:
 		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
 	case c.ZITI_ROUTER:
@@ -191,8 +187,6 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 						err = o.upgradeZiti()
 					case c.ZITI_CONTROLLER:
 						err = o.upgradeZitiController()
-					case c.ZITI_FABRIC:
-						err = o.upgradeZitiFabric()
 					case c.ZITI_PROX_C:
 						err = o.upgradeZitiProxC()
 					case c.ZITI_ROUTER:
@@ -223,13 +217,6 @@ func (o *VersionOptions) upgradeZiti() error {
 
 func (o *VersionOptions) upgradeZitiController() error {
 	options := &UpgradeZitiControllerOptions{
-		CommonOptions: o.CommonOptions,
-	}
-	return options.Run()
-}
-
-func (o *VersionOptions) upgradeZitiFabric() error {
-	options := &UpgradeZitiFabricOptions{
 		CommonOptions: o.CommonOptions,
 	}
 	return options.Run()
