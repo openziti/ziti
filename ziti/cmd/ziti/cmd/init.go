@@ -96,8 +96,6 @@ func (o *InitOptions) Run() error {
 		err = o.createInitialControllerConfig()
 	case c.ZITI_ROUTER:
 		return nil
-	case c.ZITI_FABRIC:
-		return nil
 	case c.ZITI:
 		err = o.createInitialZitiConfig()
 	default:
