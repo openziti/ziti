@@ -398,6 +398,8 @@ github.com/openziti/storage v0.1.5 h1:Q13TaO7El1v9CJoGZjhLPdS/T/s897TGKegiWov3J4
 github.com/openziti/storage v0.1.5/go.mod h1:VvubFzlkqzxFJnQV+QawR++OhDQ1l283S7b2J8BPKmk=
 github.com/openziti/transport/v2 v2.0.2 h1:w01etEkf5V0tkgtd9Z0MOTGz+oH8yeEbXWMn38y/uP8=
 github.com/openziti/transport/v2 v2.0.2/go.mod h1:DLW9bvW/QL7uCaGmy5s5rdQoKgFKfu/JJWPcc/syqSE=
+github.com/openziti/x509-claims v1.0.2 h1:PSv/xRfejIAcPc16A902k08rSBs3R8bjtL4qq6WEwCI=
+github.com/openziti/x509-claims v1.0.2/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 h1:CUvH4JL/8OVy023LMER3dB/MerNQ6OIz4QV3E/JQ3UY=

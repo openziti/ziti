@@ -199,6 +199,79 @@ responses:
       $ref: '#/definitions/detailCaEnvelope'
 
 definitions:
+  externalIdClaim:
+    type: object
+    required:
+      - location
+      - matcher
+      - matcherCriteria
+      - parser
+      - parserCriteria
+      - index
+    properties:
+        location:
+          type: string
+          x-nullable: true
+          enum:
+            - COMMON_NAME
+            - SAN_URI
+            - SAN_EMAIL
+        matcher:
+          type: string
+          x-nullable: true
+          enum:
+            - ALL
+            - PREFIX
+            - SUFFIX
+            - SCHEME
+        matcherCriteria:
+          type: string
+          x-nullable: true
+        parser:
+          type: string
+          x-nullable: true
+          enum:
+            - NONE
+            - SPLIT
+        parserCriteria:
+          type: string
+          x-nullable: true
+        index:
+          type: integer
+          x-nullable: true
+  externalIdClaimPatch:
+    type: object
+    properties:
+      location:
+        type: string
+        x-nullable: true
+        enum:
+          - COMMON_NAME
+          - SAN_URI
+          - SAN_EMAIL
+      matcher:
+        type: string
+        x-nullable: true
+        enum:
+          - ALL
+          - PREFIX
+          - SUFFIX
+          - SCHEME
+      matcherCriteria:
+        type: string
+        x-nullable: true
+      parser:
+        type: string
+        x-nullable: true
+        enum:
+          - NONE
+          - SPLIT
+      parserCriteria:
+        type: string
+        x-nullable: true
+      index:
+        type: integer
+        x-nullable: true
   listCasEnvelope:
     type: object
     required:
@@ -266,6 +339,8 @@ definitions:
             $ref: '../shared/base-entity.yml#/definitions/roles'
           identityNameFormat:
             type: string
+          externalIdClaim:
+            $ref: '#/definitions/externalIdClaim'
   caCreate:
     description: A create Certificate Authority (CA) object
     type: object
@@ -313,6 +388,9 @@ definitions:
         type: string
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaim'
+        x-nullable: true
   caUpdate:
     type: object
     required:
@@ -341,6 +419,9 @@ definitions:
         type: string
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaim'
+        x-nullable: true
   caPatch:
     type: object
     properties:
@@ -367,3 +448,5 @@ definitions:
         x-nullable: true
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
+      externalIdClaim:
+        $ref: '#/definitions/externalIdClaimPatch'

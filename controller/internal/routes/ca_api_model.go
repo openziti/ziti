@@ -77,6 +77,16 @@ func MapCreateCaToModel(ca *rest_model.CaCreate) *model.Ca {
 		IdentityNameFormat:        ca.IdentityNameFormat,
 	}
 
+	if ca.ExternalIDClaim != nil {
+		ret.ExternalIdClaim = &model.ExternalIdClaim{}
+		ret.ExternalIdClaim.Location = stringz.OrEmpty(ca.ExternalIDClaim.Location)
+		ret.ExternalIdClaim.Matcher = stringz.OrEmpty(ca.ExternalIDClaim.Matcher)
+		ret.ExternalIdClaim.MatcherCriteria = stringz.OrEmpty(ca.ExternalIDClaim.MatcherCriteria)
+		ret.ExternalIdClaim.Parser = stringz.OrEmpty(ca.ExternalIDClaim.Parser)
+		ret.ExternalIdClaim.ParserCriteria = stringz.OrEmpty(ca.ExternalIDClaim.ParserCriteria)
+		ret.ExternalIdClaim.Index = Int64OrDefault(ca.ExternalIDClaim.Index)
+	}
+
 	return ret
 }
 
@@ -94,6 +104,16 @@ func MapUpdateCaToModel(id string, ca *rest_model.CaUpdate) *model.Ca {
 		IdentityNameFormat:        stringz.OrEmpty(ca.IdentityNameFormat),
 	}
 
+	if ca.ExternalIDClaim != nil {
+		ret.ExternalIdClaim = &model.ExternalIdClaim{}
+		ret.ExternalIdClaim.Location = stringz.OrEmpty(ca.ExternalIDClaim.Location)
+		ret.ExternalIdClaim.Matcher = stringz.OrEmpty(ca.ExternalIDClaim.Matcher)
+		ret.ExternalIdClaim.MatcherCriteria = stringz.OrEmpty(ca.ExternalIDClaim.MatcherCriteria)
+		ret.ExternalIdClaim.Parser = stringz.OrEmpty(ca.ExternalIDClaim.Parser)
+		ret.ExternalIdClaim.ParserCriteria = stringz.OrEmpty(ca.ExternalIDClaim.ParserCriteria)
+		ret.ExternalIdClaim.Index = Int64OrDefault(ca.ExternalIDClaim.Index)
+	}
+
 	return ret
 }
 
@@ -109,6 +129,16 @@ func MapPatchCaToModel(id string, ca *rest_model.CaPatch) *model.Ca {
 		IsAuthEnabled:             BoolOrDefault(ca.IsAuthEnabled),
 		IdentityRoles:             ca.IdentityRoles,
 		IdentityNameFormat:        stringz.OrEmpty(ca.IdentityNameFormat),
+	}
+
+	if ca.ExternalIDClaim != nil {
+		ret.ExternalIdClaim = &model.ExternalIdClaim{}
+		ret.ExternalIdClaim.Location = stringz.OrEmpty(ca.ExternalIDClaim.Location)
+		ret.ExternalIdClaim.Matcher = stringz.OrEmpty(ca.ExternalIDClaim.Matcher)
+		ret.ExternalIdClaim.MatcherCriteria = stringz.OrEmpty(ca.ExternalIDClaim.MatcherCriteria)
+		ret.ExternalIdClaim.Parser = stringz.OrEmpty(ca.ExternalIDClaim.Parser)
+		ret.ExternalIdClaim.ParserCriteria = stringz.OrEmpty(ca.ExternalIDClaim.ParserCriteria)
+		ret.ExternalIdClaim.Index = Int64OrDefault(ca.ExternalIDClaim.Index)
 	}
 
 	return ret
@@ -148,6 +178,17 @@ func MapCaToRestModel(i *model.Ca) (*rest_model.CaDetail, error) {
 		IsVerified:                &i.IsVerified,
 		Name:                      &i.Name,
 		VerificationToken:         strfmt.UUID(i.VerificationToken),
+	}
+
+	if i.ExternalIdClaim != nil {
+		ret.ExternalIDClaim = &rest_model.ExternalIDClaim{
+			Index:           &i.ExternalIdClaim.Index,
+			Location:        &i.ExternalIdClaim.Location,
+			Matcher:         &i.ExternalIdClaim.Matcher,
+			MatcherCriteria: &i.ExternalIdClaim.MatcherCriteria,
+			Parser:          &i.ExternalIdClaim.Parser,
+			ParserCriteria:  &i.ExternalIdClaim.ParserCriteria,
+		}
 	}
 
 	return ret, nil

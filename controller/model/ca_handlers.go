@@ -18,8 +18,10 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -46,6 +48,13 @@ func (handler *CaHandler) Create(caModel *Ca) (string, error) {
 	if caModel.IdentityNameFormat == "" {
 		caModel.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
+
+	if caModel.ExternalIdClaim != nil {
+		if caModel.ExternalIdClaim.Matcher == persistence.ExternalIdClaimMatcherScheme && caModel.ExternalIdClaim.Location != persistence.ExternalIdClaimLocSanUri {
+			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("scheme matcher can only be used with URI locations", "matcher", caModel.ExternalIdClaim.Matcher))
+		}
+	}
+
 	return handler.createEntity(caModel)
 }
 

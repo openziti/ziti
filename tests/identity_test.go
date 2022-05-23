@@ -673,6 +673,17 @@ func Test_Identity(t *testing.T) {
 		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), "expected 201 for POST %T: %s", extJwtSigner, resp.Body())
 		ctx.Req.NotEmpty(extJwtSignerCreated.Data.ID)
 
+		authPolicyPatch := &rest_model.AuthPolicyPatch{
+			Primary: &rest_model.AuthPolicyPrimaryPatch{
+				ExtJWT: &rest_model.AuthPolicyPrimaryExtJWTPatch{
+					AllowedSigners: []string{extJwtSignerCreated.Data.ID},
+				},
+			},
+		}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(authPolicyPatch).Patch("/auth-policies/default")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusOK, resp.StatusCode())
+
 		identityType := rest_model.IdentityTypeDevice
 		identity := &rest_model.IdentityCreate{
 			IsAdmin: B(false),

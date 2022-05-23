@@ -8,6 +8,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/rest_model"
 	"net/http"
 	"sort"
 	"testing"
@@ -359,5 +360,267 @@ func Test_CA(t *testing.T) {
 				_ = ctx.AdminManagementSession.requireQuery("identities/" + unenrolledOttCaIdentity.Id)
 			})
 		})
+	})
+
+	t.Run("can create a CA with externalIdClaim in common name, all, no parsing", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem: S(caPEM.String()),
+			ExternalIDClaim: &rest_model.ExternalIDClaim{
+				Index:           I(0),
+				Location:        S(rest_model.ExternalIDClaimLocationCOMMONNAME),
+				Matcher:         S(rest_model.ExternalIDClaimMatcherALL),
+				MatcherCriteria: S(""),
+				Parser:          S(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  S(""),
+			},
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(caCreateResult)
+		ctx.NotNil(caCreateResult.Data)
+		ctx.NotEmpty(caCreateResult.Data.ID)
+
+		t.Run("created ca values are correct", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			caGetResult := &rest_model.DetailCaEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.NotNil(caGetResult, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+
+			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
+			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
+			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
+			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
+			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
+			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+
+		})
+	})
+
+	t.Run("can create a CA with externalIdClaim in san uri, scheme, no parsing", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem: S(caPEM.String()),
+			ExternalIDClaim: &rest_model.ExternalIDClaim{
+				Index:           I(0),
+				Location:        S(rest_model.ExternalIDClaimLocationSANURI),
+				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: S("spiffe"),
+				Parser:          S(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  S(""),
+			},
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(caCreateResult)
+		ctx.NotNil(caCreateResult.Data)
+		ctx.NotEmpty(caCreateResult.Data.ID)
+
+		t.Run("created ca values are correct", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			caGetResult := &rest_model.DetailCaEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.NotNil(caGetResult, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+
+			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
+			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
+			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
+			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
+			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
+			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+
+		})
+	})
+
+	t.Run("can create a CA with externalIdClaim in email, suffix, no parsing", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem: S(caPEM.String()),
+			ExternalIDClaim: &rest_model.ExternalIDClaim{
+				Index:           I(0),
+				Location:        S(rest_model.ExternalIDClaimLocationSANEMAIL),
+				Matcher:         S(rest_model.ExternalIDClaimMatcherSUFFIX),
+				MatcherCriteria: S("@example.org"),
+				Parser:          S(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  S(""),
+			},
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.NotNil(caCreateResult)
+		ctx.NotNil(caCreateResult.Data)
+		ctx.NotEmpty(caCreateResult.Data.ID)
+
+		t.Run("created ca values are correct", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			caGetResult := &rest_model.DetailCaEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.NotNil(caGetResult, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+
+			ctx.Equal(*caCreate.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
+			ctx.Equal(*caCreate.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
+			ctx.Equal(*caCreate.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
+			ctx.Equal(caCreate.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
+			ctx.Equal(*caCreate.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
+			ctx.Equal(caCreate.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+
+		})
+	})
+
+	t.Run("can create a CA with no externalIdClaim", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, privKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem:                   S(caPEM.String()),
+			ExternalIDClaim:           nil,
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		t.Run("created ca values are correct", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			caGetResult := &rest_model.DetailCaEnvelope{}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+			ctx.NotNil(caGetResult, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data, string(resp.Body()))
+			ctx.NotNil(caGetResult.Data.ID, string(resp.Body()))
+			ctx.NotEmpty(*caGetResult.Data.ID, string(resp.Body()))
+			ctx.Nil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+			ctx.Equal(caCreate.ExternalIDClaim, caGetResult.Data.ExternalIDClaim)
+
+		})
+	})
+
+	t.Run("can not create a CA with externalIdClaim in email, scheme, no parsing", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem: S(caPEM.String()),
+			ExternalIDClaim: &rest_model.ExternalIDClaim{
+				Index:           I(0),
+				Location:        S(rest_model.ExternalIDClaimLocationSANEMAIL),
+				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: S("@example.org"),
+				Parser:          S(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  S(""),
+			},
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
+	})
+
+	t.Run("can not create a CA with externalIdClaim with missing location", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem: S(caPEM.String()),
+			ExternalIDClaim: &rest_model.ExternalIDClaim{
+				Index:           I(0),
+				Location:        nil,
+				Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
+				MatcherCriteria: S("@example.org"),
+				Parser:          S(rest_model.ExternalIDClaimParserNONE),
+				ParserCriteria:  S(""),
+			},
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
 	})
 }

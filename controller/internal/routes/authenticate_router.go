@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/errorz"
+	nfpem "github.com/openziti/foundation/util/pem"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"net"
 	"net/http"
@@ -78,18 +79,19 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	logger := pfxlog.Logger()
 	authContext := model.NewAuthContextHttp(httpRequest, method, auth)
 
-	identity, authenticatorId, err := ae.Handlers.Authenticator.IsAuthorized(authContext)
+	authResult, err := ae.Handlers.Authenticator.Authorize(authContext)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	if identity == nil {
+	if !authResult.IsSuccessful() {
 		rc.RespondWithApiError(errorz.NewUnauthorized())
 		return
 	}
 
+	identity := authResult.Identity()
 	if identity.EnvInfo == nil {
 		identity.EnvInfo = &model.EnvInfo{}
 	}
@@ -146,7 +148,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		Token:           token,
 		ConfigTypes:     configTypes,
 		IPAddress:       remoteIpStr,
-		AuthenticatorId: authenticatorId,
+		AuthenticatorId: authResult.AuthenticatorId(),
 		LastActivityAt:  time.Now().UTC(),
 	}
 
@@ -162,7 +164,17 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		newApiSession.MfaComplete = false
 	}
 
-	sessionId, err := ae.Handlers.ApiSession.Create(newApiSession)
+	var sessionCerts []*model.ApiSessionCertificate
+
+	for _, cert := range authResult.SessionCerts() {
+		sessionCert := &model.ApiSessionCertificate{
+			PEM:         nfpem.EncodeToString(cert),
+			Fingerprint: ae.GetFingerprintGenerator().FromCert(cert),
+		}
+		sessionCerts = append(sessionCerts, sessionCert)
+	}
+
+	sessionId, err := ae.Handlers.ApiSession.Create(newApiSession, sessionCerts)
 
 	if err != nil {
 		rc.RespondWithError(err)

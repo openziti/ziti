@@ -766,12 +766,22 @@ type ca struct {
 	identityRoles             []string               `json:"identityRoles"`
 	identityNameFormat        string                 `json:"identityNameFormat"`
 	tags                      map[string]interface{} `json:"tags"`
+	externalIdClaim           *externalIdClaim       `json:"externalIdClaim"`
 
 	privateKey crypto.Signer     `json:"-"` //utility property, not used in API calls
 	publicCert *x509.Certificate `json:"-"` //utility property, not used in API calls
 }
 
-func newTestCa(identityRoles ...string) *ca {
+type externalIdClaim struct {
+	location        string `json:"location"`
+	matcher         string `json:"matcher"`
+	matcherCriteria string `json:"matcherCriteria"`
+	parser          string `json:"parser"`
+	parserCriteria  string `json:"parserCriteria"`
+	index           int64  `json:"index"`
+}
+
+func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
@@ -805,6 +815,12 @@ func newTestCa(identityRoles ...string) *ca {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
+
+	return caCert, key, caPEM
+}
+
+func newTestCa(identityRoles ...string) *ca {
+	caCert, key, caPEM := newTestCaCert()
 
 	if identityRoles == nil {
 		identityRoles = []string{}
@@ -845,6 +861,15 @@ func (entity ca) toJson(create bool, ctx *TestContext, fields ...string) string 
 	ctx.setValue(entityData, entity.identityRoles, fields, "identityRoles")
 	ctx.setValue(entityData, entity.tags, fields, "tags")
 	ctx.setValue(entityData, entity.identityNameFormat, fields, "identityNameFormat")
+
+	if entity.externalIdClaim != nil {
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.location, fields, "externalIdClaim", "externalIdClaim", "location")
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.index, fields, "externalIdClaim", "externalIdClaim", "index")
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.matcher, fields, "externalIdClaim", "externalIdClaim", "matcher")
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.matcherCriteria, fields, "externalIdClaim", "externalIdClaim", "matcherCriteria")
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.parser, fields, "externalIdClaim", "externalIdClaim", "parser")
+		ctx.setValueWithPath(entityData, entity.externalIdClaim.parserCriteria, fields, "externalIdClaim", "externalIdClaim", "parserCriteria")
+	}
 
 	if create {
 		ctx.setValue(entityData, entity.certPem, fields, "certPem")

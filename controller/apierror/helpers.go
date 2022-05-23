@@ -137,6 +137,14 @@ func NewCertFailedValidation() *errorz.ApiError {
 	}
 }
 
+func NewMissingCertClaim() *errorz.ApiError {
+	return &errorz.ApiError{
+		Code:    MissingCertClaimCode,
+		Message: MissingCertClaimMessage,
+		Status:  MissingCertClaimStatus,
+	}
+}
+
 func NewCertInUse() *errorz.ApiError {
 	return &errorz.ApiError{
 		Code:    CertInUseCode,

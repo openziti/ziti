@@ -101,15 +101,25 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	return signerRecord.cert.PublicKey, nil
 }
 
-func (a *AuthModuleExtJwt) Process(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
 	return a.process(context, true)
 }
 
-func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (identityId, externalId, authenticatorId string, err error) {
+func (a *AuthModuleExtJwt) ProcessSecondary(context AuthContext) (AuthResult, error) {
 	return a.process(context, false)
 }
 
-func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identityId, externalId, authenticatorId string, err error) {
+type AuthResultJwt struct {
+	AuthResultBase
+	externalJwtSignerId string
+	externalJwtSigner   *persistence.ExternalJwtSigner
+}
+
+func (a *AuthResultJwt) IsSuccessful() bool {
+	return a.externalJwtSignerId != "" && a.AuthResultBase.identityId != ""
+}
+
+func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
 
 	headers := map[string]interface{}{}
@@ -126,13 +136,13 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 	if len(authHeaders) != 1 {
 		logger.Error("no authorization header found")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 	authHeader := authHeaders[0]
 
 	if !strings.HasPrefix(authHeader, "Bearer ") {
 		logger.Error("authorization header missing Bearer prefix")
-		return "", "", "", apierror.NewInvalidAuth()
+		return nil, apierror.NewInvalidAuth()
 	}
 
 	jwtStr := strings.Replace(authHeader, "Bearer ", "", 1)
@@ -146,7 +156,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 		if extJwt == nil {
 			logger.Error("no external jwt signer found for internal claims")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		logger = logger.WithField("externalJwtSignerId", extJwt.Id)
@@ -156,7 +166,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 			issuer, ok = issuerVal.(string)
 			if !ok {
 				logger.Error("issuer in claims was not a string")
-				return "", "", "", apierror.NewInvalidAuth()
+				return nil, apierror.NewInvalidAuth()
 			}
 		}
 
@@ -164,7 +174,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 		if extJwt.Issuer != nil && *extJwt.Issuer != issuer {
 			logger.WithField("expectedIssuer", *extJwt.Issuer).Error("invalid issuer")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		if extJwt.Audience != nil {
@@ -172,7 +182,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 			if audValues == nil {
 				logger.WithField("audience", audValues).Error("audience is missing")
-				return "", "", "", apierror.NewInvalidAuth()
+				return nil, apierror.NewInvalidAuth()
 			}
 
 			audSlice, ok := audValues.([]string)
@@ -182,7 +192,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 				if !ok {
 					logger.WithField("audience", audValues).Error("audience is not a string or array of strings")
-					return "", "", "", apierror.NewInvalidAuth()
+					return nil, apierror.NewInvalidAuth()
 				}
 
 				audSlice = []string{audString}
@@ -198,7 +208,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 			if !found {
 				logger.WithField("expectedAudience", *extJwt.Audience).WithField("claimsAudiences", audSlice).Error("invalid audience")
-				return "", "", "", apierror.NewInvalidAuth()
+				return nil, apierror.NewInvalidAuth()
 			}
 		}
 
@@ -213,14 +223,14 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 		if !ok {
 			logger.Error("claims property on external jwt signer not found in claims")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		identityId, ok := identityIdInterface.(string)
 
 		if !ok || identityId == "" {
 			logger.Error("expected claims id was not a string or was empty")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		var authPolicy *AuthPolicy
@@ -234,12 +244,12 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 
 		if err != nil {
 			logger.WithError(err).Error("encountered unhandled error during authentication")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		if authPolicy == nil {
 			logger.WithError(err).Error("encountered unhandled nil auth policy during authentication")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 		externalJwtSignerId := ""
 		if identity.Disabled {
@@ -247,12 +257,12 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 				WithField("disabledAt", identity.DisabledAt).
 				WithField("disabledUntil", identity.DisabledUntil).
 				Error("authentication failed, identity is disabled")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		if !authPolicy.Primary.ExtJwt.Allowed {
 			logger.Error("external jwt authentication on auth policy is disabled")
-			return "", "", "", apierror.NewInvalidAuth()
+			return nil, apierror.NewInvalidAuth()
 		}
 
 		if isPrimary {
@@ -270,25 +280,40 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (identit
 					logger.
 						WithField("allowedSigners", authPolicy.Primary.ExtJwt.AllowedExtJwtSigners).
 						Error("auth policy does not allow specified signer")
-					return "", "", "", apierror.NewInvalidAuth()
+					return nil, apierror.NewInvalidAuth()
 				}
+			} else {
+				return nil, apierror.NewInvalidAuth()
 			}
 		} else if authPolicy.Secondary.RequiredExtJwtSigner != nil {
 			if extJwt.Id != *authPolicy.Secondary.RequiredExtJwtSigner {
-				return "", "", "", apierror.NewInvalidAuth()
+				return nil, apierror.NewInvalidAuth()
 			}
 
 			externalJwtSignerId = extJwt.Id
 		}
 
-		if extJwt.UseExternalId {
-			return "", identityId, externalJwtSignerId, nil
+		result := &AuthResultJwt{
+			AuthResultBase: AuthResultBase{
+				authPolicyId: authPolicy.Id,
+				authPolicy:   authPolicy,
+				env:          a.env,
+			},
+			externalJwtSignerId: externalJwtSignerId,
+			externalJwtSigner:   extJwt,
 		}
-		return identityId, "", externalJwtSignerId, nil
+
+		if extJwt.UseExternalId {
+			result.externalId = identityId
+		} else {
+			result.identityId = identityId
+		}
+
+		return result, nil
 	}
 
 	logger.Error("authorization failed, jwt did not verify")
-	return "", "", "", apierror.NewInvalidAuth()
+	return nil, apierror.NewInvalidAuth()
 }
 
 func (a *AuthModuleExtJwt) getKnownSignerRecords() map[string]interface{} {

@@ -58,7 +58,7 @@ func (entity *ApiSessionCertificate) LoadValues(_ boltz.CrudStore, bucket *boltz
 	entity.Fingerprint = bucket.GetStringOrError(FieldApiSessionCertificateFingerprint)
 	entity.ValidAfter = bucket.GetTime(FieldApiSessionCertificateValidAfter)
 	entity.ValidBefore = bucket.GetTime(FieldApiSessionCertificateValidBefore)
-	entity.PEM = bucket.GetStringOrError((FieldApiSessionCertificatePem))
+	entity.PEM = bucket.GetStringOrError(FieldApiSessionCertificatePem)
 }
 
 func (entity *ApiSessionCertificate) SetValues(ctx *boltz.PersistContext) {
@@ -78,9 +78,7 @@ func (entity *ApiSessionCertificate) GetEntityType() string {
 type ApiSessionCertificateStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error)
-	LoadOneByFingerprint(tx *bbolt.Tx, token string) (*ApiSessionCertificate, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error)
-	GetFingerprintIndex() boltz.ReadIndex
 }
 
 func newApiSessionCertificateStore(stores *stores) *ApiSessionCertificateStoreImpl {
@@ -93,7 +91,6 @@ func newApiSessionCertificateStore(stores *stores) *ApiSessionCertificateStoreIm
 
 type ApiSessionCertificateStoreImpl struct {
 	*baseStore
-	indexToken       boltz.ReadIndex
 	symbolApiSession boltz.EntitySymbol
 }
 
@@ -101,14 +98,11 @@ func (store *ApiSessionCertificateStoreImpl) NewStoreEntity() boltz.Entity {
 	return &ApiSessionCertificate{}
 }
 
-func (store *ApiSessionCertificateStoreImpl) GetFingerprintIndex() boltz.ReadIndex {
-	return store.indexToken
-}
-
 func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
-	symbolToken := store.AddSymbol(FieldApiSessionCertificateFingerprint, ast.NodeTypeString)
-	store.indexToken = store.AddUniqueIndex(symbolToken)
+	store.AddSymbol(FieldApiSessionCertificateApiSession, ast.NodeTypeString)
+	store.AddSymbol(FieldApiSessionCertificateSubject, ast.NodeTypeString)
+	store.AddSymbol(FieldApiSessionCertificateFingerprint, ast.NodeTypeString)
 	store.symbolApiSession = store.AddFkSymbol(FieldApiSessionCertificateApiSession, store.stores.apiSession)
 
 	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeDelete)
@@ -123,14 +117,6 @@ func (store *ApiSessionCertificateStoreImpl) LoadOneById(tx *bbolt.Tx, id string
 		return nil, err
 	}
 	return entity, nil
-}
-
-func (store *ApiSessionCertificateStoreImpl) LoadOneByFingerprint(tx *bbolt.Tx, fingerprint string) (*ApiSessionCertificate, error) {
-	id := store.indexToken.Read(tx, []byte(fingerprint))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "fingerprint", fingerprint)
 }
 
 func (store *ApiSessionCertificateStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error) {

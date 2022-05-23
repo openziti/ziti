@@ -98,6 +98,10 @@ const (
 	CertInUseMessage string = "The certificate supplied is already associated with another identity"
 	CertInUseStatus  int    = http.StatusConflict
 
+	MissingCertClaimCode    string = "MISSING_CERT_CLAIM"
+	MissingCertClaimMessage string = "The certificate is expected to contain and externalId, which was not found"
+	MissingCertClaimStatus  int    = http.StatusBadRequest
+
 	CaAlreadyVerifiedCode    string = "CA_ALREADY_VERIFIED"
 	CaAlreadyVerifiedMessage string = "CA has already been verified"
 	CaAlreadyVerifiedStatus  int    = http.StatusConflict

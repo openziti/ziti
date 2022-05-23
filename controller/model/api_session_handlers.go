@@ -50,15 +50,35 @@ func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
 	return &ApiSession{}
 }
 
-func (handler *ApiSessionHandler) Create(entity *ApiSession) (string, error) {
+func (handler *ApiSessionHandler) Create(entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
-	id, err := handler.createEntity(entity)
+
+	var apiSessionId string
+	err := handler.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+		var err error
+		ctx := boltz.NewMutateContext(tx)
+		apiSessionId, err = handler.createEntityInTx(ctx, entity)
+
+		if err != nil {
+			return err
+		}
+
+		for _, sessionCert := range sessionCerts {
+			sessionCert.ApiSessionId = apiSessionId
+			_, err := handler.env.GetHandlers().ApiSessionCertificate.createEntityInTx(ctx, sessionCert)
+
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 
 	if err != nil {
-		handler.MarkActivityById(id)
+		handler.MarkActivityById(apiSessionId)
 	}
 
-	return id, err
+	return apiSessionId, err
 }
 
 func (handler *ApiSessionHandler) Read(id string) (*ApiSession, error) {

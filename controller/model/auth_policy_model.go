@@ -50,6 +50,7 @@ type AuthPolicyCert struct {
 
 type AuthPolicyExtJwt struct {
 	Allowed              bool
+	AllowAllSigners      bool
 	AllowedExtJwtSigners []string
 }
 

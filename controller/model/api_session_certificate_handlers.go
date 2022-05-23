@@ -99,15 +99,6 @@ func (handler *ApiSessionCertificateHandler) Read(id string) (*ApiSessionCertifi
 	return modelApiSessionCertificate, nil
 }
 
-func (handler *ApiSessionCertificateHandler) ReadByFingerprint(fingerprint string) (*ApiSessionCertificate, error) {
-	modelApiSessionCertificate := &ApiSessionCertificate{}
-	tokenIndex := handler.env.GetStores().ApiSessionCertificate.GetFingerprintIndex()
-	if err := handler.readEntityWithIndex("fingerprint", []byte(fingerprint), tokenIndex, modelApiSessionCertificate); err != nil {
-		return nil, err
-	}
-	return modelApiSessionCertificate, nil
-}
-
 func (handler *ApiSessionCertificateHandler) readInTx(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
 	modelApiSessionCertificate := &ApiSessionCertificate{}
 	if err := handler.readEntityInTx(tx, id, modelApiSessionCertificate); err != nil {

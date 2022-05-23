@@ -24,8 +24,10 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/util/errorz"
 	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/foundation/util/stringz"
 	cmap "github.com/orcaman/concurrent-map"
 	"net/http"
 	"time"
@@ -63,90 +65,191 @@ func (module *AuthModuleCert) CanHandle(method string) bool {
 	return method == module.method
 }
 
-func (module *AuthModuleCert) Process(context AuthContext) (string, string, string, error) {
-	fingerprints, err := module.GetFingerprints(context)
+// verifyClientCerts will verify a set of x509.Certificates provided by a client during the TLS handshake. It is
+// required, as it is required by the TLS spec, that the first certificate is the client's identity. Any additional
+// certificates may be provided in order to provide intermediate CAs that map back to a known root CA in the roots
+// argument. The result is an array of valid chains or an error.
+//
+// Note: this function does not validate expiration times specifically to allow for situations where expired
+// certificates are allowed by authentication policy. Due to the way certificate authentication works, we may
+// not know the authentication policy until after the signing root CA is determined.
+func (module *AuthModuleCert) verifyClientCerts(clientCerts []*x509.Certificate, roots *x509.CertPool) ([][]*x509.Certificate, error) {
+	clientCert := clientCerts[0]
 
-	if err != nil {
-		return "", "", "", err
+	//time checks are done manually based on authentication policy
+	origNotBefore := clientCert.NotBefore
+	origNotAfter := clientCert.NotAfter
+	clientCert.NotBefore = time.Now().Add(-1 * time.Hour)
+	clientCert.NotAfter = time.Now().Add(1 * time.Hour)
+
+	intermediates := x509.NewCertPool()
+	for _, curCert := range clientCerts[1:] {
+		intermediates.AddCert(curCert)
 	}
 
-	for fingerprint, authCert := range fingerprints {
-		logger := pfxlog.Logger().WithField("authMethod", module.method)
-		authenticator, err := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
-
-		if err != nil {
-			logger.WithError(err).Errorf("error during cert auth read by fingerprint %s", fingerprint)
-		}
-
-		if authenticator != nil {
-			logger = logger.
-				WithField("authenticatorId", authenticator.Id).
-				WithField("identityId", authenticator.IdentityId)
-
-			authPolicy, identity, err := getAuthPolicyByIdentityId(module.env, module.method, authenticator.Id, authenticator.IdentityId)
-
-			if err != nil {
-				logger.WithError(err).Error("could not lookup identity and auth policy for cert authentication")
-				return "", "", "", apierror.NewInvalidAuth()
-			}
-
-			logger = logger.WithField("authPolicyId", authPolicy.Id)
-
-			if identity.Disabled {
-				logger.
-					WithField("disabledAt", identity.DisabledAt).
-					WithField("disabledUntil", identity.DisabledUntil).
-					Error("authentication failed, identity is disabled")
-				return "", "", "", apierror.NewInvalidAuth()
-			}
-
-			if !authPolicy.Primary.Cert.Allowed {
-				logger.Error("invalid certificate authentication, not allowed by auth policy")
-				return "", "", "", apierror.NewInvalidAuth()
-			}
-
-			curCert := fingerprints[fingerprint]
-			if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
-				if authCert.Pem == "" {
-					certPem := pem.EncodeToMemory(&pem.Block{
-						Type:  "CERTIFICATE",
-						Bytes: curCert.Raw,
-					})
-
-					authCert.Pem = string(certPem)
-					if err = module.env.GetHandlers().Authenticator.Update(authenticator); err != nil {
-						pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM, fingerprint: %s", fingerprint)
-					}
-				}
-			}
-
-			if authPolicy.Primary.Cert.AllowExpiredCerts {
-				authCert.NotBefore = time.Now().Add(-1 * time.Hour)
-				authCert.NotAfter = time.Now().Add(1 * time.Hour)
-			}
-
-			opts := x509.VerifyOptions{
-				Roots:         module.getRootPool(),
-				Intermediates: x509.NewCertPool(),
-				KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-			}
-
-			if _, err := authCert.Verify(opts); err == nil {
-				return authenticator.IdentityId, "", authenticator.Id, nil
-			} else {
-				pfxlog.Logger().Tracef("error verifying client certificate [%s] did not verify: %v", fingerprint, err)
-			}
-		}
+	opts := x509.VerifyOptions{
+		Roots:         roots,
+		Intermediates: intermediates,
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	return "", "", "", apierror.NewInvalidAuth()
+	chains, err := clientCert.Verify(opts)
+
+	clientCert.NotBefore = origNotBefore
+	clientCert.NotAfter = origNotAfter
+
+	return chains, err
 }
 
-func (module *AuthModuleCert) getRootPool() *x509.CertPool {
-	roots := x509.NewCertPool()
+// isCertExpirationValid returns true if the provided certificates validations period is currently valid.
+func (module *AuthModuleCert) isCertExpirationValid(clientCert *x509.Certificate) bool {
+	now := time.Now()
+	return now.Before(clientCert.NotAfter) && now.After(clientCert.NotBefore)
+}
+
+// Process will inspect the provided AuthContext and attempt to verify the client certificates provided during
+// a TLS handshake. Authentication via client certificates follows these steps:
+//
+// 1) obtain client certificates
+// 2) verify client certificates against known CAs
+// 3) link a CA certificate back to a model.Ca if possible
+// 4) obtain the target identity by authenticator (cert fingerprint) or by external id (claims stuffed into a x509.Certificate resolved by model.Ca)
+// 5) verify identity status (disabled)
+// 6) obtain the target identity's auth policy
+// 7) verify according to auth policy
+func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
+	logger := pfxlog.Logger().WithField("authMethod", module.method)
+
+	certs, err := module.getClientCerts(context)
+
+	if err != nil {
+		logger.WithError(err).Error("error obtaining client certificates")
+		return nil, err
+	}
+
+	if len(certs) == 0 {
+		logger.Error("no client certificates found")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	clientCert := certs[0]
+	cas := module.getCas()
+
+	chains, err := module.verifyClientCerts(certs, cas.roots)
+
+	if err != nil {
+		logger.WithError(err).Error("error verifying client certificate")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	if len(chains) == 0 {
+		logger.Error("failed to verify client, no valid roots")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	targetCa := cas.getCaByChain(chains, module.env.GetFingerprintGenerator())
+
+	externalId := ""
+	if targetCa != nil {
+		externalId, err = targetCa.GetExternalId(clientCert)
+		if err != nil {
+			logger.WithError(err).Error("encountered an error getting externalId from x509.Certificate")
+		}
+	}
+
+	var identity *Identity
+	var authenticator *Authenticator
+
+	if externalId != "" {
+		logger = logger.WithField("externalId", externalId)
+		identity, err = module.env.GetHandlers().Identity.ReadByExternalId(externalId)
+
+		if identity == nil {
+			logger.Error("failed to find identity by externalId")
+			return nil, apierror.NewInvalidAuth()
+		}
+
+		authenticator = module.authenticatorExternalId(identity.Id, clientCert)
+
+	} else {
+		fingerprint := module.env.GetFingerprintGenerator().FromCert(clientCert)
+		logger = logger.WithField("fingerprint", fingerprint)
+
+		authenticator, err = module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
+
+		if authenticator == nil {
+			logger.Error("failed to find authenticator by fingerprint")
+			return nil, apierror.NewInvalidAuth()
+		}
+
+		identity, err = module.env.GetHandlers().Identity.Read(authenticator.IdentityId)
+	}
+
+	if identity == nil {
+		logger.Error("failed to find a valid identity for authentication")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	logger = logger.WithField("authenticatorId", authenticator.Id).
+		WithField("authenticatorMethod", authenticator.Method).
+		WithField("identityId", authenticator.IdentityId).
+		WithField("authPolicyId", identity.AuthPolicyId)
+
+	if identity.Disabled {
+		logger.
+			WithField("disabledAt", identity.DisabledAt).
+			WithField("disabledUntil", identity.DisabledUntil).
+			Error("authentication failed, identity is disabled")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	authPolicy, err := module.env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+
+	if authPolicy == nil {
+		logger.Error("failed to obtain authPolicy by id")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	if !authPolicy.Primary.Cert.Allowed {
+		logger.Error("invalid certificate authentication, not allowed by auth policy")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	if !authPolicy.Primary.Cert.AllowExpiredCerts {
+		if module.isCertExpirationValid(clientCert) {
+			logger.Error("failed to verify expiration period of client certificate")
+			return nil, apierror.NewInvalidAuth()
+		}
+	}
+
+	if authenticator.Method == persistence.MethodAuthenticatorCert {
+		module.ensureAuthenticatorCertPem(authenticator, clientCert)
+	}
+
+	return &AuthResultBase{
+		identityId:      identity.Id,
+		externalId:      stringz.OrEmpty(identity.ExternalId),
+		identity:        identity,
+		authenticatorId: authenticator.Id,
+		authenticator:   authenticator,
+		sessionCerts:    []*x509.Certificate{clientCert},
+		authPolicyId:    authPolicy.Id,
+		authPolicy:      authPolicy,
+		env:             module.env,
+	}, nil
+}
+
+// getCas returns a list of trusted CAs that are either part of the Ziti setup configuration or added as 3rd party
+// CAs. The result is a caPool which has both a root x509.CertPool and a map of the CA certificates indexed by
+// their fingerprint.
+func (module *AuthModuleCert) getCas() *caPool {
+	result := &caPool{
+		roots: x509.NewCertPool(),
+		cas:   map[string]*Ca{},
+	}
 
 	for _, caCert := range module.staticCaCerts {
-		roots.AddCert(caCert)
+		result.roots.AddCert(caCert)
 	}
 
 	err := module.env.GetHandlers().Ca.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
@@ -163,14 +266,18 @@ func (module *AuthModuleCert) getRootPool() *x509.CertPool {
 		if val, ok := module.dynamicCaCache.Get(ca.Id); ok {
 			if caCerts, ok := val.([]*x509.Certificate); ok {
 				for _, caCert := range caCerts {
-					roots.AddCert(caCert)
+					result.roots.AddCert(caCert)
+					fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
+					result.cas[fingerprint] = ca
 				}
 			}
 		} else {
 			caCerts := nfpem.PemStringToCertificates(ca.CertPem)
 			module.dynamicCaCache.Set(ca.Id, caCerts)
 			for _, caCert := range caCerts {
-				roots.AddCert(caCert)
+				result.roots.AddCert(caCert)
+				fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
+				result.cas[fingerprint] = ca
 			}
 		}
 
@@ -181,81 +288,149 @@ func (module *AuthModuleCert) getRootPool() *x509.CertPool {
 		return nil
 	}
 
-	return roots
+	return result
 }
 
-func (module *AuthModuleCert) isEdgeRouter(certs []*x509.Certificate) bool {
+func (module *AuthModuleCert) isEdgeRouter(clientCert *x509.Certificate) bool {
 
-	for _, certificate := range certs {
-		fingerprint := module.fingerprintGenerator.FromCert(certificate)
+	fingerprint := module.fingerprintGenerator.FromCert(clientCert)
 
-		router, err := module.env.GetHandlers().EdgeRouter.ReadOneByFingerprint(fingerprint)
+	router, err := module.env.GetHandlers().EdgeRouter.ReadOneByFingerprint(fingerprint)
 
-		if router != nil {
-			return true
-		}
-
-		if err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not read edge router by fingerprint %s", fingerprint)
-		}
+	if router != nil {
+		return true
 	}
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Errorf("could not read edge router by fingerprint %s", fingerprint)
+	}
+
 	return false
 }
 
-func (module *AuthModuleCert) GetFingerprints(ctx AuthContext) (cert.Fingerprints, error) {
+// getClientCerts will return the client certificates that should be used to verify the authentication
+// request. The client certificates may be directly provided by the TLS handshake or proxied from a trusted
+// source (i.e. edge routers)
+func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certificate, error) {
 	peerCerts := ctx.GetCerts()
-	authCerts := peerCerts
-	proxiedRaw64 := ""
 
-	if proxiedRaw64Interface := ctx.GetHeaders()[ClientCertHeader]; proxiedRaw64Interface != nil {
-		proxiedRaw64 = proxiedRaw64Interface.(string)
+	if len(peerCerts) == 0 {
+		return nil, nil
 	}
-
-	isProxied := false
 
 	if proxyHeader := ctx.GetHeaders()[EdgeRouterProxyRequest]; proxyHeader != nil {
-		isProxied = true
+		return module.getProxiedClientCerts(ctx)
 	}
 
-	if isProxied && proxiedRaw64 == "" {
+	return peerCerts, nil
+}
+
+// ensureAuthenticatorCertPem ensures that a client's certificate is stored in `cert` authenticators. Older versions
+// of Ziti did not store this information on enrollment.
+func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenticator, clientCert *x509.Certificate) {
+	if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
+		if authCert.Pem == "" {
+			certPem := pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: clientCert.Raw,
+			})
+
+			authCert.Pem = string(certPem)
+			if err := module.env.GetHandlers().Authenticator.Update(authenticator); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM")
+			}
+		}
+	}
+}
+
+// authenticatorExternalId returns an authenticator that represents a cert based CA authentication that uses
+// `externalId` lookups.
+func (module *AuthModuleCert) authenticatorExternalId(identityId string, clientCert *x509.Certificate) *Authenticator {
+	authenticator := &Authenticator{
+		BaseEntity: models.BaseEntity{
+			Id:        "internal",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
+			Tags:      nil,
+			IsSystem:  true,
+		},
+		Method:     persistence.MethodAuthenticatorCertCaExternalId,
+		IdentityId: identityId,
+	}
+
+	authenticator.SubType = AuthenticatorCert{
+		Authenticator: authenticator,
+		Fingerprint:   module.env.GetFingerprintGenerator().FromCert(clientCert),
+		Pem:           nfpem.EncodeToString(clientCert),
+	}
+
+	return authenticator
+}
+
+func (module *AuthModuleCert) getProxiedClientCerts(ctx AuthContext) ([]*x509.Certificate, error) {
+	peerCerts := ctx.GetCerts()
+
+	if len(peerCerts) == 0 {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	if proxiedRaw64 != "" {
+	proxyRaw64 := ""
 
-		isValid := module.isEdgeRouter(ctx.GetCerts())
-
-		if !isValid {
-			return nil, apierror.NewInvalidAuth()
-		}
-
-		var proxiedRaw []byte
-		_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxiedRaw64))
-
-		if err != nil {
-			return nil, &errorz.ApiError{
-				Code:    apierror.CouldNotDecodeProxiedCertCode,
-				Message: apierror.CouldNotDecodeProxiedCertMessage,
-				Cause:   err,
-				Status:  http.StatusBadRequest,
-			}
-		}
-
-		proxiedCerts, err := x509.ParseCertificates(proxiedRaw)
-
-		if err != nil {
-			return nil, &errorz.ApiError{
-				Code:    apierror.CouldNotParseX509FromDerCode,
-				Message: apierror.CouldNotParseX509FromDerMessage,
-				Cause:   err,
-				Status:  http.StatusBadRequest,
-			}
-		}
-
-		authCerts = proxiedCerts
+	if proxyRaw64Interface := ctx.GetHeaders()[ClientCertHeader]; proxyRaw64Interface != nil {
+		proxyRaw64 = proxyRaw64Interface.(string)
 	}
 
-	return module.fingerprintGenerator.FromCerts(authCerts), nil
+	if proxyRaw64 == "" {
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	if !module.isEdgeRouter(peerCerts[0]) {
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	var proxiedRaw []byte
+	_, err := base64.StdEncoding.Decode(proxiedRaw, []byte(proxyRaw64))
+
+	if err != nil {
+		return nil, &errorz.ApiError{
+			Code:    apierror.CouldNotDecodeProxiedCertCode,
+			Message: apierror.CouldNotDecodeProxiedCertMessage,
+			Cause:   err,
+			Status:  http.StatusBadRequest,
+		}
+	}
+
+	proxiedCerts, err := x509.ParseCertificates(proxiedRaw)
+
+	if err != nil {
+		return nil, &errorz.ApiError{
+			Code:    apierror.CouldNotParseX509FromDerCode,
+			Message: apierror.CouldNotParseX509FromDerMessage,
+			Cause:   err,
+			Status:  http.StatusBadRequest,
+		}
+	}
+
+	return proxiedCerts, nil
+}
+
+type caPool struct {
+	roots *x509.CertPool
+	cas   map[string]*Ca
+}
+
+func (c *caPool) getCaByChain(chains [][]*x509.Certificate, generator cert.FingerprintGenerator) *Ca {
+	for _, chain := range chains {
+		for _, curCert := range chain {
+			fingerprint := generator.FromCert(curCert)
+
+			if ca, ok := c.cas[fingerprint]; ok {
+				return ca
+			}
+		}
+	}
+
+	return nil
 }
 
 func getAuthPolicyByIdentityId(env Env, authMethod string, authenticatorId string, identityId string) (*AuthPolicy, *Identity, error) {

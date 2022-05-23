@@ -42,6 +42,9 @@ import (
 // swagger:model caPatch
 type CaPatch struct {
 
+	// external Id claim
+	ExternalIDClaim *ExternalIDClaimPatch `json:"externalIdClaim,omitempty"`
+
 	// identity name format
 	IdentityNameFormat *string `json:"identityNameFormat,omitempty"`
 
@@ -72,6 +75,10 @@ type CaPatch struct {
 func (m *CaPatch) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateExternalIDClaim(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateIdentityRoles(formats); err != nil {
 		res = append(res, err)
 	}
@@ -83,6 +90,25 @@ func (m *CaPatch) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CaPatch) validateExternalIDClaim(formats strfmt.Registry) error {
+	if swag.IsZero(m.ExternalIDClaim) { // not required
+		return nil
+	}
+
+	if m.ExternalIDClaim != nil {
+		if err := m.ExternalIDClaim.Validate(formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("externalIdClaim")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("externalIdClaim")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -126,6 +152,10 @@ func (m *CaPatch) validateTags(formats strfmt.Registry) error {
 func (m *CaPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateExternalIDClaim(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateIdentityRoles(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -137,6 +167,22 @@ func (m *CaPatch) ContextValidate(ctx context.Context, formats strfmt.Registry) 
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *CaPatch) contextValidateExternalIDClaim(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.ExternalIDClaim != nil {
+		if err := m.ExternalIDClaim.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("externalIdClaim")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("externalIdClaim")
+			}
+			return err
+		}
+	}
+
 	return nil
 }
 

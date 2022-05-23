@@ -330,20 +330,13 @@ func processSecondaryJwtSigner(ae *AppEnv, rc *response.RequestContext) bool {
 		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
 		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
 		if extJwtAuth != nil {
-			identityId, externalId, extJwtSignerId, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil))
+			authResult, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil))
 
 			if err != nil {
 				return false
 			}
 
-			if rc.AuthStatus.SecondaryExtJwtSignerId != extJwtSignerId {
-				return false
-			}
-
-			if (identityId != "" && identityId == rc.Identity.Id) || (externalId != "" && rc.Identity.ExternalId != nil && externalId == *rc.Identity.ExternalId) {
-				rc.AuthStatus.PassedSecondaryExtJwtSignerId = true
-				return true
-			}
+			return authResult.IsSuccessful()
 		}
 
 		return false

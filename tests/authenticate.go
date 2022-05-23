@@ -125,7 +125,7 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath s
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("failed to authenticate via CERT: invalid response code encountered, got %d, expected %d", resp.StatusCode(), http.StatusOK)
+		return nil, errors.Errorf("failed to authenticate via CERT: invalid response code encountered, got %d, expected %d: %s", resp.StatusCode(), http.StatusOK, string(resp.Body()))
 	}
 
 	if err = sess.parseSessionInfoFromResponse(ctx, resp); err != nil {

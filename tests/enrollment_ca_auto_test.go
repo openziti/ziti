@@ -38,7 +38,7 @@ import (
 	"time"
 )
 
-func Test_IdentityEnrollment(t *testing.T) {
+func Test_EnrollmetnCaAuto(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Teardown()
 	ctx.StartServer()
@@ -48,6 +48,15 @@ func Test_IdentityEnrollment(t *testing.T) {
 
 		t.Run("setup CA", func(t *testing.T) {
 			testCa := newTestCa()
+
+			testCa.externalIdClaim = &externalIdClaim{
+				location:        rest_model.ExternalIDClaimLocationCOMMONNAME,
+				matcher:         rest_model.ExternalIDClaimMatcherALL,
+				matcherCriteria: "",
+				parser:          rest_model.ExternalIDClaimParserNONE,
+				parserCriteria:  "",
+				index:           0,
+			}
 
 			testCa.identityNameFormat = "[requestedName]"
 
@@ -75,16 +84,18 @@ func Test_IdentityEnrollment(t *testing.T) {
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)
 
-			t.Run("can enroll without a name and a 0 length body", func(t *testing.T) {
+			t.Run("can enroll without a name and a 0 length body with externalId claim", func(t *testing.T) {
 				ctx.testContextChanged(t)
-				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
+
+				commonName := "test-can-enroll-" + eid.New()
+				clientCert, clientKey, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, commonName)
 				ctx.Req.NoError(err)
 
 				restClient, _, transport := ctx.NewClientComponents(EdgeClientApiPath)
 				transport.TLSClientConfig.Certificates = []tls.Certificate{
 					{
-						Certificate: [][]byte{cert.Raw},
-						PrivateKey:  key,
+						Certificate: [][]byte{clientCert.Raw},
+						PrivateKey:  clientKey,
 					},
 				}
 
@@ -101,9 +112,37 @@ func Test_IdentityEnrollment(t *testing.T) {
 
 				contentType := strings.Split(contentTypeHeaders[0], ";")[0]
 				ctx.Req.Equal("application/json", contentType)
+
+				t.Run("can authenticate", func(t *testing.T) {
+					ctx.testContextChanged(t)
+
+					clientCertAuth := &certAuthenticator{
+						cert: clientCert,
+						key:  clientKey,
+					}
+
+					apiSession, err := clientCertAuth.AuthenticateClientApi(ctx)
+					ctx.NoError(err)
+					ctx.NotNil(apiSession)
+
+					t.Run("externalId is set properly", func(t *testing.T) {
+						ctx.testContextChanged(t)
+
+						identityGet := &rest_model.DetailIdentityEnvelope{}
+
+						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityGet).Get("/identities/" + apiSession.identityId)
+						ctx.NoError(err)
+						ctx.Equal(http.StatusOK, resp.StatusCode())
+						ctx.NotNil(identityGet)
+						ctx.NotNil(identityGet.Data)
+						ctx.NotNil(identityGet.Data.ExternalID)
+						ctx.Equal(*identityGet.Data.ExternalID, commonName)
+
+					})
+				})
 			})
 
-			t.Run("can enroll without a name and empty JSON object", func(t *testing.T) {
+			t.Run("can enroll without a name and empty JSON object without externalId claim", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
 				ctx.Req.NoError(err)
@@ -132,7 +171,7 @@ func Test_IdentityEnrollment(t *testing.T) {
 				ctx.Req.Equal("application/json", contentType)
 			})
 
-			t.Run("can enroll with a name", func(t *testing.T) {
+			t.Run("can enroll with a name without externalId claim", func(t *testing.T) {
 				t.Run("can enroll with", func(t *testing.T) {
 					ctx.testContextChanged(t)
 					cert, key, err := generateCaSignedClientCert(testCa.publicCert, testCa.privateKey, "test-can-enroll-"+eid.New())
