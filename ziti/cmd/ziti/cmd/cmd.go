@@ -49,11 +49,11 @@ type MainOptions struct {
 type RootCmd struct {
 	configFile string
 
-	RegistryPath string
-
-	clusterName string
-
 	cobraCommand *cobra.Command
+}
+
+func GetRootCommand() *cobra.Command {
+	return rootCommand.cobraCommand
 }
 
 var rootCommand = RootCmd{
@@ -234,9 +234,4 @@ func initConfig() {
 			log.Warnf("error reading config: %v", err)
 		}
 	}
-
-	rootCommand.RegistryPath = viper.GetString("ZITI_STATE_STORE")
-
-	// Tolerate multiple slashes at end
-	rootCommand.RegistryPath = strings.TrimSuffix(rootCommand.RegistryPath, "/")
 }
