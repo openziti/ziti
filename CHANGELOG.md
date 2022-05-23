@@ -1,5 +1,52 @@
 # Release 0.25.9
 
+## What's New
+- Edge
+  - Create Identity Enrollments / Allow Identity Re-Enrollment
+- Fabric
+  - Bug fixes
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+
+### Create Identity Enrollments / Allow Identity Re-Enrollment
+
+The ability to create identity enrollments, allows new enrollment JWTs to be generated throughout any identity's
+lifetime. This allows Ziti to support scenarios where re-enrolling an identity is more convenient than recreating it.
+
+The most common scenario is new device transitions. Previously, the only way to deal with this scenario was to remove
+the identity and recreate it. Depending on how the role attributes and policies were configured this may be a trivial or
+demanding task. The more policies utilizing direct identity reference, instead of attribute selectors, the
+more difficult it is to recreate that identity. Additional, re-enrolling an identity retains MFA TOTP enrollment,
+recovery codes, and authentication policy assignments/configuration.
+
+#### New Endpoints
+- `POST /enrollments` - Create enrollments associated to an identity
+
+#### POST /enrollments Properties
+
+- `method` - required - one of `ott`, `ottca`, or `updb` to specify the type of enrollment (this affects other field requirements)
+- `expiresAt` - required - the date and time the enrollment will expire
+- `identityId` - required - the identity the enrollment is tied to
+- `caId` - `ottca` required, others ignored - the verifying 3rd party CA id for the `ottca` enrollment
+- `username` - `updb` required, others ignored - the default username granted to an identity during `updb` enrollment
+
+#### Creating Identity Enrollments
+
+Identity enrollments only allow one outstanding enrollment for each type of enrollment supported. For example attempting 
+to create multiple `ott` (one-time-token) enrollments will return a `409 Conflict` error. Deleting existing enrollments will
+resolve the issue.
+
+As noted in the properties' section above, some properties are utilized for different `method` types. Please be aware
+that while setting these values through the API will not be rejected, they are not utilized.
+
+Please note that it is possible for an identity to have multiple authentication types. Authentication policies should
+be used to restrict the type of authenticators that are valid, even if enrolment has been completed.
+
+
 ## Fabric
 
 ### Bug Fixes
