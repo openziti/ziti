@@ -47,6 +47,10 @@ responses:
         meta:
           apiEnrollmentVersion: 0.0.1
           apiVersion: 0.0.1
+  conflictResponse:
+    description: The request could not be completed due to a conflict of configuration or state
+    schema:
+      $ref: '#/definitions/apiErrorEnvelope'
   unauthorizedResponse:
     description: The currently supplied session does not have the correct access rights to request this resource
     schema:

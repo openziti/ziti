@@ -46,6 +46,8 @@ paths:
           $ref: '../shared/standard-responses.yml#/responses/badRequestResponse'
         '401':
           $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+        '409':
+          $ref: '../shared/standard-responses.yml#/responses/conflictResponse'
   enrollments-id:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
