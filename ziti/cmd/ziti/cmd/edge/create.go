@@ -49,6 +49,7 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateServicePolicyCmd(out, errOut))
 	cmd.AddCommand(newCreatePostureCheckCmd(out, errOut))
+	cmd.AddCommand(newCreateEnrollmentCmd(out, errOut))
 
 	return cmd
 }
