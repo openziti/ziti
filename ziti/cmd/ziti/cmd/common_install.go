@@ -346,7 +346,6 @@ func (o *CommonOptions) installGitHubRelease(branch string, zitiApp string, ziti
 	var latestVersion semver.Version
 
 	if version != "" {
-
 		if strings.Contains(version, "*") {
 			latestVersion, err = util.GetLatestGitHubReleaseVersion(o.Verbose, zitiAppGitHub)
 			if err != nil {
@@ -364,7 +363,6 @@ func (o *CommonOptions) installGitHubRelease(branch string, zitiApp string, ziti
 	fullPath := filepath.Join(binDir, fileName)
 	ext := ".zip"
 	zipFile := fullPath + ext
-
 	releaseUrl, err := util.GetLatestGitHubReleaseAsset(o.Staging, zitiAppGitHub)
 	if err != nil {
 		return err

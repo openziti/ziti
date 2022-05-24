@@ -66,7 +66,6 @@ func NewCmdUpgrade(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.AddCommand(NewCmdUpgradeZiti(out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiController(out, errOut))
-	cmd.AddCommand(NewCmdUpgradeZitiFabric(out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiRouter(out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiTunnel(out, errOut))
 	cmd.AddCommand(NewCmdUpgradeZitiProxC(out, errOut))
