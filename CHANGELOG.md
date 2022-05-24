@@ -4,9 +4,9 @@
 - Edge
   - N/A
 - Fabric
-  - Bug fixes
-- Ziti CLI
   - N/A
+- Ziti CLI
+  - CLI support for enrollments/authenticators/re-enrollment
 - SDK Golang
   - N/A
 
@@ -24,8 +24,7 @@ The CLI has been augmented to support the following commands:
 - `ziti edge create enrollment ottca ...` - to create a new one-time-token enrollment for an existing identity for a 3rd party CA issued certificate
 - `ziti edge create enrollment updb ...` - to create a new updb (username/password) enrollment for an existing identity
 
-These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9
-changelog for details. For all arguments and options, please see their CLI related `-h`.
+These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9 changeFor all arguments and options, please see their CLI related `-h`.
 
 # Release 0.25.9
 
