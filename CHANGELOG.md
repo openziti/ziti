@@ -26,6 +26,8 @@ The CLI has been augmented to support the following commands:
 
 These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9 changeFor all arguments and options, please see their CLI related `-h`.
 
+Also note that the `ziti edge delete authenticator updb` command has been supplanted by `ziti edge edge authenticator <authenticator id>`
+
 # Release 0.25.9
 
 ## What's New
