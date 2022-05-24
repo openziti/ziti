@@ -7,6 +7,8 @@
   - N/A
 - Ziti CLI
   - CLI support for enrollments/authenticators/re-enrollment
+  - Fix prox-c download
+  - ziti-fabric cleanup
 - SDK Golang
   - N/A
 
@@ -27,6 +29,16 @@ The CLI has been augmented to support the following commands:
 These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9 changeFor all arguments and options, please see their CLI related `-h`.
 
 Also note that the `ziti edge delete authenticator updb` command has been supplanted by `ziti edge edge authenticator <authenticator id>`
+
+### Fix prox-c download
+
+The prox-c releases on GitHub now include the architecture in the download URL. 
+`ziti install ziti-prox-c` has been updated to take this into account.
+
+### ziti-fabric cleanup
+
+Ziti CLI install/upgrade/remove commands related to `ziti-fabric` have been
+removed since `ziti-fabric` was deprecated and is not being published anymore.
 
 # Release 0.25.9
 

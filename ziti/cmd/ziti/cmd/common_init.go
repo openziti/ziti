@@ -29,7 +29,6 @@ import (
 var ZITI_COMPONENTS = []string{
 	c.ZITI,
 	c.ZITI_CONTROLLER,
-	c.ZITI_FABRIC,
 	c.ZITI_PROX_C,
 	c.ZITI_ROUTER,
 	c.ZITI_TUNNEL,
