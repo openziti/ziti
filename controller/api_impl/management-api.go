@@ -30,8 +30,8 @@ import (
 	"github.com/openziti/fabric/rest_client"
 	"github.com/openziti/fabric/rest_server"
 	"github.com/openziti/fabric/rest_server/operations"
-	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/xweb"
 	"net/http"
 	"strings"
 )

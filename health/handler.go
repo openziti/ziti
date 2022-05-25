@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
-	"github.com/openziti/fabric/xweb"
+	"github.com/openziti/xweb"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
