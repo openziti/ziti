@@ -117,6 +117,13 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+      
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
         with:
@@ -219,6 +226,21 @@ jobs:
           tags: ${{ steps.tagprep.outputs.tags }}
 
       # END linux-build-steps
+
+  zitilab-test:
+    name: Run Zitilab Test Suite
+    runs-on: ubuntu-18.04
+    needs: [linux-build]
+    steps:
+      - name: Download Linux Release Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+
+      - name: Test
+        run: echo release/
+
 
   smoketest:
     # BEGIN smoketest-job
