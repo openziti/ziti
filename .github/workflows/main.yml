@@ -239,7 +239,7 @@ jobs:
           path: release/
 
       - name: Test
-        run: ls release/
+        run: ls release/amd64/
 
 
   smoketest:
