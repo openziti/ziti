@@ -64,7 +64,7 @@ func (entity *Config) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldConfigType, entity.Type)
 	ctx.SetMap(FieldConfigData, entity.Data)
 
-	if entity.Data == nil {
+	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
 		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
 	}
 }

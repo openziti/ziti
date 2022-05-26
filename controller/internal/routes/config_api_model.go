@@ -54,7 +54,7 @@ func MapCreateConfigToModel(config *rest_model.ConfigCreate) (*model.Config, err
 	return ret, nil
 }
 
-func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.Config {
+func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) (*model.Config, error) {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(config.Tags),
@@ -63,16 +63,19 @@ func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.C
 		Name: stringz.OrEmpty(config.Name),
 	}
 
-	if dataMap, ok := config.Data.(map[string]interface{}); ok {
-		ret.Data = dataMap
+	if config.Data != nil {
+		if dataMap, ok := config.Data.(map[string]interface{}); ok {
+			ret.Data = dataMap
+			narrowJsonTypesMap(ret.Data)
+		} else {
+			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
+		}
 	}
 
-	narrowJsonTypesMap(ret.Data)
-
-	return ret
+	return ret, nil
 }
 
-func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) *model.Config {
+func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) (*model.Config, error) {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(config.Tags),
@@ -81,13 +84,18 @@ func MapPatchConfigToModel(id string, config *rest_model.ConfigPatch) *model.Con
 		Name: config.Name,
 	}
 
-	if dataMap, ok := config.Data.(map[string]interface{}); ok {
-		ret.Data = dataMap
+	if config.Data != nil {
+		if dataMap, ok := config.Data.(map[string]interface{}); ok {
+			ret.Data = dataMap
+			narrowJsonTypesMap(ret.Data)
+		} else {
+			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
+		}
 	}
 
 	narrowJsonTypesMap(ret.Data)
 
-	return ret
+	return ret, nil
 }
 
 func MapConfigToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
