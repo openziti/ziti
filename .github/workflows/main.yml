@@ -238,8 +238,16 @@ jobs:
           name: linux-release-${{ github.run_id }}
           path: release/
 
-      - name: Test
-        run: ls release/amd64/linux/
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '~1.18.1'
+
+      - name: Install Zitilab Commands
+        run: go install github.com/openziti/zitilab/github@github-action
+
+      - name: Test Ziti Command
+        run: github
 
 
   smoketest:
