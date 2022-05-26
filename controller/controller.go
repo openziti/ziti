@@ -37,10 +37,10 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
-	"github.com/openziti/fabric/xweb"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/xweb"
 	"github.com/sirupsen/logrus"
 )
 
