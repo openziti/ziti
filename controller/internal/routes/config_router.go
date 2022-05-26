@@ -82,7 +82,12 @@ func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, param
 	}
 
 	Create(rc, rc, ConfigLinkFactory, func() (string, error) {
-		return ae.Handlers.Config.Create(MapCreateConfigToModel(params.Config))
+		model, err := MapCreateConfigToModel(params.Config)
+
+		if err != nil {
+			return "", err
+		}
+		return ae.Handlers.Config.Create(model)
 	})
 }
 

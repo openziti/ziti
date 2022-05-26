@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"math"
 )
@@ -32,7 +33,7 @@ const EntityNameConfig = "configs"
 
 var ConfigLinkFactory = NewBasicLinkFactory(EntityNameConfig)
 
-func MapCreateConfigToModel(config *rest_model.ConfigCreate) *model.Config {
+func MapCreateConfigToModel(config *rest_model.ConfigCreate) (*model.Config, error) {
 	ret := &model.Config{
 		BaseEntity: models.BaseEntity{
 			Tags: TagsOrDefault(config.Tags),
@@ -41,12 +42,16 @@ func MapCreateConfigToModel(config *rest_model.ConfigCreate) *model.Config {
 		TypeId: stringz.OrEmpty(config.ConfigTypeID),
 	}
 
-	dataMap := config.Data.(map[string]interface{})
-	ret.Data = dataMap
+	if config.Data != nil {
+		if dataMap, ok := config.Data.(map[string]interface{}); ok {
+			ret.Data = dataMap
+			narrowJsonTypesMap(ret.Data)
+		} else {
+			return nil, errorz.NewFieldError("invalid type, expected object", "data", config.Data)
+		}
+	}
 
-	narrowJsonTypesMap(ret.Data)
-
-	return ret
+	return ret, nil
 }
 
 func MapUpdateConfigToModel(id string, config *rest_model.ConfigUpdate) *model.Config {
