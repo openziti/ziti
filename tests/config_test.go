@@ -20,7 +20,9 @@
 package tests
 
 import (
+	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/foundation/util/errorz"
 	"math"
 	"net/http"
@@ -53,6 +55,21 @@ func Test_Configs(t *testing.T) {
 		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
 		config := ctx.newConfig(configType.Id, nil)
 		resp := ctx.AdminManagementSession.createEntity(config)
+		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "data")
+	})
+
+	t.Run("create with invalid data should fail", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		configType := ctx.AdminManagementSession.requireCreateNewConfigType()
+
+		config := &rest_model.ConfigCreate{
+			ConfigTypeID: &configType.Id,
+			Data:         "invalid",
+			Name:         S(uuid.NewString()),
+		}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(config).Post("/configs")
+		ctx.NoError(err)
 		ctx.requireFieldError(resp.StatusCode(), resp.Body(), errorz.CouldNotValidateCode, "data")
 	})
 

@@ -19,6 +19,7 @@ package persistence
 import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -62,6 +63,10 @@ func (entity *Config) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldConfigType, entity.Type)
 	ctx.SetMap(FieldConfigData, entity.Data)
+
+	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
+		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
+	}
 }
 
 func (entity *Config) GetEntityType() string {
