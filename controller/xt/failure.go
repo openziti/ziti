@@ -1,12 +1,12 @@
 package xt
 
 import (
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
 )
 
 type failureCosts struct {
-	costMap        cmap.ConcurrentMap
+	costMap        cmap.ConcurrentMap[uint16]
 	maxFailureCost uint32
 	failureCost    uint16
 	successCredit  uint16
@@ -14,7 +14,7 @@ type failureCosts struct {
 
 func NewFailureCosts(maxFailureCost uint16, failureCost uint8, successCredit uint8) FailureCosts {
 	result := &failureCosts{
-		costMap:        cmap.New(),
+		costMap:        cmap.New[uint16](),
 		maxFailureCost: uint32(maxFailureCost),
 		failureCost:    uint16(failureCost),
 		successCredit:  uint16(successCredit),
@@ -41,12 +41,12 @@ func (self *failureCosts) Clear(terminatorId string) {
 
 func (self *failureCosts) Failure(terminatorId string) uint16 {
 	var change uint16
-	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	self.costMap.Upsert(terminatorId, 0, func(exist bool, currentCost uint16, newValue uint16) uint16 {
 		if !exist {
 			change = self.failureCost
 			return self.failureCost
 		}
-		currentCost := valueInMap.(uint16)
+
 		nextCost := uint32(currentCost) + uint32(self.failureCost)
 		if nextCost > self.maxFailureCost {
 			change = uint16(self.maxFailureCost - uint32(currentCost))
@@ -69,11 +69,11 @@ func (self *failureCosts) successWithCredit(terminatorId string, credit uint16) 
 	}
 
 	if val == 0 {
-		removed := self.costMap.RemoveCb(terminatorId, func(key string, v interface{}, exists bool) bool {
+		removed := self.costMap.RemoveCb(terminatorId, func(key string, currentVal uint16, exists bool) bool {
 			if !exists {
 				return true
 			}
-			currentVal := v.(uint16)
+
 			return currentVal == 0
 		})
 		if removed {
@@ -82,15 +82,15 @@ func (self *failureCosts) successWithCredit(terminatorId string, credit uint16) 
 	}
 
 	var change uint16
-	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	self.costMap.Upsert(terminatorId, 0, func(exist bool, currentCost uint16, newValue uint16) uint16 {
 		if !exist {
 			change = 0
-			return uint16(0)
+			return 0
 		}
-		currentCost := valueInMap.(uint16)
+
 		if currentCost < credit {
 			change = currentCost
-			return uint16(0)
+			return 0
 		}
 		change = credit
 		return currentCost - credit

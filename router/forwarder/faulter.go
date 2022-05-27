@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"strings"
 	"time"
@@ -30,12 +30,12 @@ import (
 type Faulter struct {
 	ctrl        channel.Channel
 	interval    time.Duration
-	circuitIds  cmap.ConcurrentMap // map[circuitId]struct{}
+	circuitIds  cmap.ConcurrentMap[struct{}]
 	closeNotify chan struct{}
 }
 
 func NewFaulter(interval time.Duration, closeNotify chan struct{}) *Faulter {
-	f := &Faulter{interval: interval, circuitIds: cmap.New(), closeNotify: closeNotify}
+	f := &Faulter{interval: interval, circuitIds: cmap.New[struct{}](), closeNotify: closeNotify}
 	if interval > 0 {
 		go f.run()
 	}
