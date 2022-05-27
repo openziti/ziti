@@ -32,7 +32,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.38
-	github.com/openziti/fabric v0.17.140
+	github.com/openziti/fabric v0.17.141
 	github.com/openziti/foundation v0.17.26
 	github.com/openziti/sdk-golang v0.16.71
 	github.com/openziti/storage v0.1.6
@@ -61,7 +61,6 @@ require (
 )
 
 require (
-	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
