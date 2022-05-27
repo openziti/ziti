@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/foundation/util/errorz"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
 )
 
@@ -32,14 +32,14 @@ var _ AuthProcessor = &AuthModuleUpdb{}
 type AuthModuleUpdb struct {
 	env                       Env
 	method                    string
-	attemptsByAuthenticatorId cmap.ConcurrentMap //string -> int64
+	attemptsByAuthenticatorId cmap.ConcurrentMap[int64]
 }
 
 func NewAuthModuleUpdb(env Env) *AuthModuleUpdb {
 	handler := &AuthModuleUpdb{
 		env:                       env,
 		method:                    "password",
-		attemptsByAuthenticatorId: cmap.New(),
+		attemptsByAuthenticatorId: cmap.New[int64](),
 	}
 
 	return handler
@@ -113,14 +113,13 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	}
 
 	attempts := int64(0)
-	handler.attemptsByAuthenticatorId.Upsert(authenticator.Id, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	handler.attemptsByAuthenticatorId.Upsert(authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
 		if exist {
-			prevAttempts := valueInMap.(int64)
 			attempts = prevAttempts + 1
 			return attempts
 		}
 
-		return int64(0)
+		return 0
 	})
 
 	if authPolicy.Primary.Updb.MaxAttempts != persistence.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {

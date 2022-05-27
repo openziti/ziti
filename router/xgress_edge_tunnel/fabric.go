@@ -33,7 +33,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"net"
 	"runtime"
@@ -46,8 +46,8 @@ func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
 	return &fabricProvider{
 		factory:      factory,
 		tunneler:     tunneler,
-		dialSessions: cmap.New(),
-		bindSessions: cmap.New(),
+		dialSessions: cmap.New[string](),
+		bindSessions: cmap.New[string](),
 	}
 }
 
@@ -59,24 +59,18 @@ type fabricProvider struct {
 	apiSessionToken string
 	currentIdentity *edge.CurrentIdentity
 
-	dialSessions cmap.ConcurrentMap
-	bindSessions cmap.ConcurrentMap
+	dialSessions cmap.ConcurrentMap[string]
+	bindSessions cmap.ConcurrentMap[string]
 }
 
 func (self *fabricProvider) getDialSession(serviceName string) string {
 	sessionId, _ := self.dialSessions.Get(serviceName)
-	if sessionId != nil {
-		return sessionId.(string)
-	}
-	return ""
+	return sessionId
 }
 
 func (self *fabricProvider) getBindSession(serviceName string) string {
 	sessionId, _ := self.bindSessions.Get(serviceName)
-	if sessionId != nil {
-		return sessionId.(string)
-	}
-	return ""
+	return sessionId
 }
 
 func (self *fabricProvider) updateApiSession(resp *edge_ctrl_pb.CreateApiSessionResponse) {

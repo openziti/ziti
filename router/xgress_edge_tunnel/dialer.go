@@ -41,11 +41,10 @@ func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, addr
 		WithField("binding", "edge").
 		WithField("destination", destination)
 
-	val, ok := self.terminators.Get(destination)
+	terminator, ok := self.terminators.Get(destination)
 	if !ok {
 		return nil, xgress.InvalidTerminatorError{InnerError: errors.Errorf("tunnel terminator for destination %v not found", destination)}
 	}
-	terminator := val.(*tunnelTerminator)
 
 	options, err := tunnel.AppDataToMap(circuitId.Data[edge.AppDataHeader])
 	if err != nil {

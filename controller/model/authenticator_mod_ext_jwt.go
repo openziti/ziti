@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	nfPem "github.com/openziti/foundation/util/pem"
 	"github.com/openziti/storage/boltz"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -38,14 +38,14 @@ const (
 type AuthModuleExtJwt struct {
 	env     Env
 	method  string
-	signers cmap.ConcurrentMap //map[kid string]*signer
+	signers cmap.ConcurrentMap[*signerRecord]
 }
 
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	ret := &AuthModuleExtJwt{
 		env:     env,
 		method:  AuthMethodExtJwt,
-		signers: cmap.New(),
+		signers: cmap.New[*signerRecord](),
 	}
 
 	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventCreate, ret.onExternalSignerCreate)
@@ -66,8 +66,6 @@ func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
 func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
-	kidToSignerRectInterface := a.getKnownSignerRecords()
-
 	kidVal, ok := token.Header["kid"]
 
 	if !ok {
@@ -82,14 +80,12 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	signerRecordInterface, ok := kidToSignerRectInterface[kid]
+	signerRecord, ok := a.signers.Get(kid)
 
 	if !ok {
 		pfxlog.Logger().Error("unknown kid")
 		return nil, apierror.NewInvalidAuth()
 	}
-
-	signerRecord := signerRecordInterface.(*signerRecord)
 
 	if !signerRecord.externalJwtSigner.Enabled {
 		pfxlog.Logger().WithField("externalJwtId", signerRecord.externalJwtSigner.Id).Error("external jwt is disabled")
@@ -314,10 +310,6 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 
 	logger.Error("authorization failed, jwt did not verify")
 	return nil, apierror.NewInvalidAuth()
-}
-
-func (a *AuthModuleExtJwt) getKnownSignerRecords() map[string]interface{} {
-	return a.signers.Items()
 }
 
 func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {

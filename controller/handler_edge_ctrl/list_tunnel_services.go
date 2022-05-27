@@ -2,12 +2,12 @@ package handler_edge_ctrl
 
 import (
 	"encoding/json"
-	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/storage/ast"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -76,7 +76,7 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 
 	var lastUpdate time.Time
 	if val, found := self.appEnv.IdentityRefreshMap.Get(ctx.identity.Id); found {
-		lastUpdate = val.(time.Time)
+		lastUpdate = val
 	} else {
 		lastUpdate = self.appEnv.StartupTime
 	}

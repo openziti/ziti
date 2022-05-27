@@ -24,9 +24,9 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
-	cmap "github.com/orcaman/concurrent-map"
+	"github.com/openziti/storage/boltz"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"sync"
 	"time"
@@ -573,9 +573,9 @@ func (handler *IdentityHandler) Enable(identityId string) error {
 }
 
 type identityStatusMap struct {
-	identities     cmap.ConcurrentMap // identityId -> status{expiresAt}
-	initOnce       sync.Once
-	activeDuration time.Duration
+	identityIdToStatus cmap.ConcurrentMap[*status]
+	initOnce           sync.Once
+	activeDuration     time.Duration
 }
 
 type status struct {
@@ -584,24 +584,22 @@ type status struct {
 
 func newIdentityStatusMap(activeDuration time.Duration) *identityStatusMap {
 	return &identityStatusMap{
-		identities:     cmap.New(),
-		activeDuration: activeDuration,
+		identityIdToStatus: cmap.New[*status](),
+		activeDuration:     activeDuration,
 	}
 }
 
 func (statusMap *identityStatusMap) SetActive(identityId string) {
 	statusMap.initOnce.Do(statusMap.start)
 
-	statusMap.identities.Set(identityId, &status{
+	statusMap.identityIdToStatus.Set(identityId, &status{
 		expiresAt: time.Now().Add(statusMap.activeDuration),
 	})
 }
 
 func (statusMap *identityStatusMap) IsActive(identityId string) bool {
-	if val, ok := statusMap.identities.Get(identityId); ok {
-		if status, ok := val.(*status); ok {
-			return status.expiresAt.After(time.Now())
-		}
+	if stat, ok := statusMap.identityIdToStatus.Get(identityId); ok {
+		return stat.expiresAt.After(time.Now())
 	}
 	return false
 }
@@ -614,14 +612,14 @@ func (statusMap *identityStatusMap) start() {
 			case <-ticker.C:
 				var toRemove []string
 				now := time.Now()
-				statusMap.identities.IterCb(func(key string, val interface{}) {
-					if status, ok := val.(*status); !ok || status.expiresAt.Before(now) {
+				statusMap.identityIdToStatus.IterCb(func(key string, stat *status) {
+					if stat.expiresAt.Before(now) {
 						toRemove = append(toRemove, key)
 					}
 				})
 
 				for _, identityId := range toRemove {
-					statusMap.identities.Remove(identityId)
+					statusMap.identityIdToStatus.Remove(identityId)
 				}
 			}
 		}

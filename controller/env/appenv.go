@@ -53,7 +53,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
 	"io/ioutil"
@@ -83,7 +83,7 @@ type AppEnv struct {
 	HostController           HostController
 	ManagementApi            *managementOperations.ZitiEdgeManagementAPI
 	ClientApi                *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap       cmap.ConcurrentMap
+	IdentityRefreshMap       cmap.ConcurrentMap[time.Time]
 	identityRefreshMeter     metrics.Meter
 	StartupTime              time.Time
 	InstanceId               string
@@ -374,7 +374,7 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 		EnrollRegistry:     &model.EnrollmentRegistryImpl{},
 		ManagementApi:      managementApi,
 		ClientApi:          clientApi,
-		IdentityRefreshMap: cmap.New(),
+		IdentityRefreshMap: cmap.New[time.Time](),
 		StartupTime:        time.Now().UTC(),
 	}
 

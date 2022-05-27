@@ -87,13 +87,13 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		passedAt = &postureResponse.LastUpdatedAt
 	}
 
-	handler.postureCache.Upsert(identityId, true, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	handler.postureCache.Upsert(identityId, true, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var pd *PostureData
 
 		if exist {
-			pd = valueInMap.(*PostureData)
+			pd = valueInMap
 		} else {
-			pd = newValue.(*PostureData)
+			pd = newValue
 		}
 
 		if pd == nil {
@@ -232,12 +232,12 @@ func (handler *PostureResponseHandler) SetSdkInfo(identityId, apiSessionId strin
 		return
 	}
 
-	handler.postureCache.Upsert(identityId, false, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	handler.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var postureData *PostureData
 		if exist {
-			postureData = valueInMap.(*PostureData)
+			postureData = valueInMap
 		} else {
-			postureData = newValue.(*PostureData)
+			postureData = newValue
 		}
 
 		if _, ok := postureData.ApiSessions[apiSessionId]; !ok {
@@ -270,7 +270,6 @@ func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, t
 
 		return timeoutShouldBeAltered
 	}
-
 
 	return false
 }

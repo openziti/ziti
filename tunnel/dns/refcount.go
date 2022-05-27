@@ -1,19 +1,19 @@
 package dns
 
 import (
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"net"
 )
 
 func NewRefCountingResolver(resolver Resolver) Resolver {
 	return &RefCountingResolver{
-		names:   cmap.New(),
+		names:   cmap.New[int](),
 		wrapped: resolver,
 	}
 }
 
 type RefCountingResolver struct {
-	names   cmap.ConcurrentMap
+	names   cmap.ConcurrentMap[int]
 	wrapped Resolver
 }
 
@@ -28,9 +28,9 @@ func (self *RefCountingResolver) AddDomain(name string, cb func(string) (net.IP,
 func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
 	err := self.wrapped.AddHostname(s, ip)
 	if err != nil {
-		self.names.Upsert(s, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		self.names.Upsert(s, 1, func(exist bool, valueInMap int, newValue int) int {
 			if exist {
-				return valueInMap.(int) + 1
+				return valueInMap + 1
 			}
 			return 1
 		})
@@ -39,14 +39,14 @@ func (self *RefCountingResolver) AddHostname(s string, ip net.IP) error {
 }
 
 func (self *RefCountingResolver) RemoveHostname(s string) error {
-	val := self.names.Upsert(s, 1, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	val := self.names.Upsert(s, 1, func(exist bool, valueInMap int, newValue int) int {
 		if exist {
-			return valueInMap.(int) - 1
+			return valueInMap - 1
 		}
 		return 0
 	})
 
-	if result := val.(int); result == 0 {
+	if val == 0 {
 		self.names.Remove(s)
 		return self.wrapped.RemoveHostname(s)
 	}
