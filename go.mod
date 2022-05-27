@@ -34,7 +34,7 @@ require (
 	github.com/openziti/channel v0.18.38
 	github.com/openziti/fabric v0.17.141
 	github.com/openziti/foundation v0.17.26
-	github.com/openziti/sdk-golang v0.16.71
+	github.com/openziti/sdk-golang v0.16.73
 	github.com/openziti/storage v0.1.6
 	github.com/openziti/transport/v2 v2.0.3
 	github.com/openziti/x509-claims v1.0.2
@@ -94,7 +94,6 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
