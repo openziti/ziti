@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/storage/boltz"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -102,8 +102,8 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 
 type RouterController struct {
 	baseController
-	cache     cmap.ConcurrentMap
-	connected cmap.ConcurrentMap
+	cache     cmap.ConcurrentMap[*Router]
+	connected cmap.ConcurrentMap[*Router]
 	store     db.RouterStore
 }
 
@@ -114,8 +114,8 @@ func (ctrl *RouterController) newModelEntity() boltEntitySink {
 func newRouterController(controllers *Controllers) *RouterController {
 	result := &RouterController{
 		baseController: newController(controllers, controllers.stores.Router),
-		cache:          cmap.New(),
-		connected:      cmap.New(),
+		cache:          cmap.New[*Router](),
+		connected:      cmap.New[*Router](),
 		store:          controllers.stores.Router,
 	}
 	result.impl = result
@@ -144,12 +144,10 @@ func newRouterController(controllers *Controllers) *RouterController {
 }
 
 func (ctrl *RouterController) markConnected(r *Router) {
-	if val, _ := ctrl.connected.Get(r.Id); val != nil {
-		if router, ok := val.(*Router); ok {
-			if ch := router.Control; ch != nil {
-				if err := ch.Close(); err != nil {
-					pfxlog.Logger().WithError(err).Error("error closing control channel")
-				}
+	if router, ok := ctrl.connected.Get(r.Id); ok {
+		if ch := router.Control; ch != nil {
+			if err := ch.Close(); err != nil {
+				pfxlog.Logger().WithError(err).Error("error closing control channel")
 			}
 		}
 	}
@@ -160,7 +158,7 @@ func (ctrl *RouterController) markConnected(r *Router) {
 
 func (ctrl *RouterController) markDisconnected(r *Router) {
 	r.Connected.Set(false)
-	ctrl.connected.RemoveCb(r.Id, func(key string, v interface{}, exists bool) bool {
+	ctrl.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
 		if exists && v != r {
 			pfxlog.Logger().WithField("routerId", r.Id).Info("router not current connect, not clearing from connected map")
 			return false
@@ -175,16 +173,16 @@ func (ctrl *RouterController) IsConnected(id string) bool {
 }
 
 func (ctrl *RouterController) getConnected(id string) *Router {
-	if t, found := ctrl.connected.Get(id); found {
-		return t.(*Router)
+	if router, found := ctrl.connected.Get(id); found {
+		return router
 	}
 	return nil
 }
 
 func (ctrl *RouterController) allConnected() []*Router {
 	var routers []*Router
-	for v := range ctrl.connected.IterBuffered() {
-		routers = append(routers, v.Val.(*Router))
+	for tuple := range ctrl.connected.IterBuffered() {
+		routers = append(routers, tuple.Val)
 	}
 	return routers
 }
@@ -236,8 +234,8 @@ func (ctrl *RouterController) readUncached(id string) (*Router, error) {
 }
 
 func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
-	if t, found := ctrl.cache.Get(id); found {
-		return t.(*Router), nil
+	if router, found := ctrl.cache.Get(id); found {
+		return router, nil
 	}
 
 	entity := &Router{}
@@ -272,16 +270,12 @@ func (ctrl *RouterController) HandleRouterDelete(id string) {
 
 	// if we close the control channel, the router will get removed from the connected cache. We don't do it
 	// here because it results in deadlock
-	if v, found := ctrl.connected.Get(id); found {
-		if router, ok := v.(*Router); ok {
-			if ctrl := router.Control; ctrl != nil {
-				_ = ctrl.Close()
-				log.Warn("connected router deleted, disconnecting router")
-			} else {
-				log.Warn("deleted router in connected cache doesn't have a connected control channel")
-			}
+	if router, found := ctrl.connected.Get(id); found {
+		if ctrl := router.Control; ctrl != nil {
+			_ = ctrl.Close()
+			log.Warn("connected router deleted, disconnecting router")
 		} else {
-			log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
+			log.Warn("deleted router in connected cache doesn't have a connected control channel")
 		}
 	} else {
 		log.Debug("deleted router not connected, no further action required")
@@ -293,20 +287,16 @@ func (ctrl *RouterController) UpdateCachedRouter(id string) {
 	if router, err := ctrl.readUncached(id); err != nil {
 		log.WithError(err).Error("failed to read router for cache update")
 	} else {
-		updateCb := func(key string, v interface{}, exist bool) bool {
+		updateCb := func(key string, cached *Router, exist bool) bool {
 			if !exist {
 				return false
 			}
 
-			if cached, ok := v.(*Router); ok {
-				cached.Name = router.Name
-				cached.Fingerprint = router.Fingerprint
-				cached.Cost = router.Cost
-				cached.NoTraversal = router.NoTraversal
-			} else {
-				log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
-			}
-
+			cached.Name = router.Name
+			cached.Fingerprint = router.Fingerprint
+			cached.Cost = router.Cost
+			cached.NoTraversal = router.NoTraversal
+			
 			return false
 		}
 

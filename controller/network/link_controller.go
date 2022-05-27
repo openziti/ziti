@@ -19,7 +19,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/foundation/util/info"
-	"github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map/v2"
 	"math"
 	"sync"
 	"time"
@@ -71,8 +71,7 @@ func (linkController *linkController) routerReportedLink(linkId, linkProtocol st
 }
 
 func (linkController *linkController) get(linkId string) (*Link, bool) {
-	link, found := linkController.linkTable.get(linkId)
-	return link, found
+	return linkController.linkTable.get(linkId)
 }
 
 func (linkController *linkController) all() []*Link {
@@ -206,11 +205,11 @@ func (linkController *linkController) linksInMode(mode LinkMode) []*Link {
  */
 
 type linkTable struct {
-	links cmap.ConcurrentMap // map[Link.Id.Token]*Link
+	links cmap.ConcurrentMap[*Link]
 }
 
 func newLinkTable() *linkTable {
-	return &linkTable{links: cmap.New()}
+	return &linkTable{links: cmap.New[*Link]()}
 }
 
 func (lt *linkTable) add(link *Link) {
@@ -218,34 +217,28 @@ func (lt *linkTable) add(link *Link) {
 }
 
 func (lt *linkTable) get(linkId string) (*Link, bool) {
-	link, found := lt.links.Get(linkId)
-	if link != nil {
-		return link.(*Link), found
-	}
-	return nil, found
+	return lt.links.Get(linkId)
 }
 
 func (lt *linkTable) has(link *Link) bool {
-	if i, found := lt.links.Get(link.Id); found {
-		if i.(*Link) == link {
-			return true
-		}
+	if _, found := lt.links.Get(link.Id); found {
+		return true
 	}
 	return false
 }
 
 func (lt *linkTable) all() []*Link {
 	links := make([]*Link, 0, lt.links.Count())
-	for i := range lt.links.IterBuffered() {
-		links = append(links, i.Val.(*Link))
+	for tuple := range lt.links.IterBuffered() {
+		links = append(links, tuple.Val)
 	}
 	return links
 }
 
 func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 	links := make([]*Link, 0)
-	for i := range lt.links.IterBuffered() {
-		link := i.Val.(*Link)
+	for tuple := range lt.links.IterBuffered() {
+		link := tuple.Val
 		if link.CurrentState().Mode == mode {
 			links = append(links, link)
 		}
@@ -255,9 +248,9 @@ func (lt *linkTable) allInMode(mode LinkMode) []*Link {
 
 func (lt *linkTable) matching(f func(*Link) bool) []*Link {
 	var links []*Link
-	for i := range lt.links.IterBuffered() {
-		if link, ok := i.Val.(*Link); ok && f(link) {
-			links = append(links, link)
+	for tuple := range lt.links.IterBuffered() {
+		if f(tuple.Val) {
+			links = append(links, tuple.Val)
 		}
 	}
 	return links

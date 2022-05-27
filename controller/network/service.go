@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -64,7 +64,7 @@ func (entity *Service) toBolt() boltz.Entity {
 func newServiceController(controllers *Controllers) *ServiceController {
 	result := &ServiceController{
 		baseController: newController(controllers, controllers.stores.Service),
-		cache:          cmap.New(),
+		cache:          cmap.New[*Service](),
 		store:          controllers.stores.Service,
 	}
 	result.impl = result
@@ -87,7 +87,7 @@ func newServiceController(controllers *Controllers) *ServiceController {
 
 type ServiceController struct {
 	baseController
-	cache cmap.ConcurrentMap
+	cache cmap.ConcurrentMap[*Service]
 	store db.ServiceStore
 }
 
@@ -179,8 +179,8 @@ func (ctrl *ServiceController) GetIdForName(id string) (string, error) {
 }
 
 func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
-	if t, found := ctrl.cache.Get(id); found {
-		return t.(*Service), nil
+	if service, found := ctrl.cache.Get(id); found {
+		return service, nil
 	}
 
 	entity := &Service{}

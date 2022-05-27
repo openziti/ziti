@@ -19,7 +19,7 @@ package forwarder
 import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map/v2"
 	"reflect"
 	"time"
 )
@@ -27,12 +27,12 @@ import (
 // circuitTable implements a directory of forwardTables, keyed by circuitId.
 //
 type circuitTable struct {
-	circuits cmap.ConcurrentMap // map[string]*forwardTable
+	circuits cmap.ConcurrentMap[*forwardTable]
 }
 
 func newCircuitTable() *circuitTable {
 	return &circuitTable{
-		circuits: cmap.New(),
+		circuits: cmap.New[*forwardTable](),
 	}
 }
 
@@ -43,8 +43,8 @@ func (st *circuitTable) setForwardTable(circuitId string, ft *forwardTable) {
 
 func (st *circuitTable) getForwardTable(circuitId string) (*forwardTable, bool) {
 	if ft, found := st.circuits.Get(circuitId); found {
-		ft.(*forwardTable).last = time.Now()
-		return ft.(*forwardTable), true
+		ft.last = time.Now()
+		return ft, true
 	}
 	return nil, false
 }
@@ -58,7 +58,7 @@ func (st *circuitTable) debug() string {
 	for i := range st.circuits.IterBuffered() {
 		out += "\n"
 		out += fmt.Sprintf("\tc/%s", i.Key)
-		out += i.Val.(*forwardTable).debug()
+		out += i.Val.debug()
 	}
 	return out
 }
@@ -67,12 +67,12 @@ func (st *circuitTable) debug() string {
 //
 type forwardTable struct {
 	last         time.Time
-	destinations cmap.ConcurrentMap // map[string]string
+	destinations cmap.ConcurrentMap[string]
 }
 
 func newForwardTable() *forwardTable {
 	return &forwardTable{
-		destinations: cmap.New(),
+		destinations: cmap.New[string](),
 	}
 }
 
@@ -82,7 +82,7 @@ func (ft *forwardTable) setForwardAddress(src, dst xgress.Address) {
 
 func (ft *forwardTable) getForwardAddress(src xgress.Address) (xgress.Address, bool) {
 	if dst, found := ft.destinations.Get(string(src)); found {
-		return xgress.Address(dst.(string)), true
+		return xgress.Address(dst), true
 	}
 	return "", false
 }
@@ -98,14 +98,14 @@ func (ft *forwardTable) debug() string {
 // destinationTable implements a directory of destinations, keyed by Address.
 //
 type destinationTable struct {
-	destinations cmap.ConcurrentMap // map[xgress.Address]Destination
-	xgress       cmap.ConcurrentMap // map[circuitId][]xgress.Address
+	destinations cmap.ConcurrentMap[Destination]
+	xgress       cmap.ConcurrentMap[[]xgress.Address]
 }
 
 func newDestinationTable() *destinationTable {
 	return &destinationTable{
-		destinations: cmap.New(),
-		xgress:       cmap.New(),
+		destinations: cmap.New[Destination](),
+		xgress:       cmap.New[[]xgress.Address](),
 	}
 }
 
@@ -131,7 +131,7 @@ func (dt *destinationTable) removeDestination(addr xgress.Address) {
 func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address xgress.Address) {
 	var addresses []xgress.Address
 	if i, found := dt.xgress.Get(circuitId); found {
-		addresses = i.([]xgress.Address)
+		addresses = i
 	} else {
 		addresses = make([]xgress.Address, 0)
 	}
@@ -141,7 +141,7 @@ func (dt *destinationTable) linkDestinationToCircuit(circuitId string, address x
 
 func (dt *destinationTable) getAddressesForCircuit(circuitId string) ([]xgress.Address, bool) {
 	if addresses, found := dt.xgress.Get(circuitId); found {
-		return addresses.([]xgress.Address), found
+		return addresses, found
 	}
 	return nil, false
 }
@@ -158,9 +158,9 @@ func (dt *destinationTable) debug() string {
 	out += "\n"
 
 	out += fmt.Sprintf("xgress (%d):\n\n", dt.xgress.Count())
-	for i := range dt.xgress.IterBuffered() {
-		out += fmt.Sprintf("\tc/%s:\n", i.Key)
-		addresses := i.Val.([]xgress.Address)
+	for tuple := range dt.xgress.IterBuffered() {
+		out += fmt.Sprintf("\tc/%s:\n", tuple.Key)
+		addresses := tuple.Val
 		for _, address := range addresses {
 			out += fmt.Sprintf("\t\t@/%s\n", address)
 		}

@@ -26,24 +26,23 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 type routeSenderController struct {
-	senders cmap.ConcurrentMap // map[string]*routeSender
+	senders cmap.ConcurrentMap[*routeSender]
 }
 
 func newRouteSenderController() *routeSenderController {
-	return &routeSenderController{senders: cmap.New()}
+	return &routeSenderController{senders: cmap.New[*routeSender]()}
 }
 
 func (self *routeSenderController) forwardRouteResult(rs *RouteStatus) bool {
-	v, found := self.senders.Get(rs.CircuitId)
+	sender, found := self.senders.Get(rs.CircuitId)
 	if found {
-		routeSender := v.(*routeSender)
-		routeSender.in <- rs
+		sender.in <- rs
 		return true
 	}
 	logrus.Warnf("did not find route sender for [s/%s]", rs.CircuitId)

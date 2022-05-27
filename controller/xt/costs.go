@@ -17,7 +17,7 @@
 package xt
 
 import (
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"math"
 )
 
@@ -29,7 +29,7 @@ const (
 )
 
 var globalCosts = &costs{
-	costMap: cmap.New(),
+	costMap: cmap.New[uint16](),
 	precedenceChangeHandler: func(string, Precedence) {
 		panic("precedence change handler not set")
 	},
@@ -132,7 +132,7 @@ func GetPrecedenceForName(name string) Precedence {
 }
 
 type costs struct {
-	costMap                 cmap.ConcurrentMap
+	costMap                 cmap.ConcurrentMap[uint16]
 	precedenceChangeHandler func(terminatorId string, precedence Precedence)
 }
 
@@ -153,18 +153,18 @@ func (self *costs) SetDynamicCost(terminatorId string, cost uint16) {
 }
 
 func (self *costs) UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16) {
-	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	self.costMap.Upsert(terminatorId, 0, func(exist bool, valueInMap uint16, newValue uint16) uint16 {
 		if !exist {
 			return updateF(0)
 		}
-		currentCost := valueInMap.(uint16)
-		return updateF(currentCost)
+
+		return updateF(valueInMap)
 	})
 }
 
 func (self *costs) GetDynamicCost(terminatorId string) uint16 {
 	if cost, found := self.costMap.Get(terminatorId); found {
-		return cost.(uint16)
+		return cost
 	}
 	return 0
 }

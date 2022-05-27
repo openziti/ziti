@@ -307,7 +307,7 @@ func (forwarder *Forwarder) getXgressForCircuit(circuitId string) XgressDestinat
 }
 
 func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutines bool) *inspect.CircuitInspectDetail {
-	if val, found := forwarder.circuits.circuits.Get(circuitId); found {
+	if ft, found := forwarder.circuits.circuits.Get(circuitId); found {
 		result := &inspect.CircuitInspectDetail{
 			CircuitId:     circuitId,
 			Forwards:      map[string]string{},
@@ -316,9 +316,8 @@ func (forwarder *Forwarder) InspectCircuit(circuitId string, getRelatedGoroutine
 		}
 		result.SetIncludeGoroutines(getRelatedGoroutines)
 
-		ft := val.(*forwardTable)
-		ft.destinations.IterCb(func(key string, v interface{}) {
-			result.Forwards[key] = v.(string)
+		ft.destinations.IterCb(func(key string, dest string) {
+			result.Forwards[key] = dest
 		})
 
 		for _, addr := range result.Forwards {

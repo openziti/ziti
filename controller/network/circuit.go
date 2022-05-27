@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/orcaman/concurrent-map"
+	"github.com/orcaman/concurrent-map/v2"
 )
 
 type Circuit struct {
@@ -55,13 +55,13 @@ func (self *Circuit) HasRouter(r *Router) bool {
 }
 
 type circuitController struct {
-	circuits    cmap.ConcurrentMap // map[string]*Circuit
+	circuits    cmap.ConcurrentMap[*Circuit]
 	idGenerator idgen.Generator
 }
 
 func newCircuitController() *circuitController {
 	return &circuitController{
-		circuits:    cmap.New(),
+		circuits:    cmap.New[*Circuit](),
 		idGenerator: idgen.NewGenerator(),
 	}
 }
@@ -75,16 +75,16 @@ func (c *circuitController) add(sn *Circuit) {
 }
 
 func (c *circuitController) get(id string) (*Circuit, bool) {
-	if t, found := c.circuits.Get(id); found {
-		return t.(*Circuit), true
+	if circuit, found := c.circuits.Get(id); found {
+		return circuit, true
 	}
 	return nil, false
 }
 
 func (c *circuitController) all() []*Circuit {
 	circuits := make([]*Circuit, 0)
-	for i := range c.circuits.IterBuffered() {
-		circuits = append(circuits, i.Val.(*Circuit))
+	for tuple := range c.circuits.IterBuffered() {
+		circuits = append(circuits, tuple.Val)
 	}
 	return circuits
 }
