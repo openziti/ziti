@@ -76,7 +76,7 @@ func New(lanIf string) (intercept.Interceptor, error) {
 
 	return &interceptor{
 		lanIf:          lanIf,
-		serviceProxies: cmap.New(),
+		serviceProxies: cmap.New[*tProxy](),
 		ipt:            ipt,
 	}, nil
 }
@@ -92,7 +92,7 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 type interceptor struct {
 	lanIf          string
 	provider       tunnel.FabricProvider
-	serviceProxies cmap.ConcurrentMap
+	serviceProxies cmap.ConcurrentMap[*tProxy]
 	ipt            *iptables.IPTables
 }
 
@@ -102,8 +102,7 @@ func (self *interceptor) Start(provider tunnel.FabricProvider) {
 
 func (self *interceptor) Stop() {
 	servicesRemoved := false
-	self.serviceProxies.IterCb(func(key string, v interface{}) {
-		proxy := v.(*tProxy)
+	self.serviceProxies.IterCb(func(key string, proxy *tProxy) {
 		proxy.Stop(alwaysRemoveAddressTracker{})
 		servicesRemoved = true
 	})
@@ -124,8 +123,7 @@ func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resol
 }
 
 func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.AddressTracker) error {
-	if val, found := self.serviceProxies.Get(serviceName); found {
-		proxy := val.(*tProxy)
+	if proxy, found := self.serviceProxies.Get(serviceName); found {
 		proxy.Stop(tracker)
 		self.serviceProxies.Remove(serviceName)
 		self.cleanupChains()
