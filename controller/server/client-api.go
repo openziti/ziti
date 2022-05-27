@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/edge/rest_client_api_server"
 	"github.com/openziti/edge/rest_management_api_server"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/xweb"
+	"github.com/openziti/xweb"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"

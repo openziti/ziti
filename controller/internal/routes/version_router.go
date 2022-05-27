@@ -27,7 +27,7 @@ import (
 	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/build"
-	"github.com/openziti/fabric/xweb"
+	"github.com/openziti/xweb"
 	"runtime"
 	"sync"
 )
