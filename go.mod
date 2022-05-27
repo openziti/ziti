@@ -31,12 +31,12 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.37
-	github.com/openziti/fabric v0.17.139
+	github.com/openziti/channel v0.18.38
+	github.com/openziti/fabric v0.17.140
 	github.com/openziti/foundation v0.17.26
 	github.com/openziti/sdk-golang v0.16.71
 	github.com/openziti/storage v0.1.6
-	github.com/openziti/transport/v2 v2.0.2
+	github.com/openziti/transport/v2 v2.0.3
 	github.com/openziti/x509-claims v1.0.2
 	github.com/openziti/xweb v1.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
