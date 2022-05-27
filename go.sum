@@ -41,7 +41,6 @@ github.com/AppsFlyer/go-sundheit v0.5.0 h1:/VxpyigCfJrq1r97mn9HPiAB2qrhcTFHwNIID
 github.com/AppsFlyer/go-sundheit v0.5.0/go.mod h1:2ZM0BnfqT/mljBQO224VbL5XH06TgWuQ6Cn+cTtCpTY=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/BurntSushi/toml v0.4.1 h1:GaI7EiDXDRfa8VshkTj7Fym7ha+y8/XxIgD2okUIjLw=
-github.com/BurntSushi/toml v0.4.1/go.mod h1:CxXYINrC8qIiEnFrOxCa7Jy5BFHlXnUU2pbicEuybxQ=
 github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym/WlBOVXweHU+Q+/VP0lqqI8lqeDx9IjBqo=
 github.com/Jeffail/gabs v1.4.0 h1://5fYRRTq1edjfIrQGvdkcd22pkYUrHZ5YC/H2GJVAo=
 github.com/Jeffail/gabs v1.4.0/go.mod h1:6xMvQMK4k33lb7GUUpaAPh6nKMmemQeg5d4gn7/bOXc=
@@ -388,8 +387,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel v0.18.38 h1:iE5pbXoAFYfu/LpFR3CZDJ/yri3ZrwY61sGr11qFTa0=
 github.com/openziti/channel v0.18.38/go.mod h1:IoDeXk9O7MWTiCJ9on9xbCPhSQRbtb2YlI8d1IOiKhs=
-github.com/openziti/fabric v0.17.140 h1:ST711jd9HKh9k8DNOKilsEa62a7cmvftvxLA51b06Ok=
-github.com/openziti/fabric v0.17.140/go.mod h1:xCz4zjUy8cm7NW73HdBMDttGpGcXxiL6VAO5Kq4yOZk=
+github.com/openziti/fabric v0.17.141 h1:ci0IcAqcVt6m8LsJrpfhBxCshSK0CcsLm5+lGL8wR7A=
+github.com/openziti/fabric v0.17.141/go.mod h1:KhOTGskCVMnX+iQcc0MuFxXeGBJ4kO38+ylefOCdWRE=
 github.com/openziti/foundation v0.17.26 h1:UQwRcFDAipm2HvL++OqbHyTzcPoge0GofiNp7ZRwoFk=
 github.com/openziti/foundation v0.17.26/go.mod h1:obk269ZljgJzdziLAHcoAW+otWSqGYH57XupgkiIsj0=
 github.com/openziti/sdk-golang v0.16.71 h1:Rc62j4tjWA/p18H3/KlU5SstdWmA4dyT/z4zfQCdS6Y=

@@ -195,7 +195,7 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 func (router *CurrentSessionRouter) ListServiceUpdates(ae *env.AppEnv, rc *response.RequestContext) {
 	lastUpdate := rc.ApiSession.CreatedAt
 	if val, found := ae.IdentityRefreshMap.Get(rc.Identity.Id); found {
-		lastUpdate = val.(time.Time)
+		lastUpdate = val
 	} else if lastUpdate.Before(ae.StartupTime) {
 		lastUpdate = ae.StartupTime
 	}

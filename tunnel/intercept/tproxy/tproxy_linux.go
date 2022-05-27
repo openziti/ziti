@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/foundation/util/mempool"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge/impl"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"

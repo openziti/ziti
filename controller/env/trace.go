@@ -2,13 +2,13 @@ package env
 
 import (
 	"fmt"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
 )
 
 func NewTraceManager(shutdownNotify <-chan struct{}) *TraceManager {
 	result := &TraceManager{
-		traceIdentities: cmap.New(),
+		traceIdentities: cmap.New[*TraceSpec](),
 		shutdownNotify:  shutdownNotify,
 	}
 	go result.reapExpired()
@@ -26,16 +26,17 @@ func (self *TraceSpec) String() string {
 }
 
 type TraceManager struct {
-	traceIdentities cmap.ConcurrentMap
+	traceIdentities cmap.ConcurrentMap[*TraceSpec]
 	shutdownNotify  <-chan struct{}
 }
 
 func (self *TraceManager) GetIdentityTrace(identityId string) *TraceSpec {
-	val, found := self.traceIdentities.Get(identityId)
+	spec, found := self.traceIdentities.Get(identityId)
+
 	if !found {
 		return nil
 	}
-	spec := val.(*TraceSpec)
+
 	specCopy := *spec
 	return &specCopy
 }
@@ -64,8 +65,7 @@ func (self *TraceManager) reapExpired() {
 		case <-ticker.C:
 			now := time.Now()
 			var toRemove []string
-			self.traceIdentities.IterCb(func(key string, v interface{}) {
-				spec := v.(*TraceSpec)
+			self.traceIdentities.IterCb(func(key string, spec *TraceSpec) {
 				if spec.Until.Before(now) {
 					toRemove = append(toRemove, key)
 				}

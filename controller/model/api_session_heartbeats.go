@@ -19,14 +19,14 @@ package model
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
-	cmap "github.com/orcaman/concurrent-map"
+	"github.com/openziti/storage/boltz"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"time"
 )
 
 type HeartbeatCollector struct {
-	apiSessionLastAccessedAtMap cmap.ConcurrentMap //map[apiSessionId string] => *HeartbeatStatus
+	apiSessionLastAccessedAtMap cmap.ConcurrentMap[*HeartbeatStatus]
 	updateInterval              time.Duration
 	closeNotify                 chan struct{}
 	isFlushing                  concurrenz.AtomicBoolean
@@ -45,7 +45,7 @@ type Heartbeat struct {
 // buffer for last update times.
 func NewHeartbeatCollector(env Env, batchSize int, updateInterval time.Duration, action func([]*Heartbeat)) *HeartbeatCollector {
 	collector := &HeartbeatCollector{
-		apiSessionLastAccessedAtMap: cmap.New(),
+		apiSessionLastAccessedAtMap: cmap.New[*HeartbeatStatus](),
 		updateInterval:              updateInterval,
 		batchSize:                   batchSize,
 		flushAction:                 action,
@@ -76,11 +76,9 @@ func (self *HeartbeatCollector) Mark(apiSessionId string) {
 // or made a REST API call and true. If no such action has happened or the API Session no longer exists
 // nil and false will be returned.
 func (self *HeartbeatCollector) LastAccessedAt(apiSessionId string) (*time.Time, bool) {
-	if val, ok := self.apiSessionLastAccessedAtMap.Get(apiSessionId); ok {
-		if status, ok := val.(*HeartbeatStatus); ok {
-			lastAccessedAt := status.lastAccessedAt
-			return &lastAccessedAt, true
-		}
+	if status, ok := self.apiSessionLastAccessedAtMap.Get(apiSessionId); ok {
+		lastAccessedAt := status.lastAccessedAt
+		return &lastAccessedAt, true
 	}
 
 	return nil, false
@@ -114,20 +112,18 @@ func (self *HeartbeatCollector) flush() {
 
 		var beats []*Heartbeat
 
-		self.apiSessionLastAccessedAtMap.IterCb(func(key string, v interface{}) {
+		self.apiSessionLastAccessedAtMap.IterCb(func(key string, status *HeartbeatStatus) {
 			if len(beats) >= self.batchSize {
 				self.flushAction(beats)
 				beats = nil
 			}
 
-			if status, ok := v.(*HeartbeatStatus); ok {
-				if !status.flushed {
-					status.flushed = true
-					beats = append(beats, &Heartbeat{
-						ApiSessionId:   key,
-						LastActivityAt: status.lastAccessedAt,
-					})
-				}
+			if !status.flushed {
+				status.flushed = true
+				beats = append(beats, &Heartbeat{
+					ApiSessionId:   key,
+					LastActivityAt: status.lastAccessedAt,
+				})
 			}
 		})
 

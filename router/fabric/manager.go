@@ -19,14 +19,14 @@ package fabric
 import (
 	"bufio"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"sync"
 	"time"
@@ -72,10 +72,10 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	apiSessionsByToken      *sync.Map          // apiSesion token -> *edge_ctrl_pb.ApiSession
-	activeApiSessions       cmap.ConcurrentMap // apiSession token -> MapWithMutex[session token] -> func(){}
-	sessions                cmap.ConcurrentMap // session token -> uint32
-	recentlyRemovedSessions cmap.ConcurrentMap // session token -> time.Time (time added, time.Now())
+	apiSessionsByToken      cmap.ConcurrentMap[*edge_ctrl_pb.ApiSession]
+	activeApiSessions       cmap.ConcurrentMap[*MapWithMutex]
+	sessions                cmap.ConcurrentMap[uint32]
+	recentlyRemovedSessions cmap.ConcurrentMap[time.Time]
 
 	Hostname       string
 	ControllerAddr string
@@ -111,10 +111,10 @@ func (sm *StateManagerImpl) IsSyncInProgress() bool {
 func NewStateManager() StateManager {
 	return &StateManagerImpl{
 		EventEmmiter:            events.New(),
-		apiSessionsByToken:      &sync.Map{},
-		activeApiSessions:       cmap.New(),
-		sessions:                cmap.New(),
-		recentlyRemovedSessions: cmap.New(),
+		apiSessionsByToken:      cmap.New[*edge_ctrl_pb.ApiSession](),
+		activeApiSessions:       cmap.New[*MapWithMutex](),
+		sessions:                cmap.New[uint32](),
+		recentlyRemovedSessions: cmap.New[time.Time](),
 	}
 }
 
@@ -124,7 +124,7 @@ func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 		WithField("apiSessionToken", apiSession.Token).
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
 		Debugf("adding apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
-	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
+	sm.apiSessionsByToken.Set(apiSession.Token, apiSession)
 	sm.Emit(EventAddedApiSession, apiSession)
 }
 
@@ -134,14 +134,14 @@ func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession
 		WithField("apiSessionToken", apiSession.Token).
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
 		Debugf("updating apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
-	sm.apiSessionsByToken.Store(apiSession.Token, apiSession)
+	sm.apiSessionsByToken.Set(apiSession.Token, apiSession)
 	sm.Emit(EventUpdatedApiSession, apiSession)
 }
 
 func (sm *StateManagerImpl) RemoveApiSession(token string) {
-	if ns, ok := sm.apiSessionsByToken.Load(token); ok {
+	if ns, ok := sm.apiSessionsByToken.Get(token); ok {
 		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("removing api session [token: %s]", token)
-		sm.apiSessionsByToken.Delete(token)
+		sm.apiSessionsByToken.Remove(token)
 		eventName := sm.getApiSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
@@ -151,9 +151,9 @@ func (sm *StateManagerImpl) RemoveApiSession(token string) {
 	}
 }
 
-// Removes API Sessions not present in the knownApiSessions argument. If the beforeSessionId value is not empty string,
-// it will be used as a monotonic comparison between it and  API session ids. API session ids later than the sync
-// will be ignored.
+// RemoveMissingApiSessions removes API Sessions not present in the knownApiSessions argument. If the beforeSessionId
+// value is not empty string, it will be used as a monotonic comparison between it and  API session ids. API session ids
+// later than the sync will be ignored.
 func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ctrl_pb.ApiSession, beforeSessionId string) {
 	validTokens := map[string]bool{}
 	for _, apiSession := range knownApiSessions {
@@ -161,14 +161,10 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ct
 	}
 
 	var tokensToRemove []string
-	sm.apiSessionsByToken.Range(func(key, val interface{}) bool {
-		token, _ := key.(string)
-		apiSession, _ := val.(*edge_ctrl_pb.ApiSession)
-
+	sm.apiSessionsByToken.IterCb(func(token string, apiSession *edge_ctrl_pb.ApiSession) {
 		if _, ok := validTokens[token]; !ok && (beforeSessionId == "" || apiSession.Id <= beforeSessionId) {
 			tokensToRemove = append(tokensToRemove, token)
 		}
-		return true
 	})
 
 	for _, token := range tokensToRemove {
@@ -182,7 +178,7 @@ func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
 	sm.Emit(eventName)
 
 	sm.RemoveAllListeners(eventName)
-	sm.sessions.RemoveCb(token, func(key string, v interface{}, exists bool) bool {
+	sm.sessions.RemoveCb(token, func(key string, _ uint32, exists bool) bool {
 		if exists {
 			sm.recentlyRemovedSessions.Set(token, time.Now())
 		}
@@ -213,10 +209,8 @@ func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.
 }
 
 func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession {
-	if val, ok := sm.apiSessionsByToken.Load(token); ok {
-		if session, ok := val.(*edge_ctrl_pb.ApiSession); ok {
-			return session
-		}
+	if apiSession, ok := sm.apiSessionsByToken.Get(token); ok {
+		return apiSession
 	}
 	return nil
 }
@@ -227,11 +221,11 @@ func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack
 		return func() {}
 	}
 
-	sm.sessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	sm.sessions.Upsert(token, 0, func(exist bool, valueInMap uint32, newValue uint32) uint32 {
 		if !exist {
 			return uint32(1)
 		}
-		return valueInMap.(uint32) + 1
+		return valueInMap + 1
 	})
 
 	eventName := sm.getEdgeSessionRemovedEventName(token)
@@ -251,19 +245,19 @@ func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack
 }
 
 func (sm *StateManagerImpl) SessionConnectionClosed(token string) {
-	sm.sessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	sm.sessions.Upsert(token, 0, func(exist bool, valueInMap uint32, newValue uint32) uint32 {
 		if !exist {
 			return uint32(0)
 		}
-		return valueInMap.(uint32) + 1
+		return valueInMap + 1
 	})
 
-	sm.sessions.RemoveCb(token, func(key string, v interface{}, exists bool) bool {
+	sm.sessions.RemoveCb(token, func(key string, v uint32, exists bool) bool {
 		if !exists {
 			return false
 		}
 
-		if v.(uint32) == 0 {
+		if v == 0 {
 			sm.recentlyRemovedSessions.Set(token, time.Now())
 			return true
 		}
@@ -318,7 +312,7 @@ func (sm *StateManagerImpl) StartHeartbeat(ctrl channel.Channel, intervalSeconds
 }
 
 func (sm *StateManagerImpl) AddConnectedApiSession(token string) {
-	sm.activeApiSessions.Upsert(token, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	sm.activeApiSessions.Upsert(token, nil, func(exist bool, valueInMap *MapWithMutex, newValue *MapWithMutex) *MapWithMutex {
 		if exist {
 			return valueInMap
 		}
@@ -334,10 +328,7 @@ func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, remo
 	var sessions *MapWithMutex
 
 	for sessions == nil {
-		if val, ok := sm.activeApiSessions.Get(token); ok {
-			if sessions, ok = val.(*MapWithMutex); !ok {
-				pfxlog.Logger().Panic("could not convert to active sessions")
-			}
+		if _, ok := sm.activeApiSessions.Get(token); ok {
 			sessions.Put(ch, removeCB)
 		} else {
 			sessions = newMapWithMutex()
@@ -350,9 +341,7 @@ func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, remo
 }
 
 func (sm *StateManagerImpl) RemoveConnectedApiSessionWithChannel(token string, ch channel.Channel) {
-	if val, ok := sm.activeApiSessions.Get(token); ok {
-		sessions, ok := val.(*MapWithMutex)
-
+	if sessions, ok := sm.activeApiSessions.Get(token); ok {
 		if !ok {
 			pfxlog.Logger().Panic("could not convert active sessions to map")
 		}
@@ -378,13 +367,10 @@ func (sm *StateManagerImpl) ActiveApiSessionTokens() []string {
 func (sm *StateManagerImpl) flushRecentlyRemoved() {
 	now := time.Now()
 	var toRemove []string
-	sm.recentlyRemovedSessions.IterCb(func(key string, v interface{}) {
+	sm.recentlyRemovedSessions.IterCb(func(key string, t time.Time) {
 		remove := false
-		if t, ok := v.(time.Time); ok {
-			if now.Sub(t) >= time.Minute {
-				remove = true
-			}
-		} else {
+
+		if now.Sub(t) >= time.Minute {
 			remove = true
 		}
 
@@ -406,22 +392,23 @@ func (sm *StateManagerImpl) DumpApiSessions(c *bufio.ReadWriter) error {
 		i := 0
 		deadline := time.After(time.Second)
 		timedOut := false
-		sm.apiSessionsByToken.Range(func(key, value interface{}) bool {
+
+		for _, session := range sm.apiSessionsByToken.Items() {
 			i++
-			session := value.(*edge_ctrl_pb.ApiSession)
 			val := fmt.Sprintf("%v: id: %v, token: %v\n", i, session.Id, session.Token)
 			select {
 			case ch <- val:
 			case <-deadline:
 				timedOut = true
-				return false
+				break
 			}
 			if i%10000 == 0 {
 				// allow a second to dump each 10k entries
 				deadline = time.After(time.Second)
 			}
-			return true
-		})
+
+		}
+
 		if timedOut {
 			select {
 			case ch <- "timed out":

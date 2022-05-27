@@ -21,9 +21,9 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/concurrenz"
-	cmap "github.com/orcaman/concurrent-map"
+	"github.com/openziti/storage/boltz"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"sync"
@@ -277,7 +277,7 @@ const (
 //      data - []byte - a string array of arguments
 type EventualEventerBbolt struct {
 	events.EventEmmiter
-	handlerMap        cmap.ConcurrentMap //eventName -> handler func(name, []byte)
+	handlerMap        cmap.ConcurrentMap[[]EventListenerFunc] //eventName -> handlers
 	Interval          time.Duration
 	closeNotify       <-chan struct{}
 	stopNotify        chan struct{}
@@ -305,7 +305,7 @@ func NewEventualEventerBbolt(dbProvider DbProvider, store EventualEventStore, in
 		store:             store,
 		batchSize:         batchSize,
 		trigger:           make(chan struct{}, 1),
-		handlerMap:        cmap.New(),
+		handlerMap:        cmap.New[[]EventListenerFunc](),
 		outstandingEvents: &outstanding,
 	}
 }
@@ -354,12 +354,7 @@ func (a *EventualEventerBbolt) AddEventualEvent(eventType string, data []byte) {
 }
 
 func (a *EventualEventerBbolt) AddEventualListener(eventType string, listener EventListenerFunc) {
-	a.handlerMap.Upsert(eventType, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
-		var handlers []EventListenerFunc
-		if exist {
-			handlers = valueInMap.([]EventListenerFunc)
-		}
-
+	a.handlerMap.Upsert(eventType, nil, func(exist bool, handlers []EventListenerFunc, _ []EventListenerFunc) []EventListenerFunc {
 		handlers = append(handlers, listener)
 		return handlers
 	})
@@ -605,8 +600,7 @@ func (a *EventualEventerBbolt) processBatch(info *runInfo, eventualEvents []*Eve
 		info.batchEventIndex++
 		info.totalEventIndex++
 
-		if handlerVals, found := a.handlerMap.Get(eventualEvent.Type); found {
-			handlers := handlerVals.([]EventListenerFunc)
+		if handlers, found := a.handlerMap.Get(eventualEvent.Type); found {
 			for _, handler := range handlers {
 				a.executeHandler(info, eventualEvent, handler)
 			}

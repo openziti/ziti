@@ -22,10 +22,10 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/concurrenz"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"regexp"
 	"strings"
@@ -37,8 +37,8 @@ const (
 )
 
 type PostureCache struct {
-	identityToPostureData    cmap.ConcurrentMap //identityId -> PostureData
-	apiSessionIdToIdentityId cmap.ConcurrentMap //apiSessionId -> identityId
+	identityToPostureData    cmap.ConcurrentMap[*PostureData]
+	apiSessionIdToIdentityId cmap.ConcurrentMap[string]
 	ticker                   *time.Ticker
 	isRunning                concurrenz.AtomicBoolean
 	events.EventEmmiter
@@ -47,8 +47,8 @@ type PostureCache struct {
 
 func newPostureCache(env Env) *PostureCache {
 	pc := &PostureCache{
-		identityToPostureData:    cmap.New(),
-		apiSessionIdToIdentityId: cmap.New(),
+		identityToPostureData:    cmap.New[*PostureData](),
+		apiSessionIdToIdentityId: cmap.New[string](),
 		ticker:                   time.NewTicker(5 * time.Second),
 		EventEmmiter:             events.New(),
 		env:                      env,
@@ -162,7 +162,7 @@ func (pc *PostureCache) evaluate() {
 		toDeleteSessionIds = []string{}
 
 		//notify endpoints that they may have new service posture queries
-		for identityId, _ := range newIdentityServiceUpdates {
+		for identityId := range newIdentityServiceUpdates {
 			if _, ok := completedIdentityServiceUpdates[identityId]; !ok {
 				completedIdentityServiceUpdates[identityId] = struct{}{}
 				pc.env.HandleServiceUpdatedEventForIdentityId(identityId)
@@ -174,12 +174,13 @@ func (pc *PostureCache) evaluate() {
 }
 
 func (pc *PostureCache) Add(identityId string, postureResponses []*PostureResponse) {
-	pc.Upsert(identityId, true, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	pc.Upsert(identityId, true, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var postureData *PostureData
+
 		if exist {
-			postureData = valueInMap.(*PostureData)
+			postureData = valueInMap
 		} else {
-			postureData = newValue.(*PostureData)
+			postureData = newValue
 		}
 
 		for _, postureResponse := range postureResponses {
@@ -195,7 +196,7 @@ func (pc *PostureCache) Add(identityId string, postureResponses []*PostureRespon
 // Upsert is a convenience function to alter the existing PostureData for an identity. If
 // emitDataAltered is true, posture data listeners will be alerted: this will trigger
 // service update notifications and posture check evaluation.
-func (pc *PostureCache) Upsert(identityId string, emitDataAltered bool, cb func(exist bool, valueInMap interface{}, newValue interface{}) interface{}) {
+func (pc *PostureCache) Upsert(identityId string, emitDataAltered bool, cb func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData) {
 	pc.identityToPostureData.Upsert(identityId, newPostureData(), cb)
 
 	if emitDataAltered {
@@ -206,12 +207,13 @@ func (pc *PostureCache) Upsert(identityId string, emitDataAltered bool, cb func(
 const MaxPostureFailures = 100
 
 func (pc *PostureCache) AddSessionRequestFailure(identityId string, failure *PostureSessionRequestFailure) {
-	pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	pc.identityToPostureData.Upsert(identityId, newPostureData(), func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var postureData *PostureData
+
 		if exist {
-			postureData = valueInMap.(*PostureData)
+			postureData = valueInMap
 		} else {
-			postureData = newValue.(*PostureData)
+			postureData = newValue
 		}
 
 		postureData.SessionRequestFailures = append(postureData.SessionRequestFailures, failure)
@@ -225,8 +227,7 @@ func (pc *PostureCache) AddSessionRequestFailure(identityId string, failure *Pos
 }
 
 func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks []*PostureCheck) (bool, []*PostureCheckFailure) {
-	if val, found := pc.identityToPostureData.Get(identityId); found {
-		postureData := val.(*PostureData)
+	if postureData, found := pc.identityToPostureData.Get(identityId); found {
 		return postureData.Evaluate(apiSessionId, postureChecks)
 	}
 
@@ -249,12 +250,12 @@ func (pc *PostureCache) Evaluate(identityId, apiSessionId string, postureChecks 
 func (pc *PostureCache) PostureData(identityId string) *PostureData {
 	var result *PostureData = nil
 
-	pc.Upsert(identityId, false, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	pc.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var pd *PostureData
 		if exist {
-			pd = valueInMap.(*PostureData)
+			pd = valueInMap
 		} else {
-			pd = newValue.(*PostureData)
+			pd = newValue
 		}
 
 		result = pd.Copy()
@@ -295,15 +296,13 @@ func (pc *PostureCache) ApiSessionDeleted(args ...interface{}) {
 		return
 	}
 
-	pc.identityToPostureData.Upsert(apiSession.IdentityId, newPostureData(), func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+	pc.identityToPostureData.Upsert(apiSession.IdentityId, newPostureData(), func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		if exist {
-			pd := valueInMap.(*PostureData)
-
-			if pd != nil && pd.ApiSessions != nil {
-				delete(pd.ApiSessions, apiSession.Id)
+			if valueInMap != nil && valueInMap.ApiSessions != nil {
+				delete(valueInMap.ApiSessions, apiSession.Id)
 			}
 
-			return pd
+			return valueInMap
 		}
 
 		return newValue
@@ -377,7 +376,7 @@ func (pc *PostureCache) PostureCheckChanged(args ...interface{}) {
 		return nil
 	})
 
-	for identityId, _ := range identitiesToNotify {
+	for identityId := range identitiesToNotify {
 		pc.env.HandleServiceUpdatedEventForIdentityId(identityId)
 	}
 }
@@ -458,7 +457,7 @@ func (pd *PostureData) Evaluate(apiSessionId string, checks []*PostureCheck) (bo
 
 func (pd *PostureData) Copy() *PostureData {
 	dest := &PostureData{}
-	copier.Copy(dest, pd)
+	_ = copier.Copy(dest, pd)
 	return dest
 }
 
@@ -503,7 +502,7 @@ type PostureResponseSubType interface {
 	Apply(postureData *PostureData)
 }
 
-var macClean = regexp.MustCompile("[^a-f0-9]+")
+var macClean = regexp.MustCompile("[^a-f\\d]+")
 
 func CleanHexString(hexString string) string {
 	return macClean.ReplaceAllString(strings.ToLower(hexString), "")

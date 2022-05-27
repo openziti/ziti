@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	nfpem "github.com/openziti/foundation/util/pem"
 	"github.com/openziti/foundation/util/stringz"
-	cmap "github.com/orcaman/concurrent-map"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"net/http"
 	"time"
 )
@@ -46,7 +46,7 @@ type AuthModuleCert struct {
 	fingerprintGenerator cert.FingerprintGenerator
 	caChain              []byte
 	staticCaCerts        []*x509.Certificate
-	dynamicCaCache       cmap.ConcurrentMap //map[string][]*x509.Certificate
+	dynamicCaCache       cmap.ConcurrentMap[[]*x509.Certificate]
 }
 
 func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
@@ -55,7 +55,7 @@ func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
 		method:               persistence.MethodAuthenticatorCert,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 		staticCaCerts:        nfpem.PemBytesToCertificates(caChain),
-		dynamicCaCache:       cmap.New(),
+		dynamicCaCache:       cmap.New[[]*x509.Certificate](),
 	}
 
 	return handler
@@ -263,13 +263,11 @@ func (module *AuthModuleCert) getCas() *caPool {
 			return nil
 		}
 
-		if val, ok := module.dynamicCaCache.Get(ca.Id); ok {
-			if caCerts, ok := val.([]*x509.Certificate); ok {
-				for _, caCert := range caCerts {
-					result.roots.AddCert(caCert)
-					fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
-					result.cas[fingerprint] = ca
-				}
+		if caCerts, ok := module.dynamicCaCache.Get(ca.Id); ok {
+			for _, caCert := range caCerts {
+				result.roots.AddCert(caCert)
+				fingerprint := module.env.GetFingerprintGenerator().FromCert(caCert)
+				result.cas[fingerprint] = ca
 			}
 		} else {
 			caCerts := nfpem.PemStringToCertificates(ca.CertPem)
