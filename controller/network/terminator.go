@@ -114,14 +114,14 @@ func (entity *Terminator) toBolt() *db.Terminator {
 	}
 }
 
-func newTerminatorController(controllers *Controllers) *TerminatorController {
-	result := &TerminatorController{
-		baseController: newController(controllers, controllers.stores.Terminator),
-		store:          controllers.stores.Terminator,
+func newTerminatorManager(managers *Managers) *TerminatorManager {
+	result := &TerminatorManager{
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Terminator),
+		store:             managers.stores.Terminator,
 	}
 	result.impl = result
 
-	controllers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
+	managers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
 		for _, entity := range params {
 			if terminator, ok := entity.(*db.Terminator); ok {
 				xt.GlobalCosts().ClearCost(terminator.Id)
@@ -134,20 +134,20 @@ func newTerminatorController(controllers *Controllers) *TerminatorController {
 	return result
 }
 
-type TerminatorController struct {
-	baseController
+type TerminatorManager struct {
+	baseEntityManager
 	store db.TerminatorStore
 }
 
-func (self *TerminatorController) newModelEntity() boltEntitySink {
+func (self *TerminatorManager) newModelEntity() boltEntitySink {
 	return &Terminator{}
 }
 
-func (self *TerminatorController) Create(entity *Terminator) error {
+func (self *TerminatorManager) Create(entity *Terminator) error {
 	return DispatchCreate[*Terminator](self, entity)
 }
 
-func (self *TerminatorController) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator]) error {
+func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator]) error {
 	return self.db.Update(func(tx *bbolt.Tx) error {
 		self.checkBinding(cmd.Entity)
 		boltTerminator := cmd.Entity.toBolt()
@@ -162,7 +162,7 @@ func (self *TerminatorController) ApplyCreate(cmd *command.CreateEntityCommand[*
 	})
 }
 
-func (self *TerminatorController) checkBinding(terminator *Terminator) {
+func (self *TerminatorManager) checkBinding(terminator *Terminator) {
 	if terminator.Binding == "" {
 		if strings.HasPrefix(terminator.Address, "udp:") {
 			terminator.Binding = "udp"
@@ -172,7 +172,7 @@ func (self *TerminatorController) checkBinding(terminator *Terminator) {
 	}
 }
 
-func (self *TerminatorController) handlePrecedenceChange(terminatorId string, precedence xt.Precedence) {
+func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, precedence xt.Precedence) {
 	terminator, err := self.Read(terminatorId)
 	if err != nil {
 		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)",
@@ -190,11 +190,11 @@ func (self *TerminatorController) handlePrecedenceChange(terminatorId string, pr
 	}
 }
 
-func (self *TerminatorController) Update(entity *Terminator, updatedFields boltz.UpdatedFields) error {
+func (self *TerminatorManager) Update(entity *Terminator, updatedFields boltz.UpdatedFields) error {
 	return DispatchUpdate[*Terminator](self, entity, updatedFields)
 }
 
-func (self *TerminatorController) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator]) error {
+func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator]) error {
 	terminator := cmd.Entity
 	return self.db.Update(func(tx *bbolt.Tx) error {
 		self.checkBinding(terminator)
@@ -202,7 +202,7 @@ func (self *TerminatorController) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 	})
 }
 
-func (self *TerminatorController) Read(id string) (entity *Terminator, err error) {
+func (self *TerminatorManager) Read(id string) (entity *Terminator, err error) {
 	err = self.db.View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err
@@ -213,7 +213,7 @@ func (self *TerminatorController) Read(id string) (entity *Terminator, err error
 	return entity, err
 }
 
-func (self *TerminatorController) readInTx(tx *bbolt.Tx, id string) (*Terminator, error) {
+func (self *TerminatorManager) readInTx(tx *bbolt.Tx, id string) (*Terminator, error) {
 	entity := &Terminator{}
 	err := self.readEntityInTx(tx, id, entity)
 	if err != nil {
@@ -222,7 +222,7 @@ func (self *TerminatorController) readInTx(tx *bbolt.Tx, id string) (*Terminator
 	return entity, nil
 }
 
-func (self *TerminatorController) Query(query string) (*TerminatorListResult, error) {
+func (self *TerminatorManager) Query(query string) (*TerminatorListResult, error) {
 	result := &TerminatorListResult{controller: self}
 	if err := self.list(query, result.collect); err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func (self *TerminatorController) Query(query string) (*TerminatorListResult, er
 	return result, nil
 }
 
-func (self *TerminatorController) Marshall(entity *Terminator) ([]byte, error) {
+func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 	tags, err := cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -260,7 +260,7 @@ func (self *TerminatorController) Marshall(entity *Terminator) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *TerminatorController) Unmarshall(bytes []byte) (*Terminator, error) {
+func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 	msg := &cmd_pb.Terminator{}
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err
@@ -291,7 +291,7 @@ func (self *TerminatorController) Unmarshall(bytes []byte) (*Terminator, error) 
 }
 
 type TerminatorListResult struct {
-	controller *TerminatorController
+	controller *TerminatorManager
 	Entities   []*Terminator
 	models.QueryMetaData
 }

@@ -115,12 +115,12 @@ func MapTerminatorToRestEntity(n *network.Network, _ api.RequestContext, e model
 
 func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
 
-	service, err := n.Controllers.Services.Read(terminator.Service)
+	service, err := n.Managers.Services.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := n.Controllers.Routers.Read(terminator.Router)
+	router, err := n.Managers.Routers.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}

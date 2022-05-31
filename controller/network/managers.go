@@ -34,24 +34,24 @@ const (
 	DeleteDecoder = "DeleteDecoder"
 )
 
-type Controllers struct {
+type Managers struct {
 	network     *Network
 	db          boltz.Db
 	stores      *db.Stores
-	Terminators *TerminatorController
-	Routers     *RouterController
-	Services    *ServiceController
-	Inspections *InspectionsController
-	Command     *CommandController
+	Terminators *TerminatorManager
+	Routers     *RouterManager
+	Services    *ServiceManager
+	Inspections *InspectionsManager
+	Command     *CommandManager
 	Dispatcher  command.Dispatcher
 	Registry    ioc.Registry
 }
 
-func (self *Controllers) getDb() boltz.Db {
+func (self *Managers) getDb() boltz.Db {
 	return self.db
 }
 
-func (self *Controllers) Dispatch(command command.Command) error {
+func (self *Managers) Dispatch(command command.Command) error {
 	return self.Dispatcher.Dispatch(command)
 }
 
@@ -94,9 +94,9 @@ func DispatchUpdate[T models.Entity](u updater[T], entity T, updatedFields boltz
 
 type createDecoderF func(entityData []byte) (command.Command, error)
 
-func RegisterCreateDecoder[T models.Entity](controllers *Controllers, creator command.EntityCreator[T]) {
+func RegisterCreateDecoder[T models.Entity](managers *Managers, creator command.EntityCreator[T]) {
 	entityType := creator.GetEntityTypeId()
-	controllers.Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(data []byte) (command.Command, error) {
+	managers.Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(data []byte) (command.Command, error) {
 		entity, err := creator.Unmarshall(data)
 		if err != nil {
 			return nil, err
@@ -110,9 +110,9 @@ func RegisterCreateDecoder[T models.Entity](controllers *Controllers, creator co
 
 type updateDecoderF func(entityData []byte, updateFields boltz.UpdatedFields) (command.Command, error)
 
-func RegisterUpdateDecoder[T models.Entity](controllers *Controllers, updater command.EntityUpdater[T]) {
+func RegisterUpdateDecoder[T models.Entity](managers *Managers, updater command.EntityUpdater[T]) {
 	entityType := updater.GetEntityTypeId()
-	controllers.Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(data []byte, updatedFields boltz.UpdatedFields) (command.Command, error) {
+	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(data []byte, updatedFields boltz.UpdatedFields) (command.Command, error) {
 		entity, err := updater.Unmarshall(data)
 		if err != nil {
 			return nil, err
@@ -127,9 +127,9 @@ func RegisterUpdateDecoder[T models.Entity](controllers *Controllers, updater co
 
 type deleteDecoderF func(entityId string) (command.Command, error)
 
-func RegisterDeleteDecoder(controllers *Controllers, deleter command.EntityDeleter) {
+func RegisterDeleteDecoder(managers *Managers, deleter command.EntityDeleter) {
 	entityType := deleter.GetEntityTypeId()
-	controllers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(entityId string) (command.Command, error) {
+	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(entityId string) (command.Command, error) {
 		return &command.DeleteEntityCommand{
 			Deleter: deleter,
 			Id:      entityId,
@@ -137,39 +137,39 @@ func RegisterDeleteDecoder(controllers *Controllers, deleter command.EntityDelet
 	}))
 }
 
-func RegisterControllerDecoder[T models.Entity](controllers *Controllers, ctrl command.EntityController[T]) {
-	RegisterCreateDecoder[T](controllers, ctrl)
-	RegisterUpdateDecoder[T](controllers, ctrl)
-	RegisterDeleteDecoder(controllers, ctrl)
+func RegisterManagerDecoder[T models.Entity](managers *Managers, ctrl command.EntityManager[T]) {
+	RegisterCreateDecoder[T](managers, ctrl)
+	RegisterUpdateDecoder[T](managers, ctrl)
+	RegisterDeleteDecoder(managers, ctrl)
 }
 
-func NewControllers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores) *Controllers {
-	result := &Controllers{
+func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores) *Managers {
+	result := &Managers{
 		network:    network,
 		db:         db,
 		stores:     stores,
 		Dispatcher: dispatcher,
 		Registry:   ioc.NewRegistry(),
 	}
-	result.Command = newCommandController(result)
-	result.Terminators = newTerminatorController(result)
-	result.Routers = newRouterController(result)
-	result.Services = newServiceController(result)
-	result.Inspections = NewInspectionsController(network)
+	result.Command = newCommandManager(result)
+	result.Terminators = newTerminatorManager(result)
+	result.Routers = newRouterManager(result)
+	result.Services = newServiceManager(result)
+	result.Inspections = NewInspectionsManager(network)
 	if result.Dispatcher == nil {
 		result.Dispatcher = command.LocalDispatcher{}
 	}
 	result.Command.registerGenericCommands()
 
-	RegisterControllerDecoder[*Service](result, result.Services)
-	RegisterControllerDecoder[*Router](result, result.Routers)
+	RegisterManagerDecoder[*Service](result, result.Services)
+	RegisterManagerDecoder[*Router](result, result.Routers)
 
 	return result
 }
 
 type Controller interface {
 	models.EntityRetriever
-	getControllers() *Controllers
+	getManagers() *Managers
 
 	newModelEntity() boltEntitySink
 	readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error
@@ -180,43 +180,43 @@ type boltEntitySink interface {
 	fillFrom(controller Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
-func newController(controllers *Controllers, store boltz.CrudStore) baseController {
-	return baseController{
-		BaseController: models.BaseController{
+func newBaseEntityManager(managers *Managers, store boltz.CrudStore) baseEntityManager {
+	return baseEntityManager{
+		BaseEntityManager: models.BaseEntityManager{
 			Store: store,
 		},
-		Controllers: controllers,
+		Managers: managers,
 	}
 }
 
-type baseController struct {
-	models.BaseController
-	*Controllers
+type baseEntityManager struct {
+	models.BaseEntityManager
+	*Managers
 	impl Controller
 }
 
-func (self *baseController) GetEntityTypeId() string {
-	// default this to the store entity type and let individual controllers override it where
+func (self *baseEntityManager) GetEntityTypeId() string {
+	// default this to the store entity type and let individual managers override it where
 	// needed to avoid collisions (e.g. edge service/router)
 	return self.GetStore().GetEntityType()
 }
 
-func (self *baseController) Delete(id string) error {
+func (self *baseEntityManager) Delete(id string) error {
 	cmd := &command.DeleteEntityCommand{
 		Deleter: self,
 		Id:      id,
 	}
-	return self.Controllers.Dispatch(cmd)
+	return self.Managers.Dispatch(cmd)
 }
 
-func (self *baseController) ApplyDelete(cmd *command.DeleteEntityCommand) error {
+func (self *baseEntityManager) ApplyDelete(cmd *command.DeleteEntityCommand) error {
 	return self.db.Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		return self.Store.DeleteById(ctx, cmd.Id)
 	})
 }
 
-func (ctrl *baseController) BaseLoad(id string) (models.Entity, error) {
+func (ctrl *baseEntityManager) BaseLoad(id string) (models.Entity, error) {
 	entity := ctrl.impl.newModelEntity()
 	if err := ctrl.readEntity(id, entity); err != nil {
 		return nil, err
@@ -224,7 +224,7 @@ func (ctrl *baseController) BaseLoad(id string) (models.Entity, error) {
 	return entity, nil
 }
 
-func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity, error) {
+func (ctrl *baseEntityManager) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity, error) {
 	entity := ctrl.impl.newModelEntity()
 	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
@@ -232,17 +232,17 @@ func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity
 	return entity, nil
 }
 
-func (ctrl *baseController) getControllers() *Controllers {
-	return ctrl.Controllers
+func (ctrl *baseEntityManager) getManagers() *Managers {
+	return ctrl.Managers
 }
 
-func (ctrl *baseController) readEntity(id string, modelEntity boltEntitySink) error {
+func (ctrl *baseEntityManager) readEntity(id string, modelEntity boltEntitySink) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.readEntityInTx(tx, id, modelEntity)
 	})
 }
 
-func (ctrl *baseController) readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error {
+func (ctrl *baseEntityManager) readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error {
 	boltEntity := ctrl.impl.GetStore().NewStoreEntity()
 	found, err := ctrl.impl.GetStore().BaseLoadOneById(tx, id, boltEntity)
 	if err != nil {
@@ -255,7 +255,7 @@ func (ctrl *baseController) readEntityInTx(tx *bbolt.Tx, id string, modelEntity 
 	return modelEntity.fillFrom(ctrl.impl, tx, boltEntity)
 }
 
-func (ctrl *baseController) BaseList(query string) (*models.EntityListResult, error) {
+func (ctrl *baseEntityManager) BaseList(query string) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: ctrl}
 	err := ctrl.list(query, result.Collect)
 	if err != nil {
@@ -264,13 +264,13 @@ func (ctrl *baseController) BaseList(query string) (*models.EntityListResult, er
 	return result, nil
 }
 
-func (ctrl *baseController) list(queryString string, resultHandler models.ListResultHandler) error {
+func (ctrl *baseEntityManager) list(queryString string, resultHandler models.ListResultHandler) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.ListWithTx(tx, queryString, resultHandler)
 	})
 }
 
-func (ctrl *baseController) BasePreparedList(query ast.Query) (*models.EntityListResult, error) {
+func (ctrl *baseEntityManager) BasePreparedList(query ast.Query) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: ctrl}
 	err := ctrl.preparedList(query, result.Collect)
 	if err != nil {
@@ -279,13 +279,13 @@ func (ctrl *baseController) BasePreparedList(query ast.Query) (*models.EntityLis
 	return result, nil
 }
 
-func (ctrl *baseController) preparedList(query ast.Query, resultHandler models.ListResultHandler) error {
+func (ctrl *baseEntityManager) preparedList(query ast.Query, resultHandler models.ListResultHandler) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.PreparedListWithTx(tx, query, resultHandler)
 	})
 }
 
-func (ctrl *baseController) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult, error) {
+func (ctrl *baseEntityManager) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: ctrl}
 	err := ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.PreparedListAssociatedWithTx(tx, id, typeLoader.GetStore().GetEntityType(), query, result.Collect)
@@ -302,7 +302,7 @@ type boltEntitySource interface {
 	toBolt() boltz.Entity
 }
 
-func (ctrl *baseController) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
+func (ctrl *baseEntityManager) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
 	return ctrl.db.Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		existing := ctrl.GetStore().NewStoreEntity()

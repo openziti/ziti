@@ -133,17 +133,17 @@ type QueryMetaData struct {
 	FilterableFields []string
 }
 
-type BaseController struct {
+type BaseEntityManager struct {
 	Store boltz.CrudStore
 }
 
-func (ctrl *BaseController) GetStore() boltz.CrudStore {
+func (ctrl *BaseEntityManager) GetStore() boltz.CrudStore {
 	return ctrl.Store
 }
 
 type ListResultHandler func(tx *bbolt.Tx, ids []string, qmd *QueryMetaData) error
 
-func (ctrl *BaseController) checkLimits(query ast.Query) {
+func (ctrl *BaseEntityManager) checkLimits(query ast.Query) {
 	if query.GetLimit() == nil || *query.GetLimit() < -1 || *query.GetLimit() == 0 {
 		query.SetLimit(ListLimitDefault)
 	} else if *query.GetLimit() > ListLimitMax {
@@ -157,7 +157,7 @@ func (ctrl *BaseController) checkLimits(query ast.Query) {
 	}
 }
 
-func (ctrl *BaseController) ListWithTx(tx *bbolt.Tx, queryString string, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager) ListWithTx(tx *bbolt.Tx, queryString string, resultHandler ListResultHandler) error {
 	query, err := ast.Parse(ctrl.Store, queryString)
 	if err != nil {
 		return err
@@ -166,7 +166,7 @@ func (ctrl *BaseController) ListWithTx(tx *bbolt.Tx, queryString string, resultH
 	return ctrl.PreparedListWithTx(tx, query, resultHandler)
 }
 
-func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	keys, count, err := ctrl.Store.QueryIdsC(tx, query)
@@ -182,7 +182,7 @@ func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, re
 	return resultHandler(tx, keys, qmd)
 }
 
-func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	var count int64
@@ -216,7 +216,7 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 	return resultHandler(tx, keys, qmd)
 }
 
-func (ctrl *BaseController) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	keys, count, err := ctrl.Store.QueryWithCursorC(tx, cursorProvider, query)
@@ -238,7 +238,7 @@ type Named interface {
 	GetName() string
 }
 
-func (ctrl *BaseController) ValidateNameOnUpdate(ctx boltz.MutateContext, updatedEntity, existingEntity boltz.Entity, checker boltz.FieldChecker) error {
+func (ctrl *BaseEntityManager) ValidateNameOnUpdate(ctx boltz.MutateContext, updatedEntity, existingEntity boltz.Entity, checker boltz.FieldChecker) error {
 	// validate name for named entities
 	if namedEntity, ok := updatedEntity.(boltz.NamedExtEntity); ok {
 		existingNamed := existingEntity.(boltz.NamedExtEntity)
@@ -258,14 +258,14 @@ func (ctrl *BaseController) ValidateNameOnUpdate(ctx boltz.MutateContext, update
 	return nil
 }
 
-func (handler *BaseController) ValidateName(db boltz.Db, boltEntity Named) error {
+func (handler *BaseEntityManager) ValidateName(db boltz.Db, boltEntity Named) error {
 	return db.View(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		return handler.ValidateNameOnCreate(ctx, boltEntity)
 	})
 }
 
-func (handler *BaseController) ValidateNameOnCreate(ctx boltz.MutateContext, entity interface{}) error {
+func (handler *BaseEntityManager) ValidateNameOnCreate(ctx boltz.MutateContext, entity interface{}) error {
 	// validate name for named entities
 	if namedEntity, ok := entity.(Named); ok {
 		if namedEntity.GetName() == "" {

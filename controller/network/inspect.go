@@ -39,31 +39,19 @@ type InspectResult struct {
 	Results []*InspectResultValue
 }
 
-func NewInspectionsController(network *Network) *InspectionsController {
-	return &InspectionsController{
+func NewInspectionsManager(network *Network) *InspectionsManager {
+	return &InspectionsManager{
 		network: network,
 	}
 }
 
-type InspectionsController struct {
+type InspectionsManager struct {
 	network *Network
 }
 
-func (self *InspectionsController) Inspect(appRegex string, values []string) *InspectResult {
-
-	ctx, err := NewInspectionContext(self.network, appRegex, values)
-
-	if err != nil {
-		ctx.appendError(self.network.GetAppId(), err.Error())
-		return &ctx.response
-	}
-
-	return ctx.RunInspections()
-}
-
-func NewInspectionContext(network *Network, appRegex string, values []string) (*inspectRequestContext, error) {
+func (self *InspectionsManager) Inspect(appRegex string, values []string) *InspectResult {
 	ctx := &inspectRequestContext{
-		network:         network,
+		network:         self.network,
 		timeout:         time.Second * 10,
 		requestedValues: values,
 		waitGroup:       concurrenz.NewWaitGroup(),
@@ -73,10 +61,13 @@ func NewInspectionContext(network *Network, appRegex string, values []string) (*
 
 	var err error
 	ctx.regex, err = regexp.Compile(appRegex)
+
 	if err != nil {
-		return nil, err
+		ctx.appendError(self.network.GetAppId(), err.Error())
+		return &ctx.response
 	}
-	return ctx, nil
+
+	return ctx.RunInspections()
 }
 
 type inspectRequestContext struct {

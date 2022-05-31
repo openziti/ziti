@@ -63,7 +63,7 @@ type Config interface {
 }
 
 type Network struct {
-	*Controllers
+	*Managers
 	nodeId                 string
 	options                *Options
 	routerChanged          chan *Router
@@ -134,8 +134,8 @@ func NewNetwork(config Config) (*Network, error) {
 		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
 	}
 
-	network.Controllers = NewControllers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
-	network.Controllers.Inspections.network = network
+	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
+	network.Managers.Inspections.network = network
 
 	fabricMetrics.InitMetricHandlers(config.GetMetricsConfig())
 	fabricMetrics.AddMetricsEventHandler(network)
@@ -188,8 +188,8 @@ func (network *Network) GetStores() *db.Stores {
 	return network.stores
 }
 
-func (network *Network) GetControllers() *Controllers {
-	return network.Controllers
+func (network *Network) GetManagers() *Managers {
+	return network.Managers
 }
 
 func (network *Network) CreateRouter(router *Router) error {

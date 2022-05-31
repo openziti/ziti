@@ -71,11 +71,11 @@ func (r *ServiceRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 }
 
 func (r *ServiceRouter) ListServices(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Controllers.Services, MapServiceToRestEntity)
+	ListWithHandler(n, rc, n.Managers.Services, MapServiceToRestEntity)
 }
 
 func (r *ServiceRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Controllers.Services, MapServiceToRestEntity)
+	DetailWithHandler(n, rc, n.Managers.Services, MapServiceToRestEntity)
 }
 
 func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params service.CreateServiceParams) {
@@ -90,25 +90,25 @@ func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params
 }
 
 func (r *ServiceRouter) Delete(network *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, network.Controllers.Services)
+	DeleteWithHandler(rc, network.Managers.Services)
 }
 
 func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params service.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return n.Controllers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil)
+		return n.Managers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil)
 	})
 }
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return n.Controllers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
 func (r *ServiceRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
-	r.listAssociations(n, rc, n.Controllers.Terminators, MapTerminatorToRestEntity)
+	r.listAssociations(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
 }
 
 func (r *ServiceRouter) listAssociations(n *network.Network, rc api.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(n, rc, n.Controllers.Services, associationLoader, mapper)
+	ListAssociationWithHandler(n, rc, n.Managers.Services, associationLoader, mapper)
 }

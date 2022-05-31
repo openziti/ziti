@@ -24,27 +24,27 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newCommandController(controllers *Controllers) *CommandController {
+func newCommandManager(managers *Managers) *CommandManager {
 	command.GetDefaultDecoders().Clear()
-	result := &CommandController{
-		Controllers: controllers,
-		Decoders:    command.GetDefaultDecoders(),
+	result := &CommandManager{
+		Managers: managers,
+		Decoders: command.GetDefaultDecoders(),
 	}
 	return result
 }
 
-type CommandController struct {
-	*Controllers
+type CommandManager struct {
+	*Managers
 	Decoders command.Decoders
 }
 
-func (self *CommandController) registerGenericCommands() {
+func (self *CommandManager) registerGenericCommands() {
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_CreateEntityType), self.decodeCreateEntityCommand)
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_UpdateEntityType), self.decodeUpdateEntityCommand)
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_DeleteEntityType), self.decodeDeleteEntityCommand)
 }
 
-func (self *CommandController) decodeCreateEntityCommand(_ int32, data []byte) (command.Command, error) {
+func (self *CommandManager) decodeCreateEntityCommand(_ int32, data []byte) (command.Command, error) {
 	msg := &cmd_pb.CreateEntityCommand{}
 	if err := proto.Unmarshal(data, msg); err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func (self *CommandController) decodeCreateEntityCommand(_ int32, data []byte) (
 	return decoder(msg.EntityData)
 }
 
-func (self *CommandController) decodeUpdateEntityCommand(_ int32, data []byte) (command.Command, error) {
+func (self *CommandManager) decodeUpdateEntityCommand(_ int32, data []byte) (command.Command, error) {
 	msg := &cmd_pb.UpdateEntityCommand{}
 	if err := proto.Unmarshal(data, msg); err != nil {
 		return nil, err
@@ -73,7 +73,7 @@ func (self *CommandController) decodeUpdateEntityCommand(_ int32, data []byte) (
 	return decoder(msg.EntityData, updatedFields)
 }
 
-func (self *CommandController) decodeDeleteEntityCommand(_ int32, data []byte) (command.Command, error) {
+func (self *CommandManager) decodeDeleteEntityCommand(_ int32, data []byte) (command.Command, error) {
 	msg := &cmd_pb.DeleteEntityCommand{}
 	if err := proto.Unmarshal(data, msg); err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ type decodableCommand[T any, M any] interface {
 //
 // We only have both types specified so that we can enforce that each is a pointer type. If didn't
 // enforce that the instances were pointer types, we couldn't use new to instantiate new instances.
-func RegisterCommand[MT any, CT any, M CommandMsg[MT], C decodableCommand[CT, M]](controllers *Controllers, _ C, _ M) {
+func RegisterCommand[MT any, CT any, M CommandMsg[MT], C decodableCommand[CT, M]](managers *Managers, _ C, _ M) {
 	decoder := func(commandType int32, data []byte) (command.Command, error) {
 		var msg M = new(MT)
 		if err := proto.Unmarshal(data, msg); err != nil {
@@ -123,12 +123,12 @@ func RegisterCommand[MT any, CT any, M CommandMsg[MT], C decodableCommand[CT, M]
 		}
 
 		cmd := C(new(CT))
-		if err := cmd.Decode(controllers.network, msg); err != nil {
+		if err := cmd.Decode(managers.network, msg); err != nil {
 			return nil, err
 		}
 		return cmd, nil
 	}
 
 	var msg M = new(MT)
-	controllers.Command.Decoders.RegisterF(msg.GetCommandType(), decoder)
+	managers.Command.Decoders.RegisterF(msg.GetCommandType(), decoder)
 }

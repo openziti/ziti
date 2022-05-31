@@ -54,8 +54,8 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 		go func() {
 			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
 			service := request.Service
-			if _, err := h.network.Controllers.Services.Read(service); err != nil {
-				if id, _ := h.network.Controllers.Services.GetIdForName(service); id != "" {
+			if _, err := h.network.Managers.Services.Read(service); err != nil {
+				if id, _ := h.network.Managers.Services.GetIdForName(service); id != "" {
 					service = id
 				}
 			}

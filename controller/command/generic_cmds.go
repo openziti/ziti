@@ -47,8 +47,8 @@ type EntityDeleter interface {
 	ApplyDelete(cmd *DeleteEntityCommand) error
 }
 
-// EntityController instances can handle create, update and delete commands
-type EntityController[T models.Entity] interface {
+// EntityManager instances can handle create, update and delete entities of a specific type
+type EntityManager[T models.Entity] interface {
 	EntityCreator[T]
 	EntityUpdater[T]
 	EntityDeleter

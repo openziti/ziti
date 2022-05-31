@@ -50,9 +50,9 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.FillCommon(boltService)
 
-	terminatorIds := ctrl.getControllers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
+	terminatorIds := ctrl.getManagers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
 	for _, terminatorId := range terminatorIds {
-		if terminator, _ := ctrl.getControllers().Terminators.readInTx(tx, terminatorId); terminator != nil {
+		if terminator, _ := ctrl.getManagers().Terminators.readInTx(tx, terminatorId); terminator != nil {
 			entity.Terminators = append(entity.Terminators, terminator)
 		}
 	}
@@ -68,11 +68,11 @@ func (entity *Service) toBolt() boltz.Entity {
 	}
 }
 
-func newServiceController(controllers *Controllers) *ServiceController {
-	result := &ServiceController{
-		baseController: newController(controllers, controllers.stores.Service),
-		cache:          cmap.New[*Service](),
-		store:          controllers.stores.Service,
+func newServiceManager(managers *Managers) *ServiceManager {
+	result := &ServiceManager{
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Service),
+		cache:             cmap.New[*Service](),
+		store:             managers.stores.Service,
 	}
 	result.impl = result
 
@@ -86,23 +86,23 @@ func newServiceController(controllers *Controllers) *ServiceController {
 		}
 	}
 
-	controllers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
-	controllers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
+	managers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
+	managers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
 
 	return result
 }
 
-type ServiceController struct {
-	baseController
+type ServiceManager struct {
+	baseEntityManager
 	cache cmap.ConcurrentMap[*Service]
 	store db.ServiceStore
 }
 
-func (self *ServiceController) newModelEntity() boltEntitySink {
+func (self *ServiceManager) newModelEntity() boltEntitySink {
 	return &Service{}
 }
 
-func (self *ServiceController) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
+func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
 	// patched entities may not have all fields, if service is blank, load terminator
 	serviceId := terminator.Service
 	if serviceId == "" {
@@ -124,11 +124,11 @@ func (self *ServiceController) NotifyTerminatorChanged(terminator *db.Terminator
 	return terminator
 }
 
-func (self *ServiceController) Create(entity *Service) error {
+func (self *ServiceManager) Create(entity *Service) error {
 	return DispatchCreate[*Service](self, entity)
 }
 
-func (self *ServiceController) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
+func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
 	s := cmd.Entity
 	err := self.db.Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
@@ -147,11 +147,11 @@ func (self *ServiceController) ApplyCreate(cmd *command.CreateEntityCommand[*Ser
 	return nil
 }
 
-func (self *ServiceController) Update(entity *Service, updatedFields boltz.UpdatedFields) error {
+func (self *ServiceManager) Update(entity *Service, updatedFields boltz.UpdatedFields) error {
 	return DispatchUpdate[*Service](self, entity, updatedFields)
 }
 
-func (self *ServiceController) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
+func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
 	if err := self.updateGeneral(cmd.Entity, cmd.UpdatedFields); err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func (self *ServiceController) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ser
 	return nil
 }
 
-func (self *ServiceController) Read(id string) (entity *Service, err error) {
+func (self *ServiceManager) Read(id string) (entity *Service, err error) {
 	err = self.db.View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err
@@ -170,7 +170,7 @@ func (self *ServiceController) Read(id string) (entity *Service, err error) {
 	return entity, err
 }
 
-func (self *ServiceController) GetIdForName(id string) (string, error) {
+func (self *ServiceManager) GetIdForName(id string) (string, error) {
 	var result []byte
 	err := self.db.View(func(tx *bbolt.Tx) error {
 		result = self.store.GetNameIndex().Read(tx, []byte(id))
@@ -179,7 +179,7 @@ func (self *ServiceController) GetIdForName(id string) (string, error) {
 	return string(result), err
 }
 
-func (self *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
+func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
 	if service, found := self.cache.Get(id); found {
 		return service, nil
 	}
@@ -193,24 +193,24 @@ func (self *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, erro
 	return entity, nil
 }
 
-func (self *ServiceController) cacheService(service *Service) {
+func (self *ServiceManager) cacheService(service *Service) {
 	pfxlog.Logger().Tracef("updated service cache: %v", service.Id)
 	self.cache.Set(service.Id, service)
 }
 
-func (self *ServiceController) RemoveFromCache(id string) {
+func (self *ServiceManager) RemoveFromCache(id string) {
 	pfxlog.Logger().Debugf("removed service from cache: %v", id)
 	self.cache.Remove(id)
 }
 
-func (self *ServiceController) clearCache() {
+func (self *ServiceManager) clearCache() {
 	pfxlog.Logger().Debugf("clearing all services from cache")
 	for _, key := range self.cache.Keys() {
 		self.cache.Remove(key)
 	}
 }
 
-func (self *ServiceController) Marshall(entity *Service) ([]byte, error) {
+func (self *ServiceManager) Marshall(entity *Service) ([]byte, error) {
 	tags, err := cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -226,7 +226,7 @@ func (self *ServiceController) Marshall(entity *Service) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *ServiceController) Unmarshall(bytes []byte) (*Service, error) {
+func (self *ServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 	msg := &cmd_pb.Service{}
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err

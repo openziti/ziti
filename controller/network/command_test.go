@@ -39,14 +39,14 @@ func TestProtobufFactory(t *testing.T) {
 	}
 
 	createCmd := &command.CreateEntityCommand[*Service]{
-		Creator: n.Controllers.Services,
+		Creator: n.Managers.Services,
 		Entity:  service,
 	}
 
 	b, err := createCmd.Encode()
 	req.NoError(err)
 
-	val, err := n.Controllers.Command.Decoders.Decode(b)
+	val, err := n.Managers.Command.Decoders.Decode(b)
 	req.NoError(err)
 	msg, ok := val.(*command.CreateEntityCommand[*Service])
 	req.True(ok)
@@ -76,7 +76,7 @@ func BenchmarkRegisterCommand(t *testing.B) {
 	}
 
 	createCmd := &command.CreateEntityCommand[*Service]{
-		Creator: n.Controllers.Services,
+		Creator: n.Managers.Services,
 		Entity:  service,
 	}
 
@@ -84,7 +84,7 @@ func BenchmarkRegisterCommand(t *testing.B) {
 	req.NoError(err)
 
 	cmdType := int32(cmd_pb.CommandType_CreateEntityType)
-	decoder := n.Controllers.Command.Decoders.GetDecoder(cmdType)
+	decoder := n.Managers.Command.Decoders.GetDecoder(cmdType)
 
 	for i := 0; i < t.N; i++ {
 		_, err = decoder.Decode(cmdType, b)

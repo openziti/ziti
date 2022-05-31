@@ -103,27 +103,27 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 	return result
 }
 
-type RouterController struct {
-	baseController
+type RouterManager struct {
+	baseEntityManager
 	cache     cmap.ConcurrentMap[*Router]
 	connected cmap.ConcurrentMap[*Router]
 	store     db.RouterStore
 }
 
-func (self *RouterController) newModelEntity() boltEntitySink {
+func (self *RouterManager) newModelEntity() boltEntitySink {
 	return &Router{}
 }
 
-func newRouterController(controllers *Controllers) *RouterController {
-	result := &RouterController{
-		baseController: newController(controllers, controllers.stores.Router),
-		cache:          cmap.New[*Router](),
-		connected:      cmap.New[*Router](),
-		store:          controllers.stores.Router,
+func newRouterManager(managers *Managers) *RouterManager {
+	result := &RouterManager{
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Router),
+		cache:             cmap.New[*Router](),
+		connected:         cmap.New[*Router](),
+		store:             managers.stores.Router,
 	}
 	result.impl = result
 
-	controllers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
+	managers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
 		for _, val := range i {
 			if router, ok := val.(*db.Router); ok {
 				result.UpdateCachedRouter(router.Id)
@@ -133,7 +133,7 @@ func newRouterController(controllers *Controllers) *RouterController {
 		}
 	})
 
-	controllers.stores.Router.AddListener(boltz.EventDelete, func(i ...interface{}) {
+	managers.stores.Router.AddListener(boltz.EventDelete, func(i ...interface{}) {
 		for _, val := range i {
 			if router, ok := val.(*db.Router); ok {
 				result.HandleRouterDelete(router.Id)
@@ -146,8 +146,8 @@ func newRouterController(controllers *Controllers) *RouterController {
 	return result
 }
 
-func (self *RouterController) markConnected(r *Router) {
-	if router, ok := self.connected.Get(r.Id); ok {
+func (self *RouterManager) markConnected(r *Router) {
+	if router, _ := self.connected.Get(r.Id); router != nil {
 		if ch := router.Control; ch != nil {
 			if err := ch.Close(); err != nil {
 				pfxlog.Logger().WithError(err).Error("error closing control channel")
@@ -159,7 +159,7 @@ func (self *RouterController) markConnected(r *Router) {
 	self.connected.Set(r.Id, r)
 }
 
-func (self *RouterController) markDisconnected(r *Router) {
+func (self *RouterManager) markDisconnected(r *Router) {
 	r.Connected.Set(false)
 	self.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
 		if exists && v != r {
@@ -171,34 +171,34 @@ func (self *RouterController) markDisconnected(r *Router) {
 	r.routerLinks.Clear()
 }
 
-func (self *RouterController) IsConnected(id string) bool {
+func (self *RouterManager) IsConnected(id string) bool {
 	return self.connected.Has(id)
 }
 
-func (self *RouterController) getConnected(id string) *Router {
+func (self *RouterManager) getConnected(id string) *Router {
 	if router, found := self.connected.Get(id); found {
 		return router
 	}
 	return nil
 }
 
-func (self *RouterController) allConnected() []*Router {
+func (self *RouterManager) allConnected() []*Router {
 	var routers []*Router
-	for tuple := range self.connected.IterBuffered() {
-		routers = append(routers, tuple.Val)
+	for v := range self.connected.IterBuffered() {
+		routers = append(routers, v.Val)
 	}
 	return routers
 }
 
-func (self *RouterController) connectedCount() int {
+func (self *RouterManager) connectedCount() int {
 	return self.connected.Count()
 }
 
-func (self *RouterController) Create(entity *Router) error {
+func (self *RouterManager) Create(entity *Router) error {
 	return DispatchCreate[*Router](self, entity)
 }
 
-func (self *RouterController) ApplyCreate(cmd *command.CreateEntityCommand[*Router]) error {
+func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]) error {
 	router := cmd.Entity
 	err := self.db.Update(func(tx *bbolt.Tx) error {
 		return self.store.Create(boltz.NewMutateContext(tx), router.toBolt())
@@ -209,7 +209,7 @@ func (self *RouterController) ApplyCreate(cmd *command.CreateEntityCommand[*Rout
 	return err
 }
 
-func (self *RouterController) Read(id string) (entity *Router, err error) {
+func (self *RouterManager) Read(id string) (entity *Router, err error) {
 	err = self.db.View(func(tx *bbolt.Tx) error {
 		entity, err = self.readInTx(tx, id)
 		return err
@@ -220,7 +220,7 @@ func (self *RouterController) Read(id string) (entity *Router, err error) {
 	return entity, err
 }
 
-func (self *RouterController) readUncached(id string) (*Router, error) {
+func (self *RouterManager) readUncached(id string) (*Router, error) {
 	entity := &Router{}
 	err := self.db.View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTx(tx, id, entity)
@@ -231,7 +231,7 @@ func (self *RouterController) readUncached(id string) (*Router, error) {
 	return entity, nil
 }
 
-func (self *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
+func (self *RouterManager) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
 	if router, found := self.cache.Get(id); found {
 		return router, nil
 	}
@@ -245,15 +245,15 @@ func (self *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error)
 	return entity, nil
 }
 
-func (self *RouterController) Update(entity *Router, updatedFields boltz.UpdatedFields) error {
+func (self *RouterManager) Update(entity *Router, updatedFields boltz.UpdatedFields) error {
 	return DispatchUpdate[*Router](self, entity, updatedFields)
 }
 
-func (self *RouterController) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]) error {
+func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]) error {
 	return self.updateGeneral(cmd.Entity, cmd.UpdatedFields)
 }
 
-func (self *RouterController) HandleRouterDelete(id string) {
+func (self *RouterManager) HandleRouterDelete(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
 	log.Debug("processing router delete")
 	self.cache.Remove(id)
@@ -272,20 +272,20 @@ func (self *RouterController) HandleRouterDelete(id string) {
 	}
 }
 
-func (self *RouterController) UpdateCachedRouter(id string) {
+func (self *RouterManager) UpdateCachedRouter(id string) {
 	log := pfxlog.Logger().WithField("routerId", id)
 	if router, err := self.readUncached(id); err != nil {
 		log.WithError(err).Error("failed to read router for cache update")
 	} else {
-		updateCb := func(key string, cached *Router, exist bool) bool {
+		updateCb := func(key string, v *Router, exist bool) bool {
 			if !exist {
 				return false
 			}
 
-			cached.Name = router.Name
-			cached.Fingerprint = router.Fingerprint
-			cached.Cost = router.Cost
-			cached.NoTraversal = router.NoTraversal
+			v.Name = router.Name
+			v.Fingerprint = router.Fingerprint
+			v.Cost = router.Cost
+			v.NoTraversal = router.NoTraversal
 
 			return false
 		}
@@ -295,11 +295,11 @@ func (self *RouterController) UpdateCachedRouter(id string) {
 	}
 }
 
-func (self *RouterController) RemoveFromCache(id string) {
+func (self *RouterManager) RemoveFromCache(id string) {
 	self.cache.Remove(id)
 }
 
-func (self *RouterController) Marshall(entity *Router) ([]byte, error) {
+func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 	tags, err := cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func (self *RouterController) Marshall(entity *Router) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *RouterController) Unmarshall(bytes []byte) (*Router, error) {
+func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 	msg := &cmd_pb.Router{}
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err
