@@ -30,17 +30,29 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 		Errors:  inspectResult.Errors,
 		Success: &inspectResult.Success,
 	}
+
 	for _, val := range inspectResult.Results {
 		var emitVal interface{}
-		if strings.HasPrefix(val.Value, "{") {
-			mapVal := map[string]interface{}{}
-			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
-				emitVal = mapVal
+		if strings.HasPrefix(val.Name, "metrics") {
+			cmd := strings.Split(val.Name, ":")
+			format := "json"
+
+			if len(cmd) > 1 {
+				format = cmd[1]
 			}
-		} else if strings.HasPrefix(val.Value, "[") {
-			var arrayVal []interface{}
-			if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
-				emitVal = arrayVal
+
+			emitVal, _ = MapInspectResultValueToMetricsModel(val, format)
+		} else {
+			if strings.HasPrefix(val.Value, "{") {
+				mapVal := map[string]interface{}{}
+				if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
+					emitVal = mapVal
+				}
+			} else if strings.HasPrefix(val.Value, "[") {
+				var arrayVal []interface{}
+				if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
+					emitVal = arrayVal
+				}
 			}
 		}
 

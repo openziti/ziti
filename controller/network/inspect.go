@@ -44,8 +44,20 @@ type InspectionsController struct {
 }
 
 func (self *InspectionsController) Inspect(appRegex string, values []string) *InspectResult {
+
+	ctx, err := NewInspectionContext(self.network, appRegex, values)
+
+	if err != nil {
+		ctx.appendError(self.network.GetAppId(), err.Error())
+		return &ctx.response
+	}
+
+	return ctx.RunInspections()
+}
+
+func NewInspectionContext(network *Network, appRegex string, values []string) (*inspectRequestContext, error) {
 	ctx := &inspectRequestContext{
-		network:         self.network,
+		network:         network,
 		timeout:         time.Second * 10,
 		requestedValues: values,
 		waitGroup:       concurrenz.NewWaitGroup(),
@@ -56,11 +68,9 @@ func (self *InspectionsController) Inspect(appRegex string, values []string) *In
 	var err error
 	ctx.regex, err = regexp.Compile(appRegex)
 	if err != nil {
-		ctx.appendError(self.network.GetAppId(), err.Error())
-		return &ctx.response
+		return nil, err
 	}
-
-	return ctx.runInspections()
+	return ctx, nil
 }
 
 type inspectRequestContext struct {
@@ -75,7 +85,7 @@ type inspectRequestContext struct {
 	complete        bool
 }
 
-func (ctx *inspectRequestContext) runInspections() *InspectResult {
+func (ctx *inspectRequestContext) RunInspections() *InspectResult {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("values", ctx.requestedValues).

@@ -2,11 +2,13 @@ package events
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/util/iomonad"
 	"io"
 	"reflect"
-	"time"
+	"strings"
 )
 
 type LoggingHandlerFactory interface {
@@ -49,32 +51,7 @@ func (event *JsonFabricCircuitEvent) WriteTo(output io.WriteCloser) error {
 type JsonMetricsEvent MetricsEvent
 
 func (event *JsonMetricsEvent) WriteTo(output io.WriteCloser) error {
-	jsonRep := map[string]interface{}{}
-	jsonRep["namespace"] = event.Namespace
-	jsonRep["metric"] = event.Metric
-	jsonRep["source_id"] = event.SourceAppId
-	jsonRep["source_event_id"] = event.SourceEventId
-	jsonRep["version"] = event.Version
-	if event.SourceEntityId != "" {
-		jsonRep["source_entity_id"] = event.SourceEntityId
-	}
-
-	ts := event.Timestamp.AsTime()
-
-	jsonRep["timestamp"] = ts.Format(time.RFC3339Nano)
-	if len(event.Tags) > 0 {
-		jsonRep["tags"] = event.Tags
-	}
-
-	metrics := map[string]interface{}{}
-
-	for name, val := range event.Metrics {
-		metrics[name] = val
-	}
-
-	jsonRep["metrics"] = metrics
-
-	buf, err := json.Marshal(jsonRep)
+	buf, err := json.Marshal(event)
 	if err != nil {
 		return err
 	}
@@ -248,4 +225,94 @@ func (formatter *PlainTextFormatter) AcceptTerminatorEvent(event *TerminatorEven
 
 func (formatter *PlainTextFormatter) AcceptRouterEvent(event *RouterEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextRouterEvent)(event))
+}
+
+var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}
+
+type PrometheusMetricsEvent MetricsEvent
+
+func (event *PrometheusMetricsEvent) WriteTo(output io.WriteCloser) error {
+	buf, err := event.Marshal()
+	if err != nil {
+		return err
+	}
+	_, err = output.Write(buf)
+	return err
+}
+
+func (event *PrometheusMetricsEvent) makeSafe(key string) string {
+	key = strings.Replace(key, " ", "_", -1)
+	key = strings.Replace(key, ".", "_", -1)
+	key = strings.Replace(key, "-", "_", -1)
+	key = strings.Replace(key, "=", "_", -1)
+	key = strings.Replace(key, "/", "_", -1)
+	return key
+}
+
+func (event *PrometheusMetricsEvent) newTag(name, value string) string {
+	return fmt.Sprintf("%s=\"%s\"", name, value)
+}
+
+func (event *PrometheusMetricsEvent) getTags() *[]string {
+	tags := make([]string, 0)
+	if event.Tags != nil {
+		for name, val := range event.Tags {
+			tags = append(tags, event.newTag(name, val))
+
+		}
+	}
+	tags = append(tags, event.newTag("sourceId", event.SourceAppId))
+
+	return &tags
+}
+
+func (event *PrometheusMetricsEvent) getTagsAsString(tags *[]string) string {
+	return "{" + strings.Join(*tags, ",") + "}"
+}
+
+func (event *PrometheusMetricsEvent) toGauge(metricKey string) string {
+	t := "# HELP %[1]s %[1]s\n" +
+		"# TYPE %[1]s gauge\n" +
+		"%[1]s%[3]s %[2]v %[4]d\n"
+
+	return fmt.Sprintf(t, event.makeSafe(event.Metric), event.Metrics[metricKey], event.getTagsAsString(event.getTags()), event.Timestamp.AsTime().UnixMilli())
+}
+
+func (event *PrometheusMetricsEvent) toHistogram() string {
+	key := event.makeSafe(event.Metric + "_" + event.MetricType)
+	tags := event.getTags()
+
+	t := fmt.Sprintf("# HELP %[1]s %[1]s\n"+
+		"# TYPE %[1]s histogram\n"+
+		"%[1]s_count%[2]s %[3]v %[4]d\n",
+		key, event.getTagsAsString(tags), event.Metrics["count"], event.Timestamp.AsTime().UnixMilli())
+
+	for bucketName, bucketPromKey := range histogramBuckets {
+		bucketTags := append(*tags, event.newTag("le", bucketPromKey))
+		t += fmt.Sprintf("%s_bucket%s %v\n", key, event.getTagsAsString(&bucketTags), event.Metrics[bucketName])
+	}
+
+	return t
+}
+
+func (event *PrometheusMetricsEvent) Marshal() ([]byte, error) {
+	var result string
+
+	switch event.MetricType {
+	case "intValue":
+		result = event.toGauge("value")
+	case "floatValue":
+		result = event.toGauge("value")
+	case "meter":
+		result = event.toGauge("m1_rate")
+	case "histogram":
+		result = event.toHistogram()
+	case "timer":
+		result = event.toGauge("m1_rate")
+		result += event.toHistogram()
+	default:
+		return nil, errors.New(fmt.Sprintf("Unhandled metric type %s", event.MetricType))
+	}
+
+	return []byte(result), nil
 }

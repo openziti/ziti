@@ -18,7 +18,6 @@ package handler_ctrl
 
 import (
 	"encoding/json"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/inspect"
@@ -28,6 +27,7 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/debugz"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -117,6 +117,14 @@ func (context *inspectRequestContext) processLocal() {
 				} else {
 					context.appendValue(requested, string(js))
 				}
+			}
+		} else if strings.HasPrefix(lc, "metrics") {
+			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
+			js, err := json.Marshal(msg)
+			if err != nil {
+				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
+			} else {
+				context.appendValue(requested, string(js))
 			}
 		}
 	}
