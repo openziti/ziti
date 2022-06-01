@@ -17,9 +17,14 @@ services:
       - ziti-fs:/openziti
     entrypoint:
       - "/openziti/scripts/run-controller.sh"
-      -
+
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
+    environment:
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
     env_file:
       - ./.env
     networks:

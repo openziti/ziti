@@ -14,6 +14,9 @@ if [[ -f "${initFile}" ]]; then
   exit 0
 fi
 
+# give the controller time to ramp up before running if running in docker-compose
+sleep 5
+
 if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="ziti-controller"; fi
 if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="ziti-edge-controller"; fi
 if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
@@ -34,6 +37,8 @@ echo " "
 echo "*****************************************************"
 #### Add service policies
 
+zitiLogin
+
 # Allow all identities to use any edge router with the "public" attribute
 ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
 
@@ -42,4 +47,4 @@ ziti edge create service-edge-router-policy all-routers-all-services --edge-rout
 
 touch "${initFile}"
 
-This docker volume has been initialized.
+echo "This docker volume has been initialized."
