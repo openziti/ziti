@@ -17,6 +17,8 @@ fi
 # give the controller time to ramp up before running if running in docker-compose
 sleep 5
 
+. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
+
 if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_CONTROLLER_RAWNAME="ziti-controller"; fi
 if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="ziti-edge-controller"; fi
 if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK-}-edge-router"; fi
