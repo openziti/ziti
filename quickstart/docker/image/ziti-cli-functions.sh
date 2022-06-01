@@ -756,6 +756,13 @@ function createPrivateRouterConfig {
   fi
 
   output_file="${ZITI_HOME-}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
   echo -e "Router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -797,11 +804,6 @@ function createFabricRouterConfig {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.yaml"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
     fi
   fi
 
@@ -812,6 +814,13 @@ function createFabricRouterConfig {
   fi
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
   echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -847,6 +856,13 @@ function createEdgeRouterWssConfig {
   fi
 
   output_file="${ZITI_HOME-}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
   echo -e "WSS Edge router wss configuration file written to: $(BLUE "${output_file}")"
 }
@@ -884,6 +900,12 @@ function createEdgeRouterConfig {
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
 
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -920,6 +942,13 @@ function createControllerConfig {
   echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
 
   output_file="${ZITI_HOME}/${controller_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config controller > "${output_file}"
 
   echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
@@ -1091,7 +1120,14 @@ function createControllerSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${controller_name}.service"
+  output_file="${ZITI_HOME}/${controller_name}.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Controller
@@ -1141,7 +1177,14 @@ function createRouterSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${router_name}.service"
+  output_file="${ZITI_HOME}/${router_name}.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Router for ${router_name}
@@ -1188,7 +1231,14 @@ function createControllerLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${controller_name}.plist"
+  output_file="${ZITI_HOME}/${controller_name}.plist"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1254,7 +1304,14 @@ function createRouterLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME-}/${router_name}.plist"
+  output_file="${ZITI_HOME-}/${router_name}.plist"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1306,7 +1363,14 @@ function createZacSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/ziti-console.service"
+  output_file="${ZITI_HOME}/ziti-console.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Console
