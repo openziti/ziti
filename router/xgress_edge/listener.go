@@ -103,10 +103,11 @@ func (self *edgeClientConn) HandleClose(_ channel.Channel) {
 	log.Debugf("closing")
 	terminators := self.listener.factory.hostedServices.cleanupServices(self)
 	for _, terminator := range terminators {
+		tLog := log.WithField("terminatorId", terminator.terminatorId.Load()).WithField("token", terminator.token)
 		if err := self.removeTerminator(terminator); err != nil {
-			log.Warnf("failed to remove terminator %v for session with token %v on channel close", terminator.terminatorId, terminator.token)
+			tLog.Warn("failed to remove terminator for session on channel close")
 		} else {
-			log.WithField("terminatorId", terminator.terminatorId).WithField("token", terminator.token).Info("Successfully removed terminator on channel close")
+			tLog.Info("Successfully removed terminator on channel close")
 		}
 	}
 	self.msgMux.Close()
@@ -186,7 +187,8 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("sessionId", token).
-		WithFields(edge.GetLoggerFields(req))
+		WithFields(edge.GetLoggerFields(req)).
+		WithField("routerId", self.listener.id.Token)
 
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
@@ -221,6 +223,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	log.Debugf("client requested router provided connection ids: %v", assignIds)
 
 	log.Debug("establishing listener")
+
 	messageSink := &edgeTerminator{
 		MsgChannel:     *edge.NewEdgeMsgChannel(self.ch, connId),
 		edgeClientConn: self,
@@ -260,14 +263,21 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		return
 	}
 
-	messageSink.terminatorId = string(responseMsg.Body)
+	terminatorId := string(responseMsg.Body)
+	messageSink.terminatorId.Store(terminatorId)
+	log = log.WithField("terminatorId", terminatorIdentity)
 
-	log.Debugf("registered listener for terminator %v, token: %v", messageSink.terminatorId, token)
+	if messageSink.MsgChannel.IsClosed() {
+		log.Warn("edge channel closed while setting up terminator. cleaning up terminator now")
+		messageSink.close(false, "edge channel closed")
+		return
+	}
+
+	log.Debug("registered listener for terminator")
 	log.Debug("returning connection state CONNECTED to client")
 	self.sendStateConnectedReply(req, nil)
 
-	log.WithField("routerId", self.listener.id.Token).
-		WithField("terminatorId", messageSink.terminatorId).Info("created terminator")
+	log.Info("created terminator")
 }
 
 func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Channel) {
@@ -279,7 +289,7 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 	terminator, ok := self.listener.factory.hostedServices.Get(token)
 	if ok {
 		log = log.WithField("routerId", self.listener.id.Token).
-			WithField("terminatorId", terminator.terminatorId)
+			WithField("terminatorId", terminator.terminatorId.Load())
 
 		defer self.listener.factory.hostedServices.Delete(token)
 
@@ -300,7 +310,7 @@ func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
 	request := &edge_ctrl_pb.RemoveTerminatorRequest{
 		SessionToken: terminator.token,
 		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId,
+		TerminatorId: terminator.terminatorId.Load(),
 	}
 
 	timeout := self.listener.factory.DefaultRequestTimeout()
@@ -322,7 +332,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 	request := &edge_ctrl_pb.UpdateTerminatorRequest{
 		SessionToken: token,
 		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId,
+		TerminatorId: terminator.terminatorId.Load(),
 	}
 
 	if costVal, hasCost := req.GetUint16Header(edge.CostHeader); hasCost {
@@ -341,7 +351,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 		}
 	}
 
-	log = log.WithField("terminator", terminator.terminatorId).
+	log = log.WithField("terminator", terminator.terminatorId.Load()).
 		WithField("precedence", request.Precedence).
 		WithField("cost", request.Cost).
 		WithField("updatingPrecedence", request.UpdatePrecedence).
@@ -374,12 +384,11 @@ func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.
 	request := &edge_ctrl_pb.HealthEventRequest{
 		SessionToken: token,
 		Fingerprints: self.fingerprints.Prints(),
-		TerminatorId: terminator.terminatorId,
+		TerminatorId: terminator.terminatorId.Load(),
 		CheckPassed:  checkPassed,
 	}
 
-	log = log.WithField("terminator", terminator.terminatorId).
-		WithField("checkPassed", checkPassed)
+	log = log.WithField("terminator", terminator.terminatorId.Load()).WithField("checkPassed", checkPassed)
 	log.Debug("sending health event")
 
 	if err := protobufs.MarshalTyped(request).Send(self.listener.factory.Channel()); err != nil {
