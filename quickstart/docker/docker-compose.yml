@@ -26,6 +26,7 @@ services:
       - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+      - ZITI_EDGE_ROUTER_ROLES=public
     ports:
       - "3022:3022"
     networks:
@@ -45,6 +46,7 @@ services:
       - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
+      - ZITI_EDGE_ROUTER_ROLES=public
     ports:
       - "3023:3023"
     networks:

@@ -25,6 +25,7 @@ COPY --chown=ziti ziti.ignore "${ZITI_BIN_DIR}"
 COPY --chown=ziti ziti-cli-functions.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-controller.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router.sh "${ZITI_SCRIPTS}/"
+COPY --chown=ziti run-router.sh "${ZITI_SCRIPTS}/"
 
 RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; ziti_createEnvFile; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"
 
