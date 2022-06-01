@@ -3,6 +3,14 @@
 # Should we execute?
 initFile="/openziti/access-control.init"
 if [[ -f "${initFile}" ]]; then
+  echo " "
+  echo "*****************************************************"
+  echo " docker-compose init file has been detected"
+  echo " the initialization of the docker-compose environment has already happened"
+  echo " if you wish to allow this volume to be re-initialized, delete the file"
+  echo " located at ${initFile}"
+  echo "*****************************************************"
+  echo " "
   exit 0
 fi
 
@@ -22,14 +30,16 @@ until $(curl -s -o /dev/null --fail -k "https://${ZITI_EDGE_CTRL_ADVERTISED_HOST
     sleep 2
 done
 
+echo " "
+echo "*****************************************************"
 #### Add service policies
 
 # Allow all identities to use any edge router with the "public" attribute
-ziti edge delete edge-router-policy all-endpoints-public-routers
 ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
 
 # Allow all edge-routers to access all services
-ziti edge delete service-edge-router-policy all-routers-all-services
 ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
 
 touch "${initFile}"
+
+This docker volume has been initialized.
