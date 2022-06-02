@@ -34,12 +34,12 @@ type AdvisorServiceReachability struct {
 }
 
 func (advisor *PolicyAdvisor) AnalyzeServiceReachability(identityId, serviceId string) (*AdvisorServiceReachability, error) {
-	identity, err := advisor.env.GetHandlers().Identity.Read(identityId)
+	identity, err := advisor.env.GetManagers().Identity.Read(identityId)
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := advisor.env.GetHandlers().EdgeService.Read(serviceId)
+	service, err := advisor.env.GetManagers().EdgeService.Read(serviceId)
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (advisor *PolicyAdvisor) getServicePermissions(identityId, serviceId string
 		return nil
 	}
 
-	if err := advisor.env.GetHandlers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, servicePolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, servicePolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +109,7 @@ func (advisor *PolicyAdvisor) getIdentityEdgeRouters(identityId string) (map[str
 		edgeRouterIterator := func(tx *bbolt.Tx, edgeRouterId string) error {
 			commonRouter := edgeRouters[edgeRouterId]
 			if commonRouter == nil {
-				edgeRouter, err := advisor.env.GetHandlers().EdgeRouter.readInTx(tx, edgeRouterId)
+				edgeRouter, err := advisor.env.GetManagers().EdgeRouter.readInTx(tx, edgeRouterId)
 				if err != nil {
 					return err
 				}
@@ -123,9 +123,9 @@ func (advisor *PolicyAdvisor) getIdentityEdgeRouters(identityId string) (map[str
 			return nil
 		}
 
-		return advisor.env.GetHandlers().EdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, edgeRouterPolicyId, db.EntityTypeRouters, edgeRouterIterator)
+		return advisor.env.GetManagers().EdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, edgeRouterPolicyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
-	if err := advisor.env.GetHandlers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, edgeRouterPolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, edgeRouterPolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -140,10 +140,10 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouters(serviceId string) (map[strin
 			edgeRouters[edgeRouterId] = struct{}{}
 			return nil
 		}
-		return advisor.env.GetHandlers().ServiceEdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, policyId, db.EntityTypeRouters, edgeRouterIterator)
+		return advisor.env.GetManagers().ServiceEdgeRouterPolicy.iterateRelatedEntitiesInTx(tx, policyId, db.EntityTypeRouters, edgeRouterIterator)
 	}
 
-	if err := advisor.env.GetHandlers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, serviceEdgeRouterPolicyIterator); err != nil {
+	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, serviceEdgeRouterPolicyIterator); err != nil {
 		return nil, err
 	}
 
@@ -157,12 +157,12 @@ type AdvisorIdentityEdgeRouterLinks struct {
 }
 
 func (advisor *PolicyAdvisor) InspectIdentityEdgeRouterLinks(identityId, edgeRouterId string) (*AdvisorIdentityEdgeRouterLinks, error) {
-	identity, err := advisor.env.GetHandlers().Identity.Read(identityId)
+	identity, err := advisor.env.GetManagers().Identity.Read(identityId)
 	if err != nil {
 		return nil, err
 	}
 
-	edgeRouter, err := advisor.env.GetHandlers().EdgeRouter.Read(edgeRouterId)
+	edgeRouter, err := advisor.env.GetManagers().EdgeRouter.Read(edgeRouterId)
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (advisor *PolicyAdvisor) getEdgeRouterPolicies(identityId, edgeRouterId str
 
 	policyStore := advisor.env.GetStores().EdgeRouterPolicy
 	policyIterator := func(tx *bbolt.Tx, policyId string) error {
-		policy, err := advisor.env.GetHandlers().EdgeRouterPolicy.readInTx(tx, policyId)
+		policy, err := advisor.env.GetManagers().EdgeRouterPolicy.readInTx(tx, policyId)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func (advisor *PolicyAdvisor) getEdgeRouterPolicies(identityId, edgeRouterId str
 		return nil
 	}
 
-	if err := advisor.env.GetHandlers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeEdgeRouterPolicies, policyIterator); err != nil {
 		return nil, err
 	}
 
@@ -210,12 +210,12 @@ type AdvisorIdentityServiceLinks struct {
 }
 
 func (advisor *PolicyAdvisor) InspectIdentityServiceLinks(identityId, serviceId string) (*AdvisorIdentityServiceLinks, error) {
-	identity, err := advisor.env.GetHandlers().Identity.Read(identityId)
+	identity, err := advisor.env.GetManagers().Identity.Read(identityId)
 	if err != nil {
 		return nil, err
 	}
 
-	service, err := advisor.env.GetHandlers().EdgeService.Read(serviceId)
+	service, err := advisor.env.GetManagers().EdgeService.Read(serviceId)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (advisor *PolicyAdvisor) getServicePolicies(identityId, serviceId string) (
 
 	policyStore := advisor.env.GetStores().ServicePolicy
 	policyIterator := func(tx *bbolt.Tx, policyId string) error {
-		policy, err := advisor.env.GetHandlers().ServicePolicy.readInTx(tx, policyId)
+		policy, err := advisor.env.GetManagers().ServicePolicy.readInTx(tx, policyId)
 		if err != nil {
 			return err
 		}
@@ -249,7 +249,7 @@ func (advisor *PolicyAdvisor) getServicePolicies(identityId, serviceId string) (
 		return nil
 	}
 
-	if err := advisor.env.GetHandlers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().Identity.iterateRelatedEntities(identityId, persistence.EntityTypeServicePolicies, policyIterator); err != nil {
 		return nil, err
 	}
 
@@ -263,12 +263,12 @@ type AdvisorServiceEdgeRouterLinks struct {
 }
 
 func (advisor *PolicyAdvisor) InspectServiceEdgeRouterLinks(serviceId, edgeRouterId string) (*AdvisorServiceEdgeRouterLinks, error) {
-	service, err := advisor.env.GetHandlers().EdgeService.Read(serviceId)
+	service, err := advisor.env.GetManagers().EdgeService.Read(serviceId)
 	if err != nil {
 		return nil, err
 	}
 
-	edgeRouter, err := advisor.env.GetHandlers().EdgeRouter.Read(edgeRouterId)
+	edgeRouter, err := advisor.env.GetManagers().EdgeRouter.Read(edgeRouterId)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouterPolicies(serviceId, edgeRouter
 
 	policyStore := advisor.env.GetStores().ServiceEdgeRouterPolicy
 	policyIterator := func(tx *bbolt.Tx, policyId string) error {
-		policy, err := advisor.env.GetHandlers().ServiceEdgeRouterPolicy.readInTx(tx, policyId)
+		policy, err := advisor.env.GetManagers().ServiceEdgeRouterPolicy.readInTx(tx, policyId)
 		if err != nil {
 			return err
 		}
@@ -302,7 +302,7 @@ func (advisor *PolicyAdvisor) getServiceEdgeRouterPolicies(serviceId, edgeRouter
 		return nil
 	}
 
-	if err := advisor.env.GetHandlers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, policyIterator); err != nil {
+	if err := advisor.env.GetManagers().EdgeService.iterateRelatedEntities(serviceId, persistence.EntityTypeServiceEdgeRouterPolicies, policyIterator); err != nil {
 		return nil, err
 	}
 

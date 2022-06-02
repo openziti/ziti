@@ -181,7 +181,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	if !router.IsVerified {
 		var enrollments []*model.Enrollment
 
-		err := ae.GetHandlers().EdgeRouter.CollectEnrollments(router.Id, func(entity *model.Enrollment) error {
+		err := ae.GetManagers().EdgeRouter.CollectEnrollments(router.Id, func(entity *model.Enrollment) error {
 			enrollments = append(enrollments, entity)
 			return nil
 		})

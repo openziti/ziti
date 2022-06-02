@@ -19,21 +19,21 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
 func NewAuthPolicyHandler(env Env) *AuthPolicyHandler {
 	handler := &AuthPolicyHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().AuthPolicy),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().AuthPolicy),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type AuthPolicyHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *AuthPolicyHandler) newModelEntity() boltEntitySink {
@@ -41,7 +41,7 @@ func (handler *AuthPolicyHandler) newModelEntity() boltEntitySink {
 }
 
 func (handler *AuthPolicyHandler) verifyExtJwt(id string, fieldName string) error {
-	extJwtSigner, err := handler.env.GetHandlers().ExternalJwtSigner.Read(id)
+	extJwtSigner, err := handler.env.GetManagers().ExternalJwtSigner.Read(id)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return err

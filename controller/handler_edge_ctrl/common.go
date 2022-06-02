@@ -119,7 +119,7 @@ func (self *baseSessionRequestContext) CleanupOnError() {
 			WithField("operation", self.handler.Label()).
 			WithField("routerId", self.sourceRouter.Name)
 
-		if err := self.handler.getAppEnv().Handlers.Session.Delete(self.session.Id); err != nil {
+		if err := self.handler.getAppEnv().Managers.Session.Delete(self.session.Id); err != nil {
 			logger.WithError(err).Error("unable to delete session created before error encountered")
 		}
 	}
@@ -152,7 +152,7 @@ func (self *baseSessionRequestContext) loadRouter() bool {
 func (self *baseSessionRequestContext) loadSession(token string) {
 	if self.err == nil {
 		var err error
-		self.session, err = self.handler.getAppEnv().Handlers.Session.ReadByToken(token)
+		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				self.err = InvalidApiSessionError{}
@@ -165,7 +165,7 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 				WithError(self.err).Errorf("invalid session")
 			return
 		}
-		apiSession, err := self.handler.getAppEnv().Handlers.ApiSession.Read(self.session.ApiSessionId)
+		apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(self.session.ApiSessionId)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				self.err = InvalidApiSessionError{}
@@ -222,7 +222,7 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 
 		found := stringz.ContainsAny(sessionFingerprints, fingerprints...)
 		if !found {
-			err := self.GetHandler().getAppEnv().Handlers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
+			err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
 				sessionFingerprints = append(sessionFingerprints, fingerprint)
 				if stringz.Contains(fingerprints, fingerprint) {
 					found = true
@@ -250,7 +250,7 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 	if self.err == nil {
 		// validate edge router
-		result, err := self.handler.getAppEnv().Handlers.EdgeRouter.ListForSession(self.session.Id)
+		result, err := self.handler.getAppEnv().Managers.EdgeRouter.ListForSession(self.session.Id)
 		if err != nil {
 			self.err = internalError(err)
 			logrus.
@@ -277,7 +277,7 @@ func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 func (self *baseSessionRequestContext) loadService() {
 	if self.err == nil {
 		var err error
-		self.service, err = self.handler.getAppEnv().Handlers.EdgeService.Read(self.session.ServiceId)
+		self.service, err = self.handler.getAppEnv().Managers.EdgeService.Read(self.session.ServiceId)
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {

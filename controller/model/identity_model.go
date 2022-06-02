@@ -66,7 +66,7 @@ type Identity struct {
 	DisabledUntil             *time.Time
 }
 
-func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
@@ -153,15 +153,15 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 }
 
-func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntityForChange(tx, handler, nil)
 }
 
-func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForChange(tx, handler, checker)
 }
 
-func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	boltEntity := &persistence.Identity{
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,
@@ -201,7 +201,7 @@ func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, handler Handler, che
 	return boltEntity, nil
 }
 
-func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Identity) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
@@ -213,7 +213,7 @@ func (entity *Identity) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
-	entity.HasHeartbeat = handler.GetEnv().GetHandlers().Identity.IsActive(entity.Id)
+	entity.HasHeartbeat = handler.GetEnv().GetManagers().Identity.IsActive(entity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences
@@ -233,7 +233,7 @@ type ServiceConfig struct {
 	Config  string
 }
 
-func toBoltServiceConfigs(tx *bbolt.Tx, handler Handler, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
+func toBoltServiceConfigs(tx *bbolt.Tx, handler EntityManager, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
 	serviceStore := handler.GetEnv().GetStores().EdgeService
 	configStore := handler.GetEnv().GetStores().Config
 

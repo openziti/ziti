@@ -47,7 +47,7 @@ func apiSessionToProtoWithTx(tx *bbolt.Tx, ae *env.AppEnv, token, identityId, ap
 
 func getFingerprints(tx *bbolt.Tx, ae *env.AppEnv, identityId, apiSessionId string) ([]string, error) {
 	prints := map[string]struct{}{}
-	err := ae.Handlers.ApiSession.VisitFingerprintsForApiSession(tx, identityId, apiSessionId, func(fingerprint string) bool {
+	err := ae.Managers.ApiSession.VisitFingerprintsForApiSession(tx, identityId, apiSessionId, func(fingerprint string) bool {
 		prints[fingerprint] = struct{}{}
 		return false
 	})

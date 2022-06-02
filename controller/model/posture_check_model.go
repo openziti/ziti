@@ -37,10 +37,10 @@ type PostureCheck struct {
 }
 
 type PostureCheckSubType interface {
-	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error)
-	fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
+	toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
+	fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
 	GetTimeoutSeconds() int64
@@ -82,7 +82,7 @@ func newSubType(typeId string) PostureCheckSubType {
 	return nil
 }
 
-func (entity *PostureCheck) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *PostureCheck) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltPostureCheck, ok := boltEntity.(*persistence.PostureCheck)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model posture check", reflect.TypeOf(boltEntity))
@@ -108,7 +108,7 @@ func (entity *PostureCheck) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity b
 	return nil
 }
 
-func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.PostureCheck{
 		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:           entity.Name,
@@ -125,11 +125,11 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler)
 	return boltEntity, nil
 }
 
-func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 

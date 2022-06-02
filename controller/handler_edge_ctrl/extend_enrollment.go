@@ -17,13 +17,13 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type extendEnrollmentHandler struct {
@@ -67,7 +67,7 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 			var serverPem []byte
 			var newCerts *model.ExtendedCerts
 
-			if router, _ := h.appEnv.Handlers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
+			if router, _ := h.appEnv.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
 
 				log = log.WithFields(map[string]interface{}{
 					"routerId":   router.Id,
@@ -75,9 +75,9 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 				})
 
 				if req.RequireVerification {
-					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
 				} else {
-					newCerts, err = h.appEnv.Handlers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
 				}
 
 				if err != nil {
@@ -85,12 +85,12 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 					return
 				}
 
-			} else if router, _ := h.appEnv.Handlers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
+			} else if router, _ := h.appEnv.Managers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
 
 				if req.RequireVerification {
-					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
 				} else {
-					newCerts, err = h.appEnv.Handlers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
 				}
 
 				if err != nil {

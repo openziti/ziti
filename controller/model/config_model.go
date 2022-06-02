@@ -20,8 +20,8 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -35,7 +35,7 @@ type Config struct {
 	Data   map[string]interface{}
 }
 
-func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if entity.TypeId != "" {
 		providedType := entity.TypeId
 		configTypeStore := handler.GetEnv().GetStores().ConfigType
@@ -45,14 +45,14 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 	}
 
 	if entity.TypeId == "" {
-		currentConfig, err := handler.GetEnv().GetHandlers().Config.readInTx(tx, entity.Id)
+		currentConfig, err := handler.GetEnv().GetManagers().Config.readInTx(tx, entity.Id)
 		if err != nil {
 			return nil, err
 		}
 		entity.TypeId = currentConfig.TypeId
 	}
 
-	if configType, _ := handler.GetEnv().GetHandlers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
+	if configType, _ := handler.GetEnv().GetManagers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
 		compileSchema, err := configType.GetCompiledSchema()
 		if err != nil {
 			return nil, err
@@ -75,22 +75,22 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity,
 	}, nil
 }
 
-func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if entity.TypeId == "" {
 		return nil, errorz.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
 	}
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Config) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Config) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Config) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Config) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltConfig, ok := boltEntity.(*persistence.Config)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model config", reflect.TypeOf(boltEntity))

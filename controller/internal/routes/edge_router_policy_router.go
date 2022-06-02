@@ -77,39 +77,39 @@ func (r *EdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *EdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.CreateEdgeRouterPolicyParams) {
 	Create(rc, rc, EdgeRouterPolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.EdgeRouterPolicy.Create(MapCreateEdgeRouterPolicyToModel(params.Policy))
+		return ae.Managers.EdgeRouterPolicy.Create(MapCreateEdgeRouterPolicyToModel(params.Policy))
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.EdgeRouterPolicy)
+	DeleteWithHandler(rc, ae.Managers.EdgeRouterPolicy)
 }
 
 func (r *EdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.UpdateEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Policy))
+		return ae.Managers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Policy))
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.PatchEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.EdgeRouterPolicy.Patch(MapPatchEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.EdgeRouterPolicy.Patch(MapPatchEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.EdgeRouterPolicy, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.EdgeRouterPolicy, ae.Handlers.Identity, MapIdentityToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.Identity, MapIdentityToRestEntity)
 }

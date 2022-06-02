@@ -223,19 +223,19 @@ func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e model
 
 func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_model.IdentityDetail, error) {
 
-	identityType, err := ae.Handlers.IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+	identityType, err := ae.Managers.IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil {
 		return nil, err
 	}
 
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(identity.Id)
 
 	isMfaEnabled := mfa != nil && mfa.IsVerified
 
 	hasApiSession := false
 
-	err = ae.GetHandlers().ApiSession.StreamIds(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id), func(s string, err error) error {
+	err = ae.GetManagers().ApiSession.StreamIds(fmt.Sprintf(`identity = "%s" limit 1`, identity.Id), func(s string, err error) error {
 		hasApiSession = true
 		return nil
 	})
@@ -295,7 +295,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 	fillInfo(ret, identity.EnvInfo, identity.SdkInfo)
 
 	ret.Authenticators = &rest_model.IdentityAuthenticators{}
-	if err = ae.GetHandlers().Identity.CollectAuthenticators(identity.Id, func(entity *model.Authenticator) error {
+	if err = ae.GetManagers().Identity.CollectAuthenticators(identity.Id, func(entity *model.Authenticator) error {
 		if entity.Method == persistence.MethodAuthenticatorUpdb {
 			ret.Authenticators.Updb = &rest_model.IdentityAuthenticatorsUpdb{
 				ID:       entity.Id,
@@ -315,7 +315,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 	}
 
 	ret.Enrollment = &rest_model.IdentityEnrollments{}
-	if err := ae.GetHandlers().Identity.CollectEnrollments(identity.Id, func(entity *model.Enrollment) error {
+	if err := ae.GetManagers().Identity.CollectEnrollments(identity.Id, func(entity *model.Enrollment) error {
 		var expiresAt strfmt.DateTime
 		if entity.ExpiresAt != nil {
 			expiresAt = strfmt.DateTime(*entity.ExpiresAt)
@@ -341,7 +341,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		}
 
 		if entity.Method == persistence.MethodEnrollOttCa {
-			if ca, err := ae.Handlers.Ca.Read(*entity.CaId); err == nil {
+			if ca, err := ae.Managers.Ca.Read(*entity.CaId); err == nil {
 				ret.Enrollment.Ottca = &rest_model.IdentityEnrollmentsOttca{
 					ID:        entity.Id,
 					Ca:        ToEntityRef(ca.Name, ca, CaLinkFactory),

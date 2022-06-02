@@ -77,7 +77,7 @@ func newPostureCheckWindowsDomains() PostureCheckSubType {
 	return &PostureCheckDomains{}
 }
 
-func (p *PostureCheckDomains) fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckDomains) fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
@@ -88,19 +88,19 @@ func (p *PostureCheckDomains) fillFrom(handler Handler, tx *bbolt.Tx, check *per
 	return nil
 }
 
-func (p *PostureCheckDomains) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
 }
 
-func (p *PostureCheckDomains) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil
 }
 
-func (p *PostureCheckDomains) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil

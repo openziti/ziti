@@ -30,14 +30,14 @@ import (
 
 func NewCaHandler(env Env) *CaHandler {
 	handler := &CaHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Ca),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Ca),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type CaHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *CaHandler) newModelEntity() boltEntitySink {

@@ -31,14 +31,14 @@ const (
 
 func NewPostureCheckHandler(env Env) *PostureCheckHandler {
 	handler := &PostureCheckHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().PostureCheck),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheck),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type PostureCheckHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *PostureCheckHandler) newModelEntity() boltEntitySink {

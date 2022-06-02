@@ -48,19 +48,19 @@ func (entity *PostureCheckType) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *PostureCheckType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltPostureCheckType, ok := boltEntity.(*persistence.PostureCheckOs)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model PostureCheckOs", reflect.TypeOf(boltEntity))

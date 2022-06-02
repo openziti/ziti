@@ -68,11 +68,11 @@ func (r *ConfigRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ConfigRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Config, MapConfigToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.Config, MapConfigToRestEntity)
 }
 
 func (r *ConfigRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Config, MapConfigToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Config, MapConfigToRestEntity)
 }
 
 func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigParams) {
@@ -86,7 +86,7 @@ func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, param
 		if err != nil {
 			return "", err
 		}
-		err = ae.Handlers.Config.Create(entity)
+		err = ae.Managers.Config.Create(entity)
 		if err != nil {
 			return "", err
 		}
@@ -95,7 +95,7 @@ func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, param
 }
 
 func (r *ConfigRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Config)
+	DeleteWithHandler(rc, ae.Managers.Config)
 }
 
 func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigParams) {
@@ -111,7 +111,7 @@ func (r *ConfigRouter) Update(ae *env.AppEnv, rc *response.RequestContext, param
 			return err
 		}
 
-		return ae.Handlers.Config.Update(model, nil)
+		return ae.Managers.Config.Update(model, nil)
 	})
 }
 
@@ -122,6 +122,6 @@ func (r *ConfigRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params
 		if err != nil {
 			return err
 		}
-		return ae.Handlers.Config.Update(model, fields.FilterMaps("tags", "data"))
+		return ae.Managers.Config.Update(model, fields.FilterMaps("tags", "data"))
 	})
 }

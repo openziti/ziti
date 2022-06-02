@@ -64,7 +64,7 @@ func (self *baseTunnelRequestContext) getTunnelState() *TunnelState {
 func (self *baseTunnelRequestContext) loadIdentity() {
 	if self.err == nil {
 		var err error
-		self.identity, err = self.handler.getAppEnv().GetHandlers().Identity.Read(self.sourceRouter.Id)
+		self.identity, err = self.handler.getAppEnv().GetManagers().Identity.Read(self.sourceRouter.Id)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				self.err = TunnelingNotEnabledError{}
@@ -97,11 +97,11 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 		state := self.getTunnelState()
 		apiSessionId := state.getCurrentApiSessionId()
 		if apiSessionId != "" {
-			apiSession, err := self.handler.getAppEnv().Handlers.ApiSession.Read(apiSessionId)
+			apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(apiSessionId)
 			if apiSession != nil && apiSession.IdentityId == self.identity.Id {
 				self.apiSession = apiSession
 
-				if _, err := self.handler.getAppEnv().GetHandlers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
+				if _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
 					logger.WithError(err).Error("unexpected error while marking api session activity")
 				}
 				return false
@@ -130,18 +130,18 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 		apiSession := &model.ApiSession{
 			Token:          uuid.NewString(),
 			IdentityId:     self.identity.Id,
-			ConfigTypes:    self.handler.getAppEnv().Handlers.ConfigType.MapConfigTypeNamesToIds(configTypes, self.identity.Id),
+			ConfigTypes:    self.handler.getAppEnv().Managers.ConfigType.MapConfigTypeNamesToIds(configTypes, self.identity.Id),
 			LastActivityAt: time.Now(),
 		}
 
 		var err error
-		apiSession.Id, err = self.handler.getAppEnv().GetHandlers().ApiSession.Create(apiSession, nil)
+		apiSession.Id, err = self.handler.getAppEnv().GetManagers().ApiSession.Create(apiSession, nil)
 		if err != nil {
 			self.err = internalError(err)
 			return false
 		}
 
-		apiSession, err = self.handler.getAppEnv().GetHandlers().ApiSession.Read(apiSession.Id)
+		apiSession, err = self.handler.getAppEnv().GetManagers().ApiSession.Read(apiSession.Id)
 		if err != nil {
 			self.err = internalError(err)
 			return false
@@ -161,7 +161,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 	if self.err == nil {
 		var err error
-		self.service, err = self.handler.getAppEnv().Handlers.EdgeService.ReadByName(name)
+		self.service, err = self.handler.getAppEnv().Managers.EdgeService.ReadByName(name)
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
@@ -187,7 +187,7 @@ func (self *baseTunnelRequestContext) isSessionValid(sessionId, sessionType stri
 		WithField("router", self.sourceRouter.Name)
 
 	if sessionId != "" {
-		session, err := self.handler.getAppEnv().Handlers.Session.Read(sessionId)
+		session, err := self.handler.getAppEnv().Managers.Session.Read(sessionId)
 		if err != nil {
 			if !boltz.IsErrNotFoundErr(err) {
 				self.err = internalError(err)
@@ -243,13 +243,13 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			Type:         sessionType,
 		}
 
-		id, err := self.handler.getAppEnv().Handlers.Session.Create(session)
+		id, err := self.handler.getAppEnv().Managers.Session.Create(session)
 		if err != nil {
 			self.err = internalError(err)
 			return
 		}
 
-		self.session, err = self.handler.getAppEnv().Handlers.Session.Read(id)
+		self.session, err = self.handler.getAppEnv().Managers.Session.Read(id)
 		if err != nil {
 			err = internalError(err)
 			return
@@ -333,7 +333,7 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 		}
 
 		if envInfo != nil || sdkInfo != nil {
-			self.err = internalError(self.handler.getAppEnv().GetHandlers().Identity.PatchInfo(self.identity))
+			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity))
 		}
 	}
 }

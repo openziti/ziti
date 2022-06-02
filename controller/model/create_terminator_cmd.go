@@ -19,11 +19,11 @@ type CreateEdgeTerminatorCmd struct {
 
 func (self *CreateEdgeTerminatorCmd) Apply() error {
 	createCmd := &command.CreateEntityCommand[*network.Terminator]{
-		Creator:        self.Env.GetHandlers().Terminator,
+		Creator:        self.Env.GetManagers().Terminator,
 		Entity:         self.Entity,
 		PostCreateHook: self.validateTerminatorIdentity,
 	}
-	return self.Env.GetHandlers().Terminator.ApplyCreate(createCmd)
+	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd)
 }
 
 func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, terminator *network.Terminator) error {
@@ -92,12 +92,12 @@ func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminat
 }
 
 func (self *CreateEdgeTerminatorCmd) Encode() ([]byte, error) {
-	return self.Env.GetHandlers().Terminator.Marshall(self.Entity)
+	return self.Env.GetManagers().Terminator.Marshall(self.Entity)
 }
 
 func (self *CreateEdgeTerminatorCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdgeTerminatorCommand) error {
 	var err error
 	self.Env = env
-	self.Entity, err = env.GetHandlers().Terminator.Unmarshall(msg.TerminatorData)
+	self.Entity, err = env.GetManagers().Terminator.Unmarshall(msg.TerminatorData)
 	return err
 }

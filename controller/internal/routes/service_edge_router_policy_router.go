@@ -77,39 +77,39 @@ func (r *ServiceEdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.CreateServiceEdgeRouterPolicyParams) {
 	Create(rc, rc, ServiceEdgeRouterPolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Create(MapCreateServiceEdgeRouterPolicyToModel(params.Policy))
+		return ae.Managers.ServiceEdgeRouterPolicy.Create(MapCreateServiceEdgeRouterPolicyToModel(params.Policy))
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.ServiceEdgeRouterPolicy)
+	DeleteWithHandler(rc, ae.Managers.ServiceEdgeRouterPolicy)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.UpdateServiceEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy))
+		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy))
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.ServiceEdgeRouterPolicy.Patch(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.ServiceEdgeRouterPolicy.Patch(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, ae.Handlers.EdgeService, MapServiceToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeService, MapServiceToRestEntity)
 }

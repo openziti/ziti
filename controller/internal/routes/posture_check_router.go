@@ -70,7 +70,7 @@ func (r *PostureCheckRouter) Register(ae *env.AppEnv) {
 
 func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		query, err := queryOptions.getFullQuery(ae.Handlers.PostureCheck.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.PostureCheck.GetStore())
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 				return nil, err
 			}
 
-			result, err := ae.Handlers.PostureCheck.BasePreparedListIndexed(cursorProvider, query)
+			result, err := ae.Managers.PostureCheck.BasePreparedListIndexed(cursorProvider, query)
 
 			if err != nil {
 				return nil, err
@@ -98,7 +98,7 @@ func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			}
 			qmd = &result.QueryMetaData
 		} else {
-			result, err := ae.Handlers.PostureCheck.QueryPostureChecks(query)
+			result, err := ae.Managers.PostureCheck.QueryPostureChecks(query)
 			if err != nil {
 				return nil, err
 			}
@@ -113,22 +113,22 @@ func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *PostureCheckRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.PostureCheck, MapPostureCheckToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.PostureCheck, MapPostureCheckToRestEntity)
 }
 
 func (r *PostureCheckRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureCheckParams) {
 	Create(rc, rc, PostureCheckLinkFactory, func() (string, error) {
-		return ae.Handlers.PostureCheck.Create(MapCreatePostureCheckToModel(params.PostureCheck))
+		return ae.Managers.PostureCheck.Create(MapCreatePostureCheckToModel(params.PostureCheck))
 	})
 }
 
 func (r *PostureCheckRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.PostureCheck)
+	DeleteWithHandler(rc, ae.Managers.PostureCheck)
 }
 
 func (r *PostureCheckRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.UpdatePostureCheckParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.PostureCheck))
+		return ae.Managers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.PostureCheck))
 	})
 }
 
@@ -163,6 +163,6 @@ func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, 
 			fields.AddField(persistence.FieldPostureCheckProcessMultiHashes)
 		}
 
-		return ae.Handlers.PostureCheck.Patch(check, fields.FilterMaps("tags"))
+		return ae.Managers.PostureCheck.Patch(check, fields.FilterMaps("tags"))
 	})
 }

@@ -32,10 +32,10 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -169,26 +169,26 @@ func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
 
 	if len(roleFilters) > 0 {
-		ListWithQueryF(ae, rc, ae.Handlers.EdgeRouter, MapIdentityToRestEntity, func(query ast.Query) (*models.EntityListResult, error) {
+		ListWithQueryF(ae, rc, ae.Managers.EdgeRouter, MapIdentityToRestEntity, func(query ast.Query) (*models.EntityListResult, error) {
 			cursorProvider, err := ae.GetStores().Identity.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
 			if err != nil {
 				return nil, err
 			}
-			return ae.Handlers.Identity.BasePreparedListIndexed(cursorProvider, query)
+			return ae.Managers.Identity.BasePreparedListIndexed(cursorProvider, query)
 		})
 	} else {
-		ListWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToRestEntity)
+		ListWithHandler(ae, rc, ae.Managers.Identity, MapIdentityToRestEntity)
 	}
 }
 
 func (r *IdentityRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Identity, MapIdentityToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 
 func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) string {
 	//todo: Remove this, should be identityTypeId coming in through the API so we can defer this lookup and subsequent checks to the handlers
 	identityTypeId := ""
-	if identityType, err := ae.Handlers.IdentityType.ReadByName(string(identityType)); identityType != nil && err == nil {
+	if identityType, err := ae.Managers.IdentityType.ReadByName(string(identityType)); identityType != nil && err == nil {
 		identityTypeId = identityType.Id
 	}
 
@@ -198,66 +198,66 @@ func getIdentityTypeId(ae *env.AppEnv, identityType rest_model.IdentityType) str
 func (r *IdentityRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params identity.CreateIdentityParams) {
 	Create(rc, rc, IdentityLinkFactory, func() (string, error) {
 		identityModel, enrollments := MapCreateIdentityToModel(params.Identity, getIdentityTypeId(ae, *params.Identity.Type))
-		identityId, _, err := ae.Handlers.Identity.CreateWithEnrollments(identityModel, enrollments)
+		identityId, _, err := ae.Managers.Identity.CreateWithEnrollments(identityModel, enrollments)
 		return identityId, err
 	})
 }
 
 func (r *IdentityRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Identity)
+	DeleteWithHandler(rc, ae.Managers.Identity)
 }
 
 func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, *params.Identity.Type)))
+		return ae.Managers.Identity.Update(MapUpdateIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, *params.Identity.Type)))
 	})
 }
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
 		fields = fields.FilterMaps(boltz.FieldTags, persistence.FieldIdentityAppData, persistence.FieldIdentityServiceHostingCosts, persistence.FieldIdentityServiceHostingPrecedences)
-		return ae.Handlers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields)
+		return ae.Managers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields)
 	})
 }
 
 func (r *IdentityRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.Identity, ae.Handlers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.Identity, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *IdentityRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.Identity, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.Identity, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(identities) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeService, MapServiceToRestEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeService, MapServiceToRestEntity)
 }
 
 func (r *IdentityRouter) listAuthenticators(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `identity = "%v"`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.Authenticator, MapAuthenticatorToRestEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
 }
 
 func (r *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *IdentityRouter) listServiceConfigs(ae *env.AppEnv, rc *response.RequestContext) {
 	listWithId(rc, func(id string) ([]interface{}, error) {
-		serviceConfigs, err := ae.Handlers.Identity.GetServiceConfigs(id)
+		serviceConfigs, err := ae.Managers.Identity.GetServiceConfigs(id)
 		if err != nil {
 			return nil, err
 		}
 		result := make([]interface{}, 0)
 		for _, serviceConfig := range serviceConfigs {
-			service, err := ae.Handlers.EdgeService.Read(serviceConfig.Service)
+			service, err := ae.Managers.EdgeService.Read(serviceConfig.Service)
 			if err != nil {
 				pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find service [%s]: %v", id, serviceConfig.Service, err)
 				continue
 			}
 
-			config, err := ae.Handlers.Config.Read(serviceConfig.Config)
+			config, err := ae.Managers.Config.Read(serviceConfig.Config)
 			if err != nil {
 				pfxlog.Logger().Debugf("listing service configs for identity [%s] could not find config [%s]: %v", id, serviceConfig.Config, err)
 				continue
@@ -280,7 +280,7 @@ func (r *IdentityRouter) assignServiceConfigs(ae *env.AppEnv, rc *response.Reque
 		for _, serviceConfig := range params.ServiceConfigs {
 			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
-		return ae.Handlers.Identity.AssignServiceConfigs(id, modelServiceConfigs)
+		return ae.Managers.Identity.AssignServiceConfigs(id, modelServiceConfigs)
 	})
 }
 
@@ -290,7 +290,7 @@ func (r *IdentityRouter) removeServiceConfigs(ae *env.AppEnv, rc *response.Reque
 		for _, serviceConfig := range params.ServiceConfigIDPairs {
 			modelServiceConfigs = append(modelServiceConfigs, MapServiceConfigToModel(*serviceConfig))
 		}
-		return ae.Handlers.Identity.RemoveServiceConfigs(id, modelServiceConfigs)
+		return ae.Managers.Identity.RemoveServiceConfigs(id, modelServiceConfigs)
 	})
 }
 
@@ -315,7 +315,7 @@ func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCon
 		return
 	}
 
-	result, err := ae.Handlers.PolicyAdvisor.AnalyzeServiceReachability(id, serviceId)
+	result, err := ae.Managers.PolicyAdvisor.AnalyzeServiceReachability(id, serviceId)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -335,21 +335,21 @@ func (r *IdentityRouter) getPolicyAdvice(ae *env.AppEnv, rc *response.RequestCon
 
 func (r *IdentityRouter) getPostureData(ae *env.AppEnv, rc *response.RequestContext) {
 	id, _ := rc.GetEntityId()
-	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
+	postureData := ae.GetManagers().PostureResponse.PostureData(id)
 
 	rc.RespondWithOk(MapPostureDataToRestModel(ae, postureData), &rest_model.Meta{})
 }
 
 func (r *IdentityRouter) getPostureDataFailedServiceRequests(ae *env.AppEnv, rc *response.RequestContext) {
 	id, _ := rc.GetEntityId()
-	postureData := ae.GetHandlers().PostureResponse.PostureData(id)
+	postureData := ae.GetManagers().PostureResponse.PostureData(id)
 
 	rc.RespondWithOk(MapPostureDataFailedSessionRequestToRestModel(postureData.SessionRequestFailures), &rest_model.Meta{})
 }
 
 func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) {
 	id, _ := rc.GetEntityId()
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -361,7 +361,7 @@ func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) 
 		return
 	}
 
-	if err := ae.Handlers.Mfa.Delete(mfa.Id); err != nil {
+	if err := ae.Managers.Mfa.Delete(mfa.Id); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
@@ -371,7 +371,7 @@ func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) 
 
 func (r *IdentityRouter) updateTracing(ae *env.AppEnv, rc *response.RequestContext, params identity.UpdateIdentityTracingParams) {
 	id, _ := rc.GetEntityId()
-	_, err := ae.Handlers.Identity.Read(id)
+	_, err := ae.Managers.Identity.Read(id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -417,7 +417,7 @@ func (r *IdentityRouter) updateTracing(ae *env.AppEnv, rc *response.RequestConte
 }
 
 func (r *IdentityRouter) Enable(ae *env.AppEnv, rc *response.RequestContext, params identity.EnableIdentityParams) {
-	if err := ae.Handlers.Identity.Enable(params.ID); err != nil {
+	if err := ae.Managers.Identity.Enable(params.ID); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
@@ -426,7 +426,7 @@ func (r *IdentityRouter) Enable(ae *env.AppEnv, rc *response.RequestContext, par
 }
 
 func (r *IdentityRouter) Disable(ae *env.AppEnv, rc *response.RequestContext, params identity.DisableIdentityParams) {
-	if err := ae.Handlers.Identity.Disable(params.ID, time.Duration(*params.Disable.DurationMinutes)*time.Minute); err != nil {
+	if err := ae.Managers.Identity.Disable(params.ID, time.Duration(*params.Disable.DurationMinutes)*time.Minute); err != nil {
 		rc.RespondWithError(err)
 		return
 	}

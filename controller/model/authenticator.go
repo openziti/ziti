@@ -143,9 +143,9 @@ func (a *AuthResultBase) SessionCerts() []*x509.Certificate {
 func (a *AuthResultBase) Identity() *Identity {
 	if a.identity == nil {
 		if a.identityId != "" {
-			a.identity, _ = a.env.GetHandlers().Identity.Read(a.identityId)
+			a.identity, _ = a.env.GetManagers().Identity.Read(a.identityId)
 		} else if a.externalId != "" {
-			a.identity, _ = a.env.GetHandlers().Identity.ReadByExternalId(a.externalId)
+			a.identity, _ = a.env.GetManagers().Identity.ReadByExternalId(a.externalId)
 		}
 
 	}
@@ -154,14 +154,14 @@ func (a *AuthResultBase) Identity() *Identity {
 
 func (a *AuthResultBase) Authenticator() *Authenticator {
 	if a.authenticator == nil {
-		a.authenticator, _ = a.env.GetHandlers().Authenticator.Read(a.authenticatorId)
+		a.authenticator, _ = a.env.GetManagers().Authenticator.Read(a.authenticatorId)
 	}
 	return a.authenticator
 }
 
 func (a *AuthResultBase) AuthPolicy() *AuthPolicy {
 	if a.authPolicy == nil {
-		a.authPolicy, _ = a.env.GetHandlers().AuthPolicy.Read(a.authPolicyId)
+		a.authPolicy, _ = a.env.GetManagers().AuthPolicy.Read(a.authPolicyId)
 	}
 
 	return a.authPolicy

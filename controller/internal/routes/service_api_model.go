@@ -158,7 +158,7 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 
 	validChecks := map[string]bool{} //cache individual check status
 
-	policyPostureCheckMap := ae.GetHandlers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
+	policyPostureCheckMap := ae.GetManagers().EdgeService.GetPolicyPostureChecks(rc.Identity.Id, *ret.ID)
 
 	for policyId, policyPostureChecks := range policyPostureCheckMap {
 
@@ -188,14 +188,14 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			isCheckPassing := false
 			found := false
 			if isCheckPassing, found = validChecks[postureCheck.Id]; !found {
-				isCheckPassing, _ = ae.Handlers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
+				isCheckPassing, _ = ae.Managers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
 			timeout := postureCheck.TimeoutSeconds()
-			timeoutRemaining := postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id))
+			timeoutRemaining := postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, ae.Managers.PostureResponse.PostureData(rc.Identity.Id))
 
 			//determine if updatedAt is provided by the source posture check or the posture state
-			if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, ae.Handlers.PostureResponse.PostureData(rc.Identity.Id)); lastUpdatedAt != nil {
+			if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, ae.Managers.PostureResponse.PostureData(rc.Identity.Id)); lastUpdatedAt != nil {
 				if lastUpdatedAt.After(postureCheck.UpdatedAt) {
 					query.UpdatedAt = DateTimePtrOrNil(lastUpdatedAt)
 				}

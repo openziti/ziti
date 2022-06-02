@@ -121,7 +121,7 @@ func MapConfigToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.
 
 func MapConfigToRestModel(ae *env.AppEnv, config *model.Config) (*rest_model.ConfigDetail, error) {
 
-	configType, err := ae.Handlers.ConfigType.Read(config.TypeId)
+	configType, err := ae.Managers.ConfigType.Read(config.TypeId)
 
 	if err != nil {
 		return nil, fmt.Errorf("could not find type [%s]: %v", config.TypeId, err)

@@ -128,9 +128,9 @@ func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPoli
 	ret := &rest_model.EdgeRouterPolicyDetail{
 		BaseEntity:             BaseEntityToRestModel(policy, EdgeRouterPolicyLinkFactory),
 		EdgeRouterRoles:        policy.EdgeRouterRoles,
-		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetHandlers().EdgeRouter, policy.EdgeRouterRoles),
+		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetManagers().EdgeRouter, policy.EdgeRouterRoles),
 		IdentityRoles:          policy.IdentityRoles,
-		IdentityRolesDisplay:   GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
+		IdentityRolesDisplay:   GetNamedIdentityRoles(ae.GetManagers().Identity, policy.IdentityRoles),
 		Name:                   &policy.Name,
 		Semantic:               &semantic,
 		IsSystem:               &policy.IsSystem,

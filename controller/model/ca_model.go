@@ -58,7 +58,7 @@ type ExternalIdClaim struct {
 
 type ExternalIdFieldType string
 
-func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Ca) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltCa, ok := boltEntity.(*persistence.Ca)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
@@ -88,7 +88,7 @@ func (entity *Ca) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) erro
 	return nil
 }
 
-func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	var fp string
 
 	if entity.CertPem != "" {
@@ -163,7 +163,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.En
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.Ca{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
@@ -189,7 +189,7 @@ func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, e
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 

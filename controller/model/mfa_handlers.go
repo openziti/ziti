@@ -36,7 +36,7 @@ const (
 
 func NewMfaHandler(env Env) *MfaHandler {
 	handler := &MfaHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Mfa),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Mfa),
 	}
 	handler.impl = handler
 
@@ -44,7 +44,7 @@ func NewMfaHandler(env Env) *MfaHandler {
 }
 
 type MfaHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *MfaHandler) newModelEntity() boltEntitySink {

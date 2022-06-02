@@ -81,43 +81,43 @@ func (r *ServicePolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ServicePolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *ServicePolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *ServicePolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_policy.CreateServicePolicyParams) {
 	Create(rc, rc, ServicePolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.ServicePolicy.Create(MapCreateServicePolicyToModel(params.Policy))
+		return ae.Managers.ServicePolicy.Create(MapCreateServicePolicyToModel(params.Policy))
 	})
 }
 
 func (r *ServicePolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.ServicePolicy)
+	DeleteWithHandler(rc, ae.Managers.ServicePolicy)
 }
 
 func (r *ServicePolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_policy.UpdateServicePolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.ServicePolicy.Update(MapUpdateServicePolicyToModel(params.ID, params.Policy))
+		return ae.Managers.ServicePolicy.Update(MapUpdateServicePolicyToModel(params.ID, params.Policy))
 	})
 }
 
 func (r *ServicePolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_policy.PatchServicePolicyParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.ServicePolicy.Patch(MapPatchServicePolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.ServicePolicy.Patch(MapPatchServicePolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 
 func (r *ServicePolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.EdgeService, MapServiceToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ServicePolicy, ae.Managers.EdgeService, MapServiceToRestEntity)
 }
 
 func (r *ServicePolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.Identity, MapIdentityToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ServicePolicy, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 
 func (r *ServicePolicyRouter) ListPostureChecks(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ServicePolicy, ae.Handlers.PostureCheck, MapPostureCheckToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ServicePolicy, ae.Managers.PostureCheck, MapPostureCheckToRestEntity)
 }

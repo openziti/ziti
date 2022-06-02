@@ -69,7 +69,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	}
 
 	logger = logger.WithField("username", username)
-	authenticator, err := handler.env.GetHandlers().Authenticator.ReadByUsername(username)
+	authenticator, err := handler.env.GetManagers().Authenticator.ReadByUsername(username)
 
 	if err != nil {
 		logger.WithError(err).Error("could not authenticate, authenticator lookup by username errored")
@@ -125,7 +125,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	if authPolicy.Primary.Updb.MaxAttempts != persistence.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
 		logger.WithField("attempts", attempts).WithField("maxAttempts", authPolicy.Primary.Updb.MaxAttempts).Error("updb auth failed, max attempts exceeded")
 
-		if err = handler.env.GetHandlers().Identity.Disable(authenticator.IdentityId, time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes)*time.Minute); err != nil {
+		if err = handler.env.GetManagers().Identity.Disable(authenticator.IdentityId, time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes)*time.Minute); err != nil {
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 
@@ -140,7 +140,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	hr := handler.env.GetHandlers().Authenticator.ReHashPassword(password, salt)
+	hr := handler.env.GetManagers().Authenticator.ReHashPassword(password, salt)
 
 	if updb.Password != hr.Password {
 

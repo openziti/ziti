@@ -77,15 +77,15 @@ func (entity *ExternalJwtSigner) toBoltEntity() (boltz.Entity, error) {
 	return signer, nil
 }
 
-func (entity *ExternalJwtSigner) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ExternalJwtSigner) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ExternalJwtSigner) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ExternalJwtSigner) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	signer := &persistence.ExternalJwtSigner{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:            entity.Name,
@@ -118,7 +118,7 @@ func (entity *ExternalJwtSigner) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.
 	return signer, nil
 }
 
-func (entity *ExternalJwtSigner) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ExternalJwtSigner) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltExternalJwtSigner, ok := boltEntity.(*persistence.ExternalJwtSigner)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ExternalJwtSigner", reflect.TypeOf(boltEntity))

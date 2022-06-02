@@ -90,7 +90,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 	return nil
 }
 
-func (entity *Enrollment) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Enrollment) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEnrollment, ok := boltEntity.(*persistence.Enrollment)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
@@ -110,7 +110,7 @@ func (entity *Enrollment) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	return nil
 }
 
-func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntity(handler EntityManager) (boltz.Entity, error) {
 	if entity.Method == persistence.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
 			apiErr := errorz.NewNotFound()
@@ -119,7 +119,7 @@ func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 			return nil, apiErr
 		}
 
-		ca, _ := handler.GetEnv().GetHandlers().Ca.Read(*entity.CaId)
+		ca, _ := handler.GetEnv().GetManagers().Ca.Read(*entity.CaId)
 
 		if ca == nil {
 			apiErr := errorz.NewNotFound()
@@ -146,15 +146,15 @@ func (entity *Enrollment) toBoltEntity(handler Handler) (boltz.Entity, error) {
 	return boltEntity, nil
 }
 
-func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(handler)
 }
 
-func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(handler)
 
 }
 
-func (entity *Enrollment) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(handler)
 }

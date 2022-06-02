@@ -67,17 +67,17 @@ func (r *TerminatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *TerminatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
 }
 
 func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
 }
 
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, rc, TerminatorLinkFactory, func() (string, error) {
 		entity := MapCreateTerminatorToModel(params.Terminator)
-		err := ae.Handlers.Terminator.Create(entity)
+		err := ae.Managers.Terminator.Create(entity)
 		if err != nil {
 			return "", err
 		}
@@ -86,17 +86,17 @@ func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, p
 }
 
 func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Terminator)
+	DeleteWithHandler(rc, ae.Managers.Terminator)
 }
 
 func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil)
+		return ae.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil)
 	})
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
+		return ae.Managers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }

@@ -29,14 +29,14 @@ import (
 
 func NewEdgeServiceHandler(env Env) *EdgeServiceHandler {
 	handler := &EdgeServiceHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().EdgeService),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeService),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type EdgeServiceHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *EdgeServiceHandler) GetEntityTypeId() string {
@@ -87,7 +87,7 @@ func (handler *EdgeServiceHandler) ReadForIdentity(id string, identityId string,
 }
 
 func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
-	identity, err := handler.GetEnv().GetHandlers().Identity.readInTx(tx, identityId)
+	identity, err := handler.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +305,7 @@ func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId 
 			for cursor.IsValid() {
 				checkId := string(cursor.Current())
 				if postureCheck, found := postureCheckCache[checkId]; !found {
-					postureCheck, _ := handler.env.GetHandlers().PostureCheck.Read(checkId)
+					postureCheck, _ := handler.env.GetManagers().PostureCheck.Read(checkId)
 					postureCheckCache[checkId] = postureCheck
 					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
 				} else {

@@ -104,7 +104,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 	}
 
 	for _, sessionId := range sessionsToDelete {
-		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
+		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId)
 		log.Debugf("session %v deleted", sessionId)
 	}
 
@@ -125,7 +125,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		enforcer.appEnv.GetMetricsRegistry().Timer(SessionPolicyEnforcerRun).UpdateSince(startTime)
 	}()
 
-	result, err := enforcer.appEnv.GetHandlers().Session.Query("")
+	result, err := enforcer.appEnv.GetManagers().Session.Query("")
 
 	if err != nil {
 		return err
@@ -173,7 +173,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	}
 
 	for _, sessionId := range sessionsToRemove {
-		_ = enforcer.appEnv.GetHandlers().Session.Delete(sessionId)
+		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId)
 	}
 
 	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes).Mark(int64(len(sessionsToRemove)))

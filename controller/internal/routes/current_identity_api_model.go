@@ -133,7 +133,7 @@ func MapMfaToRestModel(ae *env.AppEnv, mfa *model.Mfa) (*rest_model.DetailMfa, e
 
 	if !mfa.IsVerified {
 		result.RecoveryCodes = mfa.RecoveryCodes
-		result.ProvisioningURL = ae.Handlers.Mfa.GetProvisioningUrl(mfa)
+		result.ProvisioningURL = ae.Managers.Mfa.GetProvisioningUrl(mfa)
 	}
 
 	return result, nil

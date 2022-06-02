@@ -27,9 +27,9 @@ import (
 	"strings"
 )
 
-func NewConfigHandler(env Env) *ConfigHandler {
-	handler := &ConfigHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Config),
+func NewConfigManager(env Env) *ConfigManager {
+	handler := &ConfigManager{
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Config),
 	}
 	handler.impl = handler
 
@@ -38,11 +38,11 @@ func NewConfigHandler(env Env) *ConfigHandler {
 	return handler
 }
 
-type ConfigHandler struct {
-	baseHandler
+type ConfigManager struct {
+	baseEntityManager
 }
 
-func (self *ConfigHandler) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
+func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
 	var checker boltz.FieldChecker = cmd.UpdatedFields
 	if checker != nil {
 		checker = &AndFieldChecker{first: self, second: checker}
@@ -50,20 +50,20 @@ func (self *ConfigHandler) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]
 	return self.updateEntity(cmd.Entity, checker)
 }
 
-func (self *ConfigHandler) newModelEntity() boltEntitySink {
+func (self *ConfigManager) newModelEntity() boltEntitySink {
 	return &Config{}
 }
 
-func (self *ConfigHandler) Create(config *Config) error {
+func (self *ConfigManager) Create(config *Config) error {
 	return network.DispatchCreate[*Config](self, config)
 }
 
-func (self *ConfigHandler) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
+func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
 	_, err := self.createEntity(cmd.Entity)
 	return err
 }
 
-func (self *ConfigHandler) Read(id string) (*Config, error) {
+func (self *ConfigManager) Read(id string) (*Config, error) {
 	modelEntity := &Config{}
 	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (self *ConfigHandler) Read(id string) (*Config, error) {
 	return modelEntity, nil
 }
 
-func (self *ConfigHandler) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
+func (self *ConfigManager) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
 	modelEntity := &Config{}
 	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
@@ -79,15 +79,15 @@ func (self *ConfigHandler) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
 	return modelEntity, nil
 }
 
-func (self *ConfigHandler) IsUpdated(field string) bool {
+func (self *ConfigManager) IsUpdated(field string) bool {
 	return !strings.EqualFold(field, "type")
 }
 
-func (self *ConfigHandler) Update(config *Config, checker boltz.UpdatedFields) error {
+func (self *ConfigManager) Update(config *Config, checker boltz.UpdatedFields) error {
 	return network.DispatchUpdate[*Config](self, config, checker)
 }
 
-func (self *ConfigHandler) Marshall(entity *Config) ([]byte, error) {
+func (self *ConfigManager) Marshall(entity *Config) ([]byte, error) {
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (self *ConfigHandler) Marshall(entity *Config) ([]byte, error) {
 	return proto.Marshal(msg)
 }
 
-func (self *ConfigHandler) Unmarshall(bytes []byte) (*Config, error) {
+func (self *ConfigManager) Unmarshall(bytes []byte) (*Config, error) {
 	msg := &edge_cmd_pb.Config{}
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err

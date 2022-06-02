@@ -73,7 +73,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 	t.Run("newly created cert authenticators have full cert stored as PEM", func(t *testing.T) {
 		r := require.New(t)
-		authenticator, err := test.ctx.EdgeController.AppEnv.Handlers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
+		authenticator, err := test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
 
@@ -86,7 +86,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 	t.Run("cert authenticators with blank pem is stored on authenticate", func(t *testing.T) {
 		r := require.New(t)
-		authenticator, err := test.ctx.EdgeController.AppEnv.Handlers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
+		authenticator, err := test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
 
@@ -96,10 +96,10 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		certAuth.Pem = ""
 
-		err = test.ctx.EdgeController.AppEnv.Handlers.Authenticator.Update(authenticator)
+		err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.Update(authenticator)
 		r.NoError(err)
 
-		authenticator, err = test.ctx.EdgeController.AppEnv.Handlers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
+		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
 
@@ -118,7 +118,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
 
-		authenticator, err = test.ctx.EdgeController.AppEnv.Handlers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
+		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
 
 		r.NoError(err)
 

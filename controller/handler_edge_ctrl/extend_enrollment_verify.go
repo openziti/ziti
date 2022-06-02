@@ -18,11 +18,11 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/channel"
+	"google.golang.org/protobuf/proto"
 )
 
 type extendEnrollmentVerifyHandler struct {
@@ -71,7 +71,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 		}
 
 		routerId := ch.Id().Token
-		edgeRouter, _ := h.appEnv.Handlers.EdgeRouter.Read(routerId)
+		edgeRouter, _ := h.appEnv.Managers.EdgeRouter.Read(routerId)
 
 		if edgeRouter != nil {
 			if edgeRouter.UnverifiedCertPem == nil {
@@ -90,7 +90,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 				return
 			}
 
-			err := h.appEnv.Handlers.EdgeRouter.ExtendEnrollmentVerify(edgeRouter)
+			err := h.appEnv.Managers.EdgeRouter.ExtendEnrollmentVerify(edgeRouter)
 			if err != nil {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "VERIFY_ERROR",
@@ -103,7 +103,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 			return
 		}
 
-		router, _ := h.appEnv.Handlers.TransitRouter.Read(routerId)
+		router, _ := h.appEnv.Managers.TransitRouter.Read(routerId)
 
 		if router != nil {
 			if router.UnverifiedCertPem == nil {
@@ -122,7 +122,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 				return
 			}
 
-			err := h.appEnv.Handlers.TransitRouter.ExtendEnrollmentVerify(router)
+			err := h.appEnv.Managers.TransitRouter.ExtendEnrollmentVerify(router)
 			if err != nil {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "VERIFY_ERROR",

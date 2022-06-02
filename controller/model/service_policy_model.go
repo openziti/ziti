@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -65,19 +65,19 @@ func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ServicePolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service policy", reflect.TypeOf(boltEntity))

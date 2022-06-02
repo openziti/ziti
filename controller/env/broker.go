@@ -94,7 +94,7 @@ func (broker *Broker) RouterConnected(router *network.Router) {
 			return
 		}
 
-		if edgeRouter, _ := broker.ae.Handlers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
+		if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
 			pfxlog.Logger().WithField("routerId", router.Id).
 				WithField("routerName", router.Name).
 				WithField("routerFingerprint", router.Fingerprint).

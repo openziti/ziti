@@ -18,14 +18,14 @@ package model
 
 func NewEventLogHandler(env Env) *EventLogHandler {
 	handler := &EventLogHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().EventLog),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().EventLog),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type EventLogHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *EventLogHandler) newModelEntity() boltEntitySink {

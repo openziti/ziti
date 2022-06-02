@@ -20,8 +20,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -46,7 +46,7 @@ type SessionCert struct {
 	ValidTo     time.Time
 }
 
-func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	apiSession, err := handler.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (bol
 	return boltEntity, nil
 }
 
-func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return &persistence.Session{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,
@@ -112,11 +112,11 @@ func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, 
 	}, nil
 }
 
-func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Session) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltSession, ok := boltEntity.(*persistence.Session)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model Session", reflect.TypeOf(boltEntity))
@@ -131,7 +131,7 @@ func (entity *Session) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity)
 	return nil
 }
 
-func (entity *SessionCert) FillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *SessionCert) FillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltSessionCert, ok := boltEntity.(*persistence.SessionCert)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model SessionCert", reflect.TypeOf(boltEntity))

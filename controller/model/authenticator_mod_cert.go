@@ -162,7 +162,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 
 	if externalId != "" {
 		logger = logger.WithField("externalId", externalId)
-		identity, err = module.env.GetHandlers().Identity.ReadByExternalId(externalId)
+		identity, err = module.env.GetManagers().Identity.ReadByExternalId(externalId)
 
 		if identity == nil {
 			logger.Error("failed to find identity by externalId")
@@ -175,14 +175,14 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		fingerprint := module.env.GetFingerprintGenerator().FromCert(clientCert)
 		logger = logger.WithField("fingerprint", fingerprint)
 
-		authenticator, err = module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
+		authenticator, err = module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if authenticator == nil {
 			logger.Error("failed to find authenticator by fingerprint")
 			return nil, apierror.NewInvalidAuth()
 		}
 
-		identity, err = module.env.GetHandlers().Identity.Read(authenticator.IdentityId)
+		identity, err = module.env.GetManagers().Identity.Read(authenticator.IdentityId)
 	}
 
 	if identity == nil {
@@ -203,7 +203,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	authPolicy, err := module.env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+	authPolicy, err := module.env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
 
 	if authPolicy == nil {
 		logger.Error("failed to obtain authPolicy by id")
@@ -252,7 +252,7 @@ func (module *AuthModuleCert) getCas() *caPool {
 		result.roots.AddCert(caCert)
 	}
 
-	err := module.env.GetHandlers().Ca.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
+	err := module.env.GetManagers().Ca.Stream("isAuthEnabled = true and isVerified = true", func(ca *Ca, err error) error {
 		if ca == nil && err == nil {
 			return nil
 		}
@@ -293,7 +293,7 @@ func (module *AuthModuleCert) isEdgeRouter(clientCert *x509.Certificate) bool {
 
 	fingerprint := module.fingerprintGenerator.FromCert(clientCert)
 
-	router, err := module.env.GetHandlers().EdgeRouter.ReadOneByFingerprint(fingerprint)
+	router, err := module.env.GetManagers().EdgeRouter.ReadOneByFingerprint(fingerprint)
 
 	if router != nil {
 		return true
@@ -334,7 +334,7 @@ func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenti
 			})
 
 			authCert.Pem = string(certPem)
-			if err := module.env.GetHandlers().Authenticator.Update(authenticator); err != nil {
+			if err := module.env.GetManagers().Authenticator.Update(authenticator); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM")
 			}
 		}
@@ -436,7 +436,7 @@ func getAuthPolicyByIdentityId(env Env, authMethod string, authenticatorId strin
 		WithField("authenticatorId", authenticatorId).
 		WithField("identityId", identityId).
 		WithField("authMethod", authMethod)
-	identity, err := env.GetHandlers().Identity.Read(identityId)
+	identity, err := env.GetManagers().Identity.Read(identityId)
 
 	if err != nil {
 		logger.WithError(err).Errorf("encountered error during %s auth when looking up authenticator", authMethod)
@@ -450,7 +450,7 @@ func getAuthPolicyByIdentityId(env Env, authMethod string, authenticatorId strin
 
 	logger = logger.WithField("authPolicyId", identity.AuthPolicyId)
 
-	authPolicy, err := env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+	authPolicy, err := env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
 
 	if err != nil {
 		logger.WithError(err).Errorf("encountered error during %s auth when looking up auth policy", authMethod)
@@ -465,7 +465,7 @@ func getAuthPolicyByExternalId(env Env, authMethod string, authenticatorId strin
 		WithField("authenticatorId", authenticatorId).
 		WithField("externalId", externalId).
 		WithField("authMethod", authMethod)
-	identity, err := env.GetHandlers().Identity.ReadByExternalId(externalId)
+	identity, err := env.GetManagers().Identity.ReadByExternalId(externalId)
 
 	if err != nil {
 		logger.WithError(err).Errorf("encountered error during %s auth when looking up authenticator", authMethod)
@@ -479,7 +479,7 @@ func getAuthPolicyByExternalId(env Env, authMethod string, authenticatorId strin
 
 	logger = logger.WithField("authPolicyId", identity.AuthPolicyId)
 
-	authPolicy, err := env.GetHandlers().AuthPolicy.Read(identity.AuthPolicyId)
+	authPolicy, err := env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
 
 	if err != nil {
 		logger.WithError(err).Errorf("encountered error during %s auth when looking up auth policy", authMethod)

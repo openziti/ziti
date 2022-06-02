@@ -64,7 +64,7 @@ type AuthPolicyUpdb struct {
 	LockoutDurationMinutes int64
 }
 
-func (entity *AuthPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *AuthPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltAuthPolicy, ok := boltEntity.(*persistence.AuthPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
@@ -98,7 +98,7 @@ func (entity *AuthPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Enti
 	return nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.AuthPolicy{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
@@ -130,10 +130,10 @@ func (entity *AuthPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	return boltEntity, nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *AuthPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }

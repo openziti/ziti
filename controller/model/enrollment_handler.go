@@ -28,14 +28,14 @@ import (
 )
 
 type EnrollmentHandler struct {
-	baseHandler
+	baseEntityManager
 	enrollmentStore persistence.EnrollmentStore
 }
 
 func NewEnrollmentHandler(env Env) *EnrollmentHandler {
 	handler := &EnrollmentHandler{
-		baseHandler:     newBaseHandler(env, env.GetStores().Enrollment),
-		enrollmentStore: env.GetStores().Enrollment,
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Enrollment),
+		enrollmentStore:   env.GetStores().Enrollment,
 	}
 
 	handler.impl = handler
@@ -121,7 +121,7 @@ func (handler *EnrollmentHandler) ReplaceWithAuthenticator(enrollmentId string, 
 			return err
 		}
 
-		_, err = handler.env.GetHandlers().Authenticator.createEntityInTx(ctx, authenticator)
+		_, err = handler.env.GetManagers().Authenticator.createEntityInTx(ctx, authenticator)
 		return err
 	})
 }
@@ -202,7 +202,7 @@ func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
 		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
 	}
 
-	identity, err := handler.env.GetHandlers().Identity.Read(*model.IdentityId)
+	identity, err := handler.env.GetManagers().Identity.Read(*model.IdentityId)
 
 	if err != nil || identity == nil {
 		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
@@ -221,7 +221,7 @@ func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
 			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
 
-		ca, err := handler.env.GetHandlers().Ca.Read(*model.CaId)
+		ca, err := handler.env.GetManagers().Ca.Read(*model.CaId)
 
 		if err != nil || ca == nil {
 			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))

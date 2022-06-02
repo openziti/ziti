@@ -46,7 +46,7 @@ type EdgeRouter struct {
 	NoTraversal           bool
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -63,7 +63,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entit
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
 	return &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -84,11 +84,11 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ Handler) (boltz.E
 	}, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *EdgeRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *EdgeRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router", reflect.TypeOf(boltEntity))

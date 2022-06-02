@@ -52,9 +52,9 @@ func (r *PostureCheckTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *PostureCheckTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.PostureCheckType, MapPostureCheckTypeToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
 }
 
 func (r *PostureCheckTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.PostureCheckType, MapPostureCheckTypeToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
 }

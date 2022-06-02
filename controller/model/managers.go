@@ -23,7 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Handlers struct {
+type Managers struct {
 	// fabric
 	Router     *network.RouterManager
 	Service    *network.ServiceManager
@@ -34,7 +34,7 @@ type Handlers struct {
 	ApiSession              *ApiSessionHandler
 	ApiSessionCertificate   *ApiSessionCertificateHandler
 	Ca                      *CaHandler
-	Config                  *ConfigHandler
+	Config                  *ConfigManager
 	ConfigType              *ConfigTypeHandler
 	EdgeRouter              *EdgeRouterHandler
 	EdgeRouterPolicy        *EdgeRouterPolicyHandler
@@ -58,43 +58,43 @@ type Handlers struct {
 	AuthPolicy              *AuthPolicyHandler
 }
 
-func InitHandlers(env Env) *Handlers {
-	handlers := &Handlers{}
+func InitEntityManagers(env Env) *Managers {
+	managers := &Managers{}
 
-	handlers.Command = env.GetDbProvider().GetManagers().Command
-	handlers.Router = env.GetDbProvider().GetManagers().Routers
-	handlers.Service = env.GetDbProvider().GetManagers().Services
-	handlers.Terminator = env.GetDbProvider().GetManagers().Terminators
+	managers.Command = env.GetDbProvider().GetManagers().Command
+	managers.Router = env.GetDbProvider().GetManagers().Routers
+	managers.Service = env.GetDbProvider().GetManagers().Services
+	managers.Terminator = env.GetDbProvider().GetManagers().Terminators
 
-	handlers.ApiSession = NewApiSessionHandler(env)
-	handlers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
-	handlers.Authenticator = NewAuthenticatorHandler(env)
-	handlers.AuthPolicy = NewAuthPolicyHandler(env)
-	handlers.Ca = NewCaHandler(env)
-	handlers.Config = NewConfigHandler(env)
-	handlers.ConfigType = NewConfigTypeHandler(env)
-	handlers.EdgeRouter = NewEdgeRouterHandler(env)
-	handlers.EdgeRouterPolicy = NewEdgeRouterPolicyHandler(env)
-	handlers.EdgeService = NewEdgeServiceHandler(env)
-	handlers.Enrollment = NewEnrollmentHandler(env)
-	handlers.EventLog = NewEventLogHandler(env)
-	handlers.ExternalJwtSigner = NewExternalJwtSignerHandler(env)
-	handlers.GeoRegion = NewGeoRegionHandler(env)
-	handlers.Identity = NewIdentityHandler(env)
-	handlers.IdentityType = NewIdentityTypeHandler(env)
-	handlers.PolicyAdvisor = NewPolicyAdvisor(env)
-	handlers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyHandler(env)
-	handlers.ServicePolicy = NewServicePolicyHandler(env)
-	handlers.Session = NewSessionHandler(env)
-	handlers.TransitRouter = NewTransitRouterHandler(env)
-	handlers.PostureCheck = NewPostureCheckHandler(env)
-	handlers.PostureCheckType = NewPostureCheckTypeHandler(env)
-	handlers.PostureResponse = NewPostureResponseHandler(env)
-	handlers.Mfa = NewMfaHandler(env)
+	managers.ApiSession = NewApiSessionHandler(env)
+	managers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
+	managers.Authenticator = NewAuthenticatorHandler(env)
+	managers.AuthPolicy = NewAuthPolicyHandler(env)
+	managers.Ca = NewCaHandler(env)
+	managers.Config = NewConfigManager(env)
+	managers.ConfigType = NewConfigTypeHandler(env)
+	managers.EdgeRouter = NewEdgeRouterHandler(env)
+	managers.EdgeRouterPolicy = NewEdgeRouterPolicyHandler(env)
+	managers.EdgeService = NewEdgeServiceHandler(env)
+	managers.Enrollment = NewEnrollmentHandler(env)
+	managers.EventLog = NewEventLogHandler(env)
+	managers.ExternalJwtSigner = NewExternalJwtSignerHandler(env)
+	managers.GeoRegion = NewGeoRegionHandler(env)
+	managers.Identity = NewIdentityHandler(env)
+	managers.IdentityType = NewIdentityTypeHandler(env)
+	managers.PolicyAdvisor = NewPolicyAdvisor(env)
+	managers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyHandler(env)
+	managers.ServicePolicy = NewServicePolicyHandler(env)
+	managers.Session = NewSessionHandler(env)
+	managers.TransitRouter = NewTransitRouterHandler(env)
+	managers.PostureCheck = NewPostureCheckHandler(env)
+	managers.PostureCheckType = NewPostureCheckTypeHandler(env)
+	managers.PostureResponse = NewPostureResponseHandler(env)
+	managers.Mfa = NewMfaHandler(env)
 
 	RegisterCommand(env, &CreateEdgeTerminatorCmd{}, &edge_cmd_pb.CreateEdgeTerminatorCommand{})
 
-	return handlers
+	return managers
 }
 
 // decodableCommand is a Command which knows how to decode itself from the given message type

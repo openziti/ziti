@@ -123,7 +123,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 		identity := rc.Identity
 		if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
 			var err error
-			identity, err = ae.Handlers.Identity.ReadOneByQuery(fmt.Sprintf(`id = "%v" or name = "%v"`, asId, asId))
+			identity, err = ae.Managers.Identity.ReadOneByQuery(fmt.Sprintf(`id = "%v" or name = "%v"`, asId, asId))
 			if err != nil {
 				return nil, err
 			}
@@ -135,10 +135,10 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 		// allow overriding config types
 		configTypes := rc.ApiSession.ConfigTypes
 		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
-			configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), identity.Id)
+			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), identity.Id)
 		}
 
-		query, err := queryOptions.getFullQuery(ae.Handlers.EdgeService.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
 		if err != nil {
 			return nil, err
 		}
@@ -155,7 +155,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 				return nil, err
 			}
 
-			result, err := ae.Handlers.EdgeService.BasePreparedListIndexed(cursorProvider, query)
+			result, err := ae.Managers.EdgeService.BasePreparedListIndexed(cursorProvider, query)
 
 			if err != nil {
 				return nil, err
@@ -167,7 +167,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 			}
 			qmd = &result.QueryMetaData
 		} else {
-			result, err := ae.Handlers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
+			result, err := ae.Managers.EdgeService.PublicQueryForIdentity(identity, configTypes, query)
 			if err != nil {
 				pfxlog.Logger().Errorf("error executing list query: %+v", err)
 				return nil, err
@@ -192,15 +192,15 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 		// allow overriding config types
 		configTypes := rc.ApiSession.ConfigTypes
 		if requestedConfigTypes := rc.Request.URL.Query().Get("configTypes"); requestedConfigTypes != "" {
-			configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), rc.Identity.Id)
+			configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(strings.Split(requestedConfigTypes, ","), rc.Identity.Id)
 		}
 
-		query, err := queryOptions.getFullQuery(ae.Handlers.EdgeService.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := ae.Handlers.EdgeService.PublicQueryForIdentity(rc.Identity, configTypes, query)
+		result, err := ae.Managers.EdgeService.PublicQueryForIdentity(rc.Identity, configTypes, query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -219,7 +219,7 @@ func (r *ServiceRouter) ListClientServices(ae *env.AppEnv, rc *response.RequestC
 func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		svc, err := ae.Handlers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
+		svc, err := ae.Managers.EdgeService.ReadForIdentity(id, rc.ApiSession.IdentityId, rc.ApiSession.ConfigTypes)
 		if err != nil {
 			return nil, err
 		}
@@ -229,40 +229,40 @@ func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params managementService.CreateServiceParams) {
 	Create(rc, rc, ServiceLinkFactory, func() (string, error) {
-		return ae.Handlers.EdgeService.Create(MapCreateServiceToModel(params.Service))
+		return ae.Managers.EdgeService.Create(MapCreateServiceToModel(params.Service))
 	})
 }
 
 func (r *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.EdgeService)
+	DeleteWithHandler(rc, ae.Managers.EdgeService)
 }
 
 func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params managementService.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Service))
+		return ae.Managers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Service))
 	})
 }
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Managers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
 func (r *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Handlers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	r.listAssociations(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Handlers.ServicePolicy, MapServicePolicyToRestEntity)
+	r.listAssociations(ae, rc, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Handlers.Config, MapConfigToRestEntity)
+	r.listAssociations(ae, rc, ae.Managers.Config, MapConfigToRestEntity)
 }
 
 func (r *ServiceRouter) listManagementTerminators(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Handlers.Terminator, MapTerminatorToRestEntity)
+	r.listAssociations(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
 }
 
 func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.RequestContext) {
@@ -273,7 +273,7 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 		return
 	}
 
-	svc, err := ae.Handlers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
+	svc, err := ae.Managers.EdgeService.ReadForIdentity(serviceId, rc.Identity.Id, nil)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -289,19 +289,19 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 		return
 	}
 
-	r.listAssociations(ae, rc, ae.Handlers.Terminator, MapClientTerminatorToRestEntity)
+	r.listAssociations(ae, rc, ae.Managers.Terminator, MapClientTerminatorToRestEntity)
 }
 
 func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.EdgeService, associationLoader, mapper)
+	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeService, associationLoader, mapper)
 }
 
 func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.Identity, MapIdentityToRestEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 
 func (r *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }

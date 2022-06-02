@@ -52,15 +52,15 @@ func (r *RoleAttributesRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *RoleAttributesRouter) listEdgeRouterRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listRoleAttributes(rc, ae.Handlers.EdgeRouter)
+	r.listRoleAttributes(rc, ae.Managers.EdgeRouter)
 }
 
 func (r *RoleAttributesRouter) listIdentityRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listRoleAttributes(rc, ae.Handlers.Identity)
+	r.listRoleAttributes(rc, ae.Managers.Identity)
 }
 
 func (r *RoleAttributesRouter) listServiceRoleAttributes(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listRoleAttributes(rc, ae.Handlers.EdgeService)
+	r.listRoleAttributes(rc, ae.Managers.EdgeService)
 }
 
 func (r *RoleAttributesRouter) listRoleAttributes(rc *response.RequestContext, queryable roleAttributeQueryable) {

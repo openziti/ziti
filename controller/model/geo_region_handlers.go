@@ -18,14 +18,14 @@ package model
 
 func NewGeoRegionHandler(env Env) *GeoRegionHandler {
 	handler := &GeoRegionHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().GeoRegion),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().GeoRegion),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type GeoRegionHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *GeoRegionHandler) newModelEntity() boltEntitySink {

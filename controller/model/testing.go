@@ -56,7 +56,7 @@ func (self testHostController) Stop() {
 
 type TestContext struct {
 	*persistence.TestContext
-	handlers        *Handlers
+	handlers        *Managers
 	config          *config.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
@@ -68,7 +68,7 @@ func (ctx *TestContext) Generate(string, string, jwt.MapClaims) (string, error) 
 	return "I'm a very legitimate claim", nil
 }
 
-func (ctx *TestContext) GetHandlers() *Handlers {
+func (ctx *TestContext) GetManagers() *Managers {
 	return ctx.handlers
 }
 
@@ -145,7 +145,7 @@ func (ctx *TestContext) InitWithDbFile(dbPath string) {
 			},
 		},
 	}
-	ctx.handlers = InitHandlers(ctx)
+	ctx.handlers = InitEntityManagers(ctx)
 }
 
 func (ctx *TestContext) Cleanup() {

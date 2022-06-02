@@ -89,7 +89,7 @@ func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestC
 	apiSession := MapToCurrentApiSessionRestModel(ae, rc.ApiSession, ae.Config.SessionTimeoutDuration())
 
 	if rc.AuthStatus.SecondaryExtJwtSignerId != "" && !rc.AuthStatus.PassedSecondaryExtJwtSignerId {
-		extJwtSigner, err := ae.GetHandlers().ExternalJwtSigner.Read(rc.AuthStatus.SecondaryExtJwtSignerId)
+		extJwtSigner, err := ae.GetManagers().ExternalJwtSigner.Read(rc.AuthStatus.SecondaryExtJwtSignerId)
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -108,7 +108,7 @@ func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	err := ae.GetHandlers().ApiSession.Delete(rc.ApiSession.Id)
+	err := ae.GetManagers().ApiSession.Delete(rc.ApiSession.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -125,7 +125,7 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 			return nil, err
 		}
 
-		result, err := ae.GetHandlers().ApiSessionCertificate.BasePreparedList(query)
+		result, err := ae.GetManagers().ApiSessionCertificate.BasePreparedList(query)
 		if err != nil {
 			return nil, err
 		}
@@ -142,13 +142,13 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		return ae.GetHandlers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr))
+		return ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr))
 	})
 }
 
 func (router *CurrentSessionRouter) DetailCertificate(ae *env.AppEnv, rc *response.RequestContext) {
 	certId, _ := rc.GetEntityId()
-	cert, err := ae.GetHandlers().ApiSessionCertificate.Read(certId)
+	cert, err := ae.GetManagers().ApiSessionCertificate.Read(certId)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -172,7 +172,7 @@ func (router *CurrentSessionRouter) DetailCertificate(ae *env.AppEnv, rc *respon
 
 func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *response.RequestContext) {
 	certId, _ := rc.GetEntityId()
-	cert, err := ae.GetHandlers().ApiSessionCertificate.Read(certId)
+	cert, err := ae.GetManagers().ApiSessionCertificate.Read(certId)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -184,7 +184,7 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 		return
 	}
 
-	if err := ae.GetHandlers().ApiSessionCertificate.Delete(certId); err != nil {
+	if err := ae.GetManagers().ApiSessionCertificate.Delete(certId); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
@@ -212,7 +212,7 @@ type ApiSessionCertificateCreateResponder struct {
 }
 
 func (nsr *ApiSessionCertificateCreateResponder) RespondWithCreatedId(id string, _ rest_model.Link) {
-	sessionCert, _ := nsr.ae.GetHandlers().ApiSessionCertificate.Read(id)
+	sessionCert, _ := nsr.ae.GetManagers().ApiSessionCertificate.Read(id)
 	certString := sessionCert.PEM
 
 	newSessionEnvelope := &rest_model.CreateCurrentAPISessionCertificateEnvelope{

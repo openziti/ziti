@@ -51,7 +51,7 @@ func (h *initEdgeHandler) HandleReceive(msg *channel.Message, ch channel.Channel
 		return
 	}
 
-	if err := h.appEnv.Handlers.Identity.InitializeDefaultAdmin(request.Username, request.Password, request.Name); err != nil {
+	if err := h.appEnv.Managers.Identity.InitializeDefaultAdmin(request.Username, request.Password, request.Name); err != nil {
 		handler_common.SendOpResult(msg, ch, "init.edge", err.Error(), false)
 	} else {
 		handler_common.SendOpResult(msg, ch, "init.edge", err.Error(), true)

@@ -29,9 +29,9 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
 
@@ -106,12 +106,12 @@ func (r *CurrentIdentityAuthenticatorRouter) Register(ae *env.AppEnv) {
 
 func (r *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		query, err := queryOptions.getFullQuery(ae.Handlers.Authenticator.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.Authenticator.GetStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := ae.Handlers.Authenticator.ListForIdentity(rc.Identity.Id, query)
+		result, err := ae.Managers.Authenticator.ListForIdentity(rc.Identity.Id, query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err
@@ -131,13 +131,13 @@ func (r *CurrentIdentityAuthenticatorRouter) List(ae *env.AppEnv, rc *response.R
 
 func (r *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	Detail(rc, func(rc *response.RequestContext, id string) (entity interface{}, err error) {
-		authenticator, err := ae.GetHandlers().Authenticator.ReadForIdentity(rc.Identity.Id, id)
+		authenticator, err := ae.GetManagers().Authenticator.ReadForIdentity(rc.Identity.Id, id)
 		if err != nil {
 			return nil, err
 		}
 
 		if authenticator == nil {
-			return nil, boltz.NewNotFoundError(ae.GetHandlers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
+			return nil, boltz.NewNotFoundError(ae.GetManagers().Authenticator.GetStore().GetSingularEntityType(), "id", id)
 		}
 
 		apiAuthenticator, err := MapAuthenticatorToRestModel(ae, authenticator)
@@ -154,13 +154,13 @@ func (r *CurrentIdentityAuthenticatorRouter) Detail(ae *env.AppEnv, rc *response
 
 func (r *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, authenticator *rest_model.AuthenticatorUpdateWithCurrent) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Authenticator.UpdateSelf(MapUpdateAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator))
+		return ae.Managers.Authenticator.UpdateSelf(MapUpdateAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator))
 	})
 }
 
 func (r *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, authenticator *rest_model.AuthenticatorPatchWithCurrent) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator), fields.FilterMaps("tags"))
+		return ae.Managers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator), fields.FilterMaps("tags"))
 	})
 }
 
@@ -210,7 +210,7 @@ func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response
 		return
 	}
 
-	certPem, err := ae.Handlers.Authenticator.ExtendCertForIdentity(rc.Identity.Id, authId, peerCerts, *extend.ClientCertCsr)
+	certPem, err := ae.Managers.Authenticator.ExtendCertForIdentity(rc.Identity.Id, authId, peerCerts, *extend.ClientCertCsr)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -225,7 +225,7 @@ func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response
 
 func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *response.RequestContext, extend *rest_model.IdentityExtendValidateEnrollmentRequest) {
 	authId, err := rc.GetEntityId()
-	err = ae.Handlers.Authenticator.VerifyExtendCertForIdentity(rc.Identity.Id, authId, *extend.ClientCert)
+	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.Identity.Id, authId, *extend.ClientCert)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -251,7 +251,7 @@ func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *re
 		PEM:          *extend.ClientCert,
 	}
 
-	if _, err := ae.GetHandlers().ApiSessionCertificate.Create(sessionCert); err != nil {
+	if _, err := ae.GetManagers().ApiSessionCertificate.Create(sessionCert); err != nil {
 		rc.RespondWithError(errorz.NewUnhandled(err))
 	}
 

@@ -19,8 +19,8 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -38,7 +38,7 @@ type ApiSessionCertificate struct {
 	PEM          string
 }
 
-func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().ApiSession.IsEntityPresent(tx, entity.ApiSessionId) {
 		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
@@ -56,19 +56,19 @@ func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler Handler)
 	return boltEntity, nil
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSessionCertificate) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ApiSessionCertificate) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSessionCertificate, ok := boltEntity.(*persistence.ApiSessionCertificate)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSessionCertificate", reflect.TypeOf(boltEntity))

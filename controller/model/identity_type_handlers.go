@@ -22,14 +22,14 @@ import (
 
 func NewIdentityTypeHandler(env Env) *IdentityTypeHandler {
 	handler := &IdentityTypeHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().IdentityType),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().IdentityType),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type IdentityTypeHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *IdentityTypeHandler) newModelEntity() boltEntitySink {

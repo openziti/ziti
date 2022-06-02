@@ -39,7 +39,7 @@ type TransitRouter struct {
 	NoTraversal           bool
 }
 
-func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -54,7 +54,7 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.En
 	return boltEntity, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -71,11 +71,11 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.En
 	return ret, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForUpdate(tx, handler)
 }
 
-func (entity *TransitRouter) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *TransitRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltTransitRouter, ok := boltEntity.(*persistence.TransitRouter)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model transitRouter", reflect.TypeOf(boltEntity))

@@ -78,7 +78,7 @@ func MapTransitRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 }
 
 func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*rest_model.RouterDetail, error) {
-	isConnected := ae.GetHandlers().Router.IsConnected(router.GetId())
+	isConnected := ae.GetManagers().Router.IsConnected(router.GetId())
 	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
 		BaseEntity:            BaseEntityToRestModel(router, TransitRouterLinkFactory),
@@ -95,7 +95,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 	if !router.IsBase && !router.IsVerified {
 		var enrollments []*model.Enrollment
 
-		err := ae.GetHandlers().TransitRouter.CollectEnrollments(router.Id, func(entity *model.Enrollment) error {
+		err := ae.GetManagers().TransitRouter.CollectEnrollments(router.Id, func(entity *model.Enrollment) error {
 			enrollments = append(enrollments, entity)
 			return nil
 		})

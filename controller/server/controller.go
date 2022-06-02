@@ -279,7 +279,7 @@ func (c *Controller) Run() {
 		rf(c.AppEnv)
 	}
 
-	admin, err := c.AppEnv.Handlers.Identity.ReadDefaultAdmin()
+	admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("could not check if a default admin exists")
@@ -313,7 +313,7 @@ func (c *Controller) Shutdown() {
 
 		c.AppEnv.Broker.Stop()
 
-		c.AppEnv.GetHandlers().ApiSession.HeartbeatCollector.Stop()
+		c.AppEnv.GetManagers().ApiSession.HeartbeatCollector.Stop()
 
 		pfxlog.Logger().Info("edge controller: stopped")
 

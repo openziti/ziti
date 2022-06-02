@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
@@ -60,19 +60,19 @@ func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ConfigType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltConfigType, ok := boltEntity.(*persistence.ConfigType)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model configType", reflect.TypeOf(boltEntity))
