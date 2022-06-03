@@ -41,10 +41,10 @@ const (
 	MaxEdgeAPIActivityUpdateInterval      = 10 * time.Minute
 	MinEdgeAPIActivityUpdateInterval      = time.Millisecond
 
-	DefaultEdgeSessionTimeout = 10 * time.Minute
+	DefaultEdgeSessionTimeout = 30 * time.Minute // Don't change the time unit, keep time.Minute
 	MinEdgeSessionTimeout     = 1 * time.Minute
 
-	MinEdgeEnrollmentDuration     = 5 * time.Minute
+	MinEdgeEnrollmentDuration     = 180 * time.Minute // Don't change the time unit, keep time.Minute
 	DefaultEdgeEnrollmentDuration = 5 * time.Minute
 
 	DefaultHttpIdleTimeout       = 5000 * time.Millisecond
