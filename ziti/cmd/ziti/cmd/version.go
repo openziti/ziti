@@ -150,13 +150,13 @@ func (o *VersionOptions) versionCheckZitiApp(zitiApp string) error {
 	case c.ZITI_CONTROLLER:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_CONTROLLER)
 	case c.ZITI_PROX_C:
-		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
+		newVersion, err = o.getLatestGitHubReleaseVersion(c.ZITI_SDK_C_GITHUB)
 	case c.ZITI_ROUTER:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_ROUTER)
 	case c.ZITI_TUNNEL:
 		newVersion, err = o.getLatestZitiAppVersion(version.GetBranch(), c.ZITI_TUNNEL)
 	case c.ZITI_EDGE_TUNNEL:
-		newVersion, err = o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL_GITHUB)
+		newVersion, err = o.getLatestGitHubReleaseVersion(c.ZITI_EDGE_TUNNEL_GITHUB)
 	default:
 		return nil
 	}

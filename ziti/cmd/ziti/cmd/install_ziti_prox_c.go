@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/blang/semver"
-	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -76,18 +75,20 @@ func NewCmdInstallZitiProxC(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (o *InstallOptions) installZitiProxC(targetVersion string) error {
-	newVersion, err := o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_SDK_C_GITHUB)
+	if targetVersion != "" {
+		version, err := semver.Make(targetVersion)
+		if err != nil {
+			return err
+		}
+		return o.findVersionAndInstallGitHubRelease(c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, false, version.String())
+	}
+
+	release, err := o.getHighestVersionGitHubReleaseInfo(c.ZITI_SDK_C_GITHUB)
 	if err != nil {
 		return err
 	}
-
-	if targetVersion != "" {
-		newVersion, err = semver.Make(targetVersion)
-	}
-
-	log.Infoln("Attempting to install '" + c.ZITI_PROX_C + "' version: " + newVersion.String())
-
-	return o.installGitHubRelease(version.GetBranch(), c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, false, newVersion.String())
+	log.Infoln("Attempting to install '" + c.ZITI_PROX_C + "' version: " + release.SemVer.String())
+	return o.installGitHubRelease(c.ZITI_PROX_C, false, release)
 }
 
 // Run implements the command

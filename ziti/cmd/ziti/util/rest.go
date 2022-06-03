@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
+	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	"io"
 	"net/http"
@@ -41,6 +42,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -155,60 +157,19 @@ func GetLatestVersionFromArtifactory(verbose bool, staging bool, branch string, 
 // Used to parse the '/releases/latest' response from GitHub
 type GitHubReleasesData struct {
 	Version string `json:"tag_name"`
+	SemVer  semver.Version
 	Assets  []struct {
 		BrowserDownloadURL string `json:"browser_download_url"`
 	}
 }
 
-func GetLatestGitHubReleaseVersion(verbose bool, appName string) (semver.Version, error) {
-	resp, err := getRequest(verbose).
-		SetQueryParams(map[string]string{}).
-		SetHeader("Accept", "application/vnd.github.v3+json").
-		SetResult(&GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
-
-	if err != nil {
-		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
-	}
-
-	if resp.StatusCode() == http.StatusNotFound {
-		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return semver.Version{}, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
-	}
-
-	result := *resp.Result().(*GitHubReleasesData)
-
-	return semver.Make(strings.TrimPrefix(result.Version, "v"))
-}
-
-func GetLatestGitHubReleaseAsset(verbose bool, appName string) (string, error) {
-	resp, err := getRequest(verbose).
-		SetQueryParams(map[string]string{}).
-		SetHeader("Accept", "application/vnd.github.v3+json").
-		SetResult(&GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
-
-	if err != nil {
-		return "", fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
-	}
-
-	if resp.StatusCode() == http.StatusNotFound {
-		return "", fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return "", fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
-	}
-
-	result := (*resp.Result().(*GitHubReleasesData))
-
+func (self *GitHubReleasesData) GetDownloadUrl(appName string) (string, error) {
 	arches := []string{runtime.GOARCH}
 	if strings.ToLower(runtime.GOARCH) == "amd64" {
 		arches = append(arches, "x86_64")
 	}
 
-	for _, asset := range result.Assets {
+	for _, asset := range self.Assets {
 		ok := false
 		for _, arch := range arches {
 			if strings.Contains(strings.ToLower(asset.BrowserDownloadURL), arch) {
@@ -222,7 +183,68 @@ func GetLatestGitHubReleaseAsset(verbose bool, appName string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("unable to get latest asset for '%s'", appName)
+	return "", errors.Errorf("no download URL found for os/arch %v/%v for '%v'", runtime.GOOS, runtime.GOARCH, appName)
+}
+
+func GetHighestVersionGitHubReleaseInfo(verbose bool, appName string) (*GitHubReleasesData, error) {
+	resp, err := getRequest(verbose).
+		SetQueryParams(map[string]string{}).
+		SetHeader("Accept", "application/vnd.github.v3+json").
+		SetResult([]*GitHubReleasesData{}).
+		Get("https://api.github.com/repos/openziti/" + appName + "/releases")
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to get latest version for '%s'", appName)
+	}
+
+	if resp.StatusCode() == http.StatusNotFound {
+		return nil, errors.Errorf("unable to get latest version for '%s'; Not Found (invalid URL)", appName)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("unable to get latest version for '%s'; return status=%s", appName, resp.Status())
+	}
+
+	result := *resp.Result().(*[]*GitHubReleasesData)
+	return getHighestVersionRelease(appName, result)
+}
+
+func getHighestVersionRelease(appName string, releases []*GitHubReleasesData) (*GitHubReleasesData, error) {
+	for _, release := range releases {
+		v, err := semver.ParseTolerant(release.Version)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unable to parse version %v for '%v'", release.Version, appName)
+		}
+		release.SemVer = v
+	}
+	sort.Slice(releases, func(i, j int) bool {
+		return releases[i].SemVer.GT(releases[j].SemVer) // sort in reverse order
+	})
+	if len(releases) == 0 {
+		return nil, errors.Errorf("no releases found for '%v'", appName)
+	}
+	return releases[0], nil
+}
+
+func GetLatestGitHubReleaseAsset(verbose bool, appName string) (*GitHubReleasesData, error) {
+	resp, err := getRequest(verbose).
+		SetQueryParams(map[string]string{}).
+		SetHeader("Accept", "application/vnd.github.v3+json").
+		SetResult(&GitHubReleasesData{}).
+		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
+	}
+
+	if resp.StatusCode() == http.StatusNotFound {
+		return nil, fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
+	}
+
+	result := resp.Result().(*GitHubReleasesData)
+	return result, nil
 }
 
 // DownloadGitHubReleaseAsset will download a file from the given GitHUb release area
