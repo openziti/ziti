@@ -34,17 +34,24 @@ import (
 
 const (
 	IdentityActiveIntervalSeconds = 60
+
+	minDefaultAdminPasswordLength = 5
+	maxDefaultAdminPasswordLength = 100
+	minDefaultAdminUsernameLength = 4
+	maxDefaultAdminUsernameLength = 100
+	minDefaultAdminNameLength     = 4
+	maxDefaultAdminNameLength     = 100
 )
 
 type IdentityHandler struct {
-	baseHandler
+	baseEntityManager
 	updateSdkInfoTimer metrics.Timer
 	identityStatusMap  *identityStatusMap
 }
 
 func NewIdentityHandler(env Env) *IdentityHandler {
 	handler := &IdentityHandler{
-		baseHandler:        newBaseHandler(env, env.GetStores().Identity),
+		baseEntityManager:  newBaseEntityManager(env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
@@ -52,12 +59,12 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 	return handler
 }
 
-func (handler IdentityHandler) newModelEntity() boltEntitySink {
+func (handler *IdentityHandler) newModelEntity() boltEntitySink {
 	return &Identity{}
 }
 
 func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) {
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
+	identityType, err := handler.env.GetManagers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return "", err
@@ -81,7 +88,7 @@ func (handler *IdentityHandler) Create(identityModel *Identity) (string, error) 
 }
 
 func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
+	identityType, err := handler.env.GetManagers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return "", nil, err
@@ -121,7 +128,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 				return err
 			}
 
-			enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollmentModel)
+			enrollmentId, err := handler.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollmentModel)
 
 			if err != nil {
 				return err
@@ -140,7 +147,7 @@ func (handler *IdentityHandler) CreateWithEnrollments(identityModel *Identity, e
 }
 
 func (handler *IdentityHandler) Update(identity *Identity) error {
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+	identityType, err := handler.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return err
@@ -161,7 +168,7 @@ func (handler *IdentityHandler) Update(identity *Identity) error {
 func (handler *IdentityHandler) Patch(identity *Identity, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: handler, second: checker}
 	if checker.IsUpdated("type") {
-		identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+		identityType, err := handler.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 		if err != nil && !boltz.IsErrNotFoundErr(err) {
 			return err
 		}
@@ -193,7 +200,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-func (handler IdentityHandler) IsUpdated(field string) bool {
+func (handler *IdentityHandler) IsUpdated(field string) bool {
 	return field != persistence.FieldIdentityAuthenticators && field != persistence.FieldIdentityEnrollments && field != persistence.FieldIdentityIsDefaultAdmin
 }
 
@@ -241,14 +248,34 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 	identity, err := handler.ReadDefaultAdmin()
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		pfxlog.Logger().Panic(err)
+		return err
 	}
 
 	if identity != nil {
 		return errors.New("already initialized: Ziti Edge default admin already defined")
 	}
 
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByName(IdentityTypeUser)
+	if len(username) < minDefaultAdminUsernameLength {
+		return errorz.NewFieldError(fmt.Sprintf("username must be at least %v characters", minDefaultAdminUsernameLength), "username", username)
+	}
+	if len(password) < minDefaultAdminPasswordLength {
+		return errorz.NewFieldError(fmt.Sprintf("password must be at least %v characters", minDefaultAdminPasswordLength), "password", "******")
+	}
+	if len(name) < minDefaultAdminNameLength {
+		return errorz.NewFieldError(fmt.Sprintf("name must be at least %v characters", minDefaultAdminNameLength), "name", name)
+	}
+
+	if len(username) > maxDefaultAdminUsernameLength {
+		return errorz.NewFieldError(fmt.Sprintf("username must be at most %v characters", maxDefaultAdminUsernameLength), "username", username)
+	}
+	if len(password) > maxDefaultAdminPasswordLength {
+		return errorz.NewFieldError(fmt.Sprintf("password must be at most %v characters", maxDefaultAdminPasswordLength), "password", "******")
+	}
+	if len(name) > maxDefaultAdminNameLength {
+		return errorz.NewFieldError(fmt.Sprintf("name must be at most %v characters", maxDefaultAdminNameLength), "name", name)
+	}
+
+	identityType, err := handler.env.GetManagers().IdentityType.ReadByName(IdentityTypeUser)
 
 	if err != nil {
 		return err
@@ -283,7 +310,7 @@ func (handler *IdentityHandler) InitializeDefaultAdmin(username, password, name 
 		return err
 	}
 
-	if _, err := handler.env.GetHandlers().Authenticator.Create(authenticator); err != nil {
+	if _, err := handler.env.GetManagers().Authenticator.Create(authenticator); err != nil {
 		return err
 	}
 
@@ -299,7 +326,7 @@ func (handler *IdentityHandler) CollectAuthenticators(id string, collector func(
 		authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
 		for _, authenticatorId := range authenticatorIds {
 			authenticator := &Authenticator{}
-			err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator)
+			err := handler.env.GetManagers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator)
 			if err != nil {
 				return err
 			}
@@ -319,7 +346,7 @@ func (handler *IdentityHandler) visitAuthenticators(tx *bbolt.Tx, id string, vis
 	authenticatorIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityAuthenticators)
 	for _, authenticatorId := range authenticatorIds {
 		authenticator := &Authenticator{}
-		if err := handler.env.GetHandlers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
+		if err := handler.env.GetManagers().Authenticator.readEntityInTx(tx, authenticatorId, authenticator); err != nil {
 			return err
 		}
 		if visitor(authenticator) {
@@ -344,7 +371,7 @@ func (handler *IdentityHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, 
 
 	associationIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldIdentityEnrollments)
 	for _, enrollmentId := range associationIds {
-		enrollment, err := handler.env.GetHandlers().Enrollment.readInTx(tx, enrollmentId)
+		enrollment, err := handler.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}
@@ -370,7 +397,7 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 		authenticator.IdentityId = identity.Id
 	}
 
-	identityType, err := handler.env.GetHandlers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
+	identityType, err := handler.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return "", "", err
@@ -395,7 +422,7 @@ func (handler *IdentityHandler) CreateWithAuthenticator(identity *Identity, auth
 			return err
 		}
 
-		boltAuthenticator, err := authenticator.toBoltEntityForCreate(tx, handler.env.GetHandlers().Authenticator)
+		boltAuthenticator, err := authenticator.toBoltEntityForCreate(tx, handler.env.GetManagers().Authenticator)
 
 		if err != nil {
 			return err
@@ -502,7 +529,7 @@ func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(tx *bbolt
 	return stopVisit, err
 }
 
-func (handler IdentityHandler) ReadByExternalId(externalId string) (*Identity, error) {
+func (handler *IdentityHandler) ReadByExternalId(externalId string) (*Identity, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldIdentityExternalId, externalId)
 
 	entity, err := handler.readEntityByQuery(query)
@@ -554,7 +581,7 @@ func (handler *IdentityHandler) Disable(identityId string, duration time.Duratio
 		return err
 	}
 
-	return handler.GetEnv().GetHandlers().ApiSession.DeleteByIdentityId(identityId)
+	return handler.GetEnv().GetManagers().ApiSession.DeleteByIdentityId(identityId)
 }
 
 func (handler *IdentityHandler) Enable(identityId string) error {

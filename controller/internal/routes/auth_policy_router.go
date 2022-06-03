@@ -67,31 +67,31 @@ func (r *AuthPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *AuthPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.AuthPolicy, MapAuthPolicyToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.AuthPolicy, MapAuthPolicyToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.CreateAuthPolicyParams) {
 	Create(rc, rc, AuthPolicyLinkFactory, func() (string, error) {
-		return ae.Handlers.AuthPolicy.Create(MapCreateAuthPolicyToModel(params.AuthPolicy))
+		return ae.Managers.AuthPolicy.Create(MapCreateAuthPolicyToModel(params.AuthPolicy))
 	})
 }
 
 func (r *AuthPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.AuthPolicy)
+	DeleteWithHandler(rc, ae.Managers.AuthPolicy)
 }
 
 func (r *AuthPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.UpdateAuthPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.AuthPolicy.Update(MapUpdateAuthPolicyToModel(params.ID, params.AuthPolicy))
+		return ae.Managers.AuthPolicy.Update(MapUpdateAuthPolicyToModel(params.ID, params.AuthPolicy))
 	})
 }
 
 func (r *AuthPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.PatchAuthPolicyParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.AuthPolicy.Patch(MapPatchAuthPolicyToModel(params.ID, params.AuthPolicy), fields.FilterMaps("tags"))
+		return ae.Managers.AuthPolicy.Patch(MapPatchAuthPolicyToModel(params.ID, params.AuthPolicy), fields.FilterMaps("tags"))
 	})
 }

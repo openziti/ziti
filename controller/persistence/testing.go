@@ -19,15 +19,75 @@ package persistence
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
+	tests "github.com/openziti/fabric/tests"
+	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"
+	"time"
 )
+
+type testConfig struct {
+	ctx             *TestContext
+	options         *network.Options
+	metricsRegistry metrics.Registry
+	versionProvider common.VersionProvider
+}
+
+func newTestConfig(ctx *TestContext) *testConfig {
+	options := network.DefaultOptions()
+	options.MinRouterCost = 0
+
+	return &testConfig{
+		ctx:             ctx,
+		options:         options,
+		metricsRegistry: metrics.NewRegistry("test", nil),
+		versionProvider: tests.NewVersionProviderTest(),
+	}
+}
+
+func (self *testConfig) GetId() *identity.TokenId {
+	return &identity.TokenId{Token: "test"}
+}
+
+func (self *testConfig) GetMetricsRegistry() metrics.Registry {
+	return self.metricsRegistry
+}
+
+func (self *testConfig) GetOptions() *network.Options {
+	return self.options
+}
+
+func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
+	return nil
+}
+
+func (self *testConfig) GetDb() boltz.Db {
+	return self.ctx.GetDb()
+}
+
+func (self *testConfig) GetMetricsConfig() *metrics.Config {
+	return &metrics.Config{
+		Source:         "test",
+		ReportInterval: time.Minute,
+	}
+}
+
+func (self *testConfig) GetVersionProvider() common.VersionProvider {
+	return self.versionProvider
+}
+
+func (self *testConfig) GetCloseNotify() <-chan struct{} {
+	return self.ctx.closeNotify
+}
 
 type testDbProvider struct {
 	ctx *TestContext
@@ -38,7 +98,7 @@ func (p *testDbProvider) GetDb() boltz.Db {
 }
 
 func (p *testDbProvider) GetStores() *db.Stores {
-	return p.ctx.fabricStores
+	return p.ctx.n.GetStores()
 }
 
 func (p *testDbProvider) GetServiceCache() network.Cache {
@@ -50,17 +110,16 @@ func (p *testDbProvider) NotifyRouterRenamed(_, _ string) {}
 func (p *testDbProvider) RemoveFromCache(_ string) {
 }
 
-func (p *testDbProvider) GetControllers() *network.Controllers {
-	return p.ctx.controllers
+func (p *testDbProvider) GetManagers() *network.Managers {
+	return p.ctx.n.Managers
 }
 
 type TestContext struct {
 	boltz.BaseTestContext
-	db           *db.Db
-	fabricStores *db.Stores
-	stores       *Stores
-	controllers  *network.Controllers
-	closeNotify  chan struct{}
+	db          *db.Db
+	n           *network.Network
+	stores      *Stores
+	closeNotify chan struct{}
 }
 
 func NewTestContext(t *testing.T) *TestContext {
@@ -72,6 +131,10 @@ func NewTestContext(t *testing.T) *TestContext {
 	}
 	result.Impl = result
 	return result
+}
+
+func (ctx *TestContext) GetNetwork() *network.Network {
+	return ctx.n
 }
 
 func (ctx *TestContext) Cleanup() {
@@ -89,7 +152,7 @@ func (ctx *TestContext) GetDb() boltz.Db {
 
 func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 	if _, ok := entity.(*db.Service); ok {
-		return ctx.fabricStores.Service
+		return ctx.n.GetStores().Service
 	}
 	return ctx.stores.GetStoreForEntity(entity)
 }
@@ -113,12 +176,13 @@ func (ctx *TestContext) InitWithDbFile(path string) {
 	ctx.db, err = db.Open(path)
 	ctx.NoError(err)
 
-	ctx.fabricStores, err = db.InitStores(ctx.GetDb())
-	ctx.NoError(err)
-
 	dbProvider := ctx.GetDbProvider()
 
-	ctx.controllers = network.NewControllers(ctx.db, ctx.fabricStores)
+	config := newTestConfig(ctx)
+	ctx.n, err = network.NewNetwork(config)
+	ctx.NoError(err)
+
+	// TODO: setup up single node raft cluster or mock?
 	ctx.stores, err = NewBoltStores(dbProvider)
 	ctx.NoError(err)
 

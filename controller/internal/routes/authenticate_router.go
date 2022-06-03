@@ -79,7 +79,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	logger := pfxlog.Logger()
 	authContext := model.NewAuthContextHttp(httpRequest, method, auth)
 
-	authResult, err := ae.Handlers.Authenticator.Authorize(authContext)
+	authResult, err := ae.Managers.Authenticator.Authorize(authContext)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -125,7 +125,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		}
 
 		if shouldUpdate {
-			if err := ae.GetHandlers().Identity.PatchInfo(identity); err != nil {
+			if err := ae.GetManagers().Identity.PatchInfo(identity); err != nil {
 				logger.WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
 			}
 		}
@@ -135,7 +135,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	configTypes := map[string]struct{}{}
 
 	if auth != nil {
-		configTypes = ae.Handlers.ConfigType.MapConfigTypeNamesToIds(auth.ConfigTypes, identity.Id)
+		configTypes = ae.Managers.ConfigType.MapConfigTypeNamesToIds(auth.ConfigTypes, identity.Id)
 	}
 	remoteIpStr := ""
 	if remoteIp, _, err := net.SplitHostPort(rc.Request.RemoteAddr); err == nil {
@@ -152,7 +152,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		LastActivityAt:  time.Now().UTC(),
 	}
 
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -174,14 +174,14 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		sessionCerts = append(sessionCerts, sessionCert)
 	}
 
-	sessionId, err := ae.Handlers.ApiSession.Create(newApiSession, sessionCerts)
+	sessionId, err := ae.Managers.ApiSession.Create(newApiSession, sessionCerts)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	filledApiSession, err := ae.Handlers.ApiSession.Read(sessionId)
+	filledApiSession, err := ae.Managers.ApiSession.Read(sessionId)
 
 	if err != nil {
 		logger.WithField("cause", err).Error("loading session by id resulted in an error")
@@ -189,7 +189,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		return
 	}
 
-	ae.GetHandlers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
+	ae.GetManagers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
 	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession
@@ -207,7 +207,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 }
 
 func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -219,19 +219,19 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCo
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.Verify(mfa, *mfaCode.Code)
+	ok, _ := ae.Managers.Mfa.Verify(mfa, *mfaCode.Code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
 		return
 	}
 
-	if err := ae.Handlers.ApiSession.MfaCompleted(rc.ApiSession); err != nil {
+	if err := ae.Managers.ApiSession.MfaCompleted(rc.ApiSession); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	ae.Handlers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
+	ae.Managers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
 
 	rc.RespondWithEmptyOk()
 }

@@ -18,16 +18,17 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"math"
 )
 
@@ -91,7 +92,14 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		return
 	}
 
+	id, err := idgen.NewUUIDString()
+	if err != nil {
+		self.returnError(ctx, internalError(err))
+		return
+	}
+
 	terminator := &network.Terminator{
+		BaseEntity:     models.BaseEntity{Id: id},
 		Service:        ctx.session.ServiceId,
 		Router:         ctx.sourceRouter.Id,
 		Binding:        edge_common.EdgeBinding,
@@ -103,19 +111,8 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		Cost:           uint16(ctx.req.Cost),
 	}
 
-	n := self.appEnv.GetHostController().GetNetwork()
-	var id string
-	err := n.GetDb().Update(func(tx *bbolt.Tx) error {
-		var err error
-		mutateCtx := boltz.NewMutateContext(tx)
-		id, err = n.Terminators.CreateInTx(mutateCtx, terminator)
-		if err != nil {
-			return err
-		}
-		terminator.Id = id
-		return ctx.validateTerminatorIdentity(tx, terminator)
-	})
-
+	cmd := &model.CreateEdgeTerminatorCmd{Env: self.appEnv, Entity: terminator}
+	err = self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd)
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return

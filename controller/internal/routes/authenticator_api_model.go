@@ -165,7 +165,7 @@ func MapAuthenticatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e 
 
 func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_model.AuthenticatorDetail, error) {
 
-	identity, err := ae.GetHandlers().Identity.Read(i.IdentityId)
+	identity, err := ae.GetManagers().Identity.Read(i.IdentityId)
 
 	if err != nil {
 		return nil, err

@@ -20,6 +20,7 @@ import "C"
 import (
 	"fmt"
 	"github.com/openziti/channel"
+	"github.com/openziti/edge/controller/handler_edge_mgmt"
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/api_impl"
@@ -171,7 +172,9 @@ func (c *Controller) GetCtrlHandlers(binding channel.Binding) []channel.TypedRec
 }
 
 func (c *Controller) GetMgmtHandlers() []channel.TypedReceiveHandler {
-	return []channel.TypedReceiveHandler{}
+	return []channel.TypedReceiveHandler{
+		handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv),
+	}
 }
 
 func (c *Controller) LoadConfig(cfgmap map[interface{}]interface{}) error {
@@ -276,7 +279,7 @@ func (c *Controller) Run() {
 		rf(c.AppEnv)
 	}
 
-	admin, err := c.AppEnv.Handlers.Identity.ReadDefaultAdmin()
+	admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).Panic("could not check if a default admin exists")
@@ -310,7 +313,7 @@ func (c *Controller) Shutdown() {
 
 		c.AppEnv.Broker.Stop()
 
-		c.AppEnv.GetHandlers().ApiSession.HeartbeatCollector.Stop()
+		c.AppEnv.GetManagers().ApiSession.HeartbeatCollector.Stop()
 
 		pfxlog.Logger().Info("edge controller: stopped")
 

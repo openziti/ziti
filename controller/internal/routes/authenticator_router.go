@@ -76,11 +76,11 @@ func (r *AuthenticatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *AuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Authenticator, MapAuthenticatorToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
 }
 
 func (r *AuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Authenticator, MapAuthenticatorToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
 }
 
 func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params authenticator.CreateAuthenticatorParams) {
@@ -91,17 +91,17 @@ func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext
 			return "", err
 		}
 
-		return ae.Handlers.Authenticator.Create(authenticator)
+		return ae.Managers.Authenticator.Create(authenticator)
 	})
 }
 
 func (r *AuthenticatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Authenticator)
+	DeleteWithHandler(rc, ae.Managers.Authenticator)
 }
 
 func (r *AuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params authenticator.UpdateAuthenticatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator))
+		return ae.Managers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator))
 	})
 }
 
@@ -113,7 +113,7 @@ func (r *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext,
 			fields.AddField("salt")
 		}
 
-		return ae.Handlers.Authenticator.Patch(model, fields.FilterMaps("tags"))
+		return ae.Managers.Authenticator.Patch(model, fields.FilterMaps("tags"))
 	})
 }
 
@@ -130,7 +130,7 @@ func (r *AuthenticatorRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestConte
 		return
 	}
 
-	if id, err := ae.Handlers.Authenticator.ReEnroll(id, time.Time(*params.ReEnroll.ExpiresAt)); err == nil {
+	if id, err := ae.Managers.Authenticator.ReEnroll(id, time.Time(*params.ReEnroll.ExpiresAt)); err == nil {
 		rc.RespondWithCreatedId(id, EnrollmentLinkFactory.SelfLinkFromId(id))
 	} else {
 		if fe, ok := err.(*errorz.FieldError); ok {

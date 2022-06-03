@@ -138,7 +138,7 @@ func (pc *PostureCache) evaluate() {
 		})
 
 		for _, session := range sessions {
-			result := pc.env.GetHandlers().Session.EvaluatePostureForService(session.IdentityId, session.ApiSessionId, session.Type, session.ServiceId, "")
+			result := pc.env.GetManagers().Session.EvaluatePostureForService(session.IdentityId, session.ApiSessionId, session.Type, session.ServiceId, "")
 
 			if !result.Passed {
 				log.WithFields(map[string]interface{}{
@@ -154,7 +154,7 @@ func (pc *PostureCache) evaluate() {
 
 		//delete sessions that failed pc checks, clear list
 		for _, sessionId := range toDeleteSessionIds {
-			err := pc.env.GetHandlers().Session.Delete(sessionId)
+			err := pc.env.GetManagers().Session.Delete(sessionId)
 			if err != nil {
 				log.WithError(err).Errorf("error removing session [%s] due to posture check failure, delete error: %v", sessionId, err)
 			}

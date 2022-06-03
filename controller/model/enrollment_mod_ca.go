@@ -57,7 +57,7 @@ func (module *EnrollModuleCa) CanHandle(method string) bool {
 // authenticator will be created where the fingerprint of the certificate will be matched on subsequent authentications.
 func (module *EnrollModuleCa) Process(context EnrollmentContext) (*EnrollmentResult, error) {
 	log := pfxlog.Logger().WithField("method", module.method)
-	caList, err := module.env.GetHandlers().Ca.Query("true limit none")
+	caList, err := module.env.GetManagers().Ca.Query("true limit none")
 
 	if err != nil {
 		return nil, err
@@ -149,7 +149,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 		Bytes: enrollmentCert.Raw,
 	})
 
-	existing, _ := module.env.GetHandlers().Authenticator.ReadByFingerprint(fingerprint)
+	existing, _ := module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
 
 	if existing != nil {
 		log.Error("enrollment failed, fingerprint already in use")
@@ -177,7 +177,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 
 	log = log.WithField("determinedName", identityName)
 
-	identType, err := module.env.GetHandlers().IdentityType.ReadByName("Device")
+	identType, err := module.env.GetManagers().IdentityType.ReadByName("Device")
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 		},
 	}
 
-	_, authenticatorId, err := module.env.GetHandlers().Identity.CreateWithAuthenticator(identity, newAuthenticator)
+	_, authenticatorId, err := module.env.GetManagers().Identity.CreateWithAuthenticator(identity, newAuthenticator)
 
 	if err != nil {
 		log.WithError(err).Error("failed to create identity with authenticator")
@@ -248,7 +248,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	log = log.WithField("determinedName", identityName)
 
-	identType, err := module.env.GetHandlers().IdentityType.ReadByName("Device")
+	identType, err := module.env.GetManagers().IdentityType.ReadByName("Device")
 	if err != nil {
 		return nil, err
 	}
@@ -266,7 +266,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	identity.ExternalId = &externalId
 
-	_, err = module.env.GetHandlers().Identity.Create(identity)
+	_, err = module.env.GetManagers().Identity.Create(identity)
 
 	if err != nil {
 		log.WithError(err).Error("failed to create identity, enrollment failed")
@@ -306,7 +306,7 @@ func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certi
 	suffixCount := 0
 	for !identityNameIsValid {
 		//check for name collisions append 4 digit incrementing number to end till ok
-		entity, _ := module.env.GetHandlers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, persistence.FieldName, identityName))
+		entity, _ := module.env.GetManagers().Identity.readEntityByQuery(fmt.Sprintf(`%s="%s"`, persistence.FieldName, identityName))
 
 		if entity != nil {
 			suffixCount = suffixCount + 1

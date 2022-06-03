@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	fabricMetrics "github.com/openziti/fabric/metrics"
+	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"time"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
-	"github.com/pkg/errors"
 )
 
 type listener struct {

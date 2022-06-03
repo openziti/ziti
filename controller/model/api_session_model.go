@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -43,7 +43,7 @@ type ApiSession struct {
 	AuthenticatorId    string
 }
 
-func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
@@ -63,19 +63,19 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Ent
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, _ boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ApiSession) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSession", reflect.TypeOf(boltEntity))

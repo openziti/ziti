@@ -31,7 +31,7 @@ import (
 
 func NewApiSessionHandler(env Env) *ApiSessionHandler {
 	handler := &ApiSessionHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().ApiSession),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().ApiSession),
 	}
 
 	handler.HeartbeatCollector = NewHeartbeatCollector(env, env.GetConfig().Api.ActivityUpdateBatchSize, env.GetConfig().Api.ActivityUpdateInterval, handler.heartbeatFlush)
@@ -42,7 +42,7 @@ func NewApiSessionHandler(env Env) *ApiSessionHandler {
 }
 
 type ApiSessionHandler struct {
-	baseHandler
+	baseEntityManager
 	HeartbeatCollector *HeartbeatCollector
 }
 
@@ -65,7 +65,7 @@ func (handler *ApiSessionHandler) Create(entity *ApiSession, sessionCerts []*Api
 
 		for _, sessionCert := range sessionCerts {
 			sessionCert.ApiSessionId = apiSessionId
-			_, err := handler.env.GetHandlers().ApiSessionCertificate.createEntityInTx(ctx, sessionCert)
+			_, err := handler.env.GetManagers().ApiSessionCertificate.createEntityInTx(ctx, sessionCert)
 
 			if err != nil {
 				return err
@@ -152,7 +152,7 @@ func (handler *ApiSessionHandler) MarkActivityByTokens(tokens ...string) ([]stri
 				}
 			}
 			handler.HeartbeatCollector.Mark(apiSession.Id)
-			handler.env.GetHandlers().Identity.SetActive(apiSession.IdentityId)
+			handler.env.GetManagers().Identity.SetActive(apiSession.IdentityId)
 		}
 		return nil
 	})
@@ -245,11 +245,11 @@ func (handler *ApiSessionHandler) VisitFingerprintsForApiSessionId(apiSessionId 
 }
 
 func (handler *ApiSessionHandler) VisitFingerprintsForApiSession(tx *bbolt.Tx, identityId, apiSessionId string, visitor func(fingerprint string) bool) error {
-	if stopVisiting, err := handler.env.GetHandlers().Identity.VisitIdentityAuthenticatorFingerprints(tx, identityId, visitor); stopVisiting || err != nil {
+	if stopVisiting, err := handler.env.GetManagers().Identity.VisitIdentityAuthenticatorFingerprints(tx, identityId, visitor); stopVisiting || err != nil {
 		return err
 	}
 
-	apiSessionCerts, err := handler.env.GetHandlers().ApiSessionCertificate.ReadByApiSessionId(tx, apiSessionId)
+	apiSessionCerts, err := handler.env.GetManagers().ApiSessionCertificate.ReadByApiSessionId(tx, apiSessionId)
 	if err != nil {
 		return err
 	}

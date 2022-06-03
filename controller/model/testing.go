@@ -35,27 +35,28 @@ var _ HostController = &testHostController{}
 
 type testHostController struct {
 	closeNotify chan struct{}
+	ctx         *persistence.TestContext
 }
 
-func (t testHostController) GetNetwork() *network.Network {
-	return nil
+func (self *testHostController) GetNetwork() *network.Network {
+	return self.ctx.GetNetwork()
 }
 
-func (t testHostController) Shutdown() {
-	close(t.closeNotify)
+func (self testHostController) Shutdown() {
+	close(self.closeNotify)
 }
 
-func (t testHostController) GetCloseNotifyChannel() <-chan struct{} {
-	return t.closeNotify
+func (self testHostController) GetCloseNotifyChannel() <-chan struct{} {
+	return self.closeNotify
 }
 
-func (t testHostController) Stop() {
-	close(t.closeNotify)
+func (self testHostController) Stop() {
+	close(self.closeNotify)
 }
 
 type TestContext struct {
 	*persistence.TestContext
-	handlers        *Handlers
+	handlers        *Managers
 	config          *config.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
@@ -67,7 +68,7 @@ func (ctx *TestContext) Generate(string, string, jwt.MapClaims) (string, error) 
 	return "I'm a very legitimate claim", nil
 }
 
-func (ctx *TestContext) GetHandlers() *Handlers {
+func (ctx *TestContext) GetManagers() *Managers {
 	return ctx.handlers
 }
 
@@ -120,10 +121,12 @@ func (ctx *TestContext) GetFingerprintGenerator() cert.FingerprintGenerator {
 }
 
 func NewTestContext(t *testing.T) *TestContext {
+	fabricTestContext := persistence.NewTestContext(t)
 	context := &TestContext{
-		TestContext:     persistence.NewTestContext(t),
+		TestContext:     fabricTestContext,
 		metricsRegistry: metrics.NewRegistry("test", nil),
 		hostController: &testHostController{
+			ctx:         fabricTestContext,
 			closeNotify: make(chan struct{}),
 		},
 	}
@@ -142,7 +145,7 @@ func (ctx *TestContext) InitWithDbFile(dbPath string) {
 			},
 		},
 	}
-	ctx.handlers = InitHandlers(ctx)
+	ctx.handlers = InitEntityManagers(ctx)
 }
 
 func (ctx *TestContext) Cleanup() {

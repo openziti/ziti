@@ -72,11 +72,11 @@ func (r *ConfigTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ConfigTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
 }
 
 func (r *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ConfigType, MapConfigTypeToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
 }
 
 func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigTypeParams) {
@@ -88,12 +88,12 @@ func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Create(rc, rc, ConfigTypeLinkFactory, func() (string, error) {
-		return ae.Handlers.ConfigType.Create(MapCreateConfigTypeToModel(params.ConfigType))
+		return ae.Managers.ConfigType.Create(MapCreateConfigTypeToModel(params.ConfigType))
 	})
 }
 
 func (r *ConfigTypeRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.ConfigType)
+	DeleteWithHandler(rc, ae.Managers.ConfigType)
 }
 
 func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params config.UpdateConfigTypeParams) {
@@ -105,7 +105,7 @@ func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Update(rc, func(id string) error {
-		return ae.Handlers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType))
+		return ae.Managers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType))
 	})
 }
 
@@ -121,10 +121,10 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 	}
 
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
+		return ae.Managers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
 	})
 }
 
 func (r *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext, params config.ListConfigsForConfigTypeParams) {
-	ListAssociationWithHandler(ae, rc, ae.Handlers.ConfigType, ae.Handlers.Config, MapConfigToRestEntity)
+	ListAssociationWithHandler(ae, rc, ae.Managers.ConfigType, ae.Managers.Config, MapConfigToRestEntity)
 }

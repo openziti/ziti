@@ -24,14 +24,14 @@ import (
 
 func NewExternalJwtSignerHandler(env Env) *ExternalJwtSignerHandler {
 	handler := &ExternalJwtSignerHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().ExternalJwtSigner),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().ExternalJwtSigner),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type ExternalJwtSignerHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *ExternalJwtSignerHandler) IsUpdated(_ string) bool {

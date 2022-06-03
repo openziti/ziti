@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -37,7 +37,7 @@ type Service struct {
 	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
-func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if err := entity.validateConfigs(tx, handler); err != nil {
 		return nil, err
 	}
@@ -55,11 +55,11 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity
 	return edgeService, nil
 }
 
-func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) validateConfigs(tx *bbolt.Tx, handler Handler) error {
+func (entity *Service) validateConfigs(tx *bbolt.Tx, handler EntityManager) error {
 	typeMap := map[string]*persistence.Config{}
 	configStore := handler.GetEnv().GetStores().Config
 	for _, id := range entity.Configs {
@@ -82,15 +82,15 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, handler Handler) error {
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Service) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltService, ok := boltEntity.(*persistence.EdgeService)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
@@ -115,7 +115,7 @@ type ServiceDetail struct {
 	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
-func (entity *ServiceDetail) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ServiceDetail) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltService, ok := boltEntity.(*persistence.EdgeService)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))

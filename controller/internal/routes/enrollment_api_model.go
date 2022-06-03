@@ -69,7 +69,7 @@ func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*re
 	}
 
 	if enrollment.IdentityId != nil {
-		identity, err := ae.Handlers.Identity.Read(*enrollment.IdentityId)
+		identity, err := ae.Managers.Identity.Read(*enrollment.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -77,7 +77,7 @@ func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*re
 	}
 
 	if enrollment.EdgeRouterId != nil {
-		edgeRouter, err := ae.Handlers.EdgeRouter.Read(*enrollment.EdgeRouterId)
+		edgeRouter, err := ae.Managers.EdgeRouter.Read(*enrollment.EdgeRouterId)
 		if err != nil {
 			return nil, err
 		}
@@ -85,7 +85,7 @@ func MapEnrollmentToRestModel(ae *env.AppEnv, enrollment *model.Enrollment) (*re
 	}
 
 	if enrollment.TransitRouterId != nil {
-		transitRouter, err := ae.Handlers.TransitRouter.Read(*enrollment.TransitRouterId)
+		transitRouter, err := ae.Managers.TransitRouter.Read(*enrollment.TransitRouterId)
 		if err != nil {
 			return nil, err
 		}

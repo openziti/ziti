@@ -27,7 +27,7 @@ import (
 )
 
 type Env interface {
-	GetHandlers() *Handlers
+	GetManagers() *Managers
 	GetConfig() *config.Config
 	GetJwtSigner() jwtsigner.Signer
 	GetDbProvider() persistence.DbProvider

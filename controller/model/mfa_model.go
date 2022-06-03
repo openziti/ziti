@@ -19,8 +19,8 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -40,7 +40,7 @@ type Mfa struct {
 	RecoveryCodes []string
 }
 
-func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
@@ -56,19 +56,19 @@ func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler Handler) (boltz.Entity, er
 	return boltEntity, nil
 }
 
-func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error) {
+func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Mfa) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Mfa) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Mfa) fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Mfa) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltMfa, ok := boltEntity.(*persistence.Mfa)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model Mfa", reflect.TypeOf(boltEntity))

@@ -18,8 +18,8 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -29,14 +29,14 @@ const (
 
 func NewConfigTypeHandler(env Env) *ConfigTypeHandler {
 	handler := &ConfigTypeHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().ConfigType),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().ConfigType),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type ConfigTypeHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *ConfigTypeHandler) newModelEntity() boltEntitySink {

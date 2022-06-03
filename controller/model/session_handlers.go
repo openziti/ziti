@@ -23,24 +23,24 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"time"
 )
 
 func NewSessionHandler(env Env) *SessionHandler {
 	handler := &SessionHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Session),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Session),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type SessionHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *SessionHandler) newModelEntity() boltEntitySink {
@@ -60,7 +60,7 @@ func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionI
 	validPosture := false
 	hasMatchingPolicies := false
 
-	policyPostureCheckMap := handler.GetEnv().GetHandlers().EdgeService.GetPolicyPostureChecks(identityId, serviceId)
+	policyPostureCheckMap := handler.GetEnv().GetManagers().EdgeService.GetPolicyPostureChecks(identityId, serviceId)
 
 	failedPolicies := map[string][]*PostureCheckFailure{}
 	failedPoliciesIdToName := map[string]string{}
@@ -81,7 +81,7 @@ func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionI
 			found := false
 
 			if _, found = failureByPostureCheckId[postureCheck.Id]; !found {
-				_, failureByPostureCheckId[postureCheck.Id] = handler.GetEnv().GetHandlers().PostureResponse.Evaluate(identityId, apiSessionId, postureCheck)
+				_, failureByPostureCheckId[postureCheck.Id] = handler.GetEnv().GetManagers().PostureResponse.Evaluate(identityId, apiSessionId, postureCheck)
 			}
 
 			if failureByPostureCheckId[postureCheck.Id] != nil {
@@ -153,7 +153,7 @@ func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionI
 func (handler *SessionHandler) Create(entity *Session) (string, error) {
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
 
-	apiSession, err := handler.GetEnv().GetHandlers().ApiSession.Read(entity.ApiSessionId)
+	apiSession, err := handler.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
 	if err != nil {
 		return "", err
 	}
@@ -161,7 +161,7 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 		return "", errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := handler.GetEnv().GetHandlers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
+	service, err := handler.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
 	if err != nil {
 		return "", err
 	}
@@ -181,12 +181,12 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 	policyResult := handler.EvaluatePostureForService(apiSession.IdentityId, apiSession.Id, entity.Type, service.Id, service.Name)
 
 	if !policyResult.Passed {
-		handler.env.GetHandlers().PostureResponse.postureCache.AddSessionRequestFailure(apiSession.IdentityId, policyResult.Failure)
+		handler.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(apiSession.IdentityId, policyResult.Failure)
 		return "", apierror.NewInvalidPosture(policyResult.Cause)
 	}
 
 	maxRows := 1
-	result, err := handler.GetEnv().GetHandlers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
+	result, err := handler.GetEnv().GetManagers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
 	if err != nil {
 		return "", err
 	}
@@ -209,7 +209,7 @@ func (handler *SessionHandler) ReadByToken(token string) (*Session, error) {
 }
 
 func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*Session, error) {
-	identity, err := handler.GetEnv().GetHandlers().Identity.Read(identityId)
+	identity, err := handler.GetEnv().GetManagers().Identity.Read(identityId)
 
 	if err != nil {
 		return nil, err

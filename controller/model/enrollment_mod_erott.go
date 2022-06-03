@@ -55,7 +55,7 @@ func (module *EnrollModuleEr) CanHandle(method string) bool {
 }
 
 func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentResult, error) {
-	enrollment, err := module.env.GetHandlers().Enrollment.ReadByToken(context.GetToken())
+	enrollment, err := module.env.GetManagers().Enrollment.ReadByToken(context.GetToken())
 
 	if err != nil {
 		return nil, err
@@ -65,7 +65,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
 
-	edgeRouter, _ := module.env.GetHandlers().EdgeRouter.Read(*enrollment.EdgeRouterId)
+	edgeRouter, _ := module.env.GetManagers().EdgeRouter.Read(*enrollment.EdgeRouterId)
 
 	if edgeRouter == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
@@ -134,11 +134,11 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	edgeRouter.CertPem = &clientCertPemStr
 	edgeRouter.IsVerified = true
 	edgeRouter.Fingerprint = &clientCertFingerprint
-	if err := module.env.GetHandlers().EdgeRouter.Update(edgeRouter, false); err != nil {
+	if err := module.env.GetManagers().EdgeRouter.Update(edgeRouter, false); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 
-	if err := module.env.GetHandlers().Enrollment.Delete(enrollment.Id); err != nil {
+	if err := module.env.GetManagers().Enrollment.Delete(enrollment.Id); err != nil {
 		return nil, fmt.Errorf("could not delete enrollment: %s", err)
 	}
 

@@ -76,26 +76,26 @@ func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ExternalJwtSignerRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
 }
 
 func (r *ExternalJwtSignerRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
 }
 
 func (r *ExternalJwtSignerRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.CreateExternalJWTSignerParams) {
 	Create(rc, rc, ExternalJwtSignerLinkFactory, func() (string, error) {
-		return ae.Handlers.ExternalJwtSigner.Create(MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner))
+		return ae.Managers.ExternalJwtSigner.Create(MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner))
 	})
 }
 
 func (r *ExternalJwtSignerRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.ExternalJwtSigner)
+	DeleteWithHandler(rc, ae.Managers.ExternalJwtSigner)
 }
 
 func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.UpdateExternalJWTSignerParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner))
+		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner))
 	})
 }
 
@@ -109,19 +109,19 @@ func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestCont
 			fields.AddField(persistence.FieldExternalJwtSignerFingerprint)
 		}
 
-		return ae.Handlers.ExternalJwtSigner.Patch(MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), fields.FilterMaps("tags", "data"))
+		return ae.Managers.ExternalJwtSigner.Patch(MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), fields.FilterMaps("tags", "data"))
 	})
 }
 
 func (r *ExternalJwtSignerRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 
-		query, err := queryOptions.getFullQuery(ae.Handlers.EdgeService.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := ae.Handlers.ExternalJwtSigner.PublicQuery(query)
+		result, err := ae.Managers.ExternalJwtSigner.PublicQuery(query)
 		if err != nil {
 			pfxlog.Logger().Errorf("error executing list query: %+v", err)
 			return nil, err

@@ -48,7 +48,7 @@ func (el *DefaultEventLogger) Log(actorType, actorId, eventType, entityType, ent
 		pm[ks] = v
 	}
 
-	_, err = el.Ae.Handlers.EventLog.Create(&model.EventLog{
+	_, err = el.Ae.Managers.EventLog.Create(&model.EventLog{
 		Type:             eventType,
 		ActorId:          actorId,
 		ActorType:        actorType,

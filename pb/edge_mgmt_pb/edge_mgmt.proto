@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package ziti.edge_mgmt.pb;
+option go_package = "github.com/openziti/edge/pb/edge_mgmt_pb";
+
+enum CommandType {
+  Zero = 0;
+  InitEdgeType = 1000;
+}
+
+message InitEdgeRequest {
+  string username = 1;
+  string password = 2;
+  string name = 3;
+}

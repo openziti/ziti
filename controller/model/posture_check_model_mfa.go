@@ -285,7 +285,7 @@ func newPostureCheckMfa() PostureCheckSubType {
 	return &PostureCheckMfa{}
 }
 
-func (p *PostureCheckMfa) fillFrom(handler Handler, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckMfa) fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckMfa)
 
 	if subCheck == nil {
@@ -300,7 +300,7 @@ func (p *PostureCheckMfa) fillFrom(handler Handler, tx *bbolt.Tx, check *persist
 	return nil
 }
 
-func (p *PostureCheckMfa) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckMfa) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckMfa{
 		TimeoutSeconds:        p.TimeoutSeconds,
 		PromptOnWake:          p.PromptOnWake,
@@ -309,11 +309,11 @@ func (p *PostureCheckMfa) toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (
 	}, nil
 }
 
-func (p *PostureCheckMfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckMfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return p.toBoltEntityForCreate(tx, handler)
 }
 
-func (p *PostureCheckMfa) toBoltEntityForPatch(tx *bbolt.Tx, handler Handler) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckMfa) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
 	return p.toBoltEntityForCreate(tx, handler)
 }
 

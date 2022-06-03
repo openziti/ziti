@@ -24,14 +24,14 @@ import (
 
 func NewEdgeRouterPolicyHandler(env Env) *EdgeRouterPolicyHandler {
 	handler := &EdgeRouterPolicyHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().EdgeRouterPolicy),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeRouterPolicy),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type EdgeRouterPolicyHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *EdgeRouterPolicyHandler) newModelEntity() boltEntitySink {

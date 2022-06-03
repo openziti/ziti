@@ -19,9 +19,9 @@ package persistence
 import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
 	"go.etcd.io/bbolt"
 	"strings"
 )
@@ -29,7 +29,7 @@ import (
 type DbProvider interface {
 	GetDb() boltz.Db
 	GetStores() *db.Stores
-	GetControllers() *network.Controllers
+	GetManagers() *network.Managers
 }
 
 type Store interface {

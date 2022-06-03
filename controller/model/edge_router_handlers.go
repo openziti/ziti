@@ -34,7 +34,7 @@ import (
 
 func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 	handler := &EdgeRouterHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().EdgeRouter),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeRouter),
 		allowedFieldsChecker: boltz.MapFieldChecker{
 			persistence.FieldName:                        struct{}{},
 			persistence.FieldEdgeRouterIsTunnelerEnabled: struct{}{},
@@ -49,8 +49,12 @@ func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 }
 
 type EdgeRouterHandler struct {
-	baseHandler
+	baseEntityManager
 	allowedFieldsChecker boltz.FieldChecker
+}
+
+func (handler *EdgeRouterHandler) GetEntityTypeId() string {
+	return "edgeRouters"
 }
 
 func (handler *EdgeRouterHandler) newModelEntity() boltEntitySink {
@@ -205,7 +209,7 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 			return err
 		}
 
-		if err = handler.validateNameOnCreate(ctx, boltEdgeRouter); err != nil {
+		if err = handler.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
 			return err
 		}
 
@@ -222,7 +226,7 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 			return err
 		}
 
-		_, err = handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollment)
+		_, err = handler.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
 
 		if err != nil {
 			return err
@@ -252,7 +256,7 @@ func (handler *EdgeRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 
 	associationIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldEdgeRouterEnrollments)
 	for _, enrollmentId := range associationIds {
-		enrollment, err := handler.env.GetHandlers().Enrollment.readInTx(tx, enrollmentId)
+		enrollment, err := handler.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}
@@ -284,7 +288,7 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 
 	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		if id, err := handler.GetEnv().GetHandlers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
+		if id, err := handler.GetEnv().GetManagers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
 			return fmt.Errorf("could not create enrollment for re-enrolling edge router: %v", err)
 		} else {
 			log.WithField("enrollmentId", id).Infof("edge router re-enrollment entity created")

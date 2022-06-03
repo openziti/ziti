@@ -87,12 +87,12 @@ func (r *SessionRouter) Register(ae *env.AppEnv) {
 func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	// ListWithHandler won't do search limiting by logged in user
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		query, err := queryOptions.getFullQuery(ae.Handlers.Session.GetStore())
+		query, err := queryOptions.getFullQuery(ae.Managers.Session.GetStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := ae.Handlers.Session.PublicQueryForIdentity(rc.Identity, query)
+		result, err := ae.Managers.Session.PublicQueryForIdentity(rc.Identity, query)
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +107,7 @@ func (r *SessionRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 	// DetailWithHandler won't do search limiting by logged in user
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
-		service, err := ae.Handlers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
+		service, err := ae.Managers.Session.ReadForIdentity(id, rc.ApiSession.IdentityId)
 		if err != nil {
 			return nil, err
 		}
@@ -117,7 +117,7 @@ func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		return ae.Handlers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId)
+		return ae.Managers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId)
 	})
 }
 
@@ -125,7 +125,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 	start := time.Now()
 	responder := &SessionRequestResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
-		return ae.Handlers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session))
+		return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session))
 	})
 	r.createTimer.UpdateSince(start)
 }

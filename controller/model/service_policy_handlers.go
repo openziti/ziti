@@ -23,14 +23,14 @@ import (
 
 func NewServicePolicyHandler(env Env) *ServicePolicyHandler {
 	handler := &ServicePolicyHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().ServicePolicy),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().ServicePolicy),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type ServicePolicyHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *ServicePolicyHandler) newModelEntity() boltEntitySink {

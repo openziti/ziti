@@ -3,15 +3,12 @@ package handler_edge_ctrl
 import (
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
-	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
@@ -21,9 +18,7 @@ import (
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/bbolt"
 )
 
 type requestHandler interface {
@@ -124,7 +119,7 @@ func (self *baseSessionRequestContext) CleanupOnError() {
 			WithField("operation", self.handler.Label()).
 			WithField("routerId", self.sourceRouter.Name)
 
-		if err := self.handler.getAppEnv().Handlers.Session.Delete(self.session.Id); err != nil {
+		if err := self.handler.getAppEnv().Managers.Session.Delete(self.session.Id); err != nil {
 			logger.WithError(err).Error("unable to delete session created before error encountered")
 		}
 	}
@@ -157,7 +152,7 @@ func (self *baseSessionRequestContext) loadRouter() bool {
 func (self *baseSessionRequestContext) loadSession(token string) {
 	if self.err == nil {
 		var err error
-		self.session, err = self.handler.getAppEnv().Handlers.Session.ReadByToken(token)
+		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				self.err = InvalidApiSessionError{}
@@ -170,7 +165,7 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 				WithError(self.err).Errorf("invalid session")
 			return
 		}
-		apiSession, err := self.handler.getAppEnv().Handlers.ApiSession.Read(self.session.ApiSessionId)
+		apiSession, err := self.handler.getAppEnv().Managers.ApiSession.Read(self.session.ApiSessionId)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
 				self.err = InvalidApiSessionError{}
@@ -227,7 +222,7 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 
 		found := stringz.ContainsAny(sessionFingerprints, fingerprints...)
 		if !found {
-			err := self.GetHandler().getAppEnv().Handlers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
+			err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
 				sessionFingerprints = append(sessionFingerprints, fingerprint)
 				if stringz.Contains(fingerprints, fingerprint) {
 					found = true
@@ -255,7 +250,7 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 	if self.err == nil {
 		// validate edge router
-		result, err := self.handler.getAppEnv().Handlers.EdgeRouter.ListForSession(self.session.Id)
+		result, err := self.handler.getAppEnv().Managers.EdgeRouter.ListForSession(self.session.Id)
 		if err != nil {
 			self.err = internalError(err)
 			logrus.
@@ -282,7 +277,7 @@ func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 func (self *baseSessionRequestContext) loadService() {
 	if self.err == nil {
 		var err error
-		self.service, err = self.handler.getAppEnv().Handlers.EdgeService.Read(self.session.ServiceId)
+		self.service, err = self.handler.getAppEnv().Managers.EdgeService.Read(self.session.ServiceId)
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
@@ -298,71 +293,6 @@ func (self *baseSessionRequestContext) loadService() {
 				Error("service not found")
 		}
 	}
-}
-
-func (self *baseSessionRequestContext) validateTerminatorIdentity(tx *bbolt.Tx, terminator terminator) error {
-	session, err := self.getTerminatorSession(tx, terminator, "")
-	if err != nil {
-		return err
-	}
-
-	if terminator.GetIdentity() == "" {
-		return nil
-	}
-
-	identityTerminators, err := self.GetHandler().getAppEnv().BoltStores.Terminator.GetTerminatorsInIdentityGroup(tx, terminator.GetId())
-	for _, otherTerminator := range identityTerminators {
-		otherSession, err := self.getTerminatorSession(tx, otherTerminator, "sibling ")
-		if err != nil {
-			return err
-		}
-		if otherSession != nil {
-			if otherSession.ApiSession.IdentityId != session.ApiSession.IdentityId {
-				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", terminator.GetId(), terminator.GetIdentity())
-			}
-		}
-	}
-
-	return nil
-}
-
-type terminator interface {
-	GetId() string
-	GetIdentity() string
-	GetBinding() string
-	GetAddress() string
-}
-
-func (self *baseSessionRequestContext) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*persistence.Session, error) {
-	if terminator.GetBinding() != edge_common.EdgeBinding {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
-	}
-
-	addressParts := strings.Split(terminator.GetAddress(), ":")
-	if len(addressParts) != 2 {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
-	}
-
-	if addressParts[0] != "hosted" {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
-	}
-
-	sessionToken := addressParts[1]
-	session, err := self.GetHandler().getAppEnv().BoltStores.Session.LoadOneByToken(tx, sessionToken)
-	if err != nil {
-		pfxlog.Logger().Warnf("sibling terminator %v with shared identity %v has invalid session token %v", terminator.GetId(), terminator.GetIdentity(), sessionToken)
-		return nil, nil
-	}
-
-	if session.ApiSession == nil {
-		apiSession, err := self.GetHandler().getAppEnv().BoltStores.ApiSession.LoadOneById(tx, session.ApiSessionId)
-		if err != nil {
-			return nil, err
-		}
-		session.ApiSession = apiSession
-	}
-
-	return session, nil
 }
 
 func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, binding string) *network.Terminator {
@@ -457,7 +387,7 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 			checker[db.FieldTerminatorPrecedence] = struct{}{}
 		}
 
-		self.err = internalError(self.handler.getNetwork().Terminators.Patch(terminator, checker))
+		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker))
 	}
 }
 

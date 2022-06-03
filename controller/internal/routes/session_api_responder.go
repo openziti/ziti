@@ -29,7 +29,7 @@ type SessionRequestResponder struct {
 }
 
 func (nsr *SessionRequestResponder) RespondWithCreatedId(id string, _ rest_model.Link) {
-	modelSession, err := nsr.ae.GetHandlers().Session.Read(id)
+	modelSession, err := nsr.ae.GetManagers().Session.Read(id)
 	if err != nil {
 		nsr.RespondWithError(err)
 		return

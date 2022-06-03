@@ -138,14 +138,14 @@ func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*
 	ret := &rest_model.ServicePolicyDetail{
 		BaseEntity:               BaseEntityToRestModel(policy, ServicePolicyLinkFactory),
 		IdentityRoles:            policy.IdentityRoles,
-		IdentityRolesDisplay:     GetNamedIdentityRoles(ae.GetHandlers().Identity, policy.IdentityRoles),
+		IdentityRolesDisplay:     GetNamedIdentityRoles(ae.GetManagers().Identity, policy.IdentityRoles),
 		Name:                     &policy.Name,
 		Semantic:                 &semantic,
 		ServiceRoles:             policy.ServiceRoles,
-		ServiceRolesDisplay:      GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
+		ServiceRolesDisplay:      GetNamedServiceRoles(ae.GetManagers().EdgeService, policy.ServiceRoles),
 		Type:                     &dialBindType,
 		PostureCheckRoles:        policy.PostureCheckRoles,
-		PostureCheckRolesDisplay: GetNamedPostureCheckRoles(ae.GetHandlers().PostureCheck, policy.PostureCheckRoles),
+		PostureCheckRolesDisplay: GetNamedPostureCheckRoles(ae.GetManagers().PostureCheck, policy.PostureCheckRoles),
 	}
 
 	return ret, nil

@@ -54,13 +54,13 @@ func (ir *ApiSessionHandler) Register(ae *env.AppEnv) {
 }
 
 func (ir *ApiSessionHandler) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToRestInterface)
+	ListWithHandler(ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
 }
 
 func (ir *ApiSessionHandler) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.ApiSession, MapApiSessionToRestInterface)
+	DetailWithHandler(ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
 }
 
 func (ir *ApiSessionHandler) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.ApiSession)
+	DeleteWithHandler(rc, ae.Managers.ApiSession)
 }

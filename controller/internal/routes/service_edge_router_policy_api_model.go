@@ -129,11 +129,11 @@ func MapServiceEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.Service
 	ret := &rest_model.ServiceEdgeRouterPolicyDetail{
 		BaseEntity:             BaseEntityToRestModel(policy, ServiceEdgeRouterPolicyLinkFactory),
 		EdgeRouterRoles:        policy.EdgeRouterRoles,
-		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetHandlers().EdgeRouter, policy.EdgeRouterRoles),
+		EdgeRouterRolesDisplay: GetNamedEdgeRouterRoles(ae.GetManagers().EdgeRouter, policy.EdgeRouterRoles),
 		Name:                   &policy.Name,
 		Semantic:               &semantic,
 		ServiceRoles:           policy.ServiceRoles,
-		ServiceRolesDisplay:    GetNamedServiceRoles(ae.GetHandlers().EdgeService, policy.ServiceRoles),
+		ServiceRolesDisplay:    GetNamedServiceRoles(ae.GetManagers().EdgeService, policy.ServiceRoles),
 	}
 
 	return ret, nil

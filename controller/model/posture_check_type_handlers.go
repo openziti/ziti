@@ -18,14 +18,14 @@ package model
 
 func NewPostureCheckTypeHandler(env Env) *PostureCheckTypeHandler {
 	handler := &PostureCheckTypeHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().PostureCheckType),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheckType),
 	}
 	handler.impl = handler
 	return handler
 }
 
 type PostureCheckTypeHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *PostureCheckTypeHandler) newModelEntity() boltEntitySink {

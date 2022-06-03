@@ -27,8 +27,8 @@ import (
 	clientCurrentIdentity "github.com/openziti/edge/rest_client_api_server/operations/current_identity"
 	managementCurrentIdentity "github.com/openziti/edge/rest_management_api_server/operations/current_identity"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -139,7 +139,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -156,7 +156,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 		return
 	}
 
-	ok, err := ae.Handlers.Mfa.VerifyTOTP(mfa, *body.Code)
+	ok, err := ae.Managers.Mfa.VerifyTOTP(mfa, *body.Code)
 
 	if err != nil {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
@@ -165,7 +165,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 
 	if ok {
 		mfa.IsVerified = true
-		if err := ae.Handlers.Mfa.Update(mfa); err != nil {
+		if err := ae.Managers.Mfa.Update(mfa); err != nil {
 			pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
 			rc.RespondWithApiError(errorz.NewUnhandled(errors.New("could not update MFA status")))
 			return
@@ -174,11 +174,11 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 		rc.ApiSession.MfaComplete = true
 		rc.ApiSession.MfaRequired = true
 
-		if err := ae.Handlers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}); err != nil {
+		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}); err != nil {
 			pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
 		}
 
-		ae.Handlers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
+		ae.Managers.PostureResponse.SetMfaPosture(rc.Identity.Id, rc.ApiSession.Id, true)
 
 		rc.RespondWithEmptyOk()
 		return
@@ -189,7 +189,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -201,7 +201,7 @@ func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestCo
 		return
 	}
 
-	id, err := ae.Handlers.Mfa.CreateForIdentity(rc.Identity)
+	id, err := ae.Managers.Mfa.CreateForIdentity(rc.Identity)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -212,7 +212,7 @@ func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -239,20 +239,20 @@ func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestCo
 		code = *mfaCodeHeader
 	}
 
-	err := ae.Handlers.Mfa.DeleteForIdentity(rc.Identity, code)
+	err := ae.Managers.Mfa.DeleteForIdentity(rc.Identity, code)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
 	}
 
-	ae.Handlers.PostureResponse.SetMfaPostureForIdentity(rc.Identity.Id, false)
+	ae.Managers.PostureResponse.SetMfaPostureForIdentity(rc.Identity.Id, false)
 
 	rc.RespondWithEmptyOk()
 }
 
 func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -269,7 +269,7 @@ func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.Req
 		return
 	}
 
-	png, err := ae.Handlers.Mfa.QrCodePng(mfa)
+	png, err := ae.Managers.Mfa.QrCodePng(mfa)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -282,7 +282,7 @@ func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.Req
 }
 
 func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -299,14 +299,14 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.Verify(mfa, *body.Code)
+	ok, _ := ae.Managers.Mfa.Verify(mfa, *body.Code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
 		return
 	}
 
-	if err := ae.Handlers.Mfa.RecreateRecoveryCodes(mfa); err != nil {
+	if err := ae.Managers.Mfa.RecreateRecoveryCodes(mfa); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
@@ -315,7 +315,7 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 }
 
 func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
-	mfa, err := ae.Handlers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -345,7 +345,7 @@ func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, _ := ae.Handlers.Mfa.VerifyTOTP(mfa, code)
+	ok, _ := ae.Managers.Mfa.VerifyTOTP(mfa, code)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
@@ -364,11 +364,11 @@ func (r *CurrentIdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.Req
 	if rc.Identity.IsAdmin {
 		filterTemplate := `isVerified = true`
 		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
 	} else {
 		filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
 		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Handlers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
 	}
 }
 

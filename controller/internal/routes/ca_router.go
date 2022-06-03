@@ -90,32 +90,32 @@ func (r *CaRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CaRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Ca, MapCaToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.Ca, MapCaToRestEntity)
 }
 
 func (r *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Ca, MapCaToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Ca, MapCaToRestEntity)
 }
 
 func (r *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.CreateCaParams) {
 	Create(rc, rc, CaLinkFactory, func() (string, error) {
-		return ae.Handlers.Ca.Create(MapCreateCaToModel(params.Ca))
+		return ae.Managers.Ca.Create(MapCreateCaToModel(params.Ca))
 	})
 }
 
 func (r *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Ca)
+	DeleteWithHandler(rc, ae.Managers.Ca)
 }
 
 func (r *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.UpdateCaParams) {
 	Update(rc, func(id string) error {
-		return ae.Handlers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca))
+		return ae.Managers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca))
 	})
 }
 
 func (r *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.PatchCaParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Handlers.Ca.Patch(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
+		return ae.Managers.Ca.Patch(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
 	})
 }
 
@@ -130,7 +130,7 @@ func (r *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	ca, err := ae.Handlers.Ca.Read(id)
+	ca, err := ae.Managers.Ca.Read(id)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -219,7 +219,7 @@ func (r *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	err = ae.Handlers.Ca.Verified(ca)
+	err = ae.Managers.Ca.Verified(ca)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -240,7 +240,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	ca, loadErr := ae.Handlers.Ca.Read(id)
+	ca, loadErr := ae.Managers.Ca.Read(id)
 
 	if loadErr != nil {
 		if boltz.IsErrNotFoundErr(loadErr) {

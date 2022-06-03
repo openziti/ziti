@@ -72,8 +72,8 @@ func (s *ApiSessionEnforcer) Run() error {
 		ids := make([]string, 0, maxDeletePerIteration)
 
 		//iterate over API Sessions that do not have a recent enough lastAccessedAt
-		err := s.appEnv.GetHandlers().ApiSession.StreamIds(query, func(id string, err error) error {
-			if lastActivityAt, ok := s.appEnv.GetHandlers().ApiSession.HeartbeatCollector.LastAccessedAt(id); ok && lastActivityAt != nil {
+		err := s.appEnv.GetManagers().ApiSession.StreamIds(query, func(id string, err error) error {
+			if lastActivityAt, ok := s.appEnv.GetManagers().ApiSession.HeartbeatCollector.LastAccessedAt(id); ok && lastActivityAt != nil {
 				log.Tracef("during API session enforcement lastAccessedAt check, API Session [%s] was found in the cache with time [%s]", id, lastActivityAt.String())
 				if lastActivityAt.Before(oldest) {
 					ids = append(ids, id)
@@ -97,11 +97,11 @@ func (s *ApiSessionEnforcer) Run() error {
 
 		logrus.Debugf("found %v expired api-sessions to remove", len(ids))
 
-		if err = s.appEnv.GetHandlers().ApiSession.DeleteBatch(ids); err != nil {
+		if err = s.appEnv.GetManagers().ApiSession.DeleteBatch(ids); err != nil {
 			logrus.WithError(err).Error("failure while batch deleting expired api sessions")
 
 			for _, id := range ids {
-				if err = s.appEnv.GetHandlers().ApiSession.Delete(id); err != nil {
+				if err = s.appEnv.GetManagers().ApiSession.Delete(id); err != nil {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}

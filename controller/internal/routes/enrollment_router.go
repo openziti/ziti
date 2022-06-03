@@ -71,15 +71,15 @@ func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.Enrollment, MapEnrollmentToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.Enrollment, MapEnrollmentToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	DeleteWithHandler(rc, ae.Handlers.Enrollment)
+	DeleteWithHandler(rc, ae.Managers.Enrollment)
 }
 
 func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, params enrollment.RefreshEnrollmentParams) {
@@ -95,7 +95,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 		return
 	}
 
-	if err := ae.Handlers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt)); err != nil {
+	if err := ae.Managers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt)); err != nil {
 		if fe, ok := err.(*errorz.FieldError); ok {
 			rc.RespondWithFieldError(fe)
 			return
@@ -109,7 +109,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 
 func (r *EnrollmentRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params enrollment.CreateEnrollmentParams) {
 	Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
-		return ae.Handlers.Enrollment.Create(MapCreateEnrollmentToModel(params.Enrollment))
+		return ae.Managers.Enrollment.Create(MapCreateEnrollmentToModel(params.Enrollment))
 	})
 
 }

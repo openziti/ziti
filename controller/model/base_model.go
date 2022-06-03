@@ -24,12 +24,12 @@ import (
 
 type boltEntitySink interface {
 	models.Entity
-	fillFrom(handler Handler, tx *bbolt.Tx, boltEntity boltz.Entity) error
+	fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
 type boltEntitySource interface {
 	models.Entity
-	toBoltEntityForCreate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, handler Handler) (boltz.Entity, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, handler Handler, checker boltz.FieldChecker) (boltz.Entity, error)
+	toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
 }

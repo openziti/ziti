@@ -39,7 +39,7 @@ import (
 )
 
 type AuthenticatorHandler struct {
-	baseHandler
+	baseEntityManager
 	authStore persistence.AuthenticatorStore
 }
 
@@ -53,8 +53,8 @@ func (handler AuthenticatorHandler) IsUpdated(field string) bool {
 
 func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
 	handler := &AuthenticatorHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().Authenticator),
-		authStore:   env.GetStores().Authenticator,
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().Authenticator),
+		authStore:         env.GetStores().Authenticator,
 	}
 
 	handler.impl = handler
@@ -162,7 +162,7 @@ func (handler AuthenticatorHandler) getRootPool() *x509.CertPool {
 
 	roots.AppendCertsFromPEM(handler.env.GetConfig().CaPems())
 
-	err := handler.env.GetHandlers().Ca.Stream("isVerified = true", func(ca *Ca, err error) error {
+	err := handler.env.GetManagers().Ca.Stream("isVerified = true", func(ca *Ca, err error) error {
 		if ca == nil && err == nil {
 			return nil
 		}
@@ -514,7 +514,7 @@ func (handler AuthenticatorHandler) ExtendCertForIdentity(identityId string, aut
 	authenticatorCert.UnverifiedPem = string(newPemCert)
 	authenticatorCert.UnverifiedFingerprint = newFingerprint
 
-	err = handler.env.GetHandlers().Authenticator.Patch(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+	err = handler.env.GetManagers().Authenticator.Patch(authenticatorCert.Authenticator, boltz.MapFieldChecker{
 		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
 	})
@@ -567,7 +567,7 @@ func (handler AuthenticatorHandler) VerifyExtendCertForIdentity(identityId, auth
 	authenticatorCert.UnverifiedFingerprint = ""
 	authenticatorCert.UnverifiedPem = ""
 
-	err := handler.env.GetHandlers().Authenticator.PatchUnrestricted(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+	err := handler.env.GetManagers().Authenticator.PatchUnrestricted(authenticatorCert.Authenticator, boltz.MapFieldChecker{
 		persistence.FieldSessionCertFingerprint:                 struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
@@ -614,14 +614,14 @@ func (handler AuthenticatorHandler) ReEnroll(id string, expiresAt time.Time) (st
 		return "", err
 	}
 
-	enrollmentId, err := handler.env.GetHandlers().Enrollment.createEntity(enrollment)
+	enrollmentId, err := handler.env.GetManagers().Enrollment.createEntity(enrollment)
 
 	if err != nil {
 		return "", err
 	}
 
 	if err = handler.Delete(id); err != nil {
-		_ = handler.env.GetHandlers().Enrollment.Delete(enrollmentId)
+		_ = handler.env.GetManagers().Enrollment.Delete(enrollmentId)
 		return "", err
 	}
 

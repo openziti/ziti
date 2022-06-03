@@ -116,12 +116,12 @@ func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 
 func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
 
-	service, err := ae.Handlers.Service.Read(terminator.Service)
+	service, err := ae.Managers.Service.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := ae.Handlers.TransitRouter.Read(terminator.Router)
+	router, err := ae.Managers.TransitRouter.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func MapClientTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext,
 }
 
 func MapLimitedTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorClientDetail, error) {
-	service, err := ae.Handlers.EdgeService.Read(terminator.Service)
+	service, err := ae.Managers.EdgeService.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}

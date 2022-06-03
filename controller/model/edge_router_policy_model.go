@@ -43,19 +43,19 @@ func (entity *EdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *EdgeRouterPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))

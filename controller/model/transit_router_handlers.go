@@ -31,7 +31,7 @@ import (
 
 func NewTransitRouterHandler(env Env) *TransitRouterHandler {
 	handler := &TransitRouterHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().TransitRouter),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().TransitRouter),
 		allowedFields: boltz.MapFieldChecker{
 			persistence.FieldName: struct{}{},
 			boltz.FieldTags:       struct{}{},
@@ -42,7 +42,7 @@ func NewTransitRouterHandler(env Env) *TransitRouterHandler {
 }
 
 type TransitRouterHandler struct {
-	baseHandler
+	baseEntityManager
 	allowedFields boltz.FieldChecker
 }
 
@@ -90,7 +90,7 @@ func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRoute
 			return err
 		}
 
-		enrollmentId, err = handler.env.GetHandlers().Enrollment.createEntityInTx(ctx, enrollment)
+		enrollmentId, err = handler.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
 
 		if err != nil {
 			return err
@@ -190,7 +190,7 @@ func (handler *TransitRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id str
 
 	associationIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldTransitRouterEnrollments)
 	for _, enrollmentId := range associationIds {
-		enrollment, err := handler.env.GetHandlers().Enrollment.readInTx(tx, enrollmentId)
+		enrollment, err := handler.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}

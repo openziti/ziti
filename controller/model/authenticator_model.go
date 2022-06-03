@@ -52,7 +52,7 @@ func (entity *Authenticator) Fingerprints() []string {
 	}
 }
 
-func (entity *Authenticator) fillFrom(_ Handler, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Authenticator) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltAuthenticator, ok := boltEntity.(*persistence.Authenticator)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
@@ -134,15 +134,15 @@ func (entity *Authenticator) toBoltEntity() (boltz.Entity, error) {
 	return boltEntity, nil
 }
 
-func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, Handler) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForPatch(*bbolt.Tx, Handler, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

@@ -88,7 +88,7 @@ func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models
 }
 
 func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionManagementDetail, error) {
-	service, err := ae.Handlers.EdgeService.Read(sessionModel.ServiceId)
+	service, err := ae.Managers.EdgeService.Read(sessionModel.ServiceId)
 	if err != nil {
 		pfxlog.Logger().Errorf("could not render service [%s] for Session [%s] - should not be possible", sessionModel.ServiceId, sessionModel.Id)
 	}
@@ -103,7 +103,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 		pfxlog.Logger().Errorf("could not render edge routers for Session [%s]: %v", sessionModel.Id, err)
 	}
 
-	apiSession, err := ae.Handlers.ApiSession.Read(sessionModel.ApiSessionId)
+	apiSession, err := ae.Managers.ApiSession.Read(sessionModel.ApiSessionId)
 	if err != nil {
 		pfxlog.Logger().Errorf("could not render API Session [%s] for Session [%s], orphaned session - should not be possible", sessionModel.ApiSessionId, sessionModel.Id)
 	}
@@ -118,7 +118,7 @@ func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_m
 	servicePolicyRefs := []*rest_model.EntityRef{} //send `[]` not `null`
 
 	for _, servicePolicyId := range sessionModel.ServicePolicies {
-		if policy, _ := ae.GetHandlers().ServicePolicy.Read(servicePolicyId); policy != nil {
+		if policy, _ := ae.GetManagers().ServicePolicy.Read(servicePolicyId); policy != nil {
 			ref := &rest_model.EntityRef{
 				Links:  ServicePolicyLinkFactory.Links(policy),
 				Entity: EntityNameServicePolicy,
@@ -167,7 +167,7 @@ func MapSessionsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, sess
 func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.SessionEdgeRouter, error) {
 	var edgeRouters []*rest_model.SessionEdgeRouter
 
-	edgeRoutersForSession, err := ae.Handlers.EdgeRouter.ListForSession(ns.Id)
+	edgeRoutersForSession, err := ae.Managers.EdgeRouter.ListForSession(ns.Id)
 	if err != nil {
 		return nil, err
 	}

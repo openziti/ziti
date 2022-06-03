@@ -92,7 +92,7 @@ func (self *listTunnelServicesHandler) listServices(ctx *listTunnelServicesReque
 		return
 	}
 
-	result, err := self.appEnv.Handlers.EdgeService.PublicQueryForIdentity(ctx.identity, ctx.apiSession.ConfigTypes, query)
+	result, err := self.appEnv.Managers.EdgeService.PublicQueryForIdentity(ctx.identity, ctx.apiSession.ConfigTypes, query)
 	if err != nil {
 		logger.WithError(err).Error("could not create service list query")
 		return

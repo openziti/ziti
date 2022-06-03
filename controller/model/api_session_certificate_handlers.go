@@ -28,7 +28,7 @@ import (
 
 func NewApiSessionCertificateHandler(env Env) *ApiSessionCertificateHandler {
 	handler := &ApiSessionCertificateHandler{
-		baseHandler: newBaseHandler(env, env.GetStores().ApiSessionCertificate),
+		baseEntityManager: newBaseEntityManager(env, env.GetStores().ApiSessionCertificate),
 	}
 	handler.impl = handler
 
@@ -36,7 +36,7 @@ func NewApiSessionCertificateHandler(env Env) *ApiSessionCertificateHandler {
 }
 
 type ApiSessionCertificateHandler struct {
-	baseHandler
+	baseEntityManager
 }
 
 func (handler *ApiSessionCertificateHandler) newModelEntity() boltEntitySink {

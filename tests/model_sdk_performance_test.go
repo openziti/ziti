@@ -33,10 +33,10 @@ func Test_SpecManyService(t *testing.T) {
 	spec := &perfScenarioSpec{
 		name:                         "many-services",
 		serviceCount:                 10_000,
-		identityCount:                10_000,
+		identityCount:                16_000,
 		edgeRouterCount:              100,
-		servicePolicyCount:           2500,
-		edgeRouterPolicyCount:        250,
+		servicePolicyCount:           100,
+		edgeRouterPolicyCount:        100,
 		serviceEdgeRouterPolicyCount: 100,
 	}
 
@@ -201,10 +201,10 @@ func (ctx *modelPerf) runScenario(spec *perfScenarioSpec) {
 	ctx.createScenario(spec)
 
 	stats := newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(100)
+	stats.collectStats(10)
 
 	stats = newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
-	stats.collectStats(100)
+	stats.collectStats(10)
 
 	ctx.Teardown()
 	shutdown = true
@@ -230,7 +230,7 @@ func (ctx *modelPerf) createScenario(spec *perfScenarioSpec) {
 }
 
 func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
-	serviceHandler := ctx.EdgeController.AppEnv.Handlers.EdgeService
+	serviceHandler := ctx.EdgeController.AppEnv.Managers.EdgeService
 	for i := 0; i < spec.serviceCount; i++ {
 		id := eid.New()
 		if i == 0 {
@@ -255,7 +255,7 @@ func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
 }
 
 func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
-	identityHandler := ctx.EdgeController.AppEnv.Handlers.Identity
+	identityHandler := ctx.EdgeController.AppEnv.Managers.Identity
 	for i := 0; i < spec.identityCount; i++ {
 		id := eid.New()
 		if i == 0 {
@@ -295,7 +295,7 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 }
 
 func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
-	edgeRouterHandler := ctx.EdgeController.AppEnv.Handlers.EdgeRouter
+	edgeRouterHandler := ctx.EdgeController.AppEnv.Managers.EdgeRouter
 	for i := 0; i < spec.edgeRouterCount; i++ {
 		id := eid.New()
 		if i == 0 {
@@ -353,7 +353,7 @@ func (ctx *modelPerf) createPolicies(spec *perfScenarioSpec) {
 }
 
 func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serviceRoles []string) {
-	policyHandler := ctx.EdgeController.AppEnv.Handlers.ServicePolicy
+	policyHandler := ctx.EdgeController.AppEnv.Managers.ServicePolicy
 	id := eid.New()
 	policy := &model.ServicePolicy{
 		BaseEntity:    models.BaseEntity{Id: id},
@@ -368,7 +368,7 @@ func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serv
 }
 
 func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) {
-	policyHandler := ctx.EdgeController.AppEnv.Handlers.EdgeRouterPolicy
+	policyHandler := ctx.EdgeController.AppEnv.Managers.EdgeRouterPolicy
 	id := eid.New()
 	policy := &model.EdgeRouterPolicy{
 		BaseEntity:      models.BaseEntity{Id: id},
@@ -382,7 +382,7 @@ func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []st
 }
 
 func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRoles []string) {
-	policyHandler := ctx.EdgeController.AppEnv.Handlers.ServiceEdgeRouterPolicy
+	policyHandler := ctx.EdgeController.AppEnv.Managers.ServiceEdgeRouterPolicy
 	id := eid.New()
 	policy := &model.ServiceEdgeRouterPolicy{
 		BaseEntity:      models.BaseEntity{Id: id},

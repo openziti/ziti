@@ -52,9 +52,9 @@ func (r *IdentityTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *IdentityTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToRestEntity)
+	ListWithHandler(ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
 }
 
 func (r *IdentityTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Handlers.IdentityType, MapIdentityTypeToRestEntity)
+	DetailWithHandler(ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
 }
