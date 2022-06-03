@@ -59,7 +59,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 	return handler
 }
 
-func (handler IdentityHandler) newModelEntity() boltEntitySink {
+func (handler *IdentityHandler) newModelEntity() boltEntitySink {
 	return &Identity{}
 }
 
@@ -200,7 +200,7 @@ func (handler *IdentityHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-func (handler IdentityHandler) IsUpdated(field string) bool {
+func (handler *IdentityHandler) IsUpdated(field string) bool {
 	return field != persistence.FieldIdentityAuthenticators && field != persistence.FieldIdentityEnrollments && field != persistence.FieldIdentityIsDefaultAdmin
 }
 
@@ -529,7 +529,7 @@ func (handler *IdentityHandler) VisitIdentityAuthenticatorFingerprints(tx *bbolt
 	return stopVisit, err
 }
 
-func (handler IdentityHandler) ReadByExternalId(externalId string) (*Identity, error) {
+func (handler *IdentityHandler) ReadByExternalId(externalId string) (*Identity, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldIdentityExternalId, externalId)
 
 	entity, err := handler.readEntityByQuery(query)
