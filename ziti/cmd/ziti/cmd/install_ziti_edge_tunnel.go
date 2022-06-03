@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/blang/semver"
-	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -77,7 +76,7 @@ func NewCmdInstallZitiEdgeTunnel(out io.Writer, errOut io.Writer) *cobra.Command
 
 // Run implements the command
 func (o *InstallOptions) installZitiEdgeTunnel(targetVersion string) error {
-	newVersion, err := o.getLatestGitHubReleaseVersion(version.GetBranch(), c.ZITI_EDGE_TUNNEL_GITHUB)
+	newVersion, err := o.getLatestGitHubReleaseVersion(c.ZITI_EDGE_TUNNEL_GITHUB)
 	if err != nil {
 		return err
 	}
@@ -88,7 +87,7 @@ func (o *InstallOptions) installZitiEdgeTunnel(targetVersion string) error {
 
 	log.Infoln("Attempting to install '" + c.ZITI_EDGE_TUNNEL + "' version: " + newVersion.String())
 
-	return o.installGitHubRelease(version.GetBranch(), c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, false, newVersion.String())
+	return o.findVersionAndInstallGitHubRelease(c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, false, newVersion.String())
 
 }
 
