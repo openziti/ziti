@@ -31,12 +31,10 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 	ctx := db.NewTestContext(t)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	options := DefaultOptions()
-	options.MinRouterCost = 0
-	network, err := NewNetwork("test", options, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -159,10 +157,10 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 	ctx := db.NewTestContext(b)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -253,10 +251,10 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 	ctx := db.NewTestContext(b)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -327,10 +325,10 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 	ctx := db.NewTestContext(b)
 	defer ctx.Cleanup()
 
-	closeNotify := make(chan struct{})
-	defer close(closeNotify)
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
 
-	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)

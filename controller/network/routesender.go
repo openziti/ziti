@@ -65,10 +65,10 @@ type routeSender struct {
 	in              chan *RouteStatus
 	attendance      map[string]bool
 	serviceCounters ServiceCounters
-	terminators     *TerminatorController
+	terminators     *TerminatorManager
 }
 
-func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *TerminatorController) *routeSender {
+func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *TerminatorManager) *routeSender {
 	return &routeSender{
 		circuitId:       circuitId,
 		timeout:         timeout,

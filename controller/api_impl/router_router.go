@@ -71,11 +71,11 @@ func (r *RouterRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Req
 }
 
 func (r *RouterRouter) ListRouters(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Controllers.Routers, MapRouterToRestEntity)
+	ListWithHandler(n, rc, n.Managers.Routers, MapRouterToRestEntity)
 }
 
 func (r *RouterRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Controllers.Routers, MapRouterToRestEntity)
+	DetailWithHandler(n, rc, n.Managers.Routers, MapRouterToRestEntity)
 }
 
 func (r *RouterRouter) Create(n *network.Network, rc api.RequestContext, params router.CreateRouterParams) {
@@ -90,25 +90,25 @@ func (r *RouterRouter) Create(n *network.Network, rc api.RequestContext, params 
 }
 
 func (r *RouterRouter) Delete(network *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, network.Controllers.Routers)
+	DeleteWithHandler(rc, network.Managers.Routers)
 }
 
 func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params router.UpdateRouterParams) {
 	Update(rc, func(id string) error {
-		return n.Controllers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router))
+		return n.Managers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router), nil)
 	})
 }
 
 func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return n.Controllers.Routers.Patch(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
 func (r *RouterRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
-	r.listAssociations(n, rc, n.Controllers.Terminators, MapTerminatorToRestEntity)
+	r.listAssociations(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
 }
 
 func (r *RouterRouter) listAssociations(n *network.Network, rc api.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(n, rc, n.Controllers.Routers, associationLoader, mapper)
+	ListAssociationWithHandler(n, rc, n.Managers.Routers, associationLoader, mapper)
 }

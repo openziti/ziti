@@ -92,7 +92,7 @@ func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, c
 		checker[db.FieldTerminatorPrecedence] = struct{}{}
 	}
 
-	if err := h.network.Terminators.Patch(terminator, checker); err != nil {
+	if err := h.network.Terminators.Update(terminator, checker); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}

@@ -69,6 +69,10 @@ func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 	return stores.storeMap[entity.GetEntityType()]
 }
 
+func (stores *Stores) GetStoreForEntityType(entityType string) boltz.CrudStore {
+	return stores.storeMap[entityType]
+}
+
 func (stores *Stores) CheckIntegrity(db boltz.Db, fix bool, errorHandler func(error, bool)) error {
 	if fix {
 		return db.Update(func(tx *bbolt.Tx) error {

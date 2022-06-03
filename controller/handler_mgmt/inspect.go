@@ -18,11 +18,11 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type inspectHandler struct {
@@ -45,7 +45,7 @@ func (handler *inspectHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 			response.Success = false
 			response.Errors = append(response.Errors, fmt.Sprintf("%v: %v", handler.network.GetAppId(), err))
 		} else {
-			result := handler.network.Controllers.Inspections.Inspect(request.AppRegex, request.RequestedValues)
+			result := handler.network.Managers.Inspections.Inspect(request.AppRegex, request.RequestedValues)
 			response.Success = result.Success
 			response.Errors = result.Errors
 			for _, val := range result.Results {

@@ -49,7 +49,7 @@ func (r *InspectRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 }
 
 func (r *InspectRouter) Inspect(n *network.Network, rc api.RequestContext, request *rest_model.InspectRequest) {
-	result := n.Controllers.Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
+	result := n.Managers.Inspections.Inspect(stringz.OrEmpty(request.AppRegex), request.RequestedValues)
 	resp := MapInspectResultToRestModel(result)
 	rc.Respond(resp, http.StatusOK)
 }

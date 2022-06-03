@@ -19,6 +19,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/fabric/controller/command"
 	"sort"
 	"strings"
 	"sync"
@@ -49,8 +50,20 @@ import (
 
 const SmartRerouteAttempt = 99969996
 
+// Config provides the values needed to create a Network instance
+type Config interface {
+	GetId() *identity.TokenId
+	GetMetricsRegistry() metrics.Registry
+	GetOptions() *Options
+	GetCommandDispatcher() command.Dispatcher
+	GetDb() boltz.Db
+	GetMetricsConfig() *metrics.Config
+	GetVersionProvider() common.VersionProvider
+	GetCloseNotify() <-chan struct{}
+}
+
 type Network struct {
-	*Controllers
+	*Managers
 	nodeId                 string
 	options                *Options
 	routerChanged          chan *Router
@@ -83,34 +96,31 @@ type Network struct {
 	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
 }
 
-func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
-	stores, err := db.InitStores(database)
+func NewNetwork(config Config) (*Network, error) {
+	stores, err := db.InitStores(config.GetDb())
 	if err != nil {
 		return nil, err
 	}
 
-	controllers := NewControllers(database, stores)
-
-	serviceEventMetrics := metrics.NewUsageRegistry(nodeId, nil, closeNotify)
+	serviceEventMetrics := metrics.NewUsageRegistry(config.GetId().Token, nil, config.GetCloseNotify())
 
 	network := &Network{
-		Controllers:           controllers,
-		nodeId:                nodeId,
-		options:               options,
+		nodeId:                config.GetId().Token,
+		options:               config.GetOptions(),
 		routerChanged:         make(chan *Router, 16),
-		linkController:        newLinkController(options),
+		linkController:        newLinkController(config.GetOptions()),
 		linkChanged:           make(chan *Link, 16),
 		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
 		circuitController:     newCircuitController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
-		eventDispatcher:       event.NewDispatcher(closeNotify),
-		traceController:       trace.NewController(closeNotify),
-		closeNotify:           closeNotify,
+		eventDispatcher:       event.NewDispatcher(config.GetCloseNotify()),
+		traceController:       trace.NewController(config.GetCloseNotify()),
+		closeNotify:           config.GetCloseNotify(),
 		strategyRegistry:      xt.GlobalRegistry(),
 		lastSnapshot:          time.Now().Add(-time.Hour),
-		metricsRegistry:       metrics.NewRegistry(nodeId, nil),
-		VersionProvider:       versionProvider,
+		metricsRegistry:       config.GetMetricsRegistry(),
+		VersionProvider:       config.GetVersionProvider(),
 
 		serviceEventMetrics:          serviceEventMetrics,
 		serviceDialSuccessCounter:    serviceEventMetrics.IntervalCounter("service.dial.success", time.Minute),
@@ -124,13 +134,14 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
 	}
 
-	network.Controllers.Inspections.network = network
+	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
+	network.Managers.Inspections.network = network
 
-	fabricMetrics.InitMetricHandlers(metricsCfg)
+	fabricMetrics.InitMetricHandlers(config.GetMetricsConfig())
 	fabricMetrics.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
-	network.relayControllerMetrics(metricsCfg)
+	network.relayControllerMetrics(config.GetMetricsConfig())
 	return network, nil
 }
 
@@ -177,8 +188,8 @@ func (network *Network) GetStores() *db.Stores {
 	return network.stores
 }
 
-func (network *Network) GetControllers() *Controllers {
-	return network.Controllers
+func (network *Network) GetManagers() *Managers {
+	return network.Managers
 }
 
 func (network *Network) CreateRouter(router *Router) error {

@@ -18,12 +18,15 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
 	"github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"reflect"
 )
 
@@ -32,6 +35,10 @@ type Service struct {
 	Name               string
 	TerminatorStrategy string
 	Terminators        []*Terminator
+}
+
+func (self *Service) GetName() string {
+	return self.Name
 }
 
 func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -43,9 +50,9 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
 	entity.FillCommon(boltService)
 
-	terminatorIds := ctrl.getControllers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
+	terminatorIds := ctrl.getManagers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
 	for _, terminatorId := range terminatorIds {
-		if terminator, _ := ctrl.getControllers().Terminators.readInTx(tx, terminatorId); terminator != nil {
+		if terminator, _ := ctrl.getManagers().Terminators.readInTx(tx, terminatorId); terminator != nil {
 			entity.Terminators = append(entity.Terminators, terminator)
 		}
 	}
@@ -61,11 +68,11 @@ func (entity *Service) toBolt() boltz.Entity {
 	}
 }
 
-func newServiceController(controllers *Controllers) *ServiceController {
-	result := &ServiceController{
-		baseController: newController(controllers, controllers.stores.Service),
-		cache:          cmap.New[*Service](),
-		store:          controllers.stores.Service,
+func newServiceManager(managers *Managers) *ServiceManager {
+	result := &ServiceManager{
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Service),
+		cache:             cmap.New[*Service](),
+		store:             managers.stores.Service,
 	}
 	result.impl = result
 
@@ -79,55 +86,57 @@ func newServiceController(controllers *Controllers) *ServiceController {
 		}
 	}
 
-	controllers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
-	controllers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
+	managers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
+	managers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
 
 	return result
 }
 
-type ServiceController struct {
-	baseController
+type ServiceManager struct {
+	baseEntityManager
 	cache cmap.ConcurrentMap[*Service]
 	store db.ServiceStore
 }
 
-func (ctrl *ServiceController) newModelEntity() boltEntitySink {
+func (self *ServiceManager) newModelEntity() boltEntitySink {
 	return &Service{}
 }
 
-func (ctrl *ServiceController) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
+func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
 	// patched entities may not have all fields, if service is blank, load terminator
 	serviceId := terminator.Service
 	if serviceId == "" {
-		err := ctrl.db.View(func(tx *bbolt.Tx) error {
-			t, err := ctrl.stores.Terminator.LoadOneById(tx, terminator.Id)
+		err := self.db.View(func(tx *bbolt.Tx) error {
+			t, err := self.stores.Terminator.LoadOneById(tx, terminator.Id)
 			if t != nil {
 				terminator = t
 			}
 			return err
 		})
 		if err != nil {
-			ctrl.clearCache()
+			self.clearCache()
 			return terminator
 		}
 		serviceId = terminator.Service
 	}
 	pfxlog.Logger().Debugf("clearing service from cache: %v", serviceId)
-	ctrl.RemoveFromCache(serviceId)
+	self.RemoveFromCache(serviceId)
 	return terminator
 }
 
-func (ctrl *ServiceController) Create(s *Service) error {
-	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
+func (self *ServiceManager) Create(entity *Service) error {
+	return DispatchCreate[*Service](self, entity)
+}
+
+func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
+	s := cmd.Entity
+	err := self.db.Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		if err := ctrl.store.Create(ctx, s.toBolt()); err != nil {
+		if err := self.ValidateNameOnCreate(ctx, s); err != nil {
 			return err
 		}
-		for _, terminator := range s.Terminators {
-			terminator.Service = s.Id
-			if _, err := ctrl.Terminators.CreateInTx(ctx, terminator); err != nil {
-				return err
-			}
+		if err := self.store.Create(ctx, s.toBolt()); err != nil {
+			return err
 		}
 		return nil
 	})
@@ -138,29 +147,21 @@ func (ctrl *ServiceController) Create(s *Service) error {
 	return nil
 }
 
-func (ctrl *ServiceController) Update(s *Service) error {
-	if err := ctrl.updateGeneral(s, nil); err != nil {
+func (self *ServiceManager) Update(entity *Service, updatedFields boltz.UpdatedFields) error {
+	return DispatchUpdate[*Service](self, entity, updatedFields)
+}
+
+func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
+	if err := self.updateGeneral(cmd.Entity, cmd.UpdatedFields); err != nil {
 		return err
 	}
-
-	ctrl.RemoveFromCache(s.Id) // don't cache entity as not all fields may be changed, wait for read to reload
-
+	self.RemoveFromCache(cmd.Entity.Id)
 	return nil
 }
 
-func (ctrl *ServiceController) Patch(s *Service, checker boltz.FieldChecker) error {
-	if err := ctrl.updateGeneral(s, checker); err != nil {
-		return err
-	}
-
-	ctrl.RemoveFromCache(s.Id) // don't cache entity as not all fields may be changed, wait for read to reload
-
-	return nil
-}
-
-func (ctrl *ServiceController) Read(id string) (entity *Service, err error) {
-	err = ctrl.db.View(func(tx *bbolt.Tx) error {
-		entity, err = ctrl.readInTx(tx, id)
+func (self *ServiceManager) Read(id string) (entity *Service, err error) {
+	err = self.db.View(func(tx *bbolt.Tx) error {
+		entity, err = self.readInTx(tx, id)
 		return err
 	})
 	if err != nil {
@@ -169,52 +170,74 @@ func (ctrl *ServiceController) Read(id string) (entity *Service, err error) {
 	return entity, err
 }
 
-func (ctrl *ServiceController) GetIdForName(id string) (string, error) {
+func (self *ServiceManager) GetIdForName(id string) (string, error) {
 	var result []byte
-	err := ctrl.db.View(func(tx *bbolt.Tx) error {
-		result = ctrl.store.GetNameIndex().Read(tx, []byte(id))
+	err := self.db.View(func(tx *bbolt.Tx) error {
+		result = self.store.GetNameIndex().Read(tx, []byte(id))
 		return nil
 	})
 	return string(result), err
 }
 
-func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
-	if service, found := ctrl.cache.Get(id); found {
+func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
+	if service, found := self.cache.Get(id); found {
 		return service, nil
 	}
 
 	entity := &Service{}
-	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
+	if err := self.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 
-	ctrl.cacheService(entity)
+	self.cacheService(entity)
 	return entity, nil
 }
 
-func (ctrl *ServiceController) Delete(id string) error {
-	err := ctrl.db.Update(func(tx *bbolt.Tx) error {
-		return ctrl.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
-	if err == nil {
-		ctrl.RemoveFromCache(id)
-	}
-	return err
-}
-
-func (ctrl *ServiceController) cacheService(service *Service) {
+func (self *ServiceManager) cacheService(service *Service) {
 	pfxlog.Logger().Tracef("updated service cache: %v", service.Id)
-	ctrl.cache.Set(service.Id, service)
+	self.cache.Set(service.Id, service)
 }
 
-func (ctrl *ServiceController) RemoveFromCache(id string) {
+func (self *ServiceManager) RemoveFromCache(id string) {
 	pfxlog.Logger().Debugf("removed service from cache: %v", id)
-	ctrl.cache.Remove(id)
+	self.cache.Remove(id)
 }
 
-func (ctrl *ServiceController) clearCache() {
+func (self *ServiceManager) clearCache() {
 	pfxlog.Logger().Debugf("clearing all services from cache")
-	for _, key := range ctrl.cache.Keys() {
-		ctrl.cache.Remove(key)
+	for _, key := range self.cache.Keys() {
+		self.cache.Remove(key)
 	}
+}
+
+func (self *ServiceManager) Marshall(entity *Service) ([]byte, error) {
+	tags, err := cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &cmd_pb.Service{
+		Id:                 entity.Id,
+		Name:               entity.Name,
+		TerminatorStrategy: entity.TerminatorStrategy,
+		Tags:               tags,
+	}
+
+	return proto.Marshal(msg)
+}
+
+func (self *ServiceManager) Unmarshall(bytes []byte) (*Service, error) {
+	msg := &cmd_pb.Service{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	return &Service{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:               msg.Name,
+		TerminatorStrategy: msg.TerminatorStrategy,
+	}, nil
 }

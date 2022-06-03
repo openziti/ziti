@@ -57,7 +57,7 @@ func (responder *ResponderImpl) RespondWithNotFoundWithCause(cause error) {
 }
 
 func (responder *ResponderImpl) RespondWithFieldError(fe *errorz.FieldError) {
-	responder.RespondWithApiError(errorz.NewFieldApiError(errorz.NewFieldError(fe.Reason, fe.FieldName, fe.FieldValue)))
+	responder.RespondWithApiError(errorz.NewFieldApiError(fe))
 }
 
 func (responder *ResponderImpl) RespondWithEmptyOk() {

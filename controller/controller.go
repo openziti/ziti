@@ -23,9 +23,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/api_impl"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
@@ -39,7 +41,9 @@ import (
 	"github.com/openziti/fabric/profiler"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb"
 	"github.com/sirupsen/logrus"
 )
@@ -47,6 +51,7 @@ import (
 type Controller struct {
 	config             *Config
 	network            *network.Network
+	raftController     *raft.Controller
 	ctrlConnectHandler *handler_ctrl.ConnectHandler
 	mgmtConnectHandler *handler_mgmt.ConnectHandler
 	xctrls             []xctrl.Xctrl
@@ -58,23 +63,75 @@ type Controller struct {
 	ctrlListener channel.UnderlayListener
 	mgmtListener channel.UnderlayListener
 
-	shutdownC     chan struct{}
-	isShutdown    concurrenz.AtomicBoolean
-	agentHandlers map[byte]func(c *bufio.ReadWriter) error
+	shutdownC         chan struct{}
+	isShutdown        concurrenz.AtomicBoolean
+	agentHandlers     map[byte]func(conn *bufio.ReadWriter) error
+	agentBindHandlers []channel.BindHandler
+	metricsRegistry   metrics.Registry
+	versionProvider   common.VersionProvider
+}
+
+func (c *Controller) GetId() *identity.TokenId {
+	return c.config.Id
+}
+
+func (c *Controller) GetMetricsRegistry() metrics.Registry {
+	return c.metricsRegistry
+}
+
+func (c *Controller) GetOptions() *network.Options {
+	return c.config.Network
+}
+
+func (c *Controller) GetCommandDispatcher() command.Dispatcher {
+	if c.raftController == nil {
+		return nil
+	}
+	return c.raftController
+}
+
+func (c *Controller) GetDb() boltz.Db {
+	return c.config.Db
+}
+
+func (c *Controller) GetMetricsConfig() *metrics.Config {
+	return c.config.Metrics
+}
+
+func (c *Controller) GetVersionProvider() common.VersionProvider {
+	return c.versionProvider
+}
+
+func (c *Controller) GetCloseNotify() <-chan struct{} {
+	return c.shutdownC
 }
 
 func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
+	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
+
 	c := &Controller{
 		config:              cfg,
 		shutdownC:           make(chan struct{}),
 		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
-		agentHandlers:       map[byte]func(c *bufio.ReadWriter) error{},
+		metricsRegistry:     metricRegistry,
+		versionProvider:     versionProvider,
+	}
+
+	if cfg.Raft != nil {
+		raftController, err := raft.NewController(cfg.Id, cfg.Raft, metricRegistry)
+		if err != nil {
+			fmt.Printf("error starting raft %+v\n", err)
+			panic(err)
+		}
+
+		c.raftController = raftController
+		cfg.Db = raftController.GetDb()
 	}
 
 	c.registerXts()
 	c.loadEventHandlers()
 
-	if n, err := network.NewNetwork(cfg.Id.Token, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
+	if n, err := network.NewNetwork(c); err == nil {
 		c.network = n
 	} else {
 		return nil, err

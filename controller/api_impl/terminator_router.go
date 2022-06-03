@@ -66,31 +66,36 @@ func (r *TerminatorRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper
 }
 
 func (r *TerminatorRouter) List(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Controllers.Terminators, MapTerminatorToRestEntity)
+	ListWithHandler(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
 }
 
 func (r *TerminatorRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Controllers.Terminators, MapTerminatorToRestEntity)
+	DetailWithHandler(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
 }
 
 func (r *TerminatorRouter) Create(n *network.Network, rc api.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, TerminatorLinkFactory, func() (string, error) {
-		return n.Controllers.Terminators.Create(MapCreateTerminatorToModel(params.Terminator))
+		entity := MapCreateTerminatorToModel(params.Terminator)
+		err := n.Terminators.Create(entity)
+		if err != nil {
+			return "", err
+		}
+		return entity.Id, nil
 	})
 }
 
 func (r *TerminatorRouter) Delete(n *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, n.Controllers.Terminators)
+	DeleteWithHandler(rc, n.Managers.Terminators)
 }
 
 func (r *TerminatorRouter) Update(n *network.Network, rc api.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return n.Controllers.Terminators.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator))
+		return n.Managers.Terminators.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil)
 	})
 }
 
 func (r *TerminatorRouter) Patch(n *network.Network, rc api.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return n.Controllers.Terminators.Patch(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
+		return n.Managers.Terminators.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }
