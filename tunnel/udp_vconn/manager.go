@@ -103,7 +103,7 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 	sourceAddr := service.GetSourceAddr(srcAddr, targetAddr)
 	appInfo := tunnel.GetAppInfo("udp", "", targetAddr.IP.String(), strconv.Itoa(targetAddr.Port), sourceAddr)
 	identity := service.GetDialIdentity(srcAddr, targetAddr)
-	go tunnel.DialAndRun(manager.provider, service, identity, conn, appInfo, false)
+	go tunnel.DialAndRun(service, identity, conn, appInfo, false)
 	return conn, nil
 }
 

@@ -18,7 +18,6 @@ package intercept
 
 import (
 	"fmt"
-	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/pkg/errors"
@@ -33,7 +32,6 @@ const (
 )
 
 type Interceptor interface {
-	Start(provider tunnel.FabricProvider)
 	Stop()
 	Intercept(service *entities.Service, resolver dns.Resolver, tracker AddressTracker) error
 	StopIntercepting(serviceName string, tracker AddressTracker) error

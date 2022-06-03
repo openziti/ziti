@@ -18,7 +18,6 @@ package host
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
@@ -31,20 +30,14 @@ func New() intercept.Interceptor {
 	return &interceptor{}
 }
 
-func (p *interceptor) Start(provider tunnel.FabricProvider) {
-	log := pfxlog.Logger()
-	log.Info("starting host interceptor")
-}
-
 func (p interceptor) Intercept(*entities.Service, dns.Resolver, intercept.AddressTracker) error {
 	return errors.New("can not intercept services in host mode")
 }
 
-func (p *interceptor) Stop() {
-	log := pfxlog.Logger()
-	log.Info("stopping host interceptor")
+func (p interceptor) Stop() {
+	pfxlog.Logger().Info("stopping host interceptor")
 }
 
-func (p *interceptor) StopIntercepting(string, intercept.AddressTracker) error {
+func (p interceptor) StopIntercepting(string, intercept.AddressTracker) error {
 	return errors.New("StopIntercepting not implemented by host interceptor")
 }
