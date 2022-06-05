@@ -18,6 +18,27 @@ services:
     entrypoint:
       - "/openziti/scripts/run-controller.sh"
 
+  ziti-controller-init-container:
+    image: "${ZITI_IMAGE}:${ZITI_VERSION}"
+    depends_on:
+      - ziti-controller
+    environment:
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+    env_file:
+      - ./.env
+    networks:
+      zitiblue:
+        aliases:
+          - ziti-edge-controller-init-container
+      zitired:
+        aliases:
+          - ziti-edge-controller-init-container
+    volumes:
+      - ziti-fs:/openziti
+    entrypoint:
+      - "/openziti/scripts/access-control.sh"
+      
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     environment:

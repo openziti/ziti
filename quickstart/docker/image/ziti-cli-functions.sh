@@ -621,7 +621,7 @@ function pki_client_server {
   fi
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${file_name}-server.key"; then
-    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
+    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list} / ${ip_local}"
     "${ZITI_BIN_DIR-}/ziti" pki create server --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${file_name}-server" \
           --dns "${allow_list}" --ip "${ip_local}" \
@@ -781,10 +781,15 @@ function createPki {
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="${ZITI_CONTROLLER_HOSTNAME},localhost,127.0.0.1"
-  if [[ "$EXTERNAL_DNS" != "" ]]; then pki_allow_list="$pki_allow_list,$EXTERNAL_DNS"; fi
-  pki_client_server "${pki_allow_list}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}" "${ZITI_CONTROLLER_HOSTNAME}"
-  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME},localhost,127.0.0.1" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,$(hostname)"
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
+  if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
+  pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
+  if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
+
+  pki_client_server "${pki_allow_list_dns}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CONTROLLER_HOSTNAME}"
+  pki_client_server "${pki_allow_list_dns}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
 }
 
 
