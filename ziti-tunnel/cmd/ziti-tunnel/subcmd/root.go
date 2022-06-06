@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -45,6 +46,7 @@ const (
 func init() {
 	root.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose mode")
 	root.PersistentFlags().StringP("identity", "i", "", "Path to JSON file that contains an enrolled identity")
+	root.PersistentFlags().String("identity-dir", "", "Path to directory file that contains one or more enrolled identities")
 	root.PersistentFlags().Uint(svcPollRateFlag, 15, "Set poll rate for service updates (seconds). Polling in proxy mode is disabled unless this value is explicitly set")
 	root.PersistentFlags().StringP(resolverCfgFlag, "r", "udp://127.0.0.1:53", "Resolver configuration")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
@@ -109,11 +111,52 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 
 	ziti.SetApplication("ziti-tunnel", version.GetVersion())
 
-	identityJson := cmd.Flag("identity").Value.String()
+	resolverConfig := cmd.Flag("resolver").Value.String()
+	resolver := dns.NewResolver(resolverConfig)
+
+	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
+
+	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
+	if err := intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
+		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
+	}
+
+	if idDir := cmd.Flag("identity-dir").Value.String(); idDir != "" {
+		files, err := ioutil.ReadDir(idDir)
+		if err != nil {
+			log.Fatalf("failed to scan directory %s: %v", idDir, err)
+		}
+
+		for _, file := range files {
+			if filepath.Ext(file.Name()) == ".json" {
+				fn, err := filepath.Abs(filepath.Join(idDir, file.Name()))
+				if err != nil {
+					log.Fatalf("failed to listing file %s: %v", file.Name(), err)
+				}
+				startIdentity(cmd, serviceListenerGroup, fn)
+			}
+		}
+	} else {
+		identityJson := cmd.Flag("identity").Value.String()
+		startIdentity(cmd, serviceListenerGroup, identityJson)
+	}
+
+	serviceListenerGroup.WaitForShutdown()
+
+	if cliAgentEnabled {
+		agent.Close()
+	}
+}
+
+func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceListenerGroup, identityJson string) {
+	log := pfxlog.Logger()
+
+	log.Infof("loading identity: %v", identityJson)
 	zitiCfg, err := config.NewFromFile(identityJson)
 	if err != nil {
 		log.Fatalf("failed to load ziti configuration from %s: %v", identityJson, err)
 	}
+
 	zitiCfg.ConfigTypes = []string{
 		entities.ClientConfigV1,
 		entities.ServerConfigV1,
@@ -122,11 +165,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		entities.HostConfigV2,
 	}
 
-	resolverConfig := cmd.Flag("resolver").Value.String()
-	resolver := dns.NewResolver(resolverConfig)
-
-	serviceListener := intercept.NewServiceListener(interceptor, resolver)
-
+	serviceListener := serviceListenerGroup.NewServiceListener()
 	svcPollRate, _ := cmd.Flags().GetUint(svcPollRateFlag)
 	options := &ziti.Options{
 		RefreshInterval: time.Duration(svcPollRate) * time.Second,
@@ -138,18 +177,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 
 	rootPrivateContext := ziti.NewContextWithOpts(zitiCfg, options)
 
-	dnsIpRange, _ := cmd.Flags().GetString(dnsSvcIpRangeFlag)
-	if err = intercept.SetDnsInterceptIpRange(dnsIpRange); err != nil {
-		log.Fatalf("invalid dns service IP range %s: %v", dnsIpRange, err)
-	}
-
-	interceptor.Start(tunnel.NewContextProvider(rootPrivateContext))
-
 	if err = rootPrivateContext.Authenticate(); err != nil {
 		log.WithError(err).Fatal("failed to authenticate")
-	}
-	serviceListener.WaitForShutdown()
-	if cliAgentEnabled {
-		agent.Close()
 	}
 }
