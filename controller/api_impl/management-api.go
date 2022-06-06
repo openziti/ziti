@@ -31,7 +31,7 @@ import (
 	"github.com/openziti/fabric/rest_server"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"net/http"
 	"strings"
 )
@@ -40,7 +40,7 @@ const (
 	ServerHeader = "server"
 )
 
-var _ xweb.WebHandlerFactory = &ManagementApiFactory{}
+var _ xweb.ApiHandlerFactory = &ManagementApiFactory{}
 
 type ManagementApiFactory struct {
 	InitFunc func(managementApi *ManagementApiHandler) error
@@ -49,7 +49,7 @@ type ManagementApiFactory struct {
 	xmgmts   []xmgmt.Xmgmt
 }
 
-func (factory *ManagementApiFactory) Validate(_ *xweb.Config) error {
+func (factory *ManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (factory *ManagementApiFactory) Binding() string {
 	return FabricApiBinding
 }
 
-func (factory *ManagementApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
+func (factory *ManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	managementSpec, err := loads.Embedded(rest_server.SwaggerJSON, rest_server.FlatSwaggerJSON)
 	if err != nil {
 		pfxlog.Logger().Fatalln(err)
