@@ -44,7 +44,7 @@ import (
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -57,8 +57,8 @@ type Controller struct {
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
 
-	xwebs               []xweb.Xweb
-	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
+	xwebFactoryRegistry xweb.Registry
+	xweb                xweb.Instance
 
 	ctrlListener channel.UnderlayListener
 	mgmtListener channel.UnderlayListener
@@ -112,7 +112,7 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 	c := &Controller{
 		config:              cfg,
 		shutdownC:           make(chan struct{}),
-		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
+		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		metricsRegistry:     metricRegistry,
 		versionProvider:     versionProvider,
 	}
@@ -164,11 +164,13 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
+
+	if err := c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 }
@@ -223,12 +225,11 @@ func (c *Controller) Run() error {
 	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.network, c.xmgmts, c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
 
-	/*
-	 * start xweb for http/web API listening
-	 */
-	for _, web := range c.xwebs {
-		go web.Run()
+	if err := c.config.Configure(c.xweb); err != nil {
+		panic(err)
 	}
+
+	go c.xweb.Run()
 
 	// event handlers
 	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
@@ -268,9 +269,7 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
-		for _, web := range c.xwebs {
-			go web.Shutdown()
-		}
+		go c.xweb.Shutdown()
 	}
 }
 
@@ -323,11 +322,6 @@ func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
-	//add default REST XWeb
-	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -356,18 +350,8 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 	return nil
 }
 
-func (c *Controller) RegisterXweb(x xweb.Xweb) error {
-	if err := c.config.Configure(x); err != nil {
-		return err
-	}
-	if x.Enabled() {
-		c.xwebs = append(c.xwebs, x)
-	}
-	return nil
-}
-
-func (c *Controller) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error {
-	return c.xwebFactoryRegistry.Add(x)
+func (c *Controller) GetXWebInstance() xweb.Instance {
+	return c.xweb
 }
 
 func (c *Controller) GetNetwork() *network.Network {

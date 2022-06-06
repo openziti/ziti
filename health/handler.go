@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
@@ -31,7 +31,7 @@ const (
 	Binding = "health-checks"
 )
 
-var _ xweb.WebHandlerFactory = &HealthCheckApiFactory{}
+var _ xweb.ApiHandlerFactory = &HealthCheckApiFactory{}
 
 func NewHealthCheckApiFactory(healthChecker gosundheit.Health) *HealthCheckApiFactory {
 	return &HealthCheckApiFactory{
@@ -43,7 +43,7 @@ type HealthCheckApiFactory struct {
 	healthChecker gosundheit.Health
 }
 
-func (factory HealthCheckApiFactory) Validate(*xweb.Config) error {
+func (factory HealthCheckApiFactory) Validate(*xweb.InstanceConfig) error {
 	return nil
 }
 
@@ -51,7 +51,7 @@ func (factory HealthCheckApiFactory) Binding() string {
 	return Binding
 }
 
-func (factory HealthCheckApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
+func (factory HealthCheckApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	return &HealthCheckApiHandler{
 		healthChecker: factory.healthChecker,
 		options:       options,

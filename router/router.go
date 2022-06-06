@@ -47,7 +47,7 @@ import (
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/info"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -76,8 +76,8 @@ type Router struct {
 	versionProvider common.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
 
-	xwebs               []xweb.Xweb
-	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
+	xwebs               []xweb.Instance
+	xwebFactoryRegistry xweb.Registry
 	agentBindHandlers   []channel.BindHandler
 }
 
@@ -151,7 +151,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		shutdownDoneC:       make(chan struct{}),
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
-		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
+		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		xlinkRegistry:       NewLinkRegistry(),
 	}
 }
@@ -306,7 +306,7 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
 
-	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry, self.config.Id)); err != nil {
+	if err := self.RegisterXweb(xweb.NewDefaultInstance(self.xwebFactoryRegistry, self.config.Id)); err != nil {
 		return err
 	}
 
@@ -494,7 +494,7 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	return h, nil
 }
 
-func (self *Router) RegisterXweb(x xweb.Xweb) error {
+func (self *Router) RegisterXweb(x xweb.Instance) error {
 	if err := self.config.Configure(x); err != nil {
 		return err
 	}
@@ -504,7 +504,7 @@ func (self *Router) RegisterXweb(x xweb.Xweb) error {
 	return nil
 }
 
-func (self *Router) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error {
+func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 	return self.xwebFactoryRegistry.Add(x)
 }
 
