@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
@@ -129,4 +130,64 @@ func TestEdgeCtrlAdvertisedPortValueWhenSet(t *testing.T) {
 	})
 
 	assert.Equal(t, expectedPort, data.Controller.Edge.AdvertisedPort)
+}
+
+func TestDefaultEdgeIdentityEnrollmentDuration(t *testing.T) {
+	expectedDuration := time.Duration(180) * time.Minute
+
+	// Unset the env var so the default is used
+	_ = os.Unsetenv("ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION")
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedDuration, data.Controller.EdgeIdentityDuration)
+}
+
+func TestEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
+	expectedDuration := 5 * time.Minute // Setting a custom duration which is not the default value
+
+	// Set a custom value for the enrollment duration
+	_ = os.Setenv("ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION", fmt.Sprintf("%.0f", expectedDuration.Minutes()))
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedDuration, data.Controller.EdgeIdentityDuration)
+}
+
+func TestDefaultEdgeRouterEnrollmentDuration(t *testing.T) {
+	expectedDuration := time.Duration(180) * time.Minute
+
+	// Unset the env var so the default is used
+	_ = os.Unsetenv("ZITI_EDGE_ROUTER_ENROLLMENT_DURATION")
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedDuration, data.Controller.EdgeRouterDuration)
+}
+
+func TestEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
+	expectedDuration := 5 * time.Minute // Setting a custom duration which is not the default value
+
+	// Set a custom value for the enrollment duration
+	_ = os.Setenv("ZITI_EDGE_ROUTER_ENROLLMENT_DURATION", fmt.Sprintf("%.0f", expectedDuration.Minutes()))
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	assert.Equal(t, expectedDuration, data.Controller.EdgeRouterDuration)
 }

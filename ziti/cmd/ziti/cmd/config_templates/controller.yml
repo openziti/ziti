@@ -138,14 +138,14 @@ edge:
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
-      # duration - optional, default {{ .Controller.EdgeIdentityDuration.Minutes }}m
+      # duration - optional, default {{ .Controller.DefaultEdgeIdentityDuration.Minutes }}m
       # The length of time that a Ziti Edge Identity enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
       duration: {{ .Controller.EdgeIdentityDuration.Minutes }}m
     # edgeRouter - Optional
     # A section for edge router enrollment specific settings.
     edgeRouter:
-      # duration - optional, default {{ .Controller.EdgeRouterDuration.Minutes }}m
+      # duration - optional, default {{ .Controller.DefaultEdgeRouterDuration.Minutes }}m
       # The length of time that a Ziti Edge Router enrollment should remain valid. After
       # this duration, the enrollment will expire and no longer be usable.
       duration: {{ .Controller.EdgeRouterDuration.Minutes }}m

@@ -1,10 +1,12 @@
 package helpers
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestHomeDirHasNoWindowsSlashes(t *testing.T) {
@@ -299,5 +301,57 @@ func TestGetZitiEdgeCtrlPortWhenSet(t *testing.T) {
 
 	// Check that the value matches
 	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION"
+	expectedValue := 5 * time.Minute
+
+	// Set the env variable
+	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeIdentityEnrollmentDuration()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeIdentityEnrollmentDurationWhenNotSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION"
+	expectedValue := 180 * time.Minute
+
+	// Set the env variable
+	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeIdentityEnrollmentDuration()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	expectedValue := 5 * time.Minute
+
+	// Set the env variable
+	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeRouterEnrollmentDuration()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
+	// Setup
+	varName := "ZITI_EDGE_ROUTER_ENROLLMENT_DURATION"
+	expectedValue := 180 * time.Minute
+
+	// Set the env variable
+	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
