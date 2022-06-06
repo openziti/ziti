@@ -1,3 +1,21 @@
+# Release 0.25.11
+
+## What's New
+- Edge
+  - Bug fixes
+- Fabric
+  - N/A
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+# Edge
+## Bug Fixes
+
+* https://github.com/openziti/edge/issues/1027
+* https://github.com/openziti/edge/issues/1025
+
 # Release 0.25.10
 
 ## What's New
@@ -9,6 +27,8 @@
   - CLI support for enrollments/authenticators/re-enrollment
   - Fix prox-c download
   - ziti-fabric cleanup
+  - Add public attributes and service policies allowing public access to routers in docker-compose quickstart
+  - Add file overwrite checks for the "Local ziti quickstart" script
 - SDK Golang
   - N/A
 

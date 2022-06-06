@@ -203,8 +203,17 @@ func (o *CommonOptions) getLatestTerraformProviderVersion(branch string, provide
 	return util.GetLatestTerraformProviderVersionFromArtifactory(branch, provider)
 }
 
-func (o *CommonOptions) getLatestGitHubReleaseVersion(branch string, zitiApp string) (semver.Version, error) {
-	return util.GetLatestGitHubReleaseVersion(o.Verbose, zitiApp)
+func (o *CommonOptions) getLatestGitHubReleaseVersion(zitiApp string) (semver.Version, error) {
+	var result semver.Version
+	release, err := util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
+	if release != nil {
+		result = release.SemVer
+	}
+	return result, err
+}
+
+func (o *CommonOptions) getHighestVersionGitHubReleaseInfo(zitiApp string) (*util.GitHubReleasesData, error) {
+	return util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
 }
 
 func (o *CommonOptions) getCurrentZitiSnapshotList() ([]string, error) {
@@ -329,28 +338,16 @@ func (o *CommonOptions) installTerraformProvider(branch string, provider string,
 	return os.Chmod(fileToChmod, 0755)
 }
 
-func (o *CommonOptions) installGitHubRelease(branch string, zitiApp string, zitiAppGitHub string, upgrade bool, version string) error {
-	binDir, err := util.BinaryLocation()
-	if err != nil {
-		return err
-	}
-	binary := zitiApp
-	fileName := binary
-	if !upgrade {
-		f, flag, err := o.shouldInstallBinary(binDir, binary)
-		if err != nil || !flag {
-			return err
-		}
-		fileName = f
-	}
+func (o *CommonOptions) findVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, upgrade bool, version string) error {
 	var latestVersion semver.Version
-
+	var err error
 	if version != "" {
 		if strings.Contains(version, "*") {
-			latestVersion, err = util.GetLatestGitHubReleaseVersion(o.Verbose, zitiAppGitHub)
+			latestRelease, err := util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiAppGitHub)
 			if err != nil {
 				return err
 			}
+			latestVersion = latestRelease.SemVer
 			version = latestVersion.String()
 		} else {
 			latestVersion, err = semver.Make(version)
@@ -360,10 +357,34 @@ func (o *CommonOptions) installGitHubRelease(branch string, zitiApp string, ziti
 		}
 	}
 
+	release, err := util.GetLatestGitHubReleaseAsset(o.Staging, zitiAppGitHub)
+	if err != nil {
+		return err
+	}
+	return o.installGitHubRelease(zitiApp, upgrade, release)
+}
+
+func (o *CommonOptions) installGitHubRelease(zitiApp string, upgrade bool, release *util.GitHubReleasesData) error {
+	binDir, err := util.BinaryLocation()
+	if err != nil {
+		return err
+	}
+	binary := zitiApp
+	fileName := binary
+
+	if !upgrade {
+		f, flag, err := o.shouldInstallBinary(binDir, binary)
+		if err != nil || !flag {
+			return err
+		}
+		fileName = f
+	}
+
 	fullPath := filepath.Join(binDir, fileName)
 	ext := ".zip"
 	zipFile := fullPath + ext
-	releaseUrl, err := util.GetLatestGitHubReleaseAsset(o.Staging, zitiAppGitHub)
+
+	releaseUrl, err := release.GetDownloadUrl(zitiApp)
 	if err != nil {
 		return err
 	}
@@ -381,6 +402,6 @@ func (o *CommonOptions) installGitHubRelease(branch string, zitiApp string, ziti
 	if err != nil {
 		return err
 	}
-	log.Infof("Successfully installed '%s' version '%s'\n", zitiApp, latestVersion)
+	log.Infof("Successfully installed '%s' version '%s'\n", zitiApp, release.SemVer)
 	return os.Chmod(fullPath, 0755)
 }
