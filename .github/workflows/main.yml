@@ -247,7 +247,13 @@ jobs:
         run: go install github.com/openziti/zitilab/github@github-action
 
       - name: Test Ziti Command
-        run: github
+        env:
+          ZITI_ROOT: release/amd64/linux/
+        run: |
+          github create
+          github up
+          github dispose
+          github clean
 
 
   smoketest:
