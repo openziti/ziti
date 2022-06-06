@@ -102,6 +102,10 @@ func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*re
 		AuthenticatorID: &apiSession.AuthenticatorId,
 	}
 
+	if ret.ConfigTypes == nil {
+		ret.ConfigTypes = []string{}
+	}
+
 	if val, ok := ae.GetManagers().ApiSession.HeartbeatCollector.LastAccessedAt(apiSession.Id); ok {
 		cachedActivityAt := strfmt.DateTime(*val)
 		ret.CachedLastActivityAt = cachedActivityAt
