@@ -91,13 +91,8 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 
 type interceptor struct {
 	lanIf          string
-	provider       tunnel.FabricProvider
 	serviceProxies cmap.ConcurrentMap[*tProxy]
 	ipt            *iptables.IPTables
-}
-
-func (self *interceptor) Start(provider tunnel.FabricProvider) {
-	self.provider = provider
 }
 
 func (self *interceptor) Stop() {
@@ -198,11 +193,11 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	}
 
 	if t.tcpLn != nil {
-		go t.acceptTCP(self.provider)
+		go t.acceptTCP()
 	}
 
 	if t.udpLn != nil {
-		go t.acceptUDP(self.provider)
+		go t.acceptUDP()
 	}
 
 	return t, t.Intercept(resolver, tracker)
@@ -247,7 +242,7 @@ const (
 	dstChain    = "NF-INTERCEPT"
 )
 
-func (self *tProxy) acceptTCP(provider tunnel.FabricProvider) {
+func (self *tProxy) acceptTCP() {
 	log := pfxlog.Logger()
 	for {
 		client, err := self.tcpLn.Accept()
@@ -264,12 +259,12 @@ func (self *tProxy) acceptTCP(provider tunnel.FabricProvider) {
 		sourceAddr := self.service.GetSourceAddr(client.RemoteAddr(), client.LocalAddr())
 		appInfo := tunnel.GetAppInfo("tcp", dstHostname, dstIp, dstPort, sourceAddr)
 		identity := self.service.GetDialIdentity(client.RemoteAddr(), client.LocalAddr())
-		go tunnel.DialAndRun(provider, self.service, identity, client, appInfo, true)
+		go tunnel.DialAndRun(self.service, identity, client, appInfo, true)
 	}
 }
 
-func (self *tProxy) acceptUDP(provider tunnel.FabricProvider) {
-	vconnMgr := udp_vconn.NewManager(provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+func (self *tProxy) acceptUDP() {
+	vconnMgr := udp_vconn.NewManager(self.service.GetFabricProvider(), udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 	self.generateReadEvents(vconnMgr)
 }
 

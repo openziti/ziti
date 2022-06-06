@@ -354,6 +354,7 @@ type InterceptV1Config struct {
 type TemplateFunc func(sourceAddr net.Addr, destAddr net.Addr) string
 
 type Service struct {
+	FabricProvider tunnel.FabricProvider
 	edge.Service
 	InterceptV1Config *InterceptV1Config
 	DialTimeout       time.Duration
@@ -364,6 +365,10 @@ type Service struct {
 	cleanupActions       []func()
 	reconnectAction      func()
 	lock                 sync.Mutex
+}
+
+func (self *Service) GetFabricProvider() tunnel.FabricProvider {
+	return self.FabricProvider
 }
 
 func (self *Service) AddCleanupAction(f func()) {

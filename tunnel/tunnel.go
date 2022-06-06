@@ -32,11 +32,12 @@ import (
 var log = logrus.StandardLogger()
 
 type Service interface {
+	GetFabricProvider() FabricProvider
 	GetName() string
 	GetDialTimeout() time.Duration
 }
 
-func DialAndRun(provider FabricProvider, service Service, identity string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {
+func DialAndRun(service Service, identity string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {
 	appInfoJson, err := json.Marshal(appInfo)
 	if err != nil {
 		log.WithError(err).WithField("service", service.GetName()).Error("unable to marshal appInfo")
@@ -44,7 +45,7 @@ func DialAndRun(provider FabricProvider, service Service, identity string, clien
 		return
 	}
 
-	if err := provider.TunnelService(service, identity, clientConn, halfClose, appInfoJson); err != nil {
+	if err := service.GetFabricProvider().TunnelService(service, identity, clientConn, halfClose, appInfoJson); err != nil {
 		log.WithError(err).WithField("service", service.GetName()).Error("tunnel failed")
 		_ = clientConn.Close()
 	}

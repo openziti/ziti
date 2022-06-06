@@ -42,7 +42,7 @@ type edgeTerminator struct {
 	edge.MsgChannel
 	edgeClientConn *edgeClientConn
 	token          string
-	terminatorId   string
+	terminatorId   concurrenz.AtomicValue[string]
 	assignIds      bool
 	onClose        func()
 }
@@ -58,7 +58,7 @@ func (self *edgeTerminator) nextDialConnId() uint32 {
 
 func (self *edgeTerminator) close(notify bool, reason string) {
 	logger := pfxlog.Logger().
-		WithField("terminatorId", self.terminatorId).
+		WithField("terminatorId", self.terminatorId.Load()).
 		WithField("token", self.token)
 
 	if notify && !self.IsClosed() {
@@ -70,7 +70,7 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 		}
 	}
 
-	if self.terminatorId != "" {
+	if self.terminatorId.Load() != "" {
 		logger.Info("removing terminator on controller")
 		if err := self.edgeClientConn.removeTerminator(self); err != nil {
 			logger.WithError(err).Error("failed to remove terminator")

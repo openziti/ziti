@@ -62,7 +62,6 @@ type interceptor struct {
 	interceptIP net.IP
 	services    map[string]*Service
 	closeCh     chan interface{}
-	provider    tunnel.FabricProvider
 }
 
 func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
@@ -104,15 +103,7 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 	return &p, nil
 }
 
-func (p *interceptor) Start(provider tunnel.FabricProvider) {
-	log := pfxlog.Logger()
-	log.Info("starting proxy interceptor")
-
-	// just stash the context
-	p.provider = provider
-}
-
-func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
+func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	proxiedService, ok := p.services[service.Name]
@@ -124,7 +115,7 @@ func (p interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ inte
 	proxiedService.TunnelService = service
 
 	// pre-fetch network session todo move this to service poller?
-	p.provider.PrepForUse(service.Id)
+	service.FabricProvider.PrepForUse(service.Id)
 
 	go p.runServiceListener(proxiedService)
 	return nil
@@ -168,7 +159,7 @@ func (p *interceptor) handleTCP(service *Service) {
 		sourceAddr := service.TunnelService.GetSourceAddr(conn.RemoteAddr(), conn.LocalAddr())
 		appInfo := tunnel.GetAppInfo("tcp", "", p.interceptIP.String(), strconv.Itoa(service.Port), sourceAddr)
 		identity := service.TunnelService.GetDialIdentity(conn.RemoteAddr(), conn.LocalAddr())
-		go tunnel.DialAndRun(p.provider, service.TunnelService, identity, conn, appInfo, true)
+		go tunnel.DialAndRun(service.TunnelService, identity, conn, appInfo, true)
 	}
 }
 
@@ -192,13 +183,12 @@ func (p *interceptor) handleUDP(service *Service) {
 		service: service.TunnelService,
 		conn:    udpPacketConn,
 	}
-	vconnManager := udp_vconn.NewManager(p.provider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+	vconnManager := udp_vconn.NewManager(service.TunnelService.FabricProvider, udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
 	go reader.generateReadEvents(vconnManager)
 }
 
 func (p *interceptor) Stop() {
-	log := pfxlog.Logger()
-	log.Info("stopping proxy interceptor")
+	pfxlog.Logger().Info("stopping proxy interceptor")
 
 	for _, service := range p.services {
 		_ = service.Stop()

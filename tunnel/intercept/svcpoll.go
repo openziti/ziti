@@ -44,6 +44,55 @@ var sourcePortVar = "$" + tunnel.SourcePortKey
 var dstIpVar = "$" + tunnel.DestinationIpKey
 var destPortVar = "$" + tunnel.DestinationPortKey
 
+func NewServiceListenerGroup(interceptor Interceptor, resolver dns.Resolver) *ServiceListenerGroup {
+	return &ServiceListenerGroup{
+		interceptor:    interceptor,
+		resolver:       resolver,
+		healthCheckMgr: health.NewManager(),
+		addrTracker:    addrTracker{},
+	}
+}
+
+type ServiceListenerGroup struct {
+	interceptor    Interceptor
+	resolver       dns.Resolver
+	healthCheckMgr health.Manager
+	addrTracker    AddressTracker
+	listener       []*ServiceListener
+	sync.Mutex
+}
+
+func (self *ServiceListenerGroup) NewServiceListener() *ServiceListener {
+	result := &ServiceListener{
+		interceptor:    self.interceptor,
+		resolver:       self.resolver,
+		healthCheckMgr: self.healthCheckMgr,
+		addrTracker:    self.addrTracker,
+		services:       map[string]*entities.Service{},
+	}
+	self.listener = append(self.listener, result)
+	return result
+}
+
+func (self *ServiceListenerGroup) WaitForShutdown() {
+	sig := make(chan os.Signal, 1) //signal.Notify expects a buffered chan of at least 1
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+
+	for s := range sig {
+		logrus.Debugf("caught signal %v", s)
+		break
+	}
+
+	self.Lock()
+	defer self.Unlock()
+
+	for _, listener := range self.listener {
+		listener.stop()
+	}
+
+	self.interceptor.Stop()
+}
+
 func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *ServiceListener {
 	return &ServiceListener{
 		interceptor:    interceptor,
@@ -73,13 +122,17 @@ func (self *ServiceListener) WaitForShutdown() {
 		break
 	}
 
+	self.stop()
+	self.interceptor.Stop()
+}
+
+func (self *ServiceListener) stop() {
 	self.Lock()
 	defer self.Unlock()
 
 	for _, svc := range self.services {
 		self.removeService(svc)
 	}
-	self.interceptor.Stop()
 }
 
 func (self *ServiceListener) HandleProviderReady(provider tunnel.FabricProvider) {
@@ -90,7 +143,10 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 	self.Lock()
 	defer self.Unlock()
 
-	tunnelerService := &entities.Service{Service: *service}
+	tunnelerService := &entities.Service{
+		FabricProvider: self.provider,
+		Service:        *service,
+	}
 
 	log := logrus.WithField("service", service.Name)
 
