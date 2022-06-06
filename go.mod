@@ -23,8 +23,8 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/channel v0.18.39
-	github.com/openziti/edge v0.21.238
-	github.com/openziti/fabric v0.18.0
+	github.com/openziti/edge v0.21.240
+	github.com/openziti/fabric v0.18.1
 	github.com/openziti/foundation v0.17.27
 	github.com/openziti/sdk-golang v0.16.76
 	github.com/openziti/storage v0.1.7
@@ -130,6 +130,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/x509-claims v1.0.2 // indirect
+	github.com/openziti/xweb/v2 v2.0.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect

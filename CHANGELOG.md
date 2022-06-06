@@ -4,7 +4,7 @@
 - Edge
   - Bug fixes
 - Fabric
-  - N/A
+  - Bug fixes
 - Ziti CLI
   - N/A
 - SDK Golang
@@ -15,6 +15,12 @@
 
 * https://github.com/openziti/edge/issues/1027
 * https://github.com/openziti/edge/issues/1025
+* https://github.com/openziti/edge/issues/1035
+
+# Fabric
+## Bug Fixes
+
+* https://github.com/openziti/fabric/issues/406
 
 # Release 0.25.10
 
