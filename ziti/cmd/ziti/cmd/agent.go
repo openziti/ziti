@@ -19,6 +19,7 @@ package cmd
 import (
 	"github.com/openziti/edge/router/debugops"
 	"github.com/openziti/fabric/controller"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
@@ -46,7 +47,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	agentCmd.AddCommand(ctrlCmd)
-	ctrlCmd.AddCommand(NewSimpleAgentCustomCmd("snapshot-db", AgentAppController, controller.AgentOpSnapshotDbSnaps, p))
+	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",
