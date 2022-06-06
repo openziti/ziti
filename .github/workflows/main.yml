@@ -246,6 +246,21 @@ jobs:
       - name: Install Zitilab Commands
         run: go install github.com/openziti/zitilab/github@github-action
 
+      - name: Create Zitilab Bindings
+        run: |
+          mkdir .fablab
+          touch .fablab/bindings.yml
+          echo `credentials:
+                  aws:
+                    managed_key: true
+                  edge:
+                    username: admin
+                    password: admin
+                  influxdb:
+                    username: fablab
+                    password: fablab` > .fablab/bindings.yml
+
+
       - name: Test Ziti Command
         env:
           ZITI_ROOT: release/amd64/linux/
