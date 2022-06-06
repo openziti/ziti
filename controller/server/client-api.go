@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/edge/rest_client_api_server"
 	"github.com/openziti/edge/rest_management_api_server"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net/http"
@@ -34,16 +34,16 @@ import (
 	"time"
 )
 
-var _ xweb.WebHandlerFactory = &ClientApiFactory{}
+var _ xweb.ApiHandlerFactory = &ClientApiFactory{}
 
 type ClientApiFactory struct {
 	InitFunc func(clientApi *ClientApiHandler) error
 	appEnv   *env.AppEnv
 }
 
-func (factory ClientApiFactory) Validate(config *xweb.Config) error {
+func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 	clientApiFound := false
-	for _, webListener := range config.WebListeners {
+	for _, webListener := range config.ServerConfigs {
 		for _, api := range webListener.APIs {
 
 			if webListener.Identity != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
@@ -71,7 +71,7 @@ func (factory ClientApiFactory) Validate(config *xweb.Config) error {
 	factory.appEnv.Config.RefreshCaPems()
 
 	if !clientApiFound {
-		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of API [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
+		return errors.Errorf("could not find [edge.api.address] value [%s] as a bind point any instance of ApiConfig [%s]", factory.appEnv.Config.Api.Address, controller.ClientApiBinding)
 	}
 
 	return nil
@@ -87,7 +87,7 @@ func (factory ClientApiFactory) Binding() string {
 	return controller.ClientApiBinding
 }
 
-func (factory ClientApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
+func (factory ClientApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	clientApi, err := NewClientApiHandler(factory.appEnv, options)
 
 	if err != nil {
@@ -122,11 +122,15 @@ func (clientApi ClientApiHandler) RootPath() string {
 }
 
 func (clientApi ClientApiHandler) IsHandler(r *http.Request) bool {
-	return strings.HasPrefix(r.URL.Path, clientApi.RootPath()) || strings.HasPrefix(r.URL.Path, controller.LegacyClientRestApiBaseUrlV1) || !strings.HasPrefix(r.URL.Path, "/fabric")
+	return strings.HasPrefix(r.URL.Path, clientApi.RootPath())
 }
 
 func (clientApi ClientApiHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	clientApi.handler.ServeHTTP(writer, request)
+}
+
+func (clientApi ClientApiHandler) IsDefault() bool {
+	return true
 }
 
 func NewClientApiHandler(ae *env.AppEnv, options map[interface{}]interface{}) (*ClientApiHandler, error) {

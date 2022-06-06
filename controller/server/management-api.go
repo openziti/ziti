@@ -25,20 +25,20 @@ import (
 	"github.com/openziti/edge/rest_management_api_client"
 	"github.com/openziti/edge/rest_management_api_server"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"net/http"
 	"strings"
 	"time"
 )
 
-var _ xweb.WebHandlerFactory = &ManagementApiFactory{}
+var _ xweb.ApiHandlerFactory = &ManagementApiFactory{}
 
 type ManagementApiFactory struct {
 	InitFunc func(managementApi *ManagementApiHandler) error
 	appEnv   *env.AppEnv
 }
 
-func (factory ManagementApiFactory) Validate(_ *xweb.Config) error {
+func (factory ManagementApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
@@ -52,7 +52,7 @@ func (factory ManagementApiFactory) Binding() string {
 	return controller.ManagementApiBinding
 }
 
-func (factory ManagementApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
+func (factory ManagementApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 	managementApi, err := NewManagementApiHandler(factory.appEnv, options)
 
 	if err != nil {

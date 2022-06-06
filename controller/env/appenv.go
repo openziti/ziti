@@ -53,7 +53,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
@@ -153,7 +153,7 @@ type HostController interface {
 	RegisterAgentBindHandler(bindHandler channel.BindHandler)
 	RegisterXctrl(x xctrl.Xctrl) error
 	RegisterXmgmt(x xmgmt.Xmgmt) error
-	RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error
+	GetXWebInstance() xweb.Instance
 	GetNetwork() *network.Network
 	GetCloseNotifyChannel() <-chan struct{}
 	Shutdown()
@@ -255,7 +255,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 		var err error
 		rc.ApiSession, err = ae.GetManagers().ApiSession.ReadByToken(rc.SessionToken)
 		if err != nil {
-			logger.WithError(err).Debugf("looking up API session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
+			logger.WithError(err).Debugf("looking up ApiConfig session for %s resulted in an error, request will continue unauthenticated", rc.SessionToken)
 			rc.ApiSession = nil
 			rc.SessionToken = ""
 		}
@@ -601,7 +601,7 @@ func (ae *AppEnv) IsAllowed(responderFunc func(ae *AppEnv, rc *response.RequestC
 		} else {
 			pfxlog.Logger().WithFields(map[string]interface{}{
 				"url": request.URL,
-			}).Warn("could not mark metrics for REST API endpoint, request context start time is zero")
+			}).Warn("could not mark metrics for REST ApiConfig endpoint, request context start time is zero")
 		}
 	})
 }
