@@ -452,6 +452,8 @@ github.com/openziti/x509-claims v1.0.2 h1:PSv/xRfejIAcPc16A902k08rSBs3R8bjtL4qq6
 github.com/openziti/x509-claims v1.0.2/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb v1.0.0 h1:gShI3whG0+tmswrLXqQQ45JP5sMvpMfUughQsIh28uY=
 github.com/openziti/xweb v1.0.0/go.mod h1:twKDdPg1wsj8QqiltQgfJVRIktw4sJ1u1R+Ylc9dqiM=
+github.com/openziti/xweb/v2 v2.0.0 h1:tXYkiP55f9wOdZ/kwe28AvZotcAQJEYPtZTaWfSnnX8=
+github.com/openziti/xweb/v2 v2.0.0/go.mod h1:0rV8rBgZQMAe3qAGR7csrIemBL8ZAOwhR4lwYlZTJw0=
 github.com/orcaman/concurrent-map/v2 v2.0.0 h1:iSMwuBQvQ1nX5i9gYuGMiSy0fjWHmazdjF+NdSO9JzI=
 github.com/orcaman/concurrent-map/v2 v2.0.0/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 h1:CUvH4JL/8OVy023LMER3dB/MerNQ6OIz4QV3E/JQ3UY=
