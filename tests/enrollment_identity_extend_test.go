@@ -203,7 +203,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.Len(authenticatorsEnvelope.Data, 1)
 		currentAuthenticator := authenticatorsEnvelope.Data[0]
 
-		path := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
+		path := fmt.Sprintf("/edge/client/v1/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
 		resolvedUrl, err := identityApiSession.resolveApiUrl(ctx.ApiHost, path)
 		client := resty.New().SetTLSClientConfig(&tls.Config{
 			InsecureSkipVerify: true,

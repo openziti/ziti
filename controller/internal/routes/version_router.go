@@ -27,7 +27,7 @@ import (
 	managementInformational "github.com/openziti/edge/rest_management_api_server/operations/informational"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/build"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"runtime"
 	"sync"
 )
@@ -90,11 +90,11 @@ func (ir *VersionRouter) List(_ *env.AppEnv, rc *response.RequestContext) {
 			}
 		}
 
-		xwebContext := xweb.WebContextFromRequestContext(rc.Request.Context())
+		xwebContext := xweb.ServerContextFromRequestContext(rc.Request.Context())
 
 		apiToBaseUrls := map[string]map[string]struct{}{} //api -> webListener addresses + path
 
-		for _, webListener := range xwebContext.XWebConfig.WebListeners {
+		for _, webListener := range xwebContext.Config.ServerConfigs {
 			for _, api := range webListener.APIs {
 				if _, ok := apiToBaseUrls[api.Binding()]; !ok {
 					apiToBaseUrls[api.Binding()] = map[string]struct{}{}

@@ -292,11 +292,11 @@ func (c *Controller) Run() {
 	managementApiFactory := NewManagementApiFactory(c.AppEnv)
 	clientApiFactory := NewClientApiFactory(c.AppEnv)
 
-	if err := c.AppEnv.HostController.RegisterXWebHandlerFactory(managementApiFactory); err != nil {
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(managementApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Management API factory: %v", err)
 	}
 
-	if err := c.AppEnv.HostController.RegisterXWebHandlerFactory(clientApiFactory); err != nil {
+	if err := c.AppEnv.HostController.GetXWebInstance().GetRegistry().Add(clientApiFactory); err != nil {
 		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
 	}
 
