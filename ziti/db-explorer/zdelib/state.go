@@ -88,9 +88,9 @@ func (state *State) AtRoot() bool {
 func (state *State) ListEntries() []Entry {
 	path := strings.Join(state.Path, ".")
 
-	//if cachedEntries, ok := state.pathEntryCache[path]; ok {
-	//	return cachedEntries
-	//}
+	if cachedEntries, ok := state.pathEntryCache[path]; ok {
+		return cachedEntries
+	}
 
 	var entries []Entry
 
