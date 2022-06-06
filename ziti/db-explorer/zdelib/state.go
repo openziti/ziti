@@ -88,9 +88,9 @@ func (state *State) AtRoot() bool {
 func (state *State) ListEntries() []Entry {
 	path := strings.Join(state.Path, ".")
 
-	if cachedEntries, ok := state.pathEntryCache[path]; ok {
-		return cachedEntries
-	}
+	//if cachedEntries, ok := state.pathEntryCache[path]; ok {
+	//	return cachedEntries
+	//}
 
 	var entries []Entry
 
@@ -99,20 +99,31 @@ func (state *State) ListEntries() []Entry {
 
 		key, value := cursor.First()
 		for key != nil {
-			fieldType, valueType := boltz.GetTypeAndValue(value)
+			fieldType, fieldValue := boltz.GetTypeAndValue(value)
+
+			// if type is nil, check to see if the key is typed (string list)
+			if fieldType == boltz.TypeNil {
+				keyType, keyValue := boltz.GetTypeAndValue(key)
+
+				if keyType == boltz.TypeString {
+					fieldType = boltz.TypeString
+					fieldValue = []byte("<nil>")
+					key = keyValue
+				}
+			}
 
 			var valueString *string
 
-			if len(valueType) != 0 {
-				valueString = boltz.FieldToString(fieldType, valueType)
+			if len(fieldValue) != 0 {
+				valueString = boltz.FieldToString(fieldType, fieldValue)
 			} else {
 				nilStr := "nil"
 				valueString = &nilStr
 			}
 
-			entries = append(entries, Entry{Name: string(key), Type: fieldType, TypeString: TypeToString(fieldType), Value: value, ValueString: valueString})
+			entries = append(entries, Entry{Name: string(key), Type: fieldType, TypeString: TypeToString(fieldType), Value: fieldValue, ValueString: valueString})
 
-			key, value = cursor.Next()
+			key, fieldValue = cursor.Next()
 		}
 
 		return nil
