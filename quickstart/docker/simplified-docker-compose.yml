@@ -43,6 +43,7 @@ services:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     environment:
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+      - ZITI_EDGE_ROUTER_ROLES=public
     depends_on:
       - ziti-controller
     ports:
