@@ -18,8 +18,11 @@ package subcmd
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/ziti/common/enrollment"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -28,7 +31,8 @@ func init() {
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 
-	root.AddCommand(enrollment.NewEnrollCommand())
+	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
+	root.AddCommand(enrollment.NewEnrollCommand(p))
 }
 
 var root = &cobra.Command{

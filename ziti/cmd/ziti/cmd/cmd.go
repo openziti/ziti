@@ -19,15 +19,16 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/database"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/fabric"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial"
-	"io"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 
@@ -62,8 +63,7 @@ var rootCommand = RootCmd{
 		Short: "ziti is a CLI for working with Ziti",
 		Long: `
 'ziti' is a CLI for working with a Ziti deployment.
-`,
-	},
+`},
 }
 
 // exitWithError will terminate execution with an error result
@@ -83,13 +83,10 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	NewCmdRoot(os.Stdin, os.Stdout, os.Stderr)
+	NewCmdRoot(os.Stdin, os.Stdout, os.Stderr, rootCommand.cobraCommand)
 }
 
-func NewCmdRoot(in io.Reader, out, err io.Writer) *cobra.Command {
-
-	cmd := rootCommand.cobraCommand
-
+func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Command {
 	goflag.CommandLine.VisitAll(func(goflag *goflag.Flag) {
 		switch goflag.Name {
 		// Skip things that are dragged in by our dependencies
@@ -234,4 +231,17 @@ func initConfig() {
 			log.Warnf("error reading config: %v", err)
 		}
 	}
+}
+
+func NewRootCommand(in io.Reader, out, err io.Writer) *cobra.Command {
+	//need to make new CMD everytime because the flags are not thread safe...
+	ret := &cobra.Command{
+		Use:   "ziti",
+		Short: "ziti is a CLI for working with Ziti",
+		Long: `
+'ziti' is a CLI for working with a Ziti deployment.
+`}
+	NewCmdRoot(in, out, err, ret)
+
+	return ret
 }

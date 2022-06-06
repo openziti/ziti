@@ -22,17 +22,21 @@ import (
 	"encoding/asn1"
 	"errors"
 	"fmt"
-	"github.com/spf13/cobra"
 	"io"
 	"io/ioutil"
 	"net"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/spf13/cobra"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/viper"
 )
+
+var viperLock sync.Mutex
 
 // PKICreateOptions the options for the create spring command
 type PKICreateOptions struct {
@@ -72,7 +76,7 @@ func NewCmdPKICreate(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 func (options *PKICreateOptions) addPKICreateFlags(cmd *cobra.Command) {
-
+	viperLock.Lock()
 	cmd.PersistentFlags().StringVarP(&options.Flags.PKIRoot, "pki-root", "", "", "Directory in which to store CA")
 	cmd.MarkFlagRequired("pki-root")
 	viper.BindPFlag("pki_root", cmd.PersistentFlags().Lookup("pki-root"))
@@ -104,7 +108,7 @@ func (options *PKICreateOptions) addPKICreateFlags(cmd *cobra.Command) {
 	// cmd.PersistentFlags().StringVarP(&options.Flags.PKIProvince, "pki-state", "", "NC", "State/Province")
 	// cmd.MarkFlagRequired("pki-state")
 	// viper.BindPFlag("pki-state", cmd.PersistentFlags().Lookup("pki-state"))
-
+	viperLock.Unlock()
 }
 
 // Run implements this command

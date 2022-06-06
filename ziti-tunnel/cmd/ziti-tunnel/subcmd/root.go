@@ -17,6 +17,11 @@
 package subcmd
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
@@ -27,14 +32,11 @@ import (
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/common/version"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 const (
@@ -54,7 +56,8 @@ func init() {
 	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 
-	root.AddCommand(enrollment.NewEnrollCommand())
+	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
+	root.AddCommand(enrollment.NewEnrollCommand(p))
 }
 
 var root = &cobra.Command{
