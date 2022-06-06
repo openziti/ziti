@@ -17,9 +17,10 @@
 package edge
 
 import (
+	"io"
+
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	"io"
 
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/spf13/cobra"
@@ -46,12 +47,12 @@ func populateEdgeCommands(out io.Writer, errOut io.Writer, cmd *cobra.Command) *
 	cmd.AddCommand(newPolicyAdivsorCmd(out, errOut))
 	cmd.AddCommand(newVerifyCmd(out, errOut))
 	cmd.AddCommand(newDbCmd(out, errOut))
-	cmd.AddCommand(enrollment.NewEnrollCommand())
 	cmd.AddCommand(newTraceCmd(out, errOut))
 	cmd.AddCommand(newTraceRouteCmd(out, errOut))
 	cmd.AddCommand(newShowCmd(out, errOut))
 
 	p := common.NewOptionsProvider(out, errOut)
+	cmd.AddCommand(enrollment.NewEnrollCommand(p))
 	for _, cmdF := range ExtraEdgeCommands {
 		cmd.AddCommand(cmdF(p))
 	}
