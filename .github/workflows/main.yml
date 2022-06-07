@@ -250,15 +250,15 @@ jobs:
         run: |
           mkdir .fablab
           touch .fablab/bindings.yml
-          echo `credentials:
-                  aws:
-                    managed_key: true
-                  edge:
-                    username: admin
-                    password: admin
-                  influxdb:
-                    username: fablab
-                    password: fablab` > .fablab/bindings.yml
+          echo "credentials:"           >> .fablab/bindings.yml
+          echo "  aws:"                 >> .fablab/bindings.yml
+          echo "    managed_key: true"  >> .fablab/bindings.yml
+          echo "  edge:"                >> .fablab/bindings.yml
+          echo "    username: admin"    >> .fablab/bindings.yml
+          echo "    password: admin"    >> .fablab/bindings.yml
+          echo "  influxdb:"            >> .fablab/bindings.yml
+          echo "    username: fablab"   >> .fablab/bindings.yml
+          echo "    password: fablab"   >> .fablab/bindings.yml
 
 
       - name: Test Ziti Command
