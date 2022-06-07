@@ -260,6 +260,9 @@ jobs:
           echo "    username: fablab"   >> .fablab/bindings.yml
           echo "    password: fablab"   >> .fablab/bindings.yml
 
+      - name: Check Bindings existance in different step
+        run: |
+          cat .fablab/bindings.yml
 
       - name: Test Ziti Command
         env:
