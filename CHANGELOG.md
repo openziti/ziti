@@ -2,6 +2,7 @@
 
 ## What's New
 - Edge
+  - Breaking Changes 
   - Bug fixes
 - Fabric
   - Bug fixes
@@ -11,6 +12,36 @@
   - N/A
 
 # Edge
+## Breaking Changes
+
+The following Edge Management REST API Endpoints have breaking changes:
+
+- `POST /ext-jwt-signers`
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PUT /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PATCH /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is set and `kid` was not previously set
+  - `jwtEndpoint` or `certPem` must be defined or previously set of the other is  `null`
+  - `issuer` may not be set to `null` or `""`
+  - `audience` may not be set to `null` or `""`
+
+The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
+were not previously set.
+
+## JWKS Support
+
+`ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns a JWKS JSON payload.
+When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` fields matches
+an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` will be 
+interrogated for new signing keys. The `jwksEndpoint` will only resolve at most once every five seconds.
+
 ## Bug Fixes
 
 * https://github.com/openziti/edge/issues/1027
