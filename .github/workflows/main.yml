@@ -260,14 +260,12 @@ jobs:
           echo "    username: fablab"   >> .fablab/bindings.yml
           echo "    password: fablab"   >> .fablab/bindings.yml
 
-      - name: Check Bindings existance in different step
-        run: |
-          cat .fablab/bindings.yml
-
       - name: Test Ziti Command
         env:
           ZITI_ROOT: release/amd64/linux/
         run: |
+          cat .fablab/bindings.yml
+          cat ~/.fablab/bindings.yml
           github create
           github up
           github dispose
