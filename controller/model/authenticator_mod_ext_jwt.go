@@ -17,15 +17,22 @@ package model
 
 import (
 	"crypto/x509"
+	"encoding/base64"
+	"fmt"
 	"github.com/golang-jwt/jwt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	nfPem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/jwks"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
+	"sync"
+	"time"
 )
 
 var _ AuthProcessor = &AuthModuleExtJwt{}
@@ -58,43 +65,161 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 }
 
 type signerRecord struct {
+	sync.Mutex
+	jwksLastRequest time.Time
+
+	kidToCertificate  map[string]*x509.Certificate
+	jwksResponse      *jwks.Response
 	externalJwtSigner *persistence.ExternalJwtSigner
-	cert              *x509.Certificate
+
+	jwksResolver jwks.Resolver
+}
+
+func (r *signerRecord) Resolve(force bool) error {
+	r.Mutex.Lock()
+	defer r.Mutex.Unlock()
+
+	if r.externalJwtSigner.CertPem != nil {
+		if len(r.kidToCertificate) != 0 && !force {
+			return nil
+		}
+
+		certs := nfPem.PemStringToCertificates(*r.externalJwtSigner.CertPem)
+
+		if len(certs) == 0 {
+			return errors.New("could not add signer, PEM did not parse to any certificates")
+		}
+
+		// first cert only
+		r.kidToCertificate = map[string]*x509.Certificate{
+			*r.externalJwtSigner.Kid: certs[0],
+		}
+
+		return nil
+
+	} else if r.externalJwtSigner.JwksEndpoint != nil {
+		if len(r.kidToCertificate) != 0 && !force {
+			return nil
+		}
+
+		if !r.jwksLastRequest.IsZero() && time.Now().Sub(r.jwksLastRequest) < time.Second*5 {
+			return nil
+		}
+
+		r.jwksLastRequest = time.Now()
+
+		jwksResponse, _, err := r.jwksResolver.Get(*r.externalJwtSigner.JwksEndpoint)
+
+		if err != nil {
+			return fmt.Errorf("could not resolve jwks endpoint: %v", err)
+		}
+
+		for _, key := range jwksResponse.Keys {
+			if len(key.X509Chain) == 0 {
+				return errors.New("could not parse JWKS keys, x509 chain was empty")
+			}
+
+			x509Der, err := base64.StdEncoding.DecodeString(key.X509Chain[0])
+
+			if err != nil {
+				return fmt.Errorf("could not parse JWKS keys: %v", err)
+			}
+
+			certs, err := x509.ParseCertificates(x509Der)
+
+			if err != nil {
+				return fmt.Errorf("could not parse JWKS DER as x509: %v", err)
+			}
+
+			if len(certs) == 0 {
+				return fmt.Errorf("no ceritficates parsed")
+			}
+
+			r.kidToCertificate[key.KeyId] = certs[0]
+		}
+
+		r.jwksResponse = jwksResponse
+
+		return nil
+	}
+
+	return errors.New("instructed to add external jwt signer that does not have a certificate PEM or JWKS endpoint")
 }
 
 func (a *AuthModuleExtJwt) CanHandle(method string) bool {
 	return method == a.method
 }
 func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
+	logger := pfxlog.Logger().WithField("method", a.method)
+
 	kidVal, ok := token.Header["kid"]
 
 	if !ok {
-		pfxlog.Logger().Error("missing kid")
+		logger.Error("missing kid")
 		return nil, apierror.NewInvalidAuth()
 	}
 
 	kid, ok := kidVal.(string)
 
 	if !ok {
-		pfxlog.Logger().Error("kid is not a string")
+		logger.Error("kid is not a string")
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	signerRecord, ok := a.signers.Get(kid)
+	logger = logger.WithField("kid", kid)
+
+	claims := token.Claims.(jwt.MapClaims)
+	if claims == nil {
+		logger.Error("unknown signer, attempting to look up by claims, but claims were nil")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	issVal, ok := claims["iss"]
 
 	if !ok {
-		pfxlog.Logger().Error("unknown kid")
+		logger.Error("unknown signer, attempting to look up by issue, but issuer is missing")
 		return nil, apierror.NewInvalidAuth()
 	}
+
+	issuer := issVal.(string)
+
+	if issuer == "" {
+		logger.Error("unknown signer, attempting to look up by issue, but issuer is empty or not a string")
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	logger = logger.WithField("issuer", issuer)
+
+	signerRecord, ok := a.signers.Get(issuer)
+
+	if !ok {
+		return nil, apierror.NewInvalidAuth()
+	}
+
+	logger = logger.WithField("extJwtSignerId", signerRecord.externalJwtSigner.Id).WithField("extJwtSignerName", signerRecord.externalJwtSigner.Name)
 
 	if !signerRecord.externalJwtSigner.Enabled {
-		pfxlog.Logger().WithField("externalJwtId", signerRecord.externalJwtSigner.Id).Error("external jwt is disabled")
+		logger.Error("external jwt is disabled")
 		return nil, apierror.NewInvalidAuth()
 	}
-	mapClaims := token.Claims.(jwt.MapClaims)
-	mapClaims[ExtJwtInternalClaim] = signerRecord.externalJwtSigner
 
-	return signerRecord.cert.PublicKey, nil
+	cert, ok := signerRecord.kidToCertificate[kid]
+
+	if !ok {
+		if err := signerRecord.Resolve(false); err != nil {
+			logger.WithError(err).Error("error attempting to resolve extJwtSigner certificate used for signing")
+		}
+	}
+
+	cert, ok = signerRecord.kidToCertificate[kid]
+
+	if !ok {
+		return nil, fmt.Errorf("kid [%s] not found for issuer [%s]", kid, issuer)
+	}
+
+	claims[ExtJwtInternalClaim] = signerRecord.externalJwtSigner
+
+	return cert.PublicKey, nil
 }
 
 func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
@@ -222,9 +347,9 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 			return nil, apierror.NewInvalidAuth()
 		}
 
-		identityId, ok := identityIdInterface.(string)
+		claimsId, ok := identityIdInterface.(string)
 
-		if !ok || identityId == "" {
+		if !ok || claimsId == "" {
 			logger.Error("expected claims id was not a string or was empty")
 			return nil, apierror.NewInvalidAuth()
 		}
@@ -233,9 +358,9 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 
 		var identity *Identity
 		if extJwt.UseExternalId {
-			authPolicy, identity, err = getAuthPolicyByExternalId(a.env, AuthMethodExtJwt, "", identityId)
+			authPolicy, identity, err = getAuthPolicyByExternalId(a.env, AuthMethodExtJwt, "", claimsId)
 		} else {
-			authPolicy, identity, err = getAuthPolicyByIdentityId(a.env, AuthMethodExtJwt, "", identityId)
+			authPolicy, identity, err = getAuthPolicyByIdentityId(a.env, AuthMethodExtJwt, "", claimsId)
 		}
 
 		if err != nil {
@@ -247,6 +372,12 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 			logger.WithError(err).Error("encountered unhandled nil auth policy during authentication")
 			return nil, apierror.NewInvalidAuth()
 		}
+
+		if identity == nil {
+			logger.WithError(err).Error("encountered unhandled nil identity during authentication")
+			return nil, apierror.NewInvalidAuth()
+		}
+
 		externalJwtSignerId := ""
 		if identity.Disabled {
 			logger.
@@ -293,16 +424,13 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 			AuthResultBase: AuthResultBase{
 				authPolicyId: authPolicy.Id,
 				authPolicy:   authPolicy,
+				identity:     identity,
+				identityId:   identity.Id,
+				externalId:   stringz.OrEmpty(identity.ExternalId),
 				env:          a.env,
 			},
 			externalJwtSignerId: externalJwtSignerId,
 			externalJwtSigner:   extJwt,
-		}
-
-		if extJwt.UseExternalId {
-			result.externalId = identityId
-		} else {
-			result.identityId = identityId
 		}
 
 		return result, nil
@@ -347,16 +475,30 @@ func (a *AuthModuleExtJwt) onExternalSignerUpdate(args ...interface{}) {
 }
 
 func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
-	certs := nfPem.PemStringToCertificates(signer.CertPem)
+	logger := pfxlog.Logger().WithFields(map[string]interface{}{
+		"id":           signer.Id,
+		"name":         signer.Name,
+		"hasCertPem":   signer.CertPem != nil,
+		"jwksEndpoint": signer.JwksEndpoint,
+	})
 
-	if len(certs) > 0 {
-		a.signers.Set(signer.Kid, &signerRecord{
-			externalJwtSigner: signer,
-			cert:              certs[0],
-		})
-	} else {
-		pfxlog.Logger().Error("could not add signer, PEM did not parse to any certificates")
+	if signer.Issuer == nil {
+		logger.Error("could not add signer, issuer is nil")
+		return
 	}
+
+	signerRec := &signerRecord{
+		externalJwtSigner: signer,
+		jwksResolver:      &jwks.HttpResolver{},
+		kidToCertificate:  map[string]*x509.Certificate{},
+	}
+
+	if err := signerRec.Resolve(false); err != nil {
+		logger.WithError(err).Error("could not resolve signer cert/jwks")
+	}
+
+	a.signers.Set(*signer.Issuer, signerRec)
+
 }
 
 func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
@@ -367,7 +509,19 @@ func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
 		return
 	}
 
-	a.signers.Remove(signer.Kid)
+	logger := pfxlog.Logger().WithFields(map[string]interface{}{
+		"id":           signer.Id,
+		"name":         signer.Name,
+		"hasCertPem":   signer.CertPem != nil,
+		"jwksEndpoint": signer.JwksEndpoint,
+	})
+
+	if signer.Issuer == nil {
+		logger.Error("could not add signer, issuer is nil")
+		return
+	}
+
+	a.signers.Remove(*signer.Issuer)
 }
 
 func (a *AuthModuleExtJwt) loadExistingSigners() {
@@ -391,6 +545,6 @@ func (a *AuthModuleExtJwt) loadExistingSigners() {
 	})
 
 	if err != nil {
-		pfxlog.Logger().Errorf("error loading external jwt signers: %v", err)
+		pfxlog.Logger().Errorf("error loading external jwt signerByIssuer: %v", err)
 	}
 }

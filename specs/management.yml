@@ -13984,15 +13984,16 @@ definitions:
     type: object
     required:
     - name
-    - certPem
     - enabled
-    - kid
+    - issuer
+    - audience
     properties:
       audience:
         type: string
         x-nullable: true
       certPem:
         type: string
+        x-nullable: true
       claimsProperty:
         type: string
         x-nullable: true
@@ -14004,9 +14005,13 @@ definitions:
         x-nullable: true
       issuer:
         type: string
+      jwksEndpoint:
+        type: string
+        format: uri
         x-nullable: true
       kid:
         type: string
+        x-nullable: true
       name:
         type: string
         example: MyApps Signer
@@ -14024,6 +14029,7 @@ definitions:
       required:
       - name
       - certPem
+      - jwksEndpoint
       - enabled
       - fingerprint
       - commonName
@@ -14040,6 +14046,7 @@ definitions:
           type: string
         certPem:
           type: string
+          x-nullable: true
         claimsProperty:
           type: string
         commonName:
@@ -14053,6 +14060,10 @@ definitions:
           type: string
         issuer:
           type: string
+        jwksEndpoint:
+          type: string
+          format: uri
+          x-nullable: true
         kid:
           type: string
         name:
@@ -14093,6 +14104,10 @@ definitions:
       issuer:
         type: string
         x-nullable: true
+      jwksEndpoint:
+        type: string
+        format: uri
+        x-nullable: true
       kid:
         type: string
         x-nullable: true
@@ -14109,15 +14124,16 @@ definitions:
     type: object
     required:
     - name
-    - certPem
     - enabled
-    - kid
+    - issuer
+    - audience
     properties:
       audience:
         type: string
         x-nullable: true
       certPem:
         type: string
+        x-nullable: true
       claimsProperty:
         type: string
         x-nullable: true
@@ -14129,9 +14145,13 @@ definitions:
         x-nullable: true
       issuer:
         type: string
+      jwksEndpoint:
+        type: string
+        format: uri
         x-nullable: true
       kid:
         type: string
+        x-nullable: true
       name:
         type: string
         example: MyApps Signer

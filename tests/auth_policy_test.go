@@ -41,10 +41,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-99"),
+			Audience: S("test-audience-99"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -232,10 +234,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Patch")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy Patch"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy Patch"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-100"),
+			Audience: S("test-audience-100"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -338,10 +342,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Patch")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy Patch1"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy Patch1"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-101"),
+			Audience: S("test-audience-101"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -536,10 +542,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert1, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy - Delete Scenarios 1")
 
 		extJwtSigner1 := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert1)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Delete Scenarios 1"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert1)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Delete Scenarios 1"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-102"),
+			Audience: S("test-audience-102"),
 		}
 
 		extJwtSignerCreated1 := &rest_model.CreateEnvelope{}
@@ -551,10 +559,12 @@ func Test_AuthPolicies(t *testing.T) {
 
 		jwtSignerCert2, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy - Delete Scenarios 2")
 		extJwtSigner2 := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert2)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Delete Scenarios 2"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert2)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Delete Scenarios 2"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-200"),
+			Audience: S("test-audience-200"),
 		}
 
 		extJwtSignerCreated2 := &rest_model.CreateEnvelope{}
@@ -798,10 +808,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Update Default")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Update Default"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Update Default"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-104"),
+			Audience: S("test-audience-104"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -917,10 +929,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCert, _ := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy 08")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy 08"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy 08"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-105"),
+			Audience: S("test-audience-105"),
 		}
 
 		extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -1113,10 +1127,12 @@ func Test_AuthPolicies(t *testing.T) {
 			jwtSignerCert, jwtSignerPrivate := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 01")
 
 			extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-				CertPem: S(nfpem.EncodeToString(jwtSignerCert)),
-				Enabled: B(true),
-				Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
-				Kid:     S(uuid.NewString()),
+				CertPem:  S(nfpem.EncodeToString(jwtSignerCert)),
+				Enabled:  B(true),
+				Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Not Allowed 01"),
+				Kid:      S(uuid.NewString()),
+				Issuer:   S("test-issuer-106"),
+				Audience: S("test-audience-106"),
 			}
 
 			extJwtSignerCreated := &rest_model.CreateEnvelope{}
@@ -1173,10 +1189,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCertAllowed, jwtSignerPrivateAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Allowed 01")
 
 		extJwtSignerAllowed := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCertAllowed)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCertAllowed)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 01"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-107"),
+			Audience: S("test-audience-107"),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
@@ -1189,10 +1207,12 @@ func Test_AuthPolicies(t *testing.T) {
 		jwtSignerCertNotAllowed, jwtSignerPrivateNotAllowed := newSelfSignedCert("Test Jwt Signer Cert - Auth Policy Ext JWT Not Allowed 02")
 
 		extJwtSigner := &rest_model.ExternalJWTSignerCreate{
-			CertPem: S(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
-			Enabled: B(true),
-			Name:    S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
-			Kid:     S(uuid.NewString()),
+			CertPem:  S(nfpem.EncodeToString(jwtSignerCertNotAllowed)),
+			Enabled:  B(true),
+			Name:     S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT Limited 02"),
+			Kid:      S(uuid.NewString()),
+			Issuer:   S("test-issuer-108"),
+			Audience: S("test-audience-108"),
 		}
 
 		extJwtSignerCreatedNotAllowed := &rest_model.CreateEnvelope{}
@@ -1257,11 +1277,11 @@ func Test_AuthPolicies(t *testing.T) {
 		t.Run("can authenticate with approved external jwt signer", func(t *testing.T) {
 			jwtToken := jwt.New(jwt.SigningMethodES256)
 			jwtToken.Claims = jwt.StandardClaims{
-				Audience:  "ziti.controller",
 				ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
 				Id:        time.Now().String(),
 				IssuedAt:  time.Now().Unix(),
-				Issuer:    "fake.issuer",
+				Issuer:    "test-issuer-107",
+				Audience:  "test-audience-107",
 				NotBefore: time.Now().Unix(),
 				Subject:   identityExtJwtCreated.Data.ID,
 			}
@@ -1318,6 +1338,8 @@ func Test_AuthPolicies(t *testing.T) {
 			Name:            S("Test JWT Signer - Auth Policy - Auth Policy Ext JWT FA 01"),
 			ExternalAuthURL: S("https://get.some.jwt.here"),
 			Kid:             S(uuid.NewString()),
+			Issuer:          S("test-issuer-109"),
+			Audience:        S("test-audience-109"),
 		}
 
 		extJwtSignerCreatedAllowed := &rest_model.CreateEnvelope{}
@@ -1415,11 +1437,11 @@ func Test_AuthPolicies(t *testing.T) {
 
 				jwtToken := jwt.New(jwt.SigningMethodES256)
 				jwtToken.Claims = jwt.StandardClaims{
-					Audience:  "ziti.controller",
 					ExpiresAt: time.Now().Add(2 * time.Hour).Unix(),
 					Id:        time.Now().String(),
 					IssuedAt:  time.Now().Unix(),
-					Issuer:    "fake.issuer",
+					Issuer:    "test-issuer-109",
+					Audience:  "test-audience-109",
 					NotBefore: time.Now().Unix(),
 					Subject:   identityExtJwtCreated.Data.ID,
 				}

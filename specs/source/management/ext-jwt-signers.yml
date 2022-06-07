@@ -133,7 +133,6 @@ responses:
     description: A singular External JWT Signer resource
     schema:
       $ref: '#/definitions/detailExternalJwtSignerEnvelope'
-
 definitions:
   listExternalJwtSignersEnvelope:
     type: object
@@ -169,6 +168,7 @@ definitions:
         required:
           - name
           - certPem
+          - jwksEndpoint
           - enabled
           - fingerprint
           - commonName
@@ -186,6 +186,11 @@ definitions:
             example: 'MyApps Signer'
           certPem:
             type: string
+            x-nullable: true
+          jwksEndpoint:
+            type: string
+            format: uri
+            x-nullable: true
           enabled:
             type: boolean
           fingerprint:
@@ -216,15 +221,20 @@ definitions:
     type: object
     required:
       - name
-      - certPem
       - enabled
-      - kid
+      - issuer
+      - audience
     properties:
       name:
         type: string
         example: 'MyApps Signer'
       certPem:
         type: string
+        x-nullable: true
+      jwksEndpoint:
+        type: string
+        format: uri
+        x-nullable: true
       enabled:
         type: boolean
       externalAuthUrl:
@@ -233,6 +243,7 @@ definitions:
         x-nullable: true
       kid:
         type: string
+        x-nullable: true
       claimsProperty:
         type: string
         x-nullable: true
@@ -241,7 +252,6 @@ definitions:
         x-nullable: true
       issuer:
         type: string
-        x-nullable: true
       audience:
         type: string
         x-nullable: true
@@ -251,22 +261,28 @@ definitions:
     type: object
     required:
       - name
-      - certPem
       - enabled
-      - kid
+      - issuer
+      - audience
     properties:
       name:
         type: string
         example: 'MyApps Signer'
       certPem:
         type: string
+        x-nullable: true
+      jwksEndpoint:
+        type: string
+        format: uri
+        x-nullable: true
       enabled:
         type: boolean
-      kid:
-        type: string
       externalAuthUrl:
         type: string
         format: url
+        x-nullable: true
+      kid:
+        type: string
         x-nullable: true
       claimsProperty:
         type: string
@@ -276,7 +292,6 @@ definitions:
         x-nullable: true
       issuer:
         type: string
-        x-nullable: true
       audience:
         type: string
         x-nullable: true
@@ -291,6 +306,10 @@ definitions:
         x-nullable: true
       certPem:
         type: string
+        x-nullable: true
+      jwksEndpoint:
+        type: string
+        format: uri
         x-nullable: true
       enabled:
         type: boolean
