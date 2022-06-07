@@ -249,7 +249,7 @@ jobs:
       - name: Create Zitilab Bindings
         run: |
           mkdir ~/.fablab
-          touch .fablab/bindings.yml
+          touch ~/.fablab/bindings.yml
           echo "credentials:"           >> ~/.fablab/bindings.yml
           echo "  aws:"                 >> ~/.fablab/bindings.yml
           echo "    managed_key: true"  >> ~/.fablab/bindings.yml
