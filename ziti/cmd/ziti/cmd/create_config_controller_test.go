@@ -178,7 +178,7 @@ func TestEdgeIdentityEnrollmentDurationCLITakesPriority(t *testing.T) {
 
 	// Expect that the CLI value was used over the environment variable
 	expectedValue, _ := time.ParseDuration(cliValue)
-	assert.Equal(t, expectedValue, data.Controller.EdgeRouterDuration)
+	assert.Equal(t, expectedValue, data.Controller.EdgeIdentityDuration)
 }
 
 func TestDefaultEdgeRouterEnrollmentDuration(t *testing.T) {
