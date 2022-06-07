@@ -129,6 +129,7 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
+	github.com/openziti/jwks v1.0.1 // indirect
 	github.com/openziti/x509-claims v1.0.2 // indirect
 	github.com/openziti/xweb/v2 v2.0.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
