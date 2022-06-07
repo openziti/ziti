@@ -205,8 +205,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiEdgeCtrlIdentityCAVarName, constants.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
 		constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
 		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey,
-		constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, data.Controller.EdgeIdentityDuration.String(),
-		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, data.Controller.EdgeRouterDuration.String())
+		constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeIdentityDuration.Minutes()),
+		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeRouterDuration.Minutes()))
 
 	cmd.Long = createConfigLong
 

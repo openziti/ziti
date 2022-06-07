@@ -6,7 +6,7 @@
 - Fabric
   - N/A
 - Ziti CLI
-  - N/A
+  - Allow dynamic modification of enrollment durations
 - SDK Golang
   - N/A
 
@@ -15,6 +15,28 @@
 
 * https://github.com/openziti/edge/issues/1027
 * https://github.com/openziti/edge/issues/1025
+
+# Ziti CLI
+## Enhancements
+### Allow dynamic modification of enrollment durations
+The enrollment period for Edge Identities as well as Edge Routers was previously modifiable through the controller config file. However, modifying the controller config requires restarting the controller which is not always easily done.
+
+Using one of the following methods will change the duration in the config as it is written therefore providing these durations on initial startup of the controller.
+
+NOTE: The command line flag option will override any environment variable that is set. Only one of the methods modify these values is necessary with the CLI command taking priority. The default value will be used if no modification is provided 
+#### Environment Variable(s)
+```shell
+# Example set Ziti Edge Identity Enrollment duration to 20 minutes
+export ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=20
+
+# Example set Ziti Edge Router Enrollment duration to 30 minutes
+export ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=30
+```
+#### CLI - Controller config creation optional flag(s)
+```shell
+# Example set Edge Identity Enrollment and Edge Router Enrollment durations to 20 and 30 minutes respectively
+ziti create config controller --identityEnrollmentDuration 20m --routerEnrollmentDuration 30m
+```
 
 # Release 0.25.10
 

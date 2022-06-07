@@ -11,7 +11,7 @@ import (
 func TestControllerOutputPathDoesNotExist(t *testing.T) {
 	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
 
-	// Create the options with both flags set to true
+	// Create the options with non-existent path
 	options := &CreateConfigControllerOptions{}
 	options.Output = "/IDoNotExist/MyController.yaml"
 
@@ -162,6 +162,25 @@ func TestEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
 	assert.Equal(t, expectedDuration, data.Controller.EdgeIdentityDuration)
 }
 
+func TestEdgeIdentityEnrollmentDurationCLITakesPriority(t *testing.T) {
+	envVarValue := 5 * time.Minute // Setting a custom duration which is not the default value
+	cliValue := "10m"              // Setting a CLI custom duration which is also not the default value
+
+	// Set a custom value for the enrollment duration
+	_ = os.Setenv("ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION", fmt.Sprintf("%.0f", envVarValue.Minutes()))
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	cmd.SetArgs([]string{"--identityEnrollmentDuration", cliValue})
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	// Expect that the CLI value was used over the environment variable
+	expectedValue, _ := time.ParseDuration(cliValue)
+	assert.Equal(t, expectedValue, data.Controller.EdgeRouterDuration)
+}
+
 func TestDefaultEdgeRouterEnrollmentDuration(t *testing.T) {
 	expectedDuration := time.Duration(180) * time.Minute
 
@@ -190,4 +209,23 @@ func TestEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 	})
 
 	assert.Equal(t, expectedDuration, data.Controller.EdgeRouterDuration)
+}
+
+func TestEdgeRouterEnrollmentDurationCLITakesPriority(t *testing.T) {
+	envVarValue := 5 * time.Minute // Setting a custom duration which is not the default value
+	cliValue := "10m"              // Setting a CLI custom duration which is also not the default value
+
+	// Set a custom value for the enrollment duration
+	_ = os.Setenv("ZITI_EDGE_ROUTER_ENROLLMENT_DURATION", fmt.Sprintf("%.0f", envVarValue.Minutes()))
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigController()
+	cmd.SetArgs([]string{"--routerEnrollmentDuration", cliValue})
+	_ = captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	// Expect that the CLI value was used over the environment variable
+	expectedValue, _ := time.ParseDuration(cliValue)
+	assert.Equal(t, expectedValue, data.Controller.EdgeRouterDuration)
 }
