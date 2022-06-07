@@ -243,11 +243,11 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiEdgeCtrlAdvertisedPort, err := cmdhelper.GetZitiEdgeCtrlAdvertisedPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlAdvertisedPortVarName)
 
-	// Get Ziti Edge Controller Advertised Port
+	// Get Ziti edge Identity enrollment duration
 	zitiEdgeIdentityEnrollmentDuration, err := cmdhelper.GetZitiEdgeIdentityEnrollmentDuration()
 	handleVariableError(err, constants.ZitiEdgeIdentityEnrollmentDurationVarName)
 
-	// Get Ziti Edge Controller Advertised Port
+	// Get Ziti edge Router enrollment duration
 	zitiEdgeRouterEnrollmentDuration, err := cmdhelper.GetZitiEdgeRouterEnrollmentDuration()
 	handleVariableError(err, constants.ZitiEdgeRouterEnrollmentDurationVarName)
 
