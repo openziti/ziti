@@ -32,13 +32,13 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.39
-	github.com/openziti/fabric v0.18.1
-	github.com/openziti/foundation v0.17.27
+	github.com/openziti/channel v0.18.40
+	github.com/openziti/fabric v0.18.3
+	github.com/openziti/foundation v0.17.28
 	github.com/openziti/jwks v1.0.1
 	github.com/openziti/sdk-golang v0.16.76
-	github.com/openziti/storage v0.1.7
-	github.com/openziti/transport/v2 v2.0.4
+	github.com/openziti/storage v0.1.8
+	github.com/openziti/transport/v2 v2.0.5
 	github.com/openziti/x509-claims v1.0.2
 	github.com/openziti/xweb/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.0
@@ -48,7 +48,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.4.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.7.2
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
@@ -59,7 +59,7 @@ require (
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -74,7 +74,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/fatih/color v1.7.0 // indirect
+	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.2 // indirect
@@ -85,7 +85,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/go-hclog v1.2.0 // indirect
+	github.com/hashicorp/go-hclog v1.2.1 // indirect
 	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/raft v1.3.9 // indirect
