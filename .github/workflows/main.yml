@@ -265,6 +265,7 @@ jobs:
           ZITI_ROOT: release/amd64/linux/
         run: |
           env
+          ls $ZITI_ROOT
           github create
           github up
           github dispose
