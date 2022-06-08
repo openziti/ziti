@@ -255,7 +255,8 @@ jobs:
 
       - name: Install Zitilab Commands
         run: |
-          go install zitilab/...
+          cd zitilab
+          go install ./...
 
       - name: Move artifacts to bin subdir
         run: |
