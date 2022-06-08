@@ -250,6 +250,7 @@ jobs:
         run: |
           cd release/amd64/linux
           mkdir bin
+          shopt -s extglob
           mv -- !(bin) bin
 
       - name: Create Zitilab Bindings
