@@ -47,6 +47,7 @@ interrogated for new signing keys. The `jwksEndpoint` will only resolve at most 
 * https://github.com/openziti/edge/issues/1027
 * https://github.com/openziti/edge/issues/1025
 * https://github.com/openziti/edge/issues/1035
+* https://github.com/openziti/edge/issues/1045
 
 # Fabric
 ## Bug Fixes
