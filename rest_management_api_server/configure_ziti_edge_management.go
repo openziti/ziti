@@ -526,6 +526,11 @@ func configureAPI(api *operations.ZitiEdgeManagementAPI) http.Handler {
 			return middleware.NotImplemented("operation identity.GetIdentityAuthenticators has not yet been implemented")
 		})
 	}
+	if api.IdentityGetIdentityEnrollmentsHandler == nil {
+		api.IdentityGetIdentityEnrollmentsHandler = identity.GetIdentityEnrollmentsHandlerFunc(func(params identity.GetIdentityEnrollmentsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityEnrollments has not yet been implemented")
+		})
+	}
 	if api.IdentityGetIdentityFailedServiceRequestsHandler == nil {
 		api.IdentityGetIdentityFailedServiceRequestsHandler = identity.GetIdentityFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityFailedServiceRequestsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityFailedServiceRequests has not yet been implemented")

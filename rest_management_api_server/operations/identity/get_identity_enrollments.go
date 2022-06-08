@@ -35,43 +35,43 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 )
 
-// GetIdentityAuthenticatorsHandlerFunc turns a function with the right signature into a get identity authenticators handler
-type GetIdentityAuthenticatorsHandlerFunc func(GetIdentityAuthenticatorsParams, interface{}) middleware.Responder
+// GetIdentityEnrollmentsHandlerFunc turns a function with the right signature into a get identity enrollments handler
+type GetIdentityEnrollmentsHandlerFunc func(GetIdentityEnrollmentsParams, interface{}) middleware.Responder
 
 // Handle executing the request and returning a response
-func (fn GetIdentityAuthenticatorsHandlerFunc) Handle(params GetIdentityAuthenticatorsParams, principal interface{}) middleware.Responder {
+func (fn GetIdentityEnrollmentsHandlerFunc) Handle(params GetIdentityEnrollmentsParams, principal interface{}) middleware.Responder {
 	return fn(params, principal)
 }
 
-// GetIdentityAuthenticatorsHandler interface for that can handle valid get identity authenticators params
-type GetIdentityAuthenticatorsHandler interface {
-	Handle(GetIdentityAuthenticatorsParams, interface{}) middleware.Responder
+// GetIdentityEnrollmentsHandler interface for that can handle valid get identity enrollments params
+type GetIdentityEnrollmentsHandler interface {
+	Handle(GetIdentityEnrollmentsParams, interface{}) middleware.Responder
 }
 
-// NewGetIdentityAuthenticators creates a new http.Handler for the get identity authenticators operation
-func NewGetIdentityAuthenticators(ctx *middleware.Context, handler GetIdentityAuthenticatorsHandler) *GetIdentityAuthenticators {
-	return &GetIdentityAuthenticators{Context: ctx, Handler: handler}
+// NewGetIdentityEnrollments creates a new http.Handler for the get identity enrollments operation
+func NewGetIdentityEnrollments(ctx *middleware.Context, handler GetIdentityEnrollmentsHandler) *GetIdentityEnrollments {
+	return &GetIdentityEnrollments{Context: ctx, Handler: handler}
 }
 
-/* GetIdentityAuthenticators swagger:route GET /identities/{id}/authenticators Identity getIdentityAuthenticators
+/* GetIdentityEnrollments swagger:route GET /identities/{id}/enrollments Identity getIdentityEnrollments
 
-Retrieve the current authenticators of a specific identity
+Retrieve the current enrollments of a specific identity
 
-Returns a list of authenticators associated to the identity specified
+Returns a list of enrollments associated to the identity specified
 
 
 */
-type GetIdentityAuthenticators struct {
+type GetIdentityEnrollments struct {
 	Context *middleware.Context
-	Handler GetIdentityAuthenticatorsHandler
+	Handler GetIdentityEnrollmentsHandler
 }
 
-func (o *GetIdentityAuthenticators) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+func (o *GetIdentityEnrollments) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	route, rCtx, _ := o.Context.RouteInfo(r)
 	if rCtx != nil {
 		*r = *rCtx
 	}
-	var Params = NewGetIdentityAuthenticatorsParams()
+	var Params = NewGetIdentityEnrollmentsParams()
 	uprinc, aCtx, err := o.Context.Authorize(r, route)
 	if err != nil {
 		o.Context.Respond(rw, r, route.Produces, route, err)

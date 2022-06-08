@@ -72,6 +72,8 @@ type ClientService interface {
 
 	GetIdentityAuthenticators(params *GetIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityAuthenticatorsOK, error)
 
+	GetIdentityEnrollments(params *GetIdentityEnrollmentsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityEnrollmentsOK, error)
+
 	GetIdentityFailedServiceRequests(params *GetIdentityFailedServiceRequestsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityFailedServiceRequestsOK, error)
 
 	GetIdentityPolicyAdvice(params *GetIdentityPolicyAdviceParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityPolicyAdviceOK, error)
@@ -434,9 +436,9 @@ func (a *Client) EnableIdentity(params *EnableIdentityParams, authInfo runtime.C
 }
 
 /*
-  GetIdentityAuthenticators retrieves the curent authenticators of a specific identity
+  GetIdentityAuthenticators retrieves the current authenticators of a specific identity
 
-  Returns a list of authenticators associated to the idetity specified
+  Returns a list of authenticators associated to the identity specified
 
 */
 func (a *Client) GetIdentityAuthenticators(params *GetIdentityAuthenticatorsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityAuthenticatorsOK, error) {
@@ -472,6 +474,48 @@ func (a *Client) GetIdentityAuthenticators(params *GetIdentityAuthenticatorsPara
 	// unexpected success response
 	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
 	msg := fmt.Sprintf("unexpected success response for getIdentityAuthenticators: API contract not enforced by server. Client expected to get an error, but got: %T", result)
+	panic(msg)
+}
+
+/*
+  GetIdentityEnrollments retrieves the current enrollments of a specific identity
+
+  Returns a list of enrollments associated to the identity specified
+
+*/
+func (a *Client) GetIdentityEnrollments(params *GetIdentityEnrollmentsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*GetIdentityEnrollmentsOK, error) {
+	// TODO: Validate the params before sending
+	if params == nil {
+		params = NewGetIdentityEnrollmentsParams()
+	}
+	op := &runtime.ClientOperation{
+		ID:                 "getIdentityEnrollments",
+		Method:             "GET",
+		PathPattern:        "/identities/{id}/enrollments",
+		ProducesMediaTypes: []string{"application/json"},
+		ConsumesMediaTypes: []string{"application/json"},
+		Schemes:            []string{"https"},
+		Params:             params,
+		Reader:             &GetIdentityEnrollmentsReader{formats: a.formats},
+		AuthInfo:           authInfo,
+		Context:            params.Context,
+		Client:             params.HTTPClient,
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
+	if err != nil {
+		return nil, err
+	}
+	success, ok := result.(*GetIdentityEnrollmentsOK)
+	if ok {
+		return success, nil
+	}
+	// unexpected success response
+	// safeguard: normally, absent a default response, unknown success responses return an error above: so this is a codegen issue
+	msg := fmt.Sprintf("unexpected success response for getIdentityEnrollments: API contract not enforced by server. Client expected to get an error, but got: %T", result)
 	panic(msg)
 }
 

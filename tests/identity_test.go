@@ -41,6 +41,60 @@ func Test_Identity(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 
+	t.Run("a new identity with an ott enrollment can be created", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		hostCost := rest_model.TerminatorCost(5)
+		hostPrecedence := rest_model.TerminatorPrecedenceDefault
+
+		identityType := rest_model.IdentityTypeRouter
+
+		identityCreate := &rest_model.IdentityCreate{
+			AppData: &rest_model.Tags{
+				SubTags: map[string]any{
+					"one": 1,
+					"two": 2,
+				},
+			},
+			AuthPolicyID:             S("default"),
+			DefaultHostingCost:       &hostCost,
+			DefaultHostingPrecedence: hostPrecedence,
+			Enrollment: &rest_model.IdentityCreateEnrollment{
+				Ott: true,
+			},
+			ExternalID:     S(uuid.NewString()),
+			IsAdmin:        B(false),
+			Name:           S(uuid.NewString()),
+			RoleAttributes: &rest_model.Attributes{"one", "two"},
+			Tags: &rest_model.Tags{
+				SubTags: map[string]any{
+					"one": 1,
+					"two": 2,
+				},
+			},
+			Type: &identityType,
+		}
+
+		err := identityCreate.Validate(DefaultFormats)
+		ctx.Req.NoError(err)
+
+		identityCreateResp := &rest_model.CreateEnvelope{}
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityCreateResp).SetBody(identityCreate).Post("/identities")
+		ctx.NoError(err)
+		ctx.NotNil(resp)
+
+		ctx.NoError(identityCreateResp.Validate(DefaultFormats))
+
+		enrollmentResp := &rest_model.ListEnrollmentsEnvelope{}
+		resp, err = ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(enrollmentResp).Get("/identities/" + identityCreateResp.Data.ID + "/enrollments")
+		ctx.NoError(err)
+		ctx.NotNil(resp)
+		ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		ctx.NoError(enrollmentResp.Validate(DefaultFormats), string(resp.Body()))
+		ctx.NotNil(enrollmentResp.Data)
+		ctx.Len(enrollmentResp.Data, 1)
+	})
+
 	t.Run("role attributes should be created", func(t *testing.T) {
 		ctx.testContextChanged(t)
 		role1 := eid.New()

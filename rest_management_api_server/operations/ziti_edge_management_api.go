@@ -351,6 +351,9 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 		IdentityGetIdentityAuthenticatorsHandler: identity.GetIdentityAuthenticatorsHandlerFunc(func(params identity.GetIdentityAuthenticatorsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityAuthenticators has not yet been implemented")
 		}),
+		IdentityGetIdentityEnrollmentsHandler: identity.GetIdentityEnrollmentsHandlerFunc(func(params identity.GetIdentityEnrollmentsParams, principal interface{}) middleware.Responder {
+			return middleware.NotImplemented("operation identity.GetIdentityEnrollments has not yet been implemented")
+		}),
 		IdentityGetIdentityFailedServiceRequestsHandler: identity.GetIdentityFailedServiceRequestsHandlerFunc(func(params identity.GetIdentityFailedServiceRequestsParams, principal interface{}) middleware.Responder {
 			return middleware.NotImplemented("operation identity.GetIdentityFailedServiceRequests has not yet been implemented")
 		}),
@@ -869,6 +872,8 @@ type ZitiEdgeManagementAPI struct {
 	CurrentIdentityGetCurrentIdentityHandler current_identity.GetCurrentIdentityHandler
 	// IdentityGetIdentityAuthenticatorsHandler sets the operation handler for the get identity authenticators operation
 	IdentityGetIdentityAuthenticatorsHandler identity.GetIdentityAuthenticatorsHandler
+	// IdentityGetIdentityEnrollmentsHandler sets the operation handler for the get identity enrollments operation
+	IdentityGetIdentityEnrollmentsHandler identity.GetIdentityEnrollmentsHandler
 	// IdentityGetIdentityFailedServiceRequestsHandler sets the operation handler for the get identity failed service requests operation
 	IdentityGetIdentityFailedServiceRequestsHandler identity.GetIdentityFailedServiceRequestsHandler
 	// IdentityGetIdentityPolicyAdviceHandler sets the operation handler for the get identity policy advice operation
@@ -1405,6 +1410,9 @@ func (o *ZitiEdgeManagementAPI) Validate() error {
 	}
 	if o.IdentityGetIdentityAuthenticatorsHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityAuthenticatorsHandler")
+	}
+	if o.IdentityGetIdentityEnrollmentsHandler == nil {
+		unregistered = append(unregistered, "identity.GetIdentityEnrollmentsHandler")
 	}
 	if o.IdentityGetIdentityFailedServiceRequestsHandler == nil {
 		unregistered = append(unregistered, "identity.GetIdentityFailedServiceRequestsHandler")
@@ -2135,6 +2143,10 @@ func (o *ZitiEdgeManagementAPI) initHandlerCache() {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
 	o.handlers["GET"]["/identities/{id}/authenticators"] = identity.NewGetIdentityAuthenticators(o.context, o.IdentityGetIdentityAuthenticatorsHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/identities/{id}/enrollments"] = identity.NewGetIdentityEnrollments(o.context, o.IdentityGetIdentityEnrollmentsHandler)
 	if o.handlers["GET"] == nil {
 		o.handlers["GET"] = make(map[string]http.Handler)
 	}
