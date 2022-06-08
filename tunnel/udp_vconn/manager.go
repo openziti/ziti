@@ -89,7 +89,7 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 		return nil, errors.New("max connections exceeded")
 	}
 	conn := &udpConn{
-		readC:       make(chan mempool.PooledBuffer),
+		readC:       make(chan mempool.PooledBuffer, 4),
 		closeNotify: make(chan struct{}),
 		service:     service.Name,
 		srcAddr:     srcAddr,

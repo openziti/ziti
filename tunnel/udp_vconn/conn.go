@@ -75,14 +75,17 @@ func (conn *udpConn) WriteTo(w io.Writer) (n int64, err error) {
 	var bytesWritten int64
 	for {
 		var buf mempool.PooledBuffer
-		var ok bool
 
 		select {
-		case buf, ok = <-conn.readC:
+		case buf = <-conn.readC:
 		case <-conn.closeNotify:
+			select {
+			case buf = <-conn.readC:
+			default:
+			}
 		}
 
-		if !ok {
+		if buf == nil {
 			return bytesWritten, io.EOF
 		}
 
@@ -123,6 +126,10 @@ func (conn *udpConn) Read(b []byte) (n int, err error) {
 	select {
 	case buf = <-conn.readC:
 	case <-conn.closeNotify:
+		select {
+		case buf = <-conn.readC:
+		default:
+		}
 	}
 
 	if buf == nil {
