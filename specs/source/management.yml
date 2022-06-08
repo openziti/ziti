@@ -142,6 +142,8 @@ paths:
     $ref: 'management/identities.yml#/paths/identities-id'
   '/identities/{id}/authenticators':
     $ref: "management/identities.yml#/paths/identities-id-authenticators"
+  '/identities/{id}/enrollments':
+    $ref: "management/identities.yml#/paths/identities-id-enrollments"
   '/identities/{id}/disable':
     $ref: "management/identities.yml#/paths/identities-id-disable"
   '/identities/{id}/enable':

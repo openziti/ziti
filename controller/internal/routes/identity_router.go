@@ -87,6 +87,11 @@ func (r *IdentityRouter) Register(ae *env.AppEnv) {
 		return ae.IsAllowed(r.listAuthenticators, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
 
+	// enrollments list
+	ae.ManagementApi.IdentityGetIdentityEnrollmentsHandler = identity.GetIdentityEnrollmentsHandlerFunc(func(params identity.GetIdentityEnrollmentsParams, _ interface{}) middleware.Responder {
+		return ae.IsAllowed(r.listEnrollments, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
+	})
+
 	// edge router policies list
 	ae.ManagementApi.IdentityListIdentitysEdgeRouterPoliciesHandler = identity.ListIdentitysEdgeRouterPoliciesHandlerFunc(func(params identity.ListIdentitysEdgeRouterPoliciesParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.listEdgeRouterPolicies, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
@@ -236,6 +241,11 @@ func (r *IdentityRouter) listServices(ae *env.AppEnv, rc *response.RequestContex
 func (r *IdentityRouter) listAuthenticators(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `identity = "%v"`
 	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
+}
+
+func (r *IdentityRouter) listEnrollments(ae *env.AppEnv, rc *response.RequestContext) {
+	filterTemplate := `identity = "%v"`
+	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *IdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {

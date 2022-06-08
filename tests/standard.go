@@ -19,11 +19,27 @@ package tests
 import (
 	"encoding/json"
 	"github.com/Jeffail/gabs"
+	"github.com/go-openapi/strfmt"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/resty.v1"
+	"net/url"
 	"strings"
 	"testing"
 )
+
+func IsURI(rawurl string) bool {
+	_, err := url.Parse(rawurl)
+	return err == nil
+}
+
+var DefaultFormats strfmt.Registry = NewRegistry()
+
+func NewRegistry() strfmt.Registry {
+	fmt := strfmt.NewFormats()
+	u := strfmt.URI("")
+	fmt.Add("uri", &u, IsURI)
+	return fmt
+}
 
 func standardJsonResponseTests(response *resty.Response, expectedStatusCode int, t *testing.T) {
 	t.Run("has standard json response", func(t *testing.T) {

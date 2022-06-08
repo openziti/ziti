@@ -51,10 +51,6 @@ type EnrollmentDetail struct {
 	// ca Id
 	CaID *string `json:"caId,omitempty"`
 
-	// details
-	// Required: true
-	Details map[string]string `json:"details"`
-
 	// edge router
 	EdgeRouter *EntityRef `json:"edgeRouter,omitempty"`
 
@@ -106,8 +102,6 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		CaID *string `json:"caId,omitempty"`
 
-		Details map[string]string `json:"details"`
-
 		EdgeRouter *EntityRef `json:"edgeRouter,omitempty"`
 
 		EdgeRouterID string `json:"edgeRouterId,omitempty"`
@@ -135,8 +129,6 @@ func (m *EnrollmentDetail) UnmarshalJSON(raw []byte) error {
 	}
 
 	m.CaID = dataAO1.CaID
-
-	m.Details = dataAO1.Details
 
 	m.EdgeRouter = dataAO1.EdgeRouter
 
@@ -175,8 +167,6 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		CaID *string `json:"caId,omitempty"`
 
-		Details map[string]string `json:"details"`
-
 		EdgeRouter *EntityRef `json:"edgeRouter,omitempty"`
 
 		EdgeRouterID string `json:"edgeRouterId,omitempty"`
@@ -201,8 +191,6 @@ func (m EnrollmentDetail) MarshalJSON() ([]byte, error) {
 	}
 
 	dataAO1.CaID = m.CaID
-
-	dataAO1.Details = m.Details
 
 	dataAO1.EdgeRouter = m.EdgeRouter
 
@@ -243,10 +231,6 @@ func (m *EnrollmentDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateDetails(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateEdgeRouter(formats); err != nil {
 		res = append(res, err)
 	}
@@ -274,15 +258,6 @@ func (m *EnrollmentDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *EnrollmentDetail) validateDetails(formats strfmt.Registry) error {
-
-	if err := validate.Required("details", "body", m.Details); err != nil {
-		return err
-	}
-
 	return nil
 }
 

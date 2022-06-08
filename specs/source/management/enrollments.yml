@@ -185,10 +185,6 @@ definitions:
             type: string
           jwt:
             type: string
-          details:
-            type: object
-            additionalProperties:
-              type: string
     example:
       id: 624fa53f-7629-4a7a-9e38-c1f4ce322c1d
       createdAt: '0001-01-01T00:00:00Z'

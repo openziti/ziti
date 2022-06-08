@@ -318,9 +318,9 @@ paths:
     parameters:
       - $ref: '../shared/parameters.yml#/id'
     get:
-      summary: Retrieve the curent authenticators of a specific identity
+      summary: Retrieve the current authenticators of a specific identity
       description: |
-        Returns a list of authenticators associated to the idetity specified
+        Returns a list of authenticators associated to the identity specified
       security:
         - ztSession: [ ]
       tags:
@@ -329,6 +329,25 @@ paths:
       responses:
         '200':
           $ref: '../shared/authenticators.yml#/responses/listAuthenticators'
+        '404':
+          $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
+        '401':
+          $ref: '../shared/standard-responses.yml#/responses/unauthorizedResponse'
+  identities-id-enrollments:
+    parameters:
+      - $ref: '../shared/parameters.yml#/id'
+    get:
+      summary: Retrieve the current enrollments of a specific identity
+      description: |
+        Returns a list of enrollments associated to the identity specified
+      security:
+        - ztSession: [ ]
+      tags:
+        - Identity
+      operationId: getIdentityEnrollments
+      responses:
+        '200':
+          $ref: '../management/enrollments.yml#/responses/listEnrollments'
         '404':
           $ref: '../shared/standard-responses.yml#/responses/notFoundResponse'
         '401':
