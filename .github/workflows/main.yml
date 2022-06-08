@@ -143,10 +143,13 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci tag -v -f version
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
-      - name: Get Ziti Version
+      # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
+      - name: Compute the Ziti Version String for CI Jobs
         id: get_version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
           ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
           # drop the leading 'v', if any
@@ -155,8 +158,13 @@ jobs:
             # fail the job because we could not obtain the current version from ziti-ci
             echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
             exit 1
+          elif ! [[ "${GITHUB_REF}" =~ ^refs/heads/release-v ]]
+            # Set output parameters for release branches
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
           else
-            # Set output parameters.
+            # Append build / run number for non-release refs
+            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
             echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
             echo ::set-output name=ziti-version::${ZITI_VERSION}
           fi
