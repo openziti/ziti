@@ -158,7 +158,7 @@ jobs:
             # fail the job because we could not obtain the current version from ziti-ci
             echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
             exit 1
-          elif [[ "${GITHUB_REF}" =~ ^refs/heads/release-v ]]; then
+          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main/) ]]; then
             # Set output parameters for release branches
             echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
             echo ::set-output name=ziti-version::${ZITI_VERSION}
