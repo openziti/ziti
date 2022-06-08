@@ -445,8 +445,8 @@ github.com/openziti/foundation v0.17.28 h1:ckYnd6SUaRPS9HU+lr5AosU7h4W37Wg01DlM5
 github.com/openziti/foundation v0.17.28/go.mod h1:CaXG0+mgwq25wHCUy35aIbB01ph7U+BoUW8+P5F235o=
 github.com/openziti/jwks v1.0.1 h1:+BtBzDWFVUlJfCbBhQR0BZI3YNtoBvfhfdCUSSB0G+0=
 github.com/openziti/jwks v1.0.1/go.mod h1:KwO0x9FBG0aoJS5f6nH5xeHoplyR1H143SMI9kF0mC8=
-github.com/openziti/sdk-golang v0.16.76 h1:/RuuZQGnGNuLBgFuW17t903s1EKh7TPn9ysm6tEuKIo=
-github.com/openziti/sdk-golang v0.16.76/go.mod h1:YsuGyHDMJh0UdPHAQUOB1OHV3c+xkwYs5JoYK/vPJiI=
+github.com/openziti/sdk-golang v0.16.77 h1:rYUN3aHw8jcJ5/v2+sPIq4j3QQ1uHd+OJVsca+/DS/I=
+github.com/openziti/sdk-golang v0.16.77/go.mod h1:5ezQl5ZJU1p2HWSn059NyeisrgqTtMrUiWrDoTrR6tw=
 github.com/openziti/storage v0.1.8 h1:Y+AJ3Wv61gzpcgagWy6L4SuY6T9BK4Ha9CBHjOEhm/8=
 github.com/openziti/storage v0.1.8/go.mod h1:Pgm8qtCE3NYmV8exuD7qLGiS/PZ6VLA7swn6AQxIgs4=
 github.com/openziti/transport/v2 v2.0.5 h1:rPnkA7Z04cO6QFJWM4cBmD1P7/8I89VblABD46F8l18=
@@ -499,8 +499,8 @@ github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQD
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
-github.com/shirou/gopsutil/v3 v3.22.4 h1:srAQaiX6jX/cYL6q29aE0m8lOskT9CurZ9N61YR3yoI=
-github.com/shirou/gopsutil/v3 v3.22.4/go.mod h1:D01hZJ4pVHPpCTZ3m3T2+wDF2YAGfd+H4ifUguaQzHM=
+github.com/shirou/gopsutil/v3 v3.22.5 h1:atX36I/IXgFiB81687vSiBI5zrMsxcIBkP9cQMJQoJA=
+github.com/shirou/gopsutil/v3 v3.22.5/go.mod h1:so9G9VzeHt/hsd0YwqprnjHnfARAUktauykSbr+y2gA=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
