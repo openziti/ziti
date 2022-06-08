@@ -279,6 +279,14 @@ jobs:
           echo "    username: fablab"   >> ~/.fablab/bindings.yml
           echo "    password: fablab"   >> ~/.fablab/bindings.yml
 
+      - name: Create AWS Credentials Config
+        run: |
+          mkdir ~/.aws
+          touch ~/.aws/credentials
+
+          echo "aws_access_key_id     = $(AWS_ACCESS_KEY_ID)"      >> ~/.aws/credentials
+          echo "aws_secret_access_key = $(AWS_SECRET_ACCESS_KEY)"  >> ~/.aws/credentials
+
       - name: Test Ziti Command
         env:
           ZITI_ROOT: release/amd64/linux/
