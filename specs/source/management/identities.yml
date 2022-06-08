@@ -454,7 +454,7 @@ responses:
     schema:
       $ref: '#/definitions/listIdentitiesEnvelope'
   detailIdentity:
-    description: A signle identity
+    description: A single identity
     schema:
       $ref: '#/definitions/detailIdentityEnvelope'
   getIdentityPolicyAdvice:
