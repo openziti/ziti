@@ -246,6 +246,12 @@ jobs:
       - name: Install Zitilab Commands
         run: go install github.com/openziti/zitilab/github@github-action
 
+      - name: Move artifacts to bin subdir
+        run: |
+          cd release/amd64/linux
+          mkdir bin
+          mv * bin
+
       - name: Create Zitilab Bindings
         run: |
           mkdir ~/.fablab
