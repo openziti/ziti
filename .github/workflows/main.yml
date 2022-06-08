@@ -243,8 +243,19 @@ jobs:
         with:
           go-version: '~1.18.1'
 
+      #- name: Install Zitilab Commands
+      #  run: go install github.com/openziti/zitilab/github@github-action
+
+      - name: Checkout Zitilab
+        uses: actions/checkout@v3
+        with:
+          repository: openziti/zitilab
+          path: zitilab
+          ref: github-action
+
       - name: Install Zitilab Commands
-        run: go install github.com/openziti/zitilab/github@github-action
+        run: |
+          go install zitilab/...
 
       - name: Move artifacts to bin subdir
         run: |
