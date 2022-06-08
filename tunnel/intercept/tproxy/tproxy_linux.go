@@ -310,16 +310,19 @@ func (event *udpReadEvent) Handle(manager udp_vconn.Manager) error {
 		log := pfxlog.Logger()
 		origDest, err := getOriginalDest(event.oob)
 		if err != nil {
+			event.buf.Release()
 			return fmt.Errorf("error while getting original destination packet: %v", err)
 		}
 		log.Infof("received datagram from %v (original dest %v). Creating udp listen socket on original dest", event.srcAddr, origDest)
 		packetConn, err := listenConfig.ListenPacket(context.Background(), "udp", origDest.String())
 		if err != nil {
+			event.buf.Release()
 			return err
 		}
 		writeConn := packetConn.(*net.UDPConn)
 		writeQueue, err = manager.CreateWriteQueue(origDest, event.srcAddr, event.interceptor.service, writeConn)
 		if err != nil {
+			event.buf.Release()
 			return err
 		}
 	}
