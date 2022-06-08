@@ -289,6 +289,7 @@ jobs:
 
       - name: Sync System Clock
         run: |
+          date
           apt-get update
           apt-get install ntpdate
           sudo ntpdate us.pool.ntp.org
