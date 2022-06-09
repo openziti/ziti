@@ -61,6 +61,7 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 * https://github.com/openziti/edge/issues/1025
 * https://github.com/openziti/edge/issues/1035
 * https://github.com/openziti/edge/issues/1045
+* https://github.com/openziti/edge/issues/1049
 
 # Fabric
 ## Bug Fixes
