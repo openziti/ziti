@@ -57,6 +57,7 @@ func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.L
 	links[EntityNamePostureData] = factory.NewNestedLink(entity, EntityNamePostureData)
 	links[EntityNameFailedServiceRequest] = factory.NewNestedLink(entity, EntityNameFailedServiceRequest)
 	links[EntityNameAuthenticator] = factory.NewNestedLink(entity, EntityNameAuthenticator)
+	links[EntityNameEnrollment] = factory.NewNestedLink(entity, EntityNameEnrollment)
 
 	if identity, ok := entity.(*model.Identity); ok && identity != nil {
 		links[EntityNameAuthPolicy] = AuthPolicyLinkFactory.SelfLinkFromId(identity.AuthPolicyId)
