@@ -236,6 +236,7 @@ message SetLinkDownRequest {
 message Path {
   repeated string nodes = 1;
   repeated string links = 2;
+  string terminatorLocalAddress = 3;
 }
 
 message Circuit {

@@ -71,25 +71,29 @@ func (self *fabricCircuitTypeFilterEventAdapter) AcceptCircuitEvent(event *netwo
 }
 
 type CircuitEvent struct {
-	Namespace        string         `json:"namespace"`
-	EventType        string         `json:"event_type"`
-	CircuitId        string         `json:"circuit_id"`
-	Timestamp        time.Time      `json:"timestamp"`
-	ClientId         string         `json:"client_id"`
-	ServiceId        string         `json:"service_id"`
-	CreationTimespan *time.Duration `json:"creation_timespan"`
-	Path             string         `json:"path"`
-	LinkCount        int            `json:"link_count"`
-	Cost             *uint32        `json:"path_cost"`
+	Namespace              string         `json:"namespace"`
+	EventType              string         `json:"event_type"`
+	CircuitId              string         `json:"circuit_id"`
+	Timestamp              time.Time      `json:"timestamp"`
+	ClientId               string         `json:"client_id"`
+	ServiceId              string         `json:"service_id"`
+	CreationTimespan       *time.Duration `json:"creation_timespan"`
+	Path                   string         `json:"path"`
+	TerminatorLocalAddress string         `json:"terminator_local_address"`
+	LinkCount              int            `json:"link_count"`
+	Cost                   *uint32        `json:"path_cost"`
 }
 
 func (event *CircuitEvent) String() string {
 	return fmt.Sprintf("%v.%v circuitId=%v clientId=%v serviceId=%v path=%v%s",
-		event.Namespace, event.EventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path, func() string {
-			if event.CreationTimespan == nil {
-				return ""
+		event.Namespace, event.EventType, event.CircuitId, event.ClientId, event.ServiceId, event.Path, func() (out string) {
+			if event.TerminatorLocalAddress != "" {
+				out = fmt.Sprintf("%s (%s)", out, event.TerminatorLocalAddress)
 			}
-			return fmt.Sprintf(" creationTimespan=%s", *event.CreationTimespan)
+			if event.CreationTimespan != nil {
+				out = fmt.Sprintf("%s creationTimespan=%s", out, *event.CreationTimespan)
+			}
+			return
 		}())
 }
 
@@ -121,16 +125,17 @@ func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.Circuit
 		eventType = "deleted"
 	}
 	event := &CircuitEvent{
-		Namespace:        "fabric.circuits",
-		EventType:        eventType,
-		CircuitId:        netEvent.CircuitId,
-		Timestamp:        time.Now(),
-		ClientId:         netEvent.ClientId,
-		ServiceId:        netEvent.ServiceId,
-		CreationTimespan: netEvent.CreationTimespan,
-		Path:             netEvent.Path.String(),
-		LinkCount:        len(netEvent.Path.Links),
-		Cost:             netEvent.Cost,
+		Namespace:              "fabric.circuits",
+		EventType:              eventType,
+		CircuitId:              netEvent.CircuitId,
+		Timestamp:              time.Now(),
+		ClientId:               netEvent.ClientId,
+		ServiceId:              netEvent.ServiceId,
+		CreationTimespan:       netEvent.CreationTimespan,
+		Path:                   netEvent.Path.String(),
+		TerminatorLocalAddress: netEvent.Path.TerminatorLocalAddr,
+		LinkCount:              len(netEvent.Path.Links),
+		Cost:                   netEvent.Cost,
 	}
 
 	adapter.handler.AcceptCircuitEvent(event)

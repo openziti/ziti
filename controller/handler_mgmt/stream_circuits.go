@@ -17,12 +17,12 @@
 package handler_mgmt
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/pb/mgmt_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type streamCircuitsHandler struct {
@@ -108,5 +108,6 @@ func NewPath(path *network.Path) *mgmt_pb.Path {
 	for _, l := range path.Links {
 		mgmtPath.Links = append(mgmtPath.Links, l.Id)
 	}
+	mgmtPath.TerminatorLocalAddress = path.TerminatorLocalAddr
 	return mgmtPath
 }

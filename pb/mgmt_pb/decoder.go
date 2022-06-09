@@ -18,9 +18,10 @@ package mgmt_pb
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"google.golang.org/protobuf/proto"
 )
 
 type Decoder struct{}
@@ -448,7 +449,12 @@ func (self *Path) CalculateDisplayPath() string {
 		if i < len(self.Links) {
 			out += fmt.Sprintf("[r/%s]->{l/%s}->", self.Nodes[i], self.Links[i])
 		} else {
-			out += fmt.Sprintf("[r/%s]\n", self.Nodes[i])
+			out += fmt.Sprintf("[r/%s%s]\n", self.Nodes[i], func() string {
+				if self.TerminatorLocalAddress == "" {
+					return ""
+				}
+				return fmt.Sprintf(" (%s)", self.TerminatorLocalAddress)
+			}())
 		}
 	}
 	return out

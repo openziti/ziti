@@ -527,7 +527,9 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		cost := terminator.GetRouteCost()
 		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan, &cost)
 
-		logger.WithField("path", circuit.Path).Debug("created circuit")
+		logger.WithField("path", circuit.Path).
+			WithField("terminator_local_address", circuit.Path.TerminatorLocalAddr).
+			Debug("created circuit")
 		return circuit, nil
 	}
 }
