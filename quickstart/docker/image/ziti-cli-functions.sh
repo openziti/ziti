@@ -621,7 +621,7 @@ function pki_client_server {
   fi
 
   if ! test -f "${ZITI_PKI}/${ZITI_CA_NAME_local}/keys/${file_name}-server.key"; then
-    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list}"
+    echo "Creating server cert from ca: ${ZITI_CA_NAME_local} for ${allow_list} / ${ip_local}"
     "${ZITI_BIN_DIR-}/ziti" pki create server --pki-root="${ZITI_PKI_OS_SPECIFIC}" --ca-name "${ZITI_CA_NAME_local}" \
           --server-file "${file_name}-server" \
           --dns "${allow_list}" --ip "${ip_local}" \
@@ -756,6 +756,13 @@ function createPrivateRouterConfig {
   fi
 
   output_file="${ZITI_HOME-}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" --private > "${output_file}"
   echo -e "Router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -774,10 +781,15 @@ function createPki {
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list="${ZITI_CONTROLLER_HOSTNAME},localhost,127.0.0.1"
-  if [[ "$EXTERNAL_DNS" != "" ]]; then pki_allow_list="$pki_allow_list,$EXTERNAL_DNS"; fi
-  pki_client_server "${pki_allow_list}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_CONTROLLER_IP_OVERRIDE-}" "${ZITI_CONTROLLER_HOSTNAME}"
-  pki_client_server "${ZITI_EDGE_CONTROLLER_HOSTNAME},localhost,127.0.0.1" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE-}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,$(hostname)"
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
+  if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
+  pki_allow_list_ip="127.0.0.1"
+  if [[ "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
+  if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
+
+  pki_client_server "${pki_allow_list_dns}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CONTROLLER_HOSTNAME}"
+  pki_client_server "${pki_allow_list_dns}" "${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_EDGE_CONTROLLER_HOSTNAME}"
 }
 
 
@@ -797,11 +809,6 @@ function createFabricRouterConfig {
     if [[ "${router_name}" == "" ]]; then
       # Check for overwrite of default file
       router_name="${default_router_name}"
-      getFileOverwritePermission "${ZITI_HOME-}/${router_name}.yaml"
-      retVal=$?
-      if [[ "${retVal}" != 0 ]]; then
-        return 1
-      fi
     fi
   fi
 
@@ -812,6 +819,13 @@ function createFabricRouterConfig {
   fi
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router fabric --routerName "${router_name}" > "${output_file}"
   echo -e "Fabric router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -847,6 +861,13 @@ function createEdgeRouterWssConfig {
   fi
 
   output_file="${ZITI_HOME-}/${router_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --wss --routerName "${router_name}" > "${output_file}"
   echo -e "WSS Edge router wss configuration file written to: $(BLUE "${output_file}")"
 }
@@ -884,6 +905,12 @@ function createEdgeRouterConfig {
 
   output_file="${ZITI_HOME}/${router_name}.yaml"
 
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config router edge --routerName "${router_name}" > "${output_file}"
   echo -e "edge router configuration file written to: $(BLUE "${output_file}")"
 }
@@ -920,6 +947,13 @@ function createControllerConfig {
   echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
 
   output_file="${ZITI_HOME}/${controller_name}.yaml"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
   "${ZITI_BIN_DIR}/ziti" create config controller > "${output_file}"
 
   echo -e "Controller configuration file written to: $(BLUE "${output_file}")"
@@ -1091,7 +1125,14 @@ function createControllerSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${controller_name}.service"
+  output_file="${ZITI_HOME}/${controller_name}.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Controller
@@ -1141,7 +1182,14 @@ function createRouterSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${router_name}.service"
+  output_file="${ZITI_HOME}/${router_name}.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Router for ${router_name}
@@ -1188,7 +1236,14 @@ function createControllerLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/${controller_name}.plist"
+  output_file="${ZITI_HOME}/${controller_name}.plist"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1254,7 +1309,14 @@ function createRouterLaunchdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME-}/${router_name}.plist"
+  output_file="${ZITI_HOME-}/${router_name}.plist"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForLaunchd
 <?xml version="1.0" encoding="UTF-8"?>
   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -1306,7 +1368,14 @@ function createZacSystemdFile {
     return 1
   fi
 
-output_file="${ZITI_HOME}/ziti-console.service"
+  output_file="${ZITI_HOME}/ziti-console.service"
+
+  getFileOverwritePermission "${output_file}"
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Console

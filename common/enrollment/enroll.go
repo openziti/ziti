@@ -19,24 +19,22 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/identity/certtools"
 	"github.com/openziti/foundation/util/term"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"os"
-	"strings"
 )
 
 // global state used by all subcommands are located here for easy discovery
-var verbose bool
-var removeJwt bool
-var keyAlg config.KeyAlgVar
-var jwtpath, outpath, keyPath, certPath, idname, caOverride, username, password string
 
 const verboseDesc = "Enable verbose logging."
 const outpathDesc = "Output configuration file."
@@ -46,7 +44,31 @@ const idnameDesc = "Names the identity. Ignored if not 3rd party auto enrollment
 
 const outFlag = "out"
 
-func NewEnrollCommand() *cobra.Command {
+// EnrollOptions contains the command line options
+type EnrollOptions struct {
+	common.CommonOptions
+	RemoveJwt  bool
+	KeyAlg     config.KeyAlgVar
+	JwtPath    string
+	OutputPath string
+	KeyPath    string
+	CertPath   string
+	IdName     string
+	CaOverride string
+	Username   string
+	Password   string
+}
+
+type EnrollAction struct {
+	EnrollOptions
+}
+
+func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
+	action := &EnrollAction{
+		EnrollOptions: EnrollOptions{
+			CommonOptions: p(),
+		},
+	}
 	var enrollSubCmd = &cobra.Command{
 		SilenceErrors: true,
 		SilenceUsage:  false,
@@ -54,7 +76,7 @@ func NewEnrollCommand() *cobra.Command {
 		Short:         "enroll an identity",
 		Args:          cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			if verbose {
+			if action.Verbose {
 				logrus.SetLevel(logrus.DebugLevel)
 			}
 		},
@@ -68,67 +90,69 @@ func NewEnrollCommand() *cobra.Command {
 			})
 			logrus.SetReportCaller(false) // for enrolling don't bother with this
 			if len(args) > 0 {
-				jwtpath = args[0]
+				action.JwtPath = args[0]
 			}
-			if jwtpath == "" {
+			if action.JwtPath == "" {
 				defer fmt.Printf("\nERROR: no jwt provided\n")
 				return cmd.Help()
 			}
-			return processEnrollment()
+			action.Cmd = cmd
+			action.Args = args
+			return action.Run()
 		},
 	}
 
-	enrollSubCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, verboseDesc)
-	enrollSubCmd.Flags().StringVarP(&jwtpath, "jwt", "j", "", jwtpathDesc)
-	enrollSubCmd.Flags().StringVarP(&outpath, outFlag, "o", "", outpathDesc)
-	enrollSubCmd.Flags().StringVarP(&idname, "idname", "n", "", idnameDesc)
-	enrollSubCmd.Flags().StringVarP(&certPath, "cert", "c", "", certDesc)
-	enrollSubCmd.Flags().StringVarP(&caOverride, "ca", "", "", "Additional trusted certificates")
-	enrollSubCmd.Flags().StringVarP(&username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
-	enrollSubCmd.Flags().StringVarP(&password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
-	enrollSubCmd.Flags().BoolVar(&removeJwt, "rm", false, "Remove the JWT on success")
+	//enrollSubCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, verboseDesc)
+	enrollSubCmd.Flags().StringVarP(&action.JwtPath, "jwt", "j", "", jwtpathDesc)
+	enrollSubCmd.Flags().StringVarP(&action.OutputPath, outFlag, "o", "", outpathDesc)
+	enrollSubCmd.Flags().StringVarP(&action.IdName, "idname", "n", "", idnameDesc)
+	enrollSubCmd.Flags().StringVarP(&action.CertPath, "cert", "c", "", certDesc)
+	enrollSubCmd.Flags().StringVarP(&action.CaOverride, "ca", "", "", "Additional trusted certificates")
+	enrollSubCmd.Flags().StringVarP(&action.Username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
+	enrollSubCmd.Flags().StringVarP(&action.Password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
+	enrollSubCmd.Flags().BoolVar(&action.RemoveJwt, "rm", false, "Remove the JWT on success")
 
-	keyAlg.Set("RSA") // set default
-	enrollSubCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
+	action.KeyAlg.Set("RSA") // set default
+	enrollSubCmd.Flags().VarP(&action.KeyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	var keyDesc = ""
 	engines := certtools.ListEngines()
 	if len(engines) > 0 {
 		keyDesc = fmt.Sprintf("The key to use with the certificate. Optionally specify the engine to use. supported engines: %v", engines)
 	} else {
-		keyDesc = fmt.Sprintf("The key to use with the certificate.")
+		keyDesc = "The key to use with the certificate."
 	}
 
-	enrollSubCmd.Flags().StringVarP(&keyPath, "key", "k", "", keyDesc)
+	enrollSubCmd.Flags().StringVarP(&action.KeyPath, "key", "k", "", keyDesc)
 	return enrollSubCmd
 }
 
-func processEnrollment() error {
-	if strings.TrimSpace(outpath) == "" {
-		out, outErr := outPathFromJwt(jwtpath)
+func (e *EnrollAction) Run() error {
+	if strings.TrimSpace(e.OutputPath) == "" {
+		out, outErr := outPathFromJwt(e.JwtPath)
 		if outErr != nil {
 			return fmt.Errorf("could not set the output path: %s", outErr)
 		}
-		outpath = out
+		e.OutputPath = out
 	}
 
-	if jwtpath != "" {
-		if _, err := os.Stat(jwtpath); os.IsNotExist(err) {
-			return fmt.Errorf("the provided jwt file does not exist: %s", jwtpath)
+	if e.JwtPath != "" {
+		if _, err := os.Stat(e.JwtPath); os.IsNotExist(err) {
+			return fmt.Errorf("the provided jwt file does not exist: %s", e.JwtPath)
 		}
 	}
 
-	if caOverride != "" {
-		if _, err := os.Stat(caOverride); os.IsNotExist(err) {
-			return fmt.Errorf("the provided ca file does not exist: %s", caOverride)
+	if e.CaOverride != "" {
+		if _, err := os.Stat(e.CaOverride); os.IsNotExist(err) {
+			return fmt.Errorf("the provided ca file does not exist: %s", e.CaOverride)
 		}
 	}
 
-	if strings.TrimSpace(outpath) == strings.TrimSpace(jwtpath) {
+	if strings.TrimSpace(e.OutputPath) == strings.TrimSpace(e.JwtPath) {
 		return fmt.Errorf("the output path must not be the same as the jwt path")
 	}
 
-	tokenStr, _ := ioutil.ReadFile(jwtpath)
+	tokenStr, _ := ioutil.ReadFile(e.JwtPath)
 
 	pfxlog.Logger().Debugf("jwt to parse: %s", tokenStr)
 	tkn, _, err := enroll.ParseToken(string(tokenStr))
@@ -138,20 +162,20 @@ func processEnrollment() error {
 	}
 
 	flags := enroll.EnrollmentFlags{
-		CertFile:      certPath,
-		KeyFile:       keyPath,
-		KeyAlg:        keyAlg,
+		CertFile:      e.CertPath,
+		KeyFile:       e.KeyPath,
+		KeyAlg:        e.KeyAlg,
 		Token:         tkn,
-		IDName:        idname,
-		AdditionalCAs: caOverride,
-		Username:      username,
-		Password:      password,
+		IDName:        e.IdName,
+		AdditionalCAs: e.CaOverride,
+		Username:      e.Username,
+		Password:      e.Password,
 	}
 
 	if tkn.EnrollmentMethod == "updb" {
-		if password == "" {
-			password, err = term.PromptPassword("updb enrollment requires a password, please enter one: ", false)
-			password = strings.TrimSpace(password)
+		if e.Password == "" {
+			e.Password, err = term.PromptPassword("updb enrollment requires a password, please enter one: ", false)
+			e.Password = strings.TrimSpace(e.Password)
 
 			if err != nil {
 				return fmt.Errorf("failed to complete enrollment, updb requires a non-empty password: %v", err)
@@ -165,17 +189,17 @@ func processEnrollment() error {
 
 			confirm = strings.TrimSpace(confirm)
 
-			if password != confirm {
+			if e.Password != confirm {
 				return fmt.Errorf("failed to complete enrollment, passwords did not match")
 			}
 
-			flags.Password = password
+			flags.Password = e.Password
 		}
 
 		err = enroll.EnrollUpdb(flags)
 		if err == nil {
-			if rmErr := os.Remove(jwtpath); rmErr != nil {
-				pfxlog.Logger().WithError(rmErr).Warnf("unable to remove JWT file as requested: %v", jwtpath)
+			if rmErr := os.Remove(e.JwtPath); rmErr != nil {
+				pfxlog.Logger().WithError(rmErr).Warnf("unable to remove JWT file as requested: %v", e.JwtPath)
 			}
 		}
 		return err
@@ -186,9 +210,9 @@ func processEnrollment() error {
 		return fmt.Errorf("failed to enroll: %v", err)
 	}
 
-	output, err := os.Create(outpath)
+	output, err := os.Create(e.OutputPath)
 	if err != nil {
-		return fmt.Errorf("failed to open file '%s': %s", outpath, err.Error())
+		return fmt.Errorf("failed to open file '%s': %s", e.OutputPath, err.Error())
 	}
 	defer func() { _ = output.Close() }()
 
@@ -196,15 +220,15 @@ func processEnrollment() error {
 	enc.SetEscapeHTML(false)
 	encErr := enc.Encode(&conf)
 
-	if err = os.Remove(jwtpath); err != nil {
-		pfxlog.Logger().WithError(err).Warnf("unable to remove JWT file as requested: %v", jwtpath)
+	if err = os.Remove(e.JwtPath); err != nil {
+		pfxlog.Logger().WithError(err).Warnf("unable to remove JWT file as requested: %v", e.JwtPath)
 	}
 
 	if encErr == nil {
-		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", outpath)
+		pfxlog.Logger().Infof("enrolled successfully. identity file written to: %s", e.OutputPath)
 		return nil
 	} else {
-		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", outpath, encErr)
+		return fmt.Errorf("enrollment successful but the identity file was not able to be written to: %s [%s]", e.OutputPath, encErr)
 	}
 }
 

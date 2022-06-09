@@ -1,3 +1,81 @@
+# Release 0.25.11
+
+## What's New
+- Edge
+  - Management API: Breaking Changes
+  - Management API: New Endpoints
+  - Management API: JWKS Support
+  - Bug fixes
+- Fabric
+  - Bug fixes
+  - Metrics API
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+# Edge
+## Management API Breaking Changes
+
+The following Edge Management REST API Endpoints have breaking changes:
+
+- `POST /ext-jwt-signers`
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PUT /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PATCH /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is set and `kid` was not previously set
+  - `jwtEndpoint` or `certPem` must be defined or previously set of the other is  `null`
+  - `issuer` may not be set to `null` or `""`
+  - `audience` may not be set to `null` or `""`
+
+The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
+were not previously set.
+
+## Management API: New Endpoints
+
+The following new endpoints have been added:
+
+- `GET /identities/:id/enrollments` - returns a pre-filtered list of enrollments for the identity specified by `:id`
+
+## Management API: JWKS Support
+
+JWKS (JSON Web Key Sets) is defined in [rfc7517](https://www.rfc-editor.org/rfc/rfc7517) and defines the format
+and methods that public and private keys may be published via JSON. JWKS support enables Ziti to obtain
+public signing keys from identity providers as needed. This enables identity providers to rotate signing keys without
+breaking SSO integrations.
+
+To facilitate this, `ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns 
+a JWKS JSON payload. When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` 
+fields matches an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` 
+will be interrogated for new signing keys. The `jwksEndpoint` will only be interrogated at most once every five seconds.
+
+## Bug Fixes
+
+* https://github.com/openziti/edge/issues/1027
+* https://github.com/openziti/edge/issues/1025
+* https://github.com/openziti/edge/issues/1035
+* https://github.com/openziti/edge/issues/1045
+* https://github.com/openziti/edge/issues/1049
+
+# Fabric
+## Bug Fixes
+
+* https://github.com/openziti/fabric/issues/406
+* https://github.com/openziti/ziti/issues/565 - Moved terminator information to its own field.
+
+## Metrics API
+
+The following new endpoint has been added:
+- `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.
+
+
 # Release 0.25.10
 
 ## What's New
@@ -9,6 +87,8 @@
   - CLI support for enrollments/authenticators/re-enrollment
   - Fix prox-c download
   - ziti-fabric cleanup
+  - Add public attributes and service policies allowing public access to routers in docker-compose quickstart
+  - Add file overwrite checks for the "Local ziti quickstart" script
 - SDK Golang
   - N/A
 
@@ -340,7 +420,7 @@ link:
 * Bug fix: Fix router panic which can happen on link bind
 * Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
 * Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
-* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Change default dial retries to 3 from 2
 * Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
 * Change: Support for link types removed
 
