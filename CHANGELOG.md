@@ -2,7 +2,9 @@
 
 ## What's New
 - Edge
-  - Breaking Changes 
+  - Management API: Breaking Changes
+  - Management API: New Endpoints
+  - Management API: JWKS Support
   - Bug fixes
 - Fabric
   - Bug fixes
@@ -12,7 +14,7 @@
   - N/A
 
 # Edge
-## Breaking Changes
+## Management API Breaking Changes
 
 The following Edge Management REST API Endpoints have breaking changes:
 
@@ -35,12 +37,23 @@ The following Edge Management REST API Endpoints have breaking changes:
 The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
 were not previously set.
 
-## JWKS Support
+## Management API: New Endpoints
 
-`ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns a JWKS JSON payload.
-When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` fields matches
-an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` will be 
-interrogated for new signing keys. The `jwksEndpoint` will only resolve at most once every five seconds.
+The following new endpoints have been added:
+
+- `GET /identities/:id/enrollments` - returns a pre-filtered list of enrollments for the identity specified by `:id`
+
+## Management API: JWKS Support
+
+JWKS (JSON Web Key Sets) is defined in [rfc7517](https://www.rfc-editor.org/rfc/rfc7517) and defines the format
+and methods that public and private keys may be published via JSON. JWKS support enables Ziti to obtain
+public signing keys from identity providers as needed. This enables identity providers to rotate signing keys without
+breaking SSO integrations.
+
+To facilitate this, `ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns 
+a JWKS JSON payload. When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` 
+fields matches an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` 
+will be interrogated for new signing keys. The `jwksEndpoint` will only be interrogated at most once every five seconds.
 
 ## Bug Fixes
 
