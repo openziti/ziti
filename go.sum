@@ -669,14 +669,10 @@ github.com/openziti/channel v0.18.40 h1:70MUo9U3EfXwm7Hv1JLC+fEQ94YQeyOMXi+nqizv
 github.com/openziti/channel v0.18.40/go.mod h1:9ZZKcC57bbb5Wdy76AD1XLoXHU4Uz05i8y6k3r8y13s=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.21.241 h1:5RkyTzxCN1t91WMvDpa5hWfjfWZNt6MXx3GTCwqYMPY=
-github.com/openziti/edge v0.21.241/go.mod h1:fgdBJiDCqTnGehmAC6OuEGCWGdoBv2sBkb67N3aJ7yg=
 github.com/openziti/edge v0.21.250 h1:ZQrQtiEYPxkEIkO7v/AzZOMmaDJmYua3eaJMiXoFL/Y=
 github.com/openziti/edge v0.21.250/go.mod h1:mOoLGe6ENjG9wJ3x59lhauS5DMumWK44JiUbZLsdpR8=
-github.com/openziti/fabric v0.18.3 h1:LoLOY6RFCdLDXQXJ3XJGywV9wk8YuWTMMY2dTR0dMXg=
-github.com/openziti/fabric v0.18.3/go.mod h1:5Bqle8XHLowji3YVZSzh57RFXYWe/pvXEf71kSPFv3g=
-github.com/openziti/fabric v0.18.4 h1:xu9ukJtFq9pDLCPJxrDSubvvW4RXtIpyW9fs49R3cqU=
-github.com/openziti/fabric v0.18.4/go.mod h1:5Bqle8XHLowji3YVZSzh57RFXYWe/pvXEf71kSPFv3g=
+github.com/openziti/fabric v0.18.5 h1:aZk9Gay84aAzAENqhwz6GxYI8pz/8yyig8n7lrgkMCc=
+github.com/openziti/fabric v0.18.5/go.mod h1:5Bqle8XHLowji3YVZSzh57RFXYWe/pvXEf71kSPFv3g=
 github.com/openziti/foundation v0.17.28 h1:ckYnd6SUaRPS9HU+lr5AosU7h4W37Wg01DlM5+BlG4s=
 github.com/openziti/foundation v0.17.28/go.mod h1:CaXG0+mgwq25wHCUy35aIbB01ph7U+BoUW8+P5F235o=
 github.com/openziti/jwks v1.0.1 h1:+BtBzDWFVUlJfCbBhQR0BZI3YNtoBvfhfdCUSSB0G+0=

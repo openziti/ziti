@@ -67,6 +67,7 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 ## Bug Fixes
 
 * https://github.com/openziti/fabric/issues/406
+* https://github.com/openziti/ziti/issues/565 - Moved terminator information to its own field.
 
 # Release 0.25.10
 
