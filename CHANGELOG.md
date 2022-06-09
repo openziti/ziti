@@ -8,6 +8,7 @@
   - Bug fixes
 - Fabric
   - Bug fixes
+  - Metrics API
 - Ziti CLI
   - N/A
 - SDK Golang
@@ -68,6 +69,12 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 
 * https://github.com/openziti/fabric/issues/406
 * https://github.com/openziti/ziti/issues/565 - Moved terminator information to its own field.
+
+## Metrics API
+
+The following new endpoint has been added:
+- `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.
+
 
 # Release 0.25.10
 
