@@ -2,7 +2,7 @@
 
 Hello. In this tutorial we’re going to go explore services, identities and polices.
 
-Please note: this tutorial can be run interactively, by running 'ziti edge tutorial first-service'. It can also be viewed as a web page [here](https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/edge/tutorials/first-service.md). It may be convenient to be able to view both at the same time. The interactive version will save you a lot of typing or copy/pasting, but content may be easier to read in a web-browser.
+Please note: this tutorial can be run interactively, by running 'ziti edge tutorial first-service'. It can also be viewed as a web page [here](https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/tutorial/tutorials/first-service.md). It may be convenient to be able to view both at the same time. The interactive version will save you a lot of typing or copy/pasting, but content may be easier to read in a web-browser.
 
 <!---action:pause -->
 

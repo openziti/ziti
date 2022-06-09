@@ -15,6 +15,7 @@ require (
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
+	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.8
 	github.com/gorilla/websocket v1.5.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
@@ -22,8 +23,8 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/channel v0.18.39
-	github.com/openziti/edge v0.21.238
-	github.com/openziti/fabric v0.18.0
+	github.com/openziti/edge v0.21.241
+	github.com/openziti/fabric v0.18.1
 	github.com/openziti/foundation v0.17.27
 	github.com/openziti/sdk-golang v0.16.76
 	github.com/openziti/storage v0.1.7
@@ -87,7 +88,6 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20191123064959-2c17d62f5098 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
@@ -129,7 +129,9 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
+	github.com/openziti/jwks v1.0.1 // indirect
 	github.com/openziti/x509-claims v1.0.2 // indirect
+	github.com/openziti/xweb/v2 v2.0.0 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect

@@ -18,10 +18,10 @@ identity:
   ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
 raft:
-  minClusterSize: 1
-  advertiseAddress: tcp:localhost:1380
-  bindAddress: tcp:0.0.0.0:1380
-  dataDir: /home/plorenz/work/var/data/
+  minClusterSize: 3
+  advertiseAddress: tcp:localhost:1382
+  bindAddress: tcp:0.0.0.0:1382
+  dataDir: /home/plorenz/work/var/data3/
 
 # Network Configuration
 #
@@ -49,14 +49,7 @@ raft:
   # running on the network.
   #
   cycleSeconds:         15
-  
-  # Sets router minimum cost. Defaults to 10
-  minRouterCost: 10
-
-  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
-  # Defaults to 1 minute
-  routerConnectChurnLimit: 1m
-
+  #
   #smart:
     #
     # Defines the fractional upper limit of underperforming circuits that are candidates to be re-routed. If 
@@ -109,7 +102,7 @@ db:                     /tmp/devctrl.db
 # Define the listener for the control (`ctrl`) channel.
 # 
 ctrl:
-  listener:             tls:127.0.0.1:6262
+  listener:             tls:127.0.0.1:6264
     #options:
       # (optional) settings
       # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
@@ -130,7 +123,7 @@ ctrl:
 # Define the listener for the management (`mgmt`) channel.
 #
 mgmt:
-  listener:             tls:127.0.0.1:10000
+  listener:             tls:127.0.0.1:10002
     #options:
       # (optional) settings
       # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
@@ -170,11 +163,11 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 127.0.0.1:1280
+      - interface: 127.0.0.1:1282
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 127.0.0.1:1280
+        address: 127.0.0.1:1282
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root `identity` section.
     #    identity:

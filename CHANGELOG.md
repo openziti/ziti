@@ -2,19 +2,56 @@
 
 ## What's New
 - Edge
+  - Breaking Changes 
   - Bug fixes
 - Fabric
-  - N/A
+  - Bug fixes
 - Ziti CLI
   - Allow dynamic modification of enrollment durations
 - SDK Golang
   - N/A
 
 # Edge
+## Breaking Changes
+
+The following Edge Management REST API Endpoints have breaking changes:
+
+- `POST /ext-jwt-signers`
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PUT /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PATCH /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is set and `kid` was not previously set
+  - `jwtEndpoint` or `certPem` must be defined or previously set of the other is  `null`
+  - `issuer` may not be set to `null` or `""`
+  - `audience` may not be set to `null` or `""`
+
+The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
+were not previously set.
+
+## JWKS Support
+
+`ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns a JWKS JSON payload.
+When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` fields matches
+an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` will be 
+interrogated for new signing keys. The `jwksEndpoint` will only resolve at most once every five seconds.
+
 ## Bug Fixes
 
 * https://github.com/openziti/edge/issues/1027
 * https://github.com/openziti/edge/issues/1025
+* https://github.com/openziti/edge/issues/1035
+
+# Fabric
+## Bug Fixes
+
+* https://github.com/openziti/fabric/issues/406
 
 # Ziti CLI
 ## Enhancements
@@ -382,7 +419,7 @@ link:
 * Bug fix: Fix router panic which can happen on link bind
 * Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
 * Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
-* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Change default dial retries to 3 from 2
 * Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
 * Change: Support for link types removed
 
