@@ -262,7 +262,6 @@ func (event *PrometheusMetricsEvent) getTags() *[]string {
 		}
 	}
 	tags = append(tags, event.newTag("sourceId", event.SourceAppId))
-
 	return &tags
 }
 

@@ -32,6 +32,8 @@ const (
 	FabricRestApiSpecUrl = FabricRestApiBaseUrlLatest + "/swagger.json"
 
 	FabricApiBinding = "fabric"
+
+	MetricApiBinding = "metrics"
 )
 
 // AllApiBindingVersions is a map of: API Binding -> Api Version -> API Path

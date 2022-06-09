@@ -255,16 +255,16 @@ func (adapter *metricsAdapter) nameMatches(name string) bool {
 }
 
 type MetricsEvent struct {
-	MetricType     string                 `json:"metricType"`
+	MetricType     string                 `json:"metric_type" mapstructure:"metric_type"`
 	Namespace      string                 `json:"namespace"`
-	SourceAppId    string                 `json:"source_id"`
-	SourceEntityId string                 `json:"source_entity_id,omitempty"`
+	SourceAppId    string                 `json:"source_id" mapstructure:"source_id"`
+	SourceEntityId string                 `json:"source_entity_id,omitempty"  mapstructure:"source_entity_id,omitempty"`
 	Version        uint32                 `json:"version"`
 	Timestamp      *timestamppb.Timestamp `json:"timestamp"`
 	Metric         string                 `json:"metric"`
 	Metrics        map[string]interface{} `json:"metrics"`
 	Tags           map[string]string      `json:"tags,omitempty"`
-	SourceEventId  string                 `json:"source_event_id"`
+	SourceEventId  string                 `json:"source_event_id" mapstructure:"source_event_id"`
 }
 
 type MetricsEventHandler interface {
