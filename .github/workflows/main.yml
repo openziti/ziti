@@ -298,21 +298,6 @@ jobs:
       #    ls ~/.aws
       #    ls /home/runner/.aws/credentials
 
-      - name: install oathtool and jq
-        run: sudo apt-get install -y oathtool jq
-    
-      - name: get time-based one-time password
-        run: TOTP=`oathtool --base32 --totp ${{secrets.MFA_KEY})"`
-
-      - name: get temporary session token
-        run: >-
-          eval `aws sts get-session-token 
-                --duration-seconds 36000 
-                --serial-number arn:aws:iam::${{ env.AWS_ACCOUNT_NUMBER }}:mfa/${{ env.AWS_IAM_USER }} 
-                --token-code ${{env.TOTP}}
-                | jq -r '"AWS_ACCESS_KEY_ID="+.Credentials.AccessKeyId,"AWS_SECRET_ACCESS_KEY="+.Credentials.SecretAccessKey,"AWS_SESSION_TOKEN="+.Credentials.SessionToken'`
-
-
       - name: AWS Test
         run: |
           wc -c <<< $AWS_ACCESS_KEY_ID
