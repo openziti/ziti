@@ -301,6 +301,7 @@ jobs:
         run: |
           wc -c <<< $AWS_ACCESS_KEY_ID
           wc -c <<< $AWS_SECRET_ACCESS_KEY
+          aws ec2 describe-instances
           aws sts get-caller-identity
 
       - name: Test Ziti Command
