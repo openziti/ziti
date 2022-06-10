@@ -132,7 +132,7 @@ func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
 	Patch(rc, func(id string, fields api.JsonFields) error {
-		return ae.Managers.EdgeRouter.Patch(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), fields)
+		return ae.Managers.EdgeRouter.Patch(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), fields.FilterMaps("tags"))
 	})
 }
 
