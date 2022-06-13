@@ -2,7 +2,7 @@
 
 ## What's New
 
-CI updated
+No functional changes, build process changes only
 
 # Release 0.25.11
 
