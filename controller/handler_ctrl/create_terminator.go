@@ -18,12 +18,12 @@ package handler_ctrl
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"google.golang.org/protobuf/proto"
 	"math"
 )
 
@@ -64,8 +64,8 @@ func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, c
 		Router:         h.router.Id,
 		Binding:        request.Binding,
 		Address:        request.Address,
-		Identity:       request.Identity,
-		IdentitySecret: request.IdentitySecret,
+		InstanceId:     request.InstanceId,
+		InstanceSecret: request.InstanceSecret,
 		PeerData:       request.PeerData,
 		Precedence:     request.GetXtPrecedence(),
 		Cost:           uint16(request.Cost),

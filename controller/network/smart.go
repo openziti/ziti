@@ -40,7 +40,7 @@ func (network *Network) smart() {
 	circuitLatencies := make(map[string]int64)
 	var orderedCircuits []string
 	for _, s := range circuits {
-		circuitLatencies[s.Id] = s.latency()
+		circuitLatencies[s.Id] = s.cost()
 		orderedCircuits = append(orderedCircuits, s.Id)
 	}
 

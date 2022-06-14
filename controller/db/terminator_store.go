@@ -20,9 +20,9 @@ import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/foundation/util/sequence"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/sequence"
 	"go.etcd.io/bbolt"
 )
 
@@ -32,8 +32,8 @@ const (
 	FieldTerminatorRouter         = "router"
 	FieldTerminatorBinding        = "binding"
 	FieldTerminatorAddress        = "address"
-	FieldTerminatorIdentity       = "identity"
-	FieldTerminatorIdentitySecret = "identitySecret"
+	FieldTerminatorInstanceId     = "instanceId"
+	FieldTerminatorInstanceSecret = "instanceSecret"
 	FieldTerminatorCost           = "cost"
 	FieldTerminatorPrecedence     = "precedence"
 	FieldServerPeerData           = "peerData"
@@ -45,8 +45,8 @@ type Terminator struct {
 	Router         string
 	Binding        string
 	Address        string
-	Identity       string
-	IdentitySecret []byte
+	InstanceId     string
+	InstanceSecret []byte
 	Cost           uint16
 	Precedence     string
 	PeerData       xt.PeerData
@@ -76,12 +76,12 @@ func (entity *Terminator) GetAddress() string {
 	return entity.Address
 }
 
-func (entity *Terminator) GetIdentity() string {
-	return entity.Identity
+func (entity *Terminator) GetInstanceId() string {
+	return entity.InstanceId
 }
 
-func (entity *Terminator) GetIdentitySecret() []byte {
-	return entity.IdentitySecret
+func (entity *Terminator) GetInstanceSecret() []byte {
+	return entity.InstanceSecret
 }
 
 func (entity *Terminator) GetPeerData() xt.PeerData {
@@ -94,8 +94,8 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Router = bucket.GetStringOrError(FieldTerminatorRouter)
 	entity.Binding = bucket.GetStringOrError(FieldTerminatorBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldTerminatorAddress, "")
-	entity.Identity = bucket.GetStringWithDefault(FieldTerminatorIdentity, "")
-	entity.IdentitySecret = bucket.Get([]byte(FieldTerminatorIdentitySecret))
+	entity.InstanceId = bucket.GetStringWithDefault(FieldTerminatorInstanceId, "")
+	entity.InstanceSecret = bucket.Get([]byte(FieldTerminatorInstanceSecret))
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 
@@ -124,9 +124,9 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 
 	if ctx.IsCreate { // don't allow service, identity or secret to be changed
 		ctx.SetRequiredString(FieldTerminatorService, entity.Service)
-		ctx.SetString(FieldTerminatorIdentity, entity.Identity)
-		if entity.IdentitySecret != nil {
-			ctx.Bucket.PutValue([]byte(FieldTerminatorIdentitySecret), entity.IdentitySecret)
+		ctx.SetString(FieldTerminatorInstanceId, entity.InstanceId)
+		if entity.InstanceSecret != nil {
+			ctx.Bucket.PutValue([]byte(FieldTerminatorInstanceSecret), entity.InstanceSecret)
 		}
 	}
 
@@ -219,7 +219,7 @@ func (store *terminatorStoreImpl) initializeLocal() {
 	store.AddExtEntitySymbols()
 	store.AddSymbol(FieldTerminatorBinding, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
-	store.AddSymbol(FieldTerminatorIdentity, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorInstanceId, ast.NodeTypeString)
 
 	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
@@ -290,14 +290,14 @@ func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, te
 	}
 
 	serviceId := terminator.GetServiceId()
-	identity := terminator.GetIdentity()
+	identity := terminator.GetInstanceId()
 
 	terminatorIds := store.stores.service.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators)
 	var identityTerminators []*Terminator
 	for _, siblingId := range terminatorIds {
 		if siblingId != terminatorId {
 			if terminator, _ := store.LoadOneById(tx, siblingId); terminator != nil {
-				if identity == terminator.Identity {
+				if identity == terminator.InstanceId {
 					identityTerminators = append(identityTerminators, terminator)
 				}
 			}

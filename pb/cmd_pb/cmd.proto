@@ -57,8 +57,8 @@ message Terminator {
   string routerId = 3;
   string binding = 4;
   string address = 5;
-  string identity = 6;
-  bytes identitySecret = 7;
+  string instanceId = 6;
+  bytes instanceSecret = 7;
   uint32 cost = 8;
   uint32 precedence = 9;
   map<uint32, bytes> peerData = 10;

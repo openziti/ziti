@@ -68,32 +68,32 @@ func (self *testConfig) GetCloseNotify() <-chan struct{} {
 
 func TestNetwork_parseServiceAndIdentity(t *testing.T) {
 	req := require.New(t)
-	identity, serviceId := parseIdentityAndService("hello")
-	req.Equal("", identity)
+	instanceId, serviceId := parseInstanceIdAndService("hello")
+	req.Equal("", instanceId)
 	req.Equal("hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("@hello")
-	req.Equal("", identity)
+	instanceId, serviceId = parseInstanceIdAndService("@hello")
+	req.Equal("", instanceId)
 	req.Equal("hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("a@hello")
-	req.Equal("a", identity)
+	instanceId, serviceId = parseInstanceIdAndService("a@hello")
+	req.Equal("a", instanceId)
 	req.Equal("hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("bar@hello")
-	req.Equal("bar", identity)
+	instanceId, serviceId = parseInstanceIdAndService("bar@hello")
+	req.Equal("bar", instanceId)
 	req.Equal("hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("@@hello")
-	req.Equal("", identity)
+	instanceId, serviceId = parseInstanceIdAndService("@@hello")
+	req.Equal("", instanceId)
 	req.Equal("@hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("a@@hello")
-	req.Equal("a", identity)
+	instanceId, serviceId = parseInstanceIdAndService("a@@hello")
+	req.Equal("a", instanceId)
 	req.Equal("@hello", serviceId)
 
-	identity, serviceId = parseIdentityAndService("a@foo@hello")
-	req.Equal("a", identity)
+	instanceId, serviceId = parseInstanceIdAndService("a@foo@hello")
+	req.Equal("a", instanceId)
 	req.Equal("foo@hello", serviceId)
 }
 

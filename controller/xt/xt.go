@@ -36,6 +36,7 @@ type Terminator interface {
 	GetPrecedence() Precedence
 	GetCost() uint16
 	GetServiceId() string
+	GetInstanceId() string
 	GetRouterId() string
 	GetBinding() string
 	GetAddress() string

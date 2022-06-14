@@ -103,8 +103,8 @@ message Terminator {
   string address = 5;
   TerminatorPrecedence precedence = 8;
   uint32 cost = 9;
-  string identity = 10;
-  bytes identitySecret = 11;
+  string instanceId = 10;
+  bytes instanceSecret = 11;
 }
 
 message ListServicesRequest {
