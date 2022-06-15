@@ -328,7 +328,7 @@ func (sm *StateManagerImpl) AddConnectedApiSessionWithChannel(token string, remo
 	var sessions *MapWithMutex
 
 	for sessions == nil {
-		if _, ok := sm.activeApiSessions.Get(token); ok {
+		if sessions, _ = sm.activeApiSessions.Get(token); sessions != nil {
 			sessions.Put(ch, removeCB)
 		} else {
 			sessions = newMapWithMutex()
