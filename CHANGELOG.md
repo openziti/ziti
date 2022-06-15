@@ -1,3 +1,20 @@
+# Release 0.25.13
+
+## What's New
+- Edge
+  - Bug fixes
+- Fabric
+  - N/A
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+### Bug Fixes
+
+* [https://github.com/openziti/edge/issues/1055](Fix for an edge router panic)
+
 # Release 0.25.12
 
 ## What's New
@@ -20,8 +37,8 @@ No functional changes, build process changes only
 - SDK Golang
   - N/A
 
-# Edge
-## Management API Breaking Changes
+## Edge
+### Management API Breaking Changes
 
 The following Edge Management REST API Endpoints have breaking changes:
 
@@ -44,13 +61,13 @@ The following Edge Management REST API Endpoints have breaking changes:
 The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
 were not previously set.
 
-## Management API: New Endpoints
+### Management API: New Endpoints
 
 The following new endpoints have been added:
 
 - `GET /identities/:id/enrollments` - returns a pre-filtered list of enrollments for the identity specified by `:id`
 
-## Management API: JWKS Support
+### Management API: JWKS Support
 
 JWKS (JSON Web Key Sets) is defined in [rfc7517](https://www.rfc-editor.org/rfc/rfc7517) and defines the format
 and methods that public and private keys may be published via JSON. JWKS support enables Ziti to obtain
@@ -62,7 +79,7 @@ a JWKS JSON payload. When specified, the `certPem` and `kid` files are no longer
 fields matches an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` 
 will be interrogated for new signing keys. The `jwksEndpoint` will only be interrogated at most once every five seconds.
 
-## Bug Fixes
+### Bug Fixes
 
 * https://github.com/openziti/edge/issues/1027
 * https://github.com/openziti/edge/issues/1025
@@ -70,13 +87,13 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 * https://github.com/openziti/edge/issues/1045
 * https://github.com/openziti/edge/issues/1049
 
-# Fabric
-## Bug Fixes
+## Fabric
+### Bug Fixes
 
 * https://github.com/openziti/fabric/issues/406
 * https://github.com/openziti/ziti/issues/565 - Moved terminator information to its own field.
 
-## Metrics API
+### Metrics API
 
 The following new endpoint has been added:
 - `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.

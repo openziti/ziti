@@ -669,8 +669,8 @@ github.com/openziti/channel v0.18.40 h1:70MUo9U3EfXwm7Hv1JLC+fEQ94YQeyOMXi+nqizv
 github.com/openziti/channel v0.18.40/go.mod h1:9ZZKcC57bbb5Wdy76AD1XLoXHU4Uz05i8y6k3r8y13s=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.21.250 h1:ZQrQtiEYPxkEIkO7v/AzZOMmaDJmYua3eaJMiXoFL/Y=
-github.com/openziti/edge v0.21.250/go.mod h1:mOoLGe6ENjG9wJ3x59lhauS5DMumWK44JiUbZLsdpR8=
+github.com/openziti/edge v0.21.253 h1:+zW2N2oCpJO8LgaImuTljmvjUaCs4DhBJoSR1aDq9Jw=
+github.com/openziti/edge v0.21.253/go.mod h1:NYzO62KcL9QQhqXO0EUHaQKEHSr104k8sSRWfE7iIpY=
 github.com/openziti/fabric v0.18.5 h1:aZk9Gay84aAzAENqhwz6GxYI8pz/8yyig8n7lrgkMCc=
 github.com/openziti/fabric v0.18.5/go.mod h1:5Bqle8XHLowji3YVZSzh57RFXYWe/pvXEf71kSPFv3g=
 github.com/openziti/foundation v0.17.28 h1:ckYnd6SUaRPS9HU+lr5AosU7h4W37Wg01DlM5+BlG4s=
@@ -1170,8 +1170,8 @@ golang.org/x/sys v0.0.0-20210927094055-39ccf1dd6fa6/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68 h1:z8Hj/bl9cOV2grsOpEaQFUaly0JWN3i97mo3jXKJNp0=
-golang.org/x/sys v0.0.0-20220608164250-635b8c9b7f68/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220614162138-6c1b26c55098 h1:PgOr27OhUx2IRqGJ2RxAWI4dJQ7bi9cSrB82uzFzfUA=
+golang.org/x/sys v0.0.0-20220614162138-6c1b26c55098/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.0.0-20210927222741-03fcf44c2211/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
