@@ -297,12 +297,14 @@ jobs:
           cd zitilab
           go install ./...
 
-      #- name: Move artifacts to bin subdir
-      #  run: |
-      #    cd test/amd64/linux
-      #    mkdir bin
-      #    shopt -s extglob
-      #    mv -- !(bin) bin
+      - name: Move artifacts to bin subdir
+        run: |
+          cd release/amd64/linux
+          mkdir bin
+          shopt -s extglob
+          mv -- !(bin) bin
+          mv test/amd64/linux/bin bin
+          
 
       - name: Create Zitilab Bindings
         run: |
