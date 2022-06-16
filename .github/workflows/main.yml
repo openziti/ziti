@@ -11,6 +11,7 @@ on:
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/{{.Dir}}/bin"
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: "us-east-2"
@@ -40,11 +41,20 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
 
+          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_TEST_OUTPUT -tags all ./...
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
+          retention-days: 5
+
+      - name: Upload Test Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: darwin-test-${{ github.run_id }}
+          path: test/
           retention-days: 5
 
   windows-build:
@@ -71,11 +81,20 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
 
+          $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_TEST_OUTPUT -tags all ./...
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
+          retention-days: 5
+
+      - name: Upload Test artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-test-${{ github.run_id }}
+          path: test/
           retention-days: 5
 
   linux-build:
@@ -118,11 +137,24 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_TEST_OUTPUT -tags all ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags all ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags all ./...
+
+# Build the test binaries and drop them somewhere besides release/
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
+          retention-days: 5
+
+      - name: Upload Test artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-test-${{ github.run_id }}
+          path: test/
           retention-days: 5
       
       - name: Download darwin release artifact
@@ -239,6 +271,12 @@ jobs:
           name: linux-release-${{ github.run_id }}
           path: release/
 
+      - name: Download Linux Test Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-test-${{ github.run_id }}
+          path: test/
+
       - name: Install Go
         uses: actions/setup-go@v2
         with:
@@ -259,12 +297,12 @@ jobs:
           cd zitilab
           go install ./...
 
-      - name: Move artifacts to bin subdir
-        run: |
-          cd release/amd64/linux
-          mkdir bin
-          shopt -s extglob
-          mv -- !(bin) bin
+      #- name: Move artifacts to bin subdir
+      #  run: |
+      #    cd test/amd64/linux
+      #    mkdir bin
+      #    shopt -s extglob
+      #    mv -- !(bin) bin
 
       - name: Create Zitilab Bindings
         run: |
@@ -307,7 +345,7 @@ jobs:
 
       - name: Test Ziti Command
         env:
-          ZITI_ROOT: release/amd64/linux/
+          ZITI_ROOT: test/amd64/linux/
         run: |
           env
           ls $ZITI_ROOT
