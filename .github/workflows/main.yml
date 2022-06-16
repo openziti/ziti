@@ -303,6 +303,7 @@ jobs:
           mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
+          ls test/amd64/linux
           mv test/amd64/linux/bin bin
           
 
@@ -353,9 +354,14 @@ jobs:
           ls $ZITI_ROOT
           github create
           github up
+
+      - name: Test Ziti Command Teardown
+      if: always()
+      env:
+          ZITI_ROOT: test/amd64/linux/
+        run: |
           github dispose
           github clean
-
 
   smoketest:
     # BEGIN smoketest-job
