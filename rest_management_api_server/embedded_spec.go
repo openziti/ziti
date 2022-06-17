@@ -8651,7 +8651,7 @@ func init() {
         "operationId": "detailIdentity",
         "responses": {
           "200": {
-            "description": "A signle identity",
+            "description": "A single identity",
             "schema": {
               "$ref": "#/definitions/detailIdentityEnvelope"
             }
@@ -19916,7 +19916,8 @@ func init() {
               "$ref": "#/definitions/envInfo"
             },
             "externalId": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "hasApiSession": {
               "type": "boolean"
@@ -31860,7 +31861,7 @@ func init() {
         "operationId": "detailIdentity",
         "responses": {
           "200": {
-            "description": "A signle identity",
+            "description": "A single identity",
             "schema": {
               "$ref": "#/definitions/detailIdentityEnvelope"
             }
@@ -43225,7 +43226,8 @@ func init() {
               "$ref": "#/definitions/envInfo"
             },
             "externalId": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "hasApiSession": {
               "type": "boolean"

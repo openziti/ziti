@@ -4804,7 +4804,8 @@ func init() {
               "$ref": "#/definitions/envInfo"
             },
             "externalId": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "hasApiSession": {
               "type": "boolean"
@@ -10798,7 +10799,8 @@ func init() {
               "$ref": "#/definitions/envInfo"
             },
             "externalId": {
-              "type": "string"
+              "type": "string",
+              "x-nullable": true
             },
             "hasApiSession": {
               "type": "boolean"
