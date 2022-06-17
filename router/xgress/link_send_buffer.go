@@ -54,7 +54,7 @@ type LinkSendBuffer struct {
 	lastRtt               uint16
 	lastRetransmitTime    int64
 	closeWhenEmpty        concurrenz.AtomicBoolean
-	inspectRequests       chan *InspectEvent
+	inspectRequests       chan *sendBufferInspectEvent
 }
 
 type txPayload struct {
@@ -107,7 +107,7 @@ func NewLinkSendBuffer(x *Xgress) *LinkSendBuffer {
 		windowsSize:       x.Options.TxPortalStartSize,
 		retxThreshold:     x.Options.RetxStartMs,
 		retxScale:         x.Options.RetxScale,
-		inspectRequests:   make(chan *InspectEvent, 1),
+		inspectRequests:   make(chan *sendBufferInspectEvent, 1),
 	}
 
 	go buffer.run()
@@ -362,8 +362,8 @@ func (buffer *LinkSendBuffer) inspect() *inspect.XgressSendBufferDetail {
 }
 
 func (buffer *LinkSendBuffer) Inspect() *inspect.XgressSendBufferDetail {
-	timeout := time.After(25 * time.Millisecond)
-	inspectEvent := &InspectEvent{
+	timeout := time.After(100 * time.Millisecond)
+	inspectEvent := &sendBufferInspectEvent{
 		notifyComplete: make(chan *inspect.XgressSendBufferDetail, 1),
 	}
 
@@ -383,11 +383,11 @@ func (buffer *LinkSendBuffer) Inspect() *inspect.XgressSendBufferDetail {
 	return result
 }
 
-type InspectEvent struct {
+type sendBufferInspectEvent struct {
 	notifyComplete chan *inspect.XgressSendBufferDetail
 }
 
-func (self *InspectEvent) handle(buffer *LinkSendBuffer) {
+func (self *sendBufferInspectEvent) handle(buffer *LinkSendBuffer) {
 	result := buffer.inspect()
 	self.notifyComplete <- result
 }

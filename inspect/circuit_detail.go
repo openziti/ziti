@@ -41,6 +41,8 @@ type XgressDetail struct {
 	XgressPointer         string                  `json:"xgressPointer"`
 	LinkSendBufferPointer string                  `json:"linkSendBufferPointer"`
 	Goroutines            []string                `json:"goroutines"`
+	Sequence              int32                   `json:"sequence"`
+	Flags                 string                  `json:"flags"`
 }
 
 type XgressSendBufferDetail struct {
@@ -62,6 +64,11 @@ type XgressSendBufferDetail struct {
 }
 
 type XgressRecvBufferDetail struct {
-	Size         uint32 `json:"size"`
-	LastSizeSent uint32 `json:"lastSizeSent"`
+	Size           uint32 `json:"size"`
+	PayloadCount   uint32 `json:"payloadCount"`
+	LastSizeSent   uint32 `json:"lastSizeSent"`
+	Sequence       int32  `json:"sequence"`
+	MaxSequence    int32  `json:"maxSequence"`
+	NextPayload    string `json:"nextPayload"`
+	AcquiredSafely bool   `json:"acquiredSafely"`
 }

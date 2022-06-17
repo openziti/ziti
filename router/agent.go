@@ -151,7 +151,7 @@ func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
 func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
 	logrus.Warn("control channel: closing")
 	_, _ = c.WriteString("control channel: closing\n")
-	if toggleable, ok := self.ctrl.Underlay().(connectionToggle); ok {
+	if toggleable, ok := self.Channel().Underlay().(connectionToggle); ok {
 		if err := toggleable.Disconnect(); err != nil {
 			logrus.WithError(err).Error("control channel: failed to close")
 			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
@@ -168,7 +168,7 @@ func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
 
 func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
 	logrus.Warn("control channel: reconnecting")
-	if togglable, ok := self.ctrl.Underlay().(connectionToggle); ok {
+	if togglable, ok := self.Channel().Underlay().(connectionToggle); ok {
 		if err := togglable.Reconnect(); err != nil {
 			logrus.WithError(err).Error("control channel: failed to reconnect")
 			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))

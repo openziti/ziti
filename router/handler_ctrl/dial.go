@@ -83,7 +83,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 	}
 
 	link, lockAcquired := self.registry.GetDialLock(dial)
-	if link != nil {
+	if link != nil && link.Id().Token != dial.LinkId {
 		log.WithField("existingLinkId", link.Id().Token).Info("existing link found")
 		if err := self.sendLinkFault(dial.LinkId); err != nil {
 			log.WithError(err).Error("error sending link fault")

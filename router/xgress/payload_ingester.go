@@ -1,5 +1,7 @@
 package xgress
 
+import "time"
+
 var payloadIngester *PayloadIngester
 
 func InitPayloadIngester(closeNotify <-chan struct{}) {
@@ -12,16 +14,18 @@ type payloadEntry struct {
 }
 
 type PayloadIngester struct {
-	payloadIngest  chan *payloadEntry
-	payloadSendReq chan *Xgress
-	closeNotify    <-chan struct{}
+	payloadIngest         chan *payloadEntry
+	payloadSendReq        chan *Xgress
+	receiveBufferInspects chan *receiveBufferInspectEvent
+	closeNotify           <-chan struct{}
 }
 
 func NewPayloadIngester(closeNotify <-chan struct{}) *PayloadIngester {
 	pi := &PayloadIngester{
-		payloadIngest:  make(chan *payloadEntry, 16),
-		payloadSendReq: make(chan *Xgress, 16),
-		closeNotify:    closeNotify,
+		payloadIngest:         make(chan *payloadEntry, 16),
+		payloadSendReq:        make(chan *Xgress, 16),
+		receiveBufferInspects: make(chan *receiveBufferInspectEvent, 4),
+		closeNotify:           closeNotify,
 	}
 
 	go pi.run()
@@ -29,21 +33,33 @@ func NewPayloadIngester(closeNotify <-chan struct{}) *PayloadIngester {
 	return pi
 }
 
-func (payloadIngester *PayloadIngester) ingest(payload *Payload, x *Xgress) {
-	payloadIngester.payloadIngest <- &payloadEntry{
+func (self *PayloadIngester) inspect(evt *receiveBufferInspectEvent, timeout <-chan time.Time) bool {
+	select {
+	case self.receiveBufferInspects <- evt:
+		return true
+	case <-self.closeNotify:
+	case <-timeout:
+	}
+	return false
+}
+
+func (self *PayloadIngester) ingest(payload *Payload, x *Xgress) {
+	self.payloadIngest <- &payloadEntry{
 		payload: payload,
 		x:       x,
 	}
 }
 
-func (payloadIngester *PayloadIngester) run() {
+func (self *PayloadIngester) run() {
 	for {
 		select {
-		case payloadEntry := <-payloadIngester.payloadIngest:
+		case payloadEntry := <-self.payloadIngest:
 			payloadEntry.x.payloadIngester(payloadEntry.payload)
-		case x := <-payloadIngester.payloadSendReq:
+		case x := <-self.payloadSendReq:
 			x.queueSends()
-		case <-payloadIngester.closeNotify:
+		case evt := <-self.receiveBufferInspects:
+			evt.handle()
+		case <-self.closeNotify:
 			return
 		}
 	}

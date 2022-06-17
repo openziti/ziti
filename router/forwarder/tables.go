@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/orcaman/concurrent-map/v2"
 	"reflect"
+	"sync/atomic"
 	"time"
 )
 
@@ -37,13 +38,13 @@ func newCircuitTable() *circuitTable {
 }
 
 func (st *circuitTable) setForwardTable(circuitId string, ft *forwardTable) {
-	ft.last = time.Now()
+	atomic.StoreInt64(&ft.last, time.Now().UnixMilli())
 	st.circuits.Set(circuitId, ft)
 }
 
 func (st *circuitTable) getForwardTable(circuitId string) (*forwardTable, bool) {
 	if ft, found := st.circuits.Get(circuitId); found {
-		ft.last = time.Now()
+		atomic.StoreInt64(&ft.last, time.Now().UnixMilli())
 		return ft, true
 	}
 	return nil, false
@@ -66,7 +67,7 @@ func (st *circuitTable) debug() string {
 // forwardTable implements a directory of destinations, keyed by source address.
 //
 type forwardTable struct {
-	last         time.Time
+	last         int64
 	destinations cmap.ConcurrentMap[string]
 }
 
