@@ -3485,6 +3485,7 @@ definitions:
           $ref: '#/definitions/envInfo'
         externalId:
           type: string
+          x-nullable: true
         hasApiSession:
           type: boolean
         hasEdgeRouterConnection:

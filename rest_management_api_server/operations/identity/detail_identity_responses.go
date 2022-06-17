@@ -40,7 +40,7 @@ import (
 // DetailIdentityOKCode is the HTTP code returned for type DetailIdentityOK
 const DetailIdentityOKCode int = 200
 
-/*DetailIdentityOK A signle identity
+/*DetailIdentityOK A single identity
 
 swagger:response detailIdentityOK
 */

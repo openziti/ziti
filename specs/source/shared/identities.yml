@@ -73,6 +73,7 @@ definitions:
             $ref: 'base-entity.yml#/definitions/tags'
           externalId:
             type: string
+            x-nullable: true
           disabled:
             type: boolean
           disabledAt:

@@ -77,7 +77,7 @@ func NewDetailIdentityOK() *DetailIdentityOK {
 
 /* DetailIdentityOK describes a response with status code 200, with default header values.
 
-A signle identity
+A single identity
 */
 type DetailIdentityOK struct {
 	Payload *rest_model.DetailIdentityEnvelope
