@@ -303,7 +303,7 @@ jobs:
           mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
-          ls test/amd64/linux
+          ls test
           mv test/amd64/linux/bin bin
           
 
