@@ -18,9 +18,9 @@ package edge_ctrl_pb
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -87,7 +87,7 @@ func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 		if err := proto.Unmarshal(msg.Body, request); err == nil {
 			meta := channel.NewTraceMessageDecode(DECODER, "Create Circuit")
 			meta["sessionToken"] = request.SessionToken
-			meta["terminatorIdentity"] = request.TerminatorIdentity
+			meta["terminatorInstanceId"] = request.TerminatorInstanceId
 			meta["fingerprints"] = strings.Join(request.Fingerprints, ",")
 			return meta.MarshalResult()
 		} else {

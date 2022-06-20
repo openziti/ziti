@@ -18,7 +18,6 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
@@ -27,6 +26,7 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"math"
 )
 
@@ -102,8 +102,8 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		Router:         ctx.sourceRouter.Id,
 		Binding:        edge_common.TunnelBinding,
 		Address:        ctx.req.Address,
-		Identity:       ctx.req.Identity,
-		IdentitySecret: ctx.req.IdentitySecret,
+		InstanceId:     ctx.req.InstanceId,
+		InstanceSecret: ctx.req.InstanceSecret,
 		PeerData:       ctx.req.PeerData,
 		Precedence:     ctx.req.GetXtPrecedence(),
 		Cost:           uint16(ctx.req.Cost),

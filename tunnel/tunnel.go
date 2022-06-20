@@ -37,7 +37,7 @@ type Service interface {
 	GetDialTimeout() time.Duration
 }
 
-func DialAndRun(service Service, identity string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {
+func DialAndRun(service Service, instanceId string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {
 	appInfoJson, err := json.Marshal(appInfo)
 	if err != nil {
 		log.WithError(err).WithField("service", service.GetName()).Error("unable to marshal appInfo")
@@ -45,7 +45,7 @@ func DialAndRun(service Service, identity string, clientConn net.Conn, appInfo m
 		return
 	}
 
-	if err := service.GetFabricProvider().TunnelService(service, identity, clientConn, halfClose, appInfoJson); err != nil {
+	if err := service.GetFabricProvider().TunnelService(service, instanceId, clientConn, halfClose, appInfoJson); err != nil {
 		log.WithError(err).WithField("service", service.GetName()).Error("tunnel failed")
 		_ = clientConn.Close()
 	}

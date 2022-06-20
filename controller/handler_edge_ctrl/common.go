@@ -391,7 +391,7 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 	}
 }
 
-func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, peerData map[uint32][]byte) (*network.Circuit, map[uint32][]byte) {
+func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte) (*network.Circuit, map[uint32][]byte) {
 	var circuit *network.Circuit
 	returnPeerData := map[uint32][]byte{}
 
@@ -402,8 +402,8 @@ func (self *baseSessionRequestContext) createCircuit(terminatorIdentity string, 
 		}
 
 		serviceId := self.session.ServiceId
-		if terminatorIdentity != "" {
-			serviceId = terminatorIdentity + "@" + serviceId
+		if terminatorInstanceId != "" {
+			serviceId = terminatorInstanceId + "@" + serviceId
 		}
 
 		clientId := &identity.TokenId{Token: self.session.Id, Data: peerData}

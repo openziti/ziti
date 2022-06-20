@@ -32,7 +32,7 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, te
 		return err
 	}
 
-	if terminator.GetIdentity() == "" {
+	if terminator.GetInstanceId() == "" {
 		return nil
 	}
 
@@ -44,7 +44,7 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, te
 		}
 		if otherSession != nil {
 			if otherSession.ApiSession.IdentityId != session.ApiSession.IdentityId {
-				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", terminator.GetId(), terminator.GetIdentity())
+				return errors.Errorf("sibling terminator %v with shared identity %v belongs to different identity", terminator.GetId(), terminator.GetInstanceId())
 			}
 		}
 	}
@@ -54,29 +54,29 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, te
 
 type terminator interface {
 	GetId() string
-	GetIdentity() string
+	GetInstanceId() string
 	GetBinding() string
 	GetAddress() string
 }
 
 func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminator terminator, context string) (*persistence.Session, error) {
 	if terminator.GetBinding() != edge_common.EdgeBinding {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
 	}
 
 	addressParts := strings.Split(terminator.GetAddress(), ":")
 	if len(addressParts) != 2 {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
 	}
 
 	if addressParts[0] != "hosted" {
-		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetIdentity())
+		return nil, errors.Errorf("%vterminator %v with identity %v is not edge terminator. Can't share identity", context, terminator.GetId(), terminator.GetInstanceId())
 	}
 
 	sessionToken := addressParts[1]
 	session, err := self.Env.GetStores().Session.LoadOneByToken(tx, sessionToken)
 	if err != nil {
-		pfxlog.Logger().Warnf("sibling terminator %v with shared identity %v has invalid session token %v", terminator.GetId(), terminator.GetIdentity(), sessionToken)
+		pfxlog.Logger().Warnf("sibling terminator %v with shared identity %v has invalid session token %v", terminator.GetId(), terminator.GetInstanceId(), sessionToken)
 		return nil, nil
 	}
 

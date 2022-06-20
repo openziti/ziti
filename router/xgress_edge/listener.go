@@ -157,10 +157,10 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 
 	request := &edge_ctrl_pb.CreateCircuitRequest{
-		SessionToken:       token,
-		Fingerprints:       self.fingerprints.Prints(),
-		TerminatorIdentity: terminatorIdentity,
-		PeerData:           peerData,
+		SessionToken:         token,
+		Fingerprints:         self.fingerprints.Prints(),
+		TerminatorInstanceId: terminatorIdentity,
+		PeerData:             peerData,
 	}
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{}
@@ -250,8 +250,8 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		PeerData:       hostData,
 		Cost:           uint32(cost),
 		Precedence:     precedence,
-		Identity:       terminatorIdentity,
-		IdentitySecret: terminatorIdentitySecret,
+		InstanceId:     terminatorIdentity,
+		InstanceSecret: terminatorIdentitySecret,
 	}
 
 	timeout := self.listener.factory.DefaultRequestTimeout()

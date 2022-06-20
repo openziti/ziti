@@ -133,7 +133,7 @@ message RequestClientReSync {
 message CreateCircuitRequest {
   string sessionToken = 1;
   repeated string fingerprints = 2;
-  string terminatorIdentity = 3;
+  string terminatorInstanceId = 3;
   map<uint32, bytes> peerData = 4;
 }
 
@@ -155,8 +155,8 @@ message CreateTerminatorRequest {
   map<uint32, bytes> peerData = 3;
   uint32 cost = 4;
   TerminatorPrecedence precedence = 5;
-  string identity = 6;
-  bytes identitySecret = 7;
+  string instanceId = 6;
+  bytes instanceSecret = 7;
 }
 
 message RemoveTerminatorRequest {
@@ -224,7 +224,7 @@ message CreateApiSessionResponse {
 message CreateCircuitForServiceRequest {
   string sessionId = 1;
   string serviceName = 2;
-  string terminatorIdentity = 3;
+  string terminatorInstanceId = 3;
   map<uint32, bytes> peerData = 4;
 }
 
@@ -262,8 +262,8 @@ message CreateTunnelTerminatorRequest {
   map<uint32, bytes> peerData = 4;
   uint32 cost = 5;
   TerminatorPrecedence precedence = 6;
-  string identity = 7;
-  bytes identitySecret = 8;
+  string instanceId = 7;
+  bytes instanceSecret = 8;
 }
 
 message CreateTunnelTerminatorResponse {

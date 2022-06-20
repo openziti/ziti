@@ -17,12 +17,12 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type createCircuitHandler struct {
@@ -86,7 +86,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	ctx.verifyEdgeRouterAccess()
 	ctx.loadService()
-	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
