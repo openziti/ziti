@@ -348,7 +348,7 @@ jobs:
 
       - name: Test Ziti Command
         env:
-          ZITI_ROOT: test/amd64/linux/
+          ZITI_ROOT: release/amd64/linux/
         run: |
           env
           ls $ZITI_ROOT
@@ -358,7 +358,7 @@ jobs:
       - name: Test Ziti Command Teardown
         if: always()
         env:
-            ZITI_ROOT: test/amd64/linux/
+            ZITI_ROOT: release/amd64/linux/
         run: |
           github dispose
           github clean
