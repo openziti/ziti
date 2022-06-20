@@ -11,7 +11,7 @@ on:
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
-  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/{{.Dir}}/bin"
+  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: "us-east-2"
