@@ -303,6 +303,7 @@ jobs:
           ls test/amd64/linux
           mv test/amd64/linux/bin/* release/amd64/linux/bin
           cd release/amd64/linux
+          ls bin
           shopt -s extglob
           mv -- !(bin) bin
           
