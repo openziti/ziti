@@ -299,12 +299,12 @@ jobs:
 
       - name: Move artifacts to bin subdir
         run: |
+          mkdir release/amd64/linux/bin
+          ls test
+          mv test/amd64/linux/bin release/amd64/linux/bin
           cd release/amd64/linux
-          mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
-          ls test
-          mv test/amd64/linux/bin bin
           
 
       - name: Create Zitilab Bindings
