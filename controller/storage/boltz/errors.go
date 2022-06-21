@@ -39,9 +39,8 @@ func (err *RecordNotFoundError) Error() string {
 	return fmt.Sprintf("%v with %v %v not found", err.EntityType, err.Field, err.Id)
 }
 
-var testErrorNotFound = &RecordNotFoundError{}
-
 func IsErrNotFoundErr(err error) bool {
+	testErrorNotFound := &RecordNotFoundError{}
 	return errors.As(err, &testErrorNotFound)
 }
 
