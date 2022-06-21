@@ -299,8 +299,9 @@ jobs:
 
       - name: Move artifacts to bin subdir
         run: |
-          ls test/amd64/linux
-          mv test/amd64/linux/bin/* release/amd64/linux/
+          ls test/amd64/linux/bin
+          echo "--------"
+          mv -v test/amd64/linux/bin/* release/amd64/linux/
           cd release/amd64/linux
           ls .
           echo "--------"
