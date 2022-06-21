@@ -299,11 +299,10 @@ jobs:
 
       - name: Move artifacts to bin subdir
         run: |
-          mkdir release/amd64/linux/bin
           ls test/amd64/linux
-          mv test/amd64/linux/bin/* release/amd64/linux/bin
+          mv test/amd64/linux/bin/* release/amd64/linux
           cd release/amd64/linux
-          ls bin
+          mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
           
