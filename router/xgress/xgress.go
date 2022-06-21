@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -154,7 +155,7 @@ func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, or
 }
 
 func (self *Xgress) GetTimeOfLastRxFromLink() int64 {
-	return self.timeOfLastRxFromLink
+	return atomic.LoadInt64(&self.timeOfLastRxFromLink)
 }
 
 func (self *Xgress) CircuitId() string {
@@ -327,7 +328,7 @@ func (self *Xgress) SendPayload(payload *Payload) error {
 	if payload.IsCircuitEndFlagSet() {
 		pfxlog.ContextLogger(self.Label()).Debug("received end of circuit Payload")
 	}
-	self.timeOfLastRxFromLink = info.NowInMilliseconds()
+	atomic.StoreInt64(&self.timeOfLastRxFromLink, info.NowInMilliseconds())
 	payloadIngester.ingest(payload, self)
 
 	return nil
@@ -586,6 +587,12 @@ func (self *Xgress) SendEmptyAck() {
 	acker.ack(ack, self.address)
 }
 
+func (self *Xgress) GetSequence() int32 {
+	self.rxSequenceLock.Lock()
+	defer self.rxSequenceLock.Unlock()
+	return self.rxSequence
+}
+
 func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	timeSinceLastRxFromLink := time.Duration(info.NowInMilliseconds()-atomic.LoadInt64(&self.timeOfLastRxFromLink)) * time.Millisecond
 	xgressDetail := &inspect.XgressDetail{
@@ -596,6 +603,8 @@ func (self *Xgress) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 		RecvBufferDetail:      self.linkRxBuffer.Inspect(),
 		XgressPointer:         fmt.Sprintf("%p", self),
 		LinkSendBufferPointer: fmt.Sprintf("%p", self.payloadBuffer),
+		Sequence:              self.GetSequence(),
+		Flags:                 strconv.FormatUint(uint64(self.flags.Load()), 2),
 	}
 
 	detail.XgressDetails[string(self.address)] = xgressDetail

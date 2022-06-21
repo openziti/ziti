@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
+	"sync/atomic"
 	"time"
 )
 
@@ -74,8 +75,9 @@ func (self *Scanner) scan() {
 	logrus.Debugf("scanning [%d] circuits", len(circuits))
 
 	var idleCircuitIds []string
+	now := time.Now().UnixMilli()
 	for circuitId, ft := range circuits {
-		idleTime := time.Since(ft.last)
+		idleTime := time.Duration(now-atomic.LoadInt64(&ft.last)) * time.Millisecond
 		if idleTime > self.timeout {
 			idleCircuitIds = append(idleCircuitIds, circuitId)
 			logrus.WithField("circuitId", circuitId).

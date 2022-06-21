@@ -58,7 +58,7 @@ import (
 
 type Router struct {
 	config          *Config
-	ctrl            channel.Channel
+	ctrl            concurrenz.AtomicValue[channel.Channel]
 	faulter         *forwarder.Faulter
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
@@ -117,10 +117,12 @@ func (self *Router) Channel() channel.Channel {
 	// if we're just starting up, we may be nil. wait till initialized
 	// The initial control channel connect has a timeout, so if that timeouts the process will exit
 	// Once connected the control channel will never get set back to nil. Reconnects happen under the hood
-	for self.ctrl == nil {
+	ch := self.ctrl.Load()
+	for ch == nil {
 		time.Sleep(50 * time.Millisecond)
+		ch = self.ctrl.Load()
 	}
-	return self.ctrl
+	return self.ctrl.Load()
 }
 
 func (self *Router) DefaultRequestTimeout() time.Duration {
@@ -215,8 +217,8 @@ func (self *Router) Start() error {
 func (self *Router) Shutdown() error {
 	var errors []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		if self.ctrl != nil {
-			if err := self.ctrl.Close(); err != nil {
+		if ch := self.ctrl.Load(); ch != nil {
+			if err := ch.Close(); err != nil {
 				errors = append(errors, err)
 			}
 		}
@@ -450,17 +452,17 @@ func (self *Router) startControlPlane() error {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
 
-	self.ctrl = ch
+	self.ctrl.Store(ch)
 	self.faulter.SetCtrl(ch)
 	self.scanner.SetCtrl(ch)
 
 	for _, x := range self.xctrls {
-		if err := x.Run(self.ctrl, nil, self.shutdownC); err != nil {
+		if err := x.Run(ch, nil, self.shutdownC); err != nil {
 			return err
 		}
 	}
 
-	self.metricsReporter = fabricMetrics.NewChannelReporter(self.ctrl)
+	self.metricsReporter = fabricMetrics.NewChannelReporter(ch)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
@@ -518,7 +520,7 @@ type controllerPinger struct {
 }
 
 func (self *controllerPinger) PingContext(ctx context.Context) error {
-	ch := self.router.ctrl
+	ch := self.router.Channel()
 	if ch == nil {
 		return errors.Errorf("control channel not yet established")
 	}
@@ -533,6 +535,6 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 		deadline = time.Now().Add(30 * time.Second)
 	}
 	timeout := deadline.Sub(time.Now())
-	_, err := msg.WithTimeout(timeout).SendForReply(self.router.ctrl)
+	_, err := msg.WithTimeout(timeout).SendForReply(ch)
 	return err
 }

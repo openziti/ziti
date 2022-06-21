@@ -230,7 +230,8 @@ func (self *linkRegistryImpl) LoadConfig(map[interface{}]interface{}) error {
 	return nil
 }
 
-func (self *linkRegistryImpl) BindChannel(channel.Binding) error {
+func (self *linkRegistryImpl) BindChannel(binding channel.Binding) error {
+	self.ctrlCh = binding.GetChannel()
 	return nil
 }
 
@@ -238,8 +239,7 @@ func (self *linkRegistryImpl) Enabled() bool {
 	return true
 }
 
-func (self *linkRegistryImpl) Run(ctrl channel.Channel, _ boltz.Db, _ chan struct{}) error {
-	self.ctrlCh = ctrl
+func (self *linkRegistryImpl) Run(channel.Channel, boltz.Db, chan struct{}) error {
 	return nil
 }
 
