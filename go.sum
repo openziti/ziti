@@ -445,8 +445,8 @@ github.com/openziti/foundation v0.17.28 h1:ckYnd6SUaRPS9HU+lr5AosU7h4W37Wg01DlM5
 github.com/openziti/foundation v0.17.28/go.mod h1:CaXG0+mgwq25wHCUy35aIbB01ph7U+BoUW8+P5F235o=
 github.com/openziti/jwks v1.0.1 h1:+BtBzDWFVUlJfCbBhQR0BZI3YNtoBvfhfdCUSSB0G+0=
 github.com/openziti/jwks v1.0.1/go.mod h1:KwO0x9FBG0aoJS5f6nH5xeHoplyR1H143SMI9kF0mC8=
-github.com/openziti/sdk-golang v0.16.77 h1:rYUN3aHw8jcJ5/v2+sPIq4j3QQ1uHd+OJVsca+/DS/I=
-github.com/openziti/sdk-golang v0.16.77/go.mod h1:5ezQl5ZJU1p2HWSn059NyeisrgqTtMrUiWrDoTrR6tw=
+github.com/openziti/sdk-golang v0.16.78 h1:U/UDUy3EmZC8hAxGlW5w5rs9qjF1jCsSP/8hhgJifII=
+github.com/openziti/sdk-golang v0.16.78/go.mod h1:5ezQl5ZJU1p2HWSn059NyeisrgqTtMrUiWrDoTrR6tw=
 github.com/openziti/storage v0.1.8 h1:Y+AJ3Wv61gzpcgagWy6L4SuY6T9BK4Ha9CBHjOEhm/8=
 github.com/openziti/storage v0.1.8/go.mod h1:Pgm8qtCE3NYmV8exuD7qLGiS/PZ6VLA7swn6AQxIgs4=
 github.com/openziti/transport/v2 v2.0.5 h1:rPnkA7Z04cO6QFJWM4cBmD1P7/8I89VblABD46F8l18=
