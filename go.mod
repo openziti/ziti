@@ -32,11 +32,11 @@ require (
 	github.com/miekg/dns v1.1.49
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.40
+	github.com/openziti/channel v0.18.41
 	github.com/openziti/fabric v0.18.7
 	github.com/openziti/foundation v0.17.28
 	github.com/openziti/jwks v1.0.1
-	github.com/openziti/sdk-golang v0.16.79
+	github.com/openziti/sdk-golang v0.16.80
 	github.com/openziti/storage v0.1.8
 	github.com/openziti/transport/v2 v2.0.5
 	github.com/openziti/x509-claims v1.0.2
