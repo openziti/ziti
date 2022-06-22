@@ -13722,6 +13722,7 @@ definitions:
         type: boolean
       name:
         type: string
+        x-nullable: true
       noTraversal:
         type: boolean
         x-nullable: true

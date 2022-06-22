@@ -93,7 +93,7 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:              router.Name,
+		Name:              stringz.OrEmpty(router.Name),
 		RoleAttributes:    AttributesOrDefault(router.RoleAttributes),
 		IsTunnelerEnabled: router.IsTunnelerEnabled,
 		AppData:           TagsOrDefault(router.AppData),
