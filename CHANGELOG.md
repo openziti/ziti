@@ -1,3 +1,95 @@
+# Release 0.26.0
+
+## Breaking Changes
+
+The fabric management terminators API has changed the name of some fields. See below for details.
+
+## What's New
+- Edge
+  - N/A
+- Fabric
+  - Terminator fields name changes
+  - Circuit failed events
+  - Additional circuit inspect information gathered
+- Ziti CLI
+  - Terminator fields name changes
+- SDK Golang
+  - N/A
+
+## Fabric
+### Terminator fields name changes
+
+The following fields have been renamed:
+
+* `identity` -> `instanceId`
+* `identitySecret` -> `instanceSecret`
+
+The use of `identity` was confusing as identity is also used in the edge. While terminator instanceId
+could be an edge identity id or something related to an edge identity, it could also be something
+entirely unrelated. To reduce semantic overload, we've renamed it to instanceId, which hopefully is 
+more descriptive. In general all terminators with the same instance id should end up at the same 
+hosting process. 
+
+### Circuit failed events
+
+The fabric can now emit circuit events when a circuit creation failed.
+
+Here is an example event:
+```
+{
+  "namespace": "fabric.circuits",
+  "event_type": "failed",
+  "circuit_id": "DtZLURFgP",
+  "timestamp": "2022-06-22T14:24:18.389718316-04:00",
+  "client_id": "cl4pxcvyl000m5qgd1xwcfg1u",
+  "service_id": "dH0lwdc5P",
+  "instance_id": "",
+  "creation_timespan": 739021,
+  "path": "[r/niY.XmLArx]->[l/1UZCUTGhHuJygXld8CxXPs]->[r/YPpTEd8JP]",
+  "terminator_local_address": "",
+  "link_count": 1,
+  "path_cost": 327152,
+  "failure_cause": "ROUTER_ERR_CONN_REFUSED"
+}
+```
+
+Note the `event_type` is failed. For events of this type only, the `failure_cause` will be populated. The current set of failure causes is:
+
+* `INVALID_SERVICE`
+* `ID_GENERATION_ERR`
+* `NO_TERMINATORS`
+* `NO_ONLINE_TERMINATORS`
+* `NO_PATH`
+* `PATH_MISSING_LINK`
+* `INVALID_STRATEGY`
+* `STRATEGY_ERR`
+* `ROUTER_ERR_GENERIC`
+* `ROUTER_ERR_INVALID_TERMINATOR`
+* `ROUTER_ERR_MISCONFIGURED_TERMINATOR`
+* `ROUTER_ERR_DIAL_TIMED_OUT`
+* `ROUTER_ERR_CONN_REFUSED`
+
+In addition to the `failure_cause` field, there is also a new `instance_id` field. This will be populated for all circuit event types and
+will have the instance id requested by the dial. This is generally only applicable when using addressable terminators. If no instance id
+was specified, the field will be blank.
+
+### Circuit Inspect Enhancements
+
+Circuit inspect will now gather more information.
+
+* xgress details now includes the xgress sequence
+* The receive buffer now has the following new fields
+    * acquiredSafely
+    * maxSequence
+    * nextPayload
+    * payloadCount
+    * sequence
+
+## Ziti CLI
+### Terminator Field Name Changes
+The `ziti fabric create terminator` operation now takes a `--instance-id` flag instead of an `--identity` flag.
+The `ziti fabric list terminators` operation now shows `InstanceId` instead of `Identity`. 
+
 # Release 0.25.13
 
 ## What's New
