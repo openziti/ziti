@@ -28,7 +28,24 @@ import (
 
 const EntityNameMetrics = "metrics"
 
-func MapInspectResultValueToMetricsModel(inspectResultValue *network.InspectResultValue, format string) (any, error) {
+type MetricsModelMapper interface {
+	MapInspectResultToMetricsResult(inspectResult *network.InspectResult) (*string, error)
+	MapInspectResultValueToMetricsResult(inspectResultValue *network.InspectResultValue) (any, error)
+}
+
+type metricsResultMapper struct {
+	format            string
+	includeTimestamps bool
+}
+
+func NewMetricsModelMapper(format string, includeTimestamps bool) MetricsModelMapper {
+	return &metricsResultMapper{
+		format:            format,
+		includeTimestamps: includeTimestamps,
+	}
+}
+
+func (self *metricsResultMapper) MapInspectResultValueToMetricsResult(inspectResultValue *network.InspectResultValue) (any, error) {
 	var result any
 
 	msg := &metrics_pb.MetricsMessage{}
@@ -42,7 +59,7 @@ func MapInspectResultValueToMetricsModel(inspectResultValue *network.InspectResu
 
 		adapter.AcceptMetrics(msg)
 
-		switch format {
+		switch self.format {
 		case "json":
 			result = metricEvents
 		case "prometheus":
@@ -50,7 +67,7 @@ func MapInspectResultValueToMetricsModel(inspectResultValue *network.InspectResu
 
 			for _, msg := range metricEvents {
 				event := (events.PrometheusMetricsEvent)(msg)
-				o, err := event.Marshal()
+				o, err := event.Marshal(self.includeTimestamps)
 
 				if err == nil {
 					promMsgs = append(promMsgs, string(o))
@@ -60,7 +77,7 @@ func MapInspectResultValueToMetricsModel(inspectResultValue *network.InspectResu
 			}
 			result = promMsgs
 		default:
-			return nil, errors.New(fmt.Sprintf("Unsupported metrics format %s requested", format))
+			return nil, errors.New(fmt.Sprintf("Unsupported metrics format %s requested", self.format))
 		}
 	} else {
 		return nil, err
@@ -68,19 +85,19 @@ func MapInspectResultValueToMetricsModel(inspectResultValue *network.InspectResu
 	return result, nil
 }
 
-func MapInspectResultToMetricsResult(inspectResult *network.InspectResult, format string) (*string, error) {
+func (self *metricsResultMapper) MapInspectResultToMetricsResult(inspectResult *network.InspectResult) (*string, error) {
 
 	var emit string
 
 	var r []any
 
 	for _, val := range inspectResult.Results {
-		s, _ := MapInspectResultValueToMetricsModel(val, format)
+		s, _ := self.MapInspectResultValueToMetricsResult(val)
 
 		r = append(r, s)
 	}
 
-	switch format {
+	switch self.format {
 	case "json":
 		var js []any
 		for _, mg := range r {

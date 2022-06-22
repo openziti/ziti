@@ -100,6 +100,15 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		pfxlog.Logger().Info("Metrics are enabled on /metrics, but no scrapeCert is provided in the controller configuration. Metrics are exposed without any authorization.")
 	}
 
+	includeTimestamps := false
+	if value, found := options["includeTimestamps"]; found {
+		if t, ok := value.(bool); ok {
+			includeTimestamps = t
+			pfxlog.Logger().Debugf("includeTimestamps set to %v in Prometheus metrics exporter", t)
+		}
+	}
+
+	metricsApi.modelMapper = NewMetricsModelMapper("prometheus", includeTimestamps)
 	metricsApi.handler = metricsApi.newHandler()
 
 	return metricsApi, nil
@@ -110,6 +119,7 @@ type MetricsApiHandler struct {
 	handler     http.Handler
 	network     *network.Network
 	scrapeCert  *x509.Certificate
+	modelMapper MetricsModelMapper
 	options     map[interface{}]interface{}
 	bindHandler channel.BindHandler
 }
@@ -153,7 +163,7 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 
 		inspection := metricsApi.inspectMgr.Inspect(".*", []string{"metrics:prometheus"})
 
-		metricsResult, err := MapInspectResultToMetricsResult(inspection, "prometheus")
+		metricsResult, err := metricsApi.modelMapper.MapInspectResultToMetricsResult(inspection)
 
 		if err != nil {
 			rw.Write([]byte(fmt.Sprintf("Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())))

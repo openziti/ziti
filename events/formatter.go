@@ -231,8 +231,8 @@ var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0
 
 type PrometheusMetricsEvent MetricsEvent
 
-func (event *PrometheusMetricsEvent) WriteTo(output io.WriteCloser) error {
-	buf, err := event.Marshal()
+func (event *PrometheusMetricsEvent) WriteTo(output io.WriteCloser, includeTimestamps bool) error {
+	buf, err := event.Marshal(includeTimestamps)
 	if err != nil {
 		return err
 	}
@@ -240,13 +240,20 @@ func (event *PrometheusMetricsEvent) WriteTo(output io.WriteCloser) error {
 	return err
 }
 
-func (event *PrometheusMetricsEvent) makeSafe(key string) string {
-	key = strings.Replace(key, " ", "_", -1)
+func (event *PrometheusMetricsEvent) getMetricName() string {
+	key := strings.Replace(event.Metric, " ", "_", -1)
 	key = strings.Replace(key, ".", "_", -1)
 	key = strings.Replace(key, "-", "_", -1)
 	key = strings.Replace(key, "=", "_", -1)
 	key = strings.Replace(key, "/", "_", -1)
-	return key
+	key = strings.Replace(key, ":", "", -1)
+
+	// Prometheus complains about metrics ending in _count, so "fix" that.
+	if strings.HasSuffix(key, "_count") {
+		key = strings.TrimSuffix(key, "_count") + "_c"
+	}
+
+	return "ziti_" + key
 }
 
 func (event *PrometheusMetricsEvent) newTag(name, value string) string {
@@ -261,7 +268,7 @@ func (event *PrometheusMetricsEvent) getTags() *[]string {
 
 		}
 	}
-	tags = append(tags, event.newTag("sourceId", event.SourceAppId))
+	tags = append(tags, event.newTag("source_id", event.SourceAppId))
 	return &tags
 }
 
@@ -269,46 +276,67 @@ func (event *PrometheusMetricsEvent) getTagsAsString(tags *[]string) string {
 	return "{" + strings.Join(*tags, ",") + "}"
 }
 
-func (event *PrometheusMetricsEvent) toGauge(metricKey string) string {
-	t := "# HELP %[1]s %[1]s\n" +
-		"# TYPE %[1]s gauge\n" +
-		"%[1]s%[3]s %[2]v %[4]d\n"
+func (event *PrometheusMetricsEvent) getTimestampString(includeTimestamps bool) string {
+	var ts string
 
-	return fmt.Sprintf(t, event.makeSafe(event.Metric), event.Metrics[metricKey], event.getTagsAsString(event.getTags()), event.Timestamp.AsTime().UnixMilli())
+	if includeTimestamps {
+		ts += fmt.Sprintf(" %d", event.Timestamp.AsTime().UnixMilli())
+	}
+
+	ts += "\n"
+	return ts
 }
 
-func (event *PrometheusMetricsEvent) toHistogram() string {
-	key := event.makeSafe(event.Metric + "_" + event.MetricType)
+func (event *PrometheusMetricsEvent) toGauge(metricKey string, includeTimestamps bool) string {
+	format := "# HELP %[1]s %[1]s\n" +
+		"# TYPE %[1]s gauge\n" +
+		"%[1]s%[3]s %[2]v"
+
+	metric := fmt.Sprintf(format, event.getMetricName(), event.Metrics[metricKey], event.getTagsAsString(event.getTags()))
+
+	metric += event.getTimestampString(includeTimestamps)
+
+	return metric
+}
+
+func (event *PrometheusMetricsEvent) toHistogram(includeTimestamps bool) string {
+	key := event.getMetricName()
 	tags := event.getTags()
 
-	t := fmt.Sprintf("# HELP %[1]s %[1]s\n"+
-		"# TYPE %[1]s histogram\n"+
-		"%[1]s_count%[2]s %[3]v %[4]d\n",
-		key, event.getTagsAsString(tags), event.Metrics["count"], event.Timestamp.AsTime().UnixMilli())
+	format := "# HELP %[1]s %[1]s\n" +
+		"# TYPE %[1]s histogram\n" +
+		"%[1]s_count%[2]s %[3]v"
+
+	metric := fmt.Sprintf(format, key, event.getTagsAsString(tags), event.Metrics["count"])
+
+	metric += event.getTimestampString(includeTimestamps)
 
 	for bucketName, bucketPromKey := range histogramBuckets {
 		bucketTags := append(*tags, event.newTag("le", bucketPromKey))
-		t += fmt.Sprintf("%s_bucket%s %v\n", key, event.getTagsAsString(&bucketTags), event.Metrics[bucketName])
+		metric += fmt.Sprintf("%s_bucket%s %v", key, event.getTagsAsString(&bucketTags), event.Metrics[bucketName])
+		metric += event.getTimestampString(includeTimestamps)
 	}
 
-	return t
+	return metric
 }
 
-func (event *PrometheusMetricsEvent) Marshal() ([]byte, error) {
+func (event *PrometheusMetricsEvent) Marshal(includeTimestamps bool) ([]byte, error) {
+	// Prometheus can be a little picky about metric/label naming and formats.
+	// Run the output of any changes through  https://o11y.tools/metricslint/ to make sure they are OK
+
 	var result string
 
 	switch event.MetricType {
 	case "intValue":
-		result = event.toGauge("value")
+		result = event.toGauge("value", includeTimestamps)
 	case "floatValue":
-		result = event.toGauge("value")
+		result = event.toGauge("value", includeTimestamps)
 	case "meter":
-		result = event.toGauge("m1_rate")
+		result = event.toGauge("m1_rate", includeTimestamps)
 	case "histogram":
-		result = event.toHistogram()
+		result = event.toHistogram(includeTimestamps)
 	case "timer":
-		result = event.toGauge("m1_rate")
-		result += event.toHistogram()
+		result += event.toHistogram(includeTimestamps)
 	default:
 		return nil, errors.New(fmt.Sprintf("Unhandled metric type %s", event.MetricType))
 	}

@@ -41,7 +41,7 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 				format = cmd[1]
 			}
 
-			emitVal, _ = MapInspectResultValueToMetricsModel(val, format)
+			emitVal, _ = NewMetricsModelMapper(format, true).MapInspectResultValueToMetricsResult(val)
 		} else {
 			if strings.HasPrefix(val.Value, "{") {
 				mapVal := map[string]interface{}{}
