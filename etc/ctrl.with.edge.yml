@@ -75,10 +75,10 @@ events:
     subscriptions:
 #      - type: fabric.routers
 #      - type: fabric.terminators
-      - type: metrics
-        sourceFilter: .*
-        metricFilter: .*pool.*
-#      - type: fabric.circuits
+#      - type: metrics
+#        sourceFilter: .*
+#        metricFilter: .*pool.*
+      - type: fabric.circuits
 #        include:
 #          - created
 #      - type: edge.sessions
@@ -87,7 +87,6 @@ events:
 #      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services
-#      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
     handler:

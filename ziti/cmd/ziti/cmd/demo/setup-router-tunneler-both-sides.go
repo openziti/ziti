@@ -28,25 +28,25 @@ import (
 	"time"
 )
 
-//go:embed setup-scripts/sdk-client.md
-var clientScriptSource []byte
+//go:embed setup-scripts/router-tunneler-both-sides.md
+var routerTunnelerBothSidesScriptSource []byte
 
-type client struct {
+type routerTunnelerBothSides struct {
 	api.Options
 	tutorial2.TutorialOptions
 	interactive bool
 }
 
-func newClientCmd(p common.OptionsProvider) *cobra.Command {
-	options := &client{
+func newRouterTunnelerBothSidesCmd(p common.OptionsProvider) *cobra.Command {
+	options := &routerTunnelerBothSides{
 		Options: api.Options{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "client",
-		Short: "Walks you through configuration for an echo service client (zcat)",
+		Use:   "router-tunneler-both-sides",
+		Short: "Walks you through configuration for an echo service with intercept and hosting both on router embedded tunnelers",
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
@@ -69,7 +69,7 @@ func newClientCmd(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *client) run() error {
+func (self *routerTunnelerBothSides) run() error {
 	t := tutorial.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
@@ -79,7 +79,8 @@ func (self *client) run() error {
 		LoginParams: &self.TutorialOptions,
 	})
 	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
-	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
+	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
+	t.RegisterActionHandler("ziti-for-each", &actions.ZitiForEach{})
 
-	return t.Run(clientScriptSource)
+	return t.Run(routerTunnelerBothSidesScriptSource)
 }

@@ -1,6 +1,6 @@
 # Purpose
 
-This script sets up the client side for an echo service
+This script sets up the SDK client side for an echo service
 
 # Prerequisites
 

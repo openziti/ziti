@@ -34,7 +34,7 @@ type createTerminatorOptions struct {
 	binding    string
 	cost       int32
 	precedence string
-	identity   string
+	instanceId string
 }
 
 // newCreateTerminatorCmd creates the 'fabric create terminator' command
@@ -61,7 +61,7 @@ func newCreateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVar(&options.binding, "binding", xgress_edge_transport.BindingName, "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
-	cmd.Flags().StringVar(&options.identity, "identity", "", "Set the terminator identity")
+	cmd.Flags().StringVar(&options.instanceId, "instance-id", "", "Set the terminator instance-id")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -84,7 +84,7 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 	api.SetJSONValue(entityData, router, "router")
 	api.SetJSONValue(entityData, o.binding, "binding")
 	api.SetJSONValue(entityData, o.Args[2], "address")
-	api.SetJSONValue(entityData, o.identity, "identity")
+	api.SetJSONValue(entityData, o.instanceId, "instanceId")
 	if o.cost > 0 {
 		if o.cost > math.MaxUint16 {
 			if _, err = fmt.Fprintf(o.Out, "Invalid cost %v. Must be positive number less than or equal to %v\n", o.cost, math.MaxUint16); err != nil {
