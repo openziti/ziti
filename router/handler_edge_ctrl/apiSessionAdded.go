@@ -75,8 +75,11 @@ func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, _ channel.C
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionAdded{}
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
-			if req.IsFullState {
+			for _, session := range req.ApiSessions {
+				h.sm.AddApiSession(session)
+			}
 
+			if req.IsFullState {
 				reqWithState := &apiSessionAddedWithState{
 					ApiSessionAdded: req,
 				}
@@ -97,10 +100,6 @@ func (h *apiSessionAddedHandler) HandleReceive(msg *channel.Message, _ channel.C
 					InstantSyncState: &sync_strats.InstantSyncState{},
 				}
 				h.reqChan <- reqWithState
-			}
-
-			for _, session := range req.ApiSessions {
-				h.sm.AddApiSession(session)
 			}
 		} else {
 			pfxlog.Logger().Panic("could not convert message as api session added")

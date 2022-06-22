@@ -84,6 +84,17 @@ func NewDnsServer(addr string) Resolver {
 		Net:  "udp",
 	}
 
+	names := make(map[string]net.IP)
+	r := &resolver{
+		server:     s,
+		names:      names,
+		ips:        make(map[string]string),
+		namesMtx:   sync.Mutex{},
+		domains:    make(map[string]*domainEntry),
+		domainsMtx: sync.Mutex{},
+	}
+	s.Handler = r
+
 	errChan := make(chan error)
 	go func() {
 		errChan <- s.ListenAndServe()
@@ -99,17 +110,6 @@ func NewDnsServer(addr string) Resolver {
 	case <-time.After(2 * time.Second):
 		log.Infof("dns server running at %s", s.Addr)
 	}
-
-	names := make(map[string]net.IP)
-	r := &resolver{
-		server:     s,
-		names:      names,
-		ips:        make(map[string]string),
-		namesMtx:   sync.Mutex{},
-		domains:    make(map[string]*domainEntry),
-		domainsMtx: sync.Mutex{},
-	}
-	s.Handler = r
 
 	const resolverConfigHelp = "ziti-tunnel runs an internal DNS server which must be first in the host's\n" +
 		"resolver configuration. On systems that use NetManager/dhclient, this can\n" +
@@ -150,12 +150,21 @@ func (r *resolver) testSystemResolver() error {
 	return nil
 }
 
-func (r *resolver) getAddress(name string) (net.IP, error) {
+func (r *resolver) getHostnameIp(name string) (net.IP, bool) {
+	r.namesMtx.Lock()
+	defer r.namesMtx.Unlock()
 	canonical := strings.ToLower(name)
-	a, ok := r.names[canonical]
+	ip, found := r.names[canonical]
+	return ip, found
+}
+
+func (r *resolver) getAddress(name string) (net.IP, error) {
+	a, ok := r.getHostnameIp(name)
 	if ok {
 		return a, nil
 	}
+
+	canonical := strings.ToLower(name)
 
 	r.domainsMtx.Lock()
 	defer r.domainsMtx.Unlock()
@@ -174,7 +183,7 @@ func (r *resolver) getAddress(name string) (net.IP, error) {
 				return nil, err
 			}
 			log.Debugf("assigned %v => %v", name, ip)
-			r.AddHostname(name[:len(name)-1], ip)
+			_ = r.AddHostname(name[:len(name)-1], ip) // this resolver impl never returns an error
 			return ip, err
 		}
 	}

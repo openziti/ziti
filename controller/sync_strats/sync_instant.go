@@ -19,7 +19,6 @@ package sync_strats
 import (
 	"encoding/json"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -30,9 +29,11 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/storage/ast"
+	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"strings"
 	"sync"
 	"time"
@@ -87,7 +88,8 @@ type InstantStrategy struct {
 	routerConnectedQueue     chan *RouterSender
 	receivedClientHelloQueue chan *RouterSender
 
-	stop chan struct{}
+	stopNotify chan struct{}
+	stopped    concurrenz.AtomicBoolean
 }
 
 func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *InstantStrategy {
@@ -124,7 +126,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
 
-		stop: make(chan struct{}, 0),
+		stopNotify: make(chan struct{}, 0),
 	}
 
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)
@@ -150,9 +152,8 @@ func (strategy *InstantStrategy) Type() env.RouterSyncStrategyType {
 }
 
 func (strategy *InstantStrategy) Stop() {
-	if strategy.stop != nil {
-		close(strategy.stop)
-		strategy.stop = nil
+	if strategy.stopped.CompareAndSwap(false, true) {
+		close(strategy.stopNotify)
 	}
 }
 
@@ -267,7 +268,7 @@ func (strategy *InstantStrategy) SessionDeleted(session *persistence.Session) {
 func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
 	for {
 		select {
-		case <-strategy.stop:
+		case <-strategy.stopNotify:
 			return
 		case rtx := <-strategy.routerConnectedQueue:
 			func() {
@@ -287,7 +288,7 @@ func (strategy *InstantStrategy) startHandleRouterConnectWorker() {
 func (strategy *InstantStrategy) startSynchronizeWorker() {
 	for {
 		select {
-		case <-strategy.stop:
+		case <-strategy.stopNotify:
 			return
 		case rtx := <-strategy.receivedClientHelloQueue:
 			func() {

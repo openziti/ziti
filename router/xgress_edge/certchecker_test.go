@@ -254,11 +254,11 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker := newCertChecker()
 			certChecker.timeoutDuration = 10 * time.Millisecond
 
-			invoked := false
+			var invoked concurrenz.AtomicBoolean
 
 			extender := &stubExtender{
 				done: func() error {
-					invoked = true
+					invoked.Set(true)
 					certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					certChecker.id.ServerCert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					return errors.New("test")
@@ -275,7 +275,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			time.Sleep(200 * time.Millisecond)
 
-			req.True(invoked)
+			req.True(invoked.Get())
 
 			certChecker.closeNotify <- struct{}{}
 		})
