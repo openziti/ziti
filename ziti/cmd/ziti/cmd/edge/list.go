@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/Jeffail/gabs"
@@ -58,6 +59,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.AddCommand(newListCmdForEntityType("api-sessions", runListApiSessions, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("authenticators", runListAuthenticators, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("auth-policies", runListAuthPolicies, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("cas", runListCAs, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("config-types", runListConfigTypes, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("configs", runListConfigs, newOptions()))
@@ -1319,4 +1321,51 @@ func postureCheckOsToStrings(osContainers []*gabs.Container) []string {
 	}
 
 	return ret
+}
+
+func runListAuthPolicies(options *api.Options) error {
+	children, pagingInfo, err := listEntitiesWithOptions("auth-policies", options)
+	if err != nil {
+		return err
+	}
+	return outputAuthPolicies(options, children, pagingInfo)
+}
+
+func outputAuthPolicies(options *api.Options, children []*gabs.Container, info *api.Paging) error {
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true}
+
+	outTable.AppendHeader(table.Row{"", "", "Primary", "Primary", "Primary", "Primary", "Primary", "Primary", "Primary", "Secondary", "Secondary"}, rowConfigAutoMerge)
+	outTable.AppendHeader(table.Row{"", "", "Cert", "Cert", "ExtJwt", "ExtJwt", "UPDB", "UPDB", "UPDB", "ExtJwt", "TOTP"}, rowConfigAutoMerge)
+	outTable.AppendHeader(table.Row{"ID", "Name", "Allowed", "Allow Expired", "Allowed", "Signers", "Allowed", "Lockout(m)", "Max Attempts", "Signer", "Required"})
+
+	for i, entity := range children {
+		json := entity.EncodeJSON()
+		detail := rest_model.AuthPolicyDetail{}
+		err := detail.UnmarshalJSON(json)
+
+		if err != nil {
+			msg := "Error unmarshaling index " + strconv.Itoa(i) + ": " + err.Error()
+			_, _ = options.ErrOutputWriter().Write([]byte(msg))
+		} else {
+			secondarySigner := "<none>"
+			if detail.Secondary.RequireExtJWTSigner != nil {
+				secondarySigner = *detail.Secondary.RequireExtJWTSigner
+			}
+
+			outTable.AppendRow(table.Row{*detail.ID, *detail.Name,
+				*detail.Primary.Cert.Allowed, *detail.Primary.Cert.AllowExpiredCerts,
+				*detail.Primary.ExtJWT.Allowed, detail.Primary.ExtJWT.AllowedSigners,
+				*detail.Primary.Updb.Allowed, *detail.Primary.Updb.LockoutDurationMinutes, *detail.Primary.Updb.MaxAttempts,
+				secondarySigner, *detail.Secondary.RequireTotp})
+		}
+	}
+	api.RenderTable(options, outTable, info)
+	return nil
 }
