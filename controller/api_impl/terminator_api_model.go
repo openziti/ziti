@@ -40,8 +40,8 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		Router:         stringz.OrEmpty(terminator.Router),
 		Binding:        stringz.OrEmpty(terminator.Binding),
 		Address:        stringz.OrEmpty(terminator.Address),
-		Identity:       terminator.Identity,
-		IdentitySecret: terminator.IdentitySecret,
+		InstanceId:     terminator.InstanceID,
+		InstanceSecret: terminator.InstanceSecret,
 		Precedence:     xt.GetPrecedenceForName(string(terminator.Precedence)),
 	}
 
@@ -136,7 +136,7 @@ func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator
 		Router:      ToEntityRef(router.Name, router, RouterLinkFactory),
 		Binding:     &terminator.Binding,
 		Address:     &terminator.Address,
-		Identity:    &terminator.Identity,
+		InstanceID:  &terminator.InstanceId,
 		Cost:        &cost,
 		DynamicCost: &dynamicCost,
 	}

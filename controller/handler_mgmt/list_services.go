@@ -18,12 +18,12 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/mgmt_pb"
+	"google.golang.org/protobuf/proto"
 	"reflect"
 )
 
@@ -103,7 +103,7 @@ func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
 		RouterId:   s.Router,
 		Binding:    s.Binding,
 		Address:    s.Address,
-		Identity:   s.Identity,
+		InstanceId: s.InstanceId,
 		Cost:       uint32(s.Cost),
 		Precedence: precedence,
 	}

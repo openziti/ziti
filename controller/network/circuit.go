@@ -33,13 +33,15 @@ type Circuit struct {
 	PeerData   xt.PeerData
 }
 
-func (self *Circuit) latency() int64 {
-	var latency int64
+func (self *Circuit) cost() int64 {
+	var cost int64
 	for _, l := range self.Path.Links {
-		latency += l.GetSrcLatency()
-		latency += l.GetDstLatency()
+		cost += l.GetCost()
 	}
-	return latency
+	for _, r := range self.Path.Nodes {
+		cost += int64(r.Cost)
+	}
+	return cost
 }
 
 func (self *Circuit) HasRouter(r *Router) bool {

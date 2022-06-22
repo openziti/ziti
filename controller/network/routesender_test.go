@@ -30,9 +30,9 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 
 	svc := entityHelper.addTestService("svc")
 
-	identity := "identity"
+	instanceId := "instanceId"
 
-	term := entityHelper.addTestTerminator(svc.Id, router1.Id, identity, true)
+	term := entityHelper.addTestTerminator(svc.Id, router1.Id, instanceId, true)
 	term.Binding = "edge"
 
 	network.Terminators.Create(term)

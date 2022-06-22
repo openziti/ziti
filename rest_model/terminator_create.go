@@ -54,12 +54,12 @@ type TerminatorCreate struct {
 	// cost
 	Cost *TerminatorCost `json:"cost,omitempty"`
 
-	// identity
-	Identity string `json:"identity,omitempty"`
+	// instance Id
+	InstanceID string `json:"instanceId,omitempty"`
 
-	// identity secret
+	// instance secret
 	// Format: byte
-	IdentitySecret strfmt.Base64 `json:"identitySecret,omitempty"`
+	InstanceSecret strfmt.Base64 `json:"instanceSecret,omitempty"`
 
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`

@@ -57,17 +57,17 @@ func (self *testEntityHelper) addTestRouter() *Router {
 	return router
 }
 
-func (self *testEntityHelper) addTestTerminator(serviceName string, routerName string, identity string, isSystem bool) *Terminator {
+func (self *testEntityHelper) addTestTerminator(serviceName string, routerName string, instanceId string, isSystem bool) *Terminator {
 	id := fmt.Sprintf("terminator-#%d", self.terminatorIdx)
 	term := &Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:       id,
 			IsSystem: isSystem,
 		},
-		Service:  serviceName,
-		Router:   routerName,
-		Identity: identity,
-		Address:  "ToDo",
+		Service:    serviceName,
+		Router:     routerName,
+		InstanceId: instanceId,
+		Address:    "ToDo",
 	}
 	self.network.Terminators.Create(term)
 	self.terminatorIdx++

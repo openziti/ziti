@@ -27,7 +27,6 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map/v2"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -79,7 +78,7 @@ func newRouteSender(circuitId string, timeout time.Duration, serviceCounters Ser
 	}
 }
 
-func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator, ctx logcontext.Context) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.Route, strategy xt.Strategy, terminator xt.Terminator, ctx logcontext.Context) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
 
 	// send route messages
@@ -110,7 +109,7 @@ attendance:
 			cleanups = self.cleanups(path)
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
-			return nil, cleanups, &routeTimeoutError{circuitId: self.circuitId}
+			return nil, cleanups, newCircuitErrWrap(CircuitFailureRouterErrDialConnRefused, &routeTimeoutError{circuitId: self.circuitId})
 		}
 
 		allPresent := true
@@ -129,31 +128,9 @@ attendance:
 	return peerData, nil, nil
 }
 
-func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err CircuitError) {
 	if status.Success == (status.ErrorCode != nil) {
-		logger.WithError(fmt.Errorf("route status success and error code differ. Success: %t\tErrorCode: %v", status.Success, status.ErrorCode))
-	}
-	if !status.Success && status.ErrorCode != nil {
-		switch *status.ErrorCode {
-		case ctrl_msg.ErrorTypeGeneric:
-			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
-		case ctrl_msg.ErrorTypeInvalidTerminator:
-			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
-				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
-				if err := self.terminators.Delete(terminator.GetId()); err != nil {
-					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
-				}
-			} else {
-				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
-				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
-			}
-		case ctrl_msg.ErrorTypeDialTimedOut:
-			self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
-		case ctrl_msg.ErrorTypeConnectionRefused:
-			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
-		default:
-			logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
-		}
+		logger.Errorf("route status success and error code differ. Success: %v ErrorCode: %v", status.Success, status.ErrorCode)
 	}
 
 	if status.Success {
@@ -169,23 +146,55 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 		} else {
 			logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
 		}
-
-	} else {
-		if status.Attempt == attempt {
-			logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
-
-			if status.Router.Id == terminator.GetRouterId() {
-				strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-				self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
-			}
-			cleanups = self.cleanups(path)
-
-			return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
-		} else {
-			logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
-		}
+		return peerData, nil, nil
 	}
-	return peerData, nil, nil
+
+	failureCause := CircuitFailureRouterErrGeneric
+
+	var errorCode byte
+	if status.ErrorCode != nil {
+		errorCode = *status.ErrorCode
+	}
+
+	switch errorCode {
+	case ctrl_msg.ErrorTypeGeneric:
+		self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+	case ctrl_msg.ErrorTypeInvalidTerminator:
+		if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
+			self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+			if err := self.terminators.Delete(terminator.GetId()); err != nil {
+				logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
+			}
+			failureCause = CircuitFailureRouterErrInvalidTerminator
+		} else {
+			self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
+			self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+			failureCause = CircuitFailureRouterErrMisconfiguredTerminator
+		}
+	case ctrl_msg.ErrorTypeDialTimedOut:
+		self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+		failureCause = CircuitFailureRouterErrDialTimedOut
+	case ctrl_msg.ErrorTypeConnectionRefused:
+		self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+		failureCause = CircuitFailureRouterErrDialConnRefused
+	default:
+		logger.WithField("errorCode", status.ErrorCode).Error("unhandled error code")
+	}
+
+	if status.Attempt == attempt {
+		logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
+
+		if status.Router.Id == terminator.GetRouterId() {
+			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+			self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
+		}
+		cleanups = self.cleanups(path)
+
+		return nil, cleanups, newCircuitErrorf(failureCause, "error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
+	}
+
+	logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
+	return nil, nil, nil
 }
 
 func (self *routeSender) sendRoute(r *Router, routeMsg *ctrl_pb.Route, ctx logcontext.Context) {

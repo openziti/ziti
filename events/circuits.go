@@ -77,11 +77,13 @@ type CircuitEvent struct {
 	Timestamp              time.Time      `json:"timestamp"`
 	ClientId               string         `json:"client_id"`
 	ServiceId              string         `json:"service_id"`
+	InstanceId             string         `json:"instance_id"`
 	CreationTimespan       *time.Duration `json:"creation_timespan"`
 	Path                   string         `json:"path"`
 	TerminatorLocalAddress string         `json:"terminator_local_address"`
 	LinkCount              int            `json:"link_count"`
 	Cost                   *uint32        `json:"path_cost"`
+	FailureCause           *string        `json:"failure_cause"`
 }
 
 func (event *CircuitEvent) String() string {
@@ -123,7 +125,20 @@ func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.Circuit
 		eventType = "pathUpdated"
 	} else if netEvent.Type == network.CircuitDeleted {
 		eventType = "deleted"
+	} else if netEvent.Type == network.CircuitFailed {
+		eventType = "failed"
 	}
+
+	var failureCause *string
+	if cause := string(netEvent.FailureCause); cause != "" {
+		failureCause = &cause
+	}
+
+	pathDesc := ""
+	if netEvent.Path != nil {
+		pathDesc = netEvent.Path.String()
+	}
+
 	event := &CircuitEvent{
 		Namespace:              "fabric.circuits",
 		EventType:              eventType,
@@ -131,11 +146,13 @@ func (adapter *circuitEventAdapter) AcceptCircuitEvent(netEvent *network.Circuit
 		Timestamp:              time.Now(),
 		ClientId:               netEvent.ClientId,
 		ServiceId:              netEvent.ServiceId,
+		InstanceId:             netEvent.InstanceId,
 		CreationTimespan:       netEvent.CreationTimespan,
-		Path:                   netEvent.Path.String(),
+		Path:                   pathDesc,
 		TerminatorLocalAddress: netEvent.Path.TerminatorLocalAddr,
 		LinkCount:              len(netEvent.Path.Links),
 		Cost:                   netEvent.Cost,
+		FailureCause:           failureCause,
 	}
 
 	adapter.handler.AcceptCircuitEvent(event)

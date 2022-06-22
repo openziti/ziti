@@ -34,8 +34,8 @@ type Terminator struct {
 	Router         string
 	Binding        string
 	Address        string
-	Identity       string
-	IdentitySecret []byte
+	InstanceId     string
+	InstanceSecret []byte
 	Cost           uint16
 	Precedence     xt.Precedence
 	PeerData       map[uint32][]byte
@@ -57,12 +57,12 @@ func (entity *Terminator) GetAddress() string {
 	return entity.Address
 }
 
-func (entity *Terminator) GetIdentity() string {
-	return entity.Identity
+func (entity *Terminator) GetInstanceId() string {
+	return entity.InstanceId
 }
 
-func (entity *Terminator) GetIdentitySecret() []byte {
-	return entity.IdentitySecret
+func (entity *Terminator) GetInstanceSecret() []byte {
+	return entity.InstanceSecret
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -86,8 +86,8 @@ func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.E
 	entity.Router = boltTerminator.Router
 	entity.Binding = boltTerminator.Binding
 	entity.Address = boltTerminator.Address
-	entity.Identity = boltTerminator.Identity
-	entity.IdentitySecret = boltTerminator.IdentitySecret
+	entity.InstanceId = boltTerminator.InstanceId
+	entity.InstanceSecret = boltTerminator.InstanceSecret
 	entity.PeerData = boltTerminator.PeerData
 	entity.Cost = boltTerminator.Cost
 	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
@@ -106,8 +106,8 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		Router:         entity.Router,
 		Binding:        entity.Binding,
 		Address:        entity.Address,
-		Identity:       entity.Identity,
-		IdentitySecret: entity.IdentitySecret,
+		InstanceId:     entity.InstanceId,
+		InstanceSecret: entity.InstanceSecret,
 		Cost:           entity.Cost,
 		Precedence:     precedence,
 		PeerData:       entity.PeerData,
@@ -249,8 +249,8 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 		RouterId:       entity.GetRouterId(),
 		Binding:        entity.Binding,
 		Address:        entity.Address,
-		Identity:       entity.Identity,
-		IdentitySecret: entity.IdentitySecret,
+		InstanceId:     entity.InstanceId,
+		InstanceSecret: entity.InstanceSecret,
 		Cost:           uint32(entity.Cost),
 		Precedence:     precedence,
 		PeerData:       entity.PeerData,
@@ -282,8 +282,8 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		Router:         msg.RouterId,
 		Binding:        msg.Binding,
 		Address:        msg.Address,
-		Identity:       msg.Identity,
-		IdentitySecret: msg.IdentitySecret,
+		InstanceId:     msg.InstanceId,
+		InstanceSecret: msg.InstanceSecret,
 		Cost:           uint16(msg.Cost),
 		Precedence:     precedence,
 		PeerData:       msg.PeerData,

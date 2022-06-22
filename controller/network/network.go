@@ -405,16 +405,19 @@ func (network *Network) LinkChanged(l *Link) {
 
 func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context, deadline time.Time) (*Circuit, error) {
 	startTime := time.Now()
+
+	instanceId, serviceId := parseInstanceIdAndService(service)
+
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.circuitController.nextCircuitId()
 	if err != nil {
+		network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, CircuitFailureInvalidService)
 		return nil, err
 	}
 	ctx.WithField("circuitId", circuitId)
 	ctx.WithField("serviceId", service)
 	ctx.WithField("attemptNumber", 1)
 	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
-	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	attempt := uint32(0)
 	allCleanups := make(map[string]struct{})
@@ -424,23 +427,28 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
 		if err != nil {
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, CircuitFailureInvalidService)
 			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
 		logger = logger.WithField("serviceName", svc.Name)
 
 		// 3: select terminator
-		strategy, terminator, pathNodes, err := network.selectPath(srcR, svc, targetIdentity, ctx)
-		if err != nil {
+		strategy, terminator, pathNodes, circuitErr := network.selectPath(srcR, svc, instanceId, ctx)
+		if circuitErr != nil {
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, circuitErr.Cause())
 			network.ServiceDialOtherError(serviceId)
-			return nil, err
+			return nil, circuitErr
 		}
 
+		cost := terminator.GetRouteCost()
+
 		// 4: Create Path
-		path, err := network.CreatePathWithNodes(pathNodes)
-		if err != nil {
+		path, pathErr := network.CreatePathWithNodes(pathNodes)
+		if pathErr != nil {
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, &cost, pathErr.Cause())
 			network.ServiceDialOtherError(serviceId)
-			return nil, err
+			return nil, pathErr
 		}
 
 		// 4a: Create Route Messages
@@ -456,12 +464,13 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 
 		// 5: Routing
 		logger.Debug("route attempt for circuit")
-		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator, ctx)
+		peerData, cleanups, circuitErr := rs.route(attempt, path, rms, strategy, terminator, ctx)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
-		if err != nil {
-			logger.WithError(err).Warn("route attempt for circuit failed")
+		if circuitErr != nil {
+			logger.WithError(circuitErr).Warn("route attempt for circuit failed")
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, path, &cost, circuitErr.Cause())
 			attempt++
 			ctx.WithField("attemptNumber", attempt+1)
 			logger = logger.WithField("attemptNumber", attempt+1)
@@ -482,7 +491,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 					}
 				}
 
-				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [c/%s]", network.options.CreateCircuitRetries, circuitId)
+				return nil, errors.Wrapf(circuitErr, "exceeded maximum [%d] retries creating circuit [c/%s]", network.options.CreateCircuitRetries, circuitId)
 			}
 		}
 
@@ -524,7 +533,6 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		network.circuitController.add(circuit)
 		creationTimespan := time.Since(startTime)
-		cost := terminator.GetRouteCost()
 		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan, &cost)
 
 		logger.WithField("path", circuit.Path).
@@ -538,7 +546,7 @@ func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
 	network.forwardingFaults <- ffr
 }
 
-func parseIdentityAndService(service string) (string, string) {
+func parseInstanceIdAndService(service string) (string, string) {
 	atIndex := strings.IndexRune(service, '@')
 	if atIndex < 0 {
 		return "", service
@@ -548,15 +556,18 @@ func parseIdentityAndService(service string) (string, string) {
 	return identityId, serviceId
 }
 
-func (network *Network) selectPath(srcR *Router, svc *Service, identity string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*Router, error) {
+func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string, ctx logcontext.Context) (xt.Strategy, xt.CostedTerminator, []*Router, CircuitError) {
 	paths := map[string]*PathAndCost{}
 	var weightedTerminators []xt.CostedTerminator
 	var errList []error
 
 	log := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
 
+	hasOfflineRouters := false
+	pathError := false
+
 	for _, terminator := range svc.Terminators {
-		if terminator.Identity != identity {
+		if terminator.InstanceId != instanceId {
 			continue
 		}
 
@@ -569,6 +580,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 
 				errList = append(errList, err)
+				hasOfflineRouters = true
 				continue
 			}
 
@@ -576,6 +588,7 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 			if err != nil {
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
 				errList = append(errList, err)
+				pathError = true
 				continue
 			}
 
@@ -594,20 +607,20 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 	}
 
 	if len(svc.Terminators) == 0 {
-		return nil, nil, nil, errors.Errorf("service %v has no terminators", svc.Id)
+		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators", svc.Id)
 	}
 
-	if len(weightedTerminators) == 0 && len(errList) == 0 {
-		return nil, nil, nil, errors.Errorf("service %v has no terminators for identity %v", svc.Id, identity)
+	if pathError {
+		return nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
 	}
 
-	if len(weightedTerminators) == 0 {
-		return nil, nil, nil, errorz.MultipleErrors(errList)
+	if hasOfflineRouters {
+		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
 	}
 
 	strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, newCircuitErrWrap(CircuitFailureInvalidStrategy, err)
 	}
 
 	sort.Slice(weightedTerminators, func(i, j int) bool {
@@ -617,11 +630,11 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 	terminator, err := strategy.Select(weightedTerminators)
 
 	if err != nil {
-		return nil, nil, nil, errors.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
+		return nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
 	}
 
 	if terminator == nil {
-		return nil, nil, nil, errors.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
+		return nil, nil, nil, newCircuitErrorf(CircuitFailureStrategyError, "strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
 	}
 
 	path := paths[terminator.GetRouterId()].path
@@ -697,15 +710,15 @@ func (network *Network) CreatePath(srcR, dstR *Router) (*Path, error) {
 	return network.UpdatePath(path)
 }
 
-func (network *Network) CreatePathWithNodes(nodes []*Router) (*Path, error) {
+func (network *Network) CreatePathWithNodes(nodes []*Router) (*Path, CircuitError) {
 	ingressId, err := network.sequence.NextHash()
 	if err != nil {
-		return nil, err
+		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
 
 	egressId, err := network.sequence.NextHash()
 	if err != nil {
-		return nil, err
+		return nil, newCircuitErrWrap(CircuitFailureIdGenerationError, err)
 	}
 
 	path := &Path{
@@ -714,7 +727,7 @@ func (network *Network) CreatePathWithNodes(nodes []*Router) (*Path, error) {
 		EgressId:  egressId,
 	}
 	if err := network.setLinks(path); err != nil {
-		return nil, err
+		return nil, newCircuitErrWrap(CircuitFailurePathMissingLink, err)
 	}
 	return path, nil
 }
