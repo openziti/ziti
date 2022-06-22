@@ -77,11 +77,9 @@ func run(cmd *cobra.Command, args []string) {
 
 	if cliAgentEnabled {
 		options := agent.Options{Addr: cliAgentAddr}
-		fabricController.RegisterDefaultAgentOps()
 		options.CustomOps = map[byte]func(conn net.Conn) error{
-			agent.CustomOp: func(conn net.Conn) error {
-				return fabricController.HandleCustomAgentOp(conn)
-			},
+			agent.CustomOp:      fabricController.HandleCustomAgentOp,
+			agent.CustomOpAsync: fabricController.HandleCustomAgentAsyncOp,
 		}
 		if err := agent.Listen(options); err != nil {
 			pfxlog.Logger().WithError(err).Error("unable to start CLI agent")

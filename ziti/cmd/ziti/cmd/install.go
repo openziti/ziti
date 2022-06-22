@@ -67,7 +67,6 @@ func NewCmdInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(NewCmdInstallZitiALL(out, errOut))
 
 	cmd.AddCommand(NewCmdInstallZitiController(out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiFabric(out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiRouter(out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiTunnel(out, errOut))
 	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(out, errOut))

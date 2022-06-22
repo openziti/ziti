@@ -21,7 +21,6 @@ import "time"
 const (
 	ZITI                    = "ziti"
 	ZITI_CONTROLLER         = "ziti-controller"
-	ZITI_FABRIC             = "ziti-fabric"
 	ZITI_ROUTER             = "ziti-router"
 	ZITI_TUNNEL             = "ziti-tunnel"
 	ZITI_EDGE_TUNNEL        = "ziti-edge-tunnel"

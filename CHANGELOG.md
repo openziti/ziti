@@ -1,3 +1,204 @@
+# Release 0.25.13
+
+## What's New
+- Edge
+  - Bug fixes
+- Fabric
+  - N/A
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+### Bug Fixes
+
+* [https://github.com/openziti/edge/issues/1055](Fix for an edge router panic)
+
+# Release 0.25.12
+
+## What's New
+
+No functional changes, build process changes only
+
+# Release 0.25.11
+
+## What's New
+- Edge
+  - Management API: Breaking Changes
+  - Management API: New Endpoints
+  - Management API: JWKS Support
+  - Bug fixes
+- Fabric
+  - Bug fixes
+  - Metrics API
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+### Management API Breaking Changes
+
+The following Edge Management REST API Endpoints have breaking changes:
+
+- `POST /ext-jwt-signers`
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PUT /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is specified
+  - `jwtEndpoint` or `certPem` is required
+  - `issuer` is now required
+  - `audience` is now required
+- `PATCH /ext-jwt-signers` - `kid` is required if `certPem` is specified, `issuer` is required, `audience` is required
+  - `kid` is required if `certPem` is set and `kid` was not previously set
+  - `jwtEndpoint` or `certPem` must be defined or previously set of the other is  `null`
+  - `issuer` may not be set to `null` or `""`
+  - `audience` may not be set to `null` or `""`
+
+The above changes will render existing `ext-jwt-signers` as always failing authentication is `issuer` and `audience`
+were not previously set.
+
+### Management API: New Endpoints
+
+The following new endpoints have been added:
+
+- `GET /identities/:id/enrollments` - returns a pre-filtered list of enrollments for the identity specified by `:id`
+
+### Management API: JWKS Support
+
+JWKS (JSON Web Key Sets) is defined in [rfc7517](https://www.rfc-editor.org/rfc/rfc7517) and defines the format
+and methods that public and private keys may be published via JSON. JWKS support enables Ziti to obtain
+public signing keys from identity providers as needed. This enables identity providers to rotate signing keys without
+breaking SSO integrations.
+
+To facilitate this, `ext-jwt-signers` now support `jwksEndpoint` which is a URL that resolves to a service that returns 
+a JWKS JSON payload. When specified, the `certPem` and `kid` files are no longer required. Additionally, when a JWT `iss` 
+fields matches an existing `extj-jwt-signers`'s `issuer` field and the `kid` is currently unknown, the `jwksEndpoint` 
+will be interrogated for new signing keys. The `jwksEndpoint` will only be interrogated at most once every five seconds.
+
+### Bug Fixes
+
+* https://github.com/openziti/edge/issues/1027
+* https://github.com/openziti/edge/issues/1025
+* https://github.com/openziti/edge/issues/1035
+* https://github.com/openziti/edge/issues/1045
+* https://github.com/openziti/edge/issues/1049
+
+## Fabric
+### Bug Fixes
+
+* https://github.com/openziti/fabric/issues/406
+* https://github.com/openziti/ziti/issues/565 - Moved terminator information to its own field.
+
+### Metrics API
+
+The following new endpoint has been added:
+- `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.
+
+
+# Release 0.25.10
+
+## What's New
+- Edge
+  - N/A
+- Fabric
+  - N/A
+- Ziti CLI
+  - CLI support for enrollments/authenticators/re-enrollment
+  - Fix prox-c download
+  - ziti-fabric cleanup
+  - Add public attributes and service policies allowing public access to routers in docker-compose quickstart
+  - Add file overwrite checks for the "Local ziti quickstart" script
+- SDK Golang
+  - N/A
+
+## Ziti CLI
+
+### CLI support for enrollments/authenticators/re-enrollment
+
+The CLI has been augmented to support the following commands:
+
+- `ziti edge list authenticators` - to generically list existing authenticators
+- `ziti edge list enrollments` - to generically list existing enrollments
+- `ziti edge delete enrollment <id>` - to generically delete existing enrollments
+- `ziti edge delete authenticator <id>` - to generically delete existing authenticator
+- `ziti edge create enrollment ott ...` - to create a new one-time-token enrollment for an existing identity
+- `ziti edge create enrollment ottca ...` - to create a new one-time-token enrollment for an existing identity for a 3rd party CA issued certificate
+- `ziti edge create enrollment updb ...` - to create a new updb (username/password) enrollment for an existing identity
+
+These commands, specifically the enrollment related ones, can be used to re-enroll existing identities. See the 0.25.9 changeFor all arguments and options, please see their CLI related `-h`.
+
+Also note that the `ziti edge delete authenticator updb` command has been supplanted by `ziti edge delete authenticator <authenticator id>`
+
+### Fix prox-c download
+
+The prox-c releases on GitHub now include the architecture in the download URL. 
+`ziti install ziti-prox-c` has been updated to take this into account.
+
+### ziti-fabric cleanup
+
+Ziti CLI install/upgrade/remove commands related to `ziti-fabric` have been
+removed since `ziti-fabric` was deprecated and is not being published anymore.
+
+# Release 0.25.9
+
+## What's New
+- Edge
+  - Create Identity Enrollments / Allow Identity Re-Enrollment
+- Fabric
+  - Bug fixes
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+
+### Create Identity Enrollments / Allow Identity Re-Enrollment
+
+The ability to create identity enrollments, allows new enrollment JWTs to be generated throughout any identity's
+lifetime. This allows Ziti to support scenarios where re-enrolling an identity is more convenient than recreating it.
+
+The most common scenario is new device transitions. Previously, the only way to deal with this scenario was to remove
+the identity and recreate it. Depending on how the role attributes and policies were configured this may be a trivial or
+demanding task. The more policies utilizing direct identity reference, instead of attribute selectors, the
+more difficult it is to recreate that identity. Additional, re-enrolling an identity retains MFA TOTP enrollment,
+recovery codes, and authentication policy assignments/configuration.
+
+#### New Endpoints
+- `POST /enrollments` - Create enrollments associated to an identity
+
+#### POST /enrollments Properties
+
+- `method` - required - one of `ott`, `ottca`, or `updb` to specify the type of enrollment (this affects other field requirements)
+- `expiresAt` - required - the date and time the enrollment will expire
+- `identityId` - required - the identity the enrollment is tied to
+- `caId` - `ottca` required, others ignored - the verifying 3rd party CA id for the `ottca` enrollment
+- `username` - `updb` required, others ignored - the default username granted to an identity during `updb` enrollment
+
+#### Creating Identity Enrollments
+
+Identity enrollments only allow one outstanding enrollment for each type of enrollment supported. For example attempting 
+to create multiple `ott` (one-time-token) enrollments will return a `409 Conflict` error. Deleting existing enrollments will
+resolve the issue.
+
+As noted in the properties' section above, some properties are utilized for different `method` types. Please be aware
+that while setting these values through the API will not be rejected, they are not utilized.
+
+Please note that it is possible for an identity to have multiple authentication types. Authentication policies should
+be used to restrict the type of authenticators that are valid, even if enrolment has been completed.
+
+
+## Fabric
+
+### Bug Fixes
+
+* https://github.com/openziti/fabric/issues/404
+    * Goroutine pool metrics for xgress and link dials not working
+
 # Release 0.25.8
 
 ## Maintenance
@@ -12,6 +213,10 @@ Improved MacOS compatibility with cert handling and ioKit.
 # Release 0.25.7
 
 ## Fabric
+
+### Xgress and Link Dial Defaults Updated
+The default size of the xgress dialer pool has been updated to 128 from 10.
+The default size of the link dialer pool has been updated to 32 from 10.
 
 ### Dial Timeout Propagation
 Currently each section of the dial logic has its own timeouts. It can easily happen that
@@ -238,7 +443,7 @@ link:
 * Bug fix: Fix router panic which can happen on link bind
 * Bug fix: Fix router panic which can happen if the router shuts down before it's fully up an running
 * Enhancement: Avoid router warning like `destination exists for [p57a]` by not sending egress in route, since egress will always already be established
-* Enhancement: Change default dial retries to 2 from 3
+* Enhancement: Change default dial retries to 3 from 2
 * Enhancement: Add circuit inspect. `ziti fabric inspect .* circuit:<circuit-id>` will now return information about the circuit from the routers. This will include routing information as well as flow control data from the initiator and terminator.
 * Change: Support for link types removed
 
