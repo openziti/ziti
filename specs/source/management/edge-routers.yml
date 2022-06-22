@@ -314,6 +314,7 @@ definitions:
     properties:
       name:
         type: string
+        x-nullable: true
       isTunnelerEnabled:
         type: boolean
       cost:

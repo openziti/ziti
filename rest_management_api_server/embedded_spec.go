@@ -19006,7 +19006,8 @@ func init() {
           "type": "boolean"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "noTraversal": {
           "type": "boolean",
@@ -42315,7 +42316,8 @@ func init() {
           "type": "boolean"
         },
         "name": {
-          "type": "string"
+          "type": "string",
+          "x-nullable": true
         },
         "noTraversal": {
           "type": "boolean",

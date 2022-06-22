@@ -55,7 +55,7 @@ type EdgeRouterPatch struct {
 	IsTunnelerEnabled bool `json:"isTunnelerEnabled,omitempty"`
 
 	// name
-	Name string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty"`
 
 	// no traversal
 	NoTraversal *bool `json:"noTraversal,omitempty"`
