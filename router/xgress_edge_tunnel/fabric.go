@@ -169,7 +169,7 @@ func (self *fabricProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) 
 	return self.currentIdentity, nil
 }
 
-func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorIdentity string, conn net.Conn, halfClose bool, appData []byte) error {
+func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInstanceId string, conn net.Conn, halfClose bool, appData []byte) error {
 	keyPair, err := kx.NewKeyPair()
 	if err != nil {
 		return err
@@ -185,10 +185,10 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorIden
 
 	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{
-		SessionId:          sessionId,
-		ServiceName:        service.GetName(),
-		TerminatorIdentity: terminatorIdentity,
-		PeerData:           peerData,
+		SessionId:            sessionId,
+		ServiceName:          service.GetName(),
+		TerminatorInstanceId: terminatorInstanceId,
+		PeerData:             peerData,
 	}
 
 	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(self.factory.Channel())
@@ -300,7 +300,7 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 		PeerData:    hostData,
 		Cost:        uint32(terminator.context.ListenOptions().Cost),
 		Precedence:  precedence,
-		Identity:    terminator.context.ListenOptions().Identity,
+		InstanceId:  terminator.context.ListenOptions().Identity,
 	}
 
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{}

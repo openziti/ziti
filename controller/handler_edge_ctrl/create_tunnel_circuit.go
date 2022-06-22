@@ -17,12 +17,12 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type createCircuitForServiceHandler struct {
@@ -91,7 +91,7 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 	ctx.loadServiceForName(ctx.req.ServiceName)
 	ctx.ensureSessionForService(ctx.req.SessionId, persistence.SessionTypeDial)
 	ctx.verifyEdgeRouterAccess()
-	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorIdentity, ctx.req.PeerData)
+	circuitInfo, peerData := ctx.createCircuit(ctx.req.TerminatorInstanceId, ctx.req.PeerData)
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
