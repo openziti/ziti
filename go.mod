@@ -34,9 +34,9 @@ require (
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.42
 	github.com/openziti/fabric v0.18.10
-	github.com/openziti/foundation v0.17.29
+	github.com/openziti/foundation v0.17.30
 	github.com/openziti/jwks v1.0.1
-	github.com/openziti/sdk-golang v0.16.80
+	github.com/openziti/sdk-golang v0.16.82
 	github.com/openziti/storage v0.1.10
 	github.com/openziti/transport/v2 v2.0.6
 	github.com/openziti/x509-claims v1.0.2
@@ -46,7 +46,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/spf13/cobra v1.4.0
+	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.4
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
