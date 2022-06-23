@@ -191,12 +191,12 @@ func outputLinks(o *api.Options, children []*gabs.Container, pagingInfo *api.Pag
 
 	for _, entity := range children {
 		id := entity.Path("id").Data().(string)
-		srcRouter := entity.Path("sourceRouter.name").Data().(string)
-		dstRouter := entity.Path("destRouter.name").Data().(string)
+		srcRouter := api.GetJsonString(entity, "sourceRouter.name")
+		dstRouter := api.GetJsonString(entity, "destRouter.name")
 		staticCost := entity.Path("staticCost").Data().(float64)
 		srcLatency := entity.Path("sourceLatency").Data().(float64) / 1_000_000
 		dstLatency := entity.Path("destLatency").Data().(float64) / 1_000_000
-		state := entity.Path("state").Data().(string)
+		state := api.GetJsonString(entity, "state")
 		down := entity.Path("down").Data().(bool)
 		cost := entity.Path("cost").Data().(float64)
 
@@ -231,20 +231,20 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Identity", "Cost", "Precedence", "Dynamic Cost"})
+	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Instance", "Cost", "Precedence", "Dynamic Cost"})
 
 	for _, entity := range children {
-		id, _ := entity.Path("id").Data().(string)
-		service := entity.Path("service.name").Data().(string)
-		router := entity.Path("router.name").Data().(string)
-		binding := entity.Path("binding").Data().(string)
-		address := entity.Path("address").Data().(string)
-		identity := entity.Path("identity").Data().(string)
-		staticCost := entity.Path("cost").Data().(float64)
-		precedence := entity.Path("precedence").Data().(string)
-		dynamicCost := entity.Path("dynamicCost").Data().(float64)
+		id := api.GetJsonString(entity, "id")
+		service := api.GetJsonString(entity, "service.name")
+		router := api.GetJsonString(entity, "router.name")
+		binding := api.GetJsonString(entity, "binding")
+		address := api.GetJsonString(entity, "address")
+		instanceId := api.GetJsonString(entity, "instanceId")
+		staticCost := api.GetJsonString(entity, "cost")
+		precedence := api.GetJsonString(entity, "precedence")
+		dynamicCost := api.GetJsonString(entity, "dynamicCost")
 
-		t.AppendRow(table.Row{id, service, router, binding, address, identity, staticCost, precedence, dynamicCost})
+		t.AppendRow(table.Row{id, service, router, binding, address, instanceId, staticCost, precedence, dynamicCost})
 	}
 	api.RenderTable(o, t, pagingInfo)
 	return nil

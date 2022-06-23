@@ -70,6 +70,7 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	demoCmd.AddCommand(setupCmd)
 	setupCmd.AddCommand(echoCmd)
 	echoCmd.AddCommand(newClientCmd(p))
+	echoCmd.AddCommand(newRouterTunnelerBothSidesCmd(p))
 	echoCmd.AddCommand(newSingleSdkHostedCmd(p))
 	echoCmd.AddCommand(newMultiSdkHostedCmd(p))
 	echoCmd.AddCommand(newSingleRouterTunnelerHostedCmd(p))
