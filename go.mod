@@ -24,7 +24,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/channel v0.18.43
 	github.com/openziti/edge v0.22.0
-	github.com/openziti/fabric v0.19.3
+	github.com/openziti/fabric v0.19.4-0.20220628175232-1825ffe15fdf
 	github.com/openziti/foundation v0.17.30
 	github.com/openziti/sdk-golang v0.16.83
 	github.com/openziti/storage v0.1.11
