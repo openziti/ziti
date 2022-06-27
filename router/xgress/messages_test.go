@@ -55,14 +55,14 @@ func TestSetOriginatorFlag(t *testing.T) {
 				flags:      0,
 				originator: Terminator,
 			},
-			want: uint32(PayloadFlagEgress),
+			want: uint32(PayloadFlagOriginator),
 		},
 		{name: "set end of circuit to egress",
 			args: args{
 				flags:      uint32(PayloadFlagCircuitEnd),
 				originator: Terminator,
 			},
-			want: uint32(PayloadFlagCircuitEnd) | uint32(PayloadFlagEgress),
+			want: uint32(PayloadFlagCircuitEnd) | uint32(PayloadFlagOriginator),
 		},
 	}
 	for _, tt := range tests {

@@ -66,7 +66,7 @@ type PayloadFlag uint32
 
 const (
 	PayloadFlagCircuitEnd   PayloadFlag = 1
-	PayloadFlagEgress       PayloadFlag = 2
+	PayloadFlagOriginator   PayloadFlag = 2
 	PayloadFlagCircuitStart PayloadFlag = 4
 )
 
@@ -86,7 +86,7 @@ func (header *Header) GetFlags() string {
 }
 
 func (header *Header) GetOriginator() Originator {
-	if isPayloadFlagSet(header.Flags, PayloadFlagEgress) {
+	if isPayloadFlagSet(header.Flags, PayloadFlagOriginator) {
 		return Terminator
 	}
 	return Initiator
@@ -267,9 +267,9 @@ func (payload *Payload) IsCircuitStartFlagSet() bool {
 
 func SetOriginatorFlag(flags uint32, originator Originator) uint32 {
 	if originator == Initiator {
-		return ^uint32(PayloadFlagEgress) & flags
+		return ^uint32(PayloadFlagOriginator) & flags
 	}
-	return uint32(PayloadFlagEgress) | flags
+	return uint32(PayloadFlagOriginator) | flags
 }
 
 func (payload *Payload) GetLoggerFields() logrus.Fields {
