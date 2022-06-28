@@ -530,6 +530,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			Path:       path,
 			Terminator: terminator,
 			PeerData:   peerData,
+			CreatedAt:  time.Now(),
 		}
 		network.circuitController.add(circuit)
 		creationTimespan := time.Since(startTime)
@@ -876,6 +877,24 @@ func (network *Network) rerouteLink(l *Link, deadline time.Time) error {
 	return nil
 }
 
+func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) {
+	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
+
+	for i := 0; i < retries; i++ {
+		deadline := time.Now().Add(DefaultNetworkOptionsRouteTimeout)
+		err := network.rerouteCircuit(circuit, deadline)
+		if err == nil {
+			return
+		}
+
+		log.WithError(err).WithField("attempt", i).Error("error re-routing circuit")
+	}
+
+	if err := network.RemoveCircuit(circuit.Id, true); err != nil {
+		log.WithError(err).Error("failure while removing circuit after failed re-route attempt")
+	}
+}
+
 func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) error {
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 	if circuit.Rerouting.CompareAndSwap(false, true) {
@@ -907,28 +926,30 @@ func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) err
 	}
 }
 
-func (network *Network) smartReroute(s *Circuit, cq *Path, deadline time.Time) error {
-	if s.Rerouting.CompareAndSwap(false, true) {
-		defer s.Rerouting.Set(false)
+func (network *Network) smartReroute(circuit *Circuit, cq *Path, deadline time.Time) bool {
+	retry := false
+	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
+	if circuit.Rerouting.CompareAndSwap(false, true) {
+		defer circuit.Rerouting.Set(false)
 
-		s.Path = cq
+		circuit.Path = cq
 
-		rms := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator, deadline)
+		rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator, deadline)
 
 		for i := 0; i < len(cq.Nodes); i++ {
 			if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {
-				logrus.Errorf("error sending route to [r/%s] (%s)", cq.Nodes[i].Id, err)
+				retry = true
+				log.WithField("routerId", cq.Nodes[i].Id).WithError(err).Error("error sending smart route update to router")
+				break
 			}
 		}
 
-		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
-		network.CircuitEvent(CircuitUpdated, s, nil, nil)
-		return nil
-
-	} else {
-		logrus.Infof("not rerouting [s/%s], already in progress", s.Id)
-		return nil
+		if !retry {
+			logrus.Debug("rerouted circuit")
+			network.CircuitEvent(CircuitUpdated, circuit, nil, nil)
+		}
 	}
+	return retry
 }
 
 func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {

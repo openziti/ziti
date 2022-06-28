@@ -90,7 +90,7 @@ func Test_Ordering(t *testing.T) {
 			payload := &Payload{
 				Header: Header{
 					CircuitId:      "test",
-					Flags:          0,
+					Flags:          SetOriginatorFlag(0, Terminator),
 					RecvBufferSize: 16000,
 					RTT:            0,
 				},

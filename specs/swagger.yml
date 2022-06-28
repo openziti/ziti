@@ -1580,6 +1580,7 @@ definitions:
       - service
       - terminator
       - path
+      - createdAt
     properties:
       id:
         type: string
@@ -1589,6 +1590,9 @@ definitions:
         $ref: '#/definitions/entityRef'
       terminator:
         $ref: '#/definitions/entityRef'
+      createdAt:
+        type: string
+        format: date-time
       path:
         type: object
         properties:
