@@ -24,32 +24,6 @@ import (
 	"io/ioutil"
 )
 
-// VerifyController will attempt to use the provided x509.CertPool to connect to the provided controller.
-// If successful true and no error will be returned.
-func VerifyController(controllerAddr string, caPool *x509.CertPool) (bool, error) {
-	tlsConfig, err := NewTlsConfig()
-
-	if err != nil {
-		return false, err
-	}
-
-	tlsConfig.RootCAs = caPool
-
-	httpClient, err := NewHttpClientWithTlsConfig(tlsConfig)
-
-	if err != nil {
-		return false, err
-	}
-
-	_, err = httpClient.Get(controllerAddr + "/edge/client/v1/versions")
-
-	if err != nil {
-		return false, err
-	}
-
-	return true, nil
-}
-
 // GetControllerWellKnownCas will attempt to connect to a controller and retrieve its PKCS11 well-known CA bundle.
 func GetControllerWellKnownCas(controllerAddr string) ([]*x509.Certificate, error) {
 	tlsConfig, err := NewTlsConfig()
