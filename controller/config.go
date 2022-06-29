@@ -69,10 +69,6 @@ type Config struct {
 		Listener transport.Address
 		Options  *CtrlOptions
 	}
-	Mgmt struct {
-		Listener transport.Address
-		Options  *channel.Options
-	}
 	Metrics      *metrics.Config
 	HealthChecks struct {
 		BoltCheck struct {
@@ -301,38 +297,6 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	} else {
 		panic("controllerConfig must provide [ctrl]")
-	}
-
-	if value, found := cfgmap["mgmt"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["listener"]; found {
-				listener, err := transport.ParseAddress(value.(string))
-				if err != nil {
-					return nil, err
-				}
-				controllerConfig.Mgmt.Listener = listener
-			} else {
-				panic("controllerConfig must provide [mgmt/listener]")
-			}
-
-			controllerConfig.Mgmt.Options = channel.DefaultOptions()
-			if value, found := submap["options"]; found {
-				if submap, ok := value.(map[interface{}]interface{}); ok {
-					options, err := channel.LoadOptions(submap)
-					if err != nil {
-						return nil, err
-					}
-					controllerConfig.Mgmt.Options = options
-					if err := controllerConfig.Mgmt.Options.Validate(); err != nil {
-						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
-					}
-				}
-			}
-		} else {
-			panic("controllerConfig [mgmt] section in unexpected format")
-		}
-	} else {
-		panic("controllerConfig must provide [mgmt]")
 	}
 
 	if value, found := cfgmap["metrics"]; found {

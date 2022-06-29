@@ -11,9 +11,6 @@ identity:
 ctrl:
   listener: tls:127.0.0.1:6363
 
-mgmt:
-  listener: tls:127.0.0.1:10001
-
 web:
   - name: localhost
     bindPoints:

@@ -34,8 +34,6 @@ func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.Bind
 
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(bindHandler.network))
-	binding.AddTypedReceiveHandler(newCreateRouterHandler(bindHandler.network))
-	binding.AddTypedReceiveHandler(newListServicesHandler(bindHandler.network))
 
 	streamMetricHandler := newStreamMetricsHandler(bindHandler.network)
 	binding.AddTypedReceiveHandler(streamMetricHandler)
