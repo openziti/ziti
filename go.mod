@@ -32,13 +32,13 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel v0.18.43
-	github.com/openziti/fabric v0.19.3
+	github.com/openziti/channel v0.18.44
+	github.com/openziti/fabric v0.19.4
 	github.com/openziti/foundation v0.17.30
 	github.com/openziti/jwks v1.0.1
 	github.com/openziti/sdk-golang v0.16.84
 	github.com/openziti/storage v0.1.11
-	github.com/openziti/transport/v2 v2.0.7
+	github.com/openziti/transport/v2 v2.0.8
 	github.com/openziti/x509-claims v1.0.2
 	github.com/openziti/xweb/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.0
@@ -48,7 +48,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.4
+	github.com/stretchr/testify v1.7.5
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
