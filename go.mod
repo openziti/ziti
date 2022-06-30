@@ -36,7 +36,7 @@ require (
 	github.com/openziti/fabric v0.19.7
 	github.com/openziti/foundation v0.17.31
 	github.com/openziti/jwks v1.0.1
-	github.com/openziti/sdk-golang v0.16.87
+	github.com/openziti/sdk-golang v0.16.88
 	github.com/openziti/storage v0.1.12
 	github.com/openziti/transport/v2 v2.0.9
 	github.com/openziti/x509-claims v1.0.2
