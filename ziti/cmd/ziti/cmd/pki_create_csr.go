@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -62,7 +62,7 @@ func NewCmdPKICreateCSR(out io.Writer, errOut io.Writer) *cobra.Command {
 
 func (o *PKICreateCSROptions) addPKICreateCSRFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.CSRFile, "csr-file", "", "csr", "File in which to store new CSR")
-	cmd.Flags().StringVarP(&o.Flags.CSRName, "csr-name", "", "NetFoundry, Inc. CSR", "Name of CSR")
+	cmd.Flags().StringVarP(&o.Flags.CSRName, "csr-name", "", "NetFoundry Inc. CSR", "Name of CSR")
 	cmd.Flags().StringVarP(&o.Flags.KeyName, "key-name", "", "", "Name of file that contains private key for CSR")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
