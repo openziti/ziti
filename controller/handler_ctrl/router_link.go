@@ -17,11 +17,11 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type routerLinkHandler struct {
@@ -56,7 +56,7 @@ func (h *routerLinkHandler) HandleLinks(ch channel.Channel, links *ctrl_pb.Route
 		linkLog := log.WithField("linkId", link.Id).
 			WithField("destRouterId", link.DestRouterId)
 
-		created, err := h.network.NotifyExistingLink(link.Id, link.LinkProtocol, h.r, link.DestRouterId)
+		created, err := h.network.NotifyExistingLink(link.Id, link.LinkProtocol, link.DialAddress, h.r, link.DestRouterId)
 		if err != nil {
 			linkLog.WithError(err).Error("unexpected error adding router reported link")
 		} else if created {

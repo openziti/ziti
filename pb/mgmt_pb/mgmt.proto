@@ -9,40 +9,6 @@ enum ContentType {
   // Protoc says this has to be here
   Zero = 0;
 
-  // Services
-  ListServicesRequestType = 10001;
-  ListServicesResponseType = 10002;
-  CreateServiceRequestType = 10003;
-  RemoveServiceRequestType = 10005;
-  GetServiceRequestType = 10006;
-  GetServiceResponseType = 10007;
-
-  // Service Terminators
-  CreateTerminatorRequestType = 10050;
-  RemoveTerminatorRequestType = 10051;
-  ListTerminatorsRequestType = 10052;
-  ListTerminatorsResponseType = 10053;
-  GetTerminatorRequestType = 10054;
-  GetTerminatorResponseType = 10055;
-  SetTerminatorCostRequestType = 10056;
-
-  // Routers
-  ListRoutersRequestType = 10010;
-  ListRoutersResponseType = 10011;
-  CreateRouterRequestType = 10012;
-  RemoveRouterRequestType = 10013;
-
-  // Links
-  ListLinksRequestType = 10020;
-  ListLinksResponseType = 10021;
-  SetLinkCostRequestType = 10022;
-  SetLinkDownRequestType = 10023;
-
-  // Circuits
-  ListCircuitsRequestType = 10030;
-  ListCircuitsResponseType = 10031;
-  RemoveCircuitRequestType = 10032;
-
   // Streams
   StreamMetricsRequestType = 10040;
   StreamMetricsEventType = 10041;
@@ -69,193 +35,6 @@ enum ContentType {
   RaftListMembersResponseType = 10081;
   RaftJoinRequestType = 10082;
   RaftRemoveRequestType = 10083;
-}
-
-//
-// --- Service ------------------------------------------------------------------------------------------------------ //
-//
-
-enum TerminatorPrecedence {
-  Default = 0;
-  Required = 1;
-  Failed = 2;
-}
-
-enum TerminatorChangeMask {
-  None = 0;
-  StaticCost = 1;
-  Precedence = 2;
-  DynamicCost = 4;
-}
-
-message Service {
-  string id = 1;
-  string name = 2;
-  string terminatorStrategy = 3;
-  repeated Terminator terminators = 4;
-}
-
-message Terminator {
-  string id = 1;
-  string serviceId = 2;
-  string routerId = 3;
-  string binding = 4;
-  string address = 5;
-  TerminatorPrecedence precedence = 8;
-  uint32 cost = 9;
-  string instanceId = 10;
-  bytes instanceSecret = 11;
-}
-
-message ListServicesRequest {
-  string query = 1;
-}
-
-message ListServicesResponse {
-  repeated Service services = 1;
-}
-
-message CreateServiceRequest {
-  Service service = 1;
-}
-
-message RemoveServiceRequest {
-  string serviceId = 1;
-}
-
-message GetServiceRequest {
-  string serviceId = 1;
-}
-
-message GetServiceResponse {
-  Service service = 1;
-}
-
-// service terminators
-message ListTerminatorsRequest {
-  string query = 1;
-}
-
-message ListTerminatorsResponse {
-  repeated Terminator terminators = 1;
-}
-
-message CreateTerminatorRequest {
-  Terminator terminator = 1;
-}
-
-message RemoveTerminatorRequest {
-  string terminatorId = 1;
-}
-
-message GetTerminatorRequest {
-  string terminatorId = 1;
-}
-
-message GetTerminatorResponse {
-  Terminator terminator = 1;
-}
-
-message SetTerminatorCostRequest {
-  string terminatorId = 1;
-  TerminatorPrecedence precedence = 2;
-  uint32 staticCost = 3;
-  uint32 dynamicCost = 4;
-  int32 updateMask = 5;
-}
-
-//
-// --- Router ------------------------------------------------------------------------------------------------------- //
-//
-
-message Router {
-  string id = 1;
-  string name = 2;
-  string fingerprint = 3;
-  string listenerAddress = 4;
-  bool connected = 5;
-  string version = 6;
-  string revision = 7;
-  string buildDate = 8;
-  string os = 9;
-  string arch = 10;
-  uint32 cost = 11;
-  bool noTraversal = 12;
-}
-
-message ListRoutersRequest {
-  string query = 1;
-}
-message ListRoutersResponse {
-  repeated Router routers = 1;
-}
-
-message CreateRouterRequest {
-  Router router = 1;
-}
-
-message RemoveRouterRequest {
-  string routerId = 1;
-}
-
-//
-// --- Link --------------------------------------------------------------------------------------------------------- //
-//
-
-message Link {
-  string id = 1;
-  string src = 2;
-  string dst = 3;
-  string state = 4;
-  bool down = 5;
-  int32 cost = 6;
-  int64 srcLatency = 7;
-  int64 dstLatency = 8;
-}
-
-message ListLinksRequest {
-}
-message ListLinksResponse {
-  repeated Link links = 1;
-}
-
-message SetLinkCostRequest {
-  string linkId = 1;
-  int32 cost = 2;
-}
-
-message SetLinkDownRequest {
-  string linkId = 1;
-  bool down = 2;
-}
-
-//
-// --- Circuit ------------------------------------------------------------------------------------------------------ //
-//
-
-message Path {
-  repeated string nodes = 1;
-  repeated string links = 2;
-  string terminatorLocalAddress = 3;
-}
-
-message Circuit {
-  string id = 1;
-  string clientId = 2;
-  string serviceId = 3;
-  string terminatorId = 4;
-  Path path = 5;
-}
-
-message ListCircuitsRequest {
-}
-message ListCircuitsResponse {
-  repeated Circuit circuits = 1;
-}
-
-message RemoveCircuitRequest {
-  string circuitId = 1;
-  bool now = 2;
 }
 
 //
@@ -291,14 +70,18 @@ message StreamMetricsEvent {
   map<string, string> metricGroup = 7;
 }
 
-message StreamCircuitsRequest {
-}
-
 enum StreamCircuitEventType {
   CircuitCreated = 0;
   CircuitDeleted = 1;
   CircuitPresent = 2;
   PathUpdated = 3;
+  CircuitFailed = 4;
+}
+
+message Path {
+  repeated string nodes = 1;
+  repeated string links = 2;
+  string terminatorLocalAddress = 3;
 }
 
 message StreamCircuitsEvent {
@@ -308,6 +91,7 @@ message StreamCircuitsEvent {
   string serviceId = 4;
   Path path = 5;
   optional int64 creationTimespan = 6;
+  string terminatorId = 7;
 }
 
 message ToggleCircuitTracesRequest {

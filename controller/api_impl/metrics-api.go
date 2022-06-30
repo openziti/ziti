@@ -108,7 +108,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		}
 	}
 
-	metricsApi.modelMapper = NewMetricsModelMapper("prometheus", includeTimestamps)
+	metricsApi.modelMapper = NewMetricsModelMapper(n, "prometheus", includeTimestamps)
 	metricsApi.handler = metricsApi.newHandler()
 
 	return metricsApi, nil

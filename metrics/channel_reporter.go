@@ -17,10 +17,11 @@
 package metrics
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type channelReporter struct {
@@ -46,7 +47,7 @@ func (reporter *channelReporter) AcceptMetrics(message *metrics_pb.MetricsMessag
 }
 
 // NewChannelReporter creates a metrics handler which sends metrics messages out on the given channel
-func NewChannelReporter(ch channel.Channel) MessageHandler {
+func NewChannelReporter(ch channel.Channel) metrics.Handler {
 	return &channelReporter{
 		ch: ch,
 	}

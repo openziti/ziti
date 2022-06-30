@@ -19,13 +19,17 @@ package trace
 import (
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/event"
-	"github.com/openziti/foundation/v2/cowslice"
+	"github.com/openziti/foundation/v2/concurrenz"
 )
 
-var EventHandlerRegistry = cowslice.NewCowSlice(make([]EventHandler, 0))
+var EventHandlerRegistry = concurrenz.CopyOnWriteSlice[EventHandler]{}
 
-func getTraceEventHandlers() []EventHandler {
-	return EventHandlerRegistry.Value().([]EventHandler)
+func AddTraceEventHandler(handler EventHandler) {
+	EventHandlerRegistry.Append(handler)
+}
+
+func RemoveTraceEventHandler(handler EventHandler) {
+	EventHandlerRegistry.Delete(handler)
 }
 
 // EventHandler is for types wishing to receive trace messages
@@ -38,8 +42,7 @@ type eventWrapper struct {
 }
 
 func (event *eventWrapper) Handle() {
-	handlers := getTraceEventHandlers()
-	for _, handler := range handlers {
+	for _, handler := range EventHandlerRegistry.Value() {
 		handler.Accept(event.wrapped)
 	}
 }

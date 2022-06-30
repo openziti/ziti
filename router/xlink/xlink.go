@@ -19,6 +19,7 @@ package xlink
 import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
@@ -38,7 +39,7 @@ type Registry interface {
 	DialFailed(dial Dial)
 	// DialSucceeded notifies the registry that a dial succeed and provides the resulting link
 	DialSucceeded(link Xlink) (Xlink, bool)
-	// LinkAccepted notifes the registry that a link listener accepted a dial and provides the resulting link
+	// LinkAccepted notifies the registry that a link listener accepted a dial and provides the resulting link
 	LinkAccepted(link Xlink) (Xlink, bool)
 	// LinkClosed notifies the registry that a link closed
 	LinkClosed(link Xlink)
@@ -92,10 +93,12 @@ type Xlink interface {
 	DestinationId() string
 	DestVersion() string
 	LinkProtocol() string
+	DialAddress() string
 	HandleCloseNotification(f func())
 	IsClosed() bool
 	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
 	InspectLink() *inspect.LinkInspectDetail
+	GetAddresses() []*ctrl_pb.LinkConn
 }
 
 type Forwarder interface {

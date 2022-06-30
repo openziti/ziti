@@ -25,29 +25,31 @@ import (
 )
 
 type Link struct {
-	Id         string
-	Src        *Router
-	Dst        *Router
-	Protocol   string
-	state      []*LinkState
-	down       bool
-	StaticCost int32
-	SrcLatency int64
-	DstLatency int64
-	Cost       int64
-	usable     concurrenz.AtomicBoolean
-	lock       sync.Mutex
+	Id          string
+	Src         *Router
+	Dst         *Router
+	Protocol    string
+	DialAddress string
+	state       []*LinkState
+	down        bool
+	StaticCost  int32
+	SrcLatency  int64
+	DstLatency  int64
+	Cost        int64
+	usable      concurrenz.AtomicBoolean
+	lock        sync.Mutex
 }
 
-func newLink(id string, linkProtocol string, initialLatency time.Duration) *Link {
+func newLink(id string, linkProtocol string, dialAddress string, initialLatency time.Duration) *Link {
 	l := &Link{
-		Id:         id,
-		Protocol:   linkProtocol,
-		state:      make([]*LinkState, 0),
-		down:       false,
-		StaticCost: 1,
-		SrcLatency: initialLatency.Nanoseconds(),
-		DstLatency: initialLatency.Nanoseconds(),
+		Id:          id,
+		Protocol:    linkProtocol,
+		DialAddress: dialAddress,
+		state:       make([]*LinkState, 0),
+		down:        false,
+		StaticCost:  1,
+		SrcLatency:  initialLatency.Nanoseconds(),
+		DstLatency:  initialLatency.Nanoseconds(),
 	}
 	l.recalculateCost()
 	l.addState(&LinkState{Mode: Pending, Timestamp: info.NowInMilliseconds()})

@@ -3,6 +3,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -25,13 +26,18 @@ func newTestConfig(ctx *db.TestContext) *testConfig {
 	options := DefaultOptions()
 	options.MinRouterCost = 0
 
+	closeNotify := make(chan struct{})
 	return &testConfig{
 		ctx:             ctx,
 		options:         options,
 		metricsRegistry: metrics.NewRegistry("test", nil),
 		versionProvider: NewVersionProviderTest(),
-		closeNotify:     make(chan struct{}),
+		closeNotify:     closeNotify,
 	}
+}
+
+func (self *testConfig) GetEventDispatcher() event.Dispatcher {
+	return event.DispatcherMock{}
 }
 
 func (self *testConfig) GetId() *identity.TokenId {

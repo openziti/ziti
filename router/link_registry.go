@@ -213,6 +213,7 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 				Id:           link.Id().Token,
 				DestRouterId: link.DestinationId(),
 				LinkProtocol: link.LinkProtocol(),
+				DialAddress:  link.DialAddress(),
 			},
 		},
 	}
@@ -267,6 +268,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect() {
 			Id:           link.Id().Token,
 			DestRouterId: link.DestinationId(),
 			LinkProtocol: link.LinkProtocol(),
+			DialAddress:  link.DialAddress(),
 		})
 	}
 

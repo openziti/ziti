@@ -33,6 +33,7 @@ import (
 	"github.com/openziti/fabric/controller/xt_random"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/controller/xt_weighted"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
 	fabricMetrics "github.com/openziti/fabric/metrics"
@@ -67,6 +68,7 @@ type Controller struct {
 	agentBindHandlers []channel.BindHandler
 	metricsRegistry   metrics.Registry
 	versionProvider   versions.VersionProvider
+	eventDispatcher   *events.Dispatcher
 }
 
 func (c *Controller) GetId() *identity.TokenId {
@@ -103,12 +105,15 @@ func (c *Controller) GetCloseNotify() <-chan struct{} {
 func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Controller, error) {
 	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
 
+	shutdownC := make(chan struct{})
+
 	c := &Controller{
 		config:              cfg,
-		shutdownC:           make(chan struct{}),
+		shutdownC:           shutdownC,
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		metricsRegistry:     metricRegistry,
 		versionProvider:     versionProvider,
+		eventDispatcher:     events.NewDispatcher(shutdownC),
 	}
 
 	if cfg.Raft != nil {
@@ -123,7 +128,6 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	c.registerXts()
-	c.loadEventHandlers()
 
 	if n, err := network.NewNetwork(c); err == nil {
 		c.network = n
@@ -131,8 +135,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		return nil, err
 	}
 
-	events.InitTerminatorEventRouter(c.network)
-	events.InitRouterEventRouter(c.network)
+	c.eventDispatcher.InitializeNetworkEvents(c.network)
 
 	if cfg.Ctrl.Options.NewListener != nil {
 		c.network.AddRouterPresenceHandler(&OnConnectSettingsHandler{
@@ -214,15 +217,31 @@ func (c *Controller) Run() error {
 	go c.xweb.Run()
 
 	// event handlers
-	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
+	if err := c.eventDispatcher.WireEventHandlers(c.getEventHandlerConfigs()); err != nil {
 		panic(err)
 	}
-
-	events.InitNetwork(c.network)
 
 	c.network.Run()
 
 	return nil
+}
+
+func (c *Controller) getEventHandlerConfigs() []*events.EventHandlerConfig {
+	var result []*events.EventHandlerConfig
+
+	if e, ok := c.config.src["events"]; ok {
+		if em, ok := e.(map[interface{}]interface{}); ok {
+			for id, v := range em {
+				if config, ok := v.(map[interface{}]interface{}); ok {
+					result = append(result, &events.EventHandlerConfig{
+						Id:     id,
+						Config: config,
+					})
+				}
+			}
+		}
+	}
+	return result
 }
 
 func (c *Controller) GetCloseNotifyChannel() <-chan struct{} {
@@ -277,18 +296,6 @@ func (c *Controller) startProfiling() {
 	}
 }
 
-func (c *Controller) loadEventHandlers() {
-	if e, ok := c.config.src["events"]; ok {
-		if em, ok := e.(map[interface{}]interface{}); ok {
-			for k, v := range em {
-				if handlerConfig, ok := v.(map[interface{}]interface{}); ok {
-					events.RegisterEventHandler(k, handlerConfig)
-				}
-			}
-		}
-	}
-}
-
 func (c *Controller) registerXts() {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
@@ -336,4 +343,8 @@ func (c *Controller) GetNetwork() *network.Network {
 
 func (c *Controller) Identity() identity.Identity {
 	return c.config.Id
+}
+
+func (c *Controller) GetEventDispatcher() event.Dispatcher {
+	return c.eventDispatcher
 }

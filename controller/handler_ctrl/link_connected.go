@@ -17,11 +17,11 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type linkConnectedHandler struct {
@@ -52,7 +52,7 @@ func (h *linkConnectedHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 func (h *linkConnectedHandler) HandleLink(ch channel.Channel, link *ctrl_pb.LinkConnected) {
 	log := pfxlog.ContextLogger(ch.Label()).WithField("linkId", link.Id)
 
-	if err := h.network.LinkConnected(link.Id, true); err == nil {
+	if err := h.network.LinkConnected(link); err == nil {
 		log.Info("link connected")
 	} else {
 		log.WithError(err).Error("unexpected error marking link connected")

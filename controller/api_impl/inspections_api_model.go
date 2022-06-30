@@ -25,7 +25,7 @@ import (
 
 const EntityNameInspect = "inspections"
 
-func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
+func MapInspectResultToRestModel(n *network.Network, inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
 		Errors:  inspectResult.Errors,
 		Success: &inspectResult.Success,
@@ -41,7 +41,7 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 				format = cmd[1]
 			}
 
-			emitVal, _ = NewMetricsModelMapper(format, true).MapInspectResultValueToMetricsResult(val)
+			emitVal, _ = NewMetricsModelMapper(n, format, true).MapInspectResultValueToMetricsResult(val)
 		} else {
 			if strings.HasPrefix(val.Value, "{") {
 				mapVal := map[string]interface{}{}

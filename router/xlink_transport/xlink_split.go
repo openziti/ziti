@@ -19,9 +19,10 @@ package xlink_transport
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 )
 
@@ -32,6 +33,7 @@ type splitImpl struct {
 	routerId      string
 	routerVersion string
 	linkProtocol  string
+	dialAddress   string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -86,6 +88,10 @@ func (self *splitImpl) LinkProtocol() string {
 	return self.linkProtocol
 }
 
+func (self *splitImpl) DialAddress() string {
+	return self.dialAddress
+}
+
 func (self *splitImpl) HandleCloseNotification(f func()) {
 	if self.closeNotified.CompareAndSwap(false, true) {
 		f()
@@ -105,7 +111,29 @@ func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 		Id:          self.Id().Token,
 		Split:       true,
 		Protocol:    self.LinkProtocol(),
+		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+	}
+}
+
+func (self *splitImpl) GetAddresses() []*ctrl_pb.LinkConn {
+	ackLocalAddr := self.ackCh.Underlay().GetLocalAddr()
+	ackRemoteAddr := self.ackCh.Underlay().GetRemoteAddr()
+
+	plLocalAddr := self.payloadCh.Underlay().GetLocalAddr()
+	plRemoteAddr := self.payloadCh.Underlay().GetRemoteAddr()
+
+	return []*ctrl_pb.LinkConn{
+		{
+			Id:         "ack",
+			LocalAddr:  ackLocalAddr.Network() + ":" + ackLocalAddr.String(),
+			RemoteAddr: ackRemoteAddr.Network() + ":" + ackRemoteAddr.String(),
+		},
+		{
+			Id:         "payload",
+			LocalAddr:  plLocalAddr.Network() + ":" + plLocalAddr.String(),
+			RemoteAddr: plRemoteAddr.Network() + ":" + plRemoteAddr.String(),
+		},
 	}
 }

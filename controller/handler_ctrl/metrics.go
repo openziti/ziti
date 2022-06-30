@@ -17,20 +17,22 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/metrics/metrics_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 type metricsHandler struct {
-	metrics.MessageHandler
+	dispatcher event.Dispatcher
 }
 
 func newMetricsHandler(network *network.Network) *metricsHandler {
-	return &metricsHandler{metrics.NewDispatchWrapper(network.GetEventDispatcher().Dispatch)}
+	return &metricsHandler{
+		dispatcher: network.GetEventDispatcher(),
+	}
 }
 
 func (h *metricsHandler) ContentType() int32 {
@@ -40,7 +42,7 @@ func (h *metricsHandler) ContentType() int32 {
 func (h *metricsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	metricsMsg := &metrics_pb.MetricsMessage{}
 	if err := proto.Unmarshal(msg.Body, metricsMsg); err == nil {
-		go h.AcceptMetrics(metricsMsg)
+		h.dispatcher.AcceptMetricsMsg(metricsMsg)
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}

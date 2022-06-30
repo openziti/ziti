@@ -24,6 +24,7 @@ type LinkInspectDetail struct {
 	Id          string `json:"id"`
 	Split       bool   `json:"split"`
 	Protocol    string `json:"protocol"`
+	DialAddress string `json:"dialAddress"`
 	Dest        string `json:"dest"`
 	DestVersion string `json:"destVersion"`
 }
