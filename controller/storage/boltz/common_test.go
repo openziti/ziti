@@ -2,7 +2,7 @@ package boltz
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
 	"io/ioutil"
