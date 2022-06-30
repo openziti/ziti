@@ -21,7 +21,7 @@ import (
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"math"

@@ -19,7 +19,7 @@ package boltz
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"strings"
 
 	"github.com/openziti/storage/ast"
