@@ -20,8 +20,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kataras/go-events"
 	"github.com/openziti/storage/ast"
-	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )

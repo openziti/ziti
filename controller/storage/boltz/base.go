@@ -19,7 +19,7 @@ package boltz
 import (
 	"github.com/kataras/go-events"
 	"github.com/openziti/storage/ast"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"go.etcd.io/bbolt"
 	"io"
 	"time"
