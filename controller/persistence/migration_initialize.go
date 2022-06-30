@@ -33,7 +33,6 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 		return int(*version)
 	}
 
-	m.createGeoRegionsV1(step)
 	m.createIdentityTypesV1(step)
 	m.createInitialTunnelerConfigTypes(step)
 	m.addPostureCheckTypes(step)
@@ -44,35 +43,6 @@ func (m *Migrations) initialize(step *boltz.MigrationStep) int {
 	m.addSystemAuthPolicies(step)
 
 	return CurrentDbVersion
-}
-
-var geoRegionsV1 = map[string]string{
-	"a0e2c29f-9922-4435-a8a7-5dbf7bd92377": "Canada Central",
-	"ac469973-105c-4de1-9f31-fffc077487fb": "US West",
-	"2360479d-cc08-4224-bd56-43baa672af30": "Japan",
-	"edd0680f-3ab4-49e6-9db5-c68258ba480d": "Australia",
-	"521a3db9-8140-4854-a782-61cb5d3fe043": "South America",
-	"8342acad-4e49-4098-84de-829feb55d350": "Korea",
-	"b5562b15-ffeb-4910-bf14-a03067f9ca2e": "US Midwest",
-	"6efe28a5-744e-464d-b147-4072efb769f0": "Canada West",
-	"10c6f648-92b7-49e2-be96-f62357ea572f": "Europe West",
-	"72946251-1fc7-4b3b-8568-c59d4723e704": "Africa",
-	"70438d63-97b3-48b2-aeb5-b066a9526456": "Europe East",
-	"e339d699-7f51-4e9c-a2ca-81720e07f196": "US South",
-	"00586703-6748-4c78-890d-efa216f21ef3": "Canada East",
-	"63f7200b-7794-4a68-92aa-a36ed338ecba": "Asia",
-	"f91ecca3-6f82-4c7b-8191-ea0036ce7b5a": "US East",
-	"41929e78-6674-4708-89d2-9b934ea96822": "Middle East",
-	"5d0042bb-6fd5-4959-90a7-6bca70e23f76": "US Central",
-}
-
-func (m *Migrations) createGeoRegionsV1(step *boltz.MigrationStep) {
-	for id, name := range geoRegionsV1 {
-		step.SetError(m.stores.GeoRegion.Create(step.Ctx, &GeoRegion{
-			BaseExtEntity: *boltz.NewExtEntity(id, nil),
-			Name:          name,
-		}))
-	}
 }
 
 var IdentityTypesV1 = map[string]string{
