@@ -18,9 +18,9 @@ package persistence
 
 import (
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
@@ -47,8 +47,6 @@ type Stores struct {
 	EdgeRouter              EdgeRouterStore
 	EdgeRouterPolicy        EdgeRouterPolicyStore
 	EdgeService             EdgeServiceStore
-	EventLog                EventLogStore
-	GeoRegion               GeoRegionStore
 	Identity                IdentityStore
 	IdentityType            IdentityTypeStore
 	Index                   boltz.ListStore
@@ -151,9 +149,7 @@ type stores struct {
 	edgeRouter              *edgeRouterStoreImpl
 	edgeRouterPolicy        *edgeRouterPolicyStoreImpl
 	edgeService             *edgeServiceStoreImpl
-	eventLog                *eventLogStoreImpl
 	externalJwtSigner       *externalJwtSignerStoreImpl
-	geoRegion               *geoRegionStoreImpl
 	identity                *identityStoreImpl
 	identityType            *IdentityTypeStoreImpl
 	serviceEdgeRouterPolicy *serviceEdgeRouterPolicyStoreImpl
@@ -191,10 +187,8 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	internalStores.edgeRouter = newEdgeRouterStore(internalStores)
 	internalStores.edgeRouterPolicy = newEdgeRouterPolicyStore(internalStores)
 	internalStores.edgeService = newEdgeServiceStore(internalStores)
-	internalStores.eventLog = newEventLogStore(internalStores)
 	internalStores.externalJwtSigner = newExternalJwtSignerStore(internalStores)
 	internalStores.transitRouter = newTransitRouterStore(internalStores)
-	internalStores.geoRegion = newGeoRegionStore(internalStores)
 	internalStores.identity = newIdentityStore(internalStores)
 	internalStores.identityType = newIdentityTypeStore(internalStores)
 	internalStores.enrollment = newEnrollmentStore(internalStores)
@@ -222,10 +216,8 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		EdgeRouter:              internalStores.edgeRouter,
 		EdgeRouterPolicy:        internalStores.edgeRouterPolicy,
 		EdgeService:             internalStores.edgeService,
-		EventLog:                internalStores.eventLog,
 		ExternalJwtSigner:       internalStores.externalJwtSigner,
 		TransitRouter:           internalStores.transitRouter,
-		GeoRegion:               internalStores.geoRegion,
 		Identity:                internalStores.identity,
 		IdentityType:            internalStores.identityType,
 		ServiceEdgeRouterPolicy: internalStores.serviceEdgeRouterPolicy,

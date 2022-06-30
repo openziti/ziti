@@ -17,12 +17,13 @@
 package persistence
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
 
 const (
-	CurrentDbVersion = 28
+	CurrentDbVersion = 29
 	FieldVersion     = "version"
 )
 
@@ -123,6 +124,11 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		step.SetError(m.stores.ConfigType.Update(step.Ctx, hostV2ConfigType, nil))
 	}
 
+	if step.CurrentVersion < 29 {
+		m.dropEntity(step, "geoRegions")
+		m.dropEntity(step, "eventLogs")
+	}
+
 	// current version
 	if step.CurrentVersion <= CurrentDbVersion {
 		return CurrentDbVersion
@@ -130,4 +136,18 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 	step.SetError(errors.Errorf("Unsupported edge datastore version: %v", step.CurrentVersion))
 	return 0
+}
+
+func (m *Migrations) dropEntity(step *boltz.MigrationStep, entityType string) {
+	rootBucket := step.Ctx.Tx().Bucket([]byte(boltz.RootBucket))
+	if rootBucket != nil {
+		if rootBucket.Bucket([]byte(entityType)) != nil {
+			step.SetError(rootBucket.DeleteBucket([]byte(entityType)))
+			pfxlog.Logger().Infof("removed entity type: %v", entityType)
+		} else {
+			pfxlog.Logger().Infof("entity type not present, don't need to remove: %v", entityType)
+		}
+	} else {
+		step.SetError(errors.New("can't get root bbolt bucket"))
+	}
 }
