@@ -1081,11 +1081,16 @@ func init() {
         "id",
         "service",
         "terminator",
-        "path"
+        "path",
+        "createdAt"
       ],
       "properties": {
         "clientId": {
           "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
         },
         "id": {
           "type": "string"
@@ -5250,11 +5255,16 @@ func init() {
         "id",
         "service",
         "terminator",
-        "path"
+        "path",
+        "createdAt"
       ],
       "properties": {
         "clientId": {
           "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
         },
         "id": {
           "type": "string"

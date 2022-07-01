@@ -17,6 +17,7 @@
 package api_impl
 
 import (
+	"github.com/go-openapi/strfmt"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
 
@@ -52,12 +53,15 @@ func MapCircuitToRestModel(_ *network.Network, _ api.RequestContext, circuit *ne
 	for _, link := range circuit.Path.Links {
 		path.Links = append(path.Links, ToEntityRef(link.Id, link, LinkLinkFactory))
 	}
+
+	createdAt := strfmt.DateTime(circuit.CreatedAt)
 	ret := &rest_model.CircuitDetail{
 		ID:         &circuit.Id,
 		ClientID:   circuit.ClientId,
 		Path:       path,
 		Service:    ToEntityRef(circuit.Service.Name, circuit.Service, ServiceLinkFactory),
 		Terminator: ToEntityRef(circuit.Terminator.GetId(), circuit.Terminator, TerminatorLinkFactory),
+		CreatedAt:  &createdAt,
 	}
 
 	return ret, nil

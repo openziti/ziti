@@ -564,7 +564,10 @@ func (self *Xgress) nextReceiveSequence() int32 {
 func (self *Xgress) PayloadReceived(payload *Payload) {
 	log := pfxlog.ContextLogger(self.Label()).WithFields(payload.GetLoggerFields())
 	log.Debug("payload received")
-	if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
+	if self.originator == payload.GetOriginator() {
+		// a payload sent from this xgress has arrived back at this xgress, instead of the other end
+		log.Warn("ouroboros (circuit cycle) detected, dropping payload")
+	} else if self.linkRxBuffer.ReceiveUnordered(payload, self.Options.RxBufferSize) {
 		log.Debug("ready to acknowledge")
 
 		ack := NewAcknowledgement(self.circuitId, self.originator)

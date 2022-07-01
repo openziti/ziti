@@ -107,8 +107,9 @@ func (buffer *LinkReceiveBuffer) Inspect() *inspect.XgressRecvBufferDetail {
 
 func (buffer *LinkReceiveBuffer) inspectComplete() *inspect.XgressRecvBufferDetail {
 	nextPayload := "none"
-	if head := buffer.PeekHead(); head != nil {
-		nextPayload = fmt.Sprintf("%v", head.Sequence)
+	if head := buffer.tree.LeftValue(); head != nil {
+		payload := head.(*Payload)
+		nextPayload = fmt.Sprintf("%v", payload.Sequence)
 	}
 
 	return &inspect.XgressRecvBufferDetail{

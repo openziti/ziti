@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/orcaman/concurrent-map/v2"
+	"time"
 )
 
 type Circuit struct {
@@ -31,6 +32,7 @@ type Circuit struct {
 	Path       *Path
 	Rerouting  concurrenz.AtomicBoolean
 	PeerData   xt.PeerData
+	CreatedAt  time.Time
 }
 
 func (self *Circuit) cost() int64 {
@@ -68,29 +70,29 @@ func newCircuitController() *circuitController {
 	}
 }
 
-func (c *circuitController) nextCircuitId() (string, error) {
-	return c.idGenerator.NextAlphaNumericPrefixedId()
+func (self *circuitController) nextCircuitId() (string, error) {
+	return self.idGenerator.NextAlphaNumericPrefixedId()
 }
 
-func (c *circuitController) add(sn *Circuit) {
-	c.circuits.Set(sn.Id, sn)
+func (self *circuitController) add(circuit *Circuit) {
+	self.circuits.Set(circuit.Id, circuit)
 }
 
-func (c *circuitController) get(id string) (*Circuit, bool) {
-	if circuit, found := c.circuits.Get(id); found {
+func (self *circuitController) get(id string) (*Circuit, bool) {
+	if circuit, found := self.circuits.Get(id); found {
 		return circuit, true
 	}
 	return nil, false
 }
 
-func (c *circuitController) all() []*Circuit {
+func (self *circuitController) all() []*Circuit {
 	circuits := make([]*Circuit, 0)
-	for tuple := range c.circuits.IterBuffered() {
+	for tuple := range self.circuits.IterBuffered() {
 		circuits = append(circuits, tuple.Val)
 	}
 	return circuits
 }
 
-func (c *circuitController) remove(sn *Circuit) {
-	c.circuits.Remove(sn.Id)
+func (self *circuitController) remove(circuit *Circuit) {
+	self.circuits.Remove(circuit.Id)
 }
