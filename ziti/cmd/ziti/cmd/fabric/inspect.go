@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/rest_client/inspect"
 	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"

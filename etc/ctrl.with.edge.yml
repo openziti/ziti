@@ -47,38 +47,15 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-# the endpoint that management tools connect to the controller over.
-mgmt:
-  listener: tls:127.0.0.1:10000
-    #options:
-    # (optional) settings
-    # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-  #maxQueuedConnects:      50
-  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-  #maxOutstandingConnects: 100
-  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-  #connectTimeoutMs:       3000
-
-  #metrics:
-  #file:
-  #path: /tmp/ziti-controller-metrics.log
-  #maxsizemb: 100:wq
-  # Supported formats: json, plain
-  # Defaults to json
-  #format: plain
-  #influxdb:
-  #url:                http://localhost:8086
-  #database:           ziti
-
-events:
-  jsonLogger:
-    subscriptions:
+#events:
+#  jsonLogger:
+#    subscriptions:
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
 #        metricFilter: .*pool.*
-      - type: fabric.circuits
+#      - type: fabric.circuits
 #        include:
 #          - created
 #      - type: edge.sessions
@@ -89,10 +66,10 @@ events:
 #      - type: services
 #      - type: edge.entityCounts
 #        interval: 5s
-    handler:
-      type: file
-      format: json
-      path: /tmp/ziti-events.log
+#    handler:
+#      type: file
+#      format: json
+#      path: /tmp/ziti-events.log
 
 # xctrl_example
 #

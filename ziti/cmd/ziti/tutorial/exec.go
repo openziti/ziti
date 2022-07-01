@@ -3,7 +3,7 @@ package tutorial
 import (
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"io"
 	"os"
 	"os/exec"

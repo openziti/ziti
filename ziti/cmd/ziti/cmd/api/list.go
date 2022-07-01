@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/pkg/errors"
 	"io"

@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/certtools"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/identity/certtools"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"

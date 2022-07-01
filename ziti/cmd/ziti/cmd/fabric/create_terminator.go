@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/router/xgress_edge_transport"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"

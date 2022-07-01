@@ -18,7 +18,7 @@ package actions
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
 	"github.com/pkg/errors"

@@ -19,7 +19,7 @@ package loop3
 import (
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"math/rand"
 )
 
