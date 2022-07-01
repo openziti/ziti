@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/rest_model"
 
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 )
 
 const EntityNameRouter = "routers"

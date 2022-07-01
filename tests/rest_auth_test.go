@@ -4,7 +4,7 @@ package tests
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"net/http"
 	"testing"
 	"time"

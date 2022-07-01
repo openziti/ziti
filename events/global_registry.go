@@ -3,7 +3,7 @@ package events
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"strings"
 	"sync"

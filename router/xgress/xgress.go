@@ -33,10 +33,10 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/debugz"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/sirupsen/logrus"
 )
 

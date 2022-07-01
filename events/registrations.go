@@ -3,7 +3,7 @@ package events
 import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 	"github.com/pkg/errors"
 	"reflect"
 )

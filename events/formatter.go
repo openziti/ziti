@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/iomonad"
+	"github.com/openziti/foundation/v2/iomonad"
 	"io"
 	"reflect"
 	"strings"

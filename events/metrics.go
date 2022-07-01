@@ -4,7 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/metrics"
-	"github.com/openziti/foundation/metrics/metrics_pb"
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"reflect"

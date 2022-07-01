@@ -20,8 +20,8 @@ import (
 	"crypto/x509"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 )
 

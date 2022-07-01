@@ -20,8 +20,8 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 )
 

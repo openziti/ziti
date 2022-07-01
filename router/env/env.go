@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 )
 
 type RouterEnv interface {

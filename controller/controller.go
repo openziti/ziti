@@ -38,10 +38,10 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
@@ -66,7 +66,7 @@ type Controller struct {
 	agentHandlers     map[byte]func(conn *bufio.ReadWriter) error
 	agentBindHandlers []channel.BindHandler
 	metricsRegistry   metrics.Registry
-	versionProvider   common.VersionProvider
+	versionProvider   versions.VersionProvider
 }
 
 func (c *Controller) GetId() *identity.TokenId {
@@ -92,11 +92,7 @@ func (c *Controller) GetDb() boltz.Db {
 	return c.config.Db
 }
 
-func (c *Controller) GetMetricsConfig() *metrics.Config {
-	return c.config.Metrics
-}
-
-func (c *Controller) GetVersionProvider() common.VersionProvider {
+func (c *Controller) GetVersionProvider() versions.VersionProvider {
 	return c.versionProvider
 }
 
@@ -104,7 +100,7 @@ func (c *Controller) GetCloseNotify() <-chan struct{} {
 	return c.shutdownC
 }
 
-func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
+func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Controller, error) {
 	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
 
 	c := &Controller{

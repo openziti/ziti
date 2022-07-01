@@ -23,7 +23,7 @@ import (
 	trace_pb "github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 )
 
 func newTraceHandler(appId *identity.TokenId, controller trace.Controller) *traceHandler {

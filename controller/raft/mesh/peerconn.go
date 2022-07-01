@@ -2,7 +2,7 @@ package mesh
 
 import (
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io"

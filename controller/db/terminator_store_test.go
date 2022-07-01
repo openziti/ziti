@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"math"

@@ -18,7 +18,7 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/idgen"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"
 	"sync"

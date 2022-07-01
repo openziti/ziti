@@ -26,8 +26,8 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/metrics"
 )
 
 type bindHandler struct {
@@ -65,7 +65,11 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController(), traceDispatchWrapper))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
-	doHeartbeat := self.router.VersionInfo.HasMinimumVersion("0.25.5")
+	doHeartbeat, err := self.router.VersionInfo.HasMinimumVersion("0.25.5")
+	if err != nil {
+		doHeartbeat = false
+		log.WithError(err).Error("version parsing error")
+	}
 
 	roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
 	queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
@@ -83,13 +87,15 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 			latencySemaphore: concurrenz.NewSemaphore(2),
 		}
 		channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
-	} else if self.router.VersionInfo.HasMinimumVersion("0.18.7") {
+	} else if supportLatency, err := self.router.VersionInfo.HasMinimumVersion("0.18.7"); supportLatency && err == nil {
 		log.Info("router does not support heartbeats, using latency probe")
 		latencyHandler := &ctrlChannelLatencyHandler{
 			roundTripHistogram: roundTripHistogram,
 			queueTimeHistogram: queueTimeHistogram,
 		}
 		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler.HandleLatency)
+	} else if err != nil {
+		log.WithError(err).Error("version parsing error")
 	}
 
 	xctrlDone := make(chan struct{})

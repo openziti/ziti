@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/metrics/metrics_pb"
+	"github.com/openziti/metrics/metrics_pb"
 )
 
 type metricsHandler struct {

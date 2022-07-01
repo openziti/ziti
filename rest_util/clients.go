@@ -22,7 +22,7 @@ import (
 	"github.com/go-openapi/runtime"
 	httptransport "github.com/go-openapi/runtime/client"
 	fabric_rest_client "github.com/openziti/fabric/rest_client"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"net/url"
 )
 

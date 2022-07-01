@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"time"
 
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 )
 
 var CircuitEventHandlerRegistry = cowslice.NewCowSlice(make([]CircuitEventHandler, 0))

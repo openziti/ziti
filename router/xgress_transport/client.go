@@ -19,7 +19,7 @@ package xgress_transport
 import (
 	"errors"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 )
 

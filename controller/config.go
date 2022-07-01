@@ -28,8 +28,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -69,7 +68,6 @@ type Config struct {
 		Listener transport.Address
 		Options  *CtrlOptions
 	}
-	Metrics      *metrics.Config
 	HealthChecks struct {
 		BoltCheck struct {
 			Interval     time.Duration
@@ -297,18 +295,6 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	} else {
 		panic("controllerConfig must provide [ctrl]")
-	}
-
-	if value, found := cfgmap["metrics"]; found {
-		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if metricsCfg, err := metrics.LoadConfig(submap); err == nil {
-				controllerConfig.Metrics = metricsCfg
-			} else {
-				return nil, fmt.Errorf("error loading metrics controllerConfig (%s)", err)
-			}
-		} else {
-			pfxlog.Logger().Warn("invalid or empty [metrics] stanza")
-		}
 	}
 
 	controllerConfig.HealthChecks.BoltCheck.Interval = DefaultHealthChecksBoltCheckInterval

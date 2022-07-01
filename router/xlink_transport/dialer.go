@@ -20,7 +20,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

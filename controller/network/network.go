@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/foundation/v2/versions"
 	"sort"
 	"strings"
 	"sync"
@@ -35,13 +36,12 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/foundation/util/debugz"
-	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/sequence"
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/sequence"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -57,8 +57,7 @@ type Config interface {
 	GetOptions() *Options
 	GetCommandDispatcher() command.Dispatcher
 	GetDb() boltz.Db
-	GetMetricsConfig() *metrics.Config
-	GetVersionProvider() common.VersionProvider
+	GetVersionProvider() versions.VersionProvider
 	GetCloseNotify() <-chan struct{}
 }
 
@@ -82,7 +81,7 @@ type Network struct {
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
 	metricsRegistry        metrics.Registry
-	VersionProvider        common.VersionProvider
+	VersionProvider        versions.VersionProvider
 
 	serviceEventMetrics          metrics.UsageRegistry
 	serviceDialSuccessCounter    metrics.IntervalCounter
@@ -137,21 +136,16 @@ func NewNetwork(config Config) (*Network, error) {
 	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
 	network.Managers.Inspections.network = network
 
-	fabricMetrics.InitMetricHandlers(config.GetMetricsConfig())
 	fabricMetrics.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
-	network.relayControllerMetrics(config.GetMetricsConfig())
+	network.relayControllerMetrics()
 	return network, nil
 }
 
-func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
-	reportInterval := time.Minute
-	if cfg != nil && cfg.ReportInterval != 0 {
-		reportInterval = cfg.ReportInterval
-	}
+func (network *Network) relayControllerMetrics() {
 	go func() {
-		timer := time.NewTicker(reportInterval)
+		timer := time.NewTicker(network.options.MetricsReportInterval)
 		defer timer.Stop()
 
 		dispatcher := fabricMetrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)

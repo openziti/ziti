@@ -17,7 +17,7 @@
 package apierror
 
 import (
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 )
 
 func NewCouldNotParseBody(err error) *errorz.ApiError {

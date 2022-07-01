@@ -22,8 +22,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/info"
 	"net"
 	"time"
 )

@@ -23,9 +23,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"time"
 )

@@ -19,7 +19,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/orcaman/concurrent-map/v2"
 )
 

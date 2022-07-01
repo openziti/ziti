@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 )
 
 type circuitRequestHandler struct {

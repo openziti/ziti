@@ -3,9 +3,9 @@ package network
 import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/stretchr/testify/require"
 	"runtime"
@@ -17,7 +17,7 @@ type testConfig struct {
 	ctx             *db.TestContext
 	options         *Options
 	metricsRegistry metrics.Registry
-	versionProvider common.VersionProvider
+	versionProvider versions.VersionProvider
 	closeNotify     chan struct{}
 }
 
@@ -54,11 +54,7 @@ func (self *testConfig) GetDb() boltz.Db {
 	return self.ctx.GetDb()
 }
 
-func (self *testConfig) GetMetricsConfig() *metrics.Config {
-	return nil
-}
-
-func (self *testConfig) GetVersionProvider() common.VersionProvider {
+func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 	return self.versionProvider
 }
 
@@ -104,8 +100,8 @@ func (v VersionProviderTest) Branch() string {
 	return "local"
 }
 
-func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
-	return &common.StdVersionEncDec
+func (v VersionProviderTest) EncoderDecoder() versions.VersionEncDec {
+	return &versions.StdVersionEncDec
 }
 
 func (v VersionProviderTest) Version() string {
@@ -120,8 +116,8 @@ func (v VersionProviderTest) Revision() string {
 	return ""
 }
 
-func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
+func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
+	return &versions.VersionInfo{
 		Version:   v.Version(),
 		Revision:  v.Revision(),
 		BuildDate: v.BuildDate(),
@@ -130,6 +126,6 @@ func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
 	}
 }
 
-func NewVersionProviderTest() common.VersionProvider {
+func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
 }

@@ -35,6 +35,7 @@ const (
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
 	DefaultNetworkOptionsSmartRerouteCap         = 4
 	DefaultNetworkOptionsInitialLinkLatency      = 65 * time.Second
+	DefaultNetworkOptionsMetricsReportInterval   = time.Minute
 )
 
 type Options struct {
@@ -50,6 +51,7 @@ type Options struct {
 	MinRouterCost           uint16
 	RouterConnectChurnLimit time.Duration
 	InitialLinkLatency      time.Duration
+	MetricsReportInterval   time.Duration
 }
 
 func DefaultOptions() *Options {
@@ -62,6 +64,7 @@ func DefaultOptions() *Options {
 		MinRouterCost:           DefaultNetworkOptionsMinRouterCost,
 		RouterConnectChurnLimit: DefaultNetworkOptionsRouterConnectChurnLimit,
 		InitialLinkLatency:      DefaultNetworkOptionsInitialLinkLatency,
+		MetricsReportInterval:   DefaultNetworkOptionsMetricsReportInterval,
 	}
 	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
 	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
@@ -168,6 +171,18 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.InitialLinkLatency = val
 		} else {
 			return nil, errors.New("invalid value for 'initialLinkLatency'")
+		}
+	}
+
+	if value, found := src["metricsReportInterval"]; found {
+		if sval, ok := value.(string); ok {
+			val, err := time.ParseDuration(sval)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid value for 'metricsReportInterval'")
+			}
+			options.MetricsReportInterval = val
+		} else {
+			return nil, errors.New("invalid value for 'metricsReportInterval'")
 		}
 	}
 
