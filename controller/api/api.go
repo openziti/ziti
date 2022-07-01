@@ -3,7 +3,7 @@ package api
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 

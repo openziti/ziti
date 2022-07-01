@@ -2,8 +2,8 @@ package events
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/foundation/v2/cowslice"
 	"github.com/pkg/errors"
 	"reflect"
 	"strings"

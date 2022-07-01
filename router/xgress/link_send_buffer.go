@@ -19,8 +19,8 @@ package xgress
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/inspect"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"math"

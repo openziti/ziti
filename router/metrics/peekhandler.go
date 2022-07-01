@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"time"
 )
 

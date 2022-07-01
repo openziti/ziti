@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 )
 
 func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {

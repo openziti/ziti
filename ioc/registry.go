@@ -20,7 +20,7 @@
 package ioc
 
 import (
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 )
 

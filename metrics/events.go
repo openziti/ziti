@@ -18,9 +18,8 @@ package metrics
 
 import (
 	"github.com/openziti/fabric/event"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/metrics/metrics_pb"
 )
 
 var metricsEventHandlerRegistry = &concurrenz.CopyOnWriteSlice[MessageHandler]{}
@@ -64,12 +63,4 @@ type eventDispatcherWrapper struct {
 func (dispatcherWrapper *eventDispatcherWrapper) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 	eventWrapper := &eventWrapper{msg: message}
 	dispatcherWrapper.delegate(eventWrapper)
-}
-
-func InitMetricHandlers(cfg *metrics.Config) {
-	if cfg != nil {
-		for _, handler := range cfg.Handlers {
-			metricsEventHandlerRegistry.Append(handler)
-		}
-	}
 }

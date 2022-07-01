@@ -18,8 +18,8 @@ package metrics
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/goroutines"
+	"github.com/openziti/metrics"
+	"github.com/openziti/foundation/v2/goroutines"
 	"time"
 )
 

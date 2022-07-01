@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 )
 
 func (network *Network) assemble() {

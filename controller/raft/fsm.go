@@ -4,7 +4,7 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"

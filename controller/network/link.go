@@ -17,8 +17,8 @@
 package network
 
 import (
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/info"
 	"sync"
 	"sync/atomic"
 	"time"

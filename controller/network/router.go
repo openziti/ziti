@@ -19,6 +19,7 @@ package network
 import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
 	"reflect"
 	"sync"
@@ -29,8 +30,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -50,7 +50,7 @@ type Router struct {
 	Control     channel.Channel
 	Connected   concurrenz.AtomicBoolean
 	ConnectTime time.Time
-	VersionInfo *common.VersionInfo
+	VersionInfo *versions.VersionInfo
 	routerLinks RouterLinks
 	Cost        uint16
 	NoTraversal bool

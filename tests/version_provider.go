@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/v2/versions"
 	"runtime"
 	"time"
 )
@@ -13,8 +13,8 @@ func (v VersionProviderTest) Branch() string {
 	return "local"
 }
 
-func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
-	return &common.StdVersionEncDec
+func (v VersionProviderTest) EncoderDecoder() versions.VersionEncDec {
+	return &versions.StdVersionEncDec
 }
 
 func (v VersionProviderTest) Version() string {
@@ -29,8 +29,8 @@ func (v VersionProviderTest) Revision() string {
 	return ""
 }
 
-func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
+func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
+	return &versions.VersionInfo{
 		Version:   v.Version(),
 		Revision:  v.Revision(),
 		BuildDate: v.BuildDate(),
@@ -39,6 +39,6 @@ func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
 	}
 }
 
-func NewVersionProviderTest() common.VersionProvider {
+func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
 }

@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/fabric/rest_server/operations/database"
 
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"net/http"
 	"sync"
 	"time"

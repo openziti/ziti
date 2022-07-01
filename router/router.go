@@ -41,12 +41,12 @@ import (
 	"github.com/openziti/fabric/router/xgress_transport_udp"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -73,7 +73,7 @@ type Router struct {
 	shutdownDoneC   chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
 	metricsReporter metrics.Handler
-	versionProvider common.VersionProvider
+	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
 
 	xwebs               []xweb.Instance
@@ -129,7 +129,7 @@ func (self *Router) DefaultRequestTimeout() time.Duration {
 	return self.config.Ctrl.DefaultRequestTimeout
 }
 
-func Create(config *Config, versionProvider common.VersionProvider) *Router {
+func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
@@ -168,7 +168,7 @@ func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
 	return nil
 }
 
-func (self *Router) GetVersionInfo() common.VersionProvider {
+func (self *Router) GetVersionInfo() versions.VersionProvider {
 	return self.versionProvider
 }
 

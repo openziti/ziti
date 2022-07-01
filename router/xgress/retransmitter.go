@@ -2,7 +2,7 @@ package xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"sync/atomic"
 )
 

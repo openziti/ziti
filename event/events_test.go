@@ -1,7 +1,7 @@
 package event
 
 import (
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 	errors "github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"sync"

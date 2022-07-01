@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xmgmt"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
 	"io/ioutil"
 	"net/http"

@@ -3,7 +3,7 @@ package events
 import (
 	"fmt"
 	"github.com/openziti/fabric/metrics"
-	"github.com/openziti/foundation/metrics/metrics_pb"
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
 )

@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/events"
-	"github.com/openziti/foundation/metrics/metrics_pb"
+	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"strings"
 )

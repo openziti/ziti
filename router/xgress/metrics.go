@@ -1,7 +1,7 @@
 package xgress
 
 import (
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"sync/atomic"
 )
 

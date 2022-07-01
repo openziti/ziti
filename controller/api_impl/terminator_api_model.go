@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 )
 
 const EntityNameTerminator = "terminators"

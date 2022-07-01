@@ -3,7 +3,7 @@ package events
 import (
 	"fmt"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 	"github.com/pkg/errors"
 	"reflect"
 	"time"

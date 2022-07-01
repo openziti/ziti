@@ -11,10 +11,10 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/concurrenz"
-	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/foundation/v2/concurrenz"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -81,7 +81,11 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id().Token, self.forwarder.MetricsRegistry()))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
 
-	doHeartbeat := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
+	doHeartbeat, err := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
+	if err != nil {
+		doHeartbeat = false
+		log.WithError(err).Error("version parsing error")
+	}
 
 	latencyMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id().Token + ".latency")
 	queueTimeMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id().Token + ".queue_time")
@@ -121,8 +125,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-func (self *bindHandler) getDestVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
+func (self *bindHandler) getDestVersionInfo() *versions.VersionInfo {
+	return &versions.VersionInfo{
 		Version: self.xlink.DestVersion(),
 	}
 }

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net"
