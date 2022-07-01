@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ func (o *PKICreateServerOptions) addPKICreateServerFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Server certificate")
 	cmd.Flags().StringVarP(&o.Flags.ServerFile, "server-file", "", "server", "Name of file (under chosen CA) in which to store new Server certificate and private key")
 	cmd.Flags().StringVarP(&o.Flags.KeyFile, "key-file", "", "", "Name of file (under chosen CA) containing private key to use when generating Server certificate")
-	cmd.Flags().StringVarP(&o.Flags.ServerName, "server-name", "", "NetFoundry, Inc. Server", "Common Name (CN) to use for new Server certificate")
+	cmd.Flags().StringVarP(&o.Flags.ServerName, "server-name", "", "NetFoundry Inc. Server", "Common Name (CN) to use for new Server certificate")
 	cmd.Flags().StringSliceVar(&o.Flags.DNSName, "dns", []string{}, "DNS name(s) to add to Subject Alternate Name (SAN) for new Server certificate")
 	cmd.Flags().StringSliceVar(&o.Flags.IP, "ip", []string{}, "IP addr(s) to add to Subject Alternate Name (SAN) for new Server certificate")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
