@@ -21,7 +21,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
-	"github.com/openziti/foundation/agent"
+	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"

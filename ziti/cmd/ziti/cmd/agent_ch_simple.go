@@ -19,8 +19,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/agent"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/agent"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"

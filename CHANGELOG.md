@@ -2,7 +2,9 @@
 
 ## Breaking Changes
 
-The fabric management terminators API has changed the name of some fields. See below for details.
+* The fabric management terminators API has changed the name of some fields. See below for details.
+* The management channel, which was formerly deprecated is now removed
+* Support for the old metrics subsystem has been removed. 
 
 ## What's New
 - Edge
@@ -11,6 +13,10 @@ The fabric management terminators API has changed the name of some fields. See b
   - Terminator fields name changes
   - Circuit failed events
   - Additional circuit inspect information gathered
+  - Management channel has been removed
+  - Old metrics subsystem removed
+  - Circuit createdAt
+  - Bug Fixes
 - Ziti CLI
   - Terminator fields name changes
 - SDK Golang
@@ -84,6 +90,29 @@ Circuit inspect will now gather more information.
     * nextPayload
     * payloadCount
     * sequence
+
+### Management channel removed
+
+The management channel has been removed. The ziti-fabric cli, which used to use the management channel,
+has been absorbed into the ziti CLI, and now used the fabric REST API and/or websockets where appropriate.
+
+The `mgmt:` stanza in configuration files, which used to be required, will now be ignored.
+
+### Old Metrics Subsystem removed
+
+Formerly metrics could be exported to file via the `metrics:` configuration stanza. This was superceded by
+the events subsystem, which contains metrics as well as other events. 
+
+This also means that we no longer support pushing metrics directly to InfluxDB. However, we now have a 
+Prometheus endpoint available, which can also be used to feed information to InfluxDB.
+
+### Circuit createdAt
+
+Circuits now have a createdAt field, visible via the REST API. 
+
+### Bug Fixes
+
+* Fix for issue where smart routing could break a circuit if a router became unavailable while circuits were being updated
 
 ## Ziti CLI
 ### Terminator Field Name Changes

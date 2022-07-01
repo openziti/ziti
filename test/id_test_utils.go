@@ -17,7 +17,7 @@
 package test
 
 import (
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"

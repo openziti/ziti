@@ -18,7 +18,7 @@ package demo
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"

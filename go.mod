@@ -22,25 +22,28 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.2.4
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/channel v0.18.43
-	github.com/openziti/edge v0.22.0
-	github.com/openziti/fabric v0.19.3
-	github.com/openziti/foundation v0.17.30
-	github.com/openziti/sdk-golang v0.16.83
-	github.com/openziti/storage v0.1.11
-	github.com/openziti/transport/v2 v2.0.7
-	github.com/openziti/xweb/v2 v2.0.0
+	github.com/openziti/agent v1.0.1
+	github.com/openziti/channel v0.18.49
+	github.com/openziti/edge v0.22.12
+	github.com/openziti/fabric v0.19.13
+	github.com/openziti/foundation/v2 v2.0.1
+	github.com/openziti/identity v1.0.2
+	github.com/openziti/metrics v1.0.2
+	github.com/openziti/sdk-golang v0.16.93
+	github.com/openziti/storage v0.1.14
+	github.com/openziti/transport/v2 v2.0.13
+	github.com/openziti/xweb/v2 v2.0.1
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.22.5
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
-	github.com/stretchr/testify v1.7.4
+	github.com/stretchr/testify v1.8.0
 	github.com/valyala/fasttemplate v1.2.1
 	go.etcd.io/bbolt v1.3.6
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
@@ -155,11 +158,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
-	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220622161953-175b2fd9d664 // indirect
+	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b // indirect
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect

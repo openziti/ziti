@@ -18,7 +18,7 @@ package loop2
 
 import (
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"crypto/sha512"
 	"github.com/michaelquigley/pfxlog"
 	"math/rand"
