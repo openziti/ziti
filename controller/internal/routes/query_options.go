@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 )
 
 const (

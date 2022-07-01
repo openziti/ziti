@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/x509-claims/x509claims"
 	"github.com/pkg/errors"

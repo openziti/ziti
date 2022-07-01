@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"time"
 )

@@ -26,8 +26,8 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/identity/identity"
-	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/identity"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"time"
 )
 

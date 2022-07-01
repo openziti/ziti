@@ -21,8 +21,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/spf13/cobra"
 	"strconv"
 	"strings"
@@ -35,11 +35,11 @@ const (
 	maxUsernameLength = 100
 )
 
-func AddCommands(root *cobra.Command, versionProvider common.VersionProvider) {
+func AddCommands(root *cobra.Command, versionProvider versions.VersionProvider) {
 	root.AddCommand(NewEdgeCmd(versionProvider))
 }
 
-func NewEdgeCmd(versionProvider common.VersionProvider) *cobra.Command {
+func NewEdgeCmd(versionProvider versions.VersionProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "edge",
 		Short: "used to perform various edge related functionality",
@@ -57,7 +57,7 @@ type edgeInitializeOptions struct {
 	name     string
 }
 
-func NewEdgeInitializeCmd(versionProvider common.VersionProvider) *cobra.Command {
+func NewEdgeInitializeCmd(versionProvider versions.VersionProvider) *cobra.Command {
 	options := &edgeInitializeOptions{}
 
 	cmd := &cobra.Command{
@@ -140,7 +140,7 @@ func validatePasswordLength(password string) error {
 	return nil
 }
 
-func configureController(configPath string, versionProvider common.VersionProvider) *server.Controller {
+func configureController(configPath string, versionProvider versions.VersionProvider) *server.Controller {
 	config, err := controller.LoadConfig(configPath)
 
 	if err != nil {

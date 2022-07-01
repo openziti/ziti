@@ -5,7 +5,7 @@ import (
 	"fmt"
 	health "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"

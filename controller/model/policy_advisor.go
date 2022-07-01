@@ -3,7 +3,7 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"go.etcd.io/bbolt"
 )
 

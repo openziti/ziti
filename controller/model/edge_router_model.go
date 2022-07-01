@@ -17,12 +17,12 @@
 package model
 
 import (
+	"github.com/openziti/foundation/v2/versions"
 	"reflect"
 
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/common"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -37,7 +37,7 @@ type EdgeRouter struct {
 	CertPem               *string
 	Hostname              *string
 	EdgeRouterProtocols   map[string]string
-	VersionInfo           *common.VersionInfo
+	VersionInfo           *versions.VersionInfo
 	IsTunnelerEnabled     bool
 	AppData               map[string]interface{}
 	UnverifiedFingerprint *string

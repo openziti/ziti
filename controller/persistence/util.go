@@ -19,8 +19,8 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"strings"
 )

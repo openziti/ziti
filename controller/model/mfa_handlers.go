@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
 	"strings"

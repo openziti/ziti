@@ -25,21 +25,20 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	tests "github.com/openziti/fabric/tests"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"
-	"time"
 )
 
 type testConfig struct {
 	ctx             *TestContext
 	options         *network.Options
 	metricsRegistry metrics.Registry
-	versionProvider common.VersionProvider
+	versionProvider versions.VersionProvider
 }
 
 func newTestConfig(ctx *TestContext) *testConfig {
@@ -74,14 +73,7 @@ func (self *testConfig) GetDb() boltz.Db {
 	return self.ctx.GetDb()
 }
 
-func (self *testConfig) GetMetricsConfig() *metrics.Config {
-	return &metrics.Config{
-		Source:         "test",
-		ReportInterval: time.Minute,
-	}
-}
-
-func (self *testConfig) GetVersionProvider() common.VersionProvider {
+func (self *testConfig) GetVersionProvider() versions.VersionProvider {
 	return self.versionProvider
 }
 

@@ -19,7 +19,7 @@
 package tests
 
 import (
-	identity2 "github.com/openziti/foundation/identity/identity"
+	identity2 "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/api"

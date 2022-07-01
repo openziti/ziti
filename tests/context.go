@@ -38,9 +38,9 @@ import (
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/certtools"
-	nfPem "github.com/openziti/foundation/util/pem"
+	nfPem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity/certtools"
 	sdkConfig "github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
@@ -65,7 +65,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
-	idlib "github.com/openziti/foundation/identity/identity"
+	idlib "github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/openziti/transport/v2/tls"
@@ -1094,8 +1094,8 @@ func (v VersionProviderTest) Branch() string {
 	return "local"
 }
 
-func (v VersionProviderTest) EncoderDecoder() common.VersionEncDec {
-	return &common.StdVersionEncDec
+func (v VersionProviderTest) EncoderDecoder() versions.VersionEncDec {
+	return &versions.StdVersionEncDec
 }
 
 func (v VersionProviderTest) Version() string {
@@ -1110,8 +1110,8 @@ func (v VersionProviderTest) Revision() string {
 	return ""
 }
 
-func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
+func (v VersionProviderTest) AsVersionInfo() *versions.VersionInfo {
+	return &versions.VersionInfo{
 		Version:   v.Version(),
 		Revision:  v.Revision(),
 		BuildDate: v.BuildDate(),
@@ -1120,6 +1120,6 @@ func (v VersionProviderTest) AsVersionInfo() *common.VersionInfo {
 	}
 }
 
-func NewVersionProviderTest() common.VersionProvider {
+func NewVersionProviderTest() versions.VersionProvider {
 	return &VersionProviderTest{}
 }

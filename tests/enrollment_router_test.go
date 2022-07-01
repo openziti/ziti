@@ -32,7 +32,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/channel"
 
-	identity2 "github.com/openziti/foundation/identity/identity"
+	identity2 "github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"math/big"
 	"net"

@@ -21,7 +21,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"go.etcd.io/bbolt"
 	"strings"
 	"time"

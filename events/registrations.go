@@ -4,7 +4,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 	"time"
 )
 

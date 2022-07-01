@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"time"
 )
 

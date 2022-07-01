@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 )

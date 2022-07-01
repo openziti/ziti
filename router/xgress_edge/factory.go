@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"strings"
@@ -43,7 +43,7 @@ type Factory struct {
 	edgeRouterConfig *edgerouter.Config
 	hostedServices   *hostedServiceRegistry
 	stateManager     fabric.StateManager
-	versionProvider  common.VersionProvider
+	versionProvider  versions.VersionProvider
 	certChecker      *CertExpirationChecker
 	metricsRegistry  metrics.Registry
 }
@@ -143,7 +143,7 @@ func (factory *Factory) LoadConfig(configMap map[interface{}]interface{}) error 
 }
 
 // NewFactory constructs a new Edge Xgress Factory instance
-func NewFactory(routerConfig *router.Config, versionProvider common.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
+func NewFactory(routerConfig *router.Config, versionProvider versions.VersionProvider, stateManager fabric.StateManager, metricsRegistry metrics.Registry) *Factory {
 	factory := &Factory{
 		hostedServices:  &hostedServiceRegistry{},
 		stateManager:    stateManager,

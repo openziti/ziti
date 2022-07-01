@@ -24,7 +24,7 @@ import (
 	managementService "github.com/openziti/edge/rest_management_api_server/operations/service"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"strings"
 	"time"

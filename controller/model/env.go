@@ -22,7 +22,7 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"github.com/xeipuuv/gojsonschema"
 )
 

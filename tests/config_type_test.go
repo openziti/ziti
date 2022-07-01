@@ -21,7 +21,7 @@ package tests
 
 import (
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"math"
 	"testing"
 	"time"

@@ -18,6 +18,7 @@ package routes
 
 import (
 	"fmt"
+	"github.com/openziti/foundation/v2/versions"
 
 	"strings"
 
@@ -28,8 +29,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 )
 
 const (
@@ -125,7 +125,7 @@ func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 	return restModel, nil
 }
 
-func MapVersionInfoToRestModel(versionInfo common.VersionInfo) *rest_model.VersionInfo {
+func MapVersionInfoToRestModel(versionInfo versions.VersionInfo) *rest_model.VersionInfo {
 	ret := &rest_model.VersionInfo{
 		Arch:      &versionInfo.Arch,
 		BuildDate: &versionInfo.BuildDate,

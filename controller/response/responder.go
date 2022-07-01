@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 

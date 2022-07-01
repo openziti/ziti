@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"net/http"
 	"path"
 )

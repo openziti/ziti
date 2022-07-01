@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/v2/versions"
 	"sync"
 )
 
@@ -94,8 +94,8 @@ type RouterState interface {
 	SetSyncStatus(status RouterSyncStatus)
 	SyncStatus() RouterSyncStatus
 
-	SetVersionInfo(versionInfo common.VersionInfo)
-	GetVersionInfo() common.VersionInfo
+	SetVersionInfo(versionInfo versions.VersionInfo)
+	GetVersionInfo() versions.VersionInfo
 
 	Values() RouterStateValues
 }
@@ -107,7 +107,7 @@ type RouterStateValues struct {
 	Hostname    string
 	Protocols   map[string]string
 	SyncStatus  RouterSyncStatus
-	VersionInfo common.VersionInfo
+	VersionInfo versions.VersionInfo
 }
 
 func NewRouterStatusValues() RouterStateValues {
@@ -116,7 +116,7 @@ func NewRouterStatusValues() RouterStateValues {
 		Hostname:   "",
 		Protocols:  map[string]string{},
 		SyncStatus: RouterSyncUnknown,
-		VersionInfo: common.VersionInfo{
+		VersionInfo: versions.VersionInfo{
 			Version:   "",
 			Revision:  "",
 			BuildDate: "",
@@ -222,14 +222,14 @@ func (r *LockingRouterState) SyncStatus() RouterSyncStatus {
 	return r.internal.SyncStatus
 }
 
-func (r *LockingRouterState) SetVersionInfo(versionInfo common.VersionInfo) {
+func (r *LockingRouterState) SetVersionInfo(versionInfo versions.VersionInfo) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	r.internal.VersionInfo = versionInfo
 }
 
-func (r *LockingRouterState) GetVersionInfo() common.VersionInfo {
+func (r *LockingRouterState) GetVersionInfo() versions.VersionInfo {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 

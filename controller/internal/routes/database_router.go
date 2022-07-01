@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/edge/rest_management_api_server/operations/database"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"net/http"
 	"sync"
 	"time"

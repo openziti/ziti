@@ -28,7 +28,7 @@ import (
 	"encoding/pem"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/identity/certtools"
 	"net/http"
 	"os"
 	"testing"

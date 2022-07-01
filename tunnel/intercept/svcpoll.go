@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
