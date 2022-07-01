@@ -24,7 +24,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/rest_model"
-	nfpem "github.com/openziti/foundation/util/pem"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"net/http"
 	"testing"
 	"time"

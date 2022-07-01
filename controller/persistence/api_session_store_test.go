@@ -21,7 +21,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"

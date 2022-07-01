@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"io"

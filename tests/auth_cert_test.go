@@ -32,7 +32,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
-	nfPem "github.com/openziti/foundation/util/pem"
+	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/stretchr/testify/require"
 	"net/http"

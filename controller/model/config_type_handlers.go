@@ -18,7 +18,7 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )

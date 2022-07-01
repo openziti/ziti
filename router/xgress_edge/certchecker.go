@@ -26,8 +26,8 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"time"
 )

@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router"
-	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"

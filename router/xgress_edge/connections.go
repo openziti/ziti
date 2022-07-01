@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
 

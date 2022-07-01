@@ -27,7 +27,7 @@ import (
 	"github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"sync"

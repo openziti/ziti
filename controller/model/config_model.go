@@ -20,7 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"

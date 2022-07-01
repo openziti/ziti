@@ -21,7 +21,7 @@ package tests
 
 import (
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"net/url"
 	"sort"
 	"testing"

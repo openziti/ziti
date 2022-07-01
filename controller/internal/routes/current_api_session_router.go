@@ -25,7 +25,7 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"net/http"
 	"time"
 )

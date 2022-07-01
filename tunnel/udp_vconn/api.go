@@ -19,7 +19,7 @@ package udp_vconn
 import (
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/foundation/util/mempool"
+	"github.com/openziti/foundation/v2/mempool"
 	"io"
 	"net"
 	"time"

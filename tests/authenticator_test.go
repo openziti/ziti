@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"

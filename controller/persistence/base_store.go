@@ -19,7 +19,7 @@ package persistence
 import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"

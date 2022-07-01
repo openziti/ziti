@@ -3,7 +3,7 @@
 package tests
 
 import (
-	idlib "github.com/openziti/foundation/identity/identity"
+	idlib "github.com/openziti/identity"
 	"net/http"
 	"testing"
 )

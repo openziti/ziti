@@ -33,7 +33,7 @@ import (
 	"github.com/openziti/edge/rest_client_api_server/operations/enroll"
 	"github.com/openziti/edge/rest_client_api_server/operations/well_known"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"strings"
 )

@@ -25,7 +25,7 @@ import (
 	clientSession "github.com/openziti/edge/rest_client_api_server/operations/session"
 	managementSession "github.com/openziti/edge/rest_management_api_server/operations/session"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/metrics"
+	"github.com/openziti/metrics"
 	"time"
 )
 

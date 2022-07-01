@@ -21,7 +21,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
-	nfpem "github.com/openziti/foundation/util/pem"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"

@@ -29,8 +29,8 @@ import (
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/util/errorz"
-	nfpem "github.com/openziti/foundation/util/pem"
+	"github.com/openziti/foundation/v2/errorz"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )

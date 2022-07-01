@@ -27,7 +27,7 @@ import (
 	clientCurrentIdentity "github.com/openziti/edge/rest_client_api_server/operations/current_identity"
 	managementCurrentIdentity "github.com/openziti/edge/rest_management_api_server/operations/current_identity"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"

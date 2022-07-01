@@ -22,7 +22,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"io/ioutil"
 	"net"

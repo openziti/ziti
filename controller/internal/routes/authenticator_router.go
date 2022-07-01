@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/authenticator"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/pkg/errors"
 	"time"
 )

@@ -6,7 +6,7 @@ import (
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/utils"
-	"github.com/openziti/foundation/util/stringz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"

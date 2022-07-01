@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"

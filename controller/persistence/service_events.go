@@ -3,7 +3,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/util/cowslice"
+	"github.com/openziti/foundation/v2/cowslice"
 )
 
 type ServiceEventType byte

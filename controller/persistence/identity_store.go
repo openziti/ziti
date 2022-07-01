@@ -20,7 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
