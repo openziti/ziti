@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/websockets"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"io"
 	"net/http"

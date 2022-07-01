@@ -5,7 +5,7 @@ import (
 	"fmt"
 	markdown "github.com/MichaelMure/go-term-markdown"
 	"github.com/fatih/color"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/pkg/errors"
 	"github.com/valyala/fasttemplate"
 	"io"

@@ -30,7 +30,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"

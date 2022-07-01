@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/spf13/cobra"

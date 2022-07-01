@@ -18,8 +18,8 @@ package loop2
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/dotziti"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/identity/dotziti"
+	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/transport/v2"

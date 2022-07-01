@@ -2,8 +2,8 @@ package agentcli
 
 import (
 	"github.com/openziti/channel"
-	"github.com/openziti/foundation/agent"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/agent"
+	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"

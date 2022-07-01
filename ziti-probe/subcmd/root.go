@@ -1,3 +1,5 @@
+//go:build all
+
 /*
 	Copyright NetFoundry Inc.
 

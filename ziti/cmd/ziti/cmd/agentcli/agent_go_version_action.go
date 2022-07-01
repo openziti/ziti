@@ -17,7 +17,7 @@
 package agentcli
 
 import (
-	"github.com/openziti/foundation/agent"
+	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"

@@ -19,7 +19,7 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"

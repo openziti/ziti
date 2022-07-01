@@ -29,7 +29,7 @@ import (
 
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/store"
-	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/identity/certtools"
 )
 
 const (
