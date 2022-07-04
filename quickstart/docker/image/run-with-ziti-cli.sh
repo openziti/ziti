@@ -11,7 +11,7 @@ fi
 if [[ ! -f $1 ]]; then
   echo "Script $1 not found"
   echo "Usage: $0 scriptName"
-  exit 1
+  exit 0
 fi
 
 # Should we execute?
