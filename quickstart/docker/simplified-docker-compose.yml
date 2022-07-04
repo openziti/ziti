@@ -37,6 +37,8 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
+      - "/openziti/scripts/run-with-ziti-cli.sh"
+    command:
       - "/openziti/scripts/access-control.sh"
       
   ziti-edge-router:
