@@ -138,7 +138,7 @@ jobs:
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
           mkdir -p test/amd64/linux/bin
-          go build -tags=all -o test/amd64/linux/bin ./...
+          go build -tags=all,test -o test/amd64/linux/bin ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
 
@@ -287,17 +287,17 @@ jobs:
       #- name: Install Zitilab Commands
       #  run: go install github.com/openziti/zitilab/github@github-action
 
-      - name: Checkout Zitilab
-        uses: actions/checkout@v3
-        with:
-          repository: openziti/zitilab
-          path: zitilab
-          ref: github-action
+      #- name: Checkout Zitilab
+      #  uses: actions/checkout@v3
+      #  with:
+      #    repository: openziti/zitilab
+      #    path: zitilab
+      #    ref: github-action
 
-      - name: Install Zitilab Commands
-        run: |
-          cd zitilab
-          go install ./...
+      #- name: Install Zitilab Commands
+      #  run: |
+      #    cd zitilab
+      #    go install ./...
 
       - name: Move artifacts to bin subdir
         run: |
@@ -358,16 +358,16 @@ jobs:
         run: |
           env
           ls $ZITI_ROOT
-          github create
-          github up
+          test/amd64/linux/bin/simple-transfer create
+          test/amd64/linux/bin/simple-transfer up
 
       - name: Test Ziti Command Teardown
         if: always()
         env:
             ZITI_ROOT: release/amd64/linux/
         run: |
-          github dispose
-          github clean
+          test/amd64/linux/bin/simple-transfer dispose
+          test/amd64/linux/bin/simple-transfer clean
 
   smoketest:
     # BEGIN smoketest-job
