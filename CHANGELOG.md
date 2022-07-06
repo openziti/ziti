@@ -19,6 +19,7 @@
   - Bug Fixes
 - Ziti CLI
   - Terminator fields name changes
+  - Bug Fixes
 - SDK Golang
   - N/A
 
@@ -117,7 +118,12 @@ Circuits now have a createdAt field, visible via the REST API.
 ## Ziti CLI
 ### Terminator Field Name Changes
 The `ziti fabric create terminator` operation now takes a `--instance-id` flag instead of an `--identity` flag.
+
 The `ziti fabric list terminators` operation now shows `InstanceId` instead of `Identity`. 
+
+### Bug Fixes
+
+* Fixed a bug where the controller advertised name was not properly set when the value of EXTERNAL_DNS was set.
 
 # Release 0.25.13
 
