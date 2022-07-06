@@ -95,6 +95,23 @@ func TestGetZitiCtrlAdvertisedAddressWhenSet(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 }
 
+// Confirm that EXTERNAL_DNS is used over ZITI_CTRL_ADVERTISED_ADDRESS
+func TestGetZitiCtrlAdvertisedAddressWhenExtDNSSet(t *testing.T) {
+	// Setup
+	ctrlAdvAddressVarName := "ZITI_CTRL_ADVERTISED_ADDRESS"
+	ctrlAdvAddressValue := "advertisedAddress"
+	extDNSVarName := "EXTERNAL_DNS"
+	externalDNSValue := "myexternaldns"
+
+	// Set the env variable
+	_ = os.Setenv(ctrlAdvAddressVarName, ctrlAdvAddressValue)
+	_ = os.Setenv(extDNSVarName, externalDNSValue)
+
+	// Check that the value matches
+	actualValue, _ := GetZitiCtrlAdvertisedAddress()
+	assert.Equal(t, externalDNSValue, actualValue)
+}
+
 func TestGetZitiCtrlPortWhenUnset(t *testing.T) {
 	// Setup
 	varName := "ZITI_CTRL_PORT"
@@ -247,10 +264,12 @@ func TestGetZitiEdgeCtrlListenerHostPortWhenSet(t *testing.T) {
 
 func TestGetZitiEdgeCtrlAdvertisedHostPortWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	edgeCtrlAdvHostPortVarName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	extDNSVarName := "EXTERNAL_DNS"
 
-	// Ensure the variable is unset
-	_ = os.Unsetenv(varName)
+	// Set up env variables
+	_ = os.Unsetenv(extDNSVarName)
+	_ = os.Unsetenv(edgeCtrlAdvHostPortVarName)
 	hostname, _ := os.Hostname()
 	expectedValue := hostname + ":1280"
 
@@ -259,17 +278,55 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenUnset(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
+	envValue := os.Getenv(edgeCtrlAdvHostPortVarName)
 	assert.Equal(t, expectedValue, envValue)
 }
 
 func TestGetZitiEdgeCtrlAdvertisedHostPortWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	edgeCtrlAdvHostPortVarName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	extDNSVarName := "EXTERNAL_DNS"
 	expectedValue := "localhost:4321"
 
 	// Set the env variable
-	_ = os.Setenv(varName, expectedValue)
+	_ = os.Unsetenv(extDNSVarName)
+	_ = os.Setenv(edgeCtrlAdvHostPortVarName, expectedValue)
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+// Confirm that EXTERNAL_DNS and ZITI_EDGE_CONTROLLER_PORT get used over ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT
+func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExtDNSAndHostPortSet(t *testing.T) {
+	// Setup
+	extDNSVarName := "EXTERNAL_DNS"
+	zitiEdgeCtrlAdvHostPortVarName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+	advHostPortValue := "localhost:1234"
+	externalDNSValue := "myexternaldns"
+
+	expectedValue := externalDNSValue + ":1280"
+
+	// Setup the env variables
+	_ = os.Setenv(zitiEdgeCtrlAdvHostPortVarName, advHostPortValue)
+	_ = os.Setenv(extDNSVarName, externalDNSValue)
+
+	// Check that the value matches
+	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	assert.Equal(t, expectedValue, actualValue)
+}
+
+func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExternalDNSAndPortSet(t *testing.T) {
+	// Setup
+	extDNSVarName := "EXTERNAL_DNS"
+	ctrlPortVarName := "ZITI_EDGE_CONTROLLER_PORT"
+	externalDNSValue := "myexternaldns"
+	ctrlPortValue := "1234"
+	expectedValue := externalDNSValue + ":" + ctrlPortValue
+
+	// Setup the env variables
+	_ = os.Setenv(ctrlPortVarName, ctrlPortValue)
+	_ = os.Setenv(extDNSVarName, externalDNSValue)
 
 	// Check that the value matches
 	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
