@@ -25,7 +25,6 @@ if [ -d "${ZITI_BIN_ROOT}/image/ziti.ignore" ]; then
   rm -rf "${ZITI_BIN_ROOT}/image/ziti.ignore"
 fi
 
-docker run --rm -it openziti/quickstart /openziti/ziti-bin/ziti version
 #if [ -f "${ZITI_BIN_ROOT}/ziti-*tar.gz" ]; then
 #  rm "${ZITI_BIN_ROOT}/ziti-*tar.gz"
 #fi
