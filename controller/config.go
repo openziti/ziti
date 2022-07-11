@@ -341,7 +341,7 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 // verifyNewListenerInServerCert verifies that the hostname (ip/dns) for addr is present as an IP/DNS SAN in the first
-// certificate provided in the controller's identity server certificate field. This is to avoid scenarios where
+// certificate provided in the controller's identity server certificates. This is to avoid scenarios where
 // newListener propagated to routers who will never be able to verify the controller's certificates due to SAN issues.
 func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Address) error {
 	addrSplits := strings.Split(addr.String(), ":")
@@ -350,25 +350,37 @@ func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Addr
 	}
 
 	host := addrSplits[1]
-	serverCert := controllerConfig.Id.Identity.ServerCert().Leaf
-	if serverCert == nil {
+
+	serverCerts := controllerConfig.Id.Identity.ServerCert()
+
+	if len(serverCerts) == 0 {
 		return errors.New("could not verify newListener value, server certificate for identity contains no certificates")
 	}
 
 	hostFound := false
-	for _, dnsName := range serverCert.DNSNames {
-		if dnsName == host {
-			hostFound = true
-			break
-		}
-	}
-
-	if !hostFound {
-		for _, ipAddresses := range serverCert.IPAddresses {
-			if host == ipAddresses.String() {
+	for _, serverCert := range serverCerts {
+		for _, dnsName := range serverCert.Leaf.DNSNames {
+			if dnsName == host {
 				hostFound = true
 				break
 			}
+		}
+
+		if hostFound {
+			break
+		}
+
+		if !hostFound {
+			for _, ipAddresses := range serverCert.Leaf.IPAddresses {
+				if host == ipAddresses.String() {
+					hostFound = true
+					break
+				}
+			}
+		}
+
+		if hostFound {
+			break
 		}
 	}
 
