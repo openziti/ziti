@@ -35,7 +35,7 @@ require (
 	github.com/openziti/channel v0.18.49
 	github.com/openziti/fabric v0.19.13
 	github.com/openziti/foundation/v2 v2.0.1
-	github.com/openziti/identity v1.0.2
+	github.com/openziti/identity v1.0.3
 	github.com/openziti/jwks v1.0.1
 	github.com/openziti/metrics v1.0.2
 	github.com/openziti/sdk-golang v0.16.92
@@ -57,7 +57,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b
+	golang.org/x/sys v0.0.0-20220708085239-5a0f0661e09d
 	google.golang.org/protobuf v1.28.0
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
