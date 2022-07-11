@@ -10,9 +10,9 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/tlz"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -33,7 +33,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			maxWaitTime := minWaitTime + 30*time.Second // 23 days + 30s out i.e. 1 week before 30 days
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -50,7 +50,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.AddDate(0, 0, 7)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -66,7 +66,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.AddDate(0, 0, 4)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -82,7 +82,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.Add(1 * time.Minute)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -98,7 +98,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -114,7 +114,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.Add(-1 * time.Second)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -130,7 +130,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.AddDate(0, 0, -1)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -146,7 +146,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			notAfter := now.AddDate(0, 0, -1)
 
 			certChecker.id.Cert().Leaf.NotAfter = notAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -163,7 +163,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			clientNotAfter := now.Add(25 * time.Hour * 24).Add(30 * time.Second)
 
 			certChecker.id.Cert().Leaf.NotAfter = clientNotAfter
-			certChecker.id.ServerCert().Leaf.NotAfter = serverNotAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = serverNotAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -179,7 +179,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, -1)
 
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -194,7 +194,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 5)
 
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -209,7 +209,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 7)
 
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -224,7 +224,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			now := time.Now()
 			notAfter := now.Add(7 * 24 * time.Hour).Add(30 * time.Second)
 
-			certChecker.id.ServerCert().Leaf.NotAfter = notAfter
+			certChecker.id.ServerCert()[0].Leaf.NotAfter = notAfter
 
 			waitTime, err := certChecker.getWaitTime()
 
@@ -260,7 +260,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 				done: func() error {
 					invoked.Set(true)
 					certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
-					certChecker.id.ServerCert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
+					certChecker.id.ServerCert()[0].Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					return errors.New("test")
 				},
 			}
@@ -401,7 +401,7 @@ var _ identity.Identity = &SimpleTestIdentity{}
 
 type SimpleTestIdentity struct {
 	TlsCert             *tls.Certificate
-	TlsServerCert       *tls.Certificate
+	TlsServerCert       []*tls.Certificate
 	CaPool              *x509.CertPool
 	reloadCalled        bool
 	setCertCalled       bool
@@ -412,7 +412,7 @@ func (s SimpleTestIdentity) Cert() *tls.Certificate {
 	return s.TlsCert
 }
 
-func (s SimpleTestIdentity) ServerCert() *tls.Certificate {
+func (s SimpleTestIdentity) ServerCert() []*tls.Certificate {
 	return s.TlsServerCert
 }
 
@@ -421,8 +421,14 @@ func (s SimpleTestIdentity) CA() *x509.CertPool {
 }
 
 func (s SimpleTestIdentity) ServerTLSConfig() *tls.Config {
+	var certs []tls.Certificate
+
+	for _, cert := range s.TlsServerCert {
+		certs = append(certs, *cert)
+	}
+
 	return &tls.Config{
-		Certificates: []tls.Certificate{*s.TlsServerCert},
+		Certificates: certs,
 		RootCAs:      s.CaPool,
 		ClientAuth:   tls.RequireAnyClientCert,
 		MinVersion:   tlz.GetMinTlsVersion(),
@@ -513,7 +519,7 @@ func newCertChecker() *CertExpirationChecker {
 
 	testIdentity := &SimpleTestIdentity{
 		TlsCert:             tlsClient,
-		TlsServerCert:       tlsServer,
+		TlsServerCert:       []*tls.Certificate{tlsServer},
 		CaPool:              caPool,
 		reloadCalled:        false,
 		setCertCalled:       false,
