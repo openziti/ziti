@@ -59,7 +59,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 			if !clientApiFound && api.Binding() == controller.ClientApiBinding {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == factory.appEnv.Config.Api.Address {
-						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert())
+						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert()[0])
 						clientApiFound = true
 						break
 					}
