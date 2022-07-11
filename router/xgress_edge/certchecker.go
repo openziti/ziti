@@ -19,16 +19,16 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/internal/edgerouter"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
@@ -146,7 +146,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 		return fmt.Errorf("could not create client CSR for enrollment extension: %v", err)
 	}
 
-	serverCsrPem, err := enroll.CreateCsr(self.id.ServerCert().PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
+	serverCsrPem, err := enroll.CreateCsr(self.id.ServerCert()[0].PrivateKey, x509.UnknownSignatureAlgorithm, &self.id.Cert().Leaf.Subject, self.edgeConfig.Csr.Sans)
 
 	if err != nil {
 		return fmt.Errorf("could not create server CSR for enrollment extension: %v", err)
@@ -194,7 +194,7 @@ func (self *CertExpirationChecker) getWaitTime() (time.Duration, error) {
 			return 0, nil
 		}
 
-		serverExpirationDuration := self.id.ServerCert().Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
+		serverExpirationDuration := self.id.ServerCert()[0].Leaf.NotAfter.Add(-7 * 24 * time.Hour).Sub(now) // 1 week before server cert expires
 
 		if serverExpirationDuration < 0 {
 			return 0, nil
