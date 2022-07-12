@@ -22,6 +22,8 @@
   - Bug Fixes
 - SDK Golang
   - N/A
+- Identity
+  - All OpenZiti implementations now support multiple certificate chains in the `server_cert` field to enable SNI scenarios
 
 ## Fabric
 ### Terminator fields name changes
