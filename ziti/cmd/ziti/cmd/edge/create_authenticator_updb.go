@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/authenticator"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"

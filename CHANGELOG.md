@@ -1,3 +1,132 @@
+# Release 0.26.0
+
+## Breaking Changes
+
+* The fabric management terminators API has changed the name of some fields. See below for details.
+* The management channel, which was formerly deprecated is now removed
+* Support for the old metrics subsystem has been removed. 
+
+## What's New
+- Edge
+  - N/A
+- Fabric
+  - Terminator fields name changes
+  - Circuit failed events
+  - Additional circuit inspect information gathered
+  - Management channel has been removed
+  - Old metrics subsystem removed
+  - Circuit createdAt
+  - Bug Fixes
+- Ziti CLI
+  - Terminator fields name changes
+  - Bug Fixes
+- SDK Golang
+  - N/A
+- Identity
+  - All OpenZiti implementations now support multiple certificate chains in the `server_cert` field to enable SNI scenarios
+
+## Fabric
+### Terminator fields name changes
+
+The following fields have been renamed:
+
+* `identity` -> `instanceId`
+* `identitySecret` -> `instanceSecret`
+
+The use of `identity` was confusing as identity is also used in the edge. While terminator instanceId
+could be an edge identity id or something related to an edge identity, it could also be something
+entirely unrelated. To reduce semantic overload, we've renamed it to instanceId, which hopefully is 
+more descriptive. In general all terminators with the same instance id should end up at the same 
+hosting process. 
+
+### Circuit failed events
+
+The fabric can now emit circuit events when a circuit creation failed.
+
+Here is an example event:
+```
+{
+  "namespace": "fabric.circuits",
+  "event_type": "failed",
+  "circuit_id": "DtZLURFgP",
+  "timestamp": "2022-06-22T14:24:18.389718316-04:00",
+  "client_id": "cl4pxcvyl000m5qgd1xwcfg1u",
+  "service_id": "dH0lwdc5P",
+  "instance_id": "",
+  "creation_timespan": 739021,
+  "path": "[r/niY.XmLArx]->[l/1UZCUTGhHuJygXld8CxXPs]->[r/YPpTEd8JP]",
+  "terminator_local_address": "",
+  "link_count": 1,
+  "path_cost": 327152,
+  "failure_cause": "ROUTER_ERR_CONN_REFUSED"
+}
+```
+
+Note the `event_type` is failed. For events of this type only, the `failure_cause` will be populated. The current set of failure causes is:
+
+* `INVALID_SERVICE`
+* `ID_GENERATION_ERR`
+* `NO_TERMINATORS`
+* `NO_ONLINE_TERMINATORS`
+* `NO_PATH`
+* `PATH_MISSING_LINK`
+* `INVALID_STRATEGY`
+* `STRATEGY_ERR`
+* `ROUTER_ERR_GENERIC`
+* `ROUTER_ERR_INVALID_TERMINATOR`
+* `ROUTER_ERR_MISCONFIGURED_TERMINATOR`
+* `ROUTER_ERR_DIAL_TIMED_OUT`
+* `ROUTER_ERR_CONN_REFUSED`
+
+In addition to the `failure_cause` field, there is also a new `instance_id` field. This will be populated for all circuit event types and
+will have the instance id requested by the dial. This is generally only applicable when using addressable terminators. If no instance id
+was specified, the field will be blank.
+
+### Circuit Inspect Enhancements
+
+Circuit inspect will now gather more information.
+
+* xgress details now includes the xgress sequence
+* The receive buffer now has the following new fields
+    * acquiredSafely
+    * maxSequence
+    * nextPayload
+    * payloadCount
+    * sequence
+
+### Management channel removed
+
+The management channel has been removed. The ziti-fabric cli, which used to use the management channel,
+has been absorbed into the ziti CLI, and now used the fabric REST API and/or websockets where appropriate.
+
+The `mgmt:` stanza in configuration files, which used to be required, will now be ignored.
+
+### Old Metrics Subsystem removed
+
+Formerly metrics could be exported to file via the `metrics:` configuration stanza. This was superceded by
+the events subsystem, which contains metrics as well as other events. 
+
+This also means that we no longer support pushing metrics directly to InfluxDB. However, we now have a 
+Prometheus endpoint available, which can also be used to feed information to InfluxDB.
+
+### Circuit createdAt
+
+Circuits now have a createdAt field, visible via the REST API. 
+
+### Bug Fixes
+
+* Fix for issue where smart routing could break a circuit if a router became unavailable while circuits were being updated
+
+## Ziti CLI
+### Terminator Field Name Changes
+The `ziti fabric create terminator` operation now takes a `--instance-id` flag instead of an `--identity` flag.
+
+The `ziti fabric list terminators` operation now shows `InstanceId` instead of `Identity`. 
+
+### Bug Fixes
+
+* Fixed a bug where the controller advertised name was not properly set when the value of EXTERNAL_DNS was set.
+
 # Release 0.25.13
 
 ## What's New

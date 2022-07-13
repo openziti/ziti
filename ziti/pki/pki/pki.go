@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import (
 
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/store"
-	"github.com/openziti/foundation/identity/certtools"
+	"github.com/openziti/identity/certtools"
 )
 
 const (

@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,14 +17,14 @@
 package version
 
 import (
-	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/v2/versions"
 	"runtime"
 )
 
 type cmdBuildInfo struct{}
 
-func (c cmdBuildInfo) EncoderDecoder() common.VersionEncDec {
-	return &common.StdVersionEncDec
+func (c cmdBuildInfo) EncoderDecoder() versions.VersionEncDec {
+	return &versions.StdVersionEncDec
 }
 
 func (c cmdBuildInfo) Version() string {
@@ -43,8 +43,8 @@ func (c cmdBuildInfo) Branch() string {
 	return Branch
 }
 
-func (c cmdBuildInfo) AsVersionInfo() *common.VersionInfo {
-	return &common.VersionInfo{
+func (c cmdBuildInfo) AsVersionInfo() *versions.VersionInfo {
+	return &versions.VersionInfo{
 		Version:   c.Version(),
 		Revision:  c.Revision(),
 		BuildDate: c.BuildDate(),
@@ -53,7 +53,7 @@ func (c cmdBuildInfo) AsVersionInfo() *common.VersionInfo {
 	}
 }
 
-func GetCmdBuildInfo() common.VersionProvider {
+func GetCmdBuildInfo() versions.VersionProvider {
 	return cmdBuildInfo{}
 }
 

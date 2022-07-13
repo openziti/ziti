@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -70,6 +70,7 @@ func NewDemoCmd(p common.OptionsProvider) *cobra.Command {
 	demoCmd.AddCommand(setupCmd)
 	setupCmd.AddCommand(echoCmd)
 	echoCmd.AddCommand(newClientCmd(p))
+	echoCmd.AddCommand(newRouterTunnelerBothSidesCmd(p))
 	echoCmd.AddCommand(newSingleSdkHostedCmd(p))
 	echoCmd.AddCommand(newMultiSdkHostedCmd(p))
 	echoCmd.AddCommand(newSingleRouterTunnelerHostedCmd(p))

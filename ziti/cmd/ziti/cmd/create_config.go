@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	fabCtrl "github.com/openziti/fabric/controller"
 	fabForwarder "github.com/openziti/fabric/router/forwarder"
 	foundation "github.com/openziti/transport/v2"
-	fabXweb "github.com/openziti/xweb"
+	fabXweb "github.com/openziti/xweb/v2"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"

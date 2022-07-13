@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/identity/certtools"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/identity/certtools"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"

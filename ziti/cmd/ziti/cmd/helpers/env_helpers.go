@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -67,6 +67,14 @@ func GetZitiHome() (string, error) {
 }
 
 func GetZitiCtrlAdvertisedAddress() (string, error) {
+
+	// Use External DNS if set
+	extDNS := os.Getenv(constants.ExternalDNSVarName)
+	if extDNS != "" {
+		return extDNS, nil
+	}
+
+	// Use hostname if external DNS and advertised address not set
 	hostname, err := os.Hostname()
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get hostname")
@@ -108,17 +116,25 @@ func GetZitiEdgeCtrlListenerHostPort() (string, error) {
 }
 
 func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
-	hostname, err := os.Hostname()
+
+	port, err := GetZitiEdgeCtrlAdvertisedPort()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get hostname")
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	port, err := GetZitiEdgeCtrlAdvertisedPort()
+	// Use External DNS if set
+	extDNS := os.Getenv(constants.ExternalDNSVarName)
+	if extDNS != "" {
+		return extDNS + ":" + port, nil
+	}
+
+	// Use hostname and advertised port if advertised host port env var not set
+	hostname, err := os.Hostname()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
+		err := errors.Wrap(err, "Unable to get hostname")
 		if err != nil {
 			return "", err
 		}

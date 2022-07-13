@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -30,7 +30,10 @@ func SetJSONValue(container *gabs.Container, value interface{}, path ...string) 
 }
 
 func GetJsonValue(container *gabs.Container, path string) interface{} {
-	return container.Path(path).Data()
+	if child := container.Path(path); child != nil {
+		return child.Data()
+	}
+	return nil
 }
 
 func GetJsonString(container *gabs.Container, path string) string {

@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package loop2
 
 import (
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"bytes"
 	"crypto/sha512"
 	"encoding/binary"

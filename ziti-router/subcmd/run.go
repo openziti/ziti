@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -27,8 +27,8 @@ import (
 	"github.com/openziti/edge/router/xgress_edge_tunnel"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/agent"
-	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/agent"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

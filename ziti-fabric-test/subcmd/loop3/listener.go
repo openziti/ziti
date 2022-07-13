@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -19,9 +19,9 @@ package loop3
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/agent"
-	"github.com/openziti/foundation/identity/dotziti"
-	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/agent"
+	"github.com/openziti/identity/dotziti"
+	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/transport/v2"

@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ package actions
 
 import (
 	"fmt"
-	"github.com/openziti/foundation/util/term"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
 	"github.com/pkg/errors"

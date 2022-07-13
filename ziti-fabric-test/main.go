@@ -1,7 +1,7 @@
 //go:build all
 
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/transport/v2/transwarp"
 	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
-	"github.com/openziti/foundation/util/info"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/client"
 	_ "github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2"

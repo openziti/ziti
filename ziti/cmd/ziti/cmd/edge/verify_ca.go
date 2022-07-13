@@ -1,5 +1,5 @@
 /*
-	Copyright NetFoundry, Inc.
+	Copyright NetFoundry Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -26,8 +26,8 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	nfpem "github.com/openziti/foundation/util/pem"
-	"github.com/openziti/foundation/util/term"
+	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
