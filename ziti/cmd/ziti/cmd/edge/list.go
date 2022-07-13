@@ -804,9 +804,9 @@ func strSliceToStr(strs []string, width int) string {
 	for i, str := range strs {
 		if i != 0 {
 			if i%width == 0 {
-				//builder.WriteRune('\n')
+				builder.WriteRune('\n')
 			} else {
-				builder.WriteRune(' ')
+				builder.WriteString(", ")
 			}
 		}
 
