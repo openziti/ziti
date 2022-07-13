@@ -18,8 +18,12 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func NewStartAction() model.ActionBinder {
-	action := &startAction{}
+func NewStartAction(metricbeatConfigPath, metricbeatDataPath, metricbeatLogPath string) model.ActionBinder {
+	action := &startAction{
+		metricbeatConfigPath: metricbeatConfigPath,
+		metricbeatDataPath:   metricbeatDataPath,
+		metricbeatLogPath:    metricbeatLogPath,
+	}
 	return action.bind
 }
 
@@ -31,12 +35,20 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
 	//workflow.AddAction(test())
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(zitilib_actions.StartMetricbeat("*", a.metricbeatConfigPath, a.metricbeatDataPath, a.metricbeatLogPath))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(StartEchoServers("#echo-server"))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+
 	fmt.Println("Done starting!")
 	return workflow
 }
 
-type startAction struct{}
+type startAction struct {
+	metricbeatConfigPath string
+	metricbeatDataPath   string
+	metricbeatLogPath    string
+}
 
 type echoServerStart struct {
 	componentSpec string
