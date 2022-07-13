@@ -4,6 +4,9 @@ package main
 
 import (
 	"embed"
+	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/openziti/fablab"
@@ -22,7 +25,9 @@ import (
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/network-tests/simple-transfer/actions"
 	"github.com/openziti/zitilab"
+	zitilib_runlevel_0_infrastructure "github.com/openziti/zitilab/runlevel/0_infrastructure"
 	zitilib_runlevel_1_configuration "github.com/openziti/zitilab/runlevel/1_configuration"
+	"github.com/sirupsen/logrus"
 )
 
 //go:embed configs
@@ -39,6 +44,33 @@ func (s scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 		return 4
 	}
 	return 1
+}
+
+func getEnv(key, fallback string) string {
+	if v, ok := os.LookupEnv(key); ok {
+		return v
+	}
+	return fallback
+}
+
+func getConfigDataAndReplace(filePath string, replace map[string]string, replaceEmpties bool) []byte {
+	data := string(getConfigData(filePath))
+
+	for k, v := range replace {
+		if v != "" || replaceEmpties {
+			data = strings.Replace(data, k, v, -1)
+		}
+	}
+
+	return []byte(data)
+}
+
+func getConfigData(filePath string) []byte {
+	data, err := configResource.ReadFile(fmt.Sprintf("configs/%s", filePath))
+	if err != nil {
+		logrus.Errorf("Unable to read config data from %s: [%s]", filePath, err)
+	}
+	return data
 }
 
 var m = &model.Model{
@@ -135,13 +167,14 @@ var m = &model.Model{
 
 	Actions: model.ActionBinders{
 		"bootstrap": actions.NewBootstrapAction(),
-		"start":     actions.NewStartAction(),
+		"start":     actions.NewStartAction("metricbeat", "metricbeat/data", "metricbeat/logs"),
 		"stop":      model.Bind(component.StopInParallel("*", 15)),
 	},
 
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
+		zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"),
 		semaphore_0.Restart(90 * time.Second),
 	},
 
@@ -158,6 +191,19 @@ var m = &model.Model{
 	Distribution: model.DistributionStages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
+		distribution.DistributeData(
+			"*",
+			getConfigDataAndReplace(
+				"metricbeat.yml",
+				map[string]string{
+					"${host}":     getEnv("ELASTIC_HOST", ""),
+					"${user}":     getEnv("ELASTIC_USER", ""),
+					"${password}": getEnv("ELASTIC_PASSWORD", ""),
+				},
+				true,
+			),
+			"metricbeat/metricbeat.yml"),
+
 		rsync.RsyncStaged(),
 	},
 
