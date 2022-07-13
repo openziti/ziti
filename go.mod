@@ -103,6 +103,7 @@ require (
 	github.com/hashicorp/raft v1.3.9 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/jedib0t/go-pretty v4.3.0+incompatible // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
