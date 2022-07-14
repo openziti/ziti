@@ -6,6 +6,10 @@ services:
       - ./.env
     ports:
       - "1280:1280"
+    environment:
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - EXTERNAL_DNS=MacBook-Pro.local
     networks:
       zitiblue:
         aliases:
@@ -23,17 +27,12 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
     env_file:
       - ./.env
     networks:
-      zitiblue:
-        aliases:
-          - ziti-edge-controller-init-container
-      zitired:
-        aliases:
-          - ziti-edge-controller-init-container
+      - fauxinternet
     volumes:
       - ziti-fs:/openziti
     entrypoint:
@@ -46,9 +45,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router
       - ZITI_EDGE_ROUTER_ROLES=public
     ports:
       - "3022:3022"
@@ -65,9 +64,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router-wss
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
       - ZITI_EDGE_ROUTER_ROLES=public
     ports:
@@ -85,9 +84,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-fabric-router-br
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
     networks:
@@ -103,9 +102,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-red
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-red
     #ports:
     #  - 3025:3025
     networks:
@@ -120,9 +119,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-private-blue
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-blue
     #ports:
     #  - 3026:3026
     networks:

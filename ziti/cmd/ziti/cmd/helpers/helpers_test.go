@@ -65,53 +65,6 @@ func TestGetZitiHomeWhenSetWithWindowsSlashes(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-func TestGetZitiCtrlAdvertisedAddressWhenUnset(t *testing.T) {
-	// Setup
-	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
-
-	// Ensure the variable is unset
-	_ = os.Unsetenv(varName)
-	expectedValue, _ := os.Hostname()
-
-	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
-	assert.Equal(t, expectedValue, actualValue)
-
-	// The env variable should be populated with the expected value
-	envValue := os.Getenv(varName)
-	assert.Equal(t, expectedValue, envValue)
-}
-
-func TestGetZitiCtrlAdvertisedAddressWhenSet(t *testing.T) {
-	// Setup
-	varName := "ZITI_CTRL_ADVERTISED_ADDRESS"
-	expectedValue := "localhost"
-
-	// Set the env variable
-	_ = os.Setenv(varName, expectedValue)
-
-	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
-	assert.Equal(t, expectedValue, actualValue)
-}
-
-// Confirm that EXTERNAL_DNS is used over ZITI_CTRL_ADVERTISED_ADDRESS
-func TestGetZitiCtrlAdvertisedAddressWhenExtDNSSet(t *testing.T) {
-	// Setup
-	ctrlAdvAddressVarName := "ZITI_CTRL_ADVERTISED_ADDRESS"
-	ctrlAdvAddressValue := "advertisedAddress"
-	extDNSVarName := "EXTERNAL_DNS"
-	externalDNSValue := "myexternaldns"
-
-	// Set the env variable
-	_ = os.Setenv(ctrlAdvAddressVarName, ctrlAdvAddressValue)
-	_ = os.Setenv(extDNSVarName, externalDNSValue)
-
-	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
-	assert.Equal(t, externalDNSValue, actualValue)
-}
-
 func TestGetZitiCtrlPortWhenUnset(t *testing.T) {
 	// Setup
 	varName := "ZITI_CTRL_PORT"
@@ -297,36 +250,18 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenSet(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-// Confirm that EXTERNAL_DNS and ZITI_EDGE_CONTROLLER_PORT get used over ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT
-func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExtDNSAndHostPortSet(t *testing.T) {
+// Ziti Controller advertised host port should be comprised of the controller hostname and controller port
+func TestGetZitiEdgeCtrlAdvertisedHostPortWhenHostnameAndPortSet(t *testing.T) {
 	// Setup
-	extDNSVarName := "EXTERNAL_DNS"
-	zitiEdgeCtrlAdvHostPortVarName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
-	advHostPortValue := "localhost:1234"
-	externalDNSValue := "myexternaldns"
-
-	expectedValue := externalDNSValue + ":1280"
-
-	// Setup the env variables
-	_ = os.Setenv(zitiEdgeCtrlAdvHostPortVarName, advHostPortValue)
-	_ = os.Setenv(extDNSVarName, externalDNSValue)
-
-	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
-	assert.Equal(t, expectedValue, actualValue)
-}
-
-func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExternalDNSAndPortSet(t *testing.T) {
-	// Setup
-	extDNSVarName := "EXTERNAL_DNS"
+	ctrlHostnameVarName := "ZITI_EDGE_CONTROLLER_HOSTNAME"
 	ctrlPortVarName := "ZITI_EDGE_CONTROLLER_PORT"
-	externalDNSValue := "myexternaldns"
+	ctrlHostnameValue := "myexternaldns"
 	ctrlPortValue := "1234"
-	expectedValue := externalDNSValue + ":" + ctrlPortValue
+	expectedValue := ctrlHostnameValue + ":" + ctrlPortValue
 
 	// Setup the env variables
 	_ = os.Setenv(ctrlPortVarName, ctrlPortValue)
-	_ = os.Setenv(extDNSVarName, externalDNSValue)
+	_ = os.Setenv(ctrlHostnameVarName, ctrlHostnameValue)
 
 	// Check that the value matches
 	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()

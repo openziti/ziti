@@ -66,26 +66,6 @@ func GetZitiHome() (string, error) {
 	return NormalizePath(retVal), nil
 }
 
-func GetZitiCtrlAdvertisedAddress() (string, error) {
-
-	// Use External DNS if set
-	extDNS := os.Getenv(constants.ExternalDNSVarName)
-	if extDNS != "" {
-		return extDNS, nil
-	}
-
-	// Use hostname if external DNS and advertised address not set
-	hostname, err := os.Hostname()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get hostname")
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlAdvertisedAddressVarName, hostname)
-}
-
 func GetZitiCtrlPort() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiCtrlPortVarName, constants.DefaultZitiControllerPort)
 }
@@ -95,7 +75,7 @@ func GetZitiCtrlListenerAddress() (string, error) {
 }
 
 func GetZitiCtrlName() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlNameVarName, constants.DefaultZitiControllerName)
+	return getValueOrSetAndGetDefault(constants.ZitiCtrlHostnameVarName, constants.DefaultZitiControllerName)
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
@@ -106,7 +86,7 @@ func GetZitiEdgeCtrlListenerHostPort() (string, error) {
 	// Get the edge controller port to use as the default
 	edgeCtrlPort, err := GetZitiEdgeCtrlAdvertisedPort()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlPortVarName)
 		if err != nil {
 			return "", err
 		}
@@ -119,16 +99,16 @@ func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 
 	port, err := GetZitiEdgeCtrlAdvertisedPort()
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlPortVarName)
 		if err != nil {
 			return "", err
 		}
 	}
 
-	// Use External DNS if set
-	extDNS := os.Getenv(constants.ExternalDNSVarName)
-	if extDNS != "" {
-		return extDNS + ":" + port, nil
+	// Use Controller hostname value if set, otherwise use default OS hostname
+	edgeCtrlHostname := os.Getenv(constants.ZitiEdgeCtrlHostnameVarName)
+	if edgeCtrlHostname != "" {
+		return edgeCtrlHostname + ":" + port, nil
 	}
 
 	// Use hostname and advertised port if advertised host port env var not set
@@ -144,7 +124,7 @@ func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 }
 
 func GetZitiEdgeCtrlAdvertisedPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.DefaultZitiEdgeAPIPort)
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlPortVarName, constants.DefaultZitiEdgeAPIPort)
 }
 
 func getValueOrSetAndGetDefault(envVarName string, defaultValue string) (string, error) {

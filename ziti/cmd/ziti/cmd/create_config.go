@@ -58,9 +58,8 @@ type ConfigTemplateValues struct {
 }
 
 type ControllerTemplateValues struct {
-	Name                       string
+	Hostname                   string
 	Port                       string
-	AdvertisedAddress          string
 	ListenerAddress            string
 	IdentityCert               string
 	IdentityServerCert         string
@@ -83,7 +82,8 @@ type ControllerTemplateValues struct {
 }
 
 type EdgeControllerValues struct {
-	AdvertisedPort  string
+	Hostname        string
+	Port            string
 	ZitiSigningCert string
 	ZitiSigningKey  string
 
@@ -209,9 +209,9 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiHome, err := cmdhelper.GetZitiHome()
 	handleVariableError(err, constants.ZitiHomeVarName)
 
-	// Get Ziti Controller Name
+	// Get Ziti Controller Hostname
 	zitiCtrlHostname, err := cmdhelper.GetZitiCtrlName()
-	handleVariableError(err, constants.ZitiCtrlNameVarName)
+	handleVariableError(err, constants.ZitiCtrlHostnameVarName)
 
 	// Get Ziti Edge Router Port
 	zitiEdgeRouterPort, err := cmdhelper.GetZitiEdgeRouterPort()
@@ -220,10 +220,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	// Get Ziti Controller Listener Address
 	zitiCtrlListenerAddress, err := cmdhelper.GetZitiCtrlListenerAddress()
 	handleVariableError(err, constants.ZitiCtrlListenerAddressVarName)
-
-	// Get Ziti Controller Advertised Address
-	zitiCtrlAdvertisedAddress, err := cmdhelper.GetZitiCtrlAdvertisedAddress()
-	handleVariableError(err, constants.ZitiCtrlAdvertisedAddressVarName)
 
 	// Get Ziti Controller Port
 	zitiCtrlPort, err := cmdhelper.GetZitiCtrlPort()
@@ -239,18 +235,17 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 
 	// Get Ziti Edge Controller Advertised Port
 	zitiEdgeCtrlAdvertisedPort, err := cmdhelper.GetZitiEdgeCtrlAdvertisedPort()
-	handleVariableError(err, constants.ZitiEdgeCtrlAdvertisedPortVarName)
+	handleVariableError(err, constants.ZitiEdgeCtrlPortVarName)
 
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
-	data.Controller.Name = zitiCtrlHostname
+	data.Controller.Hostname = zitiCtrlHostname
 	data.Controller.ListenerAddress = zitiCtrlListenerAddress
-	data.Controller.AdvertisedAddress = zitiCtrlAdvertisedAddress
 	data.Controller.Port = zitiCtrlPort
 	data.Controller.Edge.ListenerHostPort = zitiEdgeCtrlListenerHostPort
 	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort
 	data.Router.Edge.Port = zitiEdgeRouterPort
-	data.Controller.Edge.AdvertisedPort = zitiEdgeCtrlAdvertisedPort
+	data.Controller.Edge.Port = zitiEdgeCtrlAdvertisedPort
 }
 
 func (data *ConfigTemplateValues) populateDefaults() {

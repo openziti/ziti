@@ -2,8 +2,8 @@
 
 ziti_controller_cfg='/openziti/ziti-edge-controller.yaml'
 
-export ZITI_CONTROLLER_RAWNAME=ziti-controller
-export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
+export ZITI_CONTROLLER_HOSTNAME=ziti-controller
+export ZITI_EDGE_CONTROLLER_HOSTNAME=ziti-edge-controller
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 

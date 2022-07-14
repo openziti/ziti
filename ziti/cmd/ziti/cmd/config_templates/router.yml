@@ -13,7 +13,7 @@ identity:
   ca:                   "{{ .Router.IdentityCA }}"
 
 ctrl:
-  endpoint:             tls:{{ .Controller.AdvertisedAddress }}:{{ .Controller.Port }}
+  endpoint:             tls:{{ .Controller.Hostname }}:{{ .Controller.Port }}
 
 link:
   dialers:

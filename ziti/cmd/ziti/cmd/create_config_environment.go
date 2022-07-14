@@ -93,9 +93,9 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 
 			environmentOptions.EnvVars = []EnvVar{
 				{constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome},
-				{constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name},
+				{constants.ZitiCtrlHostnameVarName, constants.ZitiCtrlHostnameVarDescription, data.Controller.Hostname},
 				{constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port},
-				{constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname},
+				{constants.ZitiEdgeRouterHostnameVarName, constants.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname},
 				{constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port},
 				{constants.ZitiEdgeCtrlIdentityCertVarName, constants.ZitiEdgeCtrlIdentityCertVarDescription, data.Controller.Edge.IdentityCert},
 				{constants.ZitiEdgeCtrlIdentityServerCertVarName, constants.ZitiEdgeCtrlIdentityServerCertVarDescription, data.Controller.Edge.IdentityServerCert},
@@ -112,10 +112,10 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey},
 				{constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA},
 				{constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress},
-				{constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress},
 				{constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort},
 				{constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort},
-				{constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.ZitiEdgeCtrlAdvertisedPortVarDescription, data.Controller.Edge.AdvertisedPort},
+				{constants.ZitiEdgeCtrlHostnameVarName, constants.ZitiEdgeCtrlHostnameVarDescription, data.Controller.Edge.Hostname},
+				{constants.ZitiEdgeCtrlPortVarName, constants.ZitiEdgeCtrlPortVarDescription, data.Controller.Edge.Port},
 			}
 
 			// Setup logging
@@ -179,13 +179,13 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		"%-36s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
-		constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name,
-		constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress,
+		constants.ZitiCtrlHostnameVarName, constants.ZitiCtrlHostnameVarDescription, data.Controller.Hostname,
 		constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress,
+		constants.ZitiEdgeCtrlHostnameVarName, constants.ZitiEdgeCtrlHostnameVarDescription, data.Controller.Edge.Hostname,
 		constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort,
 		constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort,
-		constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.ZitiEdgeCtrlAdvertisedPortVarDescription, data.Controller.Edge.AdvertisedPort,
-		constants.ZitiEdgeRouterRawNameVarName, constants.ZitiEdgeRouterRawNameVarDescription, data.Router.Edge.Hostname,
+		constants.ZitiEdgeCtrlPortVarName, constants.ZitiEdgeCtrlPortVarDescription, data.Controller.Edge.Port,
+		constants.ZitiEdgeRouterHostnameVarName, constants.ZitiEdgeRouterHostnameVarDescription, data.Router.Edge.Hostname,
 		constants.ZitiEdgeRouterPortVarName, constants.ZitiEdgeRouterPortVarDescription, data.Router.Edge.Port,
 		constants.ZitiRouterIdentityCertVarName, constants.ZitiRouterIdentityCertVarDescription, data.Router.IdentityCert,
 		constants.ZitiRouterIdentityServerCertVarName, constants.ZitiRouterIdentityServerCertVarDescription, data.Router.IdentityServerCert,

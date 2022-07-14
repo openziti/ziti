@@ -193,22 +193,19 @@ func addFileToTarWriter(filePath string, tarWriter *tar.Writer) error {
 }
 
 func TestSimpleWebService(t *testing.T) {
-	// Build the image
-	buildDockerQuickstartImage()
 
-	// Start the environment
-	startDockerComposeQuickstart()
-	defer stopDockerComposeQuickstart()
-
-	// Wait for the controller to spin up
+	ctrlUsername := "admin"
+	ctrlPassword := "admin"
 	testerUsername := "gotester"
 	ctrlAddress := "https://ziti-edge-controller:1280"
-	hostingRouterName := "ziti-edge-router-1"
+	hostingRouterName := "ziti-edge-router"
 	dialAddress := "simple.web.smoke.test"
 	dialPort := 80
-	bindHostAddress := "web-test-host"
+	bindHostAddress := "web-test-blue"
 	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
+
+	// Ensure the controller is reachable
 	waitForController(ctrlAddress)
 	// Give routers time to enroll themselves
 	time.Sleep(5 * time.Second)
@@ -222,7 +219,7 @@ func TestSimpleWebService(t *testing.T) {
 	for _, ca := range caCerts {
 		caPool.AddCert(ca)
 	}
-	client, err := rest_util.NewEdgeManagementClientWithUpdb("admin", "admin", ctrlAddress, caPool)
+	client, err := rest_util.NewEdgeManagementClientWithUpdb(ctrlUsername, ctrlPassword, ctrlAddress, caPool)
 	if err != nil {
 		log.Fatal(err)
 	}

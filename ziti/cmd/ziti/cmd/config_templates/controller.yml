@@ -1,7 +1,7 @@
 v: 3
 
 #trace:
-#  path: "{{ .Controller.Name }}.trace"
+#  path: "{{ .Controller.Hostname }}.trace"
 
 #profile:
 #  memory:

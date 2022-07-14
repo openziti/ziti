@@ -42,7 +42,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
@@ -55,14 +55,14 @@ function cleanZitiController {
   initializeController
 }
 function initializeController {
-  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}-init.log"
-  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_HOSTNAME}-init.log"
+  "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_HOSTNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
   echo -e "ziti-controller initialized. see $(BLUE "${log_file}") for details"
 }
 function startZitiController {
-  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log"
+  log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_HOSTNAME}.log"
   # shellcheck disable=SC2034
-  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${log_file}" 2>&1 &)
+  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_HOSTNAME}.yaml" > "${log_file}" 2>&1 &)
   pid=$!
   echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${log_file}")"
   return $pid
@@ -75,8 +75,8 @@ function stopZitiController {
 }
 
 function startExpressEdgeRouter {
-  log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log"
-  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
+  log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.log"
+  "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${log_file}" 2>&1 &
   pid=$!
   echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${log_file}")"
   return $pid
@@ -352,14 +352,11 @@ function generateEnvFile {
 
   echo -e "Generating new network with name: $(BLUE "${ZITI_NETWORK-}")"
 
-  if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_CTRL_PORT-}" == "" ]]; then export ZITI_CTRL_PORT="6262"; fi
 
-  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
 
-  if [[ "${ZITI_ZAC_RAWNAME-}" == "" ]]; then export export ZITI_ZAC_RAWNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}"; fi
 
   if [[ "${ZITI_BIN_ROOT-}" == "" ]]; then
@@ -433,11 +430,8 @@ function ziti_expressConfiguration {
   echo "           |||                                        /--------"
   echo "-----------'''---------------------------------------'"
   echo ""
-  if [[ "${ZITI_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_RAWNAME OVERRIDDEN: $ZITI_CONTROLLER_RAWNAME"; fi
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_CONTROLLER_HOSTNAME OVERRIDDEN: $ZITI_CONTROLLER_HOSTNAME"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_RAWNAME OVERRIDDEN: $ZITI_EDGE_CONTROLLER_RAWNAME"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_CONTROLLER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_CONTROLLER_HOSTNAME"; fi
-  if [[ "${ZITI_ZAC_RAWNAME-}" != "" ]]; then echo "ZITI_ZAC_RAWNAME OVERRIDDEN: $ZITI_ZAC_RAWNAME"; fi
   if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERRIDDEN: $ZITI_ZAC_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERRIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
@@ -494,25 +488,25 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
 
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
-    echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
+  if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then
+    echo "ZITI_EDGE_ROUTER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"
   else
-    ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"
+    ZITI_EDGE_ROUTER_HOSTNAME="${ZITI_NETWORK}-edge-router"
   fi
-  echo "USING ZITI_EDGE_ROUTER_RAWNAME: $ZITI_EDGE_ROUTER_RAWNAME"
+  echo "USING ZITI_EDGE_ROUTER_HOSTNAME: $ZITI_EDGE_ROUTER_HOSTNAME"
 
-  createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
+  createRouterPki "${ZITI_EDGE_ROUTER_HOSTNAME}"
 
-  createEdgeRouterConfig "${ZITI_EDGE_ROUTER_RAWNAME}"
-  #createRouterSystemdFile "${ZITI_EDGE_ROUTER_RAWNAME}"
+  createEdgeRouterConfig "${ZITI_EDGE_ROUTER_HOSTNAME}"
+  #createRouterSystemdFile "${ZITI_EDGE_ROUTER_HOSTNAME}"
 
-  echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
-  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_RAWNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" -t -a "public"> /dev/null
+  echo "----------  Creating edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${ZITI_EDGE_ROUTER_HOSTNAME}" -o "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" -t -a "public"> /dev/null
   sleep 1
-  echo "----------  Enrolling edge-router ${ZITI_EDGE_ROUTER_RAWNAME}...."
+  echo "----------  Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
 
-  "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
+  "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_HOSTNAME}.enrollment.log"
   echo ""
 
   stopZitiController
@@ -728,7 +722,7 @@ function createPrivateRouterConfig {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createPrivateRouterConfig requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_RAWNAME}"
+    default_router_name="${ZITI_EDGE_ROUTER_HOSTNAME}"
     echo -en "Enter router name (${default_router_name}):"
     read -r router_name
 
@@ -801,7 +795,7 @@ function createFabricRouterConfig {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createFabricRouterConfig requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_RAWNAME}"
+    default_router_name="${ZITI_EDGE_ROUTER_HOSTNAME}"
     echo -en "Enter router name (${default_router_name}):"
     read -r router_name
 
@@ -837,7 +831,7 @@ function createEdgeRouterWssConfig {
 
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createEdgeRouterWssConfig requires a router name to be supplied") "
-    default_router_name="${ZITI_EDGE_ROUTER_RAWNAME}"
+    default_router_name="${ZITI_EDGE_ROUTER_HOSTNAME}"
     echo -en "Enter router name (${default_router_name}):"
     read -r router_name
 
@@ -920,7 +914,7 @@ function createControllerConfig {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
         echo -e "$(YELLOW "createControllerConfig requires a controller name to be supplied") "
         echo -en "Enter controller name: "
         read -r controller_name
@@ -931,8 +925,8 @@ function createControllerConfig {
           return 1
         fi
   # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
-    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
   fi
 
   # Make sure necessary env variables are set
@@ -1018,11 +1012,10 @@ function ziti_createEnvFile {
   fi
   if [[ "${ZITI_EDGE_CONTROLLER_PORT-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_PORT="1280"; fi
 
-  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-  if [[ "${ZITI_CTRL_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_ADVERTISED_ADDRESS="${ZITI_CONTROLLER_HOSTNAME}"; fi
-  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
+  if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK}"; fi
+  if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK}"; fi
   if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}${ZITI_DOMAIN_SUFFIX}"; fi
-  if [[ "${ZITI_EDGE_CTRL_ADVERTISED-}" == "" ]]; then export ZITI_EDGE_CTRL_ADVERTISED="${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
+  if [[ "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT-}" == "" ]]; then export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT="${ZITI_EDGE_CONTROLLER_HOSTNAME}:${ZITI_EDGE_CONTROLLER_PORT}"; fi
 
   export ZITI_SIGNING_CERT_NAME="${ZITI_NETWORK}-signing"
 
@@ -1063,8 +1056,8 @@ function ziti_createEnvFile {
   echo "export PFXLOG_NO_JSON=true" >> "${ENV_FILE}"
 
   echo "alias zec='ziti edge'" >> "${ENV_FILE}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path
@@ -1089,12 +1082,12 @@ function waitForController {
   #  devnull="nul"
   #fi
   # shellcheck disable=SC2091
-  #until $(curl -o /dev/null -sk /dev/null --fail "https://${ZITI_EDGE_CTRL_ADVERTISED}"); do
-  #    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED}"
+  #until $(curl -o /dev/null -sk /dev/null --fail "https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"); do
+  #    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
   #    sleep 2
   #done
-  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${ZITI_EDGE_CTRL_ADVERTISED}"/version)" != "200" ]]; do
-    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED}"
+  while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"/version)" != "200" ]]; do
+    echo "waiting for https://${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}"
     sleep 3
   done
 }
@@ -1103,7 +1096,7 @@ function createControllerSystemdFile {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
         echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
         echo -en "Enter controller name:"
         read -r controller_name
@@ -1114,8 +1107,8 @@ function createControllerSystemdFile {
           return 1
         fi
   # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
-    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
   fi
 
   # Make sure necessary env variables are set
@@ -1214,7 +1207,7 @@ function createControllerLaunchdFile {
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
         echo -e "$(YELLOW "createControllerLaunchdFile requires a controller name to be supplied") "
         echo -en "Enter controller name: "
         read -r controller_name
@@ -1225,8 +1218,8 @@ function createControllerLaunchdFile {
           return 1
         fi
   # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_RAWNAME}" ]]; then
-    controller_name="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_EDGE_CONTROLLER_HOSTNAME}" ]]; then
+    controller_name="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
   fi
 
   # Make sure necessary env variables are set

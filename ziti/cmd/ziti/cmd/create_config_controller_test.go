@@ -20,8 +20,8 @@ func TestControllerOutputPathDoesNotExist(t *testing.T) {
 }
 
 func TestCreateConfigControllerTemplateValues(t *testing.T) {
-	expectedNonEmptyStringFields := []string{".Controller.Name", ".ZitiHome", ".Controller.IdentityCert", ".Controller.IdentityServerCert", ".Controller.IdentityKey", ".Controller.IdentityCA", ".Controller.ListenerAddress", ".Controller.Port", ".Controller.Edge.AdvertisedHostPort", ".Controller.Edge.ZitiSigningCert", ".Controller.Edge.ZitiSigningKey", ".Controller.Edge.ListenerHostPort", ".Controller.Edge.IdentityCA", ".Controller.Edge.IdentityKey", ".Controller.Edge.IdentityServerCert", ".Controller.Edge.IdentityCert", ".Controller.WebListener.MinTLSVersion", ".Controller.WebListener.MaxTLSVersion"}
-	expectedNonEmptyStringValues := []*string{&data.Controller.Name, &data.ZitiHome, &data.Controller.IdentityCert, &data.Controller.IdentityServerCert, &data.Controller.IdentityKey, &data.Controller.IdentityCA, &data.Controller.ListenerAddress, &data.Controller.Port, &data.Controller.Edge.AdvertisedHostPort, &data.Controller.Edge.ZitiSigningCert, &data.Controller.Edge.ZitiSigningKey, &data.Controller.Edge.ListenerHostPort, &data.Controller.Edge.IdentityCA, &data.Controller.Edge.IdentityKey, &data.Controller.Edge.IdentityServerCert, &data.Controller.Edge.IdentityCert, &data.Controller.WebListener.MinTLSVersion, &data.Controller.WebListener.MaxTLSVersion}
+	expectedNonEmptyStringFields := []string{".Controller.Hostname", ".ZitiHome", ".Controller.IdentityCert", ".Controller.IdentityServerCert", ".Controller.IdentityKey", ".Controller.IdentityCA", ".Controller.ListenerAddress", ".Controller.Port", ".Controller.Edge.AdvertisedHostPort", ".Controller.Edge.ZitiSigningCert", ".Controller.Edge.ZitiSigningKey", ".Controller.Edge.ListenerHostPort", ".Controller.Edge.IdentityCA", ".Controller.Edge.IdentityKey", ".Controller.Edge.IdentityServerCert", ".Controller.Edge.IdentityCert", ".Controller.WebListener.MinTLSVersion", ".Controller.WebListener.MaxTLSVersion"}
+	expectedNonEmptyStringValues := []*string{&data.Controller.Hostname, &data.ZitiHome, &data.Controller.IdentityCert, &data.Controller.IdentityServerCert, &data.Controller.IdentityKey, &data.Controller.IdentityCA, &data.Controller.ListenerAddress, &data.Controller.Port, &data.Controller.Edge.AdvertisedHostPort, &data.Controller.Edge.ZitiSigningCert, &data.Controller.Edge.ZitiSigningKey, &data.Controller.Edge.ListenerHostPort, &data.Controller.Edge.IdentityCA, &data.Controller.Edge.IdentityKey, &data.Controller.Edge.IdentityServerCert, &data.Controller.Edge.IdentityCert, &data.Controller.WebListener.MinTLSVersion, &data.Controller.WebListener.MaxTLSVersion}
 	expectedNonEmptyTimeFields := []string{".Controller.HealthCheck.Interval", ".Controller.HealthCheck.Timeout", ".Controller.HealthCheck.InitialDelay", ".Controller.Edge.APISessionTimeout", ".Controller.EdgeIdentityDuration", ".Controller.EdgeRouterDuration", ".Controller.WebListener.IdleTimeout", ".Controller.WebListener.ReadTimeout", ".Controller.WebListener.WriteTimeout"}
 	expectedNonEmptyTimeValues := []*time.Duration{&data.Controller.HealthCheck.Interval, &data.Controller.HealthCheck.Timeout, &data.Controller.HealthCheck.InitialDelay, &data.Controller.Edge.APISessionTimeout, &data.Controller.EdgeIdentityDuration, &data.Controller.EdgeRouterDuration, &data.Controller.WebListener.IdleTimeout, &data.Controller.WebListener.ReadTimeout, &data.Controller.WebListener.WriteTimeout}
 
@@ -112,7 +112,7 @@ func TestDefaultEdgeCtrlAdvertisedPort(t *testing.T) {
 		_ = cmd.Execute()
 	})
 
-	assert.Equal(t, expectedPort, data.Controller.Edge.AdvertisedPort)
+	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
 }
 
 // Edge Ctrl Advertised Port should update the edge ctrl port to the custom value when ZITI_EDGE_CONTROLLER_PORT is set
@@ -128,5 +128,5 @@ func TestEdgeCtrlAdvertisedPortValueWhenSet(t *testing.T) {
 		_ = cmd.Execute()
 	})
 
-	assert.Equal(t, expectedPort, data.Controller.Edge.AdvertisedPort)
+	assert.Equal(t, expectedPort, data.Controller.Edge.Port)
 }

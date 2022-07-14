@@ -23,8 +23,8 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
-      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
+      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
+      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
     env_file:
       - ./.env
     networks:
@@ -44,7 +44,7 @@ services:
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     environment:
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
+      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router
       - ZITI_EDGE_ROUTER_ROLES=public
     depends_on:
       - ziti-controller
