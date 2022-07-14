@@ -67,6 +67,18 @@ type DnsMessage struct {
 	Comment  string         `json:"comment,omitempty"`
 }
 
+type resolvConnAddr struct {
+	service string
+}
+
+func (r *resolvConnAddr) Network() string {
+	return "ziti-resolve"
+}
+
+func (r *resolvConnAddr) String() string {
+	return r.service
+}
+
 type resolvConn struct {
 	ctx *hostingContext
 
@@ -222,11 +234,15 @@ func (r *resolvConn) Close() error {
 }
 
 func (r *resolvConn) LocalAddr() net.Addr {
-	return nil
+	return &resolvConnAddr{
+		service: r.ctx.ServiceName(),
+	}
 }
 
 func (r *resolvConn) RemoteAddr() net.Addr {
-	return nil
+	return &resolvConnAddr{
+		service: r.ctx.ServiceName(),
+	}
 }
 
 func (r *resolvConn) SetDeadline(t time.Time) error {
