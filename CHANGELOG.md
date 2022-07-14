@@ -8,6 +8,19 @@ affect SNI support for all REST APIs.
   - Fixes missing identity update in xweb
 - Fabric
   - Fixes missing identity update in xweb
+  - Bug Fixes
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+### Bug Fixes
+* (Fix panic on remote resolve connections)[https://github.com/openziti/edge/pull/1088]
+
+## Fabric
+### Bug Fixes
+* (Logging erroneously indicates conflicting conditions returned from route attempt)[https://github.com/openziti/fabric/issues/446]
 
 # Release 0.26.0
 

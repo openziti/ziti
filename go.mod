@@ -24,8 +24,8 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.1
 	github.com/openziti/channel v0.18.53
-	github.com/openziti/edge v0.22.17
-	github.com/openziti/fabric v0.19.18
+	github.com/openziti/edge v0.22.21
+	github.com/openziti/fabric v0.19.20
 	github.com/openziti/foundation/v2 v2.0.1
 	github.com/openziti/identity v1.0.5
 	github.com/openziti/metrics v1.0.2
@@ -103,7 +103,6 @@ require (
 	github.com/hashicorp/raft v1.3.9 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
-	github.com/jedib0t/go-pretty v4.3.0+incompatible // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
