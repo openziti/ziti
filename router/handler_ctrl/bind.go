@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"runtime/debug"
 	"time"
 )
 
@@ -52,7 +53,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		IdleTime:    30 * time.Second,
 		CloseNotify: self.env.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
-			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during link dial")
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
 		},
 	}
 
@@ -70,7 +71,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		IdleTime:    30 * time.Second,
 		CloseNotify: self.env.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
-			pfxlog.Logger().WithField(logrus.ErrorKey, err).Error("panic during xgress dial")
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during xgress dial")
 		},
 	}
 
