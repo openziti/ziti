@@ -1,8 +1,12 @@
 # Release 0.26.1
 
+There was a missed dependency update for xweb in 0.26.0 that kept SNI from working in HTTP API components. This would
+affect SNI support for all REST APIs.
+
 ## What's New
 - All
   - Identity `alt_server_certs`
+  - Fixes missing identity update in xweb
 - Edge
   - N/A
 - Fabric
