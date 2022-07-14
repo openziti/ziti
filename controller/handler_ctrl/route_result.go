@@ -19,13 +19,13 @@ package handler_ctrl
 import (
 	"bytes"
 	"encoding/binary"
-	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type routeResultHandler struct {
@@ -64,7 +64,6 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 					peerData[uint32(k)] = v
 				}
 			}
-			errCode, _ := msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader)
 
 			rs := &network.RouteStatus{
 				Router:    self.r,
@@ -73,8 +72,12 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 				Success:   success,
 				Err:       rerr,
 				PeerData:  peerData,
-				ErrorCode: &errCode,
 			}
+
+			if errCode, hasErrCode := msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader); hasErrCode {
+				rs.ErrorCode = &errCode
+			}
+
 			routing := self.network.RouteResult(rs)
 			if !routing && attempt != network.SmartRerouteAttempt {
 				go self.notRoutingCircuit(circuitId)
