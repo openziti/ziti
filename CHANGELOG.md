@@ -1,3 +1,27 @@
+# Release 0.26.1
+
+There was a missed dependency update for xweb in 0.26.0 that kept SNI from working in HTTP API components. This would
+affect SNI support for all REST APIs.
+
+## What's New
+- Edge
+  - Fixes missing identity update in xweb
+- Fabric
+  - Fixes missing identity update in xweb
+  - Bug Fixes
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+
+## Edge
+### Bug Fixes
+* (Fix panic on remote resolve connections)[https://github.com/openziti/edge/pull/1088]
+
+## Fabric
+### Bug Fixes
+* (Logging erroneously indicates conflicting conditions returned from route attempt)[https://github.com/openziti/fabric/issues/446]
+
 # Release 0.26.0
 
 ## Breaking Changes
