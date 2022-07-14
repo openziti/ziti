@@ -17,12 +17,14 @@
 package edge
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/go-openapi/runtime"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/openziti/foundation/v2/stringz"
 	"io"
 	"net/url"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,7 +32,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
@@ -291,7 +292,7 @@ func newSubListCmdForEntityType(entityType string, subType string, outputF outpu
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
-			err := runListChilden(entityType, subType, options, outputF)
+			err := runListChildren(entityType, subType, options, outputF)
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{},
@@ -337,20 +338,6 @@ func ListEntitiesOfType(entityType string, params url.Values, logJSON bool, out 
 
 	children, err := jsonParsed.S("data").Children()
 	return children, api.GetPaging(jsonParsed), err
-}
-
-func toInt64(c *gabs.Container, path string, errorHolder errorz.ErrorHolder) int64 {
-	data := c.S(path).Data()
-	if data == nil {
-		errorHolder.SetError(errors.Errorf("%v not found", path))
-		return 0
-	}
-	val, ok := data.(float64)
-	if !ok {
-		errorHolder.SetError(errors.Errorf("%v not a number, it's a %v", path, reflect.TypeOf(data)))
-		return 0
-	}
-	return int64(val)
 }
 
 // ListEntitiesOfType queries the Ziti Controller for entities of the given type
@@ -802,87 +789,6 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 	return nil
 }
 
-func outputPostureCheck(o *api.Options, entity *gabs.Container) error {
-	id, _ := entity.Path("id").Data().(string)
-	typeId, _ := entity.Path("typeId").Data().(string)
-	name, _ := entity.Path("name").Data().(string)
-	roleAttributes := entity.Path("roleAttributes").String()
-
-	config := ""
-
-	switch typeId {
-	case "MFA":
-		timeoutFloat, _ := entity.Path("timeoutSeconds").Data().(float64)
-		timeout := int64(timeoutFloat)
-		promptOnWake, _ := entity.Path("promptOnWake").Data().(bool)
-		promptOnUnlock, _ := entity.Path("promptOnUnlock").Data().(bool)
-		ignoreLegacyEndpoints, _ := entity.Path("ignoreLegacyEndpoints").Data().(bool)
-		config = fmt.Sprintf("timeout: %d, wake: %t, unlock: %t, ignore: %t", timeout, promptOnWake, promptOnUnlock, ignoreLegacyEndpoints)
-	case "MAC":
-		containers, _ := entity.Path("macAddresses").Children()
-		config = containerArrayToString(containers, 4)
-	case "DOMAIN":
-		containers, _ := entity.Path("domains").Children()
-		config = containerArrayToString(containers, 4)
-	case "OS":
-		operatingSystems, _ := entity.Path("operatingSystems").Children()
-		config = strings.Join(postureCheckOsToStrings(operatingSystems), ",")
-	case "PROCESS_MULTI":
-		postureCheck := rest_model.PostureCheckProcessMultiDetail{}
-		if err := postureCheck.UnmarshalJSON(entity.Bytes()); err != nil {
-			return err
-		}
-
-		baseConfig := fmt.Sprintf("(SEMANTIC: %s)", *postureCheck.Semantic)
-
-		if _, err := fmt.Fprintf(o.Out, "id: %-10v    type: %-10v    name: %-15v    role attributes: %-10s     param: %v\n", id, typeId, name, roleAttributes, baseConfig); err != nil {
-			return err
-		}
-
-		for _, process := range postureCheck.Processes {
-			process.SignerFingerprints = getEllipsesStrings(process.SignerFingerprints, 4, 2)
-			process.Hashes = getEllipsesStrings(process.Hashes, 4, 2)
-			_, _ = fmt.Fprintf(o.Out, "\t(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)\n", *process.OsType, *process.Path, strings.Join(process.Hashes, ","), strings.Join(process.SignerFingerprints, ", "))
-		}
-
-		return nil
-
-	case "PROCESS":
-		process := entity.Path("process")
-
-		os := process.Path("osType").Data().(string)
-		path := process.Path("path").Data().(string)
-
-		var hashStrings []string
-		if val := process.Path("hashes").Data(); val != nil {
-			hashes := val.([]interface{})
-
-			for _, hash := range hashes {
-				hashStr := hash.(string)
-				hashStrings = append(hashStrings, getEllipsesString(hashStr, 4, 2))
-			}
-		}
-		signerFingerprint := "N/A"
-		if val := process.Path("signerFingerprint").Data(); val != nil {
-			if valStr := val.(string); valStr != "" {
-				signerFingerprint = getEllipsesString(valStr, 4, 2)
-			}
-		}
-
-		if len(hashStrings) == 0 {
-			hashStrings = append(hashStrings, "N/A")
-		}
-
-		config = fmt.Sprintf("\n\t(OS: %s, PATH: %s, HASHES: %s, SIGNER: %s)", os, path, strings.Join(hashStrings, ","), signerFingerprint)
-	}
-
-	if _, err := fmt.Fprintf(o.Out, "id: %-10v    type: %-10v    name: %-15v    role attributes: %-10s     param: %v\n", id, typeId, name, roleAttributes, config); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func getEllipsesString(val string, lead, lag int) string {
 	total := lead + lag + 3
 
@@ -893,27 +799,254 @@ func getEllipsesString(val string, lead, lag int) string {
 	return val[0:lead] + "..." + val[len(val)-lag:]
 }
 
-func getEllipsesStrings(values []string, lead, lag int) []string {
-	var ret []string
-	for _, val := range values {
-		ret = append(ret, getEllipsesString(val, lead, lag))
+func strSliceToStr(strs []string, width int) string {
+	builder := strings.Builder{}
+	for i, str := range strs {
+		if i != 0 {
+			if i%width == 0 {
+				builder.WriteRune('\n')
+			} else {
+				builder.WriteString(", ")
+			}
+		}
+
+		builder.WriteString(str)
 	}
 
-	return ret
+	return builder.String()
 }
 
-func outputPostureChecks(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
-	if o.OutputJSONResponse {
+func strSliceToStrEllipses(strs []string, width, lead, lag int) string {
+	var ret []string
+	for _, str := range strs {
+		ret = append(ret, getEllipsesString(str, lead, lag))
+	}
+	return strSliceToStr(ret, width)
+}
+
+func WrapHardEllipses(str string, wrapLen int) string {
+	newStr := text.WrapHard(str, wrapLen)
+
+	if newStr != str {
+		newStr = newStr[:len(newStr)-3] + "..."
+	}
+
+	return newStr
+}
+
+func outputPostureChecks(options *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+	if options.OutputJSONResponse {
 		return nil
 	}
 
-	for _, entity := range children {
-		if err := outputPostureCheck(o, entity); err != nil {
-			return err
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+	outTable.Style().Options.SeparateRows = true
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true}
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes", "Configuration", "Configuration", "Configuration"}, rowConfigAutoMerge)
+
+	outTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true},
+		{Number: 2, AutoMerge: true},
+		{Number: 3, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
+		{Number: 4, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
+		{Number: 5, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
+		{Number: 6, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses},
+		{Number: 7, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses},
+	})
+
+	for i, entity := range children {
+		json := entity.EncodeJSON()
+		detail, err := rest_model.UnmarshalPostureCheckDetail(bytes.NewBuffer(json), runtime.JSONConsumer())
+
+		id := stringz.OrEmpty(detail.ID())
+		name := stringz.OrEmpty(detail.Name())
+		timeout := "never"
+
+		roleAttributes := strSliceToStr(*detail.RoleAttributes(), 1)
+
+		if roleAttributes == "" {
+			roleAttributes = "<none>"
+		}
+
+		typeStr := detail.TypeID()
+
+		//defeat cell merging by adding a space every other row
+		if i%2 == 0 {
+			roleAttributes = roleAttributes + " "
+			typeStr = typeStr + " "
+		}
+
+		if err != nil {
+			msg := "Error unmarshalling index " + strconv.Itoa(i) + ": " + err.Error()
+			_, _ = options.ErrOutputWriter().Write([]byte(msg))
+		} else {
+			switch detail.TypeID() {
+			case "MFA":
+				mfaDetail := detail.(*rest_model.PostureCheckMfaDetail)
+
+				if mfaDetail.TimeoutSeconds > 0 {
+					timeout = fmt.Sprintf("%ds", mfaDetail.TimeoutSeconds)
+				}
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Timeout",
+					timeout,
+					timeout,
+				}, rowConfigAutoMerge)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Prompt On Wake",
+					mfaDetail.PromptOnWake,
+					mfaDetail.PromptOnWake,
+				}, rowConfigAutoMerge)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Prompt On Unlock",
+					mfaDetail.PromptOnUnlock,
+					mfaDetail.PromptOnUnlock,
+				}, rowConfigAutoMerge)
+
+			case "MAC":
+				macDetail := detail.(*rest_model.PostureCheckMacAddressDetail)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"MAC Address",
+					strSliceToStrEllipses(macDetail.MacAddresses, 3, 3, 3),
+					strSliceToStrEllipses(macDetail.MacAddresses, 3, 3, 3),
+				}, rowConfigAutoMerge)
+			case "DOMAIN":
+				domainDetails := detail.(*rest_model.PostureCheckDomainDetail)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Windows Domain",
+					strSliceToStr(domainDetails.Domains, 3),
+					strSliceToStr(domainDetails.Domains, 3),
+				}, rowConfigAutoMerge)
+			case "OS":
+				osDetails := detail.(*rest_model.PostureCheckOperatingSystemDetail)
+
+				for _, os := range osDetails.OperatingSystems {
+					osType := string(*os.Type)
+
+					for _, version := range os.Versions {
+						outTable.AppendRow(table.Row{
+							id,
+							name,
+							typeStr,
+							roleAttributes,
+							osType,
+							version,
+							version,
+						}, rowConfigAutoMerge)
+					}
+				}
+
+			case "PROCESS_MULTI":
+				procMultiDetail := detail.(*rest_model.PostureCheckProcessMultiDetail)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Semantic",
+					string(*procMultiDetail.Semantic),
+					string(*procMultiDetail.Semantic),
+				}, rowConfigAutoMerge)
+
+				for _, process := range procMultiDetail.Processes {
+					outTable.AppendRow(table.Row{
+						id,
+						name,
+						typeStr,
+						roleAttributes,
+						"Path",
+						stringz.OrEmpty(process.Path),
+						stringz.OrEmpty(process.Path),
+					}, rowConfigAutoMerge)
+
+					outTable.AppendRow(table.Row{
+						id,
+						name,
+						typeStr,
+						roleAttributes,
+						" ",
+						"Hashes",
+						strSliceToStrEllipses(process.Hashes, 3, 4, 4),
+					})
+
+					outTable.AppendRow(table.Row{
+						id,
+						name,
+						typeStr,
+						roleAttributes,
+						" ",
+						"Signers",
+						strSliceToStrEllipses(process.SignerFingerprints, 1, 4, 4),
+					})
+				}
+
+			case "PROCESS":
+				procDetail := detail.(*rest_model.PostureCheckProcessDetail)
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Path",
+					stringz.OrEmpty(procDetail.Process.Path),
+					stringz.OrEmpty(procDetail.Process.Path),
+				}, rowConfigAutoMerge)
+
+				for _, hash := range procDetail.Process.Hashes {
+					outTable.AppendRow(table.Row{
+						id,
+						name,
+						typeStr,
+						roleAttributes,
+						"Hash",
+						getEllipsesString(hash, 4, 4),
+						getEllipsesString(hash, 4, 4),
+					}, rowConfigAutoMerge)
+				}
+
+				outTable.AppendRow(table.Row{
+					id,
+					name,
+					typeStr,
+					roleAttributes,
+					"Signer",
+					getEllipsesString(procDetail.Process.SignerFingerprint, 4, 4),
+					getEllipsesString(procDetail.Process.SignerFingerprint, 4, 4),
+				}, rowConfigAutoMerge)
+			}
 		}
 	}
-	pagingInfo.Output(o)
-
+	api.RenderTable(options, outTable, pagingInfo)
 	return nil
 }
 
@@ -1183,7 +1316,7 @@ func runListRoleAttributes(entityType string, o *api.Options) error {
 	return nil
 }
 
-func runListChilden(parentType, childType string, o *api.Options, outputF outputFunction) error {
+func runListChildren(parentType, childType string, o *api.Options, outputF outputFunction) error {
 	idOrName := o.Args[0]
 	parentId, err := mapNameToID(parentType, idOrName, *o)
 	if err != nil {
@@ -1255,20 +1388,6 @@ func runListSummary(o *api.Options) error {
 	api.RenderTable(o, t, nil)
 
 	return nil
-}
-
-func containerArrayToString(containers []*gabs.Container, limit int) string {
-	var values []string
-	for _, container := range containers {
-		value := container.Data().(string)
-		values = append(values, value)
-	}
-	valuesLength := len(values)
-	if valuesLength > limit {
-		values = values[:limit-1]
-		values = append(values, fmt.Sprintf(" and %d more", valuesLength-limit))
-	}
-	return strings.Join(values, ",")
 }
 
 func runListPostureCheckTypes(o *api.Options) error {
@@ -1351,7 +1470,7 @@ func outputAuthPolicies(options *api.Options, children []*gabs.Container, info *
 		err := detail.UnmarshalJSON(json)
 
 		if err != nil {
-			msg := "Error unmarshaling index " + strconv.Itoa(i) + ": " + err.Error()
+			msg := "Error unmarshalling index " + strconv.Itoa(i) + ": " + err.Error()
 			_, _ = options.ErrOutputWriter().Write([]byte(msg))
 		} else {
 			secondarySigner := "<none>"
