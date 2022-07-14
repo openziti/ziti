@@ -479,8 +479,6 @@ github.com/influxdata/influxdb-client-go/v2 v2.2.2/go.mod h1:fa/d1lAdUHxuc1jedx3
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d h1:/WZQPMZNsjZ7IlCpsLGdQBINg5bxKQ1K1sh6awxLtkA=
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d/go.mod h1:qj24IKcXYK6Iy9ceXlo3Tc+vtHo9lIhSX5JddghvEPo=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible/go.mod h1:XemHduiw8R651AF9Pt4FwCTKeG3oo7hrHJAoznj9nag=
 github.com/jedib0t/go-pretty/v6 v6.2.4 h1:wdaj2KHD2W+mz8JgJ/Q6L/T5dB7kyqEFI16eLq7GEmk=
 github.com/jedib0t/go-pretty/v6 v6.2.4/go.mod h1:+nE9fyyHGil+PuISTCrp7avEdo6bqoMwqZnuiK2r2a0=
 github.com/jellevandenhooff/dkim v0.0.0-20150330215556-f50fe3d243e1/go.mod h1:E0B/fFc00Y+Rasa88328GlI/XbtyysCtTHZS8h7IrBU=
@@ -673,10 +671,10 @@ github.com/openziti/channel v0.18.53 h1:YEGsizInlHoEPITJye/HZqTMykRvuzIoa4wrFMcS
 github.com/openziti/channel v0.18.53/go.mod h1:6vF4dSujAqDsmJU5+g82pXvZRiagqq972E0uNA4LG9o=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.22.17 h1:2m/vDyAWBvc4UrdezsHi+U/cj5UiyXUk9HO2xTCSl8M=
-github.com/openziti/edge v0.22.17/go.mod h1:47Gh0EtHBL1D0LLixrWg/XvStkJAtrY0EkYzOReeROw=
-github.com/openziti/fabric v0.19.18 h1:2FkP3Vutn2eZLtVSQBV8XHx3sQ/H8fJl0WU7RNim5DA=
-github.com/openziti/fabric v0.19.18/go.mod h1:SLFSzdEqkCwJoW7nmUdeo2bvfDObK6M1h+fBQ8oUiGk=
+github.com/openziti/edge v0.22.21 h1:tPvj5CcdFGIEY6jSkM2dhbRht4n+X4J0ISa5qwgJ9Dg=
+github.com/openziti/edge v0.22.21/go.mod h1:viW34MBUDZnLGW2mpHTnR89LHXYbmi74Umt2C6v6sNg=
+github.com/openziti/fabric v0.19.20 h1:3hd6q2pCwGdGRySvoFAdBeyMQwMNHr5ZdIwsJLUzoDA=
+github.com/openziti/fabric v0.19.20/go.mod h1:SLFSzdEqkCwJoW7nmUdeo2bvfDObK6M1h+fBQ8oUiGk=
 github.com/openziti/foundation/v2 v2.0.1 h1:HKYwAyxlZ4zmlt0t9Y/v6SWso0qUaeWapkWOlQDKPEk=
 github.com/openziti/foundation/v2 v2.0.1/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.5 h1:PKW1tj0ctOWgscL3P4gKiVFfKrP6dYeP0U6R8Aw6DKM=
