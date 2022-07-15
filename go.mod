@@ -23,22 +23,22 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.1
-	github.com/openziti/channel v0.18.53
-	github.com/openziti/edge v0.22.21
-	github.com/openziti/fabric v0.19.20
+	github.com/openziti/channel v0.18.54
+	github.com/openziti/edge v0.22.23
+	github.com/openziti/fabric v0.19.21
 	github.com/openziti/foundation/v2 v2.0.1
 	github.com/openziti/identity v1.0.5
 	github.com/openziti/metrics v1.0.2
-	github.com/openziti/sdk-golang v0.16.98
+	github.com/openziti/sdk-golang v0.16.99
 	github.com/openziti/storage v0.1.14
-	github.com/openziti/transport/v2 v2.0.16
+	github.com/openziti/transport/v2 v2.0.17
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.22.5
+	github.com/shirou/gopsutil/v3 v3.22.6
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
