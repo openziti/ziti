@@ -127,7 +127,7 @@ func TestGetZitiCtrlListenerAddressWhenSet(t *testing.T) {
 
 func TestGetZitiCtrlNameWhenUnset(t *testing.T) {
 	// Setup
-	varName := "ZITI_CONTROLLER_NAME"
+	varName := "ZITI_CONTROLLER_HOSTNAME"
 
 	// Ensure the variable is unset
 	_ = os.Unsetenv(varName)
@@ -144,7 +144,7 @@ func TestGetZitiCtrlNameWhenUnset(t *testing.T) {
 
 func TestGetZitiCtrlNameWhenSet(t *testing.T) {
 	// Setup
-	varName := "ZITI_CONTROLLER_NAME"
+	varName := "ZITI_CONTROLLER_HOSTNAME"
 	expectedValue := "MyController"
 
 	// Set the env variable

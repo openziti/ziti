@@ -7,9 +7,8 @@ services:
     ports:
       - "1280:1280"
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - EXTERNAL_DNS=MacBook-Pro.local
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
     networks:
       zitiblue:
         aliases:
@@ -27,12 +26,17 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
     env_file:
       - ./.env
     networks:
-      - fauxinternet
+      zitiblue:
+        aliases:
+          - ziti-edge-controller-init-container
+      zitired:
+        aliases:
+          - ziti-edge-controller-init-container
     volumes:
       - ziti-fs:/openziti
     entrypoint:
@@ -45,10 +49,10 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router
-      - ZITI_EDGE_ROUTER_ROLES=public
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router"
+      - "ZITI_EDGE_ROUTER_ROLES=public"
     ports:
       - "3022:3022"
     networks:
@@ -64,11 +68,11 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router-wss
-      - ZITI_EDGE_ROUTER_PORT=3023
-      - ZITI_EDGE_ROUTER_ROLES=public
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_ROUTER_HOSTNAME=ziti-edge-router-wss"
+      - "ZITI_EDGE_ROUTER_PORT=3023"
+      - "ZITI_EDGE_ROUTER_ROLES=public"
     ports:
       - "3023:3023"
     networks:
@@ -84,9 +88,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-fabric-router-br
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_ROUTER_HOSTNAME=ziti-fabric-router-br"
     #ports:
     #  - 3024:3024
     networks:
@@ -102,9 +106,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-red
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-red"
     #ports:
     #  - 3025:3025
     networks:
@@ -119,9 +123,9 @@ services:
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_HOSTNAME}"
-      - ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-blue
+      - "ZITI_CONTROLLER_HOSTNAME=${ZITI_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_CONTROLLER_HOSTNAME=${ZITI_EDGE_CONTROLLER_HOSTNAME}"
+      - "ZITI_EDGE_ROUTER_HOSTNAME=ziti-private-blue"
     #ports:
     #  - 3026:3026
     networks:
@@ -145,8 +149,8 @@ services:
   ziti-console:
     image: openziti/zac
     environment:
-      - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
-      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
+      - "ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert"
+      - "ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key"
     ports:
       - "1408:1408"
       - "8443:8443"

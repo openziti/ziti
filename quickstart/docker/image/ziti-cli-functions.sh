@@ -354,9 +354,7 @@ function generateEnvFile {
 
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_CTRL_PORT-}" == "" ]]; then export ZITI_CTRL_PORT="6262"; fi
-
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_NETWORK-}"; fi
-
   if [[ "${ZITI_ZAC_HOSTNAME-}" == "" ]]; then export ZITI_ZAC_HOSTNAME="${ZITI_ZAC_RAWNAME}"; fi
 
   if [[ "${ZITI_BIN_ROOT-}" == "" ]]; then

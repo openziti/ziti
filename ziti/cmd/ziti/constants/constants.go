@@ -52,7 +52,7 @@ const (
 const (
 	ZitiHomeVarName                              = "ZITI_HOME"
 	ZitiHomeVarDescription                       = "Root home directory for Ziti related files"
-	ZitiCtrlHostnameVarName                      = "ZITI_CONTROLLER_NAME"
+	ZitiCtrlHostnameVarName                      = "ZITI_CONTROLLER_HOSTNAME"
 	ZitiCtrlHostnameVarDescription               = "The advertised hostname of the Ziti Controller"
 	ZitiCtrlPortVarName                          = "ZITI_CTRL_PORT"
 	ZitiCtrlPortVarDescription                   = "The port of the Ziti Controller"

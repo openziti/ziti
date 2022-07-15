@@ -13,7 +13,7 @@ import (
 func getZitiEnvironmentVariables() []string {
 	return []string{
 		"ZITI_HOME",
-		"ZITI_CONTROLLER_NAME",
+		"ZITI_CONTROLLER_HOSTNAME",
 		"ZITI_CTRL_PORT",
 		"ZITI_EDGE_ROUTER_HOSTNAME",
 		"ZITI_EDGE_ROUTER_PORT",
