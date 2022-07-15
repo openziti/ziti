@@ -843,18 +843,18 @@ func outputPostureChecks(options *api.Options, children []*gabs.Container, pagin
 	outTable.SetStyle(table.StyleRounded)
 	outTable.Style().Options.SeparateRows = true
 
-	rowConfigAutoMerge := table.RowConfig{AutoMerge: true}
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
 
 	outTable.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes", "Configuration", "Configuration", "Configuration"}, rowConfigAutoMerge)
 
 	outTable.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 1, AutoMerge: true},
-		{Number: 2, AutoMerge: true},
-		{Number: 3, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
-		{Number: 4, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
-		{Number: 5, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses},
-		{Number: 6, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses},
-		{Number: 7, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses},
+		{Number: 1, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 2, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 3, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 4, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 5, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 6, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 7, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
 	})
 
 	for i, entity := range children {
