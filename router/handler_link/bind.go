@@ -102,7 +102,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 			ch:               binding.GetChannel(),
 			latencySemaphore: concurrenz.NewSemaphore(2),
 		}
-
 		channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
 	} else if self.trackLatency {
 		log.Info("link destination does not support heartbeats, using latency probe")
@@ -192,6 +191,8 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 	now := time.Now().UnixMilli()
 	if self.firstSent != 0 && (now-self.firstSent > 30000) && (now-self.lastResponse > 30000) {
 		log.Warn("heartbeat not received in time, link may be unhealthy")
+		self.latencyMetric.Clear()
+		self.latencyMetric.Update(88888888888)
 	}
 	go self.checkQueueTime()
 }

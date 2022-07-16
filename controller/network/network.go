@@ -966,12 +966,11 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 		if latency, ok := metrics.Histograms[metricId]; ok {
 			latencyCost = int64(latency.Mean)
 			found = true
-		}
 
-		metricId = "link." + link.Id + ".queue_time"
-		if latency, ok := metrics.Histograms[metricId]; ok {
-			latencyCost += int64(latency.Mean)
-			found = true
+			metricId = "link." + link.Id + ".queue_time"
+			if queueTime, ok := metrics.Histograms[metricId]; ok {
+				latencyCost += int64(queueTime.Mean)
+			}
 		}
 
 		if found {
