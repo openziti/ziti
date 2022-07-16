@@ -37,6 +37,7 @@ const (
 	FieldTerminatorCost           = "cost"
 	FieldTerminatorPrecedence     = "precedence"
 	FieldServerPeerData           = "peerData"
+	FieldTerminatorHostId         = "hostId"
 )
 
 type Terminator struct {
@@ -50,6 +51,7 @@ type Terminator struct {
 	Cost           uint16
 	Precedence     string
 	PeerData       xt.PeerData
+	HostId         string
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -98,7 +100,7 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.InstanceSecret = bucket.Get([]byte(FieldTerminatorInstanceSecret))
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
-
+	entity.HostId = bucket.GetStringWithDefault(FieldTerminatorHostId, "")
 	data := bucket.GetBucket(FieldServerPeerData)
 	if data != nil {
 		entity.PeerData = make(map[uint32][]byte)
@@ -135,6 +137,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetRequiredString(FieldTerminatorAddress, entity.Address)
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
+	ctx.SetString(FieldTerminatorHostId, entity.HostId)
 
 	if ctx.ProceedWithSet(FieldServerPeerData) {
 		_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
@@ -220,6 +223,7 @@ func (store *terminatorStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldTerminatorBinding, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
 	store.AddSymbol(FieldTerminatorInstanceId, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorHostId, ast.NodeTypeString)
 
 	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)

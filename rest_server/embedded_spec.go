@@ -1872,6 +1872,9 @@ func init() {
         "cost": {
           "$ref": "#/definitions/terminatorCost"
         },
+        "hostId": {
+          "type": "string"
+        },
         "instanceId": {
           "type": "string"
         },
@@ -1911,7 +1914,8 @@ func init() {
             "instanceId",
             "cost",
             "precedence",
-            "dynamicCost"
+            "dynamicCost",
+            "hostId"
           ],
           "properties": {
             "address": {
@@ -1925,6 +1929,9 @@ func init() {
             },
             "dynamicCost": {
               "$ref": "#/definitions/terminatorCost"
+            },
+            "hostId": {
+              "type": "string"
             },
             "instanceId": {
               "type": "string"
@@ -1965,6 +1972,9 @@ func init() {
         },
         "cost": {
           "$ref": "#/definitions/terminatorCost"
+        },
+        "hostId": {
+          "type": "string"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
@@ -2011,6 +2021,9 @@ func init() {
         },
         "cost": {
           "$ref": "#/definitions/terminatorCost"
+        },
+        "hostId": {
+          "type": "string"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
@@ -6051,6 +6064,9 @@ func init() {
         "cost": {
           "$ref": "#/definitions/terminatorCost"
         },
+        "hostId": {
+          "type": "string"
+        },
         "instanceId": {
           "type": "string"
         },
@@ -6090,7 +6106,8 @@ func init() {
             "instanceId",
             "cost",
             "precedence",
-            "dynamicCost"
+            "dynamicCost",
+            "hostId"
           ],
           "properties": {
             "address": {
@@ -6104,6 +6121,9 @@ func init() {
             },
             "dynamicCost": {
               "$ref": "#/definitions/terminatorCost"
+            },
+            "hostId": {
+              "type": "string"
             },
             "instanceId": {
               "type": "string"
@@ -6144,6 +6164,9 @@ func init() {
         },
         "cost": {
           "$ref": "#/definitions/terminatorCost"
+        },
+        "hostId": {
+          "type": "string"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"
@@ -6190,6 +6213,9 @@ func init() {
         },
         "cost": {
           "$ref": "#/definitions/terminatorCost"
+        },
+        "hostId": {
+          "type": "string"
         },
         "precedence": {
           "$ref": "#/definitions/terminatorPrecedence"

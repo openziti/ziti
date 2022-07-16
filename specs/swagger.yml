@@ -1370,6 +1370,7 @@ definitions:
           - cost
           - precedence
           - dynamicCost
+          - hostId
         properties:
           serviceId:
             type: string
@@ -1391,6 +1392,8 @@ definitions:
             $ref: '#/definitions/terminatorPrecedence'
           dynamicCost:
             $ref: '#/definitions/terminatorCost'
+          hostId:
+            type: string
   terminatorCreate:
     type: object
     required:
@@ -1418,6 +1421,8 @@ definitions:
         $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
+      hostId:
+        type: string
   terminatorUpdate:
     type: object
     required:
@@ -1440,6 +1445,8 @@ definitions:
         $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
+      hostId:
+        type: string
   terminatorPatch:
     type: object
     properties:
@@ -1457,6 +1464,8 @@ definitions:
         $ref: '#/definitions/terminatorPrecedence'
       tags:
         $ref: '#/definitions/tags'
+      hostId:
+        type: string
 
   terminatorCost:
     type: integer

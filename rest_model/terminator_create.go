@@ -54,6 +54,9 @@ type TerminatorCreate struct {
 	// cost
 	Cost *TerminatorCost `json:"cost,omitempty"`
 
+	// host Id
+	HostID string `json:"hostId,omitempty"`
+
 	// instance Id
 	InstanceID string `json:"instanceId,omitempty"`
 

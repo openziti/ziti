@@ -63,4 +63,5 @@ message Terminator {
   uint32 precedence = 9;
   map<uint32, bytes> peerData = 10;
   map<string, TagValue> tags = 11;
+  string hostId = 12;
 }

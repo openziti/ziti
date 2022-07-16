@@ -39,6 +39,7 @@ type Terminator struct {
 	Cost           uint16
 	Precedence     xt.Precedence
 	PeerData       map[uint32][]byte
+	HostId         string
 }
 
 func (entity *Terminator) GetServiceId() string {
@@ -91,6 +92,7 @@ func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.E
 	entity.PeerData = boltTerminator.PeerData
 	entity.Cost = boltTerminator.Cost
 	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
+	entity.HostId = boltTerminator.HostId
 	entity.FillCommon(boltTerminator)
 	return nil
 }
@@ -111,6 +113,7 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		Cost:           entity.Cost,
 		Precedence:     precedence,
 		PeerData:       entity.PeerData,
+		HostId:         entity.HostId,
 	}
 }
 
@@ -255,6 +258,7 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 		Precedence:     precedence,
 		PeerData:       entity.PeerData,
 		Tags:           tags,
+		HostId:         entity.HostId,
 	}
 
 	return proto.Marshal(msg)
@@ -287,6 +291,7 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		Cost:           uint16(msg.Cost),
 		Precedence:     precedence,
 		PeerData:       msg.PeerData,
+		HostId:         msg.HostId,
 	}, nil
 }
 

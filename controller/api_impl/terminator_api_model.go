@@ -43,6 +43,7 @@ func MapCreateTerminatorToModel(terminator *rest_model.TerminatorCreate) *networ
 		InstanceId:     terminator.InstanceID,
 		InstanceSecret: terminator.InstanceSecret,
 		Precedence:     xt.GetPrecedenceForName(string(terminator.Precedence)),
+		HostId:         terminator.HostID,
 	}
 
 	if terminator.Cost != nil {
@@ -63,6 +64,7 @@ func MapUpdateTerminatorToModel(id string, terminator *rest_model.TerminatorUpda
 		Binding:    stringz.OrEmpty(terminator.Binding),
 		Address:    stringz.OrEmpty(terminator.Address),
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
+		HostId:     terminator.HostID,
 	}
 
 	if terminator.Cost != nil {
@@ -83,6 +85,7 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 		Binding:    terminator.Binding,
 		Address:    terminator.Address,
 		Precedence: xt.GetPrecedenceForName(string(terminator.Precedence)),
+		HostId:     terminator.HostID,
 	}
 
 	if terminator.Cost != nil {
@@ -114,7 +117,6 @@ func MapTerminatorToRestEntity(n *network.Network, _ api.RequestContext, e model
 }
 
 func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
-
 	service, err := n.Managers.Services.Read(terminator.Service)
 	if err != nil {
 		return nil, err
@@ -139,6 +141,7 @@ func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator
 		InstanceID:  &terminator.InstanceId,
 		Cost:        &cost,
 		DynamicCost: &dynamicCost,
+		HostID:      &terminator.HostId,
 	}
 
 	precedence := terminator.Precedence

@@ -54,6 +54,9 @@ type TerminatorUpdate struct {
 	// cost
 	Cost *TerminatorCost `json:"cost,omitempty"`
 
+	// host Id
+	HostID string `json:"hostId,omitempty"`
+
 	// precedence
 	Precedence TerminatorPrecedence `json:"precedence,omitempty"`
 
