@@ -2,17 +2,11 @@ package events
 
 import (
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/fabric/events"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/cowslice"
+	"github.com/openziti/storage/boltz"
 	"time"
 )
-
-func init() {
-	events.RegisterEventType(ApiSessionEventNS, registerApiSessionEventHandler)
-	events.RegisterEventType(SessionEventNS, registerSessionEventHandler)
-	events.RegisterEventType(EntityCountEventNS, registerEntityCountEventHandler)
-}
 
 func AddSessionEventHandler(handler SessionEventHandler) {
 	cowslice.Append(sessionEventHandlerRegistry, handler)
@@ -30,7 +24,14 @@ func RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {
 	cowslice.Delete(apiSessionEventHandlerRegistry, handler)
 }
 
-func Init(dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) {
+func Init(n *network.Network, dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) {
+	n.GetEventDispatcher().RegisterEventType(ApiSessionEventNS, registerApiSessionEventHandler)
+	n.GetEventDispatcher().RegisterEventType(SessionEventNS, registerSessionEventHandler)
+	n.GetEventDispatcher().RegisterEventType(EntityCountEventNS, registerEntityCountEventHandler)
+
+	n.GetEventDispatcher().RegisterEventHandlerFactory("file", edgeFileEventLoggerFactory{})
+	n.GetEventDispatcher().RegisterEventHandlerFactory("stdout", edgeStdOutLoggerFactory{})
+
 	stores.ApiSession.AddListener(boltz.EventCreate, apiSessionCreated)
 	stores.ApiSession.AddListener(boltz.EventDelete, apiSessionDeleted)
 

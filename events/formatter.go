@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-func init() {
-	events.RegisterEventHandlerType("file", edgeFileEventLoggerFactory{})
-	events.RegisterEventHandlerType("stdout", edgeStdOutLoggerFactory{})
-}
-
 type edgeFormatterFactory struct{}
 
 func (f edgeFormatterFactory) NewLoggingHandler(format string, buffer int, out io.WriteCloser) (interface{}, error) {

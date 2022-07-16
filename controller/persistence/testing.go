@@ -24,6 +24,8 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
+	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/events"
 	tests "github.com/openziti/fabric/tests"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
@@ -34,13 +36,6 @@ import (
 	"testing"
 )
 
-type testConfig struct {
-	ctx             *TestContext
-	options         *network.Options
-	metricsRegistry metrics.Registry
-	versionProvider versions.VersionProvider
-}
-
 func newTestConfig(ctx *TestContext) *testConfig {
 	options := network.DefaultOptions()
 	options.MinRouterCost = 0
@@ -50,7 +45,20 @@ func newTestConfig(ctx *TestContext) *testConfig {
 		options:         options,
 		metricsRegistry: metrics.NewRegistry("test", nil),
 		versionProvider: tests.NewVersionProviderTest(),
+		eventDispatcher: events.NewDispatcher(ctx.closeNotify),
 	}
+}
+
+type testConfig struct {
+	ctx             *TestContext
+	options         *network.Options
+	metricsRegistry metrics.Registry
+	versionProvider versions.VersionProvider
+	eventDispatcher *events.Dispatcher
+}
+
+func (self *testConfig) GetEventDispatcher() event.Dispatcher {
+	return self.eventDispatcher
 }
 
 func (self *testConfig) GetId() *identity.TokenId {
