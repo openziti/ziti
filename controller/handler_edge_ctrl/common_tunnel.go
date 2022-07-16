@@ -132,6 +132,7 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 			IdentityId:     self.identity.Id,
 			ConfigTypes:    self.handler.getAppEnv().Managers.ConfigType.MapConfigTypeNamesToIds(configTypes, self.identity.Id),
 			LastActivityAt: time.Now(),
+			IPAddress:      self.handler.getChannel().Underlay().GetRemoteAddr().String(),
 		}
 
 		var err error
