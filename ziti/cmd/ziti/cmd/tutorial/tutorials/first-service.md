@@ -52,8 +52,8 @@ Finally, in case you've run this tutorial before or have done other experimentat
 ziti edge delete service echo
 ziti edge delete identities founder-laptop echo-server
 ziti edge delete service-policies where true
-ziti edge delete edge-router-policies where true
-ziti edge delete service-edge-router-policies where true 
+ziti edge delete edge-router-policies where 'isSystem = false'
+ziti edge delete service-edge-router-policies where true
 ```
 
 # Setting up the Echo Service

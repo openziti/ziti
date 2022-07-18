@@ -1,3 +1,138 @@
+# Release 0.26.2
+
+## What's New
+- Transport
+  - WS/WSS Identity Support 
+- Identity
+  - Alternate Server Certificate Support
+- Edge
+  - N/A
+- Fabric
+  - N/A
+- Ziti CLI
+  - Improvements to `ziti edge list posture-check` output
+- SDK Golang
+  - N/A
+
+## Transport
+### WS/WSS Identity Support
+
+The binding `ws` and `wss` in the transport library now use identity for server certificates. Prior to this release
+`ws` and `wss` would load the `server_cert` and `key` field from files only. Both now support an optional field named
+`identity`. If not specified, the root `identity` field will be used. If specified it will be used for the specified
+`ws` or `wss` binding. Since this field is processed by the [identity library](https://github.com/openziti/identity)
+it supports all the private key and certificate sources that the identity framework supports (file, pem, hsm, etc.).
+Additionally it also enables SNI support for `ws` and `wss` listeners.
+
+```yaml
+transport:
+  ws:
+    writeTimeout:      10
+    readTimeout:       5
+    idleTimeout:       5
+    pongTimeout:       60
+    pingInterval:      54
+    handshakeTimeout:  10
+    readBufferSize:    4096
+    writeBufferSize:   4096
+    enableCompression: false
+    identity:
+      server_cert:          ./certs/er1.server.cert.pem
+      server_key:                  ./certs/key.pem
+```
+
+Example: Relying on in the root `server_cert` and `alt_server_cert` field
+```yaml
+v: 3
+
+identity:
+  cert:                 ./certs/er1.client.cert.pem
+  server_cert:          ./certs/er1.server.cert.pem
+  key:                  ./certs/er1.key.pem
+  ca:                   ./certs/er1.ca-chain.cert.pem
+  alt_server_certs:
+    - server_cert: ./certs/er1.alt.server.cert.pem
+      server_key:  ./certs/er1.alt.server.cert.pem
+...
+
+transport:
+  ws:
+    writeTimeout:      10
+    readTimeout:       5
+    idleTimeout:       5
+    pongTimeout:       60
+    pingInterval:      54
+    handshakeTimeout:  10
+    readBufferSize:    4096
+    writeBufferSize:   4096
+    enableCompression: false
+```
+
+## Identity
+### Alternate Server Certificate Support
+
+The [identity library](https://github.com/openziti/identity) has been updated to support a new field: `alt_server_certs`
+. This field is an array of objects with `server_cert` and `server_key` fields. `alt_server_certs` is not touched by
+higher level Ziti automations to renew certificates and is intended for manual or externally automated use. It allows
+additional server certificates to be used for the controller and routers with separate private keys. It is useful in
+scenarios where routers or controllers are exposed using certificates signed by public CAs (i.e. Let's Encrypt).
+
+The `server_cert` and `server_key` work the same as the root identity properties of the same name. In any single
+`server_cert` source that provides a chain, it assumed that all leaf-certificates are based on the private key in
+`server_key`. If `server_key` is not defined, the default root `server_key` will be used. The identity library will use
+the certificate chains and private key pairs specified in `alt_server_certs` when generating a TLS configuration via
+`ServerTLSConfig()`. All identity sources are viable: `pem`, `file`, etc.
+
+Go Identity Config Struct Definition:
+```go
+type Config struct {
+	Key            string       `json:"key" yaml:"key" mapstructure:"key"`
+	Cert           string       `json:"cert" yaml:"cert" mapstructure:"cert"`
+	ServerCert     string       `json:"server_cert,omitempty" yaml:"server_cert,omitempty" mapstructure:"server_cert,omitempty"`
+	ServerKey      string       `json:"server_key,omitempty" yaml:"server_key,omitempty" mapstructure:"server_key,omitempty"`
+	AltServerCerts []ServerPair `json:"alt_server_certs,omitempty" yaml:"alt_server_certs,omitempty" mapstructure:"alt_server_certs,omitempty"`
+	CA             string       `json:"ca,omitempty" yaml:"ca,omitempty" mapstructure:"ca"`
+}
+```
+
+JSON Example:
+
+```json
+{
+  "cert": "./ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem",
+  "key": "./ziti/etc/ca/intermediate/private/ctrl.key.pem",
+  "server_cert": "./ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem",
+  "server_key": "./ziti/etc/ca/intermediate/certs/ctrl-server.key.pem",
+  "ca": "./ziti/etc/ca/intermediate/certs/ca-chain.cert.pem",
+  "alt_server_certs": [
+    {
+      "server_cert": "./ziti/etc/ca/intermediate/certs/alt01-ctrl-server.cert.pem",
+      "server_key": "./ziti/etc/ca/intermediate/certs/alt01-ctrl-server.key.pem"
+    },
+    {
+      "server_cert": "pem:-----BEGIN CERTIFICATE-----\nIIGBjCCA+6gAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwgZcxCzAJBgNVBAYTAlVT...",
+      "server_key": "pem:-----BEGIN CERTIFICATE-----\nMIIEuDCCAqCgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwgYsxCzAJBgNVBAYTAlVT..."
+    }
+  ]
+}
+```
+
+YAML Example:
+
+```yaml
+cert: "./ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem"
+key: "./ziti/etc/ca/intermediate/private/ctrl.key.pem"
+server_cert: "./ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem"
+server_key: "./ziti/etc/ca/intermediate/certs/ctrl-server.key.pem"
+ca: "./ziti/etc/ca/intermediate/certs/ca-chain.cert.pem"
+alt_server_certs:
+ - server_cert: "./ziti/etc/ca/intermediate/certs/alt01-ctrl-server.cert.pem"
+   server_key: "./ziti/etc/ca/intermediate/certs/alt01-ctrl-server.key.pem"
+ - server_cert: "pem:-----BEGIN CERTIFICATE-----\nIIGBjCCA+6gAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwgZcxCzAJBgNVBAYTAlVT..."
+   server_key: "pem:-----BEGIN CERTIFICATE-----\nMIIEuDCCAqCgAwIBAgICEAAwDQYJKoZIhvcNAQELBQAwgYsxCzAJBgNVBAYTAlVT..."
+```
+
+
 # Release 0.26.1
 
 There was a missed dependency update for xweb in 0.26.0 that kept SNI from working in HTTP API components. This would
@@ -16,11 +151,11 @@ affect SNI support for all REST APIs.
 
 ## Edge
 ### Bug Fixes
-* (Fix panic on remote resolve connections)[https://github.com/openziti/edge/pull/1088]
+* [Fix panic on remote resolve connections](https://github.com/openziti/edge/pull/1088)
 
 ## Fabric
 ### Bug Fixes
-* (Logging erroneously indicates conflicting conditions returned from route attempt)[https://github.com/openziti/fabric/issues/446]
+* [Logging erroneously indicates conflicting conditions returned from route attempt](https://github.com/openziti/fabric/issues/446)
 
 # Release 0.26.0
 
