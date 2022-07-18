@@ -109,6 +109,7 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		PeerData:       ctx.req.PeerData,
 		Precedence:     ctx.req.GetXtPrecedence(),
 		Cost:           uint16(ctx.req.Cost),
+		HostId:         ctx.session.Id,
 	}
 
 	cmd := &model.CreateEdgeTerminatorCmd{Env: self.appEnv, Entity: terminator}

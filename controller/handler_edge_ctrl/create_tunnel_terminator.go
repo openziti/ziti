@@ -107,6 +107,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		PeerData:       ctx.req.PeerData,
 		Precedence:     ctx.req.GetXtPrecedence(),
 		Cost:           uint16(ctx.req.Cost),
+		HostId:         ctx.session.Id,
 	}
 
 	n := self.appEnv.GetHostController().GetNetwork()
