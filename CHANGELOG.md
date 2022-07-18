@@ -5,13 +5,37 @@
 - Edge
   - N/A
 - Fabric
-  - N/A
+  - Allow attributing usage to hosting identities
+  - Capture IP/Port of edge routers creating api sessions
+  - Report high link latency when heartbeats time out
+  - Bug Fixes
 - Ziti CLI
   - N/A
 - SDK Golang
   - N/A
 - Transport
   - WS/WSS no longer require client certificate
+
+## Fabric
+### Allow attributing usage to hosting endpoints
+Terminator now has a Host ID, similar to the session Client ID. This can be used by higher levels to associate an id 
+with the terminator. The edge sets this field to the hosting session id. 
+Circuits now also track which terminator they are using, with a new terminatorId field. 
+These two changes together allow usage to be attributed to hosting entities as well
+as dialing entities.
+
+### Capture IP/Port of edge routers creatign api sessions
+When an edge router creates an API session, the ip:port of the edge router control channel will be captured.
+
+### Report high link latency when heartbeats time out
+Previously when latency probes/heatbeats timed out, we wouldn't update the link latency. 
+Now, link latency will be set to 88888888888ns (or ~88seconds). This will help keep
+these links from being used. The use of this marker value will also let timeouts be 
+identitied.
+
+### Bug Fixes
+
+* [Circuits on single router which is deleted are ophaned](https://github.com/openziti/fabric/issues/452)
 
 # Release 0.26.2
 

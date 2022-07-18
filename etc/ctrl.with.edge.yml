@@ -50,17 +50,14 @@ ctrl:
 #events:
 #  jsonLogger:
 #    subscriptions:
+#      - type: fabric.circuits
+#      - type: fabric.links
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
-#        metricFilter: .*pool.*
-#      - type: fabric.circuits
-#        include:
-#          - created
+#        metricFilter: .*
 #      - type: edge.sessions
-#        include:
-#          - created
 #      - type: edge.apiSessions
 #      - type: fabric.usage
 #      - type: services

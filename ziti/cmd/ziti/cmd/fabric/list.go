@@ -100,12 +100,13 @@ func outputCircuits(o *api.Options, children []*gabs.Container, pagingInfo *api.
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Client", "Service", "Path"})
+	t.AppendHeader(table.Row{"ID", "Client", "Service", "Terminator", "Path"})
 
 	for _, entity := range children {
 		id := api.GetJsonString(entity, "id")
 		client := api.GetJsonString(entity, "clientId")
 		service := api.GetJsonString(entity, "service.name")
+		terminatorId := api.GetJsonString(entity, "terminator.id")
 
 		path := strings.Builder{}
 
@@ -131,7 +132,7 @@ func outputCircuits(o *api.Options, children []*gabs.Container, pagingInfo *api.
 			}
 		}
 
-		t.AppendRow(table.Row{id, client, service, path.String()})
+		t.AppendRow(table.Row{id, client, service, terminatorId, path.String()})
 	}
 
 	api.RenderTable(o, t, pagingInfo)
@@ -231,7 +232,7 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Instance", "Cost", "Precedence", "Dynamic Cost"})
+	t.AppendHeader(table.Row{"ID", "Service", "Router", "Binding", "Address", "Instance", "Cost", "Precedence", "Dynamic Cost", "Host ID"})
 
 	for _, entity := range children {
 		id := api.GetJsonString(entity, "id")
@@ -243,8 +244,9 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 		staticCost := api.GetJsonString(entity, "cost")
 		precedence := api.GetJsonString(entity, "precedence")
 		dynamicCost := api.GetJsonString(entity, "dynamicCost")
+		hostId := api.GetJsonString(entity, "hostId")
 
-		t.AppendRow(table.Row{id, service, router, binding, address, instanceId, staticCost, precedence, dynamicCost})
+		t.AppendRow(table.Row{id, service, router, binding, address, instanceId, staticCost, precedence, dynamicCost, hostId})
 	}
 	api.RenderTable(o, t, pagingInfo)
 	return nil
