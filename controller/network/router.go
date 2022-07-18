@@ -270,6 +270,8 @@ func (self *RouterManager) HandleRouterDelete(id string) {
 	} else {
 		log.Debug("deleted router not connected, no further action required")
 	}
+
+	self.network.routerDeleted(id)
 }
 
 func (self *RouterManager) UpdateCachedRouter(id string) {

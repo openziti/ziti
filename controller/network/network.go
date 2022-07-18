@@ -1056,6 +1056,25 @@ func (network *Network) Inspect(name string) *string {
 	return nil
 }
 
+func (network *Network) routerDeleted(routerId string) {
+	circuits := network.GetAllCircuits()
+	for _, circuit := range circuits {
+		if circuit.HasRouter(routerId) {
+			path := circuit.Path
+
+			// If we're either the initiator, terminator (or both), cleanup the circuit since
+			// we won't be able to re-establish it, and we'll never get a circuit fault
+			if path.Nodes[0].Id == routerId || path.Nodes[len(path.Nodes)-1].Id == routerId {
+				if err := network.RemoveCircuit(circuit.Id, true); err != nil {
+					pfxlog.Logger().WithField("routerId", routerId).
+						WithField("circuitId", circuit.Id).
+						WithError(err).Error("unable to remove circuit after router was deleted")
+				}
+			}
+		}
+	}
+}
+
 var DbSnapshotTooFrequentError = dbSnapshotTooFrequentError{}
 
 type dbSnapshotTooFrequentError struct{}

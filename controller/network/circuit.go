@@ -46,12 +46,12 @@ func (self *Circuit) cost() int64 {
 	return cost
 }
 
-func (self *Circuit) HasRouter(r *Router) bool {
+func (self *Circuit) HasRouter(routerId string) bool {
 	if self == nil || self.Path == nil {
 		return false
 	}
 	for _, node := range self.Path.Nodes {
-		if node.Id == r.Id {
+		if node.Id == routerId {
 			return true
 		}
 	}

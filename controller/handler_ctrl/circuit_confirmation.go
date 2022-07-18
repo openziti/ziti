@@ -17,12 +17,12 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type circuitConfirmationHandler struct {
@@ -44,7 +44,7 @@ func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ ch
 	confirm := &ctrl_pb.CircuitConfirmation{}
 	if err := proto.Unmarshal(msg.Body, confirm); err == nil {
 		for _, circuitId := range confirm.CircuitIds {
-			if circuit, found := self.n.GetCircuit(circuitId); found && circuit.HasRouter(self.r) {
+			if circuit, found := self.n.GetCircuit(circuitId); found && circuit.HasRouter(self.r.Id) {
 				log.WithField("circuitId", circuitId).Debug("circuit found, ignoring")
 			} else {
 				go self.sendUnroute(circuitId)
