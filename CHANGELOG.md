@@ -1,3 +1,18 @@
+# Release 0.26.3
+
+## What's New
+- 
+- Edge
+  - N/A
+- Fabric
+  - N/A
+- Ziti CLI
+  - N/A
+- SDK Golang
+  - N/A
+- Transport
+  - WS/WSS no longer require client certificate
+
 # Release 0.26.2
 
 ## What's New
