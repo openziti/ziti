@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 	"sort"
 	"strings"
@@ -31,9 +32,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
-	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/logcontext"
-	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/v2/debugz"
@@ -58,6 +57,7 @@ type Config interface {
 	GetCommandDispatcher() command.Dispatcher
 	GetDb() boltz.Db
 	GetVersionProvider() versions.VersionProvider
+	GetEventDispatcher() event.Dispatcher
 	GetCloseNotify() <-chan struct{}
 }
 
@@ -113,7 +113,7 @@ func NewNetwork(config Config) (*Network, error) {
 		circuitController:     newCircuitController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
-		eventDispatcher:       event.NewDispatcher(config.GetCloseNotify()),
+		eventDispatcher:       config.GetEventDispatcher(),
 		traceController:       trace.NewController(config.GetCloseNotify()),
 		closeNotify:           config.GetCloseNotify(),
 		strategyRegistry:      xt.GlobalRegistry(),
@@ -136,7 +136,6 @@ func NewNetwork(config Config) (*Network, error) {
 	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
 	network.Managers.Inspections.network = network
 
-	fabricMetrics.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics()
@@ -148,12 +147,11 @@ func (network *Network) relayControllerMetrics() {
 		timer := time.NewTicker(network.options.MetricsReportInterval)
 		defer timer.Stop()
 
-		dispatcher := fabricMetrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
 		for {
 			select {
 			case <-timer.C:
 				if msg := network.metricsRegistry.Poll(); msg != nil {
-					dispatcher.AcceptMetrics(msg)
+					network.eventDispatcher.AcceptMetricsMsg(msg)
 				}
 			case <-network.closeNotify:
 				return
@@ -321,26 +319,38 @@ func (network *Network) DisconnectRouter(r *Router) {
 	}
 }
 
-func (network *Network) NotifyExistingLink(id, linkProtocol string, srcRouter *Router, dstRouterId string) (bool, error) {
+func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) (bool, error) {
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
+		network.NotifyLinkIdEvent(id, event.LinkFromRouterDisconnectedDest)
 		return false, errors.New("destination router not connected")
 	}
-	_, created := network.linkController.routerReportedLink(id, linkProtocol, srcRouter, dst)
+	link, created := network.linkController.routerReportedLink(id, linkProtocol, dialAddress, srcRouter, dst)
+	if created {
+		network.NotifyLinkEvent(link, event.LinkFromRouterNew)
+	} else {
+		network.NotifyLinkEvent(link, event.LinkFromRouterKnown)
+	}
 	return created, nil
 }
 
-func (network *Network) LinkConnected(id string, connected bool) error {
-	if l, found := network.linkController.get(id); found {
-		if connected {
-			if state := l.CurrentState(); state != nil && state.Mode != Pending {
-				return errors.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", id, state.Mode)
-			}
-
-			l.addState(newLinkState(Connected))
-			return nil
+func (network *Network) LinkConnected(msg *ctrl_pb.LinkConnected) error {
+	if l, found := network.linkController.get(msg.Id); found {
+		if state := l.CurrentState(); state != nil && state.Mode != Pending {
+			return errors.Errorf("link [l/%v] state is %v, not pending, cannot mark connected", msg.Id, state.Mode)
 		}
+
+		l.addState(newLinkState(Connected))
+		network.NotifyLinkConnected(l, msg)
+		return nil
+	}
+	return errors.Errorf("no such link [l/%s]", msg.Id)
+}
+
+func (network *Network) LinkFaulted(id string) error {
+	if l, found := network.linkController.get(id); found {
 		l.addState(newLinkState(Failed))
+		network.NotifyLinkEvent(l, event.LinkFault)
 		return nil
 	}
 	return errors.Errorf("no such link [l/%s]", id)
@@ -435,12 +445,10 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			return nil, circuitErr
 		}
 
-		cost := terminator.GetRouteCost()
-
 		// 4: Create Path
 		path, pathErr := network.CreatePathWithNodes(pathNodes)
 		if pathErr != nil {
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, &cost, pathErr.Cause())
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, terminator, pathErr.Cause())
 			network.ServiceDialOtherError(serviceId)
 			return nil, pathErr
 		}
@@ -464,7 +472,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		if circuitErr != nil {
 			logger.WithError(circuitErr).Warn("route attempt for circuit failed")
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, path, &cost, circuitErr.Cause())
+			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, path, terminator, circuitErr.Cause())
 			attempt++
 			ctx.WithField("attemptNumber", attempt+1)
 			logger = logger.WithField("attemptNumber", attempt+1)
@@ -528,7 +536,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		network.circuitController.add(circuit)
 		creationTimespan := time.Since(startTime)
-		network.CircuitEvent(CircuitCreated, circuit, &creationTimespan, &cost)
+		network.CircuitEvent(event.CircuitCreated, circuit, &creationTimespan)
 
 		logger.WithField("path", circuit.Path).
 			WithField("terminator_local_address", circuit.Path.TerminatorLocalAddr).
@@ -659,20 +667,20 @@ func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string
 func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 	log := pfxlog.Logger().WithField("circuitId", circuitId)
 
-	if ss, found := network.circuitController.get(circuitId); found {
-		for _, r := range ss.Path.Nodes {
-			err := sendUnroute(r, ss.Id, now)
+	if circuit, found := network.circuitController.get(circuitId); found {
+		for _, r := range circuit.Path.Nodes {
+			err := sendUnroute(r, circuit.Id, now)
 			if err != nil {
 				log.Errorf("error sending unroute to [r/%s] (%s)", r.Id, err)
 			}
 		}
-		network.circuitController.remove(ss)
-		network.CircuitEvent(CircuitDeleted, ss, nil, nil)
+		network.circuitController.remove(circuit)
+		network.CircuitEvent(event.CircuitDeleted, circuit, nil)
 
-		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
-			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
+		if strategy, err := network.strategyRegistry.GetStrategy(circuit.Service.TerminatorStrategy); strategy != nil {
+			strategy.NotifyEvent(xt.NewCircuitRemoved(circuit.Terminator))
 		} else if err != nil {
-			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
+			log.Warnf("failed to notify strategy %v of circuit end. invalid strategy (%v)", circuit.Service.TerminatorStrategy, err)
 		}
 
 		log.Debug("removed circuit")
@@ -787,7 +795,7 @@ func (network *Network) Run() {
 			network.smart()
 
 		case <-network.closeNotify:
-			fabricMetrics.RemoveMetricsEventHandler(network)
+			network.eventDispatcher.RemoveMetricsMessageHandler(network)
 			network.metricsRegistry.DisposeAll()
 			return
 		}
@@ -909,7 +917,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) err
 
 			log.Info("rerouted circuit")
 
-			network.CircuitEvent(CircuitUpdated, circuit, nil, nil)
+			network.CircuitEvent(event.CircuitUpdated, circuit, nil)
 			return nil
 		} else {
 			return err
@@ -940,13 +948,13 @@ func (network *Network) smartReroute(circuit *Circuit, cq *Path, deadline time.T
 
 		if !retry {
 			logrus.Debug("rerouted circuit")
-			network.CircuitEvent(CircuitUpdated, circuit, nil, nil)
+			network.CircuitEvent(event.CircuitUpdated, circuit, nil)
 		}
 	}
 	return retry
 }
 
-func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
+func (network *Network) AcceptMetricsMsg(metrics *metrics_pb.MetricsMessage) {
 	if metrics.SourceId == network.nodeId {
 		return // ignore metrics coming from the controller itself
 	}

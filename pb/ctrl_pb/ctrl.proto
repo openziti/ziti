@@ -106,8 +106,15 @@ message Dial {
   string routerVersion = 5;
 }
 
+message LinkConn {
+  string id = 1;
+  string localAddr = 2;
+  string remoteAddr = 3;
+}
+
 message LinkConnected {
   string id = 1;
+  repeated LinkConn conns = 2;
 }
 
 message RouterLinks {
@@ -116,6 +123,7 @@ message RouterLinks {
     string destRouterId = 2;
     string linkProtocol = 3;
     repeated string linkCostTags = 4;
+    string dialAddress = 5;
   }
 
   repeated RouterLink links = 1;

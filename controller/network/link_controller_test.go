@@ -73,5 +73,5 @@ func TestNeighbors(t *testing.T) {
 }
 
 func newTestLink(id string, linkProtocol string) *Link {
-	return newLink(id, linkProtocol, 0)
+	return newLink(id, linkProtocol, "tcp:localhost:1234", 0)
 }

@@ -19,8 +19,10 @@ package network
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/info"
+	"time"
 )
 
 func (network *Network) assemble() {
@@ -34,29 +36,28 @@ func (network *Network) assemble() {
 			for _, missingLink := range missingLinks {
 				network.linkController.add(missingLink)
 
-				for _, listener := range missingLink.Dst.Listeners {
-					if listener.Protocol() != missingLink.Protocol {
-						continue
-					}
-					dial := &ctrl_pb.Dial{
-						LinkId:       missingLink.Id,
-						Address:      listener.AdvertiseAddress(),
-						RouterId:     missingLink.Dst.Id,
-						LinkProtocol: listener.Protocol(),
-					}
+				dial := &ctrl_pb.Dial{
+					LinkId:       missingLink.Id,
+					Address:      missingLink.DialAddress,
+					RouterId:     missingLink.Dst.Id,
+					LinkProtocol: missingLink.Protocol,
+				}
 
-					if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {
-						dial.RouterVersion = missingLink.Dst.VersionInfo.Version
-					}
+				if versionInfo := missingLink.Dst.VersionInfo; versionInfo != nil {
+					dial.RouterVersion = missingLink.Dst.VersionInfo.Version
+				}
 
-					if err = protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
-						log.WithError(err).Error("unexpected error sending dial")
-					} else {
-						log.WithField("linkId", dial.LinkId).
-							WithField("srcRouterId", missingLink.Src.Id).
-							WithField("dstRouterId", missingLink.Dst.Id).
-							Info("sending link dial")
-					}
+				if err = protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
+					log.WithField("linkId", missingLink.Id).
+						WithField("srcRouterId", missingLink.Src.Id).
+						WithField("dstRouterId", missingLink.Dst.Id).
+						WithError(err).Error("unexpected error sending dial")
+				} else {
+					log.WithField("linkId", missingLink.Id).
+						WithField("srcRouterId", missingLink.Src.Id).
+						WithField("dstRouterId", missingLink.Dst.Id).
+						Info("sending link dial")
+					network.NotifyLinkEvent(missingLink, event.LinkDialed)
 				}
 			}
 		} else {
@@ -65,6 +66,55 @@ func (network *Network) assemble() {
 
 		network.linkController.clearExpiredPending(network.options.PendingLinkTimeout)
 	}
+}
+
+func (network *Network) NotifyLinkEvent(link *Link, eventType event.LinkEventType) {
+	linkEvent := &event.LinkEvent{
+		Namespace:   event.LinkEventsNs,
+		EventType:   eventType,
+		Timestamp:   time.Now(),
+		LinkId:      link.Id,
+		SrcRouterId: link.Src.Id,
+		DstRouterId: link.Dst.Id,
+		Protocol:    link.Protocol,
+		Cost:        link.GetStaticCost(),
+		DialAddress: link.DialAddress,
+	}
+	network.eventDispatcher.AcceptLinkEvent(linkEvent)
+}
+
+func (network *Network) NotifyLinkConnected(link *Link, msg *ctrl_pb.LinkConnected) {
+	linkEvent := &event.LinkEvent{
+		Namespace:   event.LinkEventsNs,
+		EventType:   event.LinkConnected,
+		Timestamp:   time.Now(),
+		LinkId:      link.Id,
+		SrcRouterId: link.Src.Id,
+		DstRouterId: link.Dst.Id,
+		Protocol:    link.Protocol,
+		Cost:        link.GetStaticCost(),
+		DialAddress: link.DialAddress,
+	}
+
+	for _, conn := range msg.Conns {
+		linkEvent.Connections = append(linkEvent.Connections, &event.LinkConnection{
+			Id:         conn.Id,
+			LocalAddr:  conn.LocalAddr,
+			RemoteAddr: conn.RemoteAddr,
+		})
+	}
+
+	network.eventDispatcher.AcceptLinkEvent(linkEvent)
+}
+
+func (network *Network) NotifyLinkIdEvent(linkId string, eventType event.LinkEventType) {
+	linkEvent := &event.LinkEvent{
+		Namespace: event.LinkEventsNs,
+		EventType: eventType,
+		Timestamp: time.Now(),
+		LinkId:    linkId,
+	}
+	network.eventDispatcher.AcceptLinkEvent(linkEvent)
 }
 
 func (network *Network) clean() {

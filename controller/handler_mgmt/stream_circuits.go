@@ -20,14 +20,14 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/events"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"google.golang.org/protobuf/proto"
 )
 
 type streamCircuitsHandler struct {
 	network        *network.Network
-	streamHandlers []network.CircuitEventHandler
+	streamHandlers []event.CircuitEventHandler
 }
 
 func newStreamCircuitsHandler(network *network.Network) *streamCircuitsHandler {
@@ -41,12 +41,12 @@ func (*streamCircuitsHandler) ContentType() int32 {
 func (handler *streamCircuitsHandler) HandleReceive(_ *channel.Message, ch channel.Channel) {
 	circuitsStreamHandler := &CircuitsStreamHandler{ch: ch}
 	handler.streamHandlers = append(handler.streamHandlers, circuitsStreamHandler)
-	events.AddCircuitEventHandler(circuitsStreamHandler)
+	handler.network.GetEventDispatcher().AddCircuitEventHandler(circuitsStreamHandler)
 }
 
 func (handler *streamCircuitsHandler) HandleClose(channel.Channel) {
 	for _, listener := range handler.streamHandlers {
-		events.RemoveCircuitEventHandler(listener)
+		handler.network.GetEventDispatcher().RemoveCircuitEventHandler(listener)
 	}
 }
 
@@ -54,29 +54,32 @@ type CircuitsStreamHandler struct {
 	ch channel.Channel
 }
 
-func (handler *CircuitsStreamHandler) AcceptCircuitEvent(netEvent *network.CircuitEvent) {
+func (handler *CircuitsStreamHandler) AcceptCircuitEvent(e *event.CircuitEvent) {
 	eventType := mgmt_pb.StreamCircuitEventType_CircuitCreated
-	if netEvent.Type == network.CircuitUpdated {
+	if e.EventType == event.CircuitUpdated {
 		eventType = mgmt_pb.StreamCircuitEventType_PathUpdated
-	} else if netEvent.Type == network.CircuitDeleted {
+	} else if e.EventType == event.CircuitDeleted {
 		eventType = mgmt_pb.StreamCircuitEventType_CircuitDeleted
+	} else if e.EventType == event.CircuitFailed {
+		eventType = mgmt_pb.StreamCircuitEventType_CircuitFailed
 	}
 
 	var cts *int64
-	if netEvent.CreationTimespan != nil {
-		ctsv := int64(*netEvent.CreationTimespan)
+	if e.CreationTimespan != nil {
+		ctsv := int64(*e.CreationTimespan)
 		cts = &ctsv
 	}
 
-	event := &mgmt_pb.StreamCircuitsEvent{
+	streamEvent := &mgmt_pb.StreamCircuitsEvent{
 		EventType:        eventType,
-		CircuitId:        netEvent.CircuitId,
-		ClientId:         netEvent.ClientId,
-		ServiceId:        netEvent.ServiceId,
+		CircuitId:        e.CircuitId,
+		ClientId:         e.ClientId,
+		ServiceId:        e.ServiceId,
+		TerminatorId:     e.TerminatorId,
 		CreationTimespan: cts,
-		Path:             NewPath(netEvent.Path),
+		Path:             NewPath(&e.Path),
 	}
-	handler.sendEvent(event)
+	handler.sendEvent(streamEvent)
 }
 
 func (handler *CircuitsStreamHandler) sendEvent(event *mgmt_pb.StreamCircuitsEvent) {
@@ -97,16 +100,15 @@ func (handler *CircuitsStreamHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Error("unexpected error closing mgmt channel")
 	}
-	events.RemoveCircuitEventHandler(handler)
 }
 
-func NewPath(path *network.Path) *mgmt_pb.Path {
+func NewPath(path *event.CircuitPath) *mgmt_pb.Path {
 	mgmtPath := &mgmt_pb.Path{}
-	for _, r := range path.Nodes {
-		mgmtPath.Nodes = append(mgmtPath.Nodes, r.Id)
+	for _, routerId := range path.Nodes {
+		mgmtPath.Nodes = append(mgmtPath.Nodes, routerId)
 	}
-	for _, l := range path.Links {
-		mgmtPath.Links = append(mgmtPath.Links, l.Id)
+	for _, linkId := range path.Links {
+		mgmtPath.Links = append(mgmtPath.Links, linkId)
 	}
 	mgmtPath.TerminatorLocalAddress = path.TerminatorLocalAddr
 	return mgmtPath

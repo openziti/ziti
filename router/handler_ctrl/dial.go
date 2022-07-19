@@ -24,8 +24,8 @@ import (
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/goroutines"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -96,7 +96,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 		if link, err := self.dialers[0].Dial(dial); err == nil {
 			if existingLink, success := self.registry.DialSucceeded(link); success {
 				log.Info("link registered")
-				if err := self.sendLinkMessage(dial.LinkId); err != nil {
+				if err := self.sendLinkMessage(link); err != nil {
 					log.WithError(err).Error("error sending link message ")
 				}
 			} else if existingLink != nil {
@@ -114,8 +114,11 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 	}
 }
 
-func (self *dialHandler) sendLinkMessage(linkId string) error {
-	linkMsg := &ctrl_pb.LinkConnected{Id: linkId}
+func (self *dialHandler) sendLinkMessage(link xlink.Xlink) error {
+	linkMsg := &ctrl_pb.LinkConnected{
+		Id:    link.Id().Token,
+		Conns: link.GetAddresses(),
+	}
 	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrl.Channel()); err != nil {
 		return errors.Wrap(err, "error sending link message")
 	}

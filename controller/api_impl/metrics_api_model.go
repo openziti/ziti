@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
@@ -34,12 +35,14 @@ type MetricsModelMapper interface {
 }
 
 type metricsResultMapper struct {
+	network           *network.Network
 	format            string
 	includeTimestamps bool
 }
 
-func NewMetricsModelMapper(format string, includeTimestamps bool) MetricsModelMapper {
+func NewMetricsModelMapper(n *network.Network, format string, includeTimestamps bool) MetricsModelMapper {
 	return &metricsResultMapper{
+		network:           n,
 		format:            format,
 		includeTimestamps: includeTimestamps,
 	}
@@ -51,13 +54,13 @@ func (self *metricsResultMapper) MapInspectResultValueToMetricsResult(inspectRes
 	msg := &metrics_pb.MetricsMessage{}
 	if err := json.Unmarshal([]byte(inspectResultValue.Value), msg); err == nil {
 
-		var metricEvents []events.MetricsEvent
+		var metricEvents []event.MetricsEvent
 
-		adapter := events.NewFilteredMetricsAdapter(nil, nil, events.MetricsHandlerF(func(event *events.MetricsEvent) {
+		adapter := self.network.GetEventDispatcher().NewFilteredMetricsAdapter(nil, nil, event.MetricsEventHandlerF(func(event *event.MetricsEvent) {
 			metricEvents = append(metricEvents, *event)
 		}))
 
-		adapter.AcceptMetrics(msg)
+		adapter.AcceptMetricsMsg(msg)
 
 		switch self.format {
 		case "json":
@@ -101,7 +104,7 @@ func (self *metricsResultMapper) MapInspectResultToMetricsResult(inspectResult *
 	case "json":
 		var js []any
 		for _, mg := range r {
-			for _, m := range mg.([]events.MetricsEvent) {
+			for _, m := range mg.([]event.MetricsEvent) {
 				js = append(js, m)
 			}
 		}

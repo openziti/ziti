@@ -28,7 +28,7 @@ type Circuit struct {
 	Id         string
 	ClientId   string
 	Service    *Service
-	Terminator xt.Terminator
+	Terminator xt.CostedTerminator
 	Path       *Path
 	Rerouting  concurrenz.AtomicBoolean
 	PeerData   xt.PeerData

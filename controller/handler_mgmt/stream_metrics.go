@@ -20,10 +20,9 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/handler_common"
-	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -33,7 +32,7 @@ import (
 
 type streamMetricsHandler struct {
 	network        *network.Network
-	streamHandlers []metrics.Handler
+	streamHandlers []event.MetricsMessageHandler
 }
 
 func newStreamMetricsHandler(network *network.Network) *streamMetricsHandler {
@@ -63,12 +62,12 @@ func (handler *streamMetricsHandler) HandleReceive(msg *channel.Message, ch chan
 	}
 
 	handler.streamHandlers = append(handler.streamHandlers, metricsStreamHandler)
-	fabricMetrics.AddMetricsEventHandler(metricsStreamHandler)
+	handler.network.GetEventDispatcher().AddMetricsMessageHandler(metricsStreamHandler)
 }
 
 func (handler *streamMetricsHandler) HandleClose(channel.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
-		fabricMetrics.RemoveMetricsEventHandler(streamHandler)
+		handler.network.GetEventDispatcher().RemoveMetricsMessageHandler(streamHandler)
 	}
 }
 
@@ -108,7 +107,7 @@ type MetricsStreamHandler struct {
 	filters []*metricsFilter
 }
 
-func (handler *MetricsStreamHandler) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
+func (handler *MetricsStreamHandler) AcceptMetricsMsg(msg *metrics_pb.MetricsMessage) {
 	if handler.filters == nil {
 		handler.filter(nil, msg)
 		return
@@ -255,5 +254,4 @@ func (handler *MetricsStreamHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Errorf("failure while closing handler")
 	}
-	fabricMetrics.RemoveMetricsEventHandler(handler)
 }

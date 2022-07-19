@@ -17,79 +17,50 @@
 package network
 
 import (
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/event"
 	"github.com/pkg/errors"
 	"time"
-
-	"github.com/openziti/foundation/v2/cowslice"
 )
 
-var CircuitEventHandlerRegistry = cowslice.NewCowSlice(make([]CircuitEventHandler, 0))
-
-func getCircuitEventHandlers() []CircuitEventHandler {
-	return CircuitEventHandlerRegistry.Value().([]CircuitEventHandler)
-}
-
-type CircuitEventType int
-
-const (
-	CircuitCreated CircuitEventType = 1
-	CircuitUpdated CircuitEventType = 2
-	CircuitDeleted CircuitEventType = 3
-	CircuitFailed  CircuitEventType = 4
-)
-
-func (self CircuitEventType) String() string {
-	switch self {
-	case CircuitCreated:
-		return "created"
-	case CircuitUpdated:
-		return "updated"
-	case CircuitDeleted:
-		return "deleted"
-	case CircuitFailed:
-		return "failed"
-	default:
-		return "invalid"
+func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *Path) {
+	if path == nil {
+		return
 	}
-}
-
-var CircuitTypes = []CircuitEventType{CircuitCreated, CircuitUpdated, CircuitDeleted, CircuitFailed}
-
-type CircuitEvent struct {
-	Type             CircuitEventType
-	CircuitId        string
-	ClientId         string
-	ServiceId        string
-	InstanceId       string
-	CreationTimespan *time.Duration
-	Path             *Path
-	Cost             *uint32
-	FailureCause     CircuitFailureCause
-}
-
-func (event *CircuitEvent) Handle() {
-	handlers := getCircuitEventHandlers()
-	for _, handler := range handlers {
-		go handler.AcceptCircuitEvent(event)
+	for _, r := range path.Nodes {
+		e.Path.Nodes = append(e.Path.Nodes, r.Id)
 	}
+	for _, l := range path.Links {
+		e.Path.Links = append(e.Path.Links, l.Id)
+	}
+	e.Path.IngressId = path.IngressId
+	e.Path.EgressId = path.EgressId
+	e.Path.TerminatorLocalAddr = path.TerminatorLocalAddr
+	e.LinkCount = len(path.Links)
 }
 
-type CircuitEventHandler interface {
-	AcceptCircuitEvent(event *CircuitEvent)
-}
+func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *Circuit, creationTimespan *time.Duration) {
+	var cost *uint32
+	if eventType == event.CircuitCreated {
+		c := circuit.Terminator.GetRouteCost()
+		cost = &c
+	}
 
-func (network *Network) CircuitEvent(eventType CircuitEventType, circuit *Circuit, creationTimespan *time.Duration, cost *uint32) {
-	event := &CircuitEvent{
-		Type:             eventType,
+	circuitEvent := &event.CircuitEvent{
+		Namespace:        event.CircuitEventsNs,
+		Version:          event.CircuitEventsVersion,
+		EventType:        eventType,
 		CircuitId:        circuit.Id,
+		Timestamp:        time.Now(),
 		ClientId:         circuit.ClientId,
 		ServiceId:        circuit.Service.Id,
+		TerminatorId:     circuit.Terminator.GetId(),
 		InstanceId:       circuit.Terminator.GetInstanceId(),
 		CreationTimespan: creationTimespan,
-		Path:             circuit.Path,
 		Cost:             cost,
 	}
-	network.eventDispatcher.Dispatch(event)
+	network.fillCircuitPath(circuitEvent, circuit.Path)
+	network.eventDispatcher.AcceptCircuitEvent(circuitEvent)
 }
 
 type CircuitFailureCause string
@@ -142,18 +113,38 @@ func newCircuitErrWrap(cause CircuitFailureCause, err error) CircuitError {
 	}
 }
 
-func (network *Network) CircuitFailedEvent(circuitId string, clientId string, serviceId string, instanceId string, startTime time.Time, path *Path, cost *uint32, cause CircuitFailureCause) {
+func (network *Network) CircuitFailedEvent(circuitId string, clientId string, serviceId string, instanceId string, startTime time.Time, path *Path, t xt.CostedTerminator, cause CircuitFailureCause) {
+	var failureCause *string
+	if strCause := string(cause); strCause != "" {
+		failureCause = &strCause
+	}
+
+	var cost *uint32
+	if t != nil {
+		c := t.GetRouteCost()
+		cost = &c
+	}
+
+	var terminatorId string
+	if t != nil {
+		terminatorId = t.GetId()
+	}
+
 	elapsed := time.Now().Sub(startTime)
-	event := &CircuitEvent{
-		Type:             CircuitFailed,
+	circuitEvent := &event.CircuitEvent{
+		Namespace:        event.CircuitEventsNs,
+		Version:          event.CircuitEventsVersion,
+		EventType:        event.CircuitFailed,
 		CircuitId:        circuitId,
+		Timestamp:        time.Now(),
 		ClientId:         clientId,
 		ServiceId:        serviceId,
+		TerminatorId:     terminatorId,
 		InstanceId:       instanceId,
 		CreationTimespan: &elapsed,
-		Path:             path,
 		Cost:             cost,
-		FailureCause:     cause,
+		FailureCause:     failureCause,
 	}
-	network.eventDispatcher.Dispatch(event)
+	network.fillCircuitPath(circuitEvent, path)
+	network.eventDispatcher.AcceptCircuitEvent(circuitEvent)
 }

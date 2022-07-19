@@ -54,7 +54,7 @@ func (linkController *linkController) has(link *Link) bool {
 	return linkController.linkTable.has(link)
 }
 
-func (linkController *linkController) routerReportedLink(linkId, linkProtocol string, src, dst *Router) (*Link, bool) {
+func (linkController *linkController) routerReportedLink(linkId, linkProtocol, dialAddress string, src, dst *Router) (*Link, bool) {
 	linkController.lock.Lock()
 	defer linkController.lock.Unlock()
 
@@ -62,7 +62,7 @@ func (linkController *linkController) routerReportedLink(linkId, linkProtocol st
 		return link, false
 	}
 
-	link := newLink(linkId, linkProtocol, linkController.initialLatency)
+	link := newLink(linkId, linkProtocol, dialAddress, linkController.initialLatency)
 	link.Src = src
 	link.Dst = dst
 	link.addState(newLinkState(Connected))
@@ -153,7 +153,7 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 						if err != nil {
 							return nil, err
 						}
-						link := newLink(id, listener.Protocol(), linkController.initialLatency)
+						link := newLink(id, listener.Protocol(), listener.AdvertiseAddress(), linkController.initialLatency)
 						link.Src = srcR
 						link.Dst = dstR
 						missingLinks = append(missingLinks, link)

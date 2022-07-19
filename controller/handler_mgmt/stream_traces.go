@@ -17,15 +17,14 @@
 package handler_mgmt
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
+	"google.golang.org/protobuf/proto"
 )
 
 type streamTracesHandler struct {
@@ -52,12 +51,12 @@ func (handler *streamTracesHandler) HandleReceive(msg *channel.Message, ch chann
 	eventHandler := &traceEventsHandler{ch, filter}
 
 	handler.streamHandlers = append(handler.streamHandlers, eventHandler)
-	events.AddTraceEventHandler(eventHandler)
+	trace.AddTraceEventHandler(eventHandler)
 }
 
 func (handler *streamTracesHandler) HandleClose(channel.Channel) {
 	for _, streamHandler := range handler.streamHandlers {
-		events.RemoveTraceEventHandler(streamHandler)
+		trace.RemoveTraceEventHandler(streamHandler)
 	}
 }
 
@@ -97,5 +96,4 @@ func (handler *traceEventsHandler) close() {
 	if err := handler.ch.Close(); err != nil {
 		pfxlog.Logger().WithError(err).Error("unexpected error while closing mgmt channel")
 	}
-	events.RemoveTraceEventHandler(handler)
 }

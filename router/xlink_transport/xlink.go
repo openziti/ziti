@@ -19,9 +19,10 @@ package xlink_transport
 import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 )
 
 type impl struct {
@@ -30,6 +31,7 @@ type impl struct {
 	routerId      string
 	routerVersion string
 	linkProtocol  string
+	dialAddress   string
 	closeNotified concurrenz.AtomicBoolean
 }
 
@@ -70,6 +72,10 @@ func (self *impl) LinkProtocol() string {
 	return self.linkProtocol
 }
 
+func (self *impl) DialAddress() string {
+	return self.dialAddress
+}
+
 func (self *impl) HandleCloseNotification(f func()) {
 	if self.closeNotified.CompareAndSwap(false, true) {
 		f()
@@ -89,7 +95,20 @@ func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 		Id:          self.Id().Token,
 		Split:       false,
 		Protocol:    self.LinkProtocol(),
+		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+	}
+}
+
+func (self *impl) GetAddresses() []*ctrl_pb.LinkConn {
+	localAddr := self.ch.Underlay().GetLocalAddr()
+	remoteAddr := self.ch.Underlay().GetRemoteAddr()
+	return []*ctrl_pb.LinkConn{
+		{
+			Id:         "single",
+			LocalAddr:  localAddr.Network() + ":" + localAddr.String(),
+			RemoteAddr: remoteAddr.Network() + ":" + remoteAddr.String(),
+		},
 	}
 }

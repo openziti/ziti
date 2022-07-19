@@ -18,12 +18,13 @@ package handler_ctrl
 
 import (
 	"errors"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -61,7 +62,7 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 		if link, found := h.network.GetLink(linkId); found {
 			log = log.WithField("linkId", linkId)
 			wasConnected := link.IsUsable()
-			if err := h.network.LinkConnected(linkId, false); err == nil {
+			if err := h.network.LinkFaulted(linkId); err == nil {
 				h.network.LinkChanged(link)
 				otherRouter := link.Src
 				if link.Src.Id == h.r.Id {
@@ -81,6 +82,8 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 			} else {
 				log.WithError(err).Error("error handling link fault")
 			}
+		} else {
+			h.network.NotifyLinkIdEvent(linkId, event.LinkFault)
 		}
 
 	case ctrl_pb.FaultSubject_IngressFault:
