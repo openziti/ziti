@@ -6,6 +6,8 @@
 - Edge
   - N/A
 - Fabric
+  - Link Events
+  - Circuit Event Path Changes
   - Allow attributing usage to hosting identities
   - Capture IP/Port of edge routers creating api sessions
   - Report high link latency when heartbeats time out
@@ -18,6 +20,158 @@
   - WS/WSS no longer require client certificate
 
 ## Fabric
+### Link Events
+
+Link events can now be configured in the controller events configuration.
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.links
+    handler:
+      type: file
+      format: json
+      path: /var/log/ziti-events.log
+```
+
+#### Link Event Types
+
+* `dialed` : Generated when the controller sends a link dial message to a router
+* `connected` : Generated when a router sends a link connected message to the controller
+* `fault` : Generated when a router sends a link fault to the controller
+* `routerLinkNew` : Generated when a router sends a router link message to the controler and the link is new to the controller
+* `routerLinkKnown` : Generated when a router sends a router link message to the controller and the link is known
+* `routerLinkDisconnectedDest` : Generated when a router sends a route link message to the controller and the router on the other side of the link is not currently connected.
+
+
+#### Link Dialed Event Example
+```
+{
+  "namespace": "fabric.links",
+  "event_type": "dialed",
+  "timestamp": "2022-07-15T18:10:19.752766075-04:00",
+  "link_id": "47kGIApCXI29VQoCA1xXWI",
+  "src_router_id": "niY.XmLArx",
+  "dst_router_id": "YPpTEd8JP",
+  "protocol": "tls",
+  "dial_address": "tls:127.0.0.1:4024",
+  "cost": 1
+}
+```
+
+#### Link Connected Example
+```
+{
+  "namespace": "fabric.links",
+  "event_type": "connected",
+  "timestamp": "2022-07-15T18:10:19.973626185-04:00",
+  "link_id": "47kGIApCXI29VQoCA1xXWI",
+  "src_router_id": "niY.XmLArx",
+  "dst_router_id": "YPpTEd8JP",
+  "protocol": "tls",
+  "dial_address": "tls:127.0.0.1:4024",
+  "cost": 1,
+  "connections": [
+    {
+      "id": "ack",
+      "local_addr": "tcp:127.0.0.1:49138",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    },
+    {
+      "id": "payload",
+      "local_addr": "tcp:127.0.0.1:49136",
+      "remote_addr": "tcp:127.0.0.1:4024"
+    }
+  ]
+}
+```
+
+#### Link Fault Example
+````
+{
+  "namespace": "fabric.links",
+  "event_type": "fault",
+  "timestamp": "2022-07-15T18:10:19.973867809-04:00",
+  "link_id": "6slUYCqOB85YTfdiD8I5pl",
+  "src_router_id": "YPpTEd8JP",
+  "dst_router_id": "niY.XmLArx",
+  "protocol": "tls",
+  "dial_address": "tls:127.0.0.1:4023",
+  "cost": 1
+}
+```
+
+#### Router Link Known Example
+````
+{
+  "namespace": "fabric.links",
+  "event_type": "routerLinkKnown",
+  "timestamp": "2022-07-15T18:10:19.974177638-04:00",
+  "link_id": "47kGIApCXI29VQoCA1xXWI",
+  "src_router_id": "niY.XmLArx",
+  "dst_router_id": "YPpTEd8JP",
+  "protocol": "tls",
+  "dial_address": "tls:127.0.0.1:4024",
+  "cost": 1
+}
+```
+
+### Circuit Event Path Changes
+
+* Circuit event paths are now structured, rather than being a string
+* The path structure contains a string list of routers in the path, ordered from initiator to terminator
+* The path structure contains a string list of links in the path, ordered from initiator to terminator
+* The path structure also contains the initiator and terminator xgress instance ids
+* `terminator_local_addr` has been moved inside the nested path structure
+* There is also a new version field, which is set to 2.
+
+Old circuit event:
+```
+{
+  "namespace": "fabric.circuits",
+  "event_type": "created",
+  "circuit_id": "Y4aVR-QfM",
+  "timestamp": "2022-07-19T12:39:21.500700972-04:00",
+  "client_id": "cl5sehx8k000d0agdrqyh9aa4",
+  "service_id": "bnNbAbsiYM",
+  "instance_id": "",
+  "creation_timespan": 812887,
+  "path": "[r/niY.XmLArx]",
+  "terminator_local_address": "",
+  "link_count": 0,
+  "path_cost": 262140,
+  "failure_cause": null
+}
+```
+
+New circuit event:
+```
+{
+  "namespace": "fabric.circuits",
+  "version": 2,
+  "event_type": "created",
+  "circuit_id": "Llm58Bn-J",
+  "timestamp": "2022-07-19T12:41:31.043070164-04:00",
+  "client_id": "cl5sekp6z000dk0gdej54ipgx",
+  "service_id": "bnNbAbsiYM",
+  "terminator_id": "6CNJIXdRQ6mctdzHXEx8nW",
+  "instance_id": "",
+  "creation_timespan": 781618,
+  "path": {
+    "nodes": [
+      "niY.XmLArx"
+    ],
+    "links": null,
+    "ingress_id": "v9yv",
+    "egress_id": "2mOq",
+    "terminator_local_addr": ""
+  },
+  "link_count": 0,
+  "path_cost": 262140
+}
+```
+
 ### Allow attributing usage to hosting endpoints
 Terminator now has a Host ID, similar to the session Client ID. This can be used by higher levels to associate an id 
 with the terminator. The edge sets this field to the hosting session id. 
