@@ -673,8 +673,12 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge v0.22.34 h1:PSbHI+yvTDhaUWuvVT5VWRxPhAHtVPHMZJB8jj746v8=
 github.com/openziti/edge v0.22.34/go.mod h1:azqJN/nTm6pt4YgWUZDwh/bGWYMiDtpFmu4aCQvTdYY=
+github.com/openziti/edge v0.22.35 h1:4zSknVkjQKj3Z2Xof4AM4nN6q3/vJerWg14kcxK2J18=
+github.com/openziti/edge v0.22.35/go.mod h1:C/TyZQa61oJDg7JFAFm/Lzfq8FlT7PYxxqA7oGtmD+8=
 github.com/openziti/fabric v0.19.27 h1:xy++igCRCdoQYiSh8/AKHBJxuex9G7/O7hCy9+ueHWk=
 github.com/openziti/fabric v0.19.27/go.mod h1:4oeFKVqCQan1MjXH7v6je8gO4dCSYbZOW9Ljfi9F8Mw=
+github.com/openziti/fabric v0.19.28 h1:uBh4VeaMEvgm3JMDuLPvg9kq1Am6csXECvbrvrJaxxo=
+github.com/openziti/fabric v0.19.28/go.mod h1:8zgOd4JZGtC+tgscMPJV2WBQLVHLtMZZUAHvfs5eNyk=
 github.com/openziti/foundation/v2 v2.0.1 h1:HKYwAyxlZ4zmlt0t9Y/v6SWso0qUaeWapkWOlQDKPEk=
 github.com/openziti/foundation/v2 v2.0.1/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.5 h1:PKW1tj0ctOWgscL3P4gKiVFfKrP6dYeP0U6R8Aw6DKM=
@@ -813,6 +817,8 @@ github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6Mwd
 github.com/sirupsen/logrus v1.6.0/go.mod h1:7uNnSEd1DgxDLC74fIahvMZmmYsHGZGEOFrfsX/uA88=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
+github.com/sirupsen/logrus v1.9.0 h1:trlNQbNUG3OdDrDil03MCb1H2o9nJ1x4/5LYw7byDE0=
+github.com/sirupsen/logrus v1.9.0/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
