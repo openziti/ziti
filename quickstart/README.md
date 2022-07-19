@@ -105,5 +105,28 @@ Ziti Edge Router:
    
     routerName=edge-router; docker run -d --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_HOSTNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-router.sh edge
 
+# Testing The Quickstarts Locally
+1. Start up the appropriate environment using docker
+   1. For isolated docker-compose
+      1. Simply run `docker-compose up` from the [quickstart docker directory](quickstart/docker)
+   2. For Host it anywhere docker-compose
+      1. Edit the `.env` file to use an external DNS (for example, your localhost)
 
+             ZITI_EDGE_CONTROLLER_HOSTNAME=<your-local-hostname>
+             ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT=<your-local-hostname>:1280
+      2. Run `docker-compose up` from the [quickstart docker directory](quickstart/docker)
+1. In the `TestSimpleWebService` test in [quickstart_test.go](quickstart/quickstart_test.go), update the following test variables with your network details. The values shown are the defaults for testing the docker quickstart deployment.
+   1. ctrlUsername := "admin"
+   2. ctrlPassword := "admin"
+   3. ctrlAddress := "https://ziti-edge-controller:1280"
+   4. hostingRouterName := "ziti-edge-router"
+   5. dialPort := 80
+   6. bindHostAddress := "web-test-blue"
+   7. bindHostPort := 8000
+   8. Run the `TestSimpleWebService` test
+
+          go test <relative-path-to-quickstart-folder> -v -run TestSimpleWebService
+
+          # Example: CD to the ziti/quickstart directory (no relative path needed)
+          go test ./ -v TestSimpleWebService
 
