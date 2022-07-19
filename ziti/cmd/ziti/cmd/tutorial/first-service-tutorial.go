@@ -101,10 +101,10 @@ func (self *firstServiceTutorialOptions) run() error {
 	t.RegisterActionHandlerF("stop-ziti-echo-server", zitiEchoServerActions.Stop)
 
 	showActionHandler := tutorial.NewShowActionHandler()
-	showActionHandler.Add("echo_server_plain.go", plainEchoServerSource)
+	showActionHandler.Add("plain_echo_server.go", plainEchoServerSource)
 	showActionHandler.Add("plain_echo_client.go", plainEchoClientSource)
-	showActionHandler.Add("echo_client_ziti.go", zitiEchoClientSource)
-	showActionHandler.Add("echo_server_ziti.go", zitiEchoServerSource)
+	showActionHandler.Add("ziti_echo_client.go", zitiEchoClientSource)
+	showActionHandler.Add("ziti_echo_server.go", zitiEchoServerSource)
 	t.RegisterActionHandler("show", showActionHandler)
 
 	return t.Run(firstServiceTutorialSource)

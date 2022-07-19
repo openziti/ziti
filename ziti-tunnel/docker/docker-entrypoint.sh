@@ -81,7 +81,7 @@ if [[ -n "${NF_REG_NAME:-}" ]]; then
         fi
     fi
 else
-    echo "ERROR: need NF_REG_NAME env var to save the identity file in mounted volume as ${IDENTITY_FILE}" >&2
+    echo "ERROR: need NF_REG_NAME env var to save the identity file in volume mounted on ${IDENTITIES_DIR}" >&2
     exit 1
 fi
 

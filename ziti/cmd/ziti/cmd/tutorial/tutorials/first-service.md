@@ -82,9 +82,9 @@ So, now Ziti has an echo service, but that service doesn’t go anywhere, and we
 
 ### Plain Echo Service
 
-Let’s start by assuming we don’t want to make any changes to our server software yet. We’re just going to run an echo server which uses the standard library facilities. Let's start that service now. The source can be found [here](../tutorial_plain_echo_server.go).
+Let’s start by assuming we don’t want to make any changes to our server software yet. We’re just going to run an echo server which uses the standard library facilities. Let's start that service now. The source can be found [here](../plain_echo_server.go).
 
-<!---action:show src=tutorial_plain_echo_server.go highlight=go-->
+<!---action:show src=plain_echo_server.go highlight=go-->
 
 
 ```action:run-plain-echo-server
@@ -99,9 +99,9 @@ http://localhost:${port}?input=trees%20are%20tall
 
 to see the output. Or we can run it with the tutorial plain echo client. The client output will be prefixed with plain-echo-client.
 
-The source for the plain client code is very simple, and can be found here: [here](../tutorial_plain_echo_client.go)
+The source for the plain client code is very simple, and can be found here: [here](../plain_echo_client.go)
 
-<!---action:show src=tutorial_plain_echo_client.go highlight=go-->
+<!---action:show src=plain_echo_client.go highlight=go-->
 
 Let's run it and see what the output looks. At this point, we're not sending any traffic over the Ziti network.
 
@@ -145,13 +145,13 @@ In order to use the echo service, we need a client application. Our application 
 <!---action:pause -->
 
 ## SDK Client
-Let's take a look at our SDK client code (viewable [here](../tutorial_ziti_echo_client.go)). If you compare it with the plain version, you'll notice the actual client code is very similar. The main differences are
+Let's take a look at our SDK client code (viewable [here](../ziti_echo_client.go)). If you compare it with the plain version, you'll notice the actual client code is very similar. The main differences are
 
 1. We have to load our configuration, so that we can initialize a Ziti Context
 2. We have to intercept the Dial in the HTTP client, so we can send it through Ziti
 3. Instead of host:port for the address, we use the service name 'echo'
 
-<!---action:show src=tutorial_ziti_echo_client.go highlight=go-->
+<!---action:show src=ziti_echo_client.go highlight=go-->
 
 We can't actually run it yet, because we don't have a configuration for it. As a next step, let's see how we can configure our client, so we can run it.
 
@@ -381,9 +381,9 @@ ziti edge enroll -j echo-server.jwt -o echo-server.json
 
 ## Ziti Server Code
 
-If you look at the server code, viewable [here](../tutorial_ziti_echo_server.go), you should notice very few changes from the plain echo server. The actual request processing code is unchanged. 
+If you look at the server code, viewable [here](../ziti_echo_server.go), you should notice very few changes from the plain echo server. The actual request processing code is unchanged. 
 
-<!---action:show src=tutorial_ziti_echo_server.go highlight=go-->
+<!---action:show src=ziti_echo_server.go highlight=go-->
 
 Let’s try running it and see what happens.
 
