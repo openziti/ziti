@@ -47,9 +47,9 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/openziti/storage/boltz"
@@ -465,7 +465,7 @@ func (ae *AppEnv) InitPersistence() error {
 	})
 
 	ae.Managers = model.InitEntityManagers(ae)
-	events.Init(ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
+	events.Init(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	ae.BoltStores.Identity.AddListener(boltz.EventDelete, func(i ...interface{}) {
