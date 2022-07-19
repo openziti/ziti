@@ -227,8 +227,7 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 		return
 	}
 
-	apiSessionAdded := &edge_ctrl_pb.ApiSessionAdded{
-		IsFullState: false,
+	apiSessionAdded := &edge_ctrl_pb.ApiSessionUpdated{
 		ApiSessions: []*edge_ctrl_pb.ApiSession{apiSessionProto},
 	}
 
