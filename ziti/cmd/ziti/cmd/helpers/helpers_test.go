@@ -218,10 +218,10 @@ func TestGetZitiEdgeCtrlListenerHostPortWhenSet(t *testing.T) {
 func TestGetZitiEdgeCtrlAdvertisedHostPortWhenUnset(t *testing.T) {
 	// Setup
 	edgeCtrlAdvHostPortVarName := "ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
-	extDNSVarName := "EXTERNAL_DNS"
+	advertisedHostname := "ZITI_EDGE_ROUTER_HOSTNAME"
 
 	// Set up env variables
-	_ = os.Unsetenv(extDNSVarName)
+	_ = os.Unsetenv(advertisedHostname)
 	_ = os.Unsetenv(edgeCtrlAdvHostPortVarName)
 	hostname, _ := os.Hostname()
 	expectedValue := hostname + ":1280"
@@ -250,7 +250,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenSet(t *testing.T) {
 	assert.Equal(t, expectedValue, actualValue)
 }
 
-// Ziti Controller advertised host port should be comprised of the controller hostname and controller port
+// Ziti Controller advertised host port should be comprised of the edge controller hostname and edge controller port when the host port var is unset
 func TestGetZitiEdgeCtrlAdvertisedHostPortWhenHostnameAndPortSet(t *testing.T) {
 	// Setup
 	ctrlHostnameVarName := "ZITI_EDGE_CONTROLLER_HOSTNAME"
@@ -260,6 +260,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenHostnameAndPortSet(t *testing.T) {
 	expectedValue := ctrlHostnameValue + ":" + ctrlPortValue
 
 	// Setup the env variables
+	_ = os.Unsetenv("ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT")
 	_ = os.Setenv(ctrlPortVarName, ctrlPortValue)
 	_ = os.Setenv(ctrlHostnameVarName, ctrlHostnameValue)
 
