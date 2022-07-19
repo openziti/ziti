@@ -1,3 +1,4 @@
+
 # Release 0.26.3
 
 ## What's New
@@ -36,6 +37,7 @@ identitied.
 ### Bug Fixes
 
 * [Circuits on single router which is deleted are ophaned](https://github.com/openziti/fabric/issues/452)
+* [API Session Certs not updated on ERs](https://github.com/openziti/edge/issues/1096)
 
 # Release 0.26.2
 
