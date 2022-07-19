@@ -775,7 +775,7 @@ function createPki {
   echo " "
   pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,$(hostname)"
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
-  if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
+  if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS%%:*}"; fi
   pki_allow_list_ip="127.0.0.1"
   if [[ "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
   if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi

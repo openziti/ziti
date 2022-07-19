@@ -97,6 +97,12 @@ func GetZitiEdgeCtrlListenerHostPort() (string, error) {
 
 func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 
+	// Use Advertised hostport  value if set
+	advertHostPort := os.Getenv(constants.ZitiEdgeCtrlAdvertisedHostPortVarName)
+	if advertHostPort != "" {
+		return advertHostPort, nil
+	}
+
 	port, err := GetZitiEdgeCtrlAdvertisedPort()
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlPortVarName)
