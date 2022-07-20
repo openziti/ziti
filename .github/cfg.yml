@@ -1,0 +1,77 @@
+#############################
+# Metricbeat setup
+#############################
+
+#Setup repo
+rpm --import https://artifacts.elastic.co/GPG-KEY-elasticsearch
+
+cat > /etc/yum.repos.d/elasticsearch.repo << DATA
+
+[logstash-6.x]
+name=Elastic repository for 6.x packages
+baseurl=https://artifacts.elastic.co/packages/6.x/yum
+gpgcheck=1
+gpgkey=https://artifacts.elastic.co/GPG-KEY-elasticsearch
+enabled=1
+autorefresh=1
+type=rpm-md
+
+DATA
+
+yum install -y metricbeat
+chkconfig --add metricbeat
+
+# Build config
+cat > /etc/metricbeat/metricbeat.yml << DATA
+
+processors:
+  - add_cloud_metadata: ~
+
+metricbeat.modules:
+- module: system
+  metricsets:
+    - cpu             # CPU usage
+    - load            # CPU load averages
+    - memory          # Memory usage
+    - network         # Network IO
+  enabled: true
+  period: 30s
+  cpu.metrics:  ["percentages"]  # The other available options are normalized_percentages and ticks.
+  core.metrics: ["percentages"]  # The other available option is ticks.
+- module: docker
+  metricsets:
+    - "container"
+    - "cpu"
+    - "diskio"
+    - "healthcheck"
+    - "info"
+    - "image"
+    - "memory"
+    - "network"
+  hosts: ["unix:///var/run/docker.sock"]
+  period: 30s
+  enabled: true
+  # If set to true, replace dots in labels with `_`.
+  labels.dedot: true
+
+output.elasticsearch:
+  # Array of hosts to connect to.
+  hosts: ["${es_host}"]
+
+  # Optional protocol and basic auth credentials.
+  protocol: "https"
+  username: "ecs_metrics"
+  password: "${es_metrics_pass}"
+  index: 'ecs-%%{[beat.version]}-%%{+yyyy.MM.dd}'
+
+setup.template.enabled: true
+setup.template.name: 'ecs-%%{[beat.version]}'
+setup.template.pattern: 'ecs-%%{[beat.version]}-*'
+setup.template.fields: "/etc/metricbeat/fields.yml"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.codec: best_compression
+
+DATA
+
+service metricbeat start --path.home {path}

@@ -36,19 +36,14 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "echo"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "service", "metrics", "--encryption", "on"))
 
-	//workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "metrics-dial", "Dial", "--service-roles", "@metrics", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "metrics-bind", "Bind", "--service-roles", "@metrics", "--identity-roles", "#metrics-host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "echo-servers", "Bind", "--service-roles", "@echo", "--identity-roles", "#service"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "echo-client", "Dial", "--service-roles", "@echo", "--identity-roles", "#client"))
 
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "metrics-routers", "--edge-router-roles", "@metrics-router", "--identity-roles", "#all"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "echo-servers", "--edge-router-roles", "@router-east", "--identity-roles", "#service"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "echo-clients", "--edge-router-roles", "@router-west", "--identity-roles", "#client"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "echo", "--semantic", "AnyOf", "--service-roles", "@echo", "--edge-router-roles", "#all"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "metrics", "--service-roles", "@metrics", "--edge-router-roles", "@metrics-router"))
 
 	workflow.AddAction(component.Stop(models.ControllerTag))
 

@@ -1,3 +1,8 @@
+fields_under_root: true
+fields:
+  build_number: ${build_number}
+  ziti_version: ${ziti_version}
+
 processors:
   - add_cloud_metadata: ~
 
@@ -28,19 +33,20 @@ metricbeat.modules:
 #  # If set to true, replace dots in labels with `_`.
 #  labels.dedot: true
 
+
 output.elasticsearch:
   # Array of hosts to connect to.
-  hosts: ["${host}"]
+  hosts: ["https://ziti-build-metrics.es.us-east-1.aws.found.io:443"] #https://ziti-build-metrics.kb.us-east-1.aws.found.io:443
 
   # Optional protocol and basic auth credentials.
   protocol: "https"
-  username: "${user}"
-  password: "${password}"
-  index: 'ecs-%%{[beat.version]}-%%{+yyyy.MM.dd}'
+  username: "beats_agent" #beats_agent
+  password: "s6eHpUU5K2774xCD" #s6eHpUU5K2774xCD
+  index: 'zt-%{[agent.version]}-%{+yyyy.MM.dd}'
 
 setup.template.enabled: true
-setup.template.name: 'ecs-%%{[beat.version]}'
-setup.template.pattern: 'ecs-%%{[beat.version]}-*'
+setup.template.name: 'zt-%{[agent.version]}'
+setup.template.pattern: 'zt-%{[agent.version]}-*'
 setup.template.fields: "/etc/metricbeat/fields.yml"
 setup.template.settings:
   index.number_of_shards: 1

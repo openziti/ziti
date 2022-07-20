@@ -1,12 +1,9 @@
-//go:build tests
-
 package main
 
 import (
 	"embed"
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/openziti/fablab"
@@ -44,25 +41,6 @@ func (s scaleStrategy) GetEntityCount(entity model.Entity) uint32 {
 		return 4
 	}
 	return 1
-}
-
-func getEnv(key, fallback string) string {
-	if v, ok := os.LookupEnv(key); ok {
-		return v
-	}
-	return fallback
-}
-
-func getConfigDataAndReplace(filePath string, replace map[string]string, replaceEmpties bool) []byte {
-	data := string(getConfigData(filePath))
-
-	for k, v := range replace {
-		if v != "" || replaceEmpties {
-			data = strings.Replace(data, k, v, -1)
-		}
-	}
-
-	return []byte(data)
 }
 
 func getConfigData(filePath string) []byte {
@@ -118,6 +96,9 @@ var m = &model.Model{
 							ConfigName:     "ctrl.yml",
 							PublicIdentity: "ctrl",
 						},
+						"consul": {
+							BinaryName: "consul",
+						},
 					},
 				},
 				"router-east": {
@@ -134,6 +115,9 @@ var m = &model.Model{
 						"echo-server": {
 							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "service"}},
 							PublicIdentity: "echo-server",
+						},
+						"consul": {
+							BinaryName: "consul",
 						},
 					},
 				},
@@ -159,6 +143,9 @@ var m = &model.Model{
 							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
 							PublicIdentity: "echo-client",
 						},
+						"consul": {
+							BinaryName: "consul",
+						},
 					},
 				},
 			},
@@ -167,14 +154,24 @@ var m = &model.Model{
 
 	Actions: model.ActionBinders{
 		"bootstrap": actions.NewBootstrapAction(),
-		"start":     actions.NewStartAction("metricbeat", "metricbeat/data", "metricbeat/logs"),
-		"stop":      model.Bind(component.StopInParallel("*", 15)),
+		"start": actions.NewStartAction(actions.MetricbeatConfig{
+			ConfigPath: "metricbeat",
+			DataPath:   "metricbeat/data",
+			LogPath:    "metricbeat/logs",
+		},
+			actions.ConsulConfig{
+				ServerAddr: os.Getenv("CONSUL_ENDPOINT"),
+				ConfigDir:  "consul",
+				DataPath:   "consul/data",
+			}),
+		"stop": model.Bind(component.StopInParallel("*", 15)),
 	},
 
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"),
+		zitilib_runlevel_0_infrastructure.InstallConsul("*"),
 		semaphore_0.Restart(90 * time.Second),
 	},
 
@@ -191,19 +188,44 @@ var m = &model.Model{
 	Distribution: model.DistributionStages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
+		distribution.DistributeDataWithReplaceCallbacks(
+			"*",
+			string(getConfigData("metricbeat.yml")),
+			"metricbeat/metricbeat.yml",
+			map[string]func(*model.Host) string{
+				"${host}": func(h *model.Host) string {
+					return os.Getenv("ELASTIC_ENDPOINT")
+				},
+				"${user}": func(h *model.Host) string {
+					return os.Getenv("ELASTIC_USERNAME")
+				},
+				"${password}": func(h *model.Host) string {
+					return os.Getenv("ELASTIC_PASSWORD")
+				},
+			},
+		),
+
+		distribution.DistributeDataWithReplaceCallbacks(
+			"*",
+			string(getConfigData("consul.hcl")),
+			"consul/consul.hcl",
+			map[string]func(*model.Host) string{
+				"${public_ip}": func(h *model.Host) string {
+					return h.PublicIp
+				},
+				"${encryption_key}": func(h *model.Host) string {
+					return os.Getenv("CONSUL_ENCRYPTION_KEY")
+				},
+			},
+		),
+		distribution.DistributeData(
+			"#ctrl",
+			getConfigData("ziti.hcl"),
+			"consul/ziti.hcl"),
 		distribution.DistributeData(
 			"*",
-			getConfigDataAndReplace(
-				"metricbeat.yml",
-				map[string]string{
-					"${host}":     getEnv("ELASTIC_HOST", ""),
-					"${user}":     getEnv("ELASTIC_USER", ""),
-					"${password}": getEnv("ELASTIC_PASSWORD", ""),
-				},
-				true,
-			),
-			"metricbeat/metricbeat.yml"),
-
+			[]byte(os.Getenv("CONSUL_AGENT_CERT")),
+			"consul/consul-agent-ca.pem"),
 		rsync.RsyncStaged(),
 	},
 
