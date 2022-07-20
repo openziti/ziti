@@ -207,8 +207,6 @@ func TestSimpleWebService(t *testing.T) {
 
 	// Ensure the controller is reachable
 	waitForController(ctrlAddress)
-	// Give routers time to enroll themselves
-	time.Sleep(5 * time.Second)
 
 	// Authenticate with the controller
 	caCerts, err := rest_util.GetControllerWellKnownCas(ctrlAddress)
