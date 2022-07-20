@@ -42,3 +42,43 @@ message Config {
   JsonMap data = 4;
   map<string, TagValue> tags = 5;
 }
+
+message AuthPolicy {
+  message Primary {
+    message Cert {
+      bool allowed = 1;
+      bool allowExpiredCerts = 2;
+    }
+
+    message Updb {
+      bool allowed = 1;
+      int64 MinPasswordLength = 2;
+      bool RequireSpecialChar = 3;
+      bool requireNumberChar = 4;
+      bool RequireMixedCase = 5;
+      int64 MaxAttempts = 6;
+      int64 LockoutDurationMinutes = 7;
+
+    }
+    message ExtJwt {
+      bool allowed = 1;
+      bool allowAllSigners = 2;
+      repeated string allowedExtJwtSigners = 3;
+
+    }
+    Cert cert = 1;
+    Updb updb = 2;
+    ExtJwt extJwt = 3;
+  }
+
+  message Secondary {
+    bool requireTotp = 1;
+    optional string requiredExtJwtSigner = 2;
+  }
+
+  string id = 1;
+  string name = 2;
+  Primary primary = 3;
+  Secondary secondary = 4;
+  map<string, TagValue> tags = 5;
+}

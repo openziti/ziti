@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"reflect"
 	"strings"
@@ -496,4 +496,12 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 	}
 
 	rc.RespondWithOk(result.Result, meta)
+}
+
+func MapCreate[T models.Entity](f func(T) error, entity T) (string, error) {
+	err := f(entity)
+	if err != nil {
+		return "", err
+	}
+	return entity.GetId(), nil
 }

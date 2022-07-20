@@ -53,7 +53,7 @@ type Managers struct {
 	PostureCheckType        *PostureCheckTypeHandler
 	PostureResponse         *PostureResponseHandler
 	Mfa                     *MfaHandler
-	AuthPolicy              *AuthPolicyHandler
+	AuthPolicy              *AuthPolicyManager
 }
 
 func InitEntityManagers(env Env) *Managers {
@@ -67,7 +67,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.ApiSession = NewApiSessionHandler(env)
 	managers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
 	managers.Authenticator = NewAuthenticatorHandler(env)
-	managers.AuthPolicy = NewAuthPolicyHandler(env)
+	managers.AuthPolicy = NewAuthPolicyManager(env)
 	managers.Ca = NewCaHandler(env)
 	managers.Config = NewConfigManager(env)
 	managers.ConfigType = NewConfigTypeHandler(env)
