@@ -1,11 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
+	"net/url"
 
 	fablib_5_operation "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
 	"github.com/openziti/fablab/kernel/model"
-	zitilib_runlevel_5_operation "github.com/openziti/zitilab/runlevel/5_operation"
+	runlevel_5_operation "github.com/openziti/ziti/network-tests/simple-transfer/stages/5_operation"
 )
 
 type stageFactory struct{}
@@ -18,8 +20,11 @@ func (sf *stageFactory) Build(m *model.Model) error {
 	runPhase := fablib_5_operation.NewPhase()
 	fmt.Println("Added echo stage!")
 
-	m.AddOperatingStage(zitilib_runlevel_5_operation.EchoClient("#echo-client"))
+	//generate 10k random bytes
+	data := make([]byte, 10000)
+	rand.Read(data)
+
+	m.AddOperatingStage(runlevel_5_operation.AssertEcho("#echo-client", url.QueryEscape(string(data))))
 	m.AddOperatingStage(runPhase)
-	//m.AddOperatingStage(fablib_5_operation.Persist())
 	return nil
 }
