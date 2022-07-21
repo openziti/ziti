@@ -273,14 +273,6 @@ jobs:
   zitilab-test:
 
     env:
-      GOFLAGS: "-trimpath"
-      GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
-      GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      AWS_DEFAULT_REGION: "us-east-2"
-      gh_ci_key: ${{ secrets.GH_CI_KEY }}
-
       CONSUL_ENCRYPTION_KEY: ${{ secrets.CONSUL_ENCRYPTION_KEY }}
       ELASTIC_ENDPOINT: ${{ secrets.ELASTIC_ENDPOINT }}
       ELASTIC_USERNAME: ${{ secrets.ELASTIC_USERNAME }}
