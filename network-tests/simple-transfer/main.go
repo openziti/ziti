@@ -192,6 +192,7 @@ var m = &model.Model{
 			"*",
 			string(getConfigData("metricbeat.yml")),
 			"metricbeat/metricbeat.yml",
+			os.FileMode(0644),
 			map[string]func(*model.Host) string{
 				"${host}": func(h *model.Host) string {
 					return os.Getenv("ELASTIC_ENDPOINT")
@@ -209,6 +210,7 @@ var m = &model.Model{
 			"*",
 			string(getConfigData("consul.hcl")),
 			"consul/consul.hcl",
+			os.FileMode(0644),
 			map[string]func(*model.Host) string{
 				"${public_ip}": func(h *model.Host) string {
 					return h.PublicIp
