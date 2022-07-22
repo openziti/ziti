@@ -270,113 +270,113 @@ jobs:
 
       # END linux-build-steps
 
-  zitilab-test:
-    name: Run Zitilab Test Suite
-    runs-on: ubuntu-18.04
-    needs: [linux-build]
-    steps:
-      - name: Download Linux Release Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: linux-release-${{ github.run_id }}
-          path: release/
-
-      - name: Download Linux Test Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: linux-test-${{ github.run_id }}
-          path: test/
-
-      - name: Install Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '~1.18.1'
-
-      #- name: Install Zitilab Commands
-      #  run: go install github.com/openziti/zitilab/github@github-action
-
-      #- name: Checkout Zitilab
-      #  uses: actions/checkout@v3
-      #  with:
-      #    repository: openziti/zitilab
-      #    path: zitilab
-      #    ref: github-action
-
-      #- name: Install Zitilab Commands
-      #  run: |
-      #    cd zitilab
-      #    go install ./...
-
-      - name: Move artifacts to bin subdir
-        run: |
-          ls test/amd64/linux/bin
-          echo "--------"
-          mv -v test/amd64/linux/bin/* release/amd64/linux/
-          cd release/amd64/linux
-          ls .
-          echo "--------"
-          mkdir bin
-          shopt -s extglob
-          mv -- !(bin) bin
-          ls bin
-          
-
-      - name: Create Zitilab Bindings
-        run: |
-          mkdir ~/.fablab
-          touch ~/.fablab/bindings.yml
-          echo "credentials:"           >> ~/.fablab/bindings.yml
-          echo "  aws:"                 >> ~/.fablab/bindings.yml
-          echo "    managed_key: true"  >> ~/.fablab/bindings.yml
-          echo "  edge:"                >> ~/.fablab/bindings.yml
-          echo "    username: admin"    >> ~/.fablab/bindings.yml
-          echo "    password: admin"    >> ~/.fablab/bindings.yml
-          echo "  influxdb:"            >> ~/.fablab/bindings.yml
-          echo "    username: fablab"   >> ~/.fablab/bindings.yml
-          echo "    password: fablab"   >> ~/.fablab/bindings.yml
-
-      #- name: Test echo write
-      #  run: |
-      #    touch test
-      #    echo "testing ${{ github.run_id }}" >> test
-      #    cat test
-
-      #- name: Create AWS Credentials Config
-      #  run: |
-      #    mkdir ~/.aws
-      #    touch ~/.aws/credentials
-
-      #    echo "[default]"                                                    >> ~/.aws/credentials
-      #    echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}"         >> ~/.aws/credentials
-      #    echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
-
-      #    ls ~/.aws
-      #    ls /home/runner/.aws/credentials
-
-      - name: AWS Test
-        run: |
-          wc -c <<< $AWS_ACCESS_KEY_ID
-          wc -c <<< $AWS_SECRET_ACCESS_KEY
-          aws ec2 describe-instances
-          aws sts get-caller-identity
-
-      - name: Test Ziti Command
-        env:
-          ZITI_ROOT: release/amd64/linux/
-        run: |
-          env
-          ls $ZITI_ROOT
-          test/amd64/linux/bin/simple-transfer create
-          test/amd64/linux/bin/simple-transfer up
-          test/amd64/linux/bin/simple-transfer run
-
-      - name: Test Ziti Command Teardown
-        if: always()
-        env:
-            ZITI_ROOT: release/amd64/linux/
-        run: |
-          test/amd64/linux/bin/simple-transfer dispose
-          test/amd64/linux/bin/simple-transfer clean
+#  zitilab-test:
+#    name: Run Zitilab Test Suite
+#    runs-on: ubuntu-18.04
+#    needs: [linux-build]
+#    steps:
+#      - name: Download Linux Release Artifact
+#        uses: actions/download-artifact@v2
+#        with:
+#          name: linux-release-${{ github.run_id }}
+#          path: release/
+#
+#      - name: Download Linux Test Artifact
+#        uses: actions/download-artifact@v2
+#        with:
+#          name: linux-test-${{ github.run_id }}
+#          path: test/
+#
+#      - name: Install Go
+#        uses: actions/setup-go@v2
+#        with:
+#          go-version: '~1.18.1'
+#
+#      #- name: Install Zitilab Commands
+#      #  run: go install github.com/openziti/zitilab/github@github-action
+#
+#      #- name: Checkout Zitilab
+#      #  uses: actions/checkout@v3
+#      #  with:
+#      #    repository: openziti/zitilab
+#      #    path: zitilab
+#      #    ref: github-action
+#
+#      #- name: Install Zitilab Commands
+#      #  run: |
+#      #    cd zitilab
+#      #    go install ./...
+#
+#      - name: Move artifacts to bin subdir
+#        run: |
+#          ls test/amd64/linux/bin
+#          echo "--------"
+#          mv -v test/amd64/linux/bin/* release/amd64/linux/
+#          cd release/amd64/linux
+#          ls .
+#          echo "--------"
+#          mkdir bin
+#          shopt -s extglob
+#          mv -- !(bin) bin
+#          ls bin
+#          
+#
+#      - name: Create Zitilab Bindings
+#        run: |
+#          mkdir ~/.fablab
+#          touch ~/.fablab/bindings.yml
+#          echo "credentials:"           >> ~/.fablab/bindings.yml
+#          echo "  aws:"                 >> ~/.fablab/bindings.yml
+#          echo "    managed_key: true"  >> ~/.fablab/bindings.yml
+#          echo "  edge:"                >> ~/.fablab/bindings.yml
+#          echo "    username: admin"    >> ~/.fablab/bindings.yml
+#          echo "    password: admin"    >> ~/.fablab/bindings.yml
+#          echo "  influxdb:"            >> ~/.fablab/bindings.yml
+#          echo "    username: fablab"   >> ~/.fablab/bindings.yml
+#          echo "    password: fablab"   >> ~/.fablab/bindings.yml
+#
+#      #- name: Test echo write
+#      #  run: |
+#      #    touch test
+#      #    echo "testing ${{ github.run_id }}" >> test
+#      #    cat test
+#
+#      #- name: Create AWS Credentials Config
+#      #  run: |
+#      #    mkdir ~/.aws
+#      #    touch ~/.aws/credentials
+#
+#      #    echo "[default]"                                                    >> ~/.aws/credentials
+#      #    echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}"         >> ~/.aws/credentials
+#      #    echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
+#
+#      #    ls ~/.aws
+#      #    ls /home/runner/.aws/credentials
+#
+#      - name: AWS Test
+#        run: |
+#          wc -c <<< $AWS_ACCESS_KEY_ID
+#          wc -c <<< $AWS_SECRET_ACCESS_KEY
+#          aws ec2 describe-instances
+#          aws sts get-caller-identity
+#
+#      - name: Test Ziti Command
+#        env:
+#          ZITI_ROOT: release/amd64/linux/
+#        run: |
+#          env
+#          ls $ZITI_ROOT
+#          test/amd64/linux/bin/simple-transfer create
+#          test/amd64/linux/bin/simple-transfer up
+#          test/amd64/linux/bin/simple-transfer run
+#
+#      - name: Test Ziti Command Teardown
+#        if: always()
+#        env:
+#            ZITI_ROOT: release/amd64/linux/
+#        run: |
+#          test/amd64/linux/bin/simple-transfer dispose
+#          test/amd64/linux/bin/simple-transfer clean
 
   smoketest:
     # BEGIN smoketest-job
