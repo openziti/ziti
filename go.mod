@@ -13,42 +13,41 @@ require (
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
 	github.com/go-openapi/runtime v0.24.1
-	github.com/go-openapi/strfmt v0.21.2
+	github.com/go-openapi/strfmt v0.21.3
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.8
 	github.com/gorilla/websocket v1.5.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
-	github.com/jedib0t/go-pretty/v6 v6.3.1
+	github.com/jedib0t/go-pretty/v6 v6.3.5
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.1
-	github.com/openziti/channel v0.18.49
-	github.com/openziti/edge v0.22.12
+	github.com/openziti/channel v0.18.57
+	github.com/openziti/edge v0.22.36
 	github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b
-	github.com/openziti/fabric v0.19.13
+	github.com/openziti/fabric v0.19.28
 	github.com/openziti/foundation/v2 v2.0.1
-	github.com/openziti/identity v1.0.2
+	github.com/openziti/identity v1.0.5
 	github.com/openziti/metrics v1.0.2
-	github.com/openziti/sdk-golang v0.16.93
+	github.com/openziti/sdk-golang v0.16.102
 	github.com/openziti/storage v0.1.14
-	github.com/openziti/transport/v2 v2.0.13
-	github.com/openziti/xweb/v2 v2.0.1
+	github.com/openziti/transport/v2 v2.0.19
+	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/openziti/zitilab v0.0.0-20220721182626-cacc22cc4fb5
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.22.5
-	github.com/sirupsen/logrus v1.8.1
+	github.com/shirou/gopsutil/v3 v3.22.6
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.0
 	github.com/valyala/fasttemplate v1.2.1
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.28.0
@@ -93,7 +92,6 @@ require (
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-openapi/validate v0.22.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/gomarkdown/markdown v0.0.0-20191123064959-2c17d62f5098 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -167,12 +165,13 @@ require (
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.mongodb.org/mongo-driver v1.8.3 // indirect
+	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220627191245-f75cf1eec38b // indirect
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect
