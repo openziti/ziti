@@ -370,17 +370,17 @@ jobs:
         env:
           ZITI_ROOT: release/amd64/linux/
         run: |
-          release/amd64/linux/bin/simple-transfer create
-          release/amd64/linux/bin/simple-transfer up
-          release/amd64/linux/bin/simple-transfer run
+          sudo release/amd64/linux/bin/simple-transfer create
+          sudo release/amd64/linux/bin/simple-transfer up
+          sudo release/amd64/linux/bin/simple-transfer run
 
       - name: Test Ziti Command Teardown
         if: always()
         env:
             ZITI_ROOT: release/amd64/linux/
         run: |
-          release/amd64/linux/bin/simple-transfer dispose
-          release/amd64/linux/bin/simple-transfer clean
+          sudo release/amd64/linux/bin/simple-transfer dispose
+          sudo release/amd64/linux/bin/simple-transfer clean
 
   smoketest:
     # BEGIN smoketest-job
