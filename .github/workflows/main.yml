@@ -374,6 +374,7 @@ jobs:
           ls $ZITI_ROOT
           test/amd64/linux/bin/simple-transfer create
           test/amd64/linux/bin/simple-transfer up
+          test/amd64/linux/bin/simple-transfer run
 
       - name: Test Ziti Command Teardown
         if: always()
