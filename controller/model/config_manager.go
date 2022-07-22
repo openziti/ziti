@@ -28,26 +28,18 @@ import (
 )
 
 func NewConfigManager(env Env) *ConfigManager {
-	handler := &ConfigManager{
+	manager := &ConfigManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().Config),
 	}
-	handler.impl = handler
+	manager.impl = manager
 
-	network.RegisterManagerDecoder[*Config](env.GetHostController().GetNetwork().Managers, handler)
+	network.RegisterManagerDecoder[*Config](env.GetHostController().GetNetwork().Managers, manager)
 
-	return handler
+	return manager
 }
 
 type ConfigManager struct {
 	baseEntityManager
-}
-
-func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
-	var checker boltz.FieldChecker = cmd.UpdatedFields
-	if checker != nil {
-		checker = &AndFieldChecker{first: self, second: checker}
-	}
-	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *ConfigManager) newModelEntity() boltEntitySink {
@@ -61,6 +53,18 @@ func (self *ConfigManager) Create(config *Config) error {
 func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
 	_, err := self.createEntity(cmd.Entity)
 	return err
+}
+
+func (self *ConfigManager) Update(config *Config, checker boltz.UpdatedFields) error {
+	return network.DispatchUpdate[*Config](self, config, checker)
+}
+
+func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if checker != nil {
+		checker = &AndFieldChecker{first: self, second: checker}
+	}
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *ConfigManager) Read(id string) (*Config, error) {
@@ -81,10 +85,6 @@ func (self *ConfigManager) readInTx(tx *bbolt.Tx, id string) (*Config, error) {
 
 func (self *ConfigManager) IsUpdated(field string) bool {
 	return !strings.EqualFold(field, "type")
-}
-
-func (self *ConfigManager) Update(config *Config, checker boltz.UpdatedFields) error {
-	return network.DispatchUpdate[*Config](self, config, checker)
 }
 
 func (self *ConfigManager) Marshall(entity *Config) ([]byte, error) {
@@ -124,9 +124,4 @@ func (self *ConfigManager) Unmarshall(bytes []byte) (*Config, error) {
 		TypeId: msg.ConfigTypeId,
 		Data:   edge_cmd_pb.DecodeJson(msg.Data),
 	}, nil
-}
-
-type ConfigListResult struct {
-	Configs []*Config
-	models.QueryMetaData
 }
