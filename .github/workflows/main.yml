@@ -16,12 +16,6 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: "us-east-2"
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
-  CONSUL_ENCRYPTION_KEY: ${{ secrets.CONSUL_ENCRYPTION_KEY }}
-  ELASTIC_ENDPOINT: ${{ secrets.ELASTIC_ENDPOINT }}
-  ELASTIC_USERNAME: ${{ secrets.ELASTIC_USERNAME }}
-  ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
-  CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
-  CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
 
 jobs:
   mac-os-build:
