@@ -5,14 +5,6 @@ package subcmd
 import (
 	"context"
 	"fmt"
-	influxdb "github.com/influxdata/influxdb1-client"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"net"
 	"net/http"
 	"net/url"
@@ -21,6 +13,14 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	influxdb "github.com/influxdata/influxdb1-client"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 var runCmd = &cobra.Command{
@@ -81,7 +81,7 @@ func (p *probe) sendMetrics() {
 			//TODO: currently broken as influx support was removed from metrics
 			//      The AsBatch function can be extraced from foundation history
 			//      if we want to get this working again
-			bp, err := metrics.AsBatch(message)
+			/*bp, err := metrics.AsBatch(message)
 			if err != nil {
 				logrus.Errorln(err)
 				return
@@ -113,7 +113,8 @@ func (p *probe) sendMetrics() {
 					time.Sleep(30 * time.Second)
 				}
 
-			}
+			}*/
+			logrus.Warn("Influx logging disabled...")
 		}
 	}
 }
