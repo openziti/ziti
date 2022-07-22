@@ -1,0 +1,10 @@
+name: test
+on: 
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    - name: Test
+        run: |
+          echo "this is a test"
