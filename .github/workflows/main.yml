@@ -370,8 +370,7 @@ jobs:
         env:
           ZITI_ROOT: release/amd64/linux/
         run: |
-          ls $ZITI_ROOT
-          ls test/amd64/linux/bin
+          ls test/amd64/linux/bin/bin
           test/amd64/linux/bin/simple-transfer create
           test/amd64/linux/bin/simple-transfer up
           test/amd64/linux/bin/simple-transfer run
