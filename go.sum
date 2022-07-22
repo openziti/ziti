@@ -686,8 +686,6 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge v0.22.12 h1:xjWAEkkgZW33UJVFEp14ELruqa5q43n1UMhh0MAwYAk=
 github.com/openziti/edge v0.22.12/go.mod h1:sNIy+mxQMSLgegL2Wu3x6RZHrhr9vLL32h5yKJZLZ4Q=
-github.com/openziti/fablab v0.4.1-0.20220419170315-88151ef2a55f h1:bMHAKQ/ScVRfJ3JzUx3LGtz0nrHi1SeyNsuBoIFvFKg=
-github.com/openziti/fablab v0.4.1-0.20220419170315-88151ef2a55f/go.mod h1:+rSkCFFhEV0UuYgY4W1xTHCVzzN/LVgTEPMSTX1wgFM=
 github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b h1:6w7g5pVAQsmDRixwjg5C43j45ESgAPNGzGgY4D/Scfk=
 github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b/go.mod h1:afcxbw8GR0oqVoVTYcsTsFyWRW99qMpUpEaEKG3wAiQ=
 github.com/openziti/fabric v0.19.13 h1:hgCcv/6qHa+jXnh5z9LALvvh/G89EfGDc0woCbqcF3c=
@@ -714,8 +712,6 @@ github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0c
 github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
 github.com/openziti/ziti-db-explorer v1.1.1 h1:G0eoTby+aIjjt5TxEfR+FMI2CWd4RvZFjzaIMX2lEBw=
 github.com/openziti/ziti-db-explorer v1.1.1/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
-github.com/openziti/zitilab v0.0.0-20220624143931-ade7a0e4c07c h1:UEiYHODBneQNp5knD6FOLsy3wvAqI/jpX48G0xyNHP0=
-github.com/openziti/zitilab v0.0.0-20220624143931-ade7a0e4c07c/go.mod h1:ctcl/5PVn25l4PaVjLsl1uS5+augcXfccrTT0rltLpg=
 github.com/openziti/zitilab v0.0.0-20220721182626-cacc22cc4fb5 h1:YVAHIvaXDiRb679Ov4x1H6rsHQfwK7Wec1xXjaLNrRc=
 github.com/openziti/zitilab v0.0.0-20220721182626-cacc22cc4fb5/go.mod h1:XvrJPA2AsqyfUSDXfFxg5O2qesjgDujqMNoKQn8nzJA=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
@@ -887,7 +883,6 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
-github.com/stretchr/testify v1.7.4/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
@@ -1128,6 +1123,7 @@ golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f h1:Ax0t5p6N38Ga0dThY21weqDE
 golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180606202747-9527bec2660b/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180622082034-63fc586f45fe/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
+golang.org/x/sys v0.0.0-20180816055513-1c9583448a9c/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180823144017-11551d06cbcc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
