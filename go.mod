@@ -19,14 +19,14 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/gorilla/websocket v1.5.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
-	github.com/jedib0t/go-pretty/v6 v6.3.1
+	github.com/jedib0t/go-pretty/v6 v6.3.5
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.1
 	github.com/openziti/channel v0.18.57
-	github.com/openziti/edge v0.22.12
+	github.com/openziti/edge v0.22.36
 	github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b
-	github.com/openziti/fabric v0.19.13
+	github.com/openziti/fabric v0.19.28
 	github.com/openziti/foundation/v2 v2.0.1
 	github.com/openziti/identity v1.0.5
 	github.com/openziti/metrics v1.0.2

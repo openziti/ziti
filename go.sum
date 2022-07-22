@@ -480,8 +480,8 @@ github.com/influxdata/influxdb-client-go/v2 v2.2.2/go.mod h1:fa/d1lAdUHxuc1jedx3
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d h1:/WZQPMZNsjZ7IlCpsLGdQBINg5bxKQ1K1sh6awxLtkA=
 github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d/go.mod h1:qj24IKcXYK6Iy9ceXlo3Tc+vtHo9lIhSX5JddghvEPo=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
-github.com/jedib0t/go-pretty/v6 v6.3.1 h1:aOXiD9oqiuLH8btPQW6SfgtQN5zwhyfzZls8a6sPJ/I=
-github.com/jedib0t/go-pretty/v6 v6.3.1/go.mod h1:FMkOpgGD3EZ91cW8g/96RfxoV7bdeJyzXPYgz1L1ln0=
+github.com/jedib0t/go-pretty/v6 v6.3.5 h1:B6RuZT3Gz0NvFwADctw+gZn3cSA+jIHykXyd72zPgOY=
+github.com/jedib0t/go-pretty/v6 v6.3.5/go.mod h1:MgmISkTWDSFu0xOqiZ0mKNntMQ2mDgOcwOkwBEkMDJI=
 github.com/jellevandenhooff/dkim v0.0.0-20150330215556-f50fe3d243e1/go.mod h1:E0B/fFc00Y+Rasa88328GlI/XbtyysCtTHZS8h7IrBU=
 github.com/jessevdk/go-flags v1.5.0 h1:1jKYvbxEjfUl0fmqTCOfonvskHHXMjBySTLW4y9LFvc=
 github.com/jessevdk/go-flags v1.5.0/go.mod h1:Fw0T6WPc1dYxT4mKEZRfG5kJhaTDP9pj1c2EWnYs/m4=
@@ -684,12 +684,12 @@ github.com/openziti/channel v0.18.57 h1:6Kp0kDMr18Ra2FZ+XR+GjmdOaGoP2NghgI8x0oWv
 github.com/openziti/channel v0.18.57/go.mod h1:Q5iXnIvs9nWoCcx+S+yQ9BPiAhnRshbVP8zoKviztOw=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.22.12 h1:xjWAEkkgZW33UJVFEp14ELruqa5q43n1UMhh0MAwYAk=
-github.com/openziti/edge v0.22.12/go.mod h1:sNIy+mxQMSLgegL2Wu3x6RZHrhr9vLL32h5yKJZLZ4Q=
+github.com/openziti/edge v0.22.36 h1:gjvIF06bpHFVIGZsKqz0XhrYwZyi9UmYxEeP33cdWF4=
+github.com/openziti/edge v0.22.36/go.mod h1:C/TyZQa61oJDg7JFAFm/Lzfq8FlT7PYxxqA7oGtmD+8=
 github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b h1:6w7g5pVAQsmDRixwjg5C43j45ESgAPNGzGgY4D/Scfk=
 github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b/go.mod h1:afcxbw8GR0oqVoVTYcsTsFyWRW99qMpUpEaEKG3wAiQ=
-github.com/openziti/fabric v0.19.13 h1:hgCcv/6qHa+jXnh5z9LALvvh/G89EfGDc0woCbqcF3c=
-github.com/openziti/fabric v0.19.13/go.mod h1:dENRjruDfbt1FjP0R+v6Q767Pm6eG0VdQckClnLHkuU=
+github.com/openziti/fabric v0.19.28 h1:uBh4VeaMEvgm3JMDuLPvg9kq1Am6csXECvbrvrJaxxo=
+github.com/openziti/fabric v0.19.28/go.mod h1:8zgOd4JZGtC+tgscMPJV2WBQLVHLtMZZUAHvfs5eNyk=
 github.com/openziti/foundation v0.17.28 h1:ckYnd6SUaRPS9HU+lr5AosU7h4W37Wg01DlM5+BlG4s=
 github.com/openziti/foundation v0.17.28/go.mod h1:CaXG0+mgwq25wHCUy35aIbB01ph7U+BoUW8+P5F235o=
 github.com/openziti/foundation/v2 v2.0.1 h1:HKYwAyxlZ4zmlt0t9Y/v6SWso0qUaeWapkWOlQDKPEk=
@@ -883,6 +883,7 @@ github.com/stretchr/testify v1.6.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
+github.com/stretchr/testify v1.7.4/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.7.5/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.0 h1:pSgiaMZlXftHpm5L7V1+rVB+AZJydKsMxsQBIJw4PKk=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
@@ -1123,7 +1124,6 @@ golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f h1:Ax0t5p6N38Ga0dThY21weqDE
 golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.0.0-20180606202747-9527bec2660b/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180622082034-63fc586f45fe/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
-golang.org/x/sys v0.0.0-20180816055513-1c9583448a9c/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180823144017-11551d06cbcc/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180830151530-49385e6e1522/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 golang.org/x/sys v0.0.0-20180905080454-ebe1bf3edb33/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
