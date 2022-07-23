@@ -170,6 +170,7 @@ var m = &model.Model{
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
+		semaphore_0.Restart(90 * time.Second),
 		zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"),
 		zitilib_runlevel_0_infrastructure.InstallConsul("*"),
 		semaphore_0.Restart(90 * time.Second),
