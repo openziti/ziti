@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/network-tests/simple-transfer/actions"
+	runlevel_0_infrastructure "github.com/openziti/ziti/network-tests/simple-transfer/stages/0_infrastructure"
 	"github.com/openziti/zitilab"
 	zitilib_runlevel_0_infrastructure "github.com/openziti/zitilab/runlevel/0_infrastructure"
 	zitilib_runlevel_1_configuration "github.com/openziti/zitilab/runlevel/1_configuration"
@@ -171,8 +172,8 @@ var m = &model.Model{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		semaphore_0.Restart(90 * time.Second),
-		zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"),
-		zitilib_runlevel_0_infrastructure.InstallConsul("*"),
+		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"), 5),
+		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallConsul("*"), 5),
 		semaphore_0.Restart(90 * time.Second),
 	},
 
