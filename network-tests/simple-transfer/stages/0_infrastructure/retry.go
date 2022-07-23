@@ -23,10 +23,10 @@ func (r *retry) Express(run model.Run) error {
 	var err error
 	for i := 0; i < r.retries; i++ {
 		if e := r.stage.Express(run); e == nil {
-			err = fmt.Errorf("%w", e)
 			continue
+		} else {
+			err = fmt.Errorf("%w", e)
 		}
-		return err
 	}
 	logrus.Warn("Infra stage successful after retries. Earlier errors: [%w]", err)
 	return nil
