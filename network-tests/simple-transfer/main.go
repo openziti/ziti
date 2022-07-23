@@ -1,3 +1,5 @@
+//go:build tests
+
 package main
 
 import (
@@ -171,7 +173,6 @@ var m = &model.Model{
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
-		semaphore_0.Restart(90 * time.Second),
 		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"), 5),
 		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallConsul("*"), 5),
 		semaphore_0.Restart(90 * time.Second),
