@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/openziti/fablab/kernel/model"
+	"github.com/sirupsen/logrus"
 )
 
 type retry struct {
@@ -18,13 +19,15 @@ func RetryInfra(stage model.InfrastructureStage, retries int) model.Infrastructu
 	}
 }
 
-func (r *retry) Express(run model.Run) (err error) {
+func (r *retry) Express(run model.Run) error {
+	var err error
 	for i := 0; i < r.retries; i++ {
-		if e := r.stage.Express(run); e != nil {
+		if e := r.stage.Express(run); e == nil {
 			err = fmt.Errorf("%w", e)
 			continue
 		}
-		return
+		return err
 	}
-	return
+	logrus.Warn("Infra stage successful after retries. Earlier errors: [%w]", err)
+	return nil
 }
