@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/mitchellh/mapstructure"
 	"github.com/openziti/edge/edge_common"
+	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
@@ -47,8 +48,7 @@ const (
 type Config struct {
 	Enabled                    bool
 	ApiProxy                   ApiProxy
-	Advertise                  string
-	WSAdvertise                string
+	EdgeListeners              []*edge_ctrl_pb.Listener
 	Csr                        Csr
 	HeartbeatIntervalSeconds   int
 	SessionValidateChunkSize   uint32
@@ -232,19 +232,14 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 
 	listeners, ok := subArray.([]interface{})
 	if !ok || listeners == nil {
-		return errors.New("required binding [edge] not found in [listeners], at least one edge binding is required if edge functionality is enabled")
+		return errors.New("section [listeners] is required to be an array")
 	}
-
-	var edgeBinding map[interface{}]interface{}
-	var edgeListenPort string
-	var edgeWsBinding map[interface{}]interface{}
-	var edgeWsListenPort string
 
 	for i, value := range listeners {
 		submap := value.(map[interface{}]interface{})
 
 		if submap == nil {
-			return errors.New("value [listeners[" + strconv.Itoa(i) + "]] is not a map")
+			return fmt.Errorf("value [listeners[%d]] is not a map", i)
 		}
 
 		if value, found := submap["binding"]; found {
@@ -255,27 +250,21 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 				if value, found := submap["address"]; found {
 					address := value.(string)
 					if address == "" {
-						return errors.New("required value [listeners.edge.address] was not a string or was not found")
+						return fmt.Errorf("required value [listeners[%d].address] for edge binding was not a string or was not found", i)
 					}
 					_, err := transport.ParseAddress(address)
 					if err != nil {
-						return errors.New("required value [listeners.edge.address] was not a valid address")
+						return fmt.Errorf("required value [listeners[%d].address] for edge binding was not a valid address", i)
 					}
-					tokens := strings.Split(address, ":")
-					if tokens[0] == "ws" {
-						if edgeWsBinding != nil {
-							return errors.New("multiple edge listeners found in [listeners], only one 'ws' address is allowed")
-						}
-						edgeWsBinding = submap
-						edgeWsListenPort = tokens[2]
 
-					} else {
-						if edgeBinding != nil {
-							return errors.New("multiple edge listeners found in [listeners], only one non-'ws' is allowed")
-						}
-						edgeBinding = submap
-						edgeListenPort = tokens[2]
+					edgeListener, err := parseEdgeListenerOptions(i, address, submap)
+
+					if err != nil {
+						return fmt.Errorf("error parsing edge listner[%d]: %v", i, err)
 					}
+
+					config.EdgeListeners = append(config.EdgeListeners, edgeListener)
+
 				} else {
 					return errors.New("required value [listeners.edge.address] was not found")
 				}
@@ -283,77 +272,72 @@ func (config *Config) loadListener(rootConfigMap map[interface{}]interface{}) er
 		}
 	}
 
-	if (edgeBinding == nil) && (edgeWsBinding == nil) {
+	if len(config.EdgeListeners) == 0 {
 		return errors.New("required binding [edge] not found in [listeners], at least one edge binding is required")
 	}
 
-	if edgeBinding != nil {
-		if value, found := edgeBinding["options"]; found {
-			submap := value.(map[interface{}]interface{})
-
-			if submap == nil {
-				return errors.New("required section [listeners.edge.options] is not a map")
-			}
-
-			if value, found := submap["advertise"]; found {
-				advertise := value.(string)
-
-				if advertise == "" {
-					return errors.New("required value [listeners.edge.options.advertise] was not a string or was not found")
-				}
-
-				parts := strings.Split(advertise, ":")
-				if parts[1] != edgeListenPort {
-					pfxlog.Logger().Warnf("port in [listeners.edge.options.advertise] must equal port in [listeners.edge.address] but did not. Got [%s] [%s]", parts[1], edgeListenPort)
-				}
-
-				config.Advertise = advertise
-			} else {
-				return errors.New("required value [listeners.edge.options.advertise] was not found")
-			}
-
-		} else {
-			return errors.New("required value [listeners.edge.options] not found")
-		}
-	}
-
-	if edgeWsBinding != nil {
-		if value, found := edgeWsBinding["options"]; found {
-			submap := value.(map[interface{}]interface{})
-
-			if submap == nil {
-				return errors.New("required section [listeners.edge.options] is not a map")
-			}
-
-			if value, found := submap["advertise"]; found {
-				advertise := value.(string)
-
-				if advertise == "" {
-					return errors.New("required value [listeners.edge.options.advertise] was not a string or was not found")
-				}
-
-				parts := strings.Split(advertise, ":")
-				if parts[1] != edgeWsListenPort {
-					msg := fmt.Sprintf("port in [listeners.edge.options.advertise] must equal port in [listeners.edge.address] but did not. Got [%s] [%s]", parts[1], edgeWsListenPort)
-					return errors.New(msg)
-				}
-
-				if edgeListenPort == edgeWsListenPort {
-					msg := fmt.Sprintf("ports for multiple [listeners.edge.options.advertise] must not be equal. Got [%s] [%s]", edgeListenPort, edgeWsListenPort)
-					return errors.New(msg)
-				}
-
-				config.WSAdvertise = advertise
-			} else {
-				return errors.New("required value [listeners.edge.options.advertise] was not found")
-			}
-
-		} else {
-			return errors.New("required value [listeners.edge.options] not found")
-		}
-	}
-
 	return nil
+}
+
+func parseEdgeListenerOptions(index int, address string, edgeListenerMap map[interface{}]interface{}) (*edge_ctrl_pb.Listener, error) {
+	/*
+	   address: ws:0.0.0.0:443
+	   options:
+	     advertise: mattermost-wss.production.netfoundry.io:443
+	*/
+	addressParts := strings.Split(address, ":")
+	addressPort, err := strconv.Atoi(addressParts[2])
+
+	if err != nil {
+		return nil, fmt.Errorf("port number for [listeners[%d].address] for edge binding could not be parssed", index)
+	}
+
+	if optionsValue, found := edgeListenerMap["options"]; found {
+		options := optionsValue.(map[interface{}]interface{})
+
+		if options == nil {
+			return nil, fmt.Errorf("required section [listeners[%d].options] for edge binding is not a map", index)
+		}
+
+		if advertiseVal, found := options["advertise"]; found {
+			advertise := advertiseVal.(string)
+
+			if advertise == "" {
+				return nil, fmt.Errorf("required value [listeners[%d].options.advertise] for edge binding was not a string or was not found", index)
+			}
+
+			advertiseParts := strings.Split(advertise, ":")
+			advertisePort, err := strconv.Atoi(advertiseParts[1])
+
+			if err != nil {
+				return nil, fmt.Errorf("port number for [listeners[%d].options.advertise] for edge binding could not be parssed", index)
+			}
+
+			if advertisePort != addressPort {
+				pfxlog.Logger().Warnf("port in [listeners[%d].options.advertise] must equal port in [listeners[%d].address] for edge binding but did not. Got [%d] [%d]", index, index, advertisePort, addressPort)
+			}
+
+			return &edge_ctrl_pb.Listener{
+				Advertise: &edge_ctrl_pb.Address{
+					Value:    advertise,
+					Protocol: addressParts[0],
+					Hostname: advertiseParts[0],
+					Port:     int32(advertisePort),
+				},
+				Address: &edge_ctrl_pb.Address{
+					Value:    address,
+					Protocol: addressParts[0],
+					Hostname: addressParts[1],
+					Port:     int32(addressPort),
+				},
+			}, nil
+		} else {
+			return nil, fmt.Errorf("required value [listeners[%d].options.advertise]for edge binding was not found", index)
+		}
+
+	} else {
+		return nil, fmt.Errorf("required value [listeners[%d].options] for edge binding not found", index)
+	}
 }
 
 func (config *Config) loadCsr(configMap map[interface{}]interface{}, pathPrefix string) error {

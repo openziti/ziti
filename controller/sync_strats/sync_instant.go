@@ -380,9 +380,9 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 	rtx.SetSyncStatus(env.RouterSyncHelloWait)
 
 	logger := rtx.logger().WithField("strategy", strategy.Type()).
-		WithField("hostname", respHello.Hostname).
 		WithField("protocols", respHello.Protocols).
 		WithField("protocolPorts", respHello.ProtocolPorts).
+		WithField("listeners", respHello.Listeners).
 		WithField("data", respHello.Data)
 
 	serverVersion := build.GetBuildInfo().Version()
@@ -396,10 +396,17 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 	}
 
 	protocols := map[string]string{}
-	for _, p := range respHello.ProtocolPorts {
-		parts := strings.Split(p, ":")
-		ingressUrl := fmt.Sprintf("%s://%s:%s", parts[0], respHello.Hostname, parts[1])
-		protocols[parts[0]] = ingressUrl
+
+	if len(respHello.Listeners) > 0 {
+		for _, listener := range respHello.Listeners {
+			protocols[listener.Advertise.Protocol] = fmt.Sprintf("%s://%s:%d", listener.Advertise.Protocol, listener.Advertise.Hostname, listener.Advertise.Port)
+		}
+	} else {
+		for _, p := range respHello.ProtocolPorts {
+			parts := strings.Split(p, ":")
+			ingressUrl := fmt.Sprintf("%s://%s:%s", parts[0], respHello.Hostname, parts[1])
+			protocols[parts[0]] = ingressUrl
+		}
 	}
 
 	rtx.SetHostname(respHello.Hostname)

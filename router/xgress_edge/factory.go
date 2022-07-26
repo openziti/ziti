@@ -60,35 +60,14 @@ func (factory *Factory) Enabled() bool {
 	return factory.enabled
 }
 
+const (
+	WsType = "ws"
+)
+
 func (factory *Factory) BindChannel(binding channel.Binding) error {
 	factory.ctrl = binding.GetChannel()
 
-	var parts []string
-	var hostname string
-	var supportedProtocols []string
-	var protocolPorts []string
-
-	if factory.edgeRouterConfig.Advertise != "" {
-		parts = strings.Split(factory.edgeRouterConfig.Advertise, ":")
-		hostname = parts[0]
-		supportedProtocols = append(supportedProtocols, "tls")
-		protocolPorts = append(protocolPorts, "tls:"+parts[1])
-		pfxlog.Logger().Debugf("HelloHandler will contain hostname=[%s] supportedProtocols=%v protocolPorts=%v", hostname, supportedProtocols, protocolPorts)
-	}
-	if factory.edgeRouterConfig.WSAdvertise != "" {
-		parts := strings.Split(factory.edgeRouterConfig.WSAdvertise, ":")
-		if hostname != "" {
-			if hostname != parts[0] {
-				pfxlog.Logger().Fatalf("cannot have different hostnames within multiple edge binding.advertise; got [%s] [%s]", hostname, parts[0])
-			}
-		} else {
-			hostname = parts[0]
-		}
-		supportedProtocols = append(supportedProtocols, "ws")
-		protocolPorts = append(protocolPorts, "ws:"+parts[1])
-		pfxlog.Logger().Debugf("HelloHandler will contain hostname=[%s] supportedProtocols=%v protocolPorts=%v", hostname, supportedProtocols, protocolPorts)
-	}
-	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(hostname, supportedProtocols, protocolPorts))
+	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.edgeRouterConfig.EdgeListeners))
 
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
 

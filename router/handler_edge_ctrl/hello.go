@@ -17,24 +17,50 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/build"
+	"google.golang.org/protobuf/proto"
+	"strconv"
 )
 
 type helloHandler struct {
-	supportedProtocols []string
+	listeners []*edge_ctrl_pb.Listener
+
+	//backwards compat for controllers v0.26.3 and older
 	hostname           string
+	supportedProtocols []string
 	protocolPorts      []string
 }
 
-func NewHelloHandler(hostname string, supportedProtocols []string, protocolPorts []string) *helloHandler {
+func NewHelloHandler(listeners []*edge_ctrl_pb.Listener) *helloHandler {
+	//supportedProtocols, protocolPorts, and hostname is for backwards compatability with v0.26.3 and older controllers
+	var supportedProtocols []string
+	var protocolPorts []string
+	hostname := ""
+
+	for _, listener := range listeners {
+		pfxlog.Logger().Debugf("HelloHandler will contain supportedProtocols address: %s advertise: %s", listener.Address.Value, listener.Advertise.Value)
+
+		supportedProtocols = append(supportedProtocols, listener.Address.Protocol)
+		protocolPorts = append(protocolPorts, strconv.Itoa(int(listener.Advertise.Port)))
+
+		if hostname != "" && hostname != listener.Advertise.Hostname {
+			pfxlog.Logger().Warnf("this router is configured to use different hostnames for different edge listeners. If the controller is v0.26.3 or earlier this is not supported. Advertise %s will be used for all protocls", listeners[0].Advertise.Value)
+		}
+
+		hostname = listener.Advertise.Hostname
+	}
+
 	return &helloHandler{
-		hostname:           hostname,
+		listeners: listeners,
+
+		//v0.26.3 and older used to check and ensure all advertise hostnames were the same which can't be done now
+		//with the ability to report multiple advertise protocols on different hostnames
+		hostname:           listeners[0].Advertise.Hostname,
 		supportedProtocols: supportedProtocols,
 		protocolPorts:      protocolPorts,
 	}
@@ -51,7 +77,9 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 			pfxlog.Logger().Info("received server hello, replying")
 
 			clientHello := &edge_ctrl_pb.ClientHello{
-				Version:       build.GetBuildInfo().Version(),
+				Version:   build.GetBuildInfo().Version(),
+				Listeners: h.listeners,
+
 				Hostname:      h.hostname,
 				Protocols:     h.supportedProtocols,
 				ProtocolPorts: h.protocolPorts,
