@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
@@ -93,6 +94,20 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 	return ret
 }
 
+type TerminatorModelMapper struct{}
+
+func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, terminator *network.Terminator) (interface{}, error) {
+	restModel, err := MapTerminatorToRestModel(n, terminator)
+
+	if err != nil {
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", terminator.GetId(), err)
+		log := pfxlog.Logger()
+		log.Error(err)
+		return nil, err
+	}
+	return restModel, nil
+}
+
 func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
 	terminator, ok := e.(*network.Terminator)
 
@@ -103,7 +118,7 @@ func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 		return nil, err
 	}
 
-	restModel, err := MapTerminatorToRestModel(ae, terminator)
+	restModel, err := MapTerminatorToRestModel(ae.GetHostController().GetNetwork(), terminator)
 
 	if err != nil {
 		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
@@ -114,14 +129,14 @@ func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e mod
 	return restModel, nil
 }
 
-func MapTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
+func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
 
-	service, err := ae.Managers.Service.Read(terminator.Service)
+	service, err := n.Managers.Services.Read(terminator.Service)
 	if err != nil {
 		return nil, err
 	}
 
-	router, err := ae.Managers.TransitRouter.Read(terminator.Router)
+	router, err := n.Managers.Routers.Read(terminator.Router)
 	if err != nil {
 		return nil, err
 	}

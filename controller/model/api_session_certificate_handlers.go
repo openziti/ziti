@@ -39,7 +39,7 @@ type ApiSessionCertificateHandler struct {
 	baseEntityManager
 }
 
-func (handler *ApiSessionCertificateHandler) newModelEntity() boltEntitySink {
+func (handler *ApiSessionCertificateHandler) newModelEntity() edgeEntity {
 	return &ApiSessionCertificate{}
 }
 

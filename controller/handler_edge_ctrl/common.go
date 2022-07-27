@@ -2,6 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/fields"
 	"math"
 	"time"
 
@@ -14,8 +15,8 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
@@ -361,7 +362,7 @@ func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, bin
 
 func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest) {
 	if self.err == nil {
-		checker := boltz.MapFieldChecker{}
+		checker := fields.UpdatedFieldsMap{}
 
 		if request.GetUpdateCost() {
 			if request.GetCost() > math.MaxUint16 {

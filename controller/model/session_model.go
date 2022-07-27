@@ -112,10 +112,6 @@ func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.En
 	}, nil
 }
 
-func (entity *Session) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
-}
-
 func (entity *Session) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltSession, ok := boltEntity.(*persistence.Session)
 	if !ok {

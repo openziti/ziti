@@ -22,14 +22,14 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type boltEntitySink interface {
+type edgeEntity interface {
 	models.Entity
 	fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
-}
-
-type boltEntitySource interface {
-	models.Entity
 	toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
 	toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
+}
+
+type patchableEdgeEntity interface {
+	edgeEntity
 	toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
 }

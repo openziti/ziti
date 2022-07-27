@@ -56,10 +56,6 @@ func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) 
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
-}
-
 func (entity *PostureCheckType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltPostureCheckType, ok := boltEntity.(*persistence.PostureCheckOs)
 	if !ok {

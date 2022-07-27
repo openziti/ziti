@@ -39,7 +39,7 @@ type ConfigTypeHandler struct {
 	baseEntityManager
 }
 
-func (handler *ConfigTypeHandler) newModelEntity() boltEntitySink {
+func (handler *ConfigTypeHandler) newModelEntity() edgeEntity {
 	return &ConfigType{}
 }
 

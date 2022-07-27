@@ -51,10 +51,6 @@ func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) 
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
-}
-
 func (entity *EdgeRouterPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
 	if !ok {

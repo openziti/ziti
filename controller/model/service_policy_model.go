@@ -73,10 +73,6 @@ func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (bo
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
-}
-
 func (entity *ServicePolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
 	if !ok {

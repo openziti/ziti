@@ -22,7 +22,9 @@ import (
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/terminator"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/api_impl"
+	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/fabric/controller/network"
 )
 
 func init() {
@@ -67,11 +69,11 @@ func (r *TerminatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *TerminatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
+	api_impl.ListWithHandler[*network.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
+	api_impl.DetailWithHandler[*network.Terminator](ae.GetHostController().GetNetwork(), rc, ae.Managers.Terminator, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
@@ -96,7 +98,7 @@ func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return ae.Managers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }

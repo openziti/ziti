@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
@@ -66,7 +67,7 @@ func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*Aut
 	return err
 }
 
-func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker boltz.UpdatedFields) error {
+func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker fields.UpdatedFields) error {
 	return network.DispatchUpdate[*AuthPolicy](self, entity, checker)
 }
 
@@ -74,7 +75,7 @@ func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Aut
 	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
 }
 
-func (self *AuthPolicyManager) newModelEntity() boltEntitySink {
+func (self *AuthPolicyManager) newModelEntity() edgeEntity {
 	return &AuthPolicy{}
 }
 

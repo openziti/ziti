@@ -31,12 +31,12 @@ import (
 )
 
 type EntityManager interface {
-	models.EntityRetriever
+	models.EntityRetriever[models.Entity]
 
 	GetEnv() Env
 
-	newModelEntity() boltEntitySink
-	readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error
+	newModelEntity() edgeEntity
+	readEntityInTx(tx *bbolt.Tx, id string, modelEntity edgeEntity) error
 }
 
 func newBaseEntityManager(env Env, store boltz.CrudStore) baseEntityManager {
@@ -58,93 +58,99 @@ func (self *baseEntityManager) Dispatch(command command.Command) error {
 	return self.env.GetManagers().Command.Dispatch(command)
 }
 
-func (handler *baseEntityManager) GetEntityTypeId() string {
+func (self *baseEntityManager) GetEntityTypeId() string {
 	// default this to the store entity type and let individual controllers override it where
 	// needed to avoid collisions (e.g. edge service/router)
-	return handler.GetStore().GetEntityType()
+	return self.GetStore().GetEntityType()
 }
 
-func (handler *baseEntityManager) GetStore() boltz.CrudStore {
-	return handler.Store
+func (self *baseEntityManager) GetStore() boltz.CrudStore {
+	return self.Store
 }
 
-func (handler *baseEntityManager) GetDb() boltz.Db {
-	return handler.env.GetDbProvider().GetDb()
+func (self *baseEntityManager) GetDb() boltz.Db {
+	return self.env.GetDbProvider().GetDb()
 }
 
-func (handler *baseEntityManager) GetEnv() Env {
-	return handler.env
+func (self *baseEntityManager) GetEnv() Env {
+	return self.env
 }
 
-func (handler *baseEntityManager) BaseLoad(id string) (models.Entity, error) {
-	entity := handler.impl.newModelEntity()
-	if err := handler.readEntity(id, entity); err != nil {
+func (self *baseEntityManager) BaseLoad(id string) (models.Entity, error) {
+	entity := self.impl.newModelEntity()
+	if err := self.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *baseEntityManager) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity, error) {
-	entity := handler.impl.newModelEntity()
-	if err := handler.readEntityInTx(tx, id, entity); err != nil {
+func (self *baseEntityManager) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity, error) {
+	entity := self.impl.newModelEntity()
+	if err := self.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *baseEntityManager) BaseList(query string) (*models.EntityListResult, error) {
-	result := &models.EntityListResult{Loader: handler}
-	if err := handler.list(query, result.Collect); err != nil {
+func (self *baseEntityManager) BaseList(query string) (*models.EntityListResult[models.Entity], error) {
+	result := &models.EntityListResult[models.Entity]{Loader: self}
+	if err := self.ListWithHandler(query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *baseEntityManager) BasePreparedList(query ast.Query) (*models.EntityListResult, error) {
-	result := &models.EntityListResult{Loader: handler}
-	if err := handler.preparedList(query, result.Collect); err != nil {
+func (self *baseEntityManager) BasePreparedList(query ast.Query) (*models.EntityListResult[models.Entity], error) {
+	result := &models.EntityListResult[models.Entity]{Loader: self}
+	if err := self.PreparedListWithHandler(query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *baseEntityManager) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult, error) {
-	result := &models.EntityListResult{Loader: handler}
-	if err := handler.preparedListIndexed(cursorProvider, query, result.Collect); err != nil {
+func (self *baseEntityManager) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[models.Entity], error) {
+	result := &models.EntityListResult[models.Entity]{Loader: self}
+	if err := self.preparedListIndexed(cursorProvider, query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *baseEntityManager) preparedList(query ast.Query, resultHandler models.ListResultHandler) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.PreparedListWithTx(tx, query, resultHandler)
+func (self *baseEntityManager) PreparedListWithHandler(query ast.Query, resultHandler models.ListResultHandler) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.PreparedListWithTx(tx, query, resultHandler)
 	})
 }
 
-func (handler *baseEntityManager) preparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler models.ListResultHandler) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.PreparedListIndexedWithTx(tx, cursorProvider, query, resultHandler)
+func (self *baseEntityManager) preparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler models.ListResultHandler) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.PreparedListIndexedWithTx(tx, cursorProvider, query, resultHandler)
 	})
 }
 
-func (handler *baseEntityManager) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult, error) {
-	result := &models.EntityListResult{Loader: typeLoader}
-	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.PreparedListAssociatedWithTx(tx, id, typeLoader.GetStore().GetEntityType(), query, result.Collect)
+func (self *baseEntityManager) PreparedListAssociatedWithHandler(id string, association string, query ast.Query, handler models.ListResultHandler) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.PreparedListAssociatedWithTx(tx, id, association, query, handler)
 	})
-
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
 }
 
-func (handler *baseEntityManager) createEntity(modelEntity boltEntitySource) (string, error) {
+//func (self *baseEntityManager) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult[T], error) {
+//	result := &models.EntityListResult[T]{Loader: typeLoader}
+//	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+//		return self.PreparedListAssociatedWithTx(tx, id, typeLoader.GetStore().GetEntityType(), query, result.Collect)
+//	})
+//
+//	if err != nil {
+//		return nil, err
+//	}
+//	return result, nil
+//}
+
+func (self *baseEntityManager) createEntity(modelEntity edgeEntity) (string, error) {
 	var id string
-	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
 		var err error
-		id, err = handler.createEntityInTx(boltz.NewMutateContext(tx), modelEntity)
+		id, err = self.createEntityInTx(boltz.NewMutateContext(tx), modelEntity)
 		return err
 	})
 	if err != nil {
@@ -153,59 +159,59 @@ func (handler *baseEntityManager) createEntity(modelEntity boltEntitySource) (st
 	return id, nil
 }
 
-func (handler *baseEntityManager) createEntityInTx(ctx boltz.MutateContext, modelEntity boltEntitySource) (string, error) {
+func (self *baseEntityManager) createEntityInTx(ctx boltz.MutateContext, modelEntity edgeEntity) (string, error) {
 	if modelEntity == nil {
-		return "", errors.Errorf("can't create %v with nil value", handler.Store.GetEntityType())
+		return "", errors.Errorf("can't create %v with nil value", self.Store.GetEntityType())
 	}
 	if modelEntity.GetId() == "" {
 		modelEntity.SetId(eid.New())
 	}
 
-	boltEntity, err := modelEntity.toBoltEntityForCreate(ctx.Tx(), handler.impl)
+	boltEntity, err := modelEntity.toBoltEntityForCreate(ctx.Tx(), self.impl)
 	if err != nil {
 		return "", err
 	}
 
-	if err = handler.ValidateNameOnCreate(ctx, boltEntity); err != nil {
+	if err = self.ValidateNameOnCreate(ctx, boltEntity); err != nil {
 		return "", err
 	}
 
-	if err := handler.GetStore().Create(ctx, boltEntity); err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.GetStore().GetSingularEntityType())
+	if err := self.GetStore().Create(ctx, boltEntity); err != nil {
+		pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
 		return "", err
 	}
 
 	return modelEntity.GetId(), nil
 }
 
-func (handler *baseEntityManager) updateEntity(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
-	return handler.updateGeneral(modelEntity, checker, false)
+func (self *baseEntityManager) updateEntity(modelEntity edgeEntity, checker boltz.FieldChecker) error {
+	return self.updateGeneral(modelEntity, checker, false)
 }
 
-func (handler *baseEntityManager) patchEntity(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
-	return handler.updateGeneral(modelEntity, checker, true)
+func (self *baseEntityManager) patchEntity(modelEntity edgeEntity, checker boltz.FieldChecker) error {
+	return self.updateGeneral(modelEntity, checker, true)
 }
 
-func (handler *baseEntityManager) patchEntityBatch(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
-	return handler.updateGeneralBatch(modelEntity, checker, true)
+func (self *baseEntityManager) patchEntityBatch(modelEntity edgeEntity, checker boltz.FieldChecker) error {
+	return self.updateGeneralBatch(modelEntity, checker, true)
 }
 
-func (handler *baseEntityManager) updateGeneralBatch(modelEntity boltEntitySource, checker boltz.FieldChecker, patch bool) error {
-	return handler.GetDb().Batch(func(tx *bbolt.Tx) error {
+func (self *baseEntityManager) updateGeneralBatch(modelEntity edgeEntity, checker boltz.FieldChecker, patch bool) error {
+	return self.GetDb().Batch(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		existing := handler.GetStore().NewStoreEntity()
-		found, err := handler.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
+		existing := self.GetStore().NewStoreEntity()
+		found, err := self.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
 		if err != nil {
 			return err
 		}
 		if !found {
-			return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
+			return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
 		}
 		var boltEntity boltz.Entity
-		if patch {
-			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl, checker)
+		if patchable, ok := modelEntity.(patchableEdgeEntity); ok && patch {
+			boltEntity, err = patchable.toBoltEntityForPatch(tx, self.impl, checker)
 		} else {
-			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, handler.impl)
+			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, self.impl)
 		}
 		if err != nil {
 			return err
@@ -218,7 +224,7 @@ func (handler *baseEntityManager) updateGeneralBatch(modelEntity boltEntitySourc
 				if namedEntity.GetName() == "" {
 					return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 				}
-				if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
+				if nameIndexStore, ok := self.GetStore().(persistence.NameIndexedStore); ok {
 					if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
 						return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 					}
@@ -228,12 +234,12 @@ func (handler *baseEntityManager) updateGeneralBatch(modelEntity boltEntitySourc
 			}
 		}
 
-		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
+		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
 			pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
 			if patch {
-				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", self.GetStore().GetEntityType())
 			} else {
-				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", self.GetStore().GetEntityType())
 			}
 			return err
 		}
@@ -241,22 +247,22 @@ func (handler *baseEntityManager) updateGeneralBatch(modelEntity boltEntitySourc
 	})
 }
 
-func (handler *baseEntityManager) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker, patch bool) error {
-	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+func (self *baseEntityManager) updateGeneral(modelEntity edgeEntity, checker boltz.FieldChecker, patch bool) error {
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		existing := handler.GetStore().NewStoreEntity()
-		found, err := handler.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
+		existing := self.GetStore().NewStoreEntity()
+		found, err := self.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)
 		if err != nil {
 			return err
 		}
 		if !found {
-			return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
+			return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
 		}
 		var boltEntity boltz.Entity
-		if patch {
-			boltEntity, err = modelEntity.toBoltEntityForPatch(tx, handler.impl, checker)
+		if patchable, ok := modelEntity.(patchableEdgeEntity); ok && patch {
+			boltEntity, err = patchable.toBoltEntityForPatch(tx, self.impl, checker)
 		} else {
-			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, handler.impl)
+			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, self.impl)
 		}
 		if err != nil {
 			return err
@@ -269,7 +275,7 @@ func (handler *baseEntityManager) updateGeneral(modelEntity boltEntitySource, ch
 				if namedEntity.GetName() == "" {
 					return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 				}
-				if nameIndexStore, ok := handler.GetStore().(persistence.NameIndexedStore); ok {
+				if nameIndexStore, ok := self.GetStore().(persistence.NameIndexedStore); ok {
 					if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
 						return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 					}
@@ -279,11 +285,11 @@ func (handler *baseEntityManager) updateGeneral(modelEntity boltEntitySource, ch
 			}
 		}
 
-		if err := handler.GetStore().Update(ctx, boltEntity, checker); err != nil {
+		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
 			if patch {
-				pfxlog.Logger().WithError(err).Errorf("could not patch %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().WithError(err).Errorf("could not patch %v entity", self.GetStore().GetEntityType())
 			} else {
-				pfxlog.Logger().WithError(err).Errorf("could not update %v entity", handler.GetStore().GetEntityType())
+				pfxlog.Logger().WithError(err).Errorf("could not update %v entity", self.GetStore().GetEntityType())
 			}
 			return err
 		}
@@ -291,41 +297,41 @@ func (handler *baseEntityManager) updateGeneral(modelEntity boltEntitySource, ch
 	})
 }
 
-func (handler *baseEntityManager) readEntity(id string, modelEntity boltEntitySink) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.readEntityInTx(tx, id, modelEntity)
+func (self *baseEntityManager) readEntity(id string, modelEntity edgeEntity) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.readEntityInTx(tx, id, modelEntity)
 	})
 }
 
-func (handler *baseEntityManager) readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error {
-	boltEntity := handler.GetStore().NewStoreEntity()
-	found, err := handler.GetStore().BaseLoadOneById(tx, id, boltEntity)
+func (self *baseEntityManager) readEntityInTx(tx *bbolt.Tx, id string, modelEntity edgeEntity) error {
+	boltEntity := self.GetStore().NewStoreEntity()
+	found, err := self.GetStore().BaseLoadOneById(tx, id, boltEntity)
 	if err != nil {
 		return err
 	}
 	if !found {
-		return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
+		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 
-	return modelEntity.fillFrom(handler.impl, tx, boltEntity)
+	return modelEntity.fillFrom(self.impl, tx, boltEntity)
 }
 
-func (handler *baseEntityManager) readEntityWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity boltEntitySink) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.readEntityInTxWithIndex(name, tx, key, index, modelEntity)
+func (self *baseEntityManager) readEntityWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity edgeEntity) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.readEntityInTxWithIndex(name, tx, key, index, modelEntity)
 	})
 }
 
-func (handler *baseEntityManager) readEntityInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity boltEntitySink) error {
+func (self *baseEntityManager) readEntityInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity edgeEntity) error {
 	id := index.Read(tx, key)
 	if id == nil {
-		return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), name, string(key))
+		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), name, string(key))
 	}
-	return handler.readEntityInTx(tx, string(id), modelEntity)
+	return self.readEntityInTx(tx, string(id), modelEntity)
 }
 
-func (handler *baseEntityManager) readEntityByQuery(query string) (models.Entity, error) {
-	result, err := handler.BaseList(query)
+func (self *baseEntityManager) readEntityByQuery(query string) (models.Entity, error) {
+	result, err := self.BaseList(query)
 	if err != nil {
 		return nil, err
 	}
@@ -350,16 +356,16 @@ func (self *baseEntityManager) ApplyDelete(cmd *command.DeleteEntityCommand) err
 	})
 }
 
-func (handler *baseEntityManager) deleteEntity(id string) error {
-	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
-		return handler.GetStore().DeleteById(boltz.NewMutateContext(tx), id)
+func (self *baseEntityManager) deleteEntity(id string) error {
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
+		return self.GetStore().DeleteById(boltz.NewMutateContext(tx), id)
 	})
 }
 
-func (handler *baseEntityManager) deleteEntityBatch(ids []string) error {
-	return handler.GetDb().Update(func(tx *bbolt.Tx) error {
+func (self *baseEntityManager) deleteEntityBatch(ids []string) error {
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
 		for _, id := range ids {
-			if err := handler.GetStore().DeleteById(boltz.NewMutateContext(tx), id); err != nil {
+			if err := self.GetStore().DeleteById(boltz.NewMutateContext(tx), id); err != nil {
 				return err
 			}
 		}
@@ -367,22 +373,22 @@ func (handler *baseEntityManager) deleteEntityBatch(ids []string) error {
 	})
 }
 
-func (handler *baseEntityManager) list(queryString string, resultHandler models.ListResultHandler) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.ListWithTx(tx, queryString, resultHandler)
+func (self *baseEntityManager) ListWithHandler(queryString string, resultHandler models.ListResultHandler) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.ListWithTx(tx, queryString, resultHandler)
 	})
 }
 
-func (handler *baseEntityManager) queryRoleAttributes(index boltz.SetReadIndex, queryString string) ([]string, *models.QueryMetaData, error) {
-	query, err := ast.Parse(handler.env.GetStores().Index, queryString)
+func (self *baseEntityManager) queryRoleAttributes(index boltz.SetReadIndex, queryString string) ([]string, *models.QueryMetaData, error) {
+	query, err := ast.Parse(self.env.GetStores().Index, queryString)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	var results []string
 	var count int64
-	err = handler.GetDb().View(func(tx *bbolt.Tx) error {
-		results, count, err = handler.env.GetStores().Index.QueryWithCursorC(tx, index.OpenKeyCursor, query)
+	err = self.GetDb().View(func(tx *bbolt.Tx) error {
+		results, count, err = self.env.GetStores().Index.QueryWithCursorC(tx, index.OpenKeyCursor, query)
 		return err
 	})
 
@@ -394,20 +400,20 @@ func (handler *baseEntityManager) queryRoleAttributes(index boltz.SetReadIndex, 
 		Count:            count,
 		Limit:            *query.GetLimit(),
 		Offset:           *query.GetSkip(),
-		FilterableFields: handler.env.GetStores().Index.GetPublicSymbols(),
+		FilterableFields: self.env.GetStores().Index.GetPublicSymbols(),
 	}
 
 	return results, qmd, nil
 }
 
-func (handler *baseEntityManager) iterateRelatedEntities(id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.iterateRelatedEntitiesInTx(tx, id, field, f)
+func (self *baseEntityManager) iterateRelatedEntities(id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.iterateRelatedEntitiesInTx(tx, id, field, f)
 	})
 }
 
-func (handler *baseEntityManager) iterateRelatedEntitiesInTx(tx *bbolt.Tx, id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
-	cursor := handler.Store.GetRelatedEntitiesCursor(tx, id, field, true)
+func (self *baseEntityManager) iterateRelatedEntitiesInTx(tx *bbolt.Tx, id, field string, f func(tx *bbolt.Tx, relatedId string) error) error {
+	cursor := self.Store.GetRelatedEntitiesCursor(tx, id, field, true)
 	for cursor.IsValid() {
 		key := cursor.Current()
 		if err := f(tx, string(key)); err != nil {

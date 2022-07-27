@@ -86,10 +86,6 @@ func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Service) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
-}
-
 func (entity *Service) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltService, ok := boltEntity.(*persistence.EdgeService)
 	if !ok {
@@ -113,6 +109,14 @@ type ServiceDetail struct {
 	Configs            []string                          `json:"configs"`
 	Config             map[string]map[string]interface{} `json:"config"`
 	EncryptionRequired bool                              `json:"encryptionRequired"`
+}
+
+func (entity *ServiceDetail) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+	panic("should never be called")
+}
+
+func (entity *ServiceDetail) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+	panic("should never be called")
 }
 
 func (entity *ServiceDetail) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {

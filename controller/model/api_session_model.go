@@ -71,10 +71,6 @@ func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityMana
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *ApiSession) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
-}
-
 func (entity *ApiSession) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
 	if !ok {

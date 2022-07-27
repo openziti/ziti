@@ -43,7 +43,7 @@ func (handler *EdgeServiceHandler) GetEntityTypeId() string {
 	return "edgeServices"
 }
 
-func (handler *EdgeServiceHandler) newModelEntity() boltEntitySink {
+func (handler *EdgeServiceHandler) newModelEntity() edgeEntity {
 	return &ServiceDetail{}
 }
 
@@ -171,7 +171,7 @@ func (handler *EdgeServiceHandler) queryServices(query ast.Query, identityId str
 		configTypes: configTypes,
 		isAdmin:     isAdmin,
 	}
-	err := handler.preparedList(query, result.collect)
+	err := handler.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

@@ -142,10 +142,6 @@ func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (bo
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
-}
-
 func (entity *Authenticator) ToCert() *AuthenticatorCert {
 	cert, ok := entity.SubType.(*AuthenticatorCert)
 

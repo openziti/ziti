@@ -42,7 +42,7 @@ func NewEnrollmentHandler(env Env) *EnrollmentHandler {
 	return handler
 }
 
-func (handler *EnrollmentHandler) newModelEntity() boltEntitySink {
+func (handler *EnrollmentHandler) newModelEntity() edgeEntity {
 	return &Enrollment{}
 }
 
@@ -180,7 +180,7 @@ func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) err
 
 func (handler *EnrollmentHandler) Query(query string) ([]*Enrollment, error) {
 	var enrollments []*Enrollment
-	if err := handler.list(query, func(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
+	if err := handler.ListWithHandler(query, func(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
 		for _, id := range ids {
 			enrollment, _ := handler.readInTx(tx, id)
 

@@ -129,10 +129,6 @@ func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityMa
 	return entity.toBoltEntityForCreate(tx, handler)
 }
 
-func (entity *PostureCheck) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
-}
-
 func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool, *PostureCheckFailure) {
 	if !entity.SubType.Evaluate(apiSessionId, pd) {
 		return false, &PostureCheckFailure{

@@ -41,7 +41,7 @@ type PostureCheckHandler struct {
 	baseEntityManager
 }
 
-func (handler *PostureCheckHandler) newModelEntity() boltEntitySink {
+func (handler *PostureCheckHandler) newModelEntity() edgeEntity {
 	return &PostureCheck{}
 }
 
@@ -104,7 +104,7 @@ func (handler *PostureCheckHandler) Delete(id string) error {
 
 func (handler *PostureCheckHandler) Query(query string) (*PostureCheckListResult, error) {
 	result := &PostureCheckListResult{handler: handler}
-	if err := handler.list(query, result.collect); err != nil {
+	if err := handler.ListWithHandler(query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -112,7 +112,7 @@ func (handler *PostureCheckHandler) Query(query string) (*PostureCheckListResult
 
 func (handler *PostureCheckHandler) QueryPostureChecks(query ast.Query) (*PostureCheckListResult, error) {
 	result := &PostureCheckListResult{handler: handler}
-	err := handler.preparedList(query, result.collect)
+	err := handler.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

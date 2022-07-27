@@ -1,24 +1,32 @@
 name: mattermost-ziti-webhook
-on: 
-  create:
-  delete:
+on:
   issues:
   issue_comment:
   pull_request_review:
+    types: [submitted]
   pull_request_review_comment:
   pull_request:
+    types: [opened, reopened]
   push:
   fork:
   release:
+    types: [released]
+  workflow_dispatch:
 
 jobs:
   mattermost-ziti-webhook:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     name: POST Webhook
-    if: github.actor!= 'dependabot[bot]'
     steps:
-    - uses: openziti/ziti-webhook-action@main
+    - uses: openziti/ziti-mattermost-action-py@main
+      if: |
+        github.repository_owner == 'openziti'
+        && ((github.event_name != 'pull_request_review')
+        || (github.event_name == 'pull_request_review' && github.event.review.state == 'approved'))
       with:
-        ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
-        webhook-secret: ${{ secrets.ZITI_MATTERMOSTI_WEBHOOK_SECRET }}
+        zitiId: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+        webhookUrl: ${{ secrets.ZHOOK_URL }}
+        eventJson: ${{ toJson(github.event) }}
+        senderUsername: "GitHubZ"
+        destChannel: "dev-notifications"
+

@@ -40,7 +40,7 @@ type CaHandler struct {
 	baseEntityManager
 }
 
-func (handler *CaHandler) newModelEntity() boltEntitySink {
+func (handler *CaHandler) newModelEntity() edgeEntity {
 	return &Ca{}
 }
 
@@ -117,7 +117,7 @@ func (handler *CaHandler) Delete(id string) error {
 
 func (handler *CaHandler) Query(query string) (*CaListResult, error) {
 	result := &CaListResult{handler: handler}
-	if err := handler.list(query, result.collect); err != nil {
+	if err := handler.ListWithHandler(query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil

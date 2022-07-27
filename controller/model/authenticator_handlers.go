@@ -61,7 +61,7 @@ func NewAuthenticatorHandler(env Env) *AuthenticatorHandler {
 	return handler
 }
 
-func (handler AuthenticatorHandler) newModelEntity() boltEntitySink {
+func (handler AuthenticatorHandler) newModelEntity() edgeEntity {
 	return &Authenticator{}
 }
 
@@ -674,6 +674,6 @@ type HashedPassword struct {
 }
 
 type AuthenticatorListQueryResult struct {
-	*models.EntityListResult
+	*models.EntityListResult[models.Entity]
 	Authenticators []*Authenticator
 }
