@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/router"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 )
 
 func init() {
@@ -118,7 +118,7 @@ func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext
 }
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterPatch) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return ae.Managers.TransitRouter.Patch(MapPatchTransitRouterToModel(routerId, router), fields.ConcatNestedNames().FilterMaps("tags"), false)
 	})
 }

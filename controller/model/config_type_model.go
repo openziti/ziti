@@ -68,10 +68,6 @@ func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForPatch(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
-}
-
 func (entity *ConfigType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltConfigType, ok := boltEntity.(*persistence.ConfigType)
 	if !ok {

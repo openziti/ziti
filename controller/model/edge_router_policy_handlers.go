@@ -34,7 +34,7 @@ type EdgeRouterPolicyHandler struct {
 	baseEntityManager
 }
 
-func (handler *EdgeRouterPolicyHandler) newModelEntity() boltEntitySink {
+func (handler *EdgeRouterPolicyHandler) newModelEntity() edgeEntity {
 	return &EdgeRouterPolicy{}
 }
 

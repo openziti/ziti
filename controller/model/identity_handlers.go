@@ -23,8 +23,8 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/metrics"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
@@ -59,7 +59,7 @@ func NewIdentityHandler(env Env) *IdentityHandler {
 	return handler
 }
 
-func (handler *IdentityHandler) newModelEntity() boltEntitySink {
+func (handler *IdentityHandler) newModelEntity() edgeEntity {
 	return &Identity{}
 }
 

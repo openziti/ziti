@@ -27,7 +27,7 @@ import (
 	clientCurrentApiSession "github.com/openziti/edge/rest_client_api_server/operations/current_api_session"
 	managementCurrentApiSession "github.com/openziti/edge/rest_management_api_server/operations/current_api_session"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -159,7 +159,7 @@ func (r *CurrentIdentityAuthenticatorRouter) Update(ae *env.AppEnv, rc *response
 }
 
 func (r *CurrentIdentityAuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, authenticator *rest_model.AuthenticatorPatchWithCurrent) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return ae.Managers.Authenticator.PatchSelf(MapPatchAuthenticatorWithCurrentToModel(id, rc.Identity.Id, authenticator), fields.FilterMaps("tags"))
 	})
 }

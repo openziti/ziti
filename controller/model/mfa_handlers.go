@@ -47,7 +47,7 @@ type MfaHandler struct {
 	baseEntityManager
 }
 
-func (handler *MfaHandler) newModelEntity() boltEntitySink {
+func (handler *MfaHandler) newModelEntity() edgeEntity {
 	return &Mfa{}
 }
 
@@ -104,7 +104,7 @@ func (handler *MfaHandler) Delete(id string) error {
 
 func (handler *MfaHandler) Query(query string) (*MfaListResult, error) {
 	result := &MfaListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

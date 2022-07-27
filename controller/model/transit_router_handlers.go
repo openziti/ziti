@@ -50,7 +50,7 @@ func (handler *TransitRouterHandler) Delete(id string) error {
 	return handler.deleteEntity(id)
 }
 
-func (handler *TransitRouterHandler) newModelEntity() boltEntitySink {
+func (handler *TransitRouterHandler) newModelEntity() edgeEntity {
 	return &TransitRouter{}
 }
 

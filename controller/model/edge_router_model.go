@@ -83,10 +83,6 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (b
 	}, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
-}
-
 func (entity *EdgeRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
 	if !ok {

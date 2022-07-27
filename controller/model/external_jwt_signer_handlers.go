@@ -38,7 +38,7 @@ func (handler *ExternalJwtSignerHandler) IsUpdated(_ string) bool {
 	return true
 }
 
-func (handler *ExternalJwtSignerHandler) newModelEntity() boltEntitySink {
+func (handler *ExternalJwtSignerHandler) newModelEntity() edgeEntity {
 	return &ExternalJwtSigner{}
 }
 

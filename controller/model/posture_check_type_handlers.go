@@ -28,7 +28,7 @@ type PostureCheckTypeHandler struct {
 	baseEntityManager
 }
 
-func (handler *PostureCheckTypeHandler) newModelEntity() boltEntitySink {
+func (handler *PostureCheckTypeHandler) newModelEntity() edgeEntity {
 	return &PostureCheckType{}
 }
 

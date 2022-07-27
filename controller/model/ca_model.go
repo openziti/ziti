@@ -189,10 +189,6 @@ func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Ent
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
-}
-
 // GetExternalId will attempt to retrieve a string claim from a x509 Certificate based on
 // location, matching, and parsing of various x509 Certificate fields.
 func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {

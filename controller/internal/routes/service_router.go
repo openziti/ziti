@@ -22,7 +22,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge/rest_management_api_server/operations/service"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
@@ -244,7 +244,7 @@ func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, para
 }
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return ae.Managers.EdgeService.Patch(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
@@ -262,7 +262,7 @@ func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext)
 }
 
 func (r *ServiceRouter) listManagementTerminators(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Managers.Terminator, MapTerminatorToRestEntity)
+	ListTerminatorAssociations(ae, rc, ae.Managers.EdgeService, ae.Managers.Terminator, MapTerminatorToRestEntity)
 }
 
 func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.RequestContext) {
@@ -289,10 +289,10 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 		return
 	}
 
-	r.listAssociations(ae, rc, ae.Managers.Terminator, MapClientTerminatorToRestEntity)
+	ListTerminatorAssociations(ae, rc, ae.Managers.EdgeService, ae.Managers.Terminator, MapClientTerminatorToRestEntity)
 }
 
-func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
 	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeService, associationLoader, mapper)
 }
 

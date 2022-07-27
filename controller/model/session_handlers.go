@@ -43,7 +43,7 @@ type SessionHandler struct {
 	baseEntityManager
 }
 
-func (handler *SessionHandler) newModelEntity() boltEntitySink {
+func (handler *SessionHandler) newModelEntity() edgeEntity {
 	return &Session{}
 }
 
@@ -298,7 +298,7 @@ func (handler *SessionHandler) ReadSessionCerts(sessionId string) ([]*SessionCer
 
 func (handler *SessionHandler) Query(query string) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -307,7 +307,7 @@ func (handler *SessionHandler) Query(query string) (*SessionListResult, error) {
 
 func (handler *SessionHandler) querySessions(query ast.Query) (*SessionListResult, error) {
 	result := &SessionListResult{handler: handler}
-	err := handler.preparedList(query, result.collect)
+	err := handler.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*
 	result := &SessionListResult{handler: handler}
 	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.routers) = "%v" and `+
 		`anyOf(service.serviceEdgeRouterPolicies.routers) = "%v"`, edgeRouterId, edgeRouterId)
-	err := handler.list(query, result.collect)
+	err := handler.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

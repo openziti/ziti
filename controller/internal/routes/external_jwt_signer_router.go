@@ -24,7 +24,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/external_jwt_signer"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 )
 
 func init() {
@@ -100,7 +100,7 @@ func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestCon
 }
 
 func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.PatchExternalJWTSignerParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 
 		if fields.IsUpdated(persistence.FieldExternalJwtSignerCertPem) {
 			fields.AddField(persistence.FieldExternalJwtSignerCommonName)

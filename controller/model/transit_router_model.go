@@ -71,10 +71,6 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (bo
 	return ret, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForUpdate(tx, handler)
-}
-
 func (entity *TransitRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltTransitRouter, ok := boltEntity.(*persistence.TransitRouter)
 	if !ok {

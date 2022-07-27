@@ -64,10 +64,6 @@ func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (b
 	return entity.toBoltEntity(tx, handler)
 }
 
-func (entity *Mfa) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
-}
-
 func (entity *Mfa) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltMfa, ok := boltEntity.(*persistence.Mfa)
 	if !ok {

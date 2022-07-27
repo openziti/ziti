@@ -32,7 +32,7 @@ type IdentityTypeHandler struct {
 	baseEntityManager
 }
 
-func (handler *IdentityTypeHandler) newModelEntity() boltEntitySink {
+func (handler *IdentityTypeHandler) newModelEntity() edgeEntity {
 	return &IdentityType{}
 }
 

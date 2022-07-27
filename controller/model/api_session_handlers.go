@@ -46,7 +46,7 @@ type ApiSessionHandler struct {
 	HeartbeatCollector *HeartbeatCollector
 }
 
-func (handler *ApiSessionHandler) newModelEntity() boltEntitySink {
+func (handler *ApiSessionHandler) newModelEntity() edgeEntity {
 	return &ApiSession{}
 }
 
@@ -226,7 +226,7 @@ func (handler *ApiSessionHandler) StreamIds(query string, collect func(string, e
 
 func (handler *ApiSessionHandler) Query(query string) (*ApiSessionListResult, error) {
 	result := &ApiSessionListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

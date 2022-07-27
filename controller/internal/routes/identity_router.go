@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/v2/errorz"
@@ -174,7 +174,7 @@ func (r *IdentityRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
 
 	if len(roleFilters) > 0 {
-		ListWithQueryF(ae, rc, ae.Managers.EdgeRouter, MapIdentityToRestEntity, func(query ast.Query) (*models.EntityListResult, error) {
+		ListWithQueryF(ae, rc, ae.Managers.EdgeRouter, MapIdentityToRestEntity, func(query ast.Query) (*models.EntityListResult[models.Entity], error) {
 			cursorProvider, err := ae.GetStores().Identity.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
 			if err != nil {
 				return nil, err
@@ -219,7 +219,7 @@ func (r *IdentityRouter) Update(ae *env.AppEnv, rc *response.RequestContext, par
 }
 
 func (r *IdentityRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params identity.PatchIdentityParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		fields = fields.FilterMaps(boltz.FieldTags, persistence.FieldIdentityAppData, persistence.FieldIdentityServiceHostingCosts, persistence.FieldIdentityServiceHostingPrecedences)
 		return ae.Managers.Identity.Patch(MapPatchIdentityToModel(params.ID, params.Identity, getIdentityTypeId(ae, params.Identity.Type)), fields)
 	})

@@ -19,6 +19,7 @@ package model
 import (
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/boltz"
@@ -42,7 +43,7 @@ type ConfigManager struct {
 	baseEntityManager
 }
 
-func (self *ConfigManager) newModelEntity() boltEntitySink {
+func (self *ConfigManager) newModelEntity() edgeEntity {
 	return &Config{}
 }
 
@@ -55,7 +56,7 @@ func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]
 	return err
 }
 
-func (self *ConfigManager) Update(config *Config, checker boltz.UpdatedFields) error {
+func (self *ConfigManager) Update(config *Config, checker fields.UpdatedFields) error {
 	return network.DispatchUpdate[*Config](self, config, checker)
 }
 

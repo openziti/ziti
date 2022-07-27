@@ -57,7 +57,7 @@ func (handler *EdgeRouterHandler) GetEntityTypeId() string {
 	return "edgeRouters"
 }
 
-func (handler *EdgeRouterHandler) newModelEntity() boltEntitySink {
+func (handler *EdgeRouterHandler) newModelEntity() edgeEntity {
 	return &EdgeRouter{}
 }
 
@@ -125,7 +125,7 @@ func (handler *EdgeRouterHandler) Delete(id string) error {
 
 func (handler *EdgeRouterHandler) Query(query string) (*EdgeRouterListResult, error) {
 	result := &EdgeRouterListResult{handler: handler}
-	err := handler.list(query, result.collect)
+	err := handler.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}

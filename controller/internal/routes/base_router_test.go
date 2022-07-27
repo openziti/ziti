@@ -19,6 +19,7 @@ package routes
 import (
 	"encoding/json"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"reflect"
 	"testing"
 
@@ -53,13 +54,13 @@ func Test_getFields(t *testing.T) {
 	tests := []struct {
 		name    string
 		body    []byte
-		want    api.JsonFields
+		want    fields.UpdatedFieldsMap
 		wantErr bool
 	}{
 		{
 			name: "test",
 			body: []byte(test),
-			want: api.JsonFields{
+			want: fields.UpdatedFieldsMap{
 				"name":               struct{}{},
 				"terminatorStrategy": struct{}{},
 				"configs":            struct{}{},
@@ -69,7 +70,7 @@ func Test_getFields(t *testing.T) {
 		{
 			name: "test2",
 			body: test2Bytes,
-			want: api.JsonFields{
+			want: fields.UpdatedFieldsMap{
 				"name":               struct{}{},
 				"terminatorStrategy": struct{}{},
 				"roleAttributes":     struct{}{},
@@ -97,16 +98,16 @@ func Test_getFields(t *testing.T) {
 func TestJsonFields_ConcatNestedNames(t *testing.T) {
 	tests := []struct {
 		name string
-		j    api.JsonFields
-		want api.JsonFields
+		j    fields.UpdatedFieldsMap
+		want fields.UpdatedFieldsMap
 	}{
 		{"test",
-			api.JsonFields{
+			fields.UpdatedFieldsMap{
 				"Name":                  struct{}{},
 				"This.Is.A.Longer.Name": struct{}{},
 				"EgressRouter":          struct{}{},
 			},
-			api.JsonFields{
+			fields.UpdatedFieldsMap{
 				"Name":              struct{}{},
 				"ThisIsALongerName": struct{}{},
 				"EgressRouter":      struct{}{},
