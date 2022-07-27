@@ -21,12 +21,13 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 	"reflect"
 )
@@ -35,11 +36,15 @@ const (
 	EntityNameSelf = "self"
 )
 
-func modelToApi(network *network.Network, rc api.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]interface{}, error) {
+type ModelToApiMapper[T models.Entity] interface {
+	ToApi(*network.Network, api.RequestContext, T) (interface{}, error)
+}
+
+func modelToApi[T models.Entity](network *network.Network, rc api.RequestContext, mapper ModelToApiMapper[T], es []T) ([]interface{}, error) {
 	apiEntities := make([]interface{}, 0)
 
 	for _, e := range es {
-		al, err := mapper(network, rc, e)
+		al, err := mapper.ToApi(network, rc, e)
 
 		if err != nil {
 			return nil, err
@@ -51,13 +56,11 @@ func modelToApi(network *network.Network, rc api.RequestContext, mapper ModelToA
 	return apiEntities, nil
 }
 
-func ListWithHandler(n *network.Network, rc api.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper) {
+func ListWithHandler[T models.Entity](n *network.Network, rc api.RequestContext, lister models.EntityRetriever[T], mapper ModelToApiMapper[T]) {
 	ListWithQueryF(n, rc, lister, mapper, lister.BasePreparedList)
 }
 
-type queryF func(query ast.Query) (*models.EntityListResult, error)
-
-func ListWithQueryF(n *network.Network, rc api.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, qf queryF) {
+func ListWithQueryF[T models.Entity](n *network.Network, rc api.RequestContext, lister models.EntityRetriever[T], mapper ModelToApiMapper[T], qf func(query ast.Query) (*models.EntityListResult[T], error)) {
 	ListWithQueryFAndCollector(n, rc, lister, mapper, defaultToListEnvelope, qf)
 }
 
@@ -71,7 +74,7 @@ func defaultToListEnvelope(data []interface{}, meta *rest_model.Meta) interface{
 type ApiListEnvelopeFactory func(data []interface{}, meta *rest_model.Meta) interface{}
 type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) interface{}
 
-func ListWithQueryFAndCollector(n *network.Network, rc api.RequestContext, lister models.EntityRetriever, mapper ModelToApiMapper, toEnvelope ApiListEnvelopeFactory, qf queryF) {
+func ListWithQueryFAndCollector[T models.Entity](n *network.Network, rc api.RequestContext, lister models.EntityRetriever[T], mapper ModelToApiMapper[T], toEnvelope ApiListEnvelopeFactory, qf func(query ast.Query) (*models.EntityListResult[T], error)) {
 	ListWithEnvelopeFactory(rc, toEnvelope, func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
@@ -95,10 +98,6 @@ func ListWithQueryFAndCollector(n *network.Network, rc api.RequestContext, liste
 }
 
 type modelListF func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error)
-
-func List(rc api.RequestContext, f modelListF) {
-	ListWithEnvelopeFactory(rc, defaultToListEnvelope, f)
-}
 
 func ListWithEnvelopeFactory(rc api.RequestContext, toEnvelope ApiListEnvelopeFactory, f modelListF) {
 	qo, err := GetModelQueryOptionsFromRequest(rc.GetRequest())
@@ -182,13 +181,13 @@ func CreateWithResponder(rsp api.Responder, linkFactory CreateLinkFactory, creat
 	RespondWithCreatedId(rsp, id, linkFactory.SelfLinkFromId(id))
 }
 
-func DetailWithHandler(network *network.Network, rc api.RequestContext, loader models.EntityRetriever, mapper ModelToApiMapper) {
+func DetailWithHandler[T models.Entity](network *network.Network, rc api.RequestContext, loader models.EntityRetriever[T], mapper ModelToApiMapper[T]) {
 	Detail(rc, func(rc api.RequestContext, id string) (interface{}, error) {
 		entity, err := loader.BaseLoad(id)
 		if err != nil {
 			return nil, err
 		}
-		return mapper(network, rc, entity)
+		return mapper.ToApi(network, rc, entity)
 	})
 }
 
@@ -300,7 +299,7 @@ func UpdateAllowEmptyBody(rc api.RequestContext, updateF ModelUpdateF) {
 	rc.RespondWithEmptyOk()
 }
 
-type ModelPatchF func(id string, fields api.JsonFields) error
+type ModelPatchF func(id string, fields fields.UpdatedFields) error
 
 func Patch(rc api.RequestContext, patchF ModelPatchF) {
 	id, err := rc.GetEntityId()
@@ -312,12 +311,12 @@ func Patch(rc api.RequestContext, patchF ModelPatchF) {
 		return
 	}
 
-	jsonFields, err := api.GetFields(rc.GetBody())
+	updatedFields, err := api.GetFields(rc.GetBody())
 	if err != nil {
 		rc.RespondWithCouldNotParseBody(err)
 	}
 
-	err = patchF(id, jsonFields)
+	err = patchF(id, updatedFields)
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
 			rc.RespondWithNotFoundWithCause(err)
@@ -344,16 +343,19 @@ func Patch(rc api.RequestContext, patchF ModelPatchF) {
 // type ListAssocF func(string, func(models.Entity)) error
 type listAssocF func(rc api.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error)
 
-func ListAssociationWithHandler(n *network.Network, rc api.RequestContext, lister models.EntityRetriever, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
+func ListAssociationWithHandler[T models.Entity, A models.Entity](n *network.Network, rc api.RequestContext, sourceR models.EntityRetriever[T], associatedR models.EntityRetriever[A], mapper ModelToApiMapper[A]) {
 	ListAssociations(rc, func(rc api.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		// validate that the submitted query is only using public symbols. The query options may contain an final
+		// validate that the submitted query is only using public symbols. The query options may contain a final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(associationLoader.GetStore())
+		query, err := queryOptions.getFullQuery(sourceR.GetStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result, err := lister.BasePreparedListAssociated(id, associationLoader, query)
+		result := models.EntityListResult[A]{
+			Loader: associatedR,
+		}
+		err = sourceR.PreparedListAssociatedWithHandler(id, associatedR.GetStore().GetEntityType(), query, result.Collect)
 		if err != nil {
 			return nil, err
 		}

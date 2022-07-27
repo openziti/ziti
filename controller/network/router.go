@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
@@ -56,19 +57,6 @@ type Router struct {
 	NoTraversal bool
 }
 
-func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltRouter, ok := boltEntity.(*db.Router)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
-	}
-	entity.Name = boltRouter.Name
-	entity.Fingerprint = boltRouter.Fingerprint
-	entity.Cost = boltRouter.Cost
-	entity.NoTraversal = boltRouter.NoTraversal
-	entity.FillCommon(boltRouter)
-	return nil
-}
-
 func (entity *Router) toBolt() boltz.Entity {
 	return &db.Router{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -104,24 +92,22 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 }
 
 type RouterManager struct {
-	baseEntityManager
+	baseEntityManager[*Router]
 	cache     cmap.ConcurrentMap[*Router]
 	connected cmap.ConcurrentMap[*Router]
 	store     db.RouterStore
 }
 
-func (self *RouterManager) newModelEntity() boltEntitySink {
-	return &Router{}
-}
-
 func newRouterManager(managers *Managers) *RouterManager {
 	result := &RouterManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Router),
-		cache:             cmap.New[*Router](),
-		connected:         cmap.New[*Router](),
-		store:             managers.stores.Router,
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Router, func() *Router {
+			return &Router{}
+		}),
+		cache:     cmap.New[*Router](),
+		connected: cmap.New[*Router](),
+		store:     managers.stores.Router,
 	}
-	result.impl = result
+	result.populateEntity = result.populateRouter
 
 	managers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
 		for _, val := range i {
@@ -245,7 +231,20 @@ func (self *RouterManager) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
 	return entity, nil
 }
 
-func (self *RouterManager) Update(entity *Router, updatedFields boltz.UpdatedFields) error {
+func (self *RouterManager) populateRouter(entity *Router, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltRouter, ok := boltEntity.(*db.Router)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
+	}
+	entity.Name = boltRouter.Name
+	entity.Fingerprint = boltRouter.Fingerprint
+	entity.Cost = boltRouter.Cost
+	entity.NoTraversal = boltRouter.NoTraversal
+	entity.FillCommon(boltRouter)
+	return nil
+}
+
+func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFields) error {
 	return DispatchUpdate[*Router](self, entity, updatedFields)
 }
 

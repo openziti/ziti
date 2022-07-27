@@ -19,6 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
@@ -100,7 +101,7 @@ func (r *LinkRouter) Detail(n *network.Network, rc api.RequestContext) {
 }
 
 func (r *LinkRouter) Patch(n *network.Network, rc api.RequestContext, params link.PatchLinkParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		l, found := n.GetLink(id)
 		if !found {
 			return boltz.NewNotFoundError("link", "id", id)

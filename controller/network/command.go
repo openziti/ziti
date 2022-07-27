@@ -18,9 +18,9 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/ioc"
 	"github.com/openziti/fabric/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -69,7 +69,7 @@ func (self *CommandManager) decodeUpdateEntityCommand(_ int32, data []byte) (com
 		return nil, err
 	}
 
-	updatedFields := boltz.SliceToUpdatedFields(msg.UpdatedFields)
+	updatedFields := fields.SliceToUpdatedFields(msg.UpdatedFields)
 	return decoder(msg.EntityData, updatedFields)
 }
 

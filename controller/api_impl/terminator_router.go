@@ -19,6 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/terminator"
@@ -66,11 +67,11 @@ func (r *TerminatorRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper
 }
 
 func (r *TerminatorRouter) List(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
+	ListWithHandler[*network.Terminator](n, rc, n.Managers.Terminators, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
+	DetailWithHandler[*network.Terminator](n, rc, n.Managers.Terminators, TerminatorModelMapper{})
 }
 
 func (r *TerminatorRouter) Create(n *network.Network, rc api.RequestContext, params terminator.CreateTerminatorParams) {
@@ -95,7 +96,7 @@ func (r *TerminatorRouter) Update(n *network.Network, rc api.RequestContext, par
 }
 
 func (r *TerminatorRouter) Patch(n *network.Network, rc api.RequestContext, params terminator.PatchTerminatorParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return n.Managers.Terminators.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
 	})
 }

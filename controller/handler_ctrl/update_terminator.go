@@ -18,15 +18,15 @@ package handler_ctrl
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/storage/boltz"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"math"
 )
 
@@ -65,7 +65,7 @@ func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, c
 		return
 	}
 
-	checker := boltz.MapFieldChecker{}
+	checker := fields.UpdatedFieldsMap{}
 
 	if request.UpdateCost {
 		if request.Cost > math.MaxUint16 {

@@ -17,6 +17,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/cmd_pb"
@@ -78,25 +79,6 @@ func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
 
-func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltTerminator, ok := boltEntity.(*db.Terminator)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model terminator", reflect.TypeOf(boltEntity))
-	}
-	entity.Service = boltTerminator.Service
-	entity.Router = boltTerminator.Router
-	entity.Binding = boltTerminator.Binding
-	entity.Address = boltTerminator.Address
-	entity.InstanceId = boltTerminator.InstanceId
-	entity.InstanceSecret = boltTerminator.InstanceSecret
-	entity.PeerData = boltTerminator.PeerData
-	entity.Cost = boltTerminator.Cost
-	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
-	entity.HostId = boltTerminator.HostId
-	entity.FillCommon(boltTerminator)
-	return nil
-}
-
 func (entity *Terminator) toBolt() *db.Terminator {
 	precedence := xt.Precedences.Default.String()
 	if entity.Precedence != nil {
@@ -119,10 +101,12 @@ func (entity *Terminator) toBolt() *db.Terminator {
 
 func newTerminatorManager(managers *Managers) *TerminatorManager {
 	result := &TerminatorManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Terminator),
-		store:             managers.stores.Terminator,
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Terminator, func() *Terminator {
+			return &Terminator{}
+		}),
+		store: managers.stores.Terminator,
 	}
-	result.impl = result
+	result.populateEntity = result.populateTerminator
 
 	managers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
 		for _, entity := range params {
@@ -138,12 +122,8 @@ func newTerminatorManager(managers *Managers) *TerminatorManager {
 }
 
 type TerminatorManager struct {
-	baseEntityManager
+	baseEntityManager[*Terminator]
 	store db.TerminatorStore
-}
-
-func (self *TerminatorManager) newModelEntity() boltEntitySink {
-	return &Terminator{}
 }
 
 func (self *TerminatorManager) Create(entity *Terminator) error {
@@ -184,7 +164,7 @@ func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, prece
 	}
 
 	terminator.Precedence = precedence
-	checker := boltz.MapFieldChecker{
+	checker := fields.UpdatedFieldsMap{
 		db.FieldTerminatorPrecedence: struct{}{},
 	}
 
@@ -193,7 +173,7 @@ func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, prece
 	}
 }
 
-func (self *TerminatorManager) Update(entity *Terminator, updatedFields boltz.UpdatedFields) error {
+func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.UpdatedFields) error {
 	return DispatchUpdate[*Terminator](self, entity, updatedFields)
 }
 
@@ -227,10 +207,29 @@ func (self *TerminatorManager) readInTx(tx *bbolt.Tx, id string) (*Terminator, e
 
 func (self *TerminatorManager) Query(query string) (*TerminatorListResult, error) {
 	result := &TerminatorListResult{controller: self}
-	if err := self.list(query, result.collect); err != nil {
+	if err := self.ListWithHandler(query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil
+}
+
+func (self *TerminatorManager) populateTerminator(entity *Terminator, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltTerminator, ok := boltEntity.(*db.Terminator)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model terminator", reflect.TypeOf(boltEntity))
+	}
+	entity.Service = boltTerminator.Service
+	entity.Router = boltTerminator.Router
+	entity.Binding = boltTerminator.Binding
+	entity.Address = boltTerminator.Address
+	entity.InstanceId = boltTerminator.InstanceId
+	entity.InstanceSecret = boltTerminator.InstanceSecret
+	entity.PeerData = boltTerminator.PeerData
+	entity.Cost = boltTerminator.Cost
+	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
+	entity.HostId = boltTerminator.HostId
+	entity.FillCommon(boltTerminator)
+	return nil
 }
 
 func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {

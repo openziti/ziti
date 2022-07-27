@@ -1,9 +1,9 @@
 package command
 
 import (
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -79,7 +79,7 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 type UpdateEntityCommand[T models.Entity] struct {
 	Updater       EntityUpdater[T]
 	Entity        T
-	UpdatedFields boltz.UpdatedFields
+	UpdatedFields fields.UpdatedFields
 }
 
 func (self *UpdateEntityCommand[T]) Apply() error {
@@ -93,7 +93,7 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 		return nil, errors.Wrapf(err, "error mashalling entity of type %T (%v)", self.Entity, entityType)
 	}
 
-	updatedFields, err := boltz.UpdatedFieldsToSlice(self.UpdatedFields)
+	updatedFields, err := fields.UpdatedFieldsToSlice(self.UpdatedFields)
 	if err != nil {
 		return nil, err
 	}

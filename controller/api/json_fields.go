@@ -1,59 +1,28 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package api
 
 import (
 	"encoding/json"
 	"github.com/openziti/fabric/controller/apierror"
-	"strings"
+	"github.com/openziti/fabric/controller/fields"
 )
 
-type JsonFields map[string]struct{}
-
-func (j JsonFields) ToSlice() []string {
-	var result []string
-	for k := range j {
-		result = append(result, k)
-	}
-	return result
-}
-
-func (j JsonFields) IsUpdated(key string) bool {
-	_, ok := j[key]
-	return ok
-}
-
-func (j JsonFields) AddField(key string) {
-	j[key] = struct{}{}
-}
-
-func (j JsonFields) ConcatNestedNames() JsonFields {
-	for key, val := range j {
-		if strings.Contains(key, ".") {
-			delete(j, key)
-			key = strings.ReplaceAll(key, ".", "")
-			j[key] = val
-		}
-	}
-	return j
-}
-
-func (j JsonFields) FilterMaps(mapNames ...string) JsonFields {
-	nameMap := map[string]string{}
-	for _, name := range mapNames {
-		nameMap[name] = name + "."
-	}
-	for key := range j {
-		for name, dotName := range nameMap {
-			if strings.HasPrefix(key, dotName) {
-				delete(j, key)
-				j[name] = struct{}{}
-				break
-			}
-		}
-	}
-	return j
-}
-
-func GetFields(body []byte) (JsonFields, error) {
+func GetFields(body []byte) (fields.UpdatedFields, error) {
 	jsonMap := map[string]interface{}{}
 	err := json.Unmarshal(body, &jsonMap)
 
@@ -61,12 +30,12 @@ func GetFields(body []byte) (JsonFields, error) {
 		return nil, apierror.GetJsonParseError(err, body)
 	}
 
-	resultMap := JsonFields{}
+	resultMap := fields.UpdatedFieldsMap{}
 	GetJsonFields("", jsonMap, resultMap)
 	return resultMap, nil
 }
 
-func GetJsonFields(prefix string, m map[string]interface{}, result JsonFields) {
+func GetJsonFields(prefix string, m map[string]interface{}, result fields.UpdatedFieldsMap) {
 	for k, v := range m {
 		name := k
 		if subMap, ok := v.(map[string]interface{}); ok {

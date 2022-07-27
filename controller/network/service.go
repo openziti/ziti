@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
@@ -41,25 +42,6 @@ func (self *Service) GetName() string {
 	return self.Name
 }
 
-func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltService, ok := boltEntity.(*db.Service)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
-	}
-	entity.Name = boltService.Name
-	entity.TerminatorStrategy = boltService.TerminatorStrategy
-	entity.FillCommon(boltService)
-
-	terminatorIds := ctrl.getManagers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
-	for _, terminatorId := range terminatorIds {
-		if terminator, _ := ctrl.getManagers().Terminators.readInTx(tx, terminatorId); terminator != nil {
-			entity.Terminators = append(entity.Terminators, terminator)
-		}
-	}
-
-	return nil
-}
-
 func (entity *Service) toBolt() boltz.Entity {
 	return &db.Service{
 		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -70,11 +52,13 @@ func (entity *Service) toBolt() boltz.Entity {
 
 func newServiceManager(managers *Managers) *ServiceManager {
 	result := &ServiceManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Service),
-		cache:             cmap.New[*Service](),
-		store:             managers.stores.Service,
+		baseEntityManager: newBaseEntityManager(managers, managers.stores.Service, func() *Service {
+			return &Service{}
+		}),
+		cache: cmap.New[*Service](),
+		store: managers.stores.Service,
 	}
-	result.impl = result
+	result.populateEntity = result.populateService
 
 	cacheInvalidationF := func(i ...interface{}) {
 		for _, val := range i {
@@ -93,12 +77,12 @@ func newServiceManager(managers *Managers) *ServiceManager {
 }
 
 type ServiceManager struct {
-	baseEntityManager
+	baseEntityManager[*Service]
 	cache cmap.ConcurrentMap[*Service]
 	store db.ServiceStore
 }
 
-func (self *ServiceManager) newModelEntity() boltEntitySink {
+func (self *ServiceManager) newModelEntity() *Service {
 	return &Service{}
 }
 
@@ -147,7 +131,7 @@ func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Servic
 	return nil
 }
 
-func (self *ServiceManager) Update(entity *Service, updatedFields boltz.UpdatedFields) error {
+func (self *ServiceManager) Update(entity *Service, updatedFields fields.UpdatedFields) error {
 	return DispatchUpdate[*Service](self, entity, updatedFields)
 }
 
@@ -191,6 +175,25 @@ func (self *ServiceManager) readInTx(tx *bbolt.Tx, id string) (*Service, error) 
 
 	self.cacheService(entity)
 	return entity, nil
+}
+
+func (self *ServiceManager) populateService(entity *Service, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltService, ok := boltEntity.(*db.Service)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
+	}
+	entity.Name = boltService.Name
+	entity.TerminatorStrategy = boltService.TerminatorStrategy
+	entity.FillCommon(boltService)
+
+	terminatorIds := self.store.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if terminator, _ := self.Terminators.readInTx(tx, terminatorId); terminator != nil {
+			entity.Terminators = append(entity.Terminators, terminator)
+		}
+	}
+
+	return nil
 }
 
 func (self *ServiceManager) cacheService(service *Service) {

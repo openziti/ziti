@@ -17,8 +17,6 @@
 package api_impl
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/network"
@@ -95,33 +93,12 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *networ
 	return ret
 }
 
-func MapServiceToRestEntity(n *network.Network, rc api.RequestContext, e models.Entity) (interface{}, error) {
-	service, ok := e.(*network.Service)
+type ServiceModelMapper struct{}
 
-	if !ok {
-		err := fmt.Errorf("entity is not a Service \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapServiceToRestModel(n, rc, service)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
-}
-
-func MapServiceToRestModel(_ *network.Network, _ api.RequestContext, service *network.Service) (*rest_model.ServiceDetail, error) {
-	ret := &rest_model.ServiceDetail{
+func (ServiceModelMapper) ToApi(_ *network.Network, _ api.RequestContext, service *network.Service) (interface{}, error) {
+	return &rest_model.ServiceDetail{
 		BaseEntity:         BaseEntityToRestModel(service, ServiceLinkFactory),
 		Name:               &service.Name,
 		TerminatorStrategy: &service.TerminatorStrategy,
-	}
-
-	return ret, nil
+	}, nil
 }

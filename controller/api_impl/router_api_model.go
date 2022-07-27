@@ -17,9 +17,6 @@
 package api_impl
 
 import (
-	"fmt"
-
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
 
@@ -94,28 +91,9 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.R
 	return ret
 }
 
-func MapRouterToRestEntity(n *network.Network, rc api.RequestContext, e models.Entity) (interface{}, error) {
-	router, ok := e.(*network.Router)
+type RouterModelMapper struct{}
 
-	if !ok {
-		err := fmt.Errorf("entity is not a Router \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapRouterToRestModel(n, rc, router)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
-}
-
-func MapRouterToRestModel(n *network.Network, _ api.RequestContext, router *network.Router) (*rest_model.RouterDetail, error) {
+func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router *network.Router) (interface{}, error) {
 	connected := n.GetConnectedRouter(router.Id)
 	var restVersionInfo *rest_model.VersionInfo
 	if connected != nil && connected.VersionInfo != nil {

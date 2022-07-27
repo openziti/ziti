@@ -19,7 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/service"
@@ -71,11 +71,11 @@ func (r *ServiceRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Re
 }
 
 func (r *ServiceRouter) ListServices(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Managers.Services, MapServiceToRestEntity)
+	ListWithHandler[*network.Service](n, rc, n.Managers.Services, ServiceModelMapper{})
 }
 
 func (r *ServiceRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Managers.Services, MapServiceToRestEntity)
+	DetailWithHandler[*network.Service](n, rc, n.Managers.Services, ServiceModelMapper{})
 }
 
 func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params service.CreateServiceParams) {
@@ -100,15 +100,11 @@ func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params
 }
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
 func (r *ServiceRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
-	r.listAssociations(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
-}
-
-func (r *ServiceRouter) listAssociations(n *network.Network, rc api.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(n, rc, n.Managers.Services, associationLoader, mapper)
+	ListAssociationWithHandler[*network.Service, *network.Terminator](n, rc, n.Managers.Services, n.Managers.Terminators, TerminatorModelMapper{})
 }

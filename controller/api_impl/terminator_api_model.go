@@ -95,20 +95,13 @@ func MapPatchTerminatorToModel(id string, terminator *rest_model.TerminatorPatch
 	return ret
 }
 
-func MapTerminatorToRestEntity(n *network.Network, _ api.RequestContext, e models.Entity) (interface{}, error) {
-	terminator, ok := e.(*network.Terminator)
+type TerminatorModelMapper struct{}
 
-	if !ok {
-		err := fmt.Errorf("entity is not a Terminator \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
+func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, terminator *network.Terminator) (interface{}, error) {
 	restModel, err := MapTerminatorToRestModel(n, terminator)
 
 	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
+		err := fmt.Errorf("could not convert to API entity \"%s\": %s", terminator.GetId(), err)
 		log := pfxlog.Logger()
 		log.Error(err)
 		return nil, err

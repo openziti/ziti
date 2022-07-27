@@ -19,7 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/router"
@@ -71,11 +71,11 @@ func (r *RouterRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Req
 }
 
 func (r *RouterRouter) ListRouters(n *network.Network, rc api.RequestContext) {
-	ListWithHandler(n, rc, n.Managers.Routers, MapRouterToRestEntity)
+	ListWithHandler[*network.Router](n, rc, n.Managers.Routers, RouterModelMapper{})
 }
 
 func (r *RouterRouter) Detail(n *network.Network, rc api.RequestContext) {
-	DetailWithHandler(n, rc, n.Managers.Routers, MapRouterToRestEntity)
+	DetailWithHandler[*network.Router](n, rc, n.Managers.Routers, RouterModelMapper{})
 }
 
 func (r *RouterRouter) Create(n *network.Network, rc api.RequestContext, params router.CreateRouterParams) {
@@ -100,15 +100,11 @@ func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params 
 }
 
 func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
-	Patch(rc, func(id string, fields api.JsonFields) error {
+	Patch(rc, func(id string, fields fields.UpdatedFields) error {
 		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
 
 func (r *RouterRouter) listManagementTerminators(n *network.Network, rc api.RequestContext) {
-	r.listAssociations(n, rc, n.Managers.Terminators, MapTerminatorToRestEntity)
-}
-
-func (r *RouterRouter) listAssociations(n *network.Network, rc api.RequestContext, associationLoader models.EntityRetriever, mapper ModelToApiMapper) {
-	ListAssociationWithHandler(n, rc, n.Managers.Routers, associationLoader, mapper)
+	ListAssociationWithHandler[*network.Router, *network.Terminator](n, rc, n.Managers.Routers, n.Managers.Terminators, TerminatorModelMapper{})
 }

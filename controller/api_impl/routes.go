@@ -17,8 +17,6 @@
 package api_impl
 
 import (
-	"github.com/openziti/fabric/controller/api"
-	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
 
 	"github.com/openziti/fabric/controller/models"
@@ -26,8 +24,6 @@ import (
 	"net/http"
 	"strconv"
 )
-
-type ModelToApiMapper func(*network.Network, api.RequestContext, models.Entity) (interface{}, error)
 
 func GetModelQueryOptionsFromRequest(r *http.Request) (*PublicQueryOptions, error) {
 	filter := r.URL.Query().Get("filter")

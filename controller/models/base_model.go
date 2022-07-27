@@ -35,13 +35,17 @@ const (
 	ListOffsetDefault = 0
 )
 
-type EntityRetriever interface {
-	BaseLoad(id string) (Entity, error)
-	BaseLoadInTx(tx *bbolt.Tx, id string) (Entity, error)
+type EntityRetriever[T Entity] interface {
+	BaseLoad(id string) (T, error)
+	BaseLoadInTx(tx *bbolt.Tx, id string) (T, error)
 
-	BaseList(query string) (*EntityListResult, error)
-	BasePreparedList(query ast.Query) (*EntityListResult, error)
-	BasePreparedListAssociated(id string, typeLoader EntityRetriever, query ast.Query) (*EntityListResult, error)
+	BaseList(query string) (*EntityListResult[T], error)
+	BasePreparedList(query ast.Query) (*EntityListResult[T], error)
+
+	ListWithHandler(query string, handler ListResultHandler) error
+	PreparedListWithHandler(query ast.Query, handler ListResultHandler) error
+
+	PreparedListAssociatedWithHandler(id string, association string, query ast.Query, handler ListResultHandler) error
 
 	GetStore() boltz.CrudStore
 
@@ -100,21 +104,21 @@ func (entity *BaseEntity) FillCommon(boltEntity boltz.ExtEntity) {
 	entity.IsSystem = boltEntity.IsSystemEntity()
 }
 
-type EntityListResult struct {
-	Loader   EntityRetriever
-	Entities []Entity
+type EntityListResult[T Entity] struct {
+	Loader   EntityRetriever[T]
+	Entities []T
 	QueryMetaData
 }
 
-func (result *EntityListResult) GetEntities() []Entity {
+func (result *EntityListResult[T]) GetEntities() []T {
 	return result.Entities
 }
 
-func (result *EntityListResult) GetMetaData() *QueryMetaData {
+func (result *EntityListResult[T]) GetMetaData() *QueryMetaData {
 	return &result.QueryMetaData
 }
 
-func (result *EntityListResult) Collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
+func (result *EntityListResult[T]) Collect(tx *bbolt.Tx, ids []string, queryMetaData *QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
 		entity, err := result.Loader.BaseLoadInTx(tx, key)

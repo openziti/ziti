@@ -19,9 +19,9 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"math"
 	"testing"
@@ -268,7 +268,7 @@ func (ctx *TestContext) testPatchTerminator(t *testing.T) {
 	ctx.ValidateBaseline(terminator)
 
 	terminator.Cost = 100
-	checker := boltz.MapFieldChecker{
+	checker := fields.UpdatedFieldsMap{
 		FieldTerminatorCost: struct{}{},
 	}
 	ctx.RequirePatch(terminator, checker)
@@ -278,7 +278,7 @@ func (ctx *TestContext) testPatchTerminator(t *testing.T) {
 		1: {7, 8, 9},
 	}
 
-	checker = boltz.MapFieldChecker{
+	checker = fields.UpdatedFieldsMap{
 		FieldServerPeerData: struct{}{},
 	}
 	ctx.RequirePatch(terminator, checker)
