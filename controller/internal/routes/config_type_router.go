@@ -88,7 +88,7 @@ func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Create(rc, rc, ConfigTypeLinkFactory, func() (string, error) {
-		return ae.Managers.ConfigType.Create(MapCreateConfigTypeToModel(params.ConfigType))
+		return MapCreate(ae.Managers.ConfigType.Create, MapCreateConfigTypeToModel(params.ConfigType))
 	})
 }
 
@@ -105,12 +105,11 @@ func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Update(rc, func(id string) error {
-		return ae.Managers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType))
+		return ae.Managers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType), nil)
 	})
 }
 
 func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params config.PatchConfigTypeParams) {
-
 	if _, ok := params.ConfigType.Schema.(map[string]interface{}); !ok {
 		ae.ManagementApi.ServeErrorFor("")(rc.ResponseWriter, rc.Request, errors.InvalidType("schema", "body", "object", params.ConfigType.Schema))
 		return
@@ -121,7 +120,7 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 	}
 
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.ConfigType.Patch(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
+		return ae.Managers.ConfigType.Update(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
 	})
 }
 

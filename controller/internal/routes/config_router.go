@@ -86,11 +86,7 @@ func (r *ConfigRouter) Create(ae *env.AppEnv, rc *response.RequestContext, param
 		if err != nil {
 			return "", err
 		}
-		err = ae.Managers.Config.Create(entity)
-		if err != nil {
-			return "", err
-		}
-		return entity.Id, nil
+		return MapCreate(ae.Managers.Config.Create, entity)
 	})
 }
 

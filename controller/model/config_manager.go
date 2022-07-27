@@ -47,8 +47,8 @@ func (self *ConfigManager) newModelEntity() edgeEntity {
 	return &Config{}
 }
 
-func (self *ConfigManager) Create(config *Config) error {
-	return network.DispatchCreate[*Config](self, config)
+func (self *ConfigManager) Create(entity *Config) error {
+	return network.DispatchCreate[*Config](self, entity)
 }
 
 func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
@@ -56,14 +56,14 @@ func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]
 	return err
 }
 
-func (self *ConfigManager) Update(config *Config, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*Config](self, config, checker)
+func (self *ConfigManager) Update(entity *Config, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*Config](self, entity, checker)
 }
 
 func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
-	var checker boltz.FieldChecker = cmd.UpdatedFields
-	if checker != nil {
-		checker = &AndFieldChecker{first: self, second: checker}
+	var checker boltz.FieldChecker = self
+	if cmd.UpdatedFields != nil {
+		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
 	return self.updateEntity(cmd.Entity, checker)
 }

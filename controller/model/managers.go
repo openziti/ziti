@@ -35,7 +35,7 @@ type Managers struct {
 	ApiSessionCertificate   *ApiSessionCertificateHandler
 	Ca                      *CaHandler
 	Config                  *ConfigManager
-	ConfigType              *ConfigTypeHandler
+	ConfigType              *ConfigTypeManager
 	EdgeRouter              *EdgeRouterHandler
 	EdgeRouterPolicy        *EdgeRouterPolicyHandler
 	EdgeService             *EdgeServiceHandler
@@ -70,7 +70,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.AuthPolicy = NewAuthPolicyManager(env)
 	managers.Ca = NewCaHandler(env)
 	managers.Config = NewConfigManager(env)
-	managers.ConfigType = NewConfigTypeHandler(env)
+	managers.ConfigType = NewConfigTypeManager(env)
 	managers.EdgeRouter = NewEdgeRouterHandler(env)
 	managers.EdgeRouterPolicy = NewEdgeRouterPolicyHandler(env)
 	managers.EdgeService = NewEdgeServiceHandler(env)
