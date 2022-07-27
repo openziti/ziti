@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"fmt"
+	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
@@ -89,6 +90,16 @@ func (entity *Ca) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity
 }
 
 func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+	if entity.IdentityNameFormat == "" {
+		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
+	}
+
+	if entity.ExternalIdClaim != nil {
+		if entity.ExternalIdClaim.Matcher == persistence.ExternalIdClaimMatcherScheme && entity.ExternalIdClaim.Location != persistence.ExternalIdClaimLocSanUri {
+			return nil, apierror.NewBadRequestFieldError(*errorz.NewFieldError("scheme matcher can only be used with URI locations", "matcher", entity.ExternalIdClaim.Matcher))
+		}
+	}
+
 	var fp string
 
 	if entity.CertPem != "" {
@@ -164,6 +175,10 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (bo
 }
 
 func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
+	if entity.IdentityNameFormat == "" {
+		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
+	}
+
 	boltEntity := &persistence.Ca{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
