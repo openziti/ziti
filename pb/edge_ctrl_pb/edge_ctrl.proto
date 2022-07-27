@@ -67,12 +67,34 @@ message ServerHello {
   map<string, string> data = 2;
 }
 
+message Address {
+  string value = 10;
+  string protocol = 20;
+  string hostname = 30;
+  int32 port = 40;
+}
+
+message Listener {
+  Address address = 10;
+  Address advertise = 20;
+}
+
 message ClientHello {
   string version = 1;
   string hostname = 2;
+
+  // deprecated used listeners instead
   repeated string protocols = 3;
+
+
+  // arbitrary data
   map<string, string> data = 4;
+
+  // deprecated use listeners instead
   repeated string protocolPorts = 5;
+
+  // an array of configured edge listeners
+  repeated Listener listeners = 10;
 }
 
 message Error {

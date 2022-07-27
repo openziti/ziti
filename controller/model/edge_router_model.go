@@ -75,7 +75,6 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (b
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
 		CertPem:               entity.CertPem,
-		Hostname:              entity.Hostname,
 		EdgeRouterProtocols:   entity.EdgeRouterProtocols,
 		IsTunnelerEnabled:     entity.IsTunnelerEnabled,
 		AppData:               entity.AppData,
@@ -100,7 +99,6 @@ func (entity *EdgeRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity bolt
 	entity.IsVerified = boltEdgeRouter.IsVerified
 	entity.Fingerprint = boltEdgeRouter.Fingerprint
 	entity.CertPem = boltEdgeRouter.CertPem
-	entity.Hostname = boltEdgeRouter.Hostname
 	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 	entity.IsTunnelerEnabled = boltEdgeRouter.IsTunnelerEnabled
 	entity.AppData = boltEdgeRouter.AppData

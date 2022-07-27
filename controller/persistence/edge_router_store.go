@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/v2/errorz"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
 )
@@ -33,7 +33,6 @@ const (
 	FieldEdgeRouterUnverifiedCertPEM     = "unverifiedCertPem"
 	FieldEdgeRouterUnverifiedFingerprint = "unverifiedFingerprint"
 	FieldEdgeRouterIsVerified            = "isVerified"
-	FieldEdgeRouterHostname              = "hostname"
 	FieldEdgeRouterProtocols             = "protocols"
 	FieldEdgeRouterEnrollments           = "enrollments"
 	FieldEdgeRouterIsTunnelerEnabled     = "isTunnelerEnabled"
@@ -56,7 +55,6 @@ type EdgeRouter struct {
 	CertPem               *string
 	UnverifiedCertPem     *string
 	UnverifiedFingerprint *string
-	Hostname              *string
 	EdgeRouterProtocols   map[string]string
 	RoleAttributes        []string
 	Enrollments           []string
@@ -77,7 +75,6 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 
 	//old v4, migrations only
 	entity.Enrollments = bucket.GetStringList(FieldEdgeRouterEnrollments)
-	entity.Hostname = bucket.GetString(FieldEdgeRouterHostname)
 	entity.EdgeRouterProtocols = toStringStringMap(bucket.GetMap(FieldEdgeRouterProtocols))
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.AppData = bucket.GetMap(FieldIdentityAppData)
@@ -89,7 +86,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	store := ctx.Store.(*edgeRouterStoreImpl)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
-	ctx.SetStringP(FieldEdgeRouterHostname, entity.Hostname)
 	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
