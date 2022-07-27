@@ -43,6 +43,13 @@ message Config {
   map<string, TagValue> tags = 5;
 }
 
+message ConfigType {
+  string id = 1;
+  string name = 2;
+  JsonMap schema = 3;
+  map<string, TagValue> tags = 4;
+}
+
 message AuthPolicy {
   message Primary {
     message Cert {
