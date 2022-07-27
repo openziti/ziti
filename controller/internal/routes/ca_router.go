@@ -99,7 +99,7 @@ func (r *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.CreateCaParams) {
 	Create(rc, rc, CaLinkFactory, func() (string, error) {
-		return ae.Managers.Ca.Create(MapCreateCaToModel(params.Ca))
+		return MapCreate(ae.Managers.Ca.Create, MapCreateCaToModel(params.Ca))
 	})
 }
 
@@ -109,13 +109,13 @@ func (r *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.UpdateCaParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca))
+		return ae.Managers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca), nil)
 	})
 }
 
 func (r *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.PatchCaParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.Ca.Patch(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
+		return ae.Managers.Ca.Update(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
 	})
 }
 

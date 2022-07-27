@@ -89,3 +89,28 @@ message AuthPolicy {
   Secondary secondary = 4;
   map<string, TagValue> tags = 5;
 }
+
+message Ca {
+  message ExternalIdClaim {
+    string location = 1;
+    string matcher = 2;
+    string MatcherCriteria = 3;
+    string Parser = 4;
+    string ParserCriteria = 5;
+    int64 Index = 6;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string fingerprint = 4;
+  string certPem = 5;
+  bool isVerified = 6;
+  string verificationToken = 7;
+  bool isAutoCaEnrollmentEnabled = 8;
+  bool isOttCaEnrollmentEnabled = 9;
+  bool isAuthEnabled = 10;
+  repeated string identityRoles = 11;
+  string identityNameFormat = 12;
+  optional ExternalIdClaim externalIdClaim = 13;
+}
