@@ -47,6 +47,9 @@ func (entity *ServicePolicy) validatePolicyType() error {
 }
 
 func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
+	if err := entity.validatePolicyType(); err != nil {
+		return nil, err
+	}
 	policyType := persistence.PolicyTypeInvalid
 	if strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) {
 		policyType = persistence.PolicyTypeDial

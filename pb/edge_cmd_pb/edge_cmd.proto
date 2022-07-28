@@ -132,3 +132,14 @@ message ServiceEdgeRouterPolicy {
   repeated string edgeRouterRoles = 5;
   repeated string serviceRoles = 6;
 }
+
+message ServicePolicy {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string semantic = 4;
+  repeated string identityRoles = 5;
+  repeated string serviceRoles = 6;
+  repeated string postureCheckRoles = 7;
+  string policyType = 8;
+}
