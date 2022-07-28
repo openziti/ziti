@@ -43,7 +43,7 @@ type Managers struct {
 	Identity                *IdentityHandler
 	IdentityType            *IdentityTypeHandler
 	PolicyAdvisor           *PolicyAdvisor
-	ServiceEdgeRouterPolicy *ServiceEdgeRouterPolicyHandler
+	ServiceEdgeRouterPolicy *ServiceEdgeRouterPolicyManager
 	ServicePolicy           *ServicePolicyHandler
 	TransitRouter           *TransitRouterHandler
 	Session                 *SessionHandler
@@ -79,7 +79,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.Identity = NewIdentityHandler(env)
 	managers.IdentityType = NewIdentityTypeHandler(env)
 	managers.PolicyAdvisor = NewPolicyAdvisor(env)
-	managers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyHandler(env)
+	managers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyManager(env)
 	managers.ServicePolicy = NewServicePolicyHandler(env)
 	managers.Session = NewSessionHandler(env)
 	managers.TransitRouter = NewTransitRouterHandler(env)

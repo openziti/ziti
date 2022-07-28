@@ -86,7 +86,7 @@ func (r *ServiceEdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.Requ
 
 func (r *ServiceEdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.CreateServiceEdgeRouterPolicyParams) {
 	Create(rc, rc, ServiceEdgeRouterPolicyLinkFactory, func() (string, error) {
-		return ae.Managers.ServiceEdgeRouterPolicy.Create(MapCreateServiceEdgeRouterPolicyToModel(params.Policy))
+		return MapCreate(ae.Managers.ServiceEdgeRouterPolicy.Create, MapCreateServiceEdgeRouterPolicyToModel(params.Policy))
 	})
 }
 
@@ -96,13 +96,13 @@ func (r *ServiceEdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.Requ
 
 func (r *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.UpdateServiceEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy))
+		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy), nil)
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.ServiceEdgeRouterPolicy.Patch(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
 	})
 }
 
