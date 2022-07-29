@@ -40,7 +40,6 @@ func NewIdentityTypeRouter() *IdentityTypeRouter {
 }
 
 func (r *IdentityTypeRouter) Register(ae *env.AppEnv) {
-
 	ae.ManagementApi.IdentityDetailIdentityTypeHandler = identity.DetailIdentityTypeHandlerFunc(func(params identity.DetailIdentityTypeParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Detail, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})

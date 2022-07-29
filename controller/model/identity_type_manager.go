@@ -20,37 +20,34 @@ import (
 	"github.com/openziti/storage/boltz"
 )
 
-func NewIdentityTypeHandler(env Env) *IdentityTypeHandler {
-	handler := &IdentityTypeHandler{
+func NewIdentityTypeManager(env Env) *IdentityTypeManager {
+	manager := &IdentityTypeManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().IdentityType),
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+
+	return manager
 }
 
-type IdentityTypeHandler struct {
+type IdentityTypeManager struct {
 	baseEntityManager
 }
 
-func (handler *IdentityTypeHandler) newModelEntity() edgeEntity {
+func (self *IdentityTypeManager) newModelEntity() edgeEntity {
 	return &IdentityType{}
 }
 
-func (handler *IdentityTypeHandler) Create(IdentityTypeModel *IdentityType) (string, error) {
-	return handler.createEntity(IdentityTypeModel)
-}
-
-func (handler *IdentityTypeHandler) Read(id string) (*IdentityType, error) {
+func (self *IdentityTypeManager) Read(id string) (*IdentityType, error) {
 	modelEntity := &IdentityType{}
-	if err := handler.readEntity(id, modelEntity); err != nil {
+	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) ReadByIdOrName(idOrName string) (*IdentityType, error) {
+func (self *IdentityTypeManager) ReadByIdOrName(idOrName string) (*IdentityType, error) {
 	modelEntity := &IdentityType{}
-	err := handler.readEntity(idOrName, modelEntity)
+	err := self.readEntity(idOrName, modelEntity)
 
 	if err == nil {
 		return modelEntity, nil
@@ -61,7 +58,7 @@ func (handler *IdentityTypeHandler) ReadByIdOrName(idOrName string) (*IdentityTy
 	}
 
 	if modelEntity.Id == "" {
-		modelEntity, err = handler.ReadByName(idOrName)
+		modelEntity, err = self.ReadByName(idOrName)
 	}
 
 	if err != nil {
@@ -71,14 +68,10 @@ func (handler *IdentityTypeHandler) ReadByIdOrName(idOrName string) (*IdentityTy
 	return modelEntity, nil
 }
 
-func (handler *IdentityTypeHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
-}
-
-func (handler *IdentityTypeHandler) ReadByName(name string) (*IdentityType, error) {
+func (self *IdentityTypeManager) ReadByName(name string) (*IdentityType, error) {
 	modelIdentityType := &IdentityType{}
-	nameIndex := handler.env.GetStores().IdentityType.GetNameIndex()
-	if err := handler.readEntityWithIndex("name", []byte(name), nameIndex, modelIdentityType); err != nil {
+	nameIndex := self.env.GetStores().IdentityType.GetNameIndex()
+	if err := self.readEntityWithIndex("name", []byte(name), nameIndex, modelIdentityType); err != nil {
 		return nil, err
 	}
 	return modelIdentityType, nil
