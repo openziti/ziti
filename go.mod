@@ -33,13 +33,13 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.58
-	github.com/openziti/fabric v0.19.30
-	github.com/openziti/foundation/v2 v2.0.1
+	github.com/openziti/fabric v0.19.31
+	github.com/openziti/foundation/v2 v2.0.2
 	github.com/openziti/identity v1.0.5
 	github.com/openziti/jwks v1.0.1
 	github.com/openziti/metrics v1.0.2
 	github.com/openziti/sdk-golang v0.16.103
-	github.com/openziti/storage v0.1.14
+	github.com/openziti/storage v0.1.15
 	github.com/openziti/transport/v2 v2.0.20
 	github.com/openziti/x509-claims v1.0.2
 	github.com/openziti/xweb/v2 v2.0.2
@@ -57,8 +57,8 @@ require (
 	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220727055044-e65921a090b8
-	google.golang.org/protobuf v1.28.0
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
