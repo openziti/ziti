@@ -206,9 +206,7 @@ func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeR
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	var err error
-	policy.Id, err = ctx.handlers.ServiceEdgeRouterPolicy.Create(policy)
-	ctx.NoError(err)
+	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Create(policy))
 	return policy
 }
 

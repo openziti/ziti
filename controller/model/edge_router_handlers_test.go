@@ -35,7 +35,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
 	serp.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
-	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Update(serp))
+	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Update(serp, nil))
 
 	// should be accessible if we limit to our specific router
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
