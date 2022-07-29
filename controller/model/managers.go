@@ -44,7 +44,7 @@ type Managers struct {
 	IdentityType            *IdentityTypeHandler
 	PolicyAdvisor           *PolicyAdvisor
 	ServiceEdgeRouterPolicy *ServiceEdgeRouterPolicyManager
-	ServicePolicy           *ServicePolicyHandler
+	ServicePolicy           *ServicePolicyManager
 	TransitRouter           *TransitRouterHandler
 	Session                 *SessionHandler
 	Authenticator           *AuthenticatorHandler
@@ -80,7 +80,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.IdentityType = NewIdentityTypeHandler(env)
 	managers.PolicyAdvisor = NewPolicyAdvisor(env)
 	managers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyManager(env)
-	managers.ServicePolicy = NewServicePolicyHandler(env)
+	managers.ServicePolicy = NewServicePolicyManager(env)
 	managers.Session = NewSessionHandler(env)
 	managers.TransitRouter = NewTransitRouterHandler(env)
 	managers.PostureCheck = NewPostureCheckHandler(env)
