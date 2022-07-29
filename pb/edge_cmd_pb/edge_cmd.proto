@@ -145,6 +145,16 @@ message ExternalJwtSigner {
   google.protobuf.Timestamp notBefore = 16;
 }
 
+message Service {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string terminatorStrategy = 4;
+  repeated string roleAttributes = 5;
+  repeated string configs = 6;
+  bool encryptionRequired = 7;
+}
+
 message ServiceEdgeRouterPolicy {
   string id = 1;
   string name = 2;

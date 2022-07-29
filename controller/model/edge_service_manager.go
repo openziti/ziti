@@ -20,74 +20,95 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
-func NewEdgeServiceHandler(env Env) *EdgeServiceHandler {
-	handler := &EdgeServiceHandler{
+func NewEdgeServiceManager(env Env) *EdgeServiceManager {
+	manager := &EdgeServiceManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeService),
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+
+	network.RegisterManagerDecoder[*Service](env.GetHostController().GetNetwork().Managers, manager)
+
+	return manager
 }
 
-type EdgeServiceHandler struct {
+type EdgeServiceManager struct {
 	baseEntityManager
 }
 
-func (handler *EdgeServiceHandler) GetEntityTypeId() string {
+func (self *EdgeServiceManager) GetEntityTypeId() string {
 	return "edgeServices"
 }
 
-func (handler *EdgeServiceHandler) newModelEntity() edgeEntity {
+func (self *EdgeServiceManager) newModelEntity() edgeEntity {
 	return &ServiceDetail{}
 }
 
-func (handler *EdgeServiceHandler) Create(service *Service) (string, error) {
-	return handler.createEntity(service)
+func (self *EdgeServiceManager) Create(entity *Service) error {
+	return network.DispatchCreate[*Service](self, entity)
 }
 
-func (handler *EdgeServiceHandler) Read(id string) (*Service, error) {
+func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
+	_, err := self.createEntity(cmd.Entity)
+	return err
+}
+
+func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*Service](self, entity, checker)
+}
+
+func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
+}
+
+func (self *EdgeServiceManager) Read(id string) (*Service, error) {
 	entity := &Service{}
-	if err := handler.readEntity(id, entity); err != nil {
+	if err := self.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *EdgeServiceHandler) ReadByName(name string) (*Service, error) {
+func (self *EdgeServiceManager) ReadByName(name string) (*Service, error) {
 	entity := &Service{}
-	nameIndex := handler.env.GetStores().EdgeService.GetNameIndex()
-	if err := handler.readEntityWithIndex("name", []byte(name), nameIndex, entity); err != nil {
+	nameIndex := self.env.GetStores().EdgeService.GetNameIndex()
+	if err := self.readEntityWithIndex("name", []byte(name), nameIndex, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *EdgeServiceHandler) readInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
+func (self *EdgeServiceManager) readInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
 	entity := &ServiceDetail{}
-	if err := handler.readEntityInTx(tx, id, entity); err != nil {
+	if err := self.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *EdgeServiceHandler) ReadForIdentity(id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
+func (self *EdgeServiceManager) ReadForIdentity(id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
 	var service *ServiceDetail
-	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		service, err = handler.ReadForIdentityInTx(tx, id, identityId, configTypes)
+		service, err = self.ReadForIdentityInTx(tx, id, identityId, configTypes)
 		return err
 	})
 	return service, err
 }
 
-func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
-	identity, err := handler.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
+func (self *EdgeServiceManager) ReadForIdentityInTx(tx *bbolt.Tx, id string, identityId string, configTypes map[string]struct{}) (*ServiceDetail, error) {
+	identity, err := self.GetEnv().GetManagers().Identity.readInTx(tx, identityId)
 	if err != nil {
 		return nil, err
 	}
@@ -95,35 +116,35 @@ func (handler *EdgeServiceHandler) ReadForIdentityInTx(tx *bbolt.Tx, id string, 
 	var service *ServiceDetail
 
 	if identity.IsAdmin {
-		service, err = handler.readInTx(tx, id)
+		service, err = self.readInTx(tx, id)
 		if err == nil && service != nil {
 			service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
 		}
 	} else {
-		service, err = handler.ReadForNonAdminIdentityInTx(tx, id, identityId)
+		service, err = self.ReadForNonAdminIdentityInTx(tx, id, identityId)
 	}
 	if err == nil && len(configTypes) > 0 {
-		identityServiceConfigs := handler.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
-		handler.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
+		identityServiceConfigs := self.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, identityId, configTypes)
+		self.mergeConfigs(tx, configTypes, service, identityServiceConfigs)
 	}
 	return service, err
 }
 
-func (handler *EdgeServiceHandler) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
-	edgeServiceStore := handler.env.GetStores().EdgeService
+func (self *EdgeServiceManager) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id string, identityId string) (*ServiceDetail, error) {
+	edgeServiceStore := self.env.GetStores().EdgeService
 	isBindable := edgeServiceStore.IsBindableByIdentity(tx, id, identityId)
 	isDialable := edgeServiceStore.IsDialableByIdentity(tx, id, identityId)
 
 	if !isBindable && !isDialable {
-		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
+		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 
-	result, err := handler.readInTx(tx, id)
+	result, err := self.readInTx(tx, id)
 	if err != nil {
 		return nil, err
 	}
 	if result == nil {
-		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
+		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 	if isBindable {
 		result.Permissions = append(result.Permissions, persistence.PolicyTypeBindName)
@@ -134,57 +155,83 @@ func (handler *EdgeServiceHandler) ReadForNonAdminIdentityInTx(tx *bbolt.Tx, id 
 	return result, nil
 }
 
-func (handler *EdgeServiceHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
-}
-
-func (handler *EdgeServiceHandler) Update(service *Service) error {
-	return handler.updateEntity(service, nil)
-}
-
-func (handler *EdgeServiceHandler) Patch(service *Service, checker boltz.FieldChecker) error {
-	return handler.patchEntity(service, checker)
-}
-
-func (handler *EdgeServiceHandler) PublicQueryForIdentity(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
+func (self *EdgeServiceManager) PublicQueryForIdentity(sessionIdentity *Identity, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
 	if sessionIdentity.IsAdmin {
-		return handler.queryServices(query, sessionIdentity.Id, configTypes, true)
+		return self.queryServices(query, sessionIdentity.Id, configTypes, true)
 	}
-	return handler.QueryForIdentity(sessionIdentity.Id, configTypes, query)
+	return self.QueryForIdentity(sessionIdentity.Id, configTypes, query)
 }
 
-func (handler *EdgeServiceHandler) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
+func (self *EdgeServiceManager) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
 	idFilterQueryString := fmt.Sprintf(`(anyOf(dialIdentities) = "%v" or anyOf(bindIdentities) = "%v")`, identityId, identityId)
-	idFilterQuery, err := ast.Parse(handler.Store, idFilterQueryString)
+	idFilterQuery, err := ast.Parse(self.Store, idFilterQueryString)
 	if err != nil {
 		return nil, err
 	}
 
 	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), idFilterQuery.GetPredicate()))
-	return handler.queryServices(query, identityId, configTypes, false)
+	return self.queryServices(query, identityId, configTypes, false)
 }
 
-func (handler *EdgeServiceHandler) queryServices(query ast.Query, identityId string, configTypes map[string]struct{}, isAdmin bool) (*ServiceListResult, error) {
+func (self *EdgeServiceManager) queryServices(query ast.Query, identityId string, configTypes map[string]struct{}, isAdmin bool) (*ServiceListResult, error) {
 	result := &ServiceListResult{
-		handler:     handler,
+		handler:     self,
 		identityId:  identityId,
 		configTypes: configTypes,
 		isAdmin:     isAdmin,
 	}
-	err := handler.PreparedListWithHandler(query, result.collect)
+	err := self.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *EdgeServiceHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
-	index := handler.env.GetStores().EdgeService.GetRoleAttributesIndex()
-	return handler.queryRoleAttributes(index, queryString)
+func (self *EdgeServiceManager) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := self.env.GetStores().EdgeService.GetRoleAttributesIndex()
+	return self.queryRoleAttributes(index, queryString)
+}
+
+func (self *EdgeServiceManager) Marshall(entity *Service) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.Service{
+		Id:                 entity.Id,
+		Name:               entity.Name,
+		Tags:               tags,
+		TerminatorStrategy: entity.TerminatorStrategy,
+		RoleAttributes:     entity.RoleAttributes,
+		Configs:            entity.Configs,
+		EncryptionRequired: entity.EncryptionRequired,
+	}
+
+	return proto.Marshal(msg)
+}
+
+func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
+	msg := &edge_cmd_pb.Service{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	return &Service{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:               msg.Name,
+		TerminatorStrategy: msg.TerminatorStrategy,
+		RoleAttributes:     msg.RoleAttributes,
+		Configs:            msg.Configs,
+		EncryptionRequired: msg.EncryptionRequired,
+	}, nil
 }
 
 type ServiceListResult struct {
-	handler     *EdgeServiceHandler
+	handler     *EdgeServiceManager
 	Services    []*ServiceDetail
 	identityId  string
 	configTypes map[string]struct{}
@@ -217,16 +264,16 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 	return nil
 }
 
-func (handler *EdgeServiceHandler) mergeConfigs(tx *bbolt.Tx, configTypes map[string]struct{}, service *ServiceDetail,
+func (self *EdgeServiceManager) mergeConfigs(tx *bbolt.Tx, configTypes map[string]struct{}, service *ServiceDetail,
 	identityServiceConfigs map[string]map[string]map[string]interface{}) {
 	service.Config = map[string]map[string]interface{}{}
 
 	_, wantsAll := configTypes["all"]
 
-	configTypeStore := handler.env.GetStores().ConfigType
+	configTypeStore := self.env.GetStores().ConfigType
 
 	if len(configTypes) > 0 && len(service.Configs) > 0 {
-		configStore := handler.env.GetStores().Config
+		configStore := self.env.GetStores().Config
 		for _, configId := range service.Configs {
 			config, _ := configStore.LoadOneById(tx, configId)
 			if config != nil {
@@ -268,16 +315,16 @@ type PolicyPostureChecks struct {
 	PolicyName    string
 }
 
-func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
+func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId string) map[string]*PolicyPostureChecks {
 	policyIdToChecks := map[string]*PolicyPostureChecks{}
 	postureCheckCache := map[string]*PostureCheck{}
 
-	servicePolicyStore := handler.env.GetStores().ServicePolicy
+	servicePolicyStore := self.env.GetStores().ServicePolicy
 	postureCheckLinks := servicePolicyStore.GetLinkCollection(persistence.EntityTypePostureChecks)
 	serviceLinks := servicePolicyStore.GetLinkCollection(db.EntityTypeServices)
 
-	_ = handler.GetDb().View(func(tx *bbolt.Tx) error {
-		policyCursor := handler.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, persistence.EntityTypeServicePolicies, true)
+	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, persistence.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
 			return serviceLinks.IsLinked(tx, policyId, []byte(serviceId))
 		})
@@ -287,7 +334,7 @@ func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId 
 			policyIdStr := string(policyIdBytes)
 			policyCursor.Next()
 
-			policy, err := handler.env.GetStores().ServicePolicy.LoadOneById(tx, policyIdStr)
+			policy, err := self.env.GetStores().ServicePolicy.LoadOneById(tx, policyIdStr)
 
 			if err != nil {
 				pfxlog.Logger().Errorf("could not retrieve policy by id [%s] to create posture queries for service id [%s]", policyIdStr, serviceId)
@@ -305,7 +352,7 @@ func (handler *EdgeServiceHandler) GetPolicyPostureChecks(identityId, serviceId 
 			for cursor.IsValid() {
 				checkId := string(cursor.Current())
 				if postureCheck, found := postureCheckCache[checkId]; !found {
-					postureCheck, _ := handler.env.GetManagers().PostureCheck.Read(checkId)
+					postureCheck, _ := self.env.GetManagers().PostureCheck.Read(checkId)
 					postureCheckCache[checkId] = postureCheck
 					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
 				} else {

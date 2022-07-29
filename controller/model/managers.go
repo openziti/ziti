@@ -38,7 +38,7 @@ type Managers struct {
 	ConfigType              *ConfigTypeManager
 	EdgeRouter              *EdgeRouterHandler
 	EdgeRouterPolicy        *EdgeRouterPolicyManager
-	EdgeService             *EdgeServiceHandler
+	EdgeService             *EdgeServiceManager
 	ExternalJwtSigner       *ExternalJwtSignerManager
 	Identity                *IdentityHandler
 	IdentityType            *IdentityTypeManager
@@ -73,7 +73,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.ConfigType = NewConfigTypeManager(env)
 	managers.EdgeRouter = NewEdgeRouterHandler(env)
 	managers.EdgeRouterPolicy = NewEdgeRouterPolicyManager(env)
-	managers.EdgeService = NewEdgeServiceHandler(env)
+	managers.EdgeService = NewEdgeServiceManager(env)
 	managers.Enrollment = NewEnrollmentHandler(env)
 	managers.ExternalJwtSigner = NewExternalJwtSignerManager(env)
 	managers.Identity = NewIdentityHandler(env)

@@ -20,7 +20,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	identity := ctx.requireNewIdentity(false)
 	service := ctx.requireNewService()
 	service.RoleAttributes = []string{eid.New()}
-	ctx.NoError(ctx.handlers.EdgeService.Update(service))
+	ctx.NoError(ctx.handlers.EdgeService.Update(service, nil))
 
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 
