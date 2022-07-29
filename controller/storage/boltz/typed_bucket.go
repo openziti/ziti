@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"math"
@@ -48,33 +48,6 @@ const (
 
 type FieldChecker interface {
 	IsUpdated(string) bool
-}
-
-type UpdatedFields interface {
-	FieldChecker
-	ToSlice() []string
-}
-
-func UpdatedFieldsToSlice(fields UpdatedFields) ([]string, error) {
-	if fields == nil {
-		return nil, nil
-	}
-	result := fields.ToSlice()
-	if len(result) == 0 {
-		return nil, errors.New("no fields updated, nothing to do")
-	}
-	return result, nil
-}
-
-func SliceToUpdatedFields(val []string) UpdatedFields {
-	if len(val) == 0 {
-		return nil
-	}
-	result := MapFieldChecker{}
-	for _, k := range val {
-		result[k] = struct{}{}
-	}
-	return result
 }
 
 type MapFieldChecker map[string]struct{}
