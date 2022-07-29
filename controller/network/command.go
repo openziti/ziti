@@ -18,7 +18,6 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/ioc"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"google.golang.org/protobuf/proto"
@@ -55,7 +54,7 @@ func (self *CommandManager) decodeCreateEntityCommand(_ int32, data []byte) (com
 		return nil, err
 	}
 
-	return decoder(msg.EntityData)
+	return decoder(msg)
 }
 
 func (self *CommandManager) decodeUpdateEntityCommand(_ int32, data []byte) (command.Command, error) {
@@ -69,8 +68,7 @@ func (self *CommandManager) decodeUpdateEntityCommand(_ int32, data []byte) (com
 		return nil, err
 	}
 
-	updatedFields := fields.SliceToUpdatedFields(msg.UpdatedFields)
-	return decoder(msg.EntityData, updatedFields)
+	return decoder(msg)
 }
 
 func (self *CommandManager) decodeDeleteEntityCommand(_ int32, data []byte) (command.Command, error) {
@@ -84,7 +82,7 @@ func (self *CommandManager) decodeDeleteEntityCommand(_ int32, data []byte) (com
 		return nil, err
 	}
 
-	return decoder(msg.EntityId)
+	return decoder(msg)
 }
 
 // CommandMsg is a TypedMessage which is also a pointer type.

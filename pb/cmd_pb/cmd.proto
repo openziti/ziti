@@ -13,12 +13,14 @@ enum CommandType {
 message CreateEntityCommand {
   string entityType = 1;
   bytes entityData = 2;
+  uint32 flags = 3;
 }
 
 message UpdateEntityCommand {
   string entityType = 1;
   bytes entityData = 2;
   repeated string updatedFields = 3;
+  uint32 flags = 4;
 }
 
 message DeleteEntityCommand {

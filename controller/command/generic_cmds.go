@@ -58,6 +58,7 @@ type CreateEntityCommand[T models.Entity] struct {
 	Creator        EntityCreator[T]
 	Entity         T
 	PostCreateHook func(tx *bbolt.Tx, entity T) error
+	Flags          uint32
 }
 
 func (self *CreateEntityCommand[T]) Apply() error {
@@ -73,6 +74,7 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.CreateEntityCommand{
 		EntityType: entityType,
 		EntityData: encodedEntity,
+		Flags:      self.Flags,
 	})
 }
 
@@ -80,6 +82,7 @@ type UpdateEntityCommand[T models.Entity] struct {
 	Updater       EntityUpdater[T]
 	Entity        T
 	UpdatedFields fields.UpdatedFields
+	Flags         uint32
 }
 
 func (self *UpdateEntityCommand[T]) Apply() error {
@@ -102,6 +105,7 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 		EntityType:    entityType,
 		EntityData:    encodedEntity,
 		UpdatedFields: updatedFields,
+		Flags:         self.Flags,
 	})
 }
 

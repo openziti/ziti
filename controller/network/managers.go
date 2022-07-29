@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/ioc"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -93,47 +94,49 @@ func DispatchUpdate[T models.Entity](u updater[T], entity T, updatedFields field
 	return u.Dispatch(cmd)
 }
 
-type createDecoderF func(entityData []byte) (command.Command, error)
+type createDecoderF func(cmd *cmd_pb.CreateEntityCommand) (command.Command, error)
 
 func RegisterCreateDecoder[T models.Entity](managers *Managers, creator command.EntityCreator[T]) {
 	entityType := creator.GetEntityTypeId()
-	managers.Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(data []byte) (command.Command, error) {
-		entity, err := creator.Unmarshall(data)
+	managers.Registry.RegisterSingleton(entityType+CreateDecoder, createDecoderF(func(cmd *cmd_pb.CreateEntityCommand) (command.Command, error) {
+		entity, err := creator.Unmarshall(cmd.EntityData)
 		if err != nil {
 			return nil, err
 		}
 		return &command.CreateEntityCommand[T]{
 			Entity:  entity,
 			Creator: creator,
+			Flags:   cmd.Flags,
 		}, nil
 	}))
 }
 
-type updateDecoderF func(entityData []byte, updateFields fields.UpdatedFields) (command.Command, error)
+type updateDecoderF func(cmd *cmd_pb.UpdateEntityCommand) (command.Command, error)
 
 func RegisterUpdateDecoder[T models.Entity](managers *Managers, updater command.EntityUpdater[T]) {
 	entityType := updater.GetEntityTypeId()
-	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(data []byte, updatedFields fields.UpdatedFields) (command.Command, error) {
-		entity, err := updater.Unmarshall(data)
+	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, updateDecoderF(func(cmd *cmd_pb.UpdateEntityCommand) (command.Command, error) {
+		entity, err := updater.Unmarshall(cmd.EntityData)
 		if err != nil {
 			return nil, err
 		}
 		return &command.UpdateEntityCommand[T]{
 			Entity:        entity,
 			Updater:       updater,
-			UpdatedFields: updatedFields,
+			UpdatedFields: fields.SliceToUpdatedFields(cmd.UpdatedFields),
+			Flags:         cmd.Flags,
 		}, nil
 	}))
 }
 
-type deleteDecoderF func(entityId string) (command.Command, error)
+type deleteDecoderF func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error)
 
 func RegisterDeleteDecoder(managers *Managers, deleter command.EntityDeleter) {
 	entityType := deleter.GetEntityTypeId()
-	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(entityId string) (command.Command, error) {
+	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error) {
 		return &command.DeleteEntityCommand{
 			Deleter: deleter,
-			Id:      entityId,
+			Id:      cmd.EntityId,
 		}, nil
 	}))
 }
