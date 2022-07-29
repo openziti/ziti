@@ -50,7 +50,7 @@ type Managers struct {
 	Authenticator           *AuthenticatorHandler
 	Enrollment              *EnrollmentHandler
 	PostureCheck            *PostureCheckHandler
-	PostureCheckType        *PostureCheckTypeHandler
+	PostureCheckType        *PostureCheckTypeManager
 	PostureResponse         *PostureResponseHandler
 	Mfa                     *MfaHandler
 	AuthPolicy              *AuthPolicyManager
@@ -84,7 +84,7 @@ func InitEntityManagers(env Env) *Managers {
 	managers.Session = NewSessionHandler(env)
 	managers.TransitRouter = NewTransitRouterHandler(env)
 	managers.PostureCheck = NewPostureCheckHandler(env)
-	managers.PostureCheckType = NewPostureCheckTypeHandler(env)
+	managers.PostureCheckType = NewPostureCheckTypeManager(env)
 	managers.PostureResponse = NewPostureResponseHandler(env)
 	managers.Mfa = NewMfaHandler(env)
 
