@@ -6,7 +6,6 @@ on:
     types: [submitted]
   pull_request_review_comment:
   pull_request:
-    types: [opened, reopened]
   push:
   fork:
   release:

@@ -85,7 +85,7 @@ func (r *ExternalJwtSignerRouter) Detail(ae *env.AppEnv, rc *response.RequestCon
 
 func (r *ExternalJwtSignerRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.CreateExternalJWTSignerParams) {
 	Create(rc, rc, ExternalJwtSignerLinkFactory, func() (string, error) {
-		return ae.Managers.ExternalJwtSigner.Create(MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner))
+		return MapCreate(ae.Managers.ExternalJwtSigner.Create, MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner))
 	})
 }
 
@@ -95,7 +95,7 @@ func (r *ExternalJwtSignerRouter) Delete(ae *env.AppEnv, rc *response.RequestCon
 
 func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.UpdateExternalJWTSignerParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner))
+		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), nil)
 	})
 }
 
@@ -109,7 +109,7 @@ func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestCont
 			fields.AddField(persistence.FieldExternalJwtSignerFingerprint)
 		}
 
-		return ae.Managers.ExternalJwtSigner.Patch(MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), fields.FilterMaps("tags", "data"))
+		return ae.Managers.ExternalJwtSigner.Update(MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), fields.FilterMaps("tags", "data"))
 	})
 }
 
