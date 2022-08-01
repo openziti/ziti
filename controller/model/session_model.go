@@ -46,8 +46,8 @@ type SessionCert struct {
 	ValidTo     time.Time
 }
 
-func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	apiSession, err := handler.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
+func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	apiSession, err := manager.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager
 		ServicePolicies: entity.ServicePolicies,
 	}
 
-	identity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
+	identity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
 
 	if err != nil {
 		return nil, err
@@ -75,7 +75,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager
 	fingerprints := map[string]string{}
 
 	for _, authenticatorId := range identity.Authenticators {
-		authenticator, err := handler.GetEnv().GetStores().Authenticator.LoadOneById(tx, authenticatorId)
+		authenticator, err := manager.GetEnv().GetStores().Authenticator.LoadOneById(tx, authenticatorId)
 		if err != nil {
 			pfxlog.Logger().Errorf("encountered error retrieving fingerprints for authenticator [%s]", authenticatorId)
 			continue

@@ -33,7 +33,7 @@ func mustParseDuration(s string) time.Duration {
 	return result
 }
 
-func TestPostureCheckResponseHandlers_shouldPostureCheckTimeoutBeAltered(t *testing.T) {
+func TestPostureCheckResponseManager_shouldPostureCheckTimeoutBeAltered(t *testing.T) {
 
 	t.Run("returns false if the check is null", func(t *testing.T) {
 		result := shouldPostureCheckTimeoutBeAltered(nil, mustParseDuration("10m"), mustParseDuration("5m"), true, true)

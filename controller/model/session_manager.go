@@ -31,19 +31,19 @@ import (
 	"time"
 )
 
-func NewSessionHandler(env Env) *SessionHandler {
-	handler := &SessionHandler{
+func NewSessionManager(env Env) *SessionManager {
+	manager := &SessionManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().Session),
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+	return manager
 }
 
-type SessionHandler struct {
+type SessionManager struct {
 	baseEntityManager
 }
 
-func (handler *SessionHandler) newModelEntity() edgeEntity {
+func (self *SessionManager) newModelEntity() edgeEntity {
 	return &Session{}
 }
 
@@ -54,13 +54,13 @@ type SessionPostureResult struct {
 	Cause            *fabricApiError.GenericCauseError
 }
 
-func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionId, sessionType, serviceId, serviceName string) *SessionPostureResult {
+func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, sessionType, serviceId, serviceName string) *SessionPostureResult {
 
 	failureByPostureCheckId := map[string]*PostureCheckFailure{} //cache individual check status
 	validPosture := false
 	hasMatchingPolicies := false
 
-	policyPostureCheckMap := handler.GetEnv().GetManagers().EdgeService.GetPolicyPostureChecks(identityId, serviceId)
+	policyPostureCheckMap := self.GetEnv().GetManagers().EdgeService.GetPolicyPostureChecks(identityId, serviceId)
 
 	failedPolicies := map[string][]*PostureCheckFailure{}
 	failedPoliciesIdToName := map[string]string{}
@@ -81,7 +81,7 @@ func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionI
 			found := false
 
 			if _, found = failureByPostureCheckId[postureCheck.Id]; !found {
-				_, failureByPostureCheckId[postureCheck.Id] = handler.GetEnv().GetManagers().PostureResponse.Evaluate(identityId, apiSessionId, postureCheck)
+				_, failureByPostureCheckId[postureCheck.Id] = self.GetEnv().GetManagers().PostureResponse.Evaluate(identityId, apiSessionId, postureCheck)
 			}
 
 			if failureByPostureCheckId[postureCheck.Id] != nil {
@@ -150,10 +150,10 @@ func (handler *SessionHandler) EvaluatePostureForService(identityId, apiSessionI
 	}
 }
 
-func (handler *SessionHandler) Create(entity *Session) (string, error) {
+func (self *SessionManager) Create(entity *Session) (string, error) {
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
 
-	apiSession, err := handler.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
+	apiSession, err := self.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
 	if err != nil {
 		return "", err
 	}
@@ -161,7 +161,7 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 		return "", errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
-	service, err := handler.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
+	service, err := self.GetEnv().GetManagers().EdgeService.ReadForIdentity(entity.ServiceId, apiSession.IdentityId, nil)
 	if err != nil {
 		return "", err
 	}
@@ -178,15 +178,15 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 		return "", errorz.NewFieldError("service not found", "ServiceId", entity.ServiceId)
 	}
 
-	policyResult := handler.EvaluatePostureForService(apiSession.IdentityId, apiSession.Id, entity.Type, service.Id, service.Name)
+	policyResult := self.EvaluatePostureForService(apiSession.IdentityId, apiSession.Id, entity.Type, service.Id, service.Name)
 
 	if !policyResult.Passed {
-		handler.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(apiSession.IdentityId, policyResult.Failure)
+		self.env.GetManagers().PostureResponse.postureCache.AddSessionRequestFailure(apiSession.IdentityId, policyResult.Failure)
 		return "", apierror.NewInvalidPosture(policyResult.Cause)
 	}
 
 	maxRows := 1
-	result, err := handler.GetEnv().GetManagers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
+	result, err := self.GetEnv().GetManagers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
 	if err != nil {
 		return "", err
 	}
@@ -196,94 +196,94 @@ func (handler *SessionHandler) Create(entity *Session) (string, error) {
 
 	entity.ServicePolicies = policyResult.PassingPolicyIds
 
-	return handler.createEntity(entity)
+	return self.createEntity(entity)
 }
 
-func (handler *SessionHandler) ReadByToken(token string) (*Session, error) {
+func (self *SessionManager) ReadByToken(token string) (*Session, error) {
 	modelSession := &Session{}
-	tokenIndex := handler.env.GetStores().Session.GetTokenIndex()
-	if err := handler.readEntityWithIndex("token", []byte(token), tokenIndex, modelSession); err != nil {
+	tokenIndex := self.env.GetStores().Session.GetTokenIndex()
+	if err := self.readEntityWithIndex("token", []byte(token), tokenIndex, modelSession); err != nil {
 		return nil, err
 	}
 	return modelSession, nil
 }
 
-func (handler *SessionHandler) ReadForIdentity(id string, identityId string) (*Session, error) {
-	identity, err := handler.GetEnv().GetManagers().Identity.Read(identityId)
+func (self *SessionManager) ReadForIdentity(id string, identityId string) (*Session, error) {
+	identity, err := self.GetEnv().GetManagers().Identity.Read(identityId)
 
 	if err != nil {
 		return nil, err
 	}
 	if identity.IsAdmin {
-		return handler.Read(id)
+		return self.Read(id)
 	}
 
 	query := fmt.Sprintf(`id = "%v" and apiSession.identity = "%v"`, id, identityId)
-	result, err := handler.Query(query)
+	result, err := self.Query(query)
 	if err != nil {
 		return nil, err
 	}
 	if len(result.Sessions) == 0 {
-		return nil, boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
+		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
 	return result.Sessions[0], nil
 }
 
-func (handler *SessionHandler) Read(id string) (*Session, error) {
+func (self *SessionManager) Read(id string) (*Session, error) {
 	entity := &Session{}
-	if err := handler.readEntity(id, entity); err != nil {
+	if err := self.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *SessionHandler) readInTx(tx *bbolt.Tx, id string) (*Session, error) {
+func (self *SessionManager) readInTx(tx *bbolt.Tx, id string) (*Session, error) {
 	entity := &Session{}
-	if err := handler.readEntityInTx(tx, id, entity); err != nil {
+	if err := self.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *SessionHandler) DeleteForIdentity(id, identityId string) error {
-	session, err := handler.ReadForIdentity(id, identityId)
+func (self *SessionManager) DeleteForIdentity(id, identityId string) error {
+	session, err := self.ReadForIdentity(id, identityId)
 	if err != nil {
 		return err
 	}
 	if session == nil {
-		return boltz.NewNotFoundError(handler.GetStore().GetSingularEntityType(), "id", id)
+		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
-	return handler.deleteEntity(id)
+	return self.deleteEntity(id)
 }
 
-func (handler *SessionHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *SessionManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *SessionHandler) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {
+func (self *SessionManager) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {
 	if sessionIdentity.IsAdmin {
-		return handler.querySessions(query)
+		return self.querySessions(query)
 	}
 	identityFilterString := fmt.Sprintf(`apiSession.identity = "%v"`, sessionIdentity.Id)
-	identityFilter, err := ast.Parse(handler.Store, identityFilterString)
+	identityFilter, err := ast.Parse(self.Store, identityFilterString)
 	if err != nil {
 		return nil, err
 	}
 	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), identityFilter))
-	return handler.querySessions(query)
+	return self.querySessions(query)
 }
 
-func (handler *SessionHandler) ReadSessionCerts(sessionId string) ([]*SessionCert, error) {
+func (self *SessionManager) ReadSessionCerts(sessionId string) ([]*SessionCert, error) {
 	var result []*SessionCert
-	err := handler.GetDb().View(func(tx *bbolt.Tx) error {
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		certs, err := handler.GetEnv().GetStores().Session.LoadCerts(tx, sessionId)
+		certs, err := self.GetEnv().GetStores().Session.LoadCerts(tx, sessionId)
 		if err != nil {
 			return err
 		}
 		for _, cert := range certs {
 			modelSessionCert := &SessionCert{}
-			if err = modelSessionCert.FillFrom(handler, tx, cert); err != nil {
+			if err = modelSessionCert.FillFrom(self, tx, cert); err != nil {
 				return err
 			}
 			result = append(result, modelSessionCert)
@@ -296,29 +296,29 @@ func (handler *SessionHandler) ReadSessionCerts(sessionId string) ([]*SessionCer
 	return result, nil
 }
 
-func (handler *SessionHandler) Query(query string) (*SessionListResult, error) {
-	result := &SessionListResult{handler: handler}
-	err := handler.ListWithHandler(query, result.collect)
+func (self *SessionManager) Query(query string) (*SessionListResult, error) {
+	result := &SessionListResult{manager: self}
+	err := self.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *SessionHandler) querySessions(query ast.Query) (*SessionListResult, error) {
-	result := &SessionListResult{handler: handler}
-	err := handler.PreparedListWithHandler(query, result.collect)
+func (self *SessionManager) querySessions(query ast.Query) (*SessionListResult, error) {
+	result := &SessionListResult{manager: self}
+	err := self.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
-	result := &SessionListResult{handler: handler}
+func (self *SessionManager) ListSessionsForEdgeRouter(edgeRouterId string) (*SessionListResult, error) {
+	result := &SessionListResult{manager: self}
 	query := fmt.Sprintf(`anyOf(apiSession.identity.edgeRouterPolicies.routers) = "%v" and `+
 		`anyOf(service.serviceEdgeRouterPolicies.routers) = "%v"`, edgeRouterId, edgeRouterId)
-	err := handler.ListWithHandler(query, result.collect)
+	err := self.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -326,7 +326,7 @@ func (handler *SessionHandler) ListSessionsForEdgeRouter(edgeRouterId string) (*
 }
 
 type SessionListResult struct {
-	handler  *SessionHandler
+	manager  *SessionManager
 	Sessions []*Session
 	models.QueryMetaData
 }
@@ -334,7 +334,7 @@ type SessionListResult struct {
 func (result *SessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
+		entity, err := result.manager.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

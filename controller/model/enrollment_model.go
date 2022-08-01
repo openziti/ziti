@@ -110,7 +110,7 @@ func (entity *Enrollment) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity bolt
 	return nil
 }
 
-func (entity *Enrollment) toBoltEntity(handler EntityManager) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntity(manager EntityManager) (boltz.Entity, error) {
 	if entity.Method == persistence.MethodEnrollOttCa {
 		if entity.CaId == nil || *entity.CaId == "" {
 			apiErr := errorz.NewNotFound()
@@ -119,7 +119,7 @@ func (entity *Enrollment) toBoltEntity(handler EntityManager) (boltz.Entity, err
 			return nil, apiErr
 		}
 
-		ca, _ := handler.GetEnv().GetManagers().Ca.Read(*entity.CaId)
+		ca, _ := manager.GetEnv().GetManagers().Ca.Read(*entity.CaId)
 
 		if ca == nil {
 			apiErr := errorz.NewNotFound()
@@ -146,10 +146,10 @@ func (entity *Enrollment) toBoltEntity(handler EntityManager) (boltz.Entity, err
 	return boltEntity, nil
 }
 
-func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(handler)
+func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(manager)
 }
 
-func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(handler)
+func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(manager)
 }

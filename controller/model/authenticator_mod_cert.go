@@ -50,15 +50,13 @@ type AuthModuleCert struct {
 }
 
 func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {
-	handler := &AuthModuleCert{
+	return &AuthModuleCert{
 		env:                  env,
 		method:               persistence.MethodAuthenticatorCert,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 		staticCaCerts:        nfpem.PemBytesToCertificates(caChain),
 		dynamicCaCache:       cmap.New[[]*x509.Certificate](),
 	}
-
-	return handler
 }
 
 func (module *AuthModuleCert) CanHandle(method string) bool {

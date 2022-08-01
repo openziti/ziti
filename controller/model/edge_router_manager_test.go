@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestEdgeRouterHandler(t *testing.T) {
+func TestEdgeRouterManager(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
 	ctx.Init()
@@ -20,7 +20,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	identity := ctx.requireNewIdentity(false)
 	service := ctx.requireNewService()
 	service.RoleAttributes = []string{eid.New()}
-	ctx.NoError(ctx.handlers.EdgeService.Update(service, nil))
+	ctx.NoError(ctx.managers.EdgeService.Update(service, nil))
 
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 
@@ -35,7 +35,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.False(ctx.isEdgeRouterAccessible(edgeRouter2.Id, identity.Id, service.Id))
 
 	serp.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
-	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Update(serp, nil))
+	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Update(serp, nil))
 
 	// should be accessible if we limit to our specific router
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))
@@ -45,7 +45,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 func (ctx *TestContext) isEdgeRouterAccessible(edgeRouterId, identityId, serviceId string) bool {
 	found := false
 	err := ctx.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		result, err := ctx.handlers.EdgeRouter.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, nil)
+		result, err := ctx.managers.EdgeRouter.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, nil)
 		if err != nil {
 			return err
 		}

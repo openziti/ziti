@@ -98,7 +98,7 @@ func (entity *AuthPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity bolt
 	return nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.AuthPolicy{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
@@ -130,6 +130,6 @@ func (entity *AuthPolicy) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityMana
 	return boltEntity, nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntityForCreate(tx, manager)
 }

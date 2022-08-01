@@ -36,13 +36,11 @@ type EnrollModuleCa struct {
 }
 
 func NewEnrollModuleCa(env Env) *EnrollModuleCa {
-	handler := &EnrollModuleCa{
+	return &EnrollModuleCa{
 		env:                  env,
 		method:               persistence.MethodEnrollCa,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
-
-	return handler
 }
 
 func (module *EnrollModuleCa) CanHandle(method string) bool {

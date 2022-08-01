@@ -37,8 +37,8 @@ type Service struct {
 	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
-func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	if err := entity.validateConfigs(tx, handler); err != nil {
+func (entity *Service) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	if err := entity.validateConfigs(tx, manager); err != nil {
 		return nil, err
 	}
 
@@ -55,13 +55,13 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.
 	return edgeService, nil
 }
 
-func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *Service) validateConfigs(tx *bbolt.Tx, handler EntityManager) error {
+func (entity *Service) validateConfigs(tx *bbolt.Tx, manager EntityManager) error {
 	typeMap := map[string]*persistence.Config{}
-	configStore := handler.GetEnv().GetStores().Config
+	configStore := manager.GetEnv().GetStores().Config
 	for _, id := range entity.Configs {
 		config, _ := configStore.LoadOneById(tx, id)
 		if config == nil {
@@ -70,7 +70,7 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, handler EntityManager) erro
 		conflictConfig, found := typeMap[config.Type]
 		if found {
 			configTypeName := "<not found>"
-			if configType, _ := handler.GetEnv().GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
+			if configType, _ := manager.GetEnv().GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
 				configTypeName = configType.Name
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
@@ -82,8 +82,8 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, handler EntityManager) erro
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
 func (entity *Service) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -111,11 +111,11 @@ type ServiceDetail struct {
 	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
-func (entity *ServiceDetail) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	panic("should never be called")
 }
 

@@ -35,13 +35,11 @@ type EnrollModuleUpdb struct {
 }
 
 func NewEnrollModuleUpdb(env Env) *EnrollModuleUpdb {
-	handler := &EnrollModuleUpdb{
+	return &EnrollModuleUpdb{
 		env:                  env,
 		method:               persistence.MethodEnrollUpdb,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
-
-	return handler
 }
 
 func (module *EnrollModuleUpdb) CanHandle(method string) bool {

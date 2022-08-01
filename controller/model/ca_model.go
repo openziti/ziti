@@ -89,7 +89,7 @@ func (entity *Ca) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity
 	return nil
 }
 
-func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
 	if entity.IdentityNameFormat == "" {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
@@ -137,7 +137,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (bo
 	}
 
 	query := fmt.Sprintf(`fingerprint = "%v"`, fp)
-	queryResults, _, err := handler.GetEnv().GetStores().Ca.QueryIds(tx, query)
+	queryResults, _, err := manager.GetEnv().GetStores().Ca.QueryIds(tx, query)
 
 	if err != nil {
 		return nil, err

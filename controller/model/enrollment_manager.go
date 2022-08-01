@@ -27,26 +27,26 @@ import (
 	"time"
 )
 
-type EnrollmentHandler struct {
+type EnrollmentManager struct {
 	baseEntityManager
 	enrollmentStore persistence.EnrollmentStore
 }
 
-func NewEnrollmentHandler(env Env) *EnrollmentHandler {
-	handler := &EnrollmentHandler{
+func NewEnrollmentManager(env Env) *EnrollmentManager {
+	manager := &EnrollmentManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().Enrollment),
 		enrollmentStore:   env.GetStores().Enrollment,
 	}
 
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+	return manager
 }
 
-func (handler *EnrollmentHandler) newModelEntity() edgeEntity {
+func (self *EnrollmentManager) newModelEntity() edgeEntity {
 	return &Enrollment{}
 }
 
-func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
+func (self *EnrollmentManager) getEnrollmentMethod(ctx EnrollmentContext) (string, error) {
 	method := ctx.GetMethod()
 
 	if method == persistence.MethodEnrollCa {
@@ -56,7 +56,7 @@ func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (st
 	token := ctx.GetToken()
 
 	// token present, assumes all other enrollment methods
-	enrollment, err := handler.ReadByToken(token)
+	enrollment, err := self.ReadByToken(token)
 
 	if err != nil {
 		return "", err
@@ -71,14 +71,14 @@ func (handler *EnrollmentHandler) getEnrollmentMethod(ctx EnrollmentContext) (st
 	return method, nil
 }
 
-func (handler *EnrollmentHandler) Enroll(ctx EnrollmentContext) (*EnrollmentResult, error) {
-	method, err := handler.getEnrollmentMethod(ctx)
+func (self *EnrollmentManager) Enroll(ctx EnrollmentContext) (*EnrollmentResult, error) {
+	method, err := self.getEnrollmentMethod(ctx)
 
 	if err != nil {
 		return nil, err
 	}
 
-	enrollModule := handler.env.GetEnrollRegistry().GetByMethod(method)
+	enrollModule := self.env.GetEnrollRegistry().GetByMethod(method)
 
 	if enrollModule == nil {
 		return nil, apierror.NewInvalidEnrollMethod()
@@ -87,11 +87,11 @@ func (handler *EnrollmentHandler) Enroll(ctx EnrollmentContext) (*EnrollmentResu
 	return enrollModule.Process(ctx)
 }
 
-func (handler *EnrollmentHandler) ReadByToken(token string) (*Enrollment, error) {
+func (self *EnrollmentManager) ReadByToken(token string) (*Enrollment, error) {
 	enrollment := &Enrollment{}
 
-	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		boltEntity, err := handler.env.GetStores().Enrollment.LoadOneByToken(tx, token)
+	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		boltEntity, err := self.env.GetStores().Enrollment.LoadOneByToken(tx, token)
 
 		if err != nil {
 			return err
@@ -102,7 +102,7 @@ func (handler *EnrollmentHandler) ReadByToken(token string) (*Enrollment, error)
 			return nil
 		}
 
-		return enrollment.fillFrom(handler, tx, boltEntity)
+		return enrollment.fillFrom(self, tx, boltEntity)
 	})
 
 	if err != nil {
@@ -112,42 +112,42 @@ func (handler *EnrollmentHandler) ReadByToken(token string) (*Enrollment, error)
 	return enrollment, nil
 }
 
-func (handler *EnrollmentHandler) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
-	return handler.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
+	return self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 
-		err := handler.env.GetStores().Enrollment.DeleteById(ctx, enrollmentId)
+		err := self.env.GetStores().Enrollment.DeleteById(ctx, enrollmentId)
 		if err != nil {
 			return err
 		}
 
-		_, err = handler.env.GetManagers().Authenticator.createEntityInTx(ctx, authenticator)
+		_, err = self.env.GetManagers().Authenticator.createEntityInTx(ctx, authenticator)
 		return err
 	})
 }
 
-func (handler *EnrollmentHandler) readInTx(tx *bbolt.Tx, id string) (*Enrollment, error) {
+func (self *EnrollmentManager) readInTx(tx *bbolt.Tx, id string) (*Enrollment, error) {
 	modelEntity := &Enrollment{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EnrollmentHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *EnrollmentManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *EnrollmentHandler) Read(id string) (*Enrollment, error) {
+func (self *EnrollmentManager) Read(id string) (*Enrollment, error) {
 	entity := &Enrollment{}
-	if err := handler.readEntity(id, entity); err != nil {
+	if err := self.readEntity(id, entity); err != nil {
 		return nil, err
 	}
 	return entity, nil
 }
 
-func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) error {
-	enrollment, err := handler.Read(id)
+func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time) error {
+	enrollment, err := self.Read(id)
 
 	if err != nil {
 		if boltz.IsErrNotFoundErr(err) {
@@ -165,11 +165,11 @@ func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) err
 		return errorz.NewFieldError("must be after the current date and time", "expiresAt", expiresAt)
 	}
 
-	if err := enrollment.FillJwtInfoWithExpiresAt(handler.env, *enrollment.IdentityId, expiresAt); err != nil {
+	if err := enrollment.FillJwtInfoWithExpiresAt(self.env, *enrollment.IdentityId, expiresAt); err != nil {
 		return err
 	}
 
-	err = handler.patchEntity(enrollment, boltz.MapFieldChecker{
+	err = self.patchEntity(enrollment, boltz.MapFieldChecker{
 		persistence.FieldEnrollmentJwt:       struct{}{},
 		persistence.FieldEnrollmentExpiresAt: struct{}{},
 		persistence.FieldEnrollmentIssuedAt:  struct{}{},
@@ -178,11 +178,11 @@ func (handler *EnrollmentHandler) RefreshJwt(id string, expiresAt time.Time) err
 	return err
 }
 
-func (handler *EnrollmentHandler) Query(query string) ([]*Enrollment, error) {
+func (self *EnrollmentManager) Query(query string) ([]*Enrollment, error) {
 	var enrollments []*Enrollment
-	if err := handler.ListWithHandler(query, func(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
+	if err := self.ListWithHandler(query, func(tx *bbolt.Tx, ids []string, qmd *models.QueryMetaData) error {
 		for _, id := range ids {
-			enrollment, _ := handler.readInTx(tx, id)
+			enrollment, _ := self.readInTx(tx, id)
 
 			if enrollment != nil {
 				enrollments = append(enrollments, enrollment)
@@ -197,12 +197,12 @@ func (handler *EnrollmentHandler) Query(query string) ([]*Enrollment, error) {
 	return enrollments, nil
 }
 
-func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
+func (self *EnrollmentManager) Create(model *Enrollment) (string, error) {
 	if model.IdentityId == nil {
 		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
 	}
 
-	identity, err := handler.env.GetManagers().Identity.Read(*model.IdentityId)
+	identity, err := self.env.GetManagers().Identity.Read(*model.IdentityId)
 
 	if err != nil || identity == nil {
 		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
@@ -221,7 +221,7 @@ func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
 			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
 		}
 
-		ca, err := handler.env.GetManagers().Ca.Read(*model.CaId)
+		ca, err := self.env.GetManagers().Ca.Read(*model.CaId)
 
 		if err != nil || ca == nil {
 			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
@@ -235,7 +235,7 @@ func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
 		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
 	}
 
-	enrollments, err := handler.Query(fmt.Sprintf(`identity="%s"`, identity.Id))
+	enrollments, err := self.Query(fmt.Sprintf(`identity="%s"`, identity.Id))
 
 	if err != nil {
 		return "", err
@@ -247,9 +247,9 @@ func (handler *EnrollmentHandler) Create(model *Enrollment) (string, error) {
 		}
 	}
 
-	if err := model.FillJwtInfoWithExpiresAt(handler.env, identity.Id, *model.ExpiresAt); err != nil {
+	if err := model.FillJwtInfoWithExpiresAt(self.env, identity.Id, *model.ExpiresAt); err != nil {
 		return "", err
 	}
 
-	return handler.createEntity(model)
+	return self.createEntity(model)
 }

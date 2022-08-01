@@ -29,68 +29,68 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func NewTransitRouterHandler(env Env) *TransitRouterHandler {
-	handler := &TransitRouterHandler{
+func NewTransitRouterManager(env Env) *TransitRouterManager {
+	manager := &TransitRouterManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().TransitRouter),
 		allowedFields: boltz.MapFieldChecker{
 			persistence.FieldName: struct{}{},
 			boltz.FieldTags:       struct{}{},
 		},
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+	return manager
 }
 
-type TransitRouterHandler struct {
+type TransitRouterManager struct {
 	baseEntityManager
 	allowedFields boltz.FieldChecker
 }
 
-func (handler *TransitRouterHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *TransitRouterManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *TransitRouterHandler) newModelEntity() edgeEntity {
+func (self *TransitRouterManager) newModelEntity() edgeEntity {
 	return &TransitRouter{}
 }
 
-func (handler *TransitRouterHandler) Create(entity *TransitRouter) (string, error) {
+func (self *TransitRouterManager) Create(entity *TransitRouter) (string, error) {
 	enrollment := &Enrollment{
 		BaseEntity: models.BaseEntity{},
 		Method:     MethodEnrollTransitRouterOtt,
 	}
 
-	id, _, err := handler.CreateWithEnrollment(entity, enrollment)
+	id, _, err := self.CreateWithEnrollment(entity, enrollment)
 	return id, err
 }
 
-func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRouter, enrollment *Enrollment) (string, string, error) {
+func (self *TransitRouterManager) CreateWithEnrollment(txRouter *TransitRouter, enrollment *Enrollment) (string, string, error) {
 
 	if txRouter.Id == "" {
 		txRouter.Id = eid.New()
 	}
 	var enrollmentId string
 
-	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := txRouter.toBoltEntityForCreate(tx, handler.impl)
+		boltEntity, err := txRouter.toBoltEntityForCreate(tx, self.impl)
 		if err != nil {
 			return err
 		}
-		if err := handler.GetStore().Create(ctx, boltEntity); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.GetStore().GetSingularEntityType())
+		if err := self.GetStore().Create(ctx, boltEntity); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
 			return err
 		}
 
 		enrollment.TransitRouterId = &txRouter.Id
 
-		err = enrollment.FillJwtInfo(handler.env, txRouter.Id)
+		err = enrollment.FillJwtInfo(self.env, txRouter.Id)
 
 		if err != nil {
 			return err
 		}
 
-		enrollmentId, err = handler.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
+		enrollmentId, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
 
 		if err != nil {
 			return err
@@ -106,8 +106,8 @@ func (handler *TransitRouterHandler) CreateWithEnrollment(txRouter *TransitRoute
 	return txRouter.Id, enrollmentId, nil
 }
 
-func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllFields bool) error {
-	curEntity, err := handler.Read(entity.Id)
+func (self *TransitRouterManager) Update(entity *TransitRouter, allowAllFields bool) error {
+	curEntity, err := self.Read(entity.Id)
 
 	if err != nil {
 		return err
@@ -118,15 +118,15 @@ func (handler *TransitRouterHandler) Update(entity *TransitRouter, allowAllField
 	}
 
 	if allowAllFields {
-		return handler.updateEntity(entity, nil)
+		return self.updateEntity(entity, nil)
 	}
 
-	return handler.updateEntity(entity, handler.allowedFields)
+	return self.updateEntity(entity, self.allowedFields)
 
 }
 
-func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.FieldChecker, allowAllFields bool) error {
-	curEntity, err := handler.Read(entity.Id)
+func (self *TransitRouterManager) Patch(entity *TransitRouter, checker boltz.FieldChecker, allowAllFields bool) error {
+	curEntity, err := self.Read(entity.Id)
 
 	if err != nil {
 		return err
@@ -137,18 +137,18 @@ func (handler *TransitRouterHandler) Patch(entity *TransitRouter, checker boltz.
 	}
 
 	if allowAllFields {
-		return handler.patchEntity(entity, checker)
+		return self.patchEntity(entity, checker)
 	}
-	combinedChecker := &AndFieldChecker{first: handler.allowedFields, second: checker}
-	return handler.patchEntity(entity, combinedChecker)
+	combinedChecker := &AndFieldChecker{first: self.allowedFields, second: checker}
+	return self.patchEntity(entity, combinedChecker)
 }
 
-func (handler *TransitRouterHandler) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {
-	return handler.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, db.FieldRouterFingerprint, fingerprint))
+func (self *TransitRouterManager) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {
+	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, db.FieldRouterFingerprint, fingerprint))
 }
 
-func (handler *TransitRouterHandler) ReadOneByQuery(query string) (*TransitRouter, error) {
-	result, err := handler.readEntityByQuery(query)
+func (self *TransitRouterManager) ReadOneByQuery(query string) (*TransitRouter, error) {
+	result, err := self.readEntityByQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -158,39 +158,39 @@ func (handler *TransitRouterHandler) ReadOneByQuery(query string) (*TransitRoute
 	return result.(*TransitRouter), nil
 }
 
-func (handler *TransitRouterHandler) Read(id string) (*TransitRouter, error) {
+func (self *TransitRouterManager) Read(id string) (*TransitRouter, error) {
 	result := &TransitRouter{}
 
-	if err := handler.readEntity(id, result); err != nil {
+	if err := self.readEntity(id, result); err != nil {
 		return nil, err
 	}
 
 	return result, nil
 }
 
-func (handler *TransitRouterHandler) readInTx(tx *bbolt.Tx, id string) (*TransitRouter, error) {
+func (self *TransitRouterManager) readInTx(tx *bbolt.Tx, id string) (*TransitRouter, error) {
 	modelEntity := &TransitRouter{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *TransitRouterHandler) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.collectEnrollmentsInTx(tx, id, collector)
+func (self *TransitRouterManager) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.collectEnrollmentsInTx(tx, id, collector)
 	})
 }
 
-func (handler *TransitRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity *Enrollment) error) error {
-	_, err := handler.readInTx(tx, id)
+func (self *TransitRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity *Enrollment) error) error {
+	_, err := self.readInTx(tx, id)
 	if err != nil {
 		return err
 	}
 
-	associationIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldTransitRouterEnrollments)
+	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldTransitRouterEnrollments)
 	for _, enrollmentId := range associationIds {
-		enrollment, err := handler.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
+		enrollment, err := self.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}
@@ -203,8 +203,8 @@ func (handler *TransitRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id str
 	return nil
 }
 
-func (handler *TransitRouterHandler) ExtendEnrollment(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
-	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
 
@@ -224,13 +224,13 @@ func (handler *TransitRouterHandler) ExtendEnrollment(router *TransitRouter, cli
 		return nil, apiErr
 	}
 
-	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	fingerprint := self.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
 
 	pfxlog.Logger().Debugf("extending enrollment for router %s, old fingerprint: %s new fingerprint: %s", router.Id, *router.Fingerprint, fingerprint)
 
 	router.Fingerprint = &fingerprint
 
-	err = handler.Patch(router, &boltz.MapFieldChecker{
+	err = self.Patch(router, &boltz.MapFieldChecker{
 		persistence.FieldEdgeRouterCertPEM: struct{}{},
 		db.FieldRouterFingerprint:          struct{}{},
 	}, true)
@@ -245,8 +245,8 @@ func (handler *TransitRouterHandler) ExtendEnrollment(router *TransitRouter, cli
 	}, nil
 }
 
-func (handler *TransitRouterHandler) ExtendEnrollmentWithVerify(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
-	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
 
@@ -266,13 +266,13 @@ func (handler *TransitRouterHandler) ExtendEnrollmentWithVerify(router *TransitR
 		return nil, apiErr
 	}
 
-	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	fingerprint := self.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
 
 	pfxlog.Logger().Debugf("extending enrollment for router %s, old fingerprint: %s new fingerprint: %s", router.Id, *router.Fingerprint, fingerprint)
 
 	router.UnverifiedFingerprint = &fingerprint
 
-	err = handler.Patch(router, &boltz.MapFieldChecker{
+	err = self.Patch(router, &boltz.MapFieldChecker{
 		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
 	}, true)
@@ -287,18 +287,18 @@ func (handler *TransitRouterHandler) ExtendEnrollmentWithVerify(router *TransitR
 	}, nil
 }
 
-func (handler *TransitRouterHandler) ReadOneByUnverifiedFingerprint(fingerprint string) (*TransitRouter, error) {
-	return handler.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
+func (self *TransitRouterManager) ReadOneByUnverifiedFingerprint(fingerprint string) (*TransitRouter, error) {
+	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
 }
 
-func (handler *TransitRouterHandler) ExtendEnrollmentVerify(router *TransitRouter) error {
+func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter) error {
 	if router.UnverifiedFingerprint != nil && router.UnverifiedCertPem != nil {
 		router.Fingerprint = router.UnverifiedFingerprint
 
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		return handler.Patch(router, boltz.MapFieldChecker{
+		return self.Patch(router, boltz.MapFieldChecker{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},

@@ -182,12 +182,12 @@ func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ EntityMa
 	return ret, nil
 }
 
-func (p *PostureCheckProcessMulti) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, handler)
+func (p *PostureCheckProcessMulti) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
+	return p.toBoltEntityForCreate(tx, manager)
 }
 
-func (p *PostureCheckProcessMulti) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, handler)
+func (p *PostureCheckProcessMulti) toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
+	return p.toBoltEntityForCreate(tx, manager)
 }
 
 type PostureCheckFailureValuesProcessMulti struct {

@@ -35,13 +35,11 @@ type EnrollModuleRouterOtt struct {
 }
 
 func NewEnrollModuleTransitRouterOtt(env Env) *EnrollModuleRouterOtt {
-	handler := &EnrollModuleRouterOtt{
+	return &EnrollModuleRouterOtt{
 		env:                  env,
 		method:               MethodEnrollTransitRouterOtt,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
-
-	return handler
 }
 
 func (module *EnrollModuleRouterOtt) CanHandle(method string) bool {

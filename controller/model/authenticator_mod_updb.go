@@ -36,21 +36,19 @@ type AuthModuleUpdb struct {
 }
 
 func NewAuthModuleUpdb(env Env) *AuthModuleUpdb {
-	handler := &AuthModuleUpdb{
+	return &AuthModuleUpdb{
 		env:                       env,
 		method:                    "password",
 		attemptsByAuthenticatorId: cmap.New[int64](),
 	}
-
-	return handler
 }
 
-func (handler *AuthModuleUpdb) CanHandle(method string) bool {
-	return method == handler.method
+func (module *AuthModuleUpdb) CanHandle(method string) bool {
+	return method == module.method
 }
 
-func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
-	logger := pfxlog.Logger().WithField("authMethod", handler.method)
+func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
+	logger := pfxlog.Logger().WithField("authMethod", module.method)
 
 	data := context.GetData()
 
@@ -69,7 +67,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	}
 
 	logger = logger.WithField("username", username)
-	authenticator, err := handler.env.GetManagers().Authenticator.ReadByUsername(username)
+	authenticator, err := module.env.GetManagers().Authenticator.ReadByUsername(username)
 
 	if err != nil {
 		logger.WithError(err).Error("could not authenticate, authenticator lookup by username errored")
@@ -85,7 +83,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 		WithField("authenticatorId", authenticator.Id).
 		WithField("identityId", authenticator.IdentityId)
 
-	authPolicy, identity, err := getAuthPolicyByIdentityId(handler.env, handler.method, authenticator.Id, authenticator.IdentityId)
+	authPolicy, identity, err := getAuthPolicyByIdentityId(module.env, module.method, authenticator.Id, authenticator.IdentityId)
 
 	if err != nil {
 		logger.WithError(err).Errorf("could not look up auth policy by identity id")
@@ -113,7 +111,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	}
 
 	attempts := int64(0)
-	handler.attemptsByAuthenticatorId.Upsert(authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
+	module.attemptsByAuthenticatorId.Upsert(authenticator.Id, 0, func(exist bool, prevAttempts int64, newValue int64) int64 {
 		if exist {
 			attempts = prevAttempts + 1
 			return attempts
@@ -125,7 +123,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 	if authPolicy.Primary.Updb.MaxAttempts != persistence.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
 		logger.WithField("attempts", attempts).WithField("maxAttempts", authPolicy.Primary.Updb.MaxAttempts).Error("updb auth failed, max attempts exceeded")
 
-		if err = handler.env.GetManagers().Identity.Disable(authenticator.IdentityId, time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes)*time.Minute); err != nil {
+		if err = module.env.GetManagers().Identity.Disable(authenticator.IdentityId, time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes)*time.Minute); err != nil {
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 
@@ -140,7 +138,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	hr := handler.env.GetManagers().Authenticator.ReHashPassword(password, salt)
+	hr := module.env.GetManagers().Authenticator.ReHashPassword(password, salt)
 
 	if updb.Password != hr.Password {
 
@@ -152,7 +150,7 @@ func (handler *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) 
 		identityId:      updb.IdentityId,
 		authenticator:   authenticator,
 		authenticatorId: authenticator.IdentityId,
-		env:             handler.env,
+		env:             module.env,
 	}, nil
 }
 

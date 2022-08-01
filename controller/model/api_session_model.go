@@ -43,8 +43,8 @@ type ApiSession struct {
 	AuthenticatorId    string
 }
 
-func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
+func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	if !manager.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
@@ -63,15 +63,15 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (bol
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *ApiSession) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ApiSession) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSession", reflect.TypeOf(boltEntity))
@@ -83,17 +83,17 @@ func (entity *ApiSession) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEnti
 	entity.IPAddress = boltApiSession.IPAddress
 	entity.MfaRequired = boltApiSession.MfaRequired
 	entity.MfaComplete = boltApiSession.MfaComplete
-	entity.ExpiresAt = entity.UpdatedAt.Add(handler.GetEnv().GetConfig().Api.SessionTimeout)
-	entity.ExpirationDuration = handler.GetEnv().GetConfig().Api.SessionTimeout
+	entity.ExpiresAt = entity.UpdatedAt.Add(manager.GetEnv().GetConfig().Api.SessionTimeout)
+	entity.ExpirationDuration = manager.GetEnv().GetConfig().Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 	entity.AuthenticatorId = boltApiSession.AuthenticatorId
 
-	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
+	boltIdentity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err
 	}
 	modelIdentity := &Identity{}
-	if err := modelIdentity.fillFrom(handler, tx, boltIdentity); err != nil {
+	if err := modelIdentity.fillFrom(manager, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity

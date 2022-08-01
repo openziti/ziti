@@ -32,8 +32,8 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
-	handler := &EdgeRouterHandler{
+func NewEdgeRouterManager(env Env) *EdgeRouterManager {
+	manager := &EdgeRouterManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeRouter),
 		allowedFieldsChecker: boltz.MapFieldChecker{
 			persistence.FieldName:                        struct{}{},
@@ -44,52 +44,52 @@ func NewEdgeRouterHandler(env Env) *EdgeRouterHandler {
 			db.FieldRouterNoTraversal:                    struct{}{},
 		},
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+	return manager
 }
 
-type EdgeRouterHandler struct {
+type EdgeRouterManager struct {
 	baseEntityManager
 	allowedFieldsChecker boltz.FieldChecker
 }
 
-func (handler *EdgeRouterHandler) GetEntityTypeId() string {
+func (self *EdgeRouterManager) GetEntityTypeId() string {
 	return "edgeRouters"
 }
 
-func (handler *EdgeRouterHandler) newModelEntity() edgeEntity {
+func (self *EdgeRouterManager) newModelEntity() edgeEntity {
 	return &EdgeRouter{}
 }
 
-func (handler *EdgeRouterHandler) Create(modelEntity *EdgeRouter) (string, error) {
+func (self *EdgeRouterManager) Create(modelEntity *EdgeRouter) (string, error) {
 	enrollment := &Enrollment{
 		BaseEntity: models.BaseEntity{},
 		Method:     MethodEnrollEdgeRouterOtt,
 	}
 
-	id, _, err := handler.CreateWithEnrollment(modelEntity, enrollment)
+	id, _, err := self.CreateWithEnrollment(modelEntity, enrollment)
 
 	return id, err
 }
 
-func (handler *EdgeRouterHandler) Read(id string) (*EdgeRouter, error) {
+func (self *EdgeRouterManager) Read(id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
-	if err := handler.readEntity(id, modelEntity); err != nil {
+	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EdgeRouterHandler) readInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
+func (self *EdgeRouterManager) readInTx(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
 	modelEntity := &EdgeRouter{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *EdgeRouterHandler) ReadOneByQuery(query string) (*EdgeRouter, error) {
-	result, err := handler.readEntityByQuery(query)
+func (self *EdgeRouterManager) ReadOneByQuery(query string) (*EdgeRouter, error) {
+	result, err := self.readEntityByQuery(query)
 	if err != nil {
 		return nil, err
 	}
@@ -99,65 +99,65 @@ func (handler *EdgeRouterHandler) ReadOneByQuery(query string) (*EdgeRouter, err
 	return result.(*EdgeRouter), nil
 }
 
-func (handler *EdgeRouterHandler) ReadOneByFingerprint(fingerprint string) (*EdgeRouter, error) {
-	return handler.ReadOneByQuery(fmt.Sprintf(`fingerprint = "%v"`, fingerprint))
+func (self *EdgeRouterManager) ReadOneByFingerprint(fingerprint string) (*EdgeRouter, error) {
+	return self.ReadOneByQuery(fmt.Sprintf(`fingerprint = "%v"`, fingerprint))
 }
 
-func (handler *EdgeRouterHandler) Update(modelEntity *EdgeRouter, restrictFields bool) error {
+func (self *EdgeRouterManager) Update(modelEntity *EdgeRouter, restrictFields bool) error {
 	if restrictFields {
-		return handler.updateEntity(modelEntity, handler.allowedFieldsChecker)
+		return self.updateEntity(modelEntity, self.allowedFieldsChecker)
 	}
-	return handler.updateEntity(modelEntity, nil)
+	return self.updateEntity(modelEntity, nil)
 }
 
-func (handler *EdgeRouterHandler) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: handler.allowedFieldsChecker, second: checker}
-	return handler.patchEntity(modelEntity, combinedChecker)
+func (self *EdgeRouterManager) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
+	combinedChecker := &AndFieldChecker{first: self.allowedFieldsChecker, second: checker}
+	return self.patchEntity(modelEntity, combinedChecker)
 }
 
-func (handler *EdgeRouterHandler) PatchUnrestricted(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
-	return handler.patchEntity(modelEntity, checker)
+func (self *EdgeRouterManager) PatchUnrestricted(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
+	return self.patchEntity(modelEntity, checker)
 }
 
-func (handler *EdgeRouterHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *EdgeRouterManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *EdgeRouterHandler) Query(query string) (*EdgeRouterListResult, error) {
-	result := &EdgeRouterListResult{handler: handler}
-	err := handler.ListWithHandler(query, result.collect)
+func (self *EdgeRouterManager) Query(query string) (*EdgeRouterListResult, error) {
+	result := &EdgeRouterListResult{manager: self}
+	err := self.ListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) ListForSession(sessionId string) (*EdgeRouterListResult, error) {
+func (self *EdgeRouterManager) ListForSession(sessionId string) (*EdgeRouterListResult, error) {
 	var result *EdgeRouterListResult
 
-	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		session, err := handler.env.GetStores().Session.LoadOneById(tx, sessionId)
+	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		session, err := self.env.GetStores().Session.LoadOneById(tx, sessionId)
 		if err != nil {
 			return err
 		}
-		apiSession, err := handler.env.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
+		apiSession, err := self.env.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
 		if err != nil {
 			return err
 		}
 
 		limit := -1
 
-		result, err = handler.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, &limit)
+		result, err = self.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, &limit)
 		return err
 	})
 	return result, err
 }
 
-func (handler *EdgeRouterHandler) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	var list *EdgeRouterListResult
 	var err error
-	if txErr := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		list, err = handler.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
+	if txErr := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		list, err = self.ListForIdentityAndServiceWithTx(tx, identityId, serviceId, limit)
 		return nil
 	}); txErr != nil {
 		return nil, txErr
@@ -166,8 +166,8 @@ func (handler *EdgeRouterHandler) ListForIdentityAndService(identityId, serviceI
 	return list, err
 }
 
-func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
-	service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
+func (self *EdgeRouterManager) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
+	service, err := self.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
 	if err != nil {
 		return nil, err
 	}
@@ -181,19 +181,19 @@ func (handler *EdgeRouterHandler) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, 
 		query += " limit " + strconv.Itoa(*limit)
 	}
 
-	result := &EdgeRouterListResult{handler: handler}
-	if err = handler.ListWithTx(tx, query, result.collect); err != nil {
+	result := &EdgeRouterListResult{manager: self}
+	if err = self.ListWithTx(tx, query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *EdgeRouterHandler) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
-	index := handler.env.GetStores().EdgeRouter.GetRoleAttributesIndex()
-	return handler.queryRoleAttributes(index, queryString)
+func (self *EdgeRouterManager) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
+	index := self.env.GetStores().EdgeRouter.GetRoleAttributesIndex()
+	return self.queryRoleAttributes(index, queryString)
 }
 
-func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, enrollment *Enrollment) (string, string, error) {
+func (self *EdgeRouterManager) CreateWithEnrollment(edgeRouter *EdgeRouter, enrollment *Enrollment) (string, string, error) {
 	if edgeRouter.Id == "" {
 		edgeRouter.Id = eid.New()
 	}
@@ -202,31 +202,31 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 		enrollment.Id = eid.New()
 	}
 
-	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		boltEdgeRouter, err := edgeRouter.toBoltEntityForCreate(tx, handler.impl)
+		boltEdgeRouter, err := edgeRouter.toBoltEntityForCreate(tx, self.impl)
 		if err != nil {
 			return err
 		}
 
-		if err = handler.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
+		if err = self.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
 			return err
 		}
 
-		if err := handler.GetStore().Create(ctx, boltEdgeRouter); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", handler.GetStore().GetSingularEntityType())
+		if err := self.GetStore().Create(ctx, boltEdgeRouter); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
 			return err
 		}
 
 		enrollment.EdgeRouterId = &edgeRouter.Id
 
-		err = enrollment.FillJwtInfo(handler.env, edgeRouter.Id)
+		err = enrollment.FillJwtInfo(self.env, edgeRouter.Id)
 
 		if err != nil {
 			return err
 		}
 
-		_, err = handler.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
+		_, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
 
 		if err != nil {
 			return err
@@ -242,21 +242,21 @@ func (handler *EdgeRouterHandler) CreateWithEnrollment(edgeRouter *EdgeRouter, e
 	return edgeRouter.Id, enrollment.Id, nil
 }
 
-func (handler *EdgeRouterHandler) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
-	return handler.GetDb().View(func(tx *bbolt.Tx) error {
-		return handler.collectEnrollmentsInTx(tx, id, collector)
+func (self *EdgeRouterManager) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
+	return self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.collectEnrollmentsInTx(tx, id, collector)
 	})
 }
 
-func (handler *EdgeRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity *Enrollment) error) error {
-	_, err := handler.readInTx(tx, id)
+func (self *EdgeRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, collector func(entity *Enrollment) error) error {
+	_, err := self.readInTx(tx, id)
 	if err != nil {
 		return err
 	}
 
-	associationIds := handler.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldEdgeRouterEnrollments)
+	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldEdgeRouterEnrollments)
 	for _, enrollmentId := range associationIds {
-		enrollment, err := handler.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
+		enrollment, err := self.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
 			return err
 		}
@@ -272,7 +272,7 @@ func (handler *EdgeRouterHandler) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 // ReEnroll creates a new JWT enrollment for an existing edge router. If the edge router already exists
 // with a JWT, a new JWT is created. If the edge router was already enrolled, all record of the enrollment is
 // reset and the edge router is disconnected forcing the edge router to complete enrollment before connecting.
-func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
+func (self *EdgeRouterManager) ReEnroll(router *EdgeRouter) error {
 	log := pfxlog.Logger().WithField("routerId", router.Id)
 
 	log.Info("attempting to set edge router state to unenrolled")
@@ -282,13 +282,13 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 		EdgeRouterId: &router.Id,
 	}
 
-	if err := enrollment.FillJwtInfo(handler.env, router.Id); err != nil {
+	if err := enrollment.FillJwtInfo(self.env, router.Id); err != nil {
 		return fmt.Errorf("unable to fill jwt info for re-enrolling edge router: %v", err)
 	}
 
-	err := handler.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
-		if id, err := handler.GetEnv().GetManagers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
+		if id, err := self.GetEnv().GetManagers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
 			return fmt.Errorf("could not create enrollment for re-enrolling edge router: %v", err)
 		} else {
 			log.WithField("enrollmentId", id).Infof("edge router re-enrollment entity created")
@@ -304,7 +304,7 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 		return fmt.Errorf("unabled to alter db for re-enrolling edge router: %v", err)
 	}
 
-	if err := handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+	if err := self.PatchUnrestricted(router, boltz.MapFieldChecker{
 		db.FieldRouterFingerprint:             struct{}{},
 		persistence.FieldEdgeRouterCertPEM:    struct{}{},
 		persistence.FieldEdgeRouterIsVerified: struct{}{},
@@ -314,7 +314,7 @@ func (handler *EdgeRouterHandler) ReEnroll(router *EdgeRouter) error {
 	}
 
 	log.Info("closing existing connections for re-enrolling edge router")
-	connectedRouter := handler.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
+	connectedRouter := self.env.GetHostController().GetNetwork().GetConnectedRouter(router.Id)
 	if connectedRouter != nil && connectedRouter.Control != nil && !connectedRouter.Control.IsClosed() {
 		log = log.WithField("channel", connectedRouter.Control.Id())
 		log.Info("closing channel, router is flagged for re-enrollment and an existing open channel was found")
@@ -331,8 +331,8 @@ type ExtendedCerts struct {
 	RawServerCert []byte
 }
 
-func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
-	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+func (self *EdgeRouterManager) ExtendEnrollment(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
 
@@ -352,7 +352,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsr
 		return nil, apiErr
 	}
 
-	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	fingerprint := self.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
 	clientPem, _ := cert.RawToPem(clientCertRaw)
 	clientPemString := string(clientPem)
 
@@ -361,7 +361,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsr
 	router.Fingerprint = &fingerprint
 	router.CertPem = &clientPemString
 
-	err = handler.PatchUnrestricted(router, &boltz.MapFieldChecker{
+	err = self.PatchUnrestricted(router, &boltz.MapFieldChecker{
 		persistence.FieldEdgeRouterCertPEM: struct{}{},
 		db.FieldRouterFingerprint:          struct{}{},
 	})
@@ -376,8 +376,8 @@ func (handler *EdgeRouterHandler) ExtendEnrollment(router *EdgeRouter, clientCsr
 	}, nil
 }
 
-func (handler *EdgeRouterHandler) ExtendEnrollmentWithVerify(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
-	enrollmentModule := handler.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
+func (self *EdgeRouterManager) ExtendEnrollmentWithVerify(router *EdgeRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
 
@@ -397,7 +397,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentWithVerify(router *EdgeRouter,
 		return nil, apiErr
 	}
 
-	fingerprint := handler.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
+	fingerprint := self.env.GetFingerprintGenerator().FromRaw(clientCertRaw)
 	clientPem, _ := cert.RawToPem(clientCertRaw)
 	clientPemString := string(clientPem)
 
@@ -406,7 +406,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentWithVerify(router *EdgeRouter,
 	router.UnverifiedFingerprint = &fingerprint
 	router.UnverifiedCertPem = &clientPemString
 
-	err = handler.PatchUnrestricted(router, &boltz.MapFieldChecker{
+	err = self.PatchUnrestricted(router, &boltz.MapFieldChecker{
 		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
 	})
@@ -421,11 +421,11 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentWithVerify(router *EdgeRouter,
 	}, nil
 }
 
-func (handler *EdgeRouterHandler) ReadOneByUnverifiedFingerprint(fingerprint string) (*EdgeRouter, error) {
-	return handler.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
+func (self *EdgeRouterManager) ReadOneByUnverifiedFingerprint(fingerprint string) (*EdgeRouter, error) {
+	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
 }
 
-func (handler *EdgeRouterHandler) ExtendEnrollmentVerify(router *EdgeRouter) error {
+func (self *EdgeRouterManager) ExtendEnrollmentVerify(router *EdgeRouter) error {
 	if router.UnverifiedFingerprint != nil && router.UnverifiedCertPem != nil {
 		router.Fingerprint = router.UnverifiedFingerprint
 		router.CertPem = router.UnverifiedCertPem
@@ -433,7 +433,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentVerify(router *EdgeRouter) err
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		return handler.PatchUnrestricted(router, boltz.MapFieldChecker{
+		return self.PatchUnrestricted(router, boltz.MapFieldChecker{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldCaCertPem:                       struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
@@ -445,7 +445,7 @@ func (handler *EdgeRouterHandler) ExtendEnrollmentVerify(router *EdgeRouter) err
 }
 
 type EdgeRouterListResult struct {
-	handler     *EdgeRouterHandler
+	manager     *EdgeRouterManager
 	EdgeRouters []*EdgeRouter
 	models.QueryMetaData
 }
@@ -453,7 +453,7 @@ type EdgeRouterListResult struct {
 func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
+		entity, err := result.manager.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

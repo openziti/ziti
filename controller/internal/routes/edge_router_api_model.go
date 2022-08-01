@@ -206,7 +206,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 	return ret, nil
 }
 
-func GetNamedEdgeRouterRoles(edgeRouterHandler *model.EdgeRouterHandler, roles []string) rest_model.NamedRoles {
+func GetNamedEdgeRouterRoles(edgeRouterHandler *model.EdgeRouterManager, roles []string) rest_model.NamedRoles {
 	result := rest_model.NamedRoles{}
 	for _, role := range roles {
 		if strings.HasPrefix(role, "@") {

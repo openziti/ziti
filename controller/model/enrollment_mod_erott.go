@@ -41,13 +41,11 @@ type EnrollModuleEr struct {
 }
 
 func NewEnrollModuleEdgeRouterOtt(env Env) *EnrollModuleEr {
-	handler := &EnrollModuleEr{
+	return &EnrollModuleEr{
 		env:                  env,
 		method:               MethodEnrollEdgeRouterOtt,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
-
-	return handler
 }
 
 func (module *EnrollModuleEr) CanHandle(method string) bool {

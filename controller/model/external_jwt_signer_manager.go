@@ -133,7 +133,7 @@ func (self *ExternalJwtSignerManager) Unmarshall(bytes []byte) (*ExternalJwtSign
 }
 
 type ListExtJwtSignerResult struct {
-	handler       *ExternalJwtSignerManager
+	manager       *ExternalJwtSignerManager
 	QueryMetaData models.QueryMetaData
 	ExtJwtSigners []*ExternalJwtSigner
 }
@@ -154,7 +154,7 @@ func (self *ExternalJwtSignerManager) PublicQuery(query ast.Query) (*ListExtJwtS
 	}
 
 	result := &ListExtJwtSignerResult{
-		handler:       self,
+		manager:       self,
 		QueryMetaData: entityResult.QueryMetaData,
 	}
 

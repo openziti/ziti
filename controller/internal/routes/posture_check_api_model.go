@@ -425,7 +425,7 @@ func setBaseEntityDetailsOnPostureCheck(check rest_model.PostureCheckDetail, i *
 	check.SetRoleAttributes(&roleAttributes)
 }
 
-func GetNamedPostureCheckRoles(postureCheckHandler *model.PostureCheckHandler, roles []string) rest_model.NamedRoles {
+func GetNamedPostureCheckRoles(postureCheckHandler *model.PostureCheckManager, roles []string) rest_model.NamedRoles {
 	result := rest_model.NamedRoles{}
 	for _, role := range roles {
 		if strings.HasPrefix(role, "@") {

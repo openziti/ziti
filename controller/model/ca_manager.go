@@ -117,7 +117,7 @@ func (self *CaManager) Verified(ca *Ca) error {
 }
 
 func (self *CaManager) Query(query string) (*CaListResult, error) {
-	result := &CaListResult{handler: self}
+	result := &CaListResult{manager: self}
 	if err := self.ListWithHandler(query, result.collect); err != nil {
 		return nil, err
 	}
@@ -219,7 +219,7 @@ func (self *CaManager) Unmarshall(bytes []byte) (*Ca, error) {
 }
 
 type CaListResult struct {
-	handler *CaManager
+	manager *CaManager
 	Cas     []*Ca
 	models.QueryMetaData
 }
@@ -227,7 +227,7 @@ type CaListResult struct {
 func (result *CaListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
+		entity, err := result.manager.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

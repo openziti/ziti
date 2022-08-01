@@ -138,7 +138,7 @@ func newPostureCheckOperatingSystem() PostureCheckSubType {
 	return &PostureCheckOperatingSystem{}
 }
 
-func (p *PostureCheckOperatingSystem) fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckOperatingSystem) fillFrom(_ EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckOperatingSystem)
 
 	if subCheck == nil {
@@ -168,7 +168,7 @@ func (p *PostureCheckOperatingSystem) validateOsVersions() error {
 	return nil
 }
 
-func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
 	}
@@ -187,7 +187,7 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(tx *bbolt.Tx, handle
 	return ret, nil
 }
 
-func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
 	}
@@ -206,7 +206,7 @@ func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(tx *bbolt.Tx, handle
 	return ret, nil
 }
 
-func (p *PostureCheckOperatingSystem) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckOperatingSystem) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
 	}

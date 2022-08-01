@@ -63,7 +63,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
 	return &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
