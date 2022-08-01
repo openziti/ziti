@@ -3,6 +3,8 @@ syntax = "proto3";
 package ziti.edge_cmd.pb;
 option go_package = "github.com/openziti/edge/pb/edge_cmd_pb";
 
+import "google/protobuf/timestamp.proto";
+
 enum CommandType {
   Zero = 0;
   CreateEdgeTerminatorType = 1000;
@@ -122,6 +124,25 @@ message EdgeRouterPolicy {
   string semantic = 4;
   repeated string edgeRouterRoles = 5;
   repeated string identityRoles = 6;
+}
+
+message ExternalJwtSigner {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  optional string certPem = 4;
+  optional string jwksEndpoint = 5;
+  optional string kid = 6;
+  bool enabled = 7;
+  optional string externalAuthUrl = 8;
+  bool useExternalId = 9;
+  optional string claimsProperty = 10;
+  optional string issuer = 11;
+  optional string audience = 12;
+  string commonName = 13;
+  optional string fingerprint = 14;
+  google.protobuf.Timestamp notAfter = 15;
+  google.protobuf.Timestamp notBefore = 16;
 }
 
 message ServiceEdgeRouterPolicy {
