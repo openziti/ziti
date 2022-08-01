@@ -37,10 +37,10 @@ type PostureCheck struct {
 }
 
 type PostureCheckSubType interface {
-	toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error)
-	fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
+	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
+	fillFrom(manager EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
 	GetTimeoutSeconds() int64
@@ -82,7 +82,7 @@ func newSubType(typeId string) PostureCheckSubType {
 	return nil
 }
 
-func (entity *PostureCheck) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *PostureCheck) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltPostureCheck, ok := boltEntity.(*persistence.PostureCheck)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model posture check", reflect.TypeOf(boltEntity))
@@ -99,7 +99,7 @@ func (entity *PostureCheck) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEn
 		return fmt.Errorf("cannot create posture check subtype [%v]", entity.TypeId)
 	}
 
-	if err := subType.fillFrom(handler, tx, boltPostureCheck, boltPostureCheck.SubType); err != nil {
+	if err := subType.fillFrom(manager, tx, boltPostureCheck, boltPostureCheck.SubType); err != nil {
 		return fmt.Errorf("error filling posture check subType [%v]: %v", entity.TypeId, err)
 	}
 
@@ -108,7 +108,7 @@ func (entity *PostureCheck) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEn
 	return nil
 }
 
-func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
 	boltEntity := &persistence.PostureCheck{
 		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:           entity.Name,
@@ -118,15 +118,15 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityMa
 	}
 
 	var err error
-	if boltEntity.SubType, err = entity.SubType.toBoltEntityForCreate(tx, handler); err != nil {
+	if boltEntity.SubType, err = entity.SubType.toBoltEntityForCreate(tx, manager); err != nil {
 		return nil, fmt.Errorf("error converting to bolt posture check subType [%v] for create: %v", entity.TypeId, err)
 	}
 
 	return boltEntity, nil
 }
 
-func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntityForCreate(tx, handler)
+func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntityForCreate(tx, manager)
 }
 
 func (entity *PostureCheck) Evaluate(apiSessionId string, pd *PostureData) (bool, *PostureCheckFailure) {

@@ -29,43 +29,43 @@ const (
 	PostureCheckNoTimeout = int64(-1)
 )
 
-func NewPostureCheckHandler(env Env) *PostureCheckHandler {
-	handler := &PostureCheckHandler{
+func NewPostureCheckManager(env Env) *PostureCheckManager {
+	manager := &PostureCheckManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheck),
 	}
-	handler.impl = handler
-	return handler
+	manager.impl = manager
+	return manager
 }
 
-type PostureCheckHandler struct {
+type PostureCheckManager struct {
 	baseEntityManager
 }
 
-func (handler *PostureCheckHandler) newModelEntity() edgeEntity {
+func (self *PostureCheckManager) newModelEntity() edgeEntity {
 	return &PostureCheck{}
 }
 
-func (handler *PostureCheckHandler) Create(postureCheckModel *PostureCheck) (string, error) {
-	return handler.createEntity(postureCheckModel)
+func (self *PostureCheckManager) Create(postureCheckModel *PostureCheck) (string, error) {
+	return self.createEntity(postureCheckModel)
 }
 
-func (handler *PostureCheckHandler) Read(id string) (*PostureCheck, error) {
+func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {
 	modelEntity := &PostureCheck{}
-	if err := handler.readEntity(id, modelEntity); err != nil {
+	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *PostureCheckHandler) readInTx(tx *bbolt.Tx, id string) (*PostureCheck, error) {
+func (self *PostureCheckManager) readInTx(tx *bbolt.Tx, id string) (*PostureCheck, error) {
 	modelEntity := &PostureCheck{}
-	if err := handler.readEntityInTx(tx, id, modelEntity); err != nil {
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil
 }
 
-func (handler *PostureCheckHandler) IsUpdated(field string) bool {
+func (self *PostureCheckManager) IsUpdated(field string) bool {
 	return strings.EqualFold(field, persistence.FieldName) ||
 		strings.EqualFold(field, boltz.FieldTags) ||
 		strings.EqualFold(field, persistence.FieldRoleAttributes) ||
@@ -89,30 +89,30 @@ func (handler *PostureCheckHandler) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldSemantic)
 }
 
-func (handler *PostureCheckHandler) Update(ca *PostureCheck) error {
-	return handler.updateEntity(ca, handler)
+func (self *PostureCheckManager) Update(ca *PostureCheck) error {
+	return self.updateEntity(ca, self)
 }
 
-func (handler *PostureCheckHandler) Patch(ca *PostureCheck, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: handler, second: checker}
-	return handler.patchEntity(ca, combinedChecker)
+func (self *PostureCheckManager) Patch(ca *PostureCheck, checker boltz.FieldChecker) error {
+	combinedChecker := &AndFieldChecker{first: self, second: checker}
+	return self.patchEntity(ca, combinedChecker)
 }
 
-func (handler *PostureCheckHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *PostureCheckManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *PostureCheckHandler) Query(query string) (*PostureCheckListResult, error) {
-	result := &PostureCheckListResult{handler: handler}
-	if err := handler.ListWithHandler(query, result.collect); err != nil {
+func (self *PostureCheckManager) Query(query string) (*PostureCheckListResult, error) {
+	result := &PostureCheckListResult{manager: self}
+	if err := self.ListWithHandler(query, result.collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *PostureCheckHandler) QueryPostureChecks(query ast.Query) (*PostureCheckListResult, error) {
-	result := &PostureCheckListResult{handler: handler}
-	err := handler.PreparedListWithHandler(query, result.collect)
+func (self *PostureCheckManager) QueryPostureChecks(query ast.Query) (*PostureCheckListResult, error) {
+	result := &PostureCheckListResult{manager: self}
+	err := self.PreparedListWithHandler(query, result.collect)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +120,7 @@ func (handler *PostureCheckHandler) QueryPostureChecks(query ast.Query) (*Postur
 }
 
 type PostureCheckListResult struct {
-	handler       *PostureCheckHandler
+	manager       *PostureCheckManager
 	PostureChecks []*PostureCheck
 	models.QueryMetaData
 }
@@ -128,7 +128,7 @@ type PostureCheckListResult struct {
 func (result *PostureCheckListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		entity, err := result.handler.readInTx(tx, key)
+		entity, err := result.manager.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

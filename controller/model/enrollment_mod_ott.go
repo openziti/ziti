@@ -33,13 +33,11 @@ type EnrollModuleOtt struct {
 }
 
 func NewEnrollModuleOtt(env Env) *EnrollModuleOtt {
-	handler := &EnrollModuleOtt{
+	return &EnrollModuleOtt{
 		env:                  env,
 		method:               persistence.MethodEnrollOtt,
 		fingerprintGenerator: cert.NewFingerprintGenerator(),
 	}
-
-	return handler
 }
 
 func (module *EnrollModuleOtt) CanHandle(method string) bool {

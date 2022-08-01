@@ -175,7 +175,7 @@ func (self *EdgeServiceManager) QueryForIdentity(identityId string, configTypes 
 
 func (self *EdgeServiceManager) queryServices(query ast.Query, identityId string, configTypes map[string]struct{}, isAdmin bool) (*ServiceListResult, error) {
 	result := &ServiceListResult{
-		handler:     self,
+		manager:     self,
 		identityId:  identityId,
 		configTypes: configTypes,
 		isAdmin:     isAdmin,
@@ -231,7 +231,7 @@ func (self *EdgeServiceManager) Unmarshall(bytes []byte) (*Service, error) {
 }
 
 type ServiceListResult struct {
-	handler     *EdgeServiceManager
+	manager     *EdgeServiceManager
 	Services    []*ServiceDetail
 	identityId  string
 	configTypes map[string]struct{}
@@ -244,13 +244,13 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 	var service *ServiceDetail
 	var err error
 
-	identityServiceConfigs := result.handler.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, result.identityId, result.configTypes)
+	identityServiceConfigs := result.manager.env.GetStores().Identity.LoadServiceConfigsByServiceAndType(tx, result.identityId, result.configTypes)
 
 	for _, key := range ids {
 		if !result.isAdmin && result.identityId != "" {
-			service, err = result.handler.ReadForNonAdminIdentityInTx(tx, key, result.identityId)
+			service, err = result.manager.ReadForNonAdminIdentityInTx(tx, key, result.identityId)
 		} else {
-			service, err = result.handler.readInTx(tx, key)
+			service, err = result.manager.readInTx(tx, key)
 			if service != nil && result.isAdmin {
 				service.Permissions = []string{persistence.PolicyTypeBindName, persistence.PolicyTypeDialName}
 			}
@@ -258,7 +258,7 @@ func (result *ServiceListResult) collect(tx *bbolt.Tx, ids []string, queryMetaDa
 		if err != nil {
 			return err
 		}
-		result.handler.mergeConfigs(tx, result.configTypes, service, identityServiceConfigs)
+		result.manager.mergeConfigs(tx, result.configTypes, service, identityServiceConfigs)
 		result.Services = append(result.Services, service)
 	}
 	return nil

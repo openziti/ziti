@@ -26,28 +26,28 @@ import (
 	"time"
 )
 
-func NewApiSessionCertificateHandler(env Env) *ApiSessionCertificateHandler {
-	handler := &ApiSessionCertificateHandler{
+func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {
+	manager := &ApiSessionCertificateManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().ApiSessionCertificate),
 	}
-	handler.impl = handler
+	manager.impl = manager
 
-	return handler
+	return manager
 }
 
-type ApiSessionCertificateHandler struct {
+type ApiSessionCertificateManager struct {
 	baseEntityManager
 }
 
-func (handler *ApiSessionCertificateHandler) newModelEntity() edgeEntity {
+func (self *ApiSessionCertificateManager) newModelEntity() edgeEntity {
 	return &ApiSessionCertificate{}
 }
 
-func (handler *ApiSessionCertificateHandler) Create(entity *ApiSessionCertificate) (string, error) {
-	return handler.createEntity(entity)
+func (self *ApiSessionCertificateManager) Create(entity *ApiSessionCertificate) (string, error) {
+	return self.createEntity(entity)
 }
 
-func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte) (string, error) {
+func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte) (string, error) {
 	notBefore := time.Now()
 	notAfter := time.Now().Add(lifespan)
 
@@ -60,7 +60,7 @@ func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, 
 		return "", apiErr
 	}
 
-	certRaw, err := handler.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
+	certRaw, err := self.env.GetApiClientCsrSigner().SignCsr(csr, &cert.SigningOpts{
 		NotAfter:  &notAfter,
 		NotBefore: &notBefore,
 	})
@@ -72,7 +72,7 @@ func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, 
 		return "", apiErr
 	}
 
-	fp := handler.env.GetFingerprintGenerator().FromRaw(certRaw)
+	fp := self.env.GetFingerprintGenerator().FromRaw(certRaw)
 
 	certPem, _ := cert.RawToPem(certRaw)
 
@@ -88,44 +88,44 @@ func (handler *ApiSessionCertificateHandler) CreateFromCSR(apiSessionId string, 
 		PEM:          string(certPem),
 	}
 
-	return handler.Create(entity)
+	return self.Create(entity)
 }
 
-func (handler *ApiSessionCertificateHandler) Read(id string) (*ApiSessionCertificate, error) {
+func (self *ApiSessionCertificateManager) Read(id string) (*ApiSessionCertificate, error) {
 	modelApiSessionCertificate := &ApiSessionCertificate{}
-	if err := handler.readEntity(id, modelApiSessionCertificate); err != nil {
+	if err := self.readEntity(id, modelApiSessionCertificate); err != nil {
 		return nil, err
 	}
 	return modelApiSessionCertificate, nil
 }
 
-func (handler *ApiSessionCertificateHandler) readInTx(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
+func (self *ApiSessionCertificateManager) readInTx(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
 	modelApiSessionCertificate := &ApiSessionCertificate{}
-	if err := handler.readEntityInTx(tx, id, modelApiSessionCertificate); err != nil {
+	if err := self.readEntityInTx(tx, id, modelApiSessionCertificate); err != nil {
 		return nil, err
 	}
 	return modelApiSessionCertificate, nil
 }
 
-func (handler *ApiSessionCertificateHandler) IsUpdated(_ string) bool {
+func (self *ApiSessionCertificateManager) IsUpdated(_ string) bool {
 	return false
 }
 
-func (handler *ApiSessionCertificateHandler) Delete(id string) error {
-	return handler.deleteEntity(id)
+func (self *ApiSessionCertificateManager) Delete(id string) error {
+	return self.deleteEntity(id)
 }
 
-func (handler *ApiSessionCertificateHandler) Query(tx *bbolt.Tx, query string) (*ApiSessionCertificateListResult, error) {
-	result := &ApiSessionCertificateListResult{handler: handler}
-	err := handler.ListWithTx(tx, query, result.collect)
+func (self *ApiSessionCertificateManager) Query(tx *bbolt.Tx, query string) (*ApiSessionCertificateListResult, error) {
+	result := &ApiSessionCertificateListResult{manager: self}
+	err := self.ListWithTx(tx, query, result.collect)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (handler *ApiSessionCertificateHandler) ReadByApiSessionId(tx *bbolt.Tx, apiSessionId string) ([]*ApiSessionCertificate, error) {
-	result, err := handler.Query(tx, fmt.Sprintf(`apiSession = "%s"`, apiSessionId))
+func (self *ApiSessionCertificateManager) ReadByApiSessionId(tx *bbolt.Tx, apiSessionId string) ([]*ApiSessionCertificate, error) {
+	result, err := self.Query(tx, fmt.Sprintf(`apiSession = "%s"`, apiSessionId))
 
 	if err != nil {
 		return nil, err
@@ -135,7 +135,7 @@ func (handler *ApiSessionCertificateHandler) ReadByApiSessionId(tx *bbolt.Tx, ap
 }
 
 type ApiSessionCertificateListResult struct {
-	handler                *ApiSessionCertificateHandler
+	manager                *ApiSessionCertificateManager
 	ApiSessionCertificates []*ApiSessionCertificate
 	models.QueryMetaData
 }
@@ -143,7 +143,7 @@ type ApiSessionCertificateListResult struct {
 func (result *ApiSessionCertificateListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		ApiSessionCertificate, err := result.handler.readInTx(tx, key)
+		ApiSessionCertificate, err := result.manager.readInTx(tx, key)
 		if err != nil {
 			return err
 		}

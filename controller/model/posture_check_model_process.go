@@ -111,7 +111,7 @@ func newPostureCheckProcess() PostureCheckSubType {
 	return &PostureCheckProcess{}
 }
 
-func (p *PostureCheckProcess) fillFrom(handler EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckProcess) fillFrom(_ EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckProcess)
 
 	if subCheck == nil {
@@ -126,7 +126,7 @@ func (p *PostureCheckProcess) fillFrom(handler EntityManager, tx *bbolt.Tx, chec
 	return nil
 }
 
-func (p *PostureCheckProcess) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,
@@ -135,7 +135,7 @@ func (p *PostureCheckProcess) toBoltEntityForCreate(tx *bbolt.Tx, handler Entity
 	}, nil
 }
 
-func (p *PostureCheckProcess) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckProcess) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,
@@ -144,7 +144,7 @@ func (p *PostureCheckProcess) toBoltEntityForUpdate(tx *bbolt.Tx, handler Entity
 	}, nil
 }
 
-func (p *PostureCheckProcess) toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckProcess) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,

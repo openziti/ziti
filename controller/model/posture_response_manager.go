@@ -27,27 +27,27 @@ import (
 	"time"
 )
 
-func NewPostureResponseHandler(env Env) *PostureResponseHandler {
-	handler := &PostureResponseHandler{
+func NewPostureResponseManager(env Env) *PostureResponseManager {
+	manager := &PostureResponseManager{
 		env:          env,
 		postureCache: newPostureCache(env),
 	}
 
-	handler.AddPostureDataListener(handler.postureDataUpdated)
-	return handler
+	manager.AddPostureDataListener(manager.postureDataUpdated)
+	return manager
 }
 
-type PostureResponseHandler struct {
+type PostureResponseManager struct {
 	env          Env
 	postureCache *PostureCache
 }
 
-func (handler *PostureResponseHandler) Create(identityId string, postureResponses []*PostureResponse) {
-	handler.postureCache.Add(identityId, postureResponses)
+func (self *PostureResponseManager) Create(identityId string, postureResponses []*PostureResponse) {
+	self.postureCache.Add(identityId, postureResponses)
 }
 
 // SetMfaPosture sets the MFA passing status a specific API Session owned by an identity
-func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessionId string, isPassed bool) {
+func (self *PostureResponseManager) SetMfaPosture(identityId string, apiSessionId string, isPassed bool) {
 	postureResponse := &PostureResponse{
 		PostureCheckId: MfaProviderZiti,
 		TypeId:         PostureCheckTypeMFA,
@@ -69,11 +69,11 @@ func (handler *PostureResponseHandler) SetMfaPosture(identityId string, apiSessi
 	postureResponse.SubType = postureSubType
 	postureSubType.PostureResponse = postureResponse
 
-	handler.Create(identityId, []*PostureResponse{postureResponse})
+	self.Create(identityId, []*PostureResponse{postureResponse})
 }
 
 // SetMfaPostureForIdentity sets the MFA passing status for all API Sessions associated to an identity
-func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId string, isPassed bool) {
+func (self *PostureResponseManager) SetMfaPostureForIdentity(identityId string, isPassed bool) {
 	postureResponse := &PostureResponse{
 		PostureCheckId: MfaProviderZiti,
 		TypeId:         PostureCheckTypeMFA,
@@ -87,7 +87,7 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 		passedAt = &postureResponse.LastUpdatedAt
 	}
 
-	handler.postureCache.Upsert(identityId, true, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
+	self.postureCache.Upsert(identityId, true, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var pd *PostureData
 
 		if exist {
@@ -116,38 +116,38 @@ func (handler *PostureResponseHandler) SetMfaPostureForIdentity(identityId strin
 	})
 }
 
-func (handler *PostureResponseHandler) AddPostureDataListener(cb func(env Env, identityId string)) {
-	handler.postureCache.AddListener(EventIdentityPostureDataAltered, func(i ...interface{}) {
+func (self *PostureResponseManager) AddPostureDataListener(cb func(env Env, identityId string)) {
+	self.postureCache.AddListener(EventIdentityPostureDataAltered, func(i ...interface{}) {
 		defer func() {
 			if r := recover(); r != nil {
-				fmt.Printf("panic during posture data listener handler execution: %v\n", r)
+				fmt.Printf("panic during posture data listener execution: %v\n", r)
 				fmt.Println(string(debug.Stack()))
 			}
 		}()
 		if identityId, ok := i[0].(string); ok {
-			cb(handler.env, identityId)
+			cb(self.env, identityId)
 		}
 	})
 }
 
 // Kills active sessions that do not have passing posture checks. Run when posture data is updated
 // via posture response or posture data timeout.
-func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId string) {
+func (self *PostureResponseManager) postureDataUpdated(env Env, identityId string) {
 	var sessionIdsToDelete []string
 
 	//todo: Be smarter about this? Store a cache of service-> result on postureDataCach detect changes?
 	// Only an issue when timeouts are being used - which aren't right now.
 	env.HandleServiceUpdatedEventForIdentityId(identityId)
 
-	err := handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		apiSessionIds, _, err := handler.env.GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%v"`, identityId))
+	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		apiSessionIds, _, err := self.env.GetStores().ApiSession.QueryIds(tx, fmt.Sprintf(`identity = "%v"`, identityId))
 
 		if err != nil {
 			return fmt.Errorf("could not query for api sessions for identity: %v", err)
 		}
 
 		for _, apiSessionId := range apiSessionIds {
-			result, err := handler.env.GetManagers().Session.Query(fmt.Sprintf(`apiSession = "%v"`, apiSessionId))
+			result, err := self.env.GetManagers().Session.Query(fmt.Sprintf(`apiSession = "%v"`, apiSessionId))
 
 			if err != nil {
 				return fmt.Errorf("could not query for sessions: %v", err)
@@ -162,7 +162,7 @@ func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId st
 				//if we have evaluated positive access before, don't do it again
 				if !isEvaluatedService {
 					validServices[session.ServiceId] = false
-					policyPostureChecks := handler.env.GetManagers().EdgeService.GetPolicyPostureChecks(identityId, session.ServiceId)
+					policyPostureChecks := self.env.GetManagers().EdgeService.GetPolicyPostureChecks(identityId, session.ServiceId)
 
 					if len(policyPostureChecks) == 0 {
 						isValidService = true
@@ -173,7 +173,7 @@ func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId st
 							if !isEvaluatedPolicy { //not checked yet
 								validPolicies[policyId] = false
 								isValidPolicy = false
-								if ok, _ := handler.postureCache.Evaluate(identityId, apiSessionId, checks.PostureChecks); ok {
+								if ok, _ := self.postureCache.Evaluate(identityId, apiSessionId, checks.PostureChecks); ok {
 									isValidService = true
 									isValidPolicy = true
 								}
@@ -208,13 +208,13 @@ func (handler *PostureResponseHandler) postureDataUpdated(env Env, identityId st
 
 	for _, sessionId := range sessionIdsToDelete {
 		//todo: delete batch?
-		_ = handler.env.GetManagers().Session.Delete(sessionId)
+		_ = self.env.GetManagers().Session.Delete(sessionId)
 	}
 
 }
 
-func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string, check *PostureCheck) (bool, *PostureCheckFailure) {
-	isValid, failures := handler.postureCache.Evaluate(identityId, apiSessionId, []*PostureCheck{check})
+func (self *PostureResponseManager) Evaluate(identityId, apiSessionId string, check *PostureCheck) (bool, *PostureCheckFailure) {
+	isValid, failures := self.postureCache.Evaluate(identityId, apiSessionId, []*PostureCheck{check})
 
 	if isValid {
 		return true, nil
@@ -223,16 +223,16 @@ func (handler *PostureResponseHandler) Evaluate(identityId, apiSessionId string,
 	}
 }
 
-func (handler *PostureResponseHandler) PostureData(id string) *PostureData {
-	return handler.postureCache.PostureData(id)
+func (self *PostureResponseManager) PostureData(id string) *PostureData {
+	return self.postureCache.PostureData(id)
 }
 
-func (handler *PostureResponseHandler) SetSdkInfo(identityId, apiSessionId string, sdkInfo *SdkInfo) {
+func (self *PostureResponseManager) SetSdkInfo(identityId, apiSessionId string, sdkInfo *SdkInfo) {
 	if identityId == "" || apiSessionId == "" || sdkInfo == nil {
 		return
 	}
 
-	handler.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
+	self.postureCache.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		var postureData *PostureData
 		if exist {
 			postureData = valueInMap
@@ -274,19 +274,19 @@ func shouldPostureCheckTimeoutBeAltered(mfaCheck *persistence.PostureCheckMfa, t
 	return false
 }
 
-func (handler *PostureResponseHandler) GetEndpointStateChangeAffectedServices(timeSinceLastMfa, gracePeriod time.Duration, onWake bool, onUnlock bool) []*ServiceWithTimeout {
+func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeSinceLastMfa, gracePeriod time.Duration, onWake bool, onUnlock bool) []*ServiceWithTimeout {
 	affectedChecks := map[string]int64{} //check id -> timeout
 	if onWake || onUnlock {
 		queryStr := fmt.Sprintf("%s=true or %s=true", persistence.FieldPostureCheckMfaPromptOnUnlock, persistence.FieldPostureCheckMfaPromptOnWake)
-		query, err := ast.Parse(handler.env.GetStores().PostureCheck, queryStr)
+		query, err := ast.Parse(self.env.GetStores().PostureCheck, queryStr)
 		if err != nil {
 			pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks: %v", err)
 		} else {
-			handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-				cursor := handler.env.GetStores().PostureCheck.IterateIds(tx, query)
+			self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+				cursor := self.env.GetStores().PostureCheck.IterateIds(tx, query)
 
 				for cursor.IsValid() {
-					if check, err := handler.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
+					if check, err := self.env.GetStores().PostureCheck.LoadOneById(tx, string(cursor.Current())); err == nil {
 						if mfaCheck, ok := check.SubType.(*persistence.PostureCheckMfa); ok {
 							if shouldPostureCheckTimeoutBeAltered(mfaCheck, timeSinceLastMfa, gracePeriod, onWake, onUnlock) {
 								affectedChecks[check.Id] = mfaCheck.TimeoutSeconds
@@ -306,19 +306,19 @@ func (handler *PostureResponseHandler) GetEndpointStateChangeAffectedServices(ti
 	services := map[string]*ServiceWithTimeout{}
 
 	if len(affectedChecks) > 0 {
-		_ = handler.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+		_ = self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 			for checkId, timeout := range affectedChecks {
-				policyCursor := handler.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, persistence.EntityTypeServicePolicies, true)
+				policyCursor := self.env.GetStores().PostureCheck.GetRelatedEntitiesCursor(tx, checkId, persistence.EntityTypeServicePolicies, true)
 
 				for policyCursor.IsValid() {
-					serviceCursor := handler.env.GetStores().ServicePolicy.GetRelatedEntitiesCursor(tx, string(policyCursor.Current()), db.EntityTypeServices, true)
+					serviceCursor := self.env.GetStores().ServicePolicy.GetRelatedEntitiesCursor(tx, string(policyCursor.Current()), db.EntityTypeServices, true)
 
 					for serviceCursor.IsValid() {
 						if _, ok := services[string(serviceCursor.Current())]; !ok {
-							service, err := handler.env.GetStores().EdgeService.LoadOneById(tx, string(serviceCursor.Current()))
+							service, err := self.env.GetStores().EdgeService.LoadOneById(tx, string(serviceCursor.Current()))
 							if err == nil {
 								modelService := &Service{}
-								if err := modelService.fillFrom(handler.env.GetManagers().EdgeService, tx, service); err == nil {
+								if err := modelService.fillFrom(self.env.GetManagers().EdgeService, tx, service); err == nil {
 									//use the lowest configured timeout (which is some timeout or no timeout)
 									if existingService, ok := services[service.Id]; !ok || timeout < existingService.Timeout {
 										services[service.Id] = &ServiceWithTimeout{

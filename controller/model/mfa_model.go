@@ -40,8 +40,8 @@ type Mfa struct {
 	RecoveryCodes []string
 }
 
-func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	if !handler.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
+func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	if !manager.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
@@ -56,15 +56,15 @@ func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Enti
 	return boltEntity, nil
 }
 
-func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *Mfa) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Mfa) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltMfa, ok := boltEntity.(*persistence.Mfa)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model Mfa", reflect.TypeOf(boltEntity))
@@ -74,12 +74,12 @@ func (entity *Mfa) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity bolt
 	entity.IdentityId = boltMfa.IdentityId
 	entity.RecoveryCodes = boltMfa.RecoveryCodes
 	entity.Secret = boltMfa.Secret
-	boltIdentity, err := handler.GetEnv().GetStores().Identity.LoadOneById(tx, boltMfa.IdentityId)
+	boltIdentity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, boltMfa.IdentityId)
 	if err != nil {
 		return err
 	}
 	modelIdentity := &Identity{}
-	if err := modelIdentity.fillFrom(handler, tx, boltIdentity); err != nil {
+	if err := modelIdentity.fillFrom(manager, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity

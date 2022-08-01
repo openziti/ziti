@@ -24,12 +24,12 @@ import (
 
 type edgeEntity interface {
 	models.Entity
-	fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
-	toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error)
+	fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
+	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error)
 }
 
 type patchableEdgeEntity interface {
 	edgeEntity
-	toBoltEntityForPatch(tx *bbolt.Tx, handler EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
+	toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
 }

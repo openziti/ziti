@@ -134,18 +134,6 @@ func (self *baseEntityManager) PreparedListAssociatedWithHandler(id string, asso
 	})
 }
 
-//func (self *baseEntityManager) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult[T], error) {
-//	result := &models.EntityListResult[T]{Loader: typeLoader}
-//	err := self.GetDb().View(func(tx *bbolt.Tx) error {
-//		return self.PreparedListAssociatedWithTx(tx, id, typeLoader.GetStore().GetEntityType(), query, result.Collect)
-//	})
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//	return result, nil
-//}
-
 func (self *baseEntityManager) createEntity(modelEntity edgeEntity) (string, error) {
 	var id string
 	err := self.GetDb().Update(func(tx *bbolt.Tx) error {

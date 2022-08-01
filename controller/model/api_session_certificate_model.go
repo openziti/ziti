@@ -38,8 +38,8 @@ type ApiSessionCertificate struct {
 	PEM          string
 }
 
-func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	if !handler.GetEnv().GetStores().ApiSession.IsEntityPresent(tx, entity.ApiSessionId) {
+func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	if !manager.GetEnv().GetStores().ApiSession.IsEntityPresent(tx, entity.ApiSessionId) {
 		return nil, errorz.NewFieldError("api session not found", "ApiSessionId", entity.ApiSessionId)
 	}
 
@@ -56,15 +56,15 @@ func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, handler EntityMa
 	return boltEntity, nil
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *ApiSessionCertificate) fillFrom(handler EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *ApiSessionCertificate) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltApiSessionCertificate, ok := boltEntity.(*persistence.ApiSessionCertificate)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model ApiSessionCertificate", reflect.TypeOf(boltEntity))
@@ -78,12 +78,12 @@ func (entity *ApiSessionCertificate) fillFrom(handler EntityManager, tx *bbolt.T
 	entity.PEM = boltApiSessionCertificate.PEM
 	entity.ApiSessionId = boltApiSessionCertificate.ApiSessionId
 
-	boltApiSession, err := handler.GetEnv().GetStores().ApiSession.LoadOneById(tx, boltApiSessionCertificate.ApiSessionId)
+	boltApiSession, err := manager.GetEnv().GetStores().ApiSession.LoadOneById(tx, boltApiSessionCertificate.ApiSessionId)
 	if err != nil {
 		return err
 	}
 	modelApiSession := &ApiSession{}
-	if err := modelApiSession.fillFrom(handler, tx, boltApiSession); err != nil {
+	if err := modelApiSession.fillFrom(manager, tx, boltApiSession); err != nil {
 		return err
 	}
 	entity.ApiSession = modelApiSession

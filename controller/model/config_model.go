@@ -35,24 +35,24 @@ type Config struct {
 	Data   map[string]interface{}
 }
 
-func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *Config) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
 	if entity.TypeId != "" {
 		providedType := entity.TypeId
-		configTypeStore := handler.GetEnv().GetStores().ConfigType
+		configTypeStore := manager.GetEnv().GetStores().ConfigType
 		if !configTypeStore.IsEntityPresent(tx, entity.TypeId) {
 			return nil, errorz.NewFieldError("invalid config type", persistence.FieldConfigType, providedType)
 		}
 	}
 
 	if entity.TypeId == "" {
-		currentConfig, err := handler.GetEnv().GetManagers().Config.readInTx(tx, entity.Id)
+		currentConfig, err := manager.GetEnv().GetManagers().Config.readInTx(tx, entity.Id)
 		if err != nil {
 			return nil, err
 		}
 		entity.TypeId = currentConfig.TypeId
 	}
 
-	if configType, _ := handler.GetEnv().GetManagers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
+	if configType, _ := manager.GetEnv().GetManagers().ConfigType.readInTx(tx, entity.TypeId); configType != nil && len(configType.Schema) > 0 {
 		compileSchema, err := configType.GetCompiledSchema()
 		if err != nil {
 			return nil, err
@@ -75,15 +75,15 @@ func (entity *Config) toBoltEntity(tx *bbolt.Tx, handler EntityManager) (boltz.E
 	}, nil
 }
 
-func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
+func (entity *Config) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
 	if entity.TypeId == "" {
 		return nil, errorz.NewFieldError("config type must be specified", persistence.FieldConfigType, entity.TypeId)
 	}
-	return entity.toBoltEntity(tx, handler)
+	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, handler EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, handler)
+func (entity *Config) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	return entity.toBoltEntity(tx, manager)
 }
 
 func (entity *Config) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {

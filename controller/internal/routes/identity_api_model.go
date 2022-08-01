@@ -422,7 +422,7 @@ func MapAdvisorServiceReachabilityToRestEntity(entity *model.AdvisorServiceReach
 	return result
 }
 
-func GetNamedIdentityRoles(identityHandler *model.IdentityHandler, roles []string) rest_model.NamedRoles {
+func GetNamedIdentityRoles(identityHandler *model.IdentityManager, roles []string) rest_model.NamedRoles {
 	result := rest_model.NamedRoles{}
 	for _, role := range roles {
 		if strings.HasPrefix(role, "@") {

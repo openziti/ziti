@@ -56,8 +56,8 @@ func (self testHostController) Stop() {
 
 type TestContext struct {
 	*persistence.TestContext
-	handlers        *Managers
-	config          *config.Config
+	managers *Managers
+	config   *config.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
 }
@@ -69,7 +69,7 @@ func (ctx *TestContext) Generate(string, string, jwt.MapClaims) (string, error) 
 }
 
 func (ctx *TestContext) GetManagers() *Managers {
-	return ctx.handlers
+	return ctx.managers
 }
 
 func (ctx *TestContext) GetConfig() *config.Config {
@@ -145,7 +145,7 @@ func (ctx *TestContext) InitWithDbFile(dbPath string) {
 			},
 		},
 	}
-	ctx.handlers = InitEntityManagers(ctx)
+	ctx.managers = InitEntityManagers(ctx)
 }
 
 func (ctx *TestContext) Cleanup() {
@@ -156,14 +156,14 @@ func (ctx *TestContext) Cleanup() {
 }
 
 func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
-	identityType, err := ctx.handlers.IdentityType.ReadByIdOrName("Service")
+	identityType, err := ctx.managers.IdentityType.ReadByIdOrName("Service")
 	ctx.NoError(err)
 	identity := &Identity{
 		Name:           eid.New(),
 		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
-	identity.Id, err = ctx.handlers.Identity.Create(identity)
+	identity.Id, err = ctx.managers.Identity.Create(identity)
 	ctx.NoError(err)
 	return identity
 }
@@ -172,7 +172,7 @@ func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
 		Name: eid.New(),
 	}
-	ctx.NoError(ctx.handlers.EdgeService.Create(service))
+	ctx.NoError(ctx.managers.EdgeService.Create(service))
 	return service
 }
 
@@ -181,7 +181,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 		Name: eid.New(),
 	}
 	var err error
-	edgeRouter.Id, err = ctx.handlers.EdgeRouter.Create(edgeRouter)
+	edgeRouter.Id, err = ctx.managers.EdgeRouter.Create(edgeRouter)
 	ctx.NoError(err)
 	return edgeRouter
 }
@@ -193,7 +193,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.handlers.EdgeRouterPolicy.Create(policy))
+	ctx.NoError(ctx.managers.EdgeRouterPolicy.Create(policy))
 	return policy
 }
 
@@ -204,7 +204,7 @@ func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeR
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.handlers.ServiceEdgeRouterPolicy.Create(policy))
+	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Create(policy))
 	return policy
 }
 

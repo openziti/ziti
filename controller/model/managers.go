@@ -31,28 +31,28 @@ type Managers struct {
 	Command    *network.CommandManager
 
 	// edge
-	ApiSession              *ApiSessionHandler
-	ApiSessionCertificate   *ApiSessionCertificateHandler
+	ApiSession              *ApiSessionManager
+	ApiSessionCertificate   *ApiSessionCertificateManager
 	Ca                      *CaManager
 	Config                  *ConfigManager
 	ConfigType              *ConfigTypeManager
-	EdgeRouter              *EdgeRouterHandler
+	EdgeRouter              *EdgeRouterManager
 	EdgeRouterPolicy        *EdgeRouterPolicyManager
 	EdgeService             *EdgeServiceManager
 	ExternalJwtSigner       *ExternalJwtSignerManager
-	Identity                *IdentityHandler
+	Identity                *IdentityManager
 	IdentityType            *IdentityTypeManager
 	PolicyAdvisor           *PolicyAdvisor
 	ServiceEdgeRouterPolicy *ServiceEdgeRouterPolicyManager
 	ServicePolicy           *ServicePolicyManager
-	TransitRouter           *TransitRouterHandler
-	Session                 *SessionHandler
-	Authenticator           *AuthenticatorHandler
-	Enrollment              *EnrollmentHandler
-	PostureCheck            *PostureCheckHandler
+	TransitRouter           *TransitRouterManager
+	Session                 *SessionManager
+	Authenticator           *AuthenticatorManager
+	Enrollment              *EnrollmentManager
+	PostureCheck            *PostureCheckManager
 	PostureCheckType        *PostureCheckTypeManager
-	PostureResponse         *PostureResponseHandler
-	Mfa                     *MfaHandler
+	PostureResponse         *PostureResponseManager
+	Mfa                     *MfaManager
 	AuthPolicy              *AuthPolicyManager
 }
 
@@ -64,29 +64,29 @@ func InitEntityManagers(env Env) *Managers {
 	managers.Service = env.GetDbProvider().GetManagers().Services
 	managers.Terminator = env.GetDbProvider().GetManagers().Terminators
 
-	managers.ApiSession = NewApiSessionHandler(env)
-	managers.ApiSessionCertificate = NewApiSessionCertificateHandler(env)
-	managers.Authenticator = NewAuthenticatorHandler(env)
+	managers.ApiSession = NewApiSessionManager(env)
+	managers.ApiSessionCertificate = NewApiSessionCertificateManager(env)
+	managers.Authenticator = NewAuthenticatorManager(env)
 	managers.AuthPolicy = NewAuthPolicyManager(env)
 	managers.Ca = NewCaManager(env)
 	managers.Config = NewConfigManager(env)
 	managers.ConfigType = NewConfigTypeManager(env)
-	managers.EdgeRouter = NewEdgeRouterHandler(env)
+	managers.EdgeRouter = NewEdgeRouterManager(env)
 	managers.EdgeRouterPolicy = NewEdgeRouterPolicyManager(env)
 	managers.EdgeService = NewEdgeServiceManager(env)
-	managers.Enrollment = NewEnrollmentHandler(env)
+	managers.Enrollment = NewEnrollmentManager(env)
 	managers.ExternalJwtSigner = NewExternalJwtSignerManager(env)
-	managers.Identity = NewIdentityHandler(env)
+	managers.Identity = NewIdentityManager(env)
 	managers.IdentityType = NewIdentityTypeManager(env)
 	managers.PolicyAdvisor = NewPolicyAdvisor(env)
 	managers.ServiceEdgeRouterPolicy = NewServiceEdgeRouterPolicyManager(env)
 	managers.ServicePolicy = NewServicePolicyManager(env)
-	managers.Session = NewSessionHandler(env)
-	managers.TransitRouter = NewTransitRouterHandler(env)
-	managers.PostureCheck = NewPostureCheckHandler(env)
+	managers.Session = NewSessionManager(env)
+	managers.TransitRouter = NewTransitRouterManager(env)
+	managers.PostureCheck = NewPostureCheckManager(env)
 	managers.PostureCheckType = NewPostureCheckTypeManager(env)
-	managers.PostureResponse = NewPostureResponseHandler(env)
-	managers.Mfa = NewMfaHandler(env)
+	managers.PostureResponse = NewPostureResponseManager(env)
+	managers.Mfa = NewMfaManager(env)
 
 	RegisterCommand(env, &CreateEdgeTerminatorCmd{}, &edge_cmd_pb.CreateEdgeTerminatorCommand{})
 
