@@ -172,9 +172,7 @@ func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
 		Name: eid.New(),
 	}
-	var err error
-	service.Id, err = ctx.handlers.EdgeService.Create(service)
-	ctx.NoError(err)
+	ctx.NoError(ctx.handlers.EdgeService.Create(service))
 	return service
 }
 

@@ -246,7 +246,7 @@ func PostureCheckToQueries(check *model.PostureCheck) *rest_model.PostureQuery {
 	return ret
 }
 
-func GetNamedServiceRoles(serviceHandler *model.EdgeServiceHandler, roles []string) rest_model.NamedRoles {
+func GetNamedServiceRoles(serviceHandler *model.EdgeServiceManager, roles []string) rest_model.NamedRoles {
 	result := rest_model.NamedRoles{}
 	for _, role := range roles {
 		if strings.HasPrefix(role, "@") {
