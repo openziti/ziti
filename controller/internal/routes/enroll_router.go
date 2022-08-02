@@ -164,7 +164,7 @@ func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContex
 
 	// for non ott enrollment, always return JSON
 	//prefer JSON if explicitly acceptable
-	if enrollContext.Method != persistence.MethodEnrollOtt || explicitJsonAccept {
+	if enrollContext.GetMethod() != persistence.MethodEnrollOtt || explicitJsonAccept {
 		rc.SetProducer(runtime.JSONProducer())
 	}
 

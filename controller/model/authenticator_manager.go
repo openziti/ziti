@@ -676,7 +676,7 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 	return caId
 }
 
-func (self *AuthenticatorManager) Marshall(entity *Authenticator) ([]byte, error) {
+func (self *AuthenticatorManager) AuthenticatorToProtobuf(entity *Authenticator) (*edge_cmd_pb.Authenticator, error) {
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -705,9 +705,15 @@ func (self *AuthenticatorManager) Marshall(entity *Authenticator) ([]byte, error
 				Salt:     updb.Salt,
 			},
 		}
-
 	}
+	return msg, nil
+}
 
+func (self *AuthenticatorManager) Marshall(entity *Authenticator) ([]byte, error) {
+	msg, err := self.AuthenticatorToProtobuf(entity)
+	if err != nil {
+		return nil, err
+	}
 	return proto.Marshal(msg)
 }
 
@@ -716,7 +722,10 @@ func (self *AuthenticatorManager) Unmarshall(bytes []byte) (*Authenticator, erro
 	if err := proto.Unmarshal(bytes, msg); err != nil {
 		return nil, err
 	}
+	return self.ProtobufToAuthenticator(msg)
+}
 
+func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authenticator) (*Authenticator, error) {
 	authenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
