@@ -306,11 +306,11 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		},
 	}
 
-	if _, err := self.Create(defaultAdmin); err != nil {
+	if _, err = self.Create(defaultAdmin); err != nil {
 		return err
 	}
 
-	if _, err := self.env.GetManagers().Authenticator.Create(authenticator); err != nil {
+	if err = self.env.GetManagers().Authenticator.Create(authenticator); err != nil {
 		return err
 	}
 

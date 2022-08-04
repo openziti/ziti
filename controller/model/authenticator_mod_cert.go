@@ -332,7 +332,7 @@ func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenti
 			})
 
 			authCert.Pem = string(certPem)
-			if err := module.env.GetManagers().Authenticator.Update(authenticator); err != nil {
+			if err := module.env.GetManagers().Authenticator.Update(authenticator, false, nil); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM")
 			}
 		}

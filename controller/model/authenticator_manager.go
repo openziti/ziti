@@ -19,7 +19,6 @@ package model
 import (
 	"crypto/x509"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
@@ -27,16 +26,24 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
 	edgeCert "github.com/openziti/edge/internal/cert"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"reflect"
 	"strings"
 	"time"
 )
+
+const updateUnrestricted = 1
 
 type AuthenticatorManager struct {
 	baseEntityManager
@@ -50,23 +57,21 @@ func NewAuthenticatorManager(env Env) *AuthenticatorManager {
 	}
 
 	manager.impl = manager
+
+	network.RegisterManagerDecoder[*Authenticator](env.GetHostController().GetNetwork().GetManagers(), manager)
+
 	return manager
 }
 
-func (self AuthenticatorManager) newModelEntity() edgeEntity {
+func (self *AuthenticatorManager) newModelEntity() edgeEntity {
 	return &Authenticator{}
 }
 
-func (self AuthenticatorManager) Delete(id string) error {
-	return self.deleteEntity(id)
-}
-
-func (self AuthenticatorManager) IsUpdated(field string) bool {
+func (self *AuthenticatorManager) IsUpdated(field string) bool {
 	return !strings.EqualFold(field, "method") && !strings.EqualFold(field, "identityId")
 }
 
-func (self AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult, error) {
-
+func (self *AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult, error) {
 	authModule := self.env.GetAuthRegistry().GetByMethod(authContext.GetMethod())
 
 	if authModule == nil {
@@ -76,7 +81,7 @@ func (self AuthenticatorManager) Authorize(authContext AuthContext) (AuthResult,
 	return authModule.Process(authContext)
 }
 
-func (self AuthenticatorManager) ReadFingerprints(authenticatorId string) ([]string, error) {
+func (self *AuthenticatorManager) ReadFingerprints(authenticatorId string) ([]string, error) {
 	var authenticator *persistence.Authenticator
 
 	err := self.env.GetStores().DbProvider.GetDb().View(func(tx *bbolt.Tx) error {
@@ -100,24 +105,29 @@ func (self *AuthenticatorManager) Read(id string) (*Authenticator, error) {
 	return modelEntity, nil
 }
 
-func (self *AuthenticatorManager) Create(authenticator *Authenticator) (string, error) {
+func (self *AuthenticatorManager) Create(entity *Authenticator) error {
+	return network.DispatchCreate[*Authenticator](self, entity)
+}
+
+func (self *AuthenticatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Authenticator]) error {
+	authenticator := cmd.Entity
 	if authenticator.Method != persistence.MethodAuthenticatorUpdb && authenticator.Method != persistence.MethodAuthenticatorCert {
-		return "", errorz.NewFieldError("method must be updb or cert", "method", authenticator.Method)
+		return errorz.NewFieldError("method must be updb or cert", "method", authenticator.Method)
 	}
 
 	queryString := fmt.Sprintf(`method = "%s"`, authenticator.Method)
 	query, err := ast.Parse(self.GetStore(), queryString)
 	if err != nil {
-		return "", err
+		return err
 	}
 	result, err := self.ListForIdentity(authenticator.IdentityId, query)
 
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	if result.GetMetaData().Count > 0 {
-		return "", apierror.NewAuthenticatorMethodMax()
+		return apierror.NewAuthenticatorMethodMax()
 	}
 
 	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
@@ -135,7 +145,7 @@ func (self *AuthenticatorManager) Create(authenticator *Authenticator) (string, 
 			err := apierror.NewCouldNotParsePem()
 			err.Cause = errors.New("client pem must be exactly one certificate")
 			err.AppendCause = true
-			return "", err
+			return err
 		}
 
 		cert := certs[0]
@@ -150,14 +160,56 @@ func (self *AuthenticatorManager) Create(authenticator *Authenticator) (string, 
 		}
 
 		if _, err := cert.Verify(opts); err != nil {
-			return "", fmt.Errorf("error verifying client certificate [%s] did not verify against known CAs", fingerprint)
+			return fmt.Errorf("error verifying client certificate [%s] did not verify against known CAs", fingerprint)
 		}
 	}
 
-	return self.createEntity(authenticator)
+	_, err = self.createEntity(authenticator)
+	return err
 }
 
-func (self AuthenticatorManager) getRootPool() *x509.CertPool {
+func (self *AuthenticatorManager) Update(entity *Authenticator, unrestricted bool, checker fields.UpdatedFields) error {
+	cmd := &command.UpdateEntityCommand[*Authenticator]{
+		Updater:       self,
+		Entity:        entity,
+		UpdatedFields: checker,
+	}
+	if unrestricted {
+		cmd.Flags = updateUnrestricted
+	}
+	return self.Dispatch(cmd)
+}
+
+func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Authenticator]) error {
+	authenticator := cmd.Entity
+	if updb := authenticator.ToUpdb(); updb != nil {
+		if cmd.UpdatedFields == nil || cmd.UpdatedFields.IsUpdated("password") {
+			hashResult := self.HashPassword(updb.Password)
+			updb.Password = hashResult.Password
+			updb.Salt = hashResult.Salt
+		}
+	}
+
+	if cert := authenticator.ToCert(); cert != nil {
+		if cert.Pem != "" && (cmd.UpdatedFields == nil || cmd.UpdatedFields.IsUpdated(persistence.FieldAuthenticatorCertPem)) {
+			if cert.Fingerprint = edgeCert.NewFingerprintGenerator().FromPem([]byte(cert.Pem)); cert.Fingerprint == "" {
+				return apierror.NewCouldNotParsePem()
+			}
+		}
+	}
+
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if cmd.Flags != updateUnrestricted {
+		if checker == nil {
+			checker = self
+		} else {
+			checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
+		}
+	}
+	return self.updateEntity(cmd.Entity, checker)
+}
+
+func (self *AuthenticatorManager) getRootPool() *x509.CertPool {
 	roots := x509.NewCertPool()
 
 	roots.AppendCertsFromPEM(self.env.GetConfig().CaPems())
@@ -184,7 +236,7 @@ func (self AuthenticatorManager) getRootPool() *x509.CertPool {
 	return roots
 }
 
-func (self AuthenticatorManager) ReadByUsername(username string) (*Authenticator, error) {
+func (self *AuthenticatorManager) ReadByUsername(username string) (*Authenticator, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldAuthenticatorUpdbUsername, username)
 
 	entity, err := self.readEntityByQuery(query)
@@ -206,7 +258,7 @@ func (self AuthenticatorManager) ReadByUsername(username string) (*Authenticator
 	return authenticator, nil
 }
 
-func (self AuthenticatorManager) ReadByFingerprint(fingerprint string) (*Authenticator, error) {
+func (self *AuthenticatorManager) ReadByFingerprint(fingerprint string) (*Authenticator, error) {
 	query := fmt.Sprintf("%s = \"%v\"", persistence.FieldAuthenticatorCertFingerprint, fingerprint)
 
 	entity, err := self.readEntityByQuery(query)
@@ -228,21 +280,7 @@ func (self AuthenticatorManager) ReadByFingerprint(fingerprint string) (*Authent
 	return authenticator, nil
 }
 
-func (self AuthenticatorManager) Update(authenticator *Authenticator) error {
-	if updb := authenticator.ToUpdb(); updb != nil {
-		hashResult := self.HashPassword(updb.Password)
-		updb.Password = hashResult.Password
-		updb.Salt = hashResult.Salt
-	}
-
-	if cert := authenticator.ToCert(); cert != nil && cert.Pem != "" {
-		cert.Fingerprint = edgeCert.NewFingerprintGenerator().FromPem([]byte(cert.Pem))
-	}
-
-	return self.updateEntity(authenticator, self)
-}
-
-func (self AuthenticatorManager) UpdateSelf(authenticatorSelf *AuthenticatorSelf) error {
+func (self *AuthenticatorManager) UpdateSelf(authenticatorSelf *AuthenticatorSelf) error {
 	authenticator, err := self.ReadForIdentity(authenticatorSelf.IdentityId, authenticatorSelf.Id)
 
 	if err != nil {
@@ -276,41 +314,12 @@ func (self AuthenticatorManager) UpdateSelf(authenticatorSelf *AuthenticatorSelf
 	updbAuth.Salt = ""
 	authenticator.SubType = updbAuth
 
-	return self.Update(authenticator)
+	return self.Update(authenticator, false, nil)
 }
 
-func (self AuthenticatorManager) Patch(authenticator *Authenticator, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: self, second: checker}
-	return self.PatchUnrestricted(authenticator, combinedChecker)
-}
-
-func (self AuthenticatorManager) PatchUnrestricted(authenticator *Authenticator, checker boltz.FieldChecker) error {
-	if authenticator.Method == persistence.MethodAuthenticatorUpdb {
-		if updb := authenticator.ToUpdb(); updb != nil {
-			if checker.IsUpdated("password") {
-				hashResult := self.HashPassword(updb.Password)
-				updb.Password = hashResult.Password
-				updb.Salt = hashResult.Salt
-			}
-		}
-	}
-
-	if authenticator.Method == persistence.MethodAuthenticatorCert {
-		if cert := authenticator.ToCert(); cert != nil {
-			if checker.IsUpdated(persistence.FieldAuthenticatorCertPem) {
-				if cert.Fingerprint = edgeCert.NewFingerprintGenerator().FromPem([]byte(cert.Pem)); cert.Fingerprint == "" {
-					return apierror.NewCouldNotParsePem()
-				}
-			}
-		}
-	}
-
-	return self.patchEntity(authenticator, checker)
-}
-
-func (self AuthenticatorManager) PatchSelf(authenticatorSelf *AuthenticatorSelf, checker boltz.FieldChecker) error {
+func (self *AuthenticatorManager) PatchSelf(authenticatorSelf *AuthenticatorSelf, checker fields.UpdatedFields) error {
 	if checker.IsUpdated("password") {
-		checker = NewOrFieldChecker(checker, "salt", "password")
+		checker.AddField("salt")
 	}
 
 	authenticator, err := self.ReadForIdentity(authenticatorSelf.IdentityId, authenticatorSelf.Id)
@@ -346,10 +355,10 @@ func (self AuthenticatorManager) PatchSelf(authenticatorSelf *AuthenticatorSelf,
 	updbAuth.Salt = ""
 	authenticator.SubType = updbAuth
 
-	return self.Patch(authenticator, checker)
+	return self.Update(authenticator, false, checker)
 }
 
-func (self AuthenticatorManager) HashPassword(password string) *HashedPassword {
+func (self *AuthenticatorManager) HashPassword(password string) *HashedPassword {
 	newResult := crypto.Hash(password)
 	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
 	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
@@ -361,7 +370,7 @@ func (self AuthenticatorManager) HashPassword(password string) *HashedPassword {
 	}
 }
 
-func (self AuthenticatorManager) ReHashPassword(password string, salt []byte) *HashedPassword {
+func (self *AuthenticatorManager) ReHashPassword(password string, salt []byte) *HashedPassword {
 	newResult := crypto.ReHash(password, salt)
 	b64Password := base64.StdEncoding.EncodeToString(newResult.Hash)
 	b64Salt := base64.StdEncoding.EncodeToString(newResult.Salt)
@@ -373,7 +382,7 @@ func (self AuthenticatorManager) ReHashPassword(password string, salt []byte) *H
 	}
 }
 
-func (self AuthenticatorManager) ListForIdentity(identityId string, query ast.Query) (*AuthenticatorListQueryResult, error) {
+func (self *AuthenticatorManager) ListForIdentity(identityId string, query ast.Query) (*AuthenticatorListQueryResult, error) {
 	filterString := fmt.Sprintf(`identity = "%s"`, identityId)
 	filter, err := ast.Parse(self.Store, filterString)
 	if err != nil {
@@ -400,7 +409,7 @@ func (self AuthenticatorManager) ListForIdentity(identityId string, query ast.Qu
 	}, nil
 }
 
-func (self AuthenticatorManager) ReadForIdentity(identityId string, authenticatorId string) (*Authenticator, error) {
+func (self *AuthenticatorManager) ReadForIdentity(identityId string, authenticatorId string) (*Authenticator, error) {
 	authenticator, err := self.Read(authenticatorId)
 
 	if err != nil {
@@ -414,7 +423,7 @@ func (self AuthenticatorManager) ReadForIdentity(identityId string, authenticato
 	return nil, nil
 }
 
-func (self AuthenticatorManager) ExtendCertForIdentity(identityId string, authenticatorId string, peerCerts []*x509.Certificate, csrPem string) ([]byte, error) {
+func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authenticatorId string, peerCerts []*x509.Certificate, csrPem string) ([]byte, error) {
 	authenticator, _ := self.Read(authenticatorId)
 
 	if authenticator == nil {
@@ -514,7 +523,7 @@ func (self AuthenticatorManager) ExtendCertForIdentity(identityId string, authen
 	authenticatorCert.UnverifiedPem = string(newPemCert)
 	authenticatorCert.UnverifiedFingerprint = newFingerprint
 
-	err = self.env.GetManagers().Authenticator.Patch(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+	err = self.env.GetManagers().Authenticator.Update(authenticatorCert.Authenticator, false, fields.UpdatedFieldsMap{
 		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
 	})
@@ -526,7 +535,7 @@ func (self AuthenticatorManager) ExtendCertForIdentity(identityId string, authen
 	return newPemCert, nil
 }
 
-func (self AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authenticatorId string, verifyCertPem string) error {
+func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authenticatorId string, verifyCertPem string) error {
 	authenticator, _ := self.Read(authenticatorId)
 
 	if authenticator == nil {
@@ -567,7 +576,7 @@ func (self AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authent
 	authenticatorCert.UnverifiedFingerprint = ""
 	authenticatorCert.UnverifiedPem = ""
 
-	err := self.env.GetManagers().Authenticator.PatchUnrestricted(authenticatorCert.Authenticator, boltz.MapFieldChecker{
+	err := self.env.GetManagers().Authenticator.Update(authenticatorCert.Authenticator, true, fields.UpdatedFieldsMap{
 		persistence.FieldSessionCertFingerprint:                 struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
@@ -582,7 +591,7 @@ func (self AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authent
 // ReEnroll converts the given authenticator `id` back to an enrollment of the same type with the same
 // constraints that expires at the time specified by `expiresAt`. The result is a string id of the new enrollment
 // or an error.
-func (self AuthenticatorManager) ReEnroll(id string, expiresAt time.Time) (string, error) {
+func (self *AuthenticatorManager) ReEnroll(id string, expiresAt time.Time) (string, error) {
 	authenticator, err := self.Read(id)
 
 	enrollment := &Enrollment{
@@ -665,6 +674,89 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 	})
 
 	return caId
+}
+
+func (self *AuthenticatorManager) Marshall(entity *Authenticator) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.Authenticator{
+		Id:         entity.Id,
+		IdentityId: entity.IdentityId,
+		Tags:       tags,
+	}
+
+	if cert := entity.ToCert(); cert != nil {
+		msg.Subtype = &edge_cmd_pb.Authenticator_Cert_{
+			Cert: &edge_cmd_pb.Authenticator_Cert{
+				Fingerprint:           cert.Fingerprint,
+				Pem:                   cert.Pem,
+				UnverifiedFingerprint: cert.UnverifiedFingerprint,
+				UnverifiedPem:         cert.UnverifiedPem,
+			},
+		}
+	} else if updb := entity.ToUpdb(); updb != nil {
+		msg.Subtype = &edge_cmd_pb.Authenticator_Updb_{
+			Updb: &edge_cmd_pb.Authenticator_Updb{
+				Username: updb.Username,
+				Password: updb.Password,
+				Salt:     updb.Salt,
+			},
+		}
+
+	}
+
+	return proto.Marshal(msg)
+}
+
+func (self *AuthenticatorManager) Unmarshall(bytes []byte) (*Authenticator, error) {
+	msg := &edge_cmd_pb.Authenticator{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	authenticator := &Authenticator{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		IdentityId: msg.IdentityId,
+		SubType:    nil,
+	}
+
+	if msg.Subtype == nil {
+		return nil, errors.Errorf("no subtype provided for authenticator with id: %v", msg.Id)
+	}
+
+	switch st := msg.Subtype.(type) {
+	case *edge_cmd_pb.Authenticator_Cert_:
+		if st.Cert == nil {
+			return nil, errors.Errorf("no cert data provided for authenticator with id: %v", msg.Id)
+		}
+
+		authenticator.SubType = &AuthenticatorCert{
+			Authenticator:         authenticator,
+			Fingerprint:           st.Cert.Fingerprint,
+			Pem:                   st.Cert.Pem,
+			UnverifiedFingerprint: st.Cert.UnverifiedFingerprint,
+			UnverifiedPem:         st.Cert.UnverifiedPem,
+		}
+	case *edge_cmd_pb.Authenticator_Updb_:
+		if st.Updb == nil {
+			return nil, errors.Errorf("no updb data provided for authenticator with id: %v", msg.Id)
+		}
+
+		authenticator.SubType = &AuthenticatorUpdb{
+			Authenticator: authenticator,
+			Username:      st.Updb.Username,
+			Password:      st.Updb.Password,
+			Salt:          st.Updb.Salt,
+		}
+	}
+
+	return authenticator, nil
 }
 
 type HashedPassword struct {

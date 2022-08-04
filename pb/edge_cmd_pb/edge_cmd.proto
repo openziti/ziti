@@ -37,19 +37,27 @@ message JsonValue {
   }
 }
 
-message Config {
-  string id = 1;
-  string name = 2;
-  string configTypeId = 3;
-  JsonMap data = 4;
-  map<string, TagValue> tags = 5;
-}
+message Authenticator {
+  message Cert {
+    string fingerprint = 1;
+    string pem = 2;
+    string unverifiedFingerprint = 3;
+    string unverifiedPem = 4;
+  }
 
-message ConfigType {
+  message Updb {
+    string username = 1;
+    string password = 2;
+    string salt = 3;
+  }
+
   string id = 1;
-  string name = 2;
-  JsonMap schema = 3;
-  map<string, TagValue> tags = 4;
+  map<string, TagValue> tags = 2;
+  string identityId = 3;
+  oneof subtype {
+    Cert cert = 4;
+    Updb updb = 5;
+  }
 }
 
 message AuthPolicy {
@@ -115,6 +123,21 @@ message Ca {
   repeated string identityRoles = 11;
   string identityNameFormat = 12;
   optional ExternalIdClaim externalIdClaim = 13;
+}
+
+message Config {
+  string id = 1;
+  string name = 2;
+  string configTypeId = 3;
+  JsonMap data = 4;
+  map<string, TagValue> tags = 5;
+}
+
+message ConfigType {
+  string id = 1;
+  string name = 2;
+  JsonMap schema = 3;
+  map<string, TagValue> tags = 4;
 }
 
 message EdgeRouterPolicy {

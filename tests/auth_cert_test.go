@@ -96,7 +96,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		certAuth.Pem = ""
 
-		err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.Update(authenticator)
+		err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.Update(authenticator, false, nil)
 		r.NoError(err)
 
 		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())
