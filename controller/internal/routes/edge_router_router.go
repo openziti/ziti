@@ -116,7 +116,7 @@ func (r *EdgeRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *EdgeRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params edge_router.CreateEdgeRouterParams) {
 	Create(rc, rc, EdgeRouterLinkFactory, func() (string, error) {
-		return ae.Managers.EdgeRouter.Create(MapCreateEdgeRouterToModel(params.EdgeRouter))
+		return MapCreate(ae.Managers.EdgeRouter.Create, MapCreateEdgeRouterToModel(params.EdgeRouter))
 	})
 }
 
@@ -126,13 +126,13 @@ func (r *EdgeRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params edge_router.UpdateEdgeRouterParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.EdgeRouter.Update(MapUpdateEdgeRouterToModel(params.ID, params.EdgeRouter), true)
+		return ae.Managers.EdgeRouter.Update(MapUpdateEdgeRouterToModel(params.ID, params.EdgeRouter), false, nil)
 	})
 }
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeRouter.Patch(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), fields.FilterMaps("tags"))
+		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fields.FilterMaps("tags"))
 	})
 }
 

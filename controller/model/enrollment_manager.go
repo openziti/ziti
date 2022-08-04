@@ -283,7 +283,7 @@ func (self *EnrollmentManager) Query(query string) ([]*Enrollment, error) {
 	return enrollments, nil
 }
 
-func (self *EnrollmentManager) Marshall(entity *Enrollment) ([]byte, error) {
+func (self *EnrollmentManager) EnrollmentToProtobuf(entity *Enrollment) (*edge_cmd_pb.Enrollment, error) {
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
@@ -315,15 +315,18 @@ func (self *EnrollmentManager) Marshall(entity *Enrollment) ([]byte, error) {
 		Username:        entity.Username,
 	}
 
+	return msg, nil
+}
+
+func (self *EnrollmentManager) Marshall(entity *Enrollment) ([]byte, error) {
+	msg, err := self.EnrollmentToProtobuf(entity)
+	if err != nil {
+		return nil, err
+	}
 	return proto.Marshal(msg)
 }
 
-func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
-	msg := &edge_cmd_pb.Enrollment{}
-	if err := proto.Unmarshal(bytes, msg); err != nil {
-		return nil, err
-	}
-
+func (self *EnrollmentManager) ProtobufToEnrollment(msg *edge_cmd_pb.Enrollment) (*Enrollment, error) {
 	var issuedAt *time.Time
 	var expiresAt *time.Time
 
@@ -353,6 +356,14 @@ func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
 		CaId:            msg.CaId,
 		Username:        msg.Username,
 	}, nil
+}
+
+func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
+	msg := &edge_cmd_pb.Enrollment{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+	return self.ProtobufToEnrollment(msg)
 }
 
 type ReplaceEnrollmentWithAuthenticatorCmd struct {
