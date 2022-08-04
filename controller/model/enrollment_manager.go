@@ -20,10 +20,16 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -39,7 +45,83 @@ func NewEnrollmentManager(env Env) *EnrollmentManager {
 	}
 
 	manager.impl = manager
+
+	network.RegisterManagerDecoder[*Enrollment](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterCommand(env, &ReplaceEnrollmentWithAuthenticatorCmd{}, &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{})
+
 	return manager
+}
+
+func (self *EnrollmentManager) Create(entity *Enrollment) error {
+	return network.DispatchCreate[*Enrollment](self, entity)
+}
+
+func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment]) error {
+	model := cmd.Entity
+
+	if model.IdentityId == nil {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
+	}
+
+	identity, err := self.env.GetManagers().Identity.Read(*model.IdentityId)
+
+	if err != nil || identity == nil {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
+	}
+
+	if model.ExpiresAt.Before(time.Now()) {
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("expiresAt must be in the future", "expiresAt", model.ExpiresAt))
+	}
+
+	expiresAt := model.ExpiresAt.UTC()
+	model.ExpiresAt = &expiresAt
+
+	switch model.Method {
+	case persistence.MethodEnrollOttCa:
+		if model.CaId == nil {
+			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
+		}
+
+		ca, err := self.env.GetManagers().Ca.Read(*model.CaId)
+
+		if err != nil || ca == nil {
+			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
+		}
+	case persistence.MethodAuthenticatorUpdb:
+		if model.Username == nil || *model.Username == "" {
+			return apierror.NewBadRequestFieldError(*errorz.NewFieldError("username not provided", "username", model.Username))
+		}
+	case persistence.MethodEnrollOtt:
+	default:
+		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
+	}
+
+	enrollments, err := self.Query(fmt.Sprintf(`identity="%s"`, identity.Id))
+
+	if err != nil {
+		return err
+	}
+
+	for _, enrollment := range enrollments {
+		if enrollment.Method == model.Method {
+			return apierror.NewEnrollmentExists(model.Method)
+		}
+	}
+
+	if err := model.FillJwtInfoWithExpiresAt(self.env, identity.Id, *model.ExpiresAt); err != nil {
+		return err
+	}
+
+	_, err = self.createEntity(model)
+	return err
+}
+
+func (self *EnrollmentManager) Update(entity *Enrollment, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*Enrollment](self, entity, checker)
+}
+
+func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enrollment]) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
 }
 
 func (self *EnrollmentManager) newModelEntity() edgeEntity {
@@ -113,15 +195,23 @@ func (self *EnrollmentManager) ReadByToken(token string) (*Enrollment, error) {
 }
 
 func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
+	return self.Dispatch(&ReplaceEnrollmentWithAuthenticatorCmd{
+		manager:       self,
+		enrollmentId:  enrollmentId,
+		authenticator: authenticator,
+	})
+}
+
+func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd) error {
 	return self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 
-		err := self.env.GetStores().Enrollment.DeleteById(ctx, enrollmentId)
+		err := self.env.GetStores().Enrollment.DeleteById(ctx, cmd.enrollmentId)
 		if err != nil {
 			return err
 		}
 
-		_, err = self.env.GetManagers().Authenticator.createEntityInTx(ctx, authenticator)
+		_, err = self.env.GetManagers().Authenticator.createEntityInTx(ctx, cmd.authenticator)
 		return err
 	})
 }
@@ -132,10 +222,6 @@ func (self *EnrollmentManager) readInTx(tx *bbolt.Tx, id string) (*Enrollment, e
 		return nil, err
 	}
 	return modelEntity, nil
-}
-
-func (self *EnrollmentManager) Delete(id string) error {
-	return self.deleteEntity(id)
 }
 
 func (self *EnrollmentManager) Read(id string) (*Enrollment, error) {
@@ -169,7 +255,7 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time) error 
 		return err
 	}
 
-	err = self.patchEntity(enrollment, boltz.MapFieldChecker{
+	err = self.Update(enrollment, fields.UpdatedFieldsMap{
 		persistence.FieldEnrollmentJwt:       struct{}{},
 		persistence.FieldEnrollmentExpiresAt: struct{}{},
 		persistence.FieldEnrollmentIssuedAt:  struct{}{},
@@ -197,59 +283,108 @@ func (self *EnrollmentManager) Query(query string) ([]*Enrollment, error) {
 	return enrollments, nil
 }
 
-func (self *EnrollmentManager) Create(model *Enrollment) (string, error) {
-	if model.IdentityId == nil {
-		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
-	}
-
-	identity, err := self.env.GetManagers().Identity.Read(*model.IdentityId)
-
-	if err != nil || identity == nil {
-		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
-	}
-
-	if model.ExpiresAt.Before(time.Now()) {
-		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("expiresAt must be in the future", "expiresAt", model.ExpiresAt))
-	}
-
-	expiresAt := model.ExpiresAt.UTC()
-	model.ExpiresAt = &expiresAt
-
-	switch model.Method {
-	case persistence.MethodEnrollOttCa:
-		if model.CaId == nil {
-			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
-		}
-
-		ca, err := self.env.GetManagers().Ca.Read(*model.CaId)
-
-		if err != nil || ca == nil {
-			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("ca not found", "caId", model.CaId))
-		}
-	case persistence.MethodAuthenticatorUpdb:
-		if model.Username == nil || *model.Username == "" {
-			return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("username not provided", "username", model.Username))
-		}
-	case persistence.MethodEnrollOtt:
-	default:
-		return "", apierror.NewBadRequestFieldError(*errorz.NewFieldError("unsupported enrollment method", "method", model.Method))
-	}
-
-	enrollments, err := self.Query(fmt.Sprintf(`identity="%s"`, identity.Id))
-
+func (self *EnrollmentManager) Marshall(entity *Enrollment) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	for _, enrollment := range enrollments {
-		if enrollment.Method == model.Method {
-			return "", apierror.NewEnrollmentExists(model.Method)
-		}
+	var issuedAt *timestamppb.Timestamp
+	var expiresAt *timestamppb.Timestamp
+
+	if entity.IssuedAt != nil {
+		issuedAt = timestamppb.New(*entity.IssuedAt)
 	}
 
-	if err := model.FillJwtInfoWithExpiresAt(self.env, identity.Id, *model.ExpiresAt); err != nil {
-		return "", err
+	if entity.ExpiresAt != nil {
+		expiresAt = timestamppb.New(*entity.ExpiresAt)
 	}
 
-	return self.createEntity(model)
+	msg := &edge_cmd_pb.Enrollment{
+		Id:              entity.Id,
+		Tags:            tags,
+		Method:          entity.Method,
+		IdentityId:      entity.IdentityId,
+		TransitRouterId: entity.TransitRouterId,
+		EdgeRouterId:    entity.EdgeRouterId,
+		Token:           entity.Token,
+		IssuedAt:        issuedAt,
+		ExpiresAt:       expiresAt,
+		Jwt:             entity.Jwt,
+		CaId:            entity.CaId,
+		Username:        entity.Username,
+	}
+
+	return proto.Marshal(msg)
+}
+
+func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
+	msg := &edge_cmd_pb.Enrollment{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	var issuedAt *time.Time
+	var expiresAt *time.Time
+
+	if msg.IssuedAt != nil {
+		t := msg.IssuedAt.AsTime()
+		issuedAt = &t
+	}
+
+	if msg.ExpiresAt != nil {
+		t := msg.ExpiresAt.AsTime()
+		issuedAt = &t
+	}
+
+	return &Enrollment{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Method:          msg.Method,
+		IdentityId:      msg.IdentityId,
+		TransitRouterId: msg.TransitRouterId,
+		EdgeRouterId:    msg.EdgeRouterId,
+		Token:           msg.Token,
+		IssuedAt:        issuedAt,
+		ExpiresAt:       expiresAt,
+		Jwt:             msg.Jwt,
+		CaId:            msg.CaId,
+		Username:        msg.Username,
+	}, nil
+}
+
+type ReplaceEnrollmentWithAuthenticatorCmd struct {
+	manager       *EnrollmentManager
+	enrollmentId  string
+	authenticator *Authenticator
+}
+
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply() error {
+	return self.manager.ApplyReplaceEncoderWithAuthenticatorCommand(self)
+}
+
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
+	authMsg, err := self.manager.GetEnv().GetManagers().Authenticator.AuthenticatorToProtobuf(self.authenticator)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{
+		EnrollmentId:  self.enrollmentId,
+		Authenticator: authMsg,
+	}
+	return proto.Marshal(cmd)
+}
+
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) Decode(env Env, msg *edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd) error {
+	self.manager = env.GetManagers().Enrollment
+	self.enrollmentId = msg.EnrollmentId
+	authenticator, err := env.GetManagers().Authenticator.ProtobufToAuthenticator(msg.Authenticator)
+	if err != nil {
+		return err
+	}
+	self.authenticator = authenticator
+	return nil
 }

@@ -73,6 +73,8 @@ func (self *eventsCollector) AcceptCircuitEvent(event *event.CircuitEvent) {
 }
 
 func (self *eventsCollector) PopNextEvent(ctx *TestContext) interface{} {
+	self.Lock()
+	defer self.Unlock()
 	ctx.Req.True(len(self.events) > 0)
 	result := self.events[0]
 	self.events = self.events[1:]

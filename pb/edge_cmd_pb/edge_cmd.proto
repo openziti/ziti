@@ -8,6 +8,7 @@ import "google/protobuf/timestamp.proto";
 enum CommandType {
   Zero = 0;
   CreateEdgeTerminatorType = 1000;
+  ReplaceEnrollmentWithAuthenticatorType = 1001;
 }
 
 message CreateEdgeTerminatorCommand {
@@ -147,6 +148,26 @@ message EdgeRouterPolicy {
   string semantic = 4;
   repeated string edgeRouterRoles = 5;
   repeated string identityRoles = 6;
+}
+
+message Enrollment {
+  string id = 1;
+  map<string, TagValue> tags = 2;
+  string method = 3;
+  optional string identityId = 4;
+  optional string transitRouterId = 5;
+  optional string edgeRouterId = 6;
+  string token = 7;
+  google.protobuf.Timestamp issuedAt = 8;
+  google.protobuf.Timestamp expiresAt = 9;
+  string jwt = 10;
+  optional string caId = 11;
+  optional string username = 12;
+}
+
+message ReplaceEnrollmentWithAuthenticatorCmd {
+  string enrollmentId = 1;
+  Authenticator authenticator = 2;
 }
 
 message ExternalJwtSigner {
