@@ -165,7 +165,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 
 	if ok {
 		mfa.IsVerified = true
-		if err := ae.Managers.Mfa.Update(mfa); err != nil {
+		if err := ae.Managers.Mfa.Update(mfa, nil); err != nil {
 			pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
 			rc.RespondWithApiError(errorz.NewUnhandled(errors.New("could not update MFA status")))
 			return

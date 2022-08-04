@@ -23,10 +23,17 @@ import (
 	"github.com/dgryski/dgoogauth"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/boltz"
+	"github.com/pkg/errors"
 	"github.com/skip2/go-qrcode"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -39,6 +46,8 @@ func NewMfaManager(env Env) *MfaManager {
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().Mfa),
 	}
 	manager.impl = manager
+
+	network.RegisterManagerDecoder[*Mfa](env.GetHostController().GetNetwork().Managers, manager)
 
 	return manager
 }
@@ -67,11 +76,32 @@ func (self *MfaManager) CreateForIdentity(identity *Identity) (string, error) {
 		RecoveryCodes: recoveryCodes,
 	}
 
-	return self.Create(mfa)
+	err := self.Create(mfa)
+	if err != nil {
+		return "", err
+	}
+	return mfa.Id, err
 }
 
-func (self *MfaManager) Create(entity *Mfa) (string, error) {
-	return self.createEntity(entity)
+func (self *MfaManager) Create(entity *Mfa) error {
+	return network.DispatchCreate[*Mfa](self, entity)
+}
+
+func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa]) error {
+	_, err := self.createEntity(cmd.Entity)
+	return err
+}
+
+func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*Mfa](self, entity, checker)
+}
+
+func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa]) error {
+	var checker boltz.FieldChecker = self
+	if cmd.UpdatedFields != nil {
+		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
+	}
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *MfaManager) Read(id string) (*Mfa, error) {
@@ -92,14 +122,6 @@ func (self *MfaManager) readInTx(tx *bbolt.Tx, id string) (*Mfa, error) {
 
 func (self *MfaManager) IsUpdated(field string) bool {
 	return field == persistence.FieldMfaIsVerified || field == persistence.FieldMfaRecoveryCodes
-}
-
-func (self *MfaManager) Update(Mfa *Mfa) error {
-	return self.updateEntity(Mfa, self)
-}
-
-func (self *MfaManager) Delete(id string) error {
-	return self.deleteEntity(id)
 }
 
 func (self *MfaManager) Query(query string) (*MfaListResult, error) {
@@ -136,7 +158,7 @@ func (self *MfaManager) Verify(mfa *Mfa, code string) (bool, error) {
 	for i, recoveryCode := range mfa.RecoveryCodes {
 		if recoveryCode == code {
 			mfa.RecoveryCodes = append(mfa.RecoveryCodes[:i], mfa.RecoveryCodes[i+1:]...)
-			if err := self.Update(mfa); err != nil {
+			if err := self.Update(mfa, nil); err != nil {
 				return false, err
 			}
 			return true, nil
@@ -208,7 +230,7 @@ func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa) error {
 
 	mfa.RecoveryCodes = newCodes
 
-	return self.Update(mfa)
+	return self.Update(mfa, nil)
 }
 
 func (self *MfaManager) generateRecoveryCodes() []string {
@@ -223,6 +245,48 @@ func (self *MfaManager) generateRecoveryCodes() []string {
 	}
 
 	return recoveryCodes
+}
+
+func (self *MfaManager) Marshall(entity *Mfa) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.Mfa{
+		Id:            entity.Id,
+		Tags:          tags,
+		IsVerified:    entity.IsVerified,
+		IdentityId:    entity.IdentityId,
+		Secret:        entity.Secret,
+		RecoveryCodes: entity.RecoveryCodes,
+	}
+
+	return proto.Marshal(msg)
+}
+
+func (self *MfaManager) Unmarshall(bytes []byte) (*Mfa, error) {
+	msg := &edge_cmd_pb.Mfa{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	identity, err := self.env.GetManagers().Identity.Read(msg.IdentityId)
+	if err != nil {
+		return nil, errors.Wrapf(err, "unable to lookup identity for mfa with id=[%v]", msg.Id)
+	}
+
+	return &Mfa{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		IsVerified:    msg.IsVerified,
+		IdentityId:    msg.IdentityId,
+		Identity:      identity,
+		Secret:        msg.Secret,
+		RecoveryCodes: msg.RecoveryCodes,
+	}, nil
 }
 
 type MfaListResult struct {

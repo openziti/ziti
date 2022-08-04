@@ -145,6 +145,15 @@ message ExternalJwtSigner {
   google.protobuf.Timestamp notBefore = 16;
 }
 
+message Mfa {
+  string id = 1;
+  map<string, TagValue> tags = 2;
+  bool isVerified = 3;
+  string identityId = 4;
+  string secret = 5;
+  repeated string recoveryCodes = 6;
+}
+
 message Service {
   string id = 1;
   string name = 2;
