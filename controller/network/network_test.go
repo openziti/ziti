@@ -3,11 +3,16 @@ package network
 import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/transport/v2/tcp"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"runtime"
 	"testing"
@@ -97,6 +102,63 @@ func TestNetwork_parseServiceAndIdentity(t *testing.T) {
 	instanceId, serviceId = parseInstanceIdAndService("a@foo@hello")
 	req.Equal("a", instanceId)
 	req.Equal("foo@hello", serviceId)
+}
+
+func TestCreateCircuit(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	config := newTestConfig(ctx)
+	defer close(config.closeNotify)
+
+	network, err := NewNetwork(config)
+	assert.Nil(t, err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	assert.Nil(t, err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
+
+	svc := &Service{
+		BaseEntity:         models.BaseEntity{Id: "svc"},
+		Name:               "svc",
+		TerminatorStrategy: "smartrouting",
+	}
+
+	/*
+		Terminators: []*Terminator{
+		{
+		},
+	*/
+	lc := logcontext.NewContext()
+	_, _, _, cerr := network.selectPath(r0, svc, "", lc)
+	assert.Error(t, cerr)
+	assert.Equal(t, CircuitFailureNoTerminators, cerr.Cause())
+
+	svc.Terminators = []*Terminator{
+		{
+			BaseEntity: models.BaseEntity{Id: "t0"},
+			Service:    "svc",
+			Router:     "r0",
+			Binding:    "transport",
+			Address:    "tcp:localhost:1001",
+			InstanceId: "",
+			Precedence: xt.Precedences.Default,
+		},
+	}
+
+	_, _, _, cerr = network.selectPath(r0, svc, "", lc)
+	assert.Error(t, cerr)
+	assert.Equal(t, CircuitFailureNoOnlineTerminators, cerr.Cause())
+
+	network.Routers.markConnected(r0)
+	_, _, _, cerr = network.selectPath(r0, svc, "", lc)
+	assert.NoError(t, cerr)
+
+	_, _, _, cerr = network.selectPath(r0, svc, "test", lc)
+	assert.Error(t, cerr)
+	assert.Equal(t, CircuitFailureNoTerminators, cerr.Cause())
 }
 
 type VersionProviderTest struct {
