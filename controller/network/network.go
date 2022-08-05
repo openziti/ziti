@@ -613,12 +613,16 @@ func (network *Network) selectPath(srcR *Router, svc *Service, instanceId string
 		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators", svc.Id)
 	}
 
-	if pathError {
-		return nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
-	}
+	if len(weightedTerminators) == 0 {
+		if pathError {
+			return nil, nil, nil, newCircuitErrWrap(CircuitFailureNoPath, errorz.MultipleErrors(errList))
+		}
 
-	if hasOfflineRouters {
-		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
+		if hasOfflineRouters {
+			return nil, nil, nil, newCircuitErrorf(CircuitFailureNoOnlineTerminators, "service %v has no online terminators for instanceId %v", svc.Id, instanceId)
+		}
+
+		return nil, nil, nil, newCircuitErrorf(CircuitFailureNoTerminators, "service %v has no terminators for instanceId %v", svc.Id, instanceId)
 	}
 
 	strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy)
