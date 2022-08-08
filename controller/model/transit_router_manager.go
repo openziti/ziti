@@ -22,11 +22,16 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 )
 
 func NewTransitRouterManager(env Env) *TransitRouterManager {
@@ -38,6 +43,11 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 		},
 	}
 	manager.impl = manager
+
+	network.RegisterUpdateDecoder[*TransitRouter](env.GetHostController().GetNetwork().Managers, manager)
+	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
+	RegisterCommand(env, &CreateTransitRouterCmd{}, &edge_cmd_pb.CreateTransitRouterCmd{})
+
 	return manager
 }
 
@@ -46,32 +56,35 @@ type TransitRouterManager struct {
 	allowedFields boltz.FieldChecker
 }
 
-func (self *TransitRouterManager) Delete(id string) error {
-	return self.deleteEntity(id)
-}
-
 func (self *TransitRouterManager) newModelEntity() edgeEntity {
 	return &TransitRouter{}
 }
 
-func (self *TransitRouterManager) Create(entity *TransitRouter) (string, error) {
-	enrollment := &Enrollment{
-		BaseEntity: models.BaseEntity{},
-		Method:     MethodEnrollTransitRouterOtt,
-	}
-
-	id, _, err := self.CreateWithEnrollment(entity, enrollment)
-	return id, err
-}
-
-func (self *TransitRouterManager) CreateWithEnrollment(txRouter *TransitRouter, enrollment *Enrollment) (string, string, error) {
-
+func (self *TransitRouterManager) Create(txRouter *TransitRouter) error {
 	if txRouter.Id == "" {
 		txRouter.Id = eid.New()
 	}
-	var enrollmentId string
 
-	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
+	enrollment := &Enrollment{
+		BaseEntity:      models.BaseEntity{},
+		Method:          MethodEnrollTransitRouterOtt,
+		TransitRouterId: &txRouter.Id,
+	}
+
+	cmd := &CreateTransitRouterCmd{
+		manager:    self,
+		router:     txRouter,
+		enrollment: enrollment,
+	}
+
+	return self.Dispatch(cmd)
+}
+
+func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd) error {
+	txRouter := cmd.router
+	enrollment := cmd.enrollment
+
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		boltEntity, err := txRouter.toBoltEntityForCreate(tx, self.impl)
 		if err != nil {
@@ -82,31 +95,16 @@ func (self *TransitRouterManager) CreateWithEnrollment(txRouter *TransitRouter, 
 			return err
 		}
 
-		enrollment.TransitRouterId = &txRouter.Id
-
-		err = enrollment.FillJwtInfo(self.env, txRouter.Id)
-
-		if err != nil {
+		if err = enrollment.FillJwtInfo(self.env, txRouter.Id); err != nil {
 			return err
 		}
 
-		enrollmentId, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
-
-		if err != nil {
-			return err
-		}
-
-		return nil
+		_, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
+		return err
 	})
-
-	if err != nil {
-		return "", "", err
-	}
-
-	return txRouter.Id, enrollmentId, nil
 }
 
-func (self *TransitRouterManager) Update(entity *TransitRouter, allowAllFields bool) error {
+func (self *TransitRouterManager) Update(entity *TransitRouter, unrestricted bool, checker fields.UpdatedFields) error {
 	curEntity, err := self.Read(entity.Id)
 
 	if err != nil {
@@ -117,30 +115,27 @@ func (self *TransitRouterManager) Update(entity *TransitRouter, allowAllFields b
 		return apierror.NewFabricRouterCannotBeUpdate()
 	}
 
-	if allowAllFields {
-		return self.updateEntity(entity, nil)
+	cmd := &command.UpdateEntityCommand[*TransitRouter]{
+		Updater:       self,
+		Entity:        entity,
+		UpdatedFields: checker,
 	}
-
-	return self.updateEntity(entity, self.allowedFields)
-
+	if unrestricted {
+		cmd.Flags = updateUnrestricted
+	}
+	return self.Dispatch(cmd)
 }
 
-func (self *TransitRouterManager) Patch(entity *TransitRouter, checker boltz.FieldChecker, allowAllFields bool) error {
-	curEntity, err := self.Read(entity.Id)
-
-	if err != nil {
-		return err
+func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*TransitRouter]) error {
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if cmd.Flags != updateUnrestricted {
+		if checker == nil {
+			checker = self.allowedFields
+		} else {
+			checker = &AndFieldChecker{first: self.allowedFields, second: cmd.UpdatedFields}
+		}
 	}
-
-	if curEntity.IsBase {
-		return apierror.NewFabricRouterCannotBeUpdate()
-	}
-
-	if allowAllFields {
-		return self.patchEntity(entity, checker)
-	}
-	combinedChecker := &AndFieldChecker{first: self.allowedFields, second: checker}
-	return self.patchEntity(entity, combinedChecker)
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *TransitRouterManager) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {
@@ -230,10 +225,10 @@ func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, client
 
 	router.Fingerprint = &fingerprint
 
-	err = self.Patch(router, &boltz.MapFieldChecker{
+	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterCertPEM: struct{}{},
 		db.FieldRouterFingerprint:          struct{}{},
-	}, true)
+	})
 
 	if err != nil {
 		return nil, err
@@ -272,10 +267,10 @@ func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRout
 
 	router.UnverifiedFingerprint = &fingerprint
 
-	err = self.Patch(router, &boltz.MapFieldChecker{
+	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-	}, true)
+	})
 
 	if err != nil {
 		return nil, err
@@ -298,12 +293,112 @@ func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter) 
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		return self.Patch(router, boltz.MapFieldChecker{
+		return self.Update(router, true, fields.UpdatedFieldsMap{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-		}, true)
+		})
 	}
 
 	return errors.New("no outstanding verification necessary")
+}
+
+func (self *TransitRouterManager) TransitRouterToProtobuf(entity *TransitRouter) (*edge_cmd_pb.TransitRouter, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.TransitRouter{
+		Id:                    entity.Id,
+		Name:                  entity.Name,
+		Tags:                  tags,
+		IsVerified:            entity.IsVerified,
+		Fingerprint:           entity.Fingerprint,
+		UnverifiedFingerprint: entity.UnverifiedFingerprint,
+		UnverifiedCertPem:     entity.UnverifiedCertPem,
+		Cost:                  uint32(entity.Cost),
+		NoTraversal:           entity.NoTraversal,
+	}
+
+	return msg, nil
+}
+
+func (self *TransitRouterManager) Marshall(entity *TransitRouter) ([]byte, error) {
+	msg, err := self.TransitRouterToProtobuf(entity)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(msg)
+}
+
+func (self *TransitRouterManager) ProtobufToTransitRouter(msg *edge_cmd_pb.TransitRouter) (*TransitRouter, error) {
+	return &TransitRouter{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:                  msg.Name,
+		IsVerified:            msg.IsVerified,
+		Fingerprint:           msg.Fingerprint,
+		UnverifiedFingerprint: msg.UnverifiedFingerprint,
+		UnverifiedCertPem:     msg.UnverifiedCertPem,
+		Cost:                  uint16(msg.Cost),
+		NoTraversal:           msg.NoTraversal,
+	}, nil
+}
+
+func (self *TransitRouterManager) Unmarshall(bytes []byte) (*TransitRouter, error) {
+	msg := &edge_cmd_pb.TransitRouter{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+	return self.ProtobufToTransitRouter(msg)
+}
+
+type CreateTransitRouterCmd struct {
+	manager    *TransitRouterManager
+	router     *TransitRouter
+	enrollment *Enrollment
+}
+
+func (self *CreateTransitRouterCmd) Apply() error {
+	return self.manager.ApplyCreate(self)
+}
+
+func (self *CreateTransitRouterCmd) Encode() ([]byte, error) {
+	transitRouterMsg, err := self.manager.TransitRouterToProtobuf(self.router)
+	if err != nil {
+		return nil, err
+	}
+
+	enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.EnrollmentToProtobuf(self.enrollment)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &edge_cmd_pb.CreateTransitRouterCmd{
+		Router:     transitRouterMsg,
+		Enrollment: enrollment,
+	}
+
+	return proto.Marshal(cmd)
+}
+
+func (self *CreateTransitRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateTransitRouterCmd) error {
+	router, err := self.manager.ProtobufToTransitRouter(msg.Router)
+	if err != nil {
+		return err
+	}
+
+	enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.ProtobufToEnrollment(msg.Enrollment)
+	if err != nil {
+		return err
+	}
+
+	self.manager = env.GetManagers().TransitRouter
+	self.router = router
+	self.enrollment = enrollment
+
+	return nil
 }
