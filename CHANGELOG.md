@@ -1,8 +1,25 @@
+# Release 0.26.4
+
+## What's New
+
+- Edge
+  - N/A
+- Fabric
+  - Bug Fixes
+- Ziti CLI
+  - `ziti fabric inspect` can now emit results to individual files using the `-f` flag 
+- SDK Golang
+  - N/A
+
+## Fabric
+### Bug Fixes
+
+* [Issue 463](https://github.com/openziti/fabric/issues/463): fix for panic when dial service with instanceId and service has terminators but non for requested instanceId
 
 # Release 0.26.3
 
 ## What's New
-- 
+
 - Edge
   - N/A
 - Fabric
