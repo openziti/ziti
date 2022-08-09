@@ -629,7 +629,7 @@ func outputJson(out io.Writer, data []byte) {
 }
 
 func ControllerDetailEntity(api API, entityType, entityId string, logJSON bool, out io.Writer, timeout int, verbose bool) (*gabs.Container, error) {
-	restClientIdentity, err := LoadSelectedRWIdentityForApi(api)
+	restClientIdentity, err := LoadSelectedIdentityForApi(api)
 	if err != nil {
 		return nil, err
 	}
