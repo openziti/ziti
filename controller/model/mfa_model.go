@@ -60,7 +60,7 @@ func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (b
 	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, manager)
 }
 

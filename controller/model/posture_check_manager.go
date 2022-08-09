@@ -95,7 +95,7 @@ func (self *PostureCheckManager) Update(ca *PostureCheck) error {
 
 func (self *PostureCheckManager) Patch(ca *PostureCheck, checker boltz.FieldChecker) error {
 	combinedChecker := &AndFieldChecker{first: self, second: checker}
-	return self.patchEntity(ca, combinedChecker)
+	return self.updateEntity(ca, combinedChecker)
 }
 
 func (self *PostureCheckManager) Delete(id string) error {

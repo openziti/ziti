@@ -22,12 +22,18 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )
@@ -56,6 +62,9 @@ func NewIdentityManager(env Env) *IdentityManager {
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
 	manager.impl = manager
+
+	network.RegisterManagerDecoder[*Identity](env.GetHostController().GetNetwork().GetManagers(), manager)
+
 	return manager
 }
 
@@ -63,141 +72,76 @@ func (self *IdentityManager) newModelEntity() edgeEntity {
 	return &Identity{}
 }
 
-func (self *IdentityManager) Create(identityModel *Identity) (string, error) {
-	identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
-
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return "", err
-	}
-
-	if identityType == nil {
-		apiErr := errorz.NewNotFound()
-		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", identityModel.IdentityTypeId)
-		apiErr.AppendCause = true
-		return "", apiErr
-	}
-
-	if identityType.Name == persistence.RouterIdentityType {
-		fieldErr := errorz.NewFieldError("may not create identities with given typeId", "typeId", identityModel.IdentityTypeId)
-		return "", errorz.NewFieldApiError(fieldErr)
-	}
-
-	identityModel.IdentityTypeId = identityType.Id
-
-	return self.createEntity(identityModel)
+func (self *IdentityManager) Create(entity *Identity) error {
+	return network.DispatchCreate[*Identity](self, entity)
 }
 
-func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) (string, []string, error) {
-	identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identityModel.IdentityTypeId)
+func (self *IdentityManager) ApplyCreate(cmd *command.CreateEntityCommand[*Identity]) error {
+	_, err := self.createEntity(cmd.Entity)
+	return err
+}
 
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return "", nil, err
-	}
-
-	if identityType == nil {
-		apiErr := errorz.NewNotFound()
-		apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identityModel.IdentityTypeId)
-		apiErr.AppendCause = true
-		return "", nil, apiErr
-	}
-
-	identityModel.IdentityTypeId = identityType.Id
-
+func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) error {
 	if identityModel.Id == "" {
 		identityModel.Id = eid.New()
 	}
-	var enrollmentIds []string
 
-	err = self.GetDb().Update(func(tx *bbolt.Tx) error {
+	for _, enrollment := range enrollmentsModels {
+		if enrollment.Id == "" {
+			enrollment.Id = eid.New()
+		}
+		enrollment.IdentityId = &identityModel.Id
+	}
+
+	cmd := &CreateIdentityWithEnrollmentsCmd{
+		manager:     self,
+		identity:    identityModel,
+		enrollments: enrollmentsModels,
+	}
+
+	return self.Dispatch(cmd)
+}
+
+func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithEnrollmentsCmd) error {
+	identityModel := cmd.identity
+	enrollmentsModels := cmd.enrollments
+
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		boltEntity, err := identityModel.toBoltEntityForCreate(tx, self.impl)
 		if err != nil {
 			return err
 		}
-		if err := self.GetStore().Create(ctx, boltEntity); err != nil {
+		if err = self.GetStore().Create(ctx, boltEntity); err != nil {
 			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
 			return err
 		}
 
-		for _, enrollmentModel := range enrollmentsModels {
-			enrollmentModel.IdentityId = &identityModel.Id
+		for _, enrollment := range enrollmentsModels {
+			enrollment.IdentityId = &identityModel.Id
 
-			err := enrollmentModel.FillJwtInfo(self.env, identityModel.Id)
-
-			if err != nil {
+			if err = enrollment.FillJwtInfo(self.env, identityModel.Id); err != nil {
 				return err
 			}
 
-			enrollmentId, err := self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollmentModel)
-
-			if err != nil {
+			if _, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment); err != nil {
 				return err
 			}
-
-			enrollmentIds = append(enrollmentIds, enrollmentId)
 		}
 		return nil
 	})
-
-	if err != nil {
-		return "", nil, err
-	}
-
-	return identityModel.Id, enrollmentIds, nil
 }
 
-func (self *IdentityManager) Update(identity *Identity) error {
-	identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
-
-	if err != nil && !boltz.IsErrNotFoundErr(err) {
-		return err
-	}
-
-	if identityType == nil {
-		apiErr := errorz.NewNotFound()
-		apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
-		apiErr.AppendCause = true
-		return apiErr
-	}
-
-	identity.IdentityTypeId = identityType.Id
-
-	return self.updateEntity(identity, self)
+func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*Identity](self, entity, checker)
 }
 
-func (self *IdentityManager) Patch(identity *Identity, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: self, second: checker}
-	if checker.IsUpdated("type") {
-		identityType, err := self.env.GetManagers().IdentityType.ReadByIdOrName(identity.IdentityTypeId)
-		if err != nil && !boltz.IsErrNotFoundErr(err) {
-			return err
-		}
-
-		if identityType == nil {
-			apiErr := errorz.NewNotFound()
-			apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", identity.IdentityTypeId)
-			apiErr.AppendCause = true
-			return apiErr
-		}
-
-		identity.IdentityTypeId = identityType.Id
+func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity]) error {
+	var checker boltz.FieldChecker = self
+	if cmd.UpdatedFields != nil {
+		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-
-	return self.patchEntity(identity, combinedChecker)
-}
-
-func (self *IdentityManager) Delete(id string) error {
-	identity, err := self.Read(id)
-
-	if err != nil {
-		return nil
-	}
-
-	if identity.IsDefaultAdmin {
-		return errorz.NewEntityCanNotBeDeleted()
-	}
-
-	return self.deleteEntity(id)
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *IdentityManager) IsUpdated(field string) bool {
@@ -306,7 +250,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		},
 	}
 
-	if _, err = self.Create(defaultAdmin); err != nil {
+	if err = self.Create(defaultAdmin); err != nil {
 		return err
 	}
 
@@ -500,7 +444,7 @@ func (self *IdentityManager) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoAppVersion: struct{}{},
 	}
 
-	err := self.patchEntityBatch(identity, checker)
+	err := self.updateEntityBatch(identity, checker)
 
 	self.updateSdkInfoTimer.UpdateSince(start)
 
@@ -556,7 +500,7 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration) 
 		duration = 0
 	}
 
-	fieldMap := boltz.MapFieldChecker{
+	fieldMap := fields.UpdatedFieldsMap{
 		persistence.FieldIdentityDisabledAt:    struct{}{},
 		persistence.FieldIdentityDisabledUntil: struct{}{},
 	}
@@ -569,7 +513,7 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration) 
 		lockedUntil = &until
 	}
 
-	err := self.Patch(&Identity{
+	err := self.Update(&Identity{
 		BaseEntity: models.BaseEntity{
 			Id: identityId,
 		},
@@ -585,18 +529,211 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration) 
 }
 
 func (self *IdentityManager) Enable(identityId string) error {
-	fieldMap := boltz.MapFieldChecker{
+	fieldMap := fields.UpdatedFieldsMap{
 		persistence.FieldIdentityDisabledAt:    struct{}{},
 		persistence.FieldIdentityDisabledUntil: struct{}{},
 	}
 
-	return self.Patch(&Identity{
+	return self.Update(&Identity{
 		BaseEntity: models.BaseEntity{
 			Id: identityId,
 		},
 		DisabledAt:    nil,
 		DisabledUntil: nil,
 	}, fieldMap)
+}
+
+func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.Identity, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	var envInfo *edge_cmd_pb.Identity_EnvInfo
+	if entity.EnvInfo != nil {
+		envInfo = &edge_cmd_pb.Identity_EnvInfo{
+			Arch:      entity.EnvInfo.Arch,
+			Os:        entity.EnvInfo.Os,
+			OsRelease: entity.EnvInfo.OsRelease,
+			OsVersion: entity.EnvInfo.OsVersion,
+		}
+	}
+
+	var sdkInfo *edge_cmd_pb.Identity_SdkInfo
+	if entity.SdkInfo != nil {
+		sdkInfo = &edge_cmd_pb.Identity_SdkInfo{
+			AppId:      entity.SdkInfo.AppId,
+			AppVersion: entity.SdkInfo.AppVersion,
+			Branch:     entity.SdkInfo.Branch,
+			Revision:   entity.SdkInfo.Revision,
+			Type:       entity.SdkInfo.Type,
+			Version:    entity.SdkInfo.Version,
+		}
+	}
+
+	precedenceMap := map[string]uint32{}
+	for k, v := range entity.ServiceHostingPrecedences {
+		precedenceMap[k] = uint32(v)
+	}
+
+	costMap := map[string]uint32{}
+	for k, v := range entity.ServiceHostingCosts {
+		costMap[k] = uint32(v)
+	}
+
+	appData, err := edge_cmd_pb.EncodeJson(entity.AppData)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.Identity{
+		Id:                        entity.Id,
+		Name:                      entity.Name,
+		Tags:                      tags,
+		IdentityTypeId:            entity.IdentityTypeId,
+		IsDefaultAdmin:            entity.IsDefaultAdmin,
+		IsAdmin:                   entity.IsAdmin,
+		RoleAttributes:            entity.RoleAttributes,
+		EnvInfo:                   envInfo,
+		SdkInfo:                   sdkInfo,
+		DefaultHostingPrecedence:  uint32(entity.DefaultHostingPrecedence),
+		DefaultHostingCost:        uint32(entity.DefaultHostingCost),
+		ServiceHostingPrecedences: precedenceMap,
+		ServiceHostingCosts:       costMap,
+		AppData:                   appData,
+		AuthPolicyId:              entity.AuthPolicyId,
+		ExternalId:                entity.ExternalId,
+		Disabled:                  entity.Disabled,
+		DisabledAt:                timePtrToPb(entity.DisabledAt),
+		DisabledUntil:             timePtrToPb(entity.DisabledUntil),
+	}
+
+	return msg, nil
+}
+
+func (self *IdentityManager) Marshall(entity *Identity) ([]byte, error) {
+	msg, err := self.IdentityToProtobuf(entity)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(msg)
+}
+
+func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Identity, error) {
+	var envInfo *EnvInfo
+	if msg.EnvInfo != nil {
+		envInfo = &EnvInfo{
+			Arch:      msg.EnvInfo.Arch,
+			Os:        msg.EnvInfo.Os,
+			OsRelease: msg.EnvInfo.OsRelease,
+			OsVersion: msg.EnvInfo.OsVersion,
+		}
+	}
+
+	var sdkInfo *SdkInfo
+	for msg.SdkInfo != nil {
+		sdkInfo = &SdkInfo{
+			AppId:      msg.SdkInfo.AppId,
+			AppVersion: msg.SdkInfo.AppVersion,
+			Branch:     msg.SdkInfo.Branch,
+			Revision:   msg.SdkInfo.Revision,
+			Type:       msg.SdkInfo.Type,
+			Version:    msg.SdkInfo.Version,
+		}
+	}
+
+	precedenceMap := map[string]ziti.Precedence{}
+	for k, v := range msg.ServiceHostingPrecedences {
+		precedenceMap[k] = ziti.Precedence(v)
+	}
+
+	costMap := map[string]uint16{}
+	for k, v := range msg.ServiceHostingCosts {
+		costMap[k] = uint16(v)
+	}
+
+	return &Identity{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:                      msg.Name,
+		IdentityTypeId:            msg.IdentityTypeId,
+		IsDefaultAdmin:            msg.IsDefaultAdmin,
+		IsAdmin:                   msg.IsAdmin,
+		RoleAttributes:            msg.RoleAttributes,
+		EnvInfo:                   envInfo,
+		SdkInfo:                   sdkInfo,
+		DefaultHostingPrecedence:  ziti.Precedence(msg.DefaultHostingPrecedence),
+		DefaultHostingCost:        uint16(msg.DefaultHostingCost),
+		ServiceHostingPrecedences: precedenceMap,
+		ServiceHostingCosts:       costMap,
+		AppData:                   edge_cmd_pb.DecodeJson(msg.AppData),
+		AuthPolicyId:              msg.AuthPolicyId,
+		ExternalId:                msg.ExternalId,
+		Disabled:                  msg.Disabled,
+		DisabledAt:                pbTimeToTimePtr(msg.DisabledAt),
+		DisabledUntil:             pbTimeToTimePtr(msg.DisabledUntil),
+	}, nil
+}
+
+func (self *IdentityManager) Unmarshall(bytes []byte) (*Identity, error) {
+	msg := &edge_cmd_pb.Identity{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+	return self.ProtobufToIdentity(msg)
+}
+
+type CreateIdentityWithEnrollmentsCmd struct {
+	manager     *IdentityManager
+	identity    *Identity
+	enrollments []*Enrollment
+}
+
+func (self *CreateIdentityWithEnrollmentsCmd) Apply() error {
+	return self.manager.ApplyCreateWithEnrollments(self)
+}
+
+func (self *CreateIdentityWithEnrollmentsCmd) Encode() ([]byte, error) {
+	identityMsg, err := self.manager.IdentityToProtobuf(self.identity)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{
+		Identity: identityMsg,
+	}
+
+	for _, enrollment := range self.enrollments {
+		enrollmentMsg, err := self.manager.GetEnv().GetManagers().Enrollment.EnrollmentToProtobuf(enrollment)
+		if err != nil {
+			return nil, err
+		}
+		cmd.Enrollments = append(cmd.Enrollments, enrollmentMsg)
+	}
+
+	return proto.Marshal(cmd)
+}
+
+func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.CreateIdentityWithEnrollmentsCmd) error {
+	self.manager = env.GetManagers().Identity
+
+	identity, err := self.manager.ProtobufToIdentity(msg.Identity)
+	if err != nil {
+		return err
+	}
+	self.identity = identity
+
+	for _, enrollmentMsg := range msg.Enrollments {
+		enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.ProtobufToEnrollment(enrollmentMsg)
+		if err != nil {
+			return err
+		}
+		self.enrollments = append(self.enrollments, enrollment)
+	}
+
+	return nil
 }
 
 type identityStatusMap struct {

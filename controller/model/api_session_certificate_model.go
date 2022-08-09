@@ -60,7 +60,7 @@ func (entity *ApiSessionCertificate) toBoltEntityForCreate(tx *bbolt.Tx, manager
 	return entity.toBoltEntity(tx, manager)
 }
 
-func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *ApiSessionCertificate) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, manager)
 }
 

@@ -54,7 +54,7 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bo
 	return boltEntity, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),

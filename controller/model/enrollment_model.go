@@ -150,6 +150,6 @@ func (entity *Enrollment) toBoltEntityForCreate(_ *bbolt.Tx, manager EntityManag
 	return entity.toBoltEntity(manager)
 }
 
-func (entity *Enrollment) toBoltEntityForUpdate(_ *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *Enrollment) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(manager)
 }

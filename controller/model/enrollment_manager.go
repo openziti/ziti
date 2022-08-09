@@ -29,7 +29,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
 
@@ -289,17 +288,6 @@ func (self *EnrollmentManager) EnrollmentToProtobuf(entity *Enrollment) (*edge_c
 		return nil, err
 	}
 
-	var issuedAt *timestamppb.Timestamp
-	var expiresAt *timestamppb.Timestamp
-
-	if entity.IssuedAt != nil {
-		issuedAt = timestamppb.New(*entity.IssuedAt)
-	}
-
-	if entity.ExpiresAt != nil {
-		expiresAt = timestamppb.New(*entity.ExpiresAt)
-	}
-
 	msg := &edge_cmd_pb.Enrollment{
 		Id:              entity.Id,
 		Tags:            tags,
@@ -308,8 +296,8 @@ func (self *EnrollmentManager) EnrollmentToProtobuf(entity *Enrollment) (*edge_c
 		TransitRouterId: entity.TransitRouterId,
 		EdgeRouterId:    entity.EdgeRouterId,
 		Token:           entity.Token,
-		IssuedAt:        issuedAt,
-		ExpiresAt:       expiresAt,
+		IssuedAt:        timePtrToPb(entity.IssuedAt),
+		ExpiresAt:       timePtrToPb(entity.ExpiresAt),
 		Jwt:             entity.Jwt,
 		CaId:            entity.CaId,
 		Username:        entity.Username,
@@ -327,19 +315,6 @@ func (self *EnrollmentManager) Marshall(entity *Enrollment) ([]byte, error) {
 }
 
 func (self *EnrollmentManager) ProtobufToEnrollment(msg *edge_cmd_pb.Enrollment) (*Enrollment, error) {
-	var issuedAt *time.Time
-	var expiresAt *time.Time
-
-	if msg.IssuedAt != nil {
-		t := msg.IssuedAt.AsTime()
-		issuedAt = &t
-	}
-
-	if msg.ExpiresAt != nil {
-		t := msg.ExpiresAt.AsTime()
-		issuedAt = &t
-	}
-
 	return &Enrollment{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -350,8 +325,8 @@ func (self *EnrollmentManager) ProtobufToEnrollment(msg *edge_cmd_pb.Enrollment)
 		TransitRouterId: msg.TransitRouterId,
 		EdgeRouterId:    msg.EdgeRouterId,
 		Token:           msg.Token,
-		IssuedAt:        issuedAt,
-		ExpiresAt:       expiresAt,
+		IssuedAt:        pbTimeToTimePtr(msg.IssuedAt),
+		ExpiresAt:       pbTimeToTimePtr(msg.ExpiresAt),
 		Jwt:             msg.Jwt,
 		CaId:            msg.CaId,
 		Username:        msg.Username,

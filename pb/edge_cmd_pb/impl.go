@@ -18,6 +18,10 @@ func (x *CreateTransitRouterCmd) GetCommandType() int32 {
 	return int32(CommandType_CreateTransitRouterType)
 }
 
+func (x *CreateIdentityWithEnrollmentsCmd) GetCommandType() int32 {
+	return int32(CommandType_CreateIdentityWithEnrollmentsType)
+}
+
 func EncodeTags(tags map[string]interface{}) (map[string]*TagValue, error) {
 	if len(tags) == 0 {
 		return nil, nil

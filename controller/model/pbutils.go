@@ -17,14 +17,22 @@
 package model
 
 import (
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
-type edgeEntity interface {
-	models.Entity
-	fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
-	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
+func timePtrToPb(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	result := timestamppb.New(*t)
+	return result
+}
+
+func pbTimeToTimePtr(pb *timestamppb.Timestamp) *time.Time {
+	if pb == nil {
+		return nil
+	}
+	result := pb.AsTime()
+	return &result
 }

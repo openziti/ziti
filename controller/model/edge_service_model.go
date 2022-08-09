@@ -82,7 +82,7 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, manager EntityManager) erro
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity(tx, manager)
 }
 
@@ -115,7 +115,7 @@ func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bo
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	panic("should never be called")
 }
 

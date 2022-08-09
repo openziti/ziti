@@ -125,7 +125,7 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityMa
 	return boltEntity, nil
 }
 
-func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, manager)
 }
 

@@ -264,9 +264,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	identity.ExternalId = &externalId
 
-	_, err = module.env.GetManagers().Identity.Create(identity)
-
-	if err != nil {
+	if err = module.env.GetManagers().Identity.Create(identity); err != nil {
 		log.WithError(err).Error("failed to create identity, enrollment failed")
 		return nil, err
 	}

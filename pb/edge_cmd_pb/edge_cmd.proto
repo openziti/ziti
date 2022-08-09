@@ -11,6 +11,7 @@ enum CommandType {
   ReplaceEnrollmentWithAuthenticatorType = 1001;
   CreateEdgeRouterType = 1002;
   CreateTransitRouterType = 1003;
+  CreateIdentityWithEnrollmentsType = 1004;
 }
 
 message CreateEdgeTerminatorCommand {
@@ -221,6 +222,50 @@ message ExternalJwtSigner {
   optional string fingerprint = 14;
   google.protobuf.Timestamp notAfter = 15;
   google.protobuf.Timestamp notBefore = 16;
+}
+
+// Identities
+message Identity {
+  message EnvInfo {
+    string Arch = 1;
+    string Os = 2;
+    string OsRelease = 3;
+    string OsVersion = 4;
+  }
+
+  message SdkInfo {
+    string AppId = 1;
+    string AppVersion = 2;
+    string Branch = 3;
+    string Revision = 4;
+    string Type = 5;
+    string Version = 6;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string identityTypeId = 4;
+  bool isDefaultAdmin = 5;
+  bool isAdmin = 6;
+  repeated string roleAttributes = 7;
+  optional EnvInfo envInfo = 8;
+  optional SdkInfo sdkInfo = 9;
+  uint32 defaultHostingPrecedence = 10;
+  uint32 defaultHostingCost = 11;
+  map<string, uint32> serviceHostingPrecedences = 12;
+  map<string, uint32> serviceHostingCosts = 13;
+  JsonMap appData = 14;
+  string authPolicyId = 15;
+  optional string externalId = 16;
+  bool disabled = 17;
+  optional google.protobuf.Timestamp disabledAt = 18;
+  optional google.protobuf.Timestamp disabledUntil = 19;
+}
+
+message CreateIdentityWithEnrollmentsCmd {
+  Identity identity = 1;
+  repeated Enrollment enrollments = 2;
 }
 
 // MFA
