@@ -19,6 +19,7 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
@@ -38,13 +39,14 @@ type PostureCheck struct {
 
 type PostureCheckSubType interface {
 	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
-	toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
 	fillFrom(manager EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool
 	FailureValues(_ string, pd *PostureData) PostureCheckFailureValues
 	GetTimeoutSeconds() int64
 	GetTimeoutRemainingSeconds(apiSessionId string, pd *PostureData) int64
+
+	fillProtobuf(msg *edge_cmd_pb.PostureCheck)
+	fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error
 
 	// LastUpdatedAt returns the last time the posture state changed or nil if not supported.
 	LastUpdatedAt(id string, pd *PostureData) *time.Time
@@ -125,7 +127,7 @@ func (entity *PostureCheck) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityMa
 	return boltEntity, nil
 }
 
-func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *PostureCheck) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, _ boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, manager)
 }
 

@@ -278,6 +278,63 @@ message Mfa {
   repeated string recoveryCodes = 6;
 }
 
+// Posture Checks
+/*
+ */
+message PostureCheck {
+  message Mac {
+    repeated string macAddresses = 1;
+  }
+
+  message Mfa {
+    int64 TimeoutSeconds = 1;
+    bool PromptOnWake = 2;
+    bool PromptOnUnlock = 3;
+    bool IgnoreLegacyEndpoints = 4;
+  }
+
+  message Os {
+    string OsType = 1;
+    repeated string OsVersions = 2;
+  }
+
+  message OsList {
+    repeated Os osList = 1;
+  }
+
+  message Process {
+    string OsType = 1;
+    string Path = 2;
+    repeated string Hashes = 3;
+    repeated string Fingerprints = 4;
+  }
+
+  message ProcessMulti {
+    string semantic = 1;
+    repeated Process processes = 2;
+  }
+
+  message Domains {
+    repeated string domains = 1;
+  }
+
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  string typeId = 4;
+  int64 version = 5;
+  repeated string roleAttributes = 6;
+
+  oneof subtype {
+    Mac mac = 7;
+    Mfa mfa = 8;
+    OsList osList = 9;
+    Process process = 10;
+    ProcessMulti processMulti = 11;
+    Domains domains = 12;
+  };
+}
+
 // Services
 message Service {
   string id = 1;

@@ -18,10 +18,15 @@ package model
 
 import (
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"google.golang.org/protobuf/proto"
 	"strings"
 )
 
@@ -34,6 +39,7 @@ func NewPostureCheckManager(env Env) *PostureCheckManager {
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheck),
 	}
 	manager.impl = manager
+	network.RegisterManagerDecoder[*PostureCheck](env.GetHostController().GetNetwork().GetManagers(), manager)
 	return manager
 }
 
@@ -45,8 +51,25 @@ func (self *PostureCheckManager) newModelEntity() edgeEntity {
 	return &PostureCheck{}
 }
 
-func (self *PostureCheckManager) Create(postureCheckModel *PostureCheck) (string, error) {
-	return self.createEntity(postureCheckModel)
+func (self *PostureCheckManager) Create(entity *PostureCheck) error {
+	return network.DispatchCreate[*PostureCheck](self, entity)
+}
+
+func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck]) error {
+	_, err := self.createEntity(cmd.Entity)
+	return err
+}
+
+func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.UpdatedFields) error {
+	return network.DispatchUpdate[*PostureCheck](self, entity, checker)
+}
+
+func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck]) error {
+	var checker boltz.FieldChecker = self
+	if cmd.UpdatedFields != nil {
+		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
+	}
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {
@@ -89,19 +112,6 @@ func (self *PostureCheckManager) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldSemantic)
 }
 
-func (self *PostureCheckManager) Update(ca *PostureCheck) error {
-	return self.updateEntity(ca, self)
-}
-
-func (self *PostureCheckManager) Patch(ca *PostureCheck, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: self, second: checker}
-	return self.updateEntity(ca, combinedChecker)
-}
-
-func (self *PostureCheckManager) Delete(id string) error {
-	return self.deleteEntity(id)
-}
-
 func (self *PostureCheckManager) Query(query string) (*PostureCheckListResult, error) {
 	result := &PostureCheckListResult{manager: self}
 	if err := self.ListWithHandler(query, result.collect); err != nil {
@@ -117,6 +127,50 @@ func (self *PostureCheckManager) QueryPostureChecks(query ast.Query) (*PostureCh
 		return nil, err
 	}
 	return result, nil
+}
+
+func (self *PostureCheckManager) Marshall(entity *PostureCheck) ([]byte, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.PostureCheck{
+		Id:             entity.Id,
+		Name:           entity.Name,
+		Tags:           tags,
+		TypeId:         entity.TypeId,
+		Version:        entity.Version,
+		RoleAttributes: entity.RoleAttributes,
+	}
+
+	entity.SubType.fillProtobuf(msg)
+
+	return proto.Marshal(msg)
+}
+
+func (self *PostureCheckManager) Unmarshall(bytes []byte) (*PostureCheck, error) {
+	msg := &edge_cmd_pb.PostureCheck{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+
+	subType := newSubType(msg.TypeId)
+	if err := subType.fillFromProtobuf(msg); err != nil {
+		return nil, err
+	}
+
+	return &PostureCheck{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:           msg.Name,
+		TypeId:         msg.TypeId,
+		Version:        msg.Version,
+		RoleAttributes: msg.RoleAttributes,
+		SubType:        subType,
+	}, nil
 }
 
 type PostureCheckListResult struct {

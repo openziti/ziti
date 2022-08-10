@@ -21,7 +21,9 @@ import (
 	"github.com/blang/semver"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 	"time"
@@ -31,6 +33,36 @@ var _ PostureCheckSubType = &PostureCheckOperatingSystem{}
 
 type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
+}
+
+func (p *PostureCheckOperatingSystem) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	osList := &edge_cmd_pb.PostureCheck_OsList{}
+	for _, os := range p.OperatingSystems {
+		osList.OsList = append(osList.OsList, &edge_cmd_pb.PostureCheck_Os{
+			OsType:     os.OsType,
+			OsVersions: os.OsVersions,
+		})
+	}
+
+	msg.Subtype = &edge_cmd_pb.PostureCheck_OsList_{
+		OsList: osList,
+	}
+}
+
+func (p *PostureCheckOperatingSystem) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if osList_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_OsList_); ok {
+		if osList := osList_.OsList; osList_ != nil {
+			for _, os := range osList.OsList {
+				p.OperatingSystems = append(p.OperatingSystems, OperatingSystem{
+					OsType:     os.OsType,
+					OsVersions: os.OsVersions,
+				})
+			}
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of operation system, but got %T", msg.Subtype)
+	}
+	return nil
 }
 
 func (p *PostureCheckOperatingSystem) LastUpdatedAt(id string, pd *PostureData) *time.Time {
@@ -169,44 +201,6 @@ func (p *PostureCheckOperatingSystem) validateOsVersions() error {
 }
 
 func (p *PostureCheckOperatingSystem) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	ret := &persistence.PostureCheckOperatingSystem{
-		OperatingSystems: []persistence.OperatingSystem{},
-	}
-
-	if err := p.validateOsVersions(); err != nil {
-		return nil, err
-	}
-
-	for _, osMatch := range p.OperatingSystems {
-		ret.OperatingSystems = append(ret.OperatingSystems, persistence.OperatingSystem{
-			OsType:     osMatch.OsType,
-			OsVersions: osMatch.OsVersions,
-		})
-	}
-
-	return ret, nil
-}
-
-func (p *PostureCheckOperatingSystem) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	ret := &persistence.PostureCheckOperatingSystem{
-		OperatingSystems: []persistence.OperatingSystem{},
-	}
-
-	if err := p.validateOsVersions(); err != nil {
-		return nil, err
-	}
-
-	for _, osMatch := range p.OperatingSystems {
-		ret.OperatingSystems = append(ret.OperatingSystems, persistence.OperatingSystem{
-			OsType:     osMatch.OsType,
-			OsVersions: osMatch.OsVersions,
-		})
-	}
-
-	return ret, nil
-}
-
-func (p *PostureCheckOperatingSystem) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckOperatingSystem{
 		OperatingSystems: []persistence.OperatingSystem{},
 	}

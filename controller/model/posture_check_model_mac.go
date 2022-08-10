@@ -19,6 +19,8 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -27,6 +29,25 @@ var _ PostureCheckSubType = &PostureCheckMacAddresses{}
 
 type PostureCheckMacAddresses struct {
 	MacAddresses []string
+}
+
+func (p *PostureCheckMacAddresses) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	msg.Subtype = &edge_cmd_pb.PostureCheck_Mac_{
+		Mac: &edge_cmd_pb.PostureCheck_Mac{
+			MacAddresses: p.MacAddresses,
+		},
+	}
+}
+
+func (p *PostureCheckMacAddresses) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if mac, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_Mac_); ok {
+		if mac.Mac != nil {
+			p.MacAddresses = mac.Mac.MacAddresses
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of mac address, but got %T", msg.Subtype)
+	}
+	return nil
 }
 
 func (p *PostureCheckMacAddresses) LastUpdatedAt(apiSessionId string, pd *PostureData) *time.Time {
@@ -83,18 +104,6 @@ func (p *PostureCheckMacAddresses) fillFrom(_ EntityManager, tx *bbolt.Tx, check
 }
 
 func (p *PostureCheckMacAddresses) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMacAddresses{
-		MacAddresses: p.MacAddresses,
-	}, nil
-}
-
-func (p *PostureCheckMacAddresses) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckMacAddresses{
-		MacAddresses: p.MacAddresses,
-	}, nil
-}
-
-func (p *PostureCheckMacAddresses) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckMacAddresses{
 		MacAddresses: p.MacAddresses,
 	}, nil
