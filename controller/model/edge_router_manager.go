@@ -18,12 +18,17 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/edge/eid"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/fabric/controller/network"
+	"google.golang.org/protobuf/proto"
 	"strconv"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -35,7 +40,7 @@ import (
 func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 	manager := &EdgeRouterManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeRouter),
-		allowedFieldsChecker: boltz.MapFieldChecker{
+		allowedFieldsChecker: fields.UpdatedFieldsMap{
 			persistence.FieldName:                        struct{}{},
 			persistence.FieldEdgeRouterIsTunnelerEnabled: struct{}{},
 			persistence.FieldRoleAttributes:              struct{}{},
@@ -44,13 +49,19 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 			db.FieldRouterNoTraversal:                    struct{}{},
 		},
 	}
+
 	manager.impl = manager
+
+	network.RegisterUpdateDecoder[*EdgeRouter](env.GetHostController().GetNetwork().Managers, manager)
+	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
+	RegisterCommand(env, &CreateEdgeRouterCmd{}, &edge_cmd_pb.CreateEdgeRouterCmd{})
+
 	return manager
 }
 
 type EdgeRouterManager struct {
 	baseEntityManager
-	allowedFieldsChecker boltz.FieldChecker
+	allowedFieldsChecker fields.UpdatedFieldsMap
 }
 
 func (self *EdgeRouterManager) GetEntityTypeId() string {
@@ -61,15 +72,77 @@ func (self *EdgeRouterManager) newModelEntity() edgeEntity {
 	return &EdgeRouter{}
 }
 
-func (self *EdgeRouterManager) Create(modelEntity *EdgeRouter) (string, error) {
-	enrollment := &Enrollment{
-		BaseEntity: models.BaseEntity{},
-		Method:     MethodEnrollEdgeRouterOtt,
+func (self *EdgeRouterManager) Create(edgeRouter *EdgeRouter) error {
+	if edgeRouter.Id == "" {
+		edgeRouter.Id = eid.New()
 	}
 
-	id, _, err := self.CreateWithEnrollment(modelEntity, enrollment)
+	enrollment := &Enrollment{
+		BaseEntity:   models.BaseEntity{Id: eid.New()},
+		Method:       MethodEnrollEdgeRouterOtt,
+		EdgeRouterId: &edgeRouter.Id,
+	}
 
-	return id, err
+	cmd := &CreateEdgeRouterCmd{
+		manager:    self,
+		edgeRouter: edgeRouter,
+		enrollment: enrollment,
+	}
+
+	return self.Dispatch(cmd)
+}
+
+func (self *EdgeRouterManager) ApplyCreate(cmd *CreateEdgeRouterCmd) error {
+	edgeRouter := cmd.edgeRouter
+	enrollment := cmd.enrollment
+
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		boltEdgeRouter, err := edgeRouter.toBoltEntityForCreate(tx, self.impl)
+		if err != nil {
+			return err
+		}
+
+		if err = self.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
+			return err
+		}
+
+		if err := self.GetStore().Create(ctx, boltEdgeRouter); err != nil {
+			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
+			return err
+		}
+
+		if err = enrollment.FillJwtInfo(self.env, edgeRouter.Id); err != nil {
+			return err
+		}
+
+		_, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
+		return err
+	})
+}
+
+func (self *EdgeRouterManager) Update(entity *EdgeRouter, unrestricted bool, checker fields.UpdatedFields) error {
+	cmd := &command.UpdateEntityCommand[*EdgeRouter]{
+		Updater:       self,
+		Entity:        entity,
+		UpdatedFields: checker,
+	}
+	if unrestricted {
+		cmd.Flags = updateUnrestricted
+	}
+	return self.Dispatch(cmd)
+}
+
+func (self *EdgeRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouter]) error {
+	var checker boltz.FieldChecker = cmd.UpdatedFields
+	if cmd.Flags != updateUnrestricted {
+		if checker == nil {
+			checker = self.allowedFieldsChecker
+		} else {
+			checker = &AndFieldChecker{first: self.allowedFieldsChecker, second: cmd.UpdatedFields}
+		}
+	}
+	return self.updateEntity(cmd.Entity, checker)
 }
 
 func (self *EdgeRouterManager) Read(id string) (*EdgeRouter, error) {
@@ -101,26 +174,6 @@ func (self *EdgeRouterManager) ReadOneByQuery(query string) (*EdgeRouter, error)
 
 func (self *EdgeRouterManager) ReadOneByFingerprint(fingerprint string) (*EdgeRouter, error) {
 	return self.ReadOneByQuery(fmt.Sprintf(`fingerprint = "%v"`, fingerprint))
-}
-
-func (self *EdgeRouterManager) Update(modelEntity *EdgeRouter, restrictFields bool) error {
-	if restrictFields {
-		return self.updateEntity(modelEntity, self.allowedFieldsChecker)
-	}
-	return self.updateEntity(modelEntity, nil)
-}
-
-func (self *EdgeRouterManager) Patch(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
-	combinedChecker := &AndFieldChecker{first: self.allowedFieldsChecker, second: checker}
-	return self.patchEntity(modelEntity, combinedChecker)
-}
-
-func (self *EdgeRouterManager) PatchUnrestricted(modelEntity *EdgeRouter, checker boltz.FieldChecker) error {
-	return self.patchEntity(modelEntity, checker)
-}
-
-func (self *EdgeRouterManager) Delete(id string) error {
-	return self.deleteEntity(id)
 }
 
 func (self *EdgeRouterManager) Query(query string) (*EdgeRouterListResult, error) {
@@ -193,55 +246,6 @@ func (self *EdgeRouterManager) QueryRoleAttributes(queryString string) ([]string
 	return self.queryRoleAttributes(index, queryString)
 }
 
-func (self *EdgeRouterManager) CreateWithEnrollment(edgeRouter *EdgeRouter, enrollment *Enrollment) (string, string, error) {
-	if edgeRouter.Id == "" {
-		edgeRouter.Id = eid.New()
-	}
-
-	if enrollment.Id == "" {
-		enrollment.Id = eid.New()
-	}
-
-	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltEdgeRouter, err := edgeRouter.toBoltEntityForCreate(tx, self.impl)
-		if err != nil {
-			return err
-		}
-
-		if err = self.ValidateNameOnCreate(ctx, boltEdgeRouter); err != nil {
-			return err
-		}
-
-		if err := self.GetStore().Create(ctx, boltEdgeRouter); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("could not create %v in bolt storage", self.GetStore().GetSingularEntityType())
-			return err
-		}
-
-		enrollment.EdgeRouterId = &edgeRouter.Id
-
-		err = enrollment.FillJwtInfo(self.env, edgeRouter.Id)
-
-		if err != nil {
-			return err
-		}
-
-		_, err = self.env.GetManagers().Enrollment.createEntityInTx(ctx, enrollment)
-
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return "", "", err
-	}
-
-	return edgeRouter.Id, enrollment.Id, nil
-}
-
 func (self *EdgeRouterManager) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.collectEnrollmentsInTx(tx, id, collector)
@@ -304,7 +308,7 @@ func (self *EdgeRouterManager) ReEnroll(router *EdgeRouter) error {
 		return fmt.Errorf("unabled to alter db for re-enrolling edge router: %v", err)
 	}
 
-	if err := self.PatchUnrestricted(router, boltz.MapFieldChecker{
+	if err := self.Update(router, true, fields.UpdatedFieldsMap{
 		db.FieldRouterFingerprint:             struct{}{},
 		persistence.FieldEdgeRouterCertPEM:    struct{}{},
 		persistence.FieldEdgeRouterIsVerified: struct{}{},
@@ -361,7 +365,7 @@ func (self *EdgeRouterManager) ExtendEnrollment(router *EdgeRouter, clientCsrPem
 	router.Fingerprint = &fingerprint
 	router.CertPem = &clientPemString
 
-	err = self.PatchUnrestricted(router, &boltz.MapFieldChecker{
+	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterCertPEM: struct{}{},
 		db.FieldRouterFingerprint:          struct{}{},
 	})
@@ -406,7 +410,7 @@ func (self *EdgeRouterManager) ExtendEnrollmentWithVerify(router *EdgeRouter, cl
 	router.UnverifiedFingerprint = &fingerprint
 	router.UnverifiedCertPem = &clientPemString
 
-	err = self.PatchUnrestricted(router, &boltz.MapFieldChecker{
+	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
 	})
@@ -433,7 +437,7 @@ func (self *EdgeRouterManager) ExtendEnrollmentVerify(router *EdgeRouter) error 
 		router.UnverifiedFingerprint = nil
 		router.UnverifiedCertPem = nil
 
-		return self.PatchUnrestricted(router, boltz.MapFieldChecker{
+		return self.Update(router, true, fields.UpdatedFieldsMap{
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldCaCertPem:                       struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
@@ -442,6 +446,76 @@ func (self *EdgeRouterManager) ExtendEnrollmentVerify(router *EdgeRouter) error 
 	}
 
 	return errors.New("no outstanding verification necessary")
+}
+
+func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_cmd_pb.EdgeRouter, error) {
+	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
+	if err != nil {
+		return nil, err
+	}
+
+	appData, err := edge_cmd_pb.EncodeJson(entity.AppData)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := &edge_cmd_pb.EdgeRouter{
+		Id:                    entity.Id,
+		Name:                  entity.Name,
+		Tags:                  tags,
+		RoleAttributes:        entity.RoleAttributes,
+		IsVerified:            entity.IsVerified,
+		Fingerprint:           entity.Fingerprint,
+		CertPem:               entity.CertPem,
+		Hostname:              entity.Hostname,
+		IsTunnelerEnabled:     entity.IsTunnelerEnabled,
+		AppData:               appData,
+		UnverifiedFingerprint: entity.UnverifiedFingerprint,
+		UnverifiedCertPem:     entity.UnverifiedCertPem,
+		Cost:                  uint32(entity.Cost),
+		NoTraversal:           entity.NoTraversal,
+		EdgeRouterProtocols:   entity.EdgeRouterProtocols,
+	}
+
+	return msg, nil
+}
+
+func (self *EdgeRouterManager) Marshall(entity *EdgeRouter) ([]byte, error) {
+	msg, err := self.EdgeRouterToProtobuf(entity)
+	if err != nil {
+		return nil, err
+	}
+	return proto.Marshal(msg)
+}
+
+func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter) (*EdgeRouter, error) {
+	return &EdgeRouter{
+		BaseEntity: models.BaseEntity{
+			Id:   msg.Id,
+			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
+		},
+		Name:                  msg.Name,
+		RoleAttributes:        msg.RoleAttributes,
+		IsVerified:            msg.IsVerified,
+		Fingerprint:           msg.Fingerprint,
+		CertPem:               msg.CertPem,
+		Hostname:              msg.Hostname,
+		EdgeRouterProtocols:   msg.EdgeRouterProtocols,
+		IsTunnelerEnabled:     msg.IsTunnelerEnabled,
+		AppData:               edge_cmd_pb.DecodeJson(msg.AppData),
+		UnverifiedFingerprint: msg.UnverifiedFingerprint,
+		UnverifiedCertPem:     msg.UnverifiedCertPem,
+		Cost:                  uint16(msg.Cost),
+		NoTraversal:           msg.NoTraversal,
+	}, nil
+}
+
+func (self *EdgeRouterManager) Unmarshall(bytes []byte) (*EdgeRouter, error) {
+	msg := &edge_cmd_pb.EdgeRouter{}
+	if err := proto.Unmarshal(bytes, msg); err != nil {
+		return nil, err
+	}
+	return self.ProtobufToEdgeRouter(msg)
 }
 
 type EdgeRouterListResult struct {
@@ -459,5 +533,52 @@ func (result *EdgeRouterListResult) collect(tx *bbolt.Tx, ids []string, queryMet
 		}
 		result.EdgeRouters = append(result.EdgeRouters, entity)
 	}
+	return nil
+}
+
+type CreateEdgeRouterCmd struct {
+	manager    *EdgeRouterManager
+	edgeRouter *EdgeRouter
+	enrollment *Enrollment
+}
+
+func (self *CreateEdgeRouterCmd) Apply() error {
+	return self.manager.ApplyCreate(self)
+}
+
+func (self *CreateEdgeRouterCmd) Encode() ([]byte, error) {
+	edgeRouterMsg, err := self.manager.EdgeRouterToProtobuf(self.edgeRouter)
+	if err != nil {
+		return nil, err
+	}
+
+	enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.EnrollmentToProtobuf(self.enrollment)
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := &edge_cmd_pb.CreateEdgeRouterCmd{
+		EdgeRouter: edgeRouterMsg,
+		Enrollment: enrollment,
+	}
+
+	return proto.Marshal(cmd)
+}
+
+func (self *CreateEdgeRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdgeRouterCmd) error {
+	edgeRouter, err := self.manager.ProtobufToEdgeRouter(msg.EdgeRouter)
+	if err != nil {
+		return err
+	}
+
+	enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.ProtobufToEnrollment(msg.Enrollment)
+	if err != nil {
+		return err
+	}
+
+	self.manager = env.GetManagers().EdgeRouter
+	self.edgeRouter = edgeRouter
+	self.enrollment = enrollment
+
 	return nil
 }

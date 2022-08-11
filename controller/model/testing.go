@@ -56,8 +56,8 @@ func (self testHostController) Stop() {
 
 type TestContext struct {
 	*persistence.TestContext
-	managers *Managers
-	config   *config.Config
+	managers        *Managers
+	config          *config.Config
 	metricsRegistry metrics.Registry
 	hostController  *testHostController
 }
@@ -180,9 +180,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	edgeRouter := &EdgeRouter{
 		Name: eid.New(),
 	}
-	var err error
-	edgeRouter.Id, err = ctx.managers.EdgeRouter.Create(edgeRouter)
-	ctx.NoError(err)
+	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter))
 	return edgeRouter
 }
 

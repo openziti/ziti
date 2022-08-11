@@ -132,7 +132,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 	edgeRouter.CertPem = &clientCertPemStr
 	edgeRouter.IsVerified = true
 	edgeRouter.Fingerprint = &clientCertFingerprint
-	if err := module.env.GetManagers().EdgeRouter.Update(edgeRouter, false); err != nil {
+	if err := module.env.GetManagers().EdgeRouter.Update(edgeRouter, true, nil); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 
