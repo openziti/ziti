@@ -128,7 +128,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	txRouter.IsVerified = true
 	txRouter.Fingerprint = &cltFp
 
-	if err := module.env.GetManagers().TransitRouter.Update(txRouter, true); err != nil {
+	if err := module.env.GetManagers().TransitRouter.Update(txRouter, true, nil); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 

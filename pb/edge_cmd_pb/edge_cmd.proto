@@ -10,6 +10,7 @@ enum CommandType {
   CreateEdgeTerminatorType = 1000;
   ReplaceEnrollmentWithAuthenticatorType = 1001;
   CreateEdgeRouterType = 1002;
+  CreateTransitRouterType = 1003;
 }
 
 message CreateEdgeTerminatorCommand {
@@ -39,6 +40,7 @@ message JsonValue {
   }
 }
 
+// Authenticators
 message Authenticator {
   message Cert {
     string fingerprint = 1;
@@ -62,6 +64,7 @@ message Authenticator {
   }
 }
 
+// Auth Policies
 message AuthPolicy {
   message Primary {
     message Cert {
@@ -102,6 +105,7 @@ message AuthPolicy {
   map<string, TagValue> tags = 5;
 }
 
+// CAs
 message Ca {
   message ExternalIdClaim {
     string location = 1;
@@ -127,6 +131,7 @@ message Ca {
   optional ExternalIdClaim externalIdClaim = 13;
 }
 
+// Configs
 message Config {
   string id = 1;
   string name = 2;
@@ -135,6 +140,7 @@ message Config {
   map<string, TagValue> tags = 5;
 }
 
+// Config Types
 message ConfigType {
   string id = 1;
   string name = 2;
@@ -142,6 +148,7 @@ message ConfigType {
   map<string, TagValue> tags = 4;
 }
 
+// Edge Routers
 message EdgeRouter {
   string id = 1;
   string name = 2;
@@ -165,6 +172,7 @@ message CreateEdgeRouterCmd {
   Enrollment enrollment = 2;
 }
 
+// Edge Router Policies
 message EdgeRouterPolicy {
   string id = 1;
   string name = 2;
@@ -174,6 +182,7 @@ message EdgeRouterPolicy {
   repeated string identityRoles = 6;
 }
 
+// Enrollments
 message Enrollment {
   string id = 1;
   map<string, TagValue> tags = 2;
@@ -194,6 +203,7 @@ message ReplaceEnrollmentWithAuthenticatorCmd {
   Authenticator authenticator = 2;
 }
 
+// External JWT Signers
 message ExternalJwtSigner {
   string id = 1;
   string name = 2;
@@ -213,6 +223,7 @@ message ExternalJwtSigner {
   google.protobuf.Timestamp notBefore = 16;
 }
 
+// MFA
 message Mfa {
   string id = 1;
   map<string, TagValue> tags = 2;
@@ -222,6 +233,7 @@ message Mfa {
   repeated string recoveryCodes = 6;
 }
 
+// Services
 message Service {
   string id = 1;
   string name = 2;
@@ -232,6 +244,7 @@ message Service {
   bool encryptionRequired = 7;
 }
 
+// Service Edge Router Policies
 message ServiceEdgeRouterPolicy {
   string id = 1;
   string name = 2;
@@ -241,6 +254,7 @@ message ServiceEdgeRouterPolicy {
   repeated string serviceRoles = 6;
 }
 
+// Service Policies
 message ServicePolicy {
   string id = 1;
   string name = 2;
@@ -251,3 +265,22 @@ message ServicePolicy {
   repeated string postureCheckRoles = 7;
   string policyType = 8;
 }
+
+// Transit Routers
+message TransitRouter {
+  string id = 1;
+  string name = 2;
+  map<string, TagValue> tags = 3;
+  bool isVerified = 4;
+  optional string fingerprint = 5;
+  optional string unverifiedFingerprint = 6;
+  optional string unverifiedCertPem = 7;
+  uint32 cost = 8;
+  bool noTraversal = 9;
+}
+
+message CreateTransitRouterCmd {
+  TransitRouter router = 1;
+  Enrollment enrollment = 2;
+}
+

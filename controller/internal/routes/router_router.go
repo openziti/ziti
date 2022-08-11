@@ -103,7 +103,7 @@ func (r *TransitRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, router *rest_model.RouterCreate) {
 	Create(rc, rc, TransitRouterLinkFactory, func() (string, error) {
-		return ae.Managers.TransitRouter.Create(MapCreateRouterToModel(router))
+		return MapCreate(ae.Managers.TransitRouter.Create, MapCreateRouterToModel(router))
 	})
 }
 
@@ -113,12 +113,12 @@ func (r *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterUpdate) {
 	Update(rc, func(id string) error {
-		return ae.Managers.TransitRouter.Update(MapUpdateTransitRouterToModel(routerId, router), false)
+		return ae.Managers.TransitRouter.Update(MapUpdateTransitRouterToModel(routerId, router), false, nil)
 	})
 }
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterPatch) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.TransitRouter.Patch(MapPatchTransitRouterToModel(routerId, router), fields.ConcatNestedNames().FilterMaps("tags"), false)
+		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.ConcatNestedNames().FilterMaps("tags"))
 	})
 }
