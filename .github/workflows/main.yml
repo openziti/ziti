@@ -18,7 +18,7 @@ env:
 jobs:
   mac-os-build:
     name: Build Mac OS binaries
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
