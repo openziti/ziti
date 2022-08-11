@@ -239,10 +239,12 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 	}
 
 	var precedence uint32
-	if entity.Precedence.IsFailed() {
-		precedence = 1
-	} else if entity.Precedence.IsRequired() {
-		precedence = 2
+	if entity.Precedence != nil {
+		if entity.Precedence.IsFailed() {
+			precedence = 1
+		} else if entity.Precedence.IsRequired() {
+			precedence = 2
+		}
 	}
 
 	msg := &cmd_pb.Terminator{
@@ -276,7 +278,7 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		precedence = xt.Precedences.Required
 	}
 
-	return &Terminator{
+	result := &Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: cmd_pb.DecodeTags(msg.Tags),
@@ -291,7 +293,9 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		Precedence:     precedence,
 		PeerData:       msg.PeerData,
 		HostId:         msg.HostId,
-	}, nil
+	}
+
+	return result, nil
 }
 
 type TerminatorListResult struct {

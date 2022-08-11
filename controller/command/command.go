@@ -16,6 +16,13 @@
 
 package command
 
+import (
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/debugz"
+	"github.com/sirupsen/logrus"
+	"reflect"
+)
+
 // Command instances represent actions to be taken by the fabric controller. They are serializable,
 // so they can be shipped from one controller for RAFT coordination
 type Command interface {
@@ -39,9 +46,34 @@ type Dispatcher interface {
 }
 
 // LocalDispatcher should be used when running a non-clustered system
-type LocalDispatcher struct{}
+type LocalDispatcher struct {
+	EncodeDecodeCommands bool
+}
 
-func (LocalDispatcher) Dispatch(command Command) error {
+func (self *LocalDispatcher) Dispatch(command Command) error {
+	defer func() {
+		if p := recover(); p != nil {
+			pfxlog.Logger().
+				WithField(logrus.ErrorKey, p).
+				WithField("cmdType", reflect.TypeOf(command)).
+				Error("error while dispatching command of type")
+			debugz.DumpLocalStack()
+			panic(p)
+		}
+	}()
+
+	if self.EncodeDecodeCommands {
+		bytes, err := command.Encode()
+		if err != nil {
+			return err
+		}
+		cmd, err := GetDefaultDecoders().Decode(bytes)
+		if err != nil {
+			return err
+		}
+		return cmd.Apply()
+	}
+
 	return command.Apply()
 }
 

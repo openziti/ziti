@@ -63,7 +63,7 @@ func (self *CommandManager) decodeUpdateEntityCommand(_ int32, data []byte) (com
 		return nil, err
 	}
 
-	decoder, err := ioc.Get[updateDecoderF](self.Registry, msg.EntityType+CreateDecoder)
+	decoder, err := ioc.Get[updateDecoderF](self.Registry, msg.EntityType+UpdateDecoder)
 	if err != nil {
 		return nil, err
 	}

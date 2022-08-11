@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/ioc"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -133,7 +134,7 @@ type deleteDecoderF func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, erro
 
 func RegisterDeleteDecoder(managers *Managers, deleter command.EntityDeleter) {
 	entityType := deleter.GetEntityTypeId()
-	managers.Registry.RegisterSingleton(entityType+UpdateDecoder, deleteDecoderF(func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error) {
+	managers.Registry.RegisterSingleton(entityType+DeleteDecoder, deleteDecoderF(func(cmd *cmd_pb.DeleteEntityCommand) (command.Command, error) {
 		return &command.DeleteEntityCommand{
 			Deleter: deleter,
 			Id:      cmd.EntityId,
@@ -161,12 +162,17 @@ func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, s
 	result.Services = newServiceManager(result)
 	result.Inspections = NewInspectionsManager(network)
 	if result.Dispatcher == nil {
-		result.Dispatcher = command.LocalDispatcher{}
+		devVersion := versions.MustParseSemVer("0.0.0")
+		version := versions.MustParseSemVer(network.VersionProvider.Version())
+		result.Dispatcher = &command.LocalDispatcher{
+			EncodeDecodeCommands: devVersion.Equals(version),
+		}
 	}
 	result.Command.registerGenericCommands()
 
 	RegisterManagerDecoder[*Service](result, result.Services)
 	RegisterManagerDecoder[*Router](result, result.Routers)
+	RegisterManagerDecoder[*Terminator](result, result.Terminators)
 
 	return result
 }
