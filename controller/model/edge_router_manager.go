@@ -17,12 +17,14 @@
 package model
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"google.golang.org/protobuf/proto"
 	"strconv"
 
@@ -52,9 +54,9 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 
 	manager.impl = manager
 
+	RegisterCommand(env, &CreateEdgeRouterCmd{}, &edge_cmd_pb.CreateEdgeRouterCmd{})
 	network.RegisterUpdateDecoder[*EdgeRouter](env.GetHostController().GetNetwork().Managers, manager)
 	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
-	RegisterCommand(env, &CreateEdgeRouterCmd{}, &edge_cmd_pb.CreateEdgeRouterCmd{})
 
 	return manager
 }
@@ -454,7 +456,7 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		return nil, err
 	}
 
-	appData, err := edge_cmd_pb.EncodeJson(entity.AppData)
+	appData, err := json.Marshal(entity.AppData)
 	if err != nil {
 		return nil, err
 	}
@@ -489,6 +491,11 @@ func (self *EdgeRouterManager) Marshall(entity *EdgeRouter) ([]byte, error) {
 }
 
 func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter) (*EdgeRouter, error) {
+	appData := map[string]interface{}{}
+	if err := json.Unmarshal(msg.AppData, &appData); err != nil {
+		return nil, err
+	}
+
 	return &EdgeRouter{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -502,7 +509,7 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		Hostname:              msg.Hostname,
 		EdgeRouterProtocols:   msg.EdgeRouterProtocols,
 		IsTunnelerEnabled:     msg.IsTunnelerEnabled,
-		AppData:               edge_cmd_pb.DecodeJson(msg.AppData),
+		AppData:               appData,
 		UnverifiedFingerprint: msg.UnverifiedFingerprint,
 		UnverifiedCertPem:     msg.UnverifiedCertPem,
 		Cost:                  uint16(msg.Cost),
@@ -562,21 +569,21 @@ func (self *CreateEdgeRouterCmd) Encode() ([]byte, error) {
 		Enrollment: enrollment,
 	}
 
-	return proto.Marshal(cmd)
+	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *CreateEdgeRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdgeRouterCmd) error {
+	self.manager = env.GetManagers().EdgeRouter
 	edgeRouter, err := self.manager.ProtobufToEdgeRouter(msg.EdgeRouter)
 	if err != nil {
 		return err
 	}
 
-	enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.ProtobufToEnrollment(msg.Enrollment)
+	enrollment, err := env.GetManagers().Enrollment.ProtobufToEnrollment(msg.Enrollment)
 	if err != nil {
 		return err
 	}
 
-	self.manager = env.GetManagers().EdgeRouter
 	self.edgeRouter = edgeRouter
 	self.enrollment = enrollment
 

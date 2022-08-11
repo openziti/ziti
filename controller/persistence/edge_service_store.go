@@ -19,9 +19,9 @@ package persistence
 import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/v2/errorz"
 	"go.etcd.io/bbolt"
 )
 
@@ -99,10 +99,11 @@ func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
 		return entity
 	}
 
-	store := &edgeServiceStoreImpl{
-		baseStore: newChildBaseStore(stores, stores.Service, parentMapper),
-	}
+	store := &edgeServiceStoreImpl{}
+	stores.Service.AddDeleteHandler(store.cleanupEdgeService)
+	store.baseStore = newChildBaseStore(stores, stores.Service, parentMapper)
 	store.InitImpl(store)
+
 	return store
 }
 
@@ -257,7 +258,7 @@ func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity boltz.
 	return nil
 }
 
-func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+func (store *edgeServiceStoreImpl) cleanupEdgeService(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from ServiceRoles in service policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.servicePolicy.symbolServiceRoles); err != nil {
@@ -268,37 +269,37 @@ func (store *edgeServiceStoreImpl) DeleteById(ctx boltz.MutateContext, id string
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolServiceRoles); err != nil {
 			return err
 		}
+
+		var servicePolicyEvents []*ServiceEvent
+
+		cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+		for cursor.IsValid() {
+			servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+				Type:       ServiceDialAccessLost,
+				IdentityId: string(cursor.Current()),
+				ServiceId:  id,
+			})
+			cursor.Next()
+		}
+
+		cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+		for cursor.IsValid() {
+			servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
+				Type:       ServiceBindAccessLost,
+				IdentityId: string(cursor.Current()),
+				ServiceId:  id,
+			})
+			cursor.Next()
+		}
+
+		if len(servicePolicyEvents) > 0 {
+			ctx.Tx().OnCommit(func() {
+				ServiceEvents.dispatchEventsAsync(servicePolicyEvents)
+			})
+		}
 	}
 
-	var servicePolicyEvents []*ServiceEvent
-
-	cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
-	for cursor.IsValid() {
-		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
-			Type:       ServiceDialAccessLost,
-			IdentityId: string(cursor.Current()),
-			ServiceId:  id,
-		})
-		cursor.Next()
-	}
-
-	cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
-	for cursor.IsValid() {
-		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
-			Type:       ServiceBindAccessLost,
-			IdentityId: string(cursor.Current()),
-			ServiceId:  id,
-		})
-		cursor.Next()
-	}
-
-	if len(servicePolicyEvents) > 0 {
-		ctx.Tx().OnCommit(func() {
-			ServiceEvents.dispatchEventsAsync(servicePolicyEvents)
-		})
-	}
-
-	return store.BaseStore.DeleteById(ctx, id)
+	return nil
 }
 
 func (store *edgeServiceStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {

@@ -17,6 +17,7 @@
 package model
 
 import (
+	"encoding/json"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
@@ -94,7 +95,7 @@ func (self *ConfigManager) Marshall(entity *Config) ([]byte, error) {
 		return nil, err
 	}
 
-	data, err := edge_cmd_pb.EncodeJson(entity.Data)
+	data, err := json.Marshal(entity.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -116,6 +117,11 @@ func (self *ConfigManager) Unmarshall(bytes []byte) (*Config, error) {
 		return nil, err
 	}
 
+	data := map[string]interface{}{}
+	if err := json.Unmarshal(msg.Data, &data); err != nil {
+		return nil, err
+	}
+
 	return &Config{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -123,6 +129,6 @@ func (self *ConfigManager) Unmarshall(bytes []byte) (*Config, error) {
 		},
 		Name:   msg.Name,
 		TypeId: msg.ConfigTypeId,
-		Data:   edge_cmd_pb.DecodeJson(msg.Data),
+		Data:   data,
 	}, nil
 }

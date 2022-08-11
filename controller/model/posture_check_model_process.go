@@ -36,6 +36,10 @@ type PostureCheckProcess struct {
 	Fingerprint    string
 }
 
+func (p *PostureCheckProcess) TypeId() string {
+	return persistence.PostureCheckTypeProcess
+}
+
 func (p *PostureCheckProcess) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	msg.Subtype = &edge_cmd_pb.PostureCheck_Process_{
 		Process: &edge_cmd_pb.PostureCheck_Process{

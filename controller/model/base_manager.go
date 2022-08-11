@@ -32,7 +32,7 @@ import (
 
 type EntityManager interface {
 	models.EntityRetriever[models.Entity]
-
+	command.EntityDeleter
 	GetEnv() Env
 
 	newModelEntity() edgeEntity
@@ -300,7 +300,7 @@ func (self *baseEntityManager) readEntityByQuery(query string) (models.Entity, e
 
 func (self *baseEntityManager) Delete(id string) error {
 	cmd := &command.DeleteEntityCommand{
-		Deleter: self,
+		Deleter: self.impl, // needs to be impl, otherwise we will miss overrides to GetEntityTypeId
 		Id:      id,
 	}
 	return self.Dispatch(cmd)

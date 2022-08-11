@@ -32,6 +32,10 @@ type PostureCheckDomains struct {
 	Domains []string
 }
 
+func (p *PostureCheckDomains) TypeId() string {
+	return persistence.PostureCheckTypeDomain
+}
+
 func (p *PostureCheckDomains) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	msg.Subtype = &edge_cmd_pb.PostureCheck_Domains_{
 		Domains: &edge_cmd_pb.PostureCheck_Domains{

@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -361,7 +362,7 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
 		EnrollmentId:  self.enrollmentId,
 		Authenticator: authMsg,
 	}
-	return proto.Marshal(cmd)
+	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *ReplaceEnrollmentWithAuthenticatorCmd) Decode(env Env, msg *edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd) error {
