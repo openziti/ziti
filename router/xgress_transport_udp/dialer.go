@@ -17,7 +17,7 @@
 package xgress_transport_udp
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"net"
 	"time"
 
@@ -37,7 +37,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Debugf("parsing %v for xgress address: %v", destination, address)
 	packetAddress, err := xgress_udp.Parse(destination)
 	if err != nil {
-		return nil, fmt.Errorf("cannot dial on invalid address [%s] (%w)", destination, err)
+		return nil, xgress.MisconfiguredTerminatorError{InnerError: errors.Wrapf(err, "cannot dial on invalid address [%s]", destination)}
 	}
 
 	log.Debugf("dialing packet address [%v]", packetAddress)

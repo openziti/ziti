@@ -56,7 +56,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	txDestination, err := transport.ParseAddress(destination)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot dial on invalid address [%s]", destination)
+		return nil, xgress.MisconfiguredTerminatorError{InnerError: errors.Wrapf(err, "cannot dial on invalid address [%s]", destination)}
 	}
 
 	log.Debug("dialing")
