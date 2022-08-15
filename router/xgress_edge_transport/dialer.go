@@ -17,7 +17,7 @@
 package xgress_edge_transport
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -55,7 +55,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	txDestination, err := transport.ParseAddress(destination)
 	if err != nil {
-		return nil, xgress.InvalidTerminatorError{InnerError: fmt.Errorf("cannot dial on invalid address [%s] (%s)", destination, err)}
+		return nil, xgress.MisconfiguredTerminatorError{InnerError: errors.Wrapf(err, "cannot dial on invalid address [%s]", destination)}
 	}
 
 	log.Debug("dialing")
