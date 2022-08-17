@@ -12,9 +12,9 @@ for details
 * MacOS builds are now done on the macos-11 github builder
 * Linux builds are now done on the ubuntu-20.04 builder
 
-This will impact the minimum versions that the ziti-controller and ziti-router will run because
-the version of glibc that the applciations are compiled with will affect which versions
-they run on.
+This changes the oldest supported operating system versions for ziti-controller and ziti-router to those 
+listed above, due to dependencies on system shared libraries that may not be available on older operating 
+system versions.
 
 If this change negatively impacts you, please let us on [Discourse](https://openziti.discourse.group).
 
