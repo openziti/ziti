@@ -1,3 +1,23 @@
+# Release 0.26.5
+
+## What's New
+
+This build has no functional changes, but does have changes to the build workflow,
+because github is deprecating certain action runners. See
+https://github.blog/changelog/2022-08-09-github-actions-the-ubuntu-18-04-actions-runner-image-is-being-deprecated-and-will-be-removed-by-12-1-22/
+and
+https://github.blog/changelog/2022-07-20-github-actions-the-macos-10-15-actions-runner-image-is-being-deprecated-and-will-be-removed-by-8-30-22/
+for details 
+
+* MacOS builds are now done on the macos-11 github builder
+* Linux builds are now done on the ubuntu-20.04 builder
+
+This changes the oldest supported operating system versions for ziti-controller and ziti-router to those 
+listed above, due to dependencies on system shared libraries that may not be available on older operating 
+system versions.
+
+If this change negatively impacts you, please let us on [Discourse](https://openziti.discourse.group).
+
 # Release 0.26.4
 
 ## What's New

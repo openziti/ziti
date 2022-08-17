@@ -18,7 +18,7 @@ env:
 jobs:
   mac-os-build:
     name: Build Mac OS binaries
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - name: Git Checkout
         uses: actions/checkout@v2
@@ -79,7 +79,7 @@ jobs:
 
   linux-build:
     name: Build and Publish Linux Binaries and Docker Image
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: [ mac-os-build, windows-build ]
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
