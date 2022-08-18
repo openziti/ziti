@@ -43,6 +43,10 @@ type PostureCheckMfa struct {
 	IgnoreLegacyEndpoints bool
 }
 
+func (p *PostureCheckMfa) TypeId() string {
+	return persistence.PostureCheckTypeMFA
+}
+
 func (p *PostureCheckMfa) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	msg.Subtype = &edge_cmd_pb.PostureCheck_Mfa_{
 		Mfa: &edge_cmd_pb.PostureCheck_Mfa{

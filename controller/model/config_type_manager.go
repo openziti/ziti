@@ -17,6 +17,7 @@
 package model
 
 import (
+	"encoding/json"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
@@ -117,7 +118,7 @@ func (self *ConfigTypeManager) Marshall(entity *ConfigType) ([]byte, error) {
 		return nil, err
 	}
 
-	schema, err := edge_cmd_pb.EncodeJson(entity.Schema)
+	schema, err := json.Marshal(entity.Schema)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +139,17 @@ func (self *ConfigTypeManager) Unmarshall(bytes []byte) (*ConfigType, error) {
 		return nil, err
 	}
 
+	schema := map[string]interface{}{}
+	if err := json.Unmarshal(msg.Schema, &schema); err != nil {
+		return nil, err
+	}
+
 	return &ConfigType{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
 			Tags: edge_cmd_pb.DecodeTags(msg.Tags),
 		},
 		Name:   msg.Name,
-		Schema: edge_cmd_pb.DecodeJson(msg.Schema),
+		Schema: schema,
 	}, nil
 }

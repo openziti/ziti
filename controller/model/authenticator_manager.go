@@ -752,6 +752,7 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 			UnverifiedFingerprint: st.Cert.UnverifiedFingerprint,
 			UnverifiedPem:         st.Cert.UnverifiedPem,
 		}
+		authenticator.Method = persistence.MethodAuthenticatorCert
 	case *edge_cmd_pb.Authenticator_Updb_:
 		if st.Updb == nil {
 			return nil, errors.Errorf("no updb data provided for authenticator with id: %v", msg.Id)
@@ -763,6 +764,7 @@ func (self *AuthenticatorManager) ProtobufToAuthenticator(msg *edge_cmd_pb.Authe
 			Password:      st.Updb.Password,
 			Salt:          st.Updb.Salt,
 		}
+		authenticator.Method = persistence.MethodAuthenticatorUpdb
 	}
 
 	return authenticator, nil

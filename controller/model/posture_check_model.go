@@ -38,6 +38,7 @@ type PostureCheck struct {
 }
 
 type PostureCheckSubType interface {
+	TypeId() string
 	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error)
 	fillFrom(manager EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error
 	Evaluate(apiSessionId string, pd *PostureData) bool

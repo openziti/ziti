@@ -17,6 +17,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
@@ -144,7 +145,10 @@ func (self *PostureCheckManager) Marshall(entity *PostureCheck) ([]byte, error) 
 		RoleAttributes: entity.RoleAttributes,
 	}
 
-	entity.SubType.fillProtobuf(msg)
+	if entity.SubType != nil {
+		entity.SubType.fillProtobuf(msg)
+		msg.TypeId = entity.SubType.TypeId()
+	}
 
 	return proto.Marshal(msg)
 }
@@ -155,9 +159,16 @@ func (self *PostureCheckManager) Unmarshall(bytes []byte) (*PostureCheck, error)
 		return nil, err
 	}
 
-	subType := newSubType(msg.TypeId)
-	if err := subType.fillFromProtobuf(msg); err != nil {
-		return nil, err
+	var subType PostureCheckSubType
+	if msg.Subtype != nil {
+		subType = newSubType(msg.TypeId)
+		if subType == nil {
+			return nil, fmt.Errorf("cannot create posture check subtype [%v]", msg.TypeId)
+		}
+
+		if err := subType.fillFromProtobuf(msg); err != nil {
+			return nil, err
+		}
 	}
 
 	return &PostureCheck{

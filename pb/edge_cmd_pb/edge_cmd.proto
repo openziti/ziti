@@ -31,13 +31,19 @@ message JsonMap {
   map<string, JsonValue> value = 1;
 }
 
+message JsonList {
+  repeated JsonValue value = 1;
+}
+
 message JsonValue {
   oneof value {
     bool boolValue = 1;
     string stringValue = 2;
     double fpValue = 3;
-    bool nilValue = 4;
-    JsonMap mapValue = 5;
+    int64 int64Value = 4;
+    bool nilValue = 5;
+    JsonMap mapValue = 6;
+    JsonList listValue = 7;
   }
 }
 
@@ -137,7 +143,7 @@ message Config {
   string id = 1;
   string name = 2;
   string configTypeId = 3;
-  JsonMap data = 4;
+  bytes data = 4;
   map<string, TagValue> tags = 5;
 }
 
@@ -145,7 +151,7 @@ message Config {
 message ConfigType {
   string id = 1;
   string name = 2;
-  JsonMap schema = 3;
+  bytes schema = 3;
   map<string, TagValue> tags = 4;
 }
 
@@ -160,7 +166,7 @@ message EdgeRouter {
   optional string certPem = 7;
   optional string hostname = 8;
   bool isTunnelerEnabled = 9;
-  JsonMap appData = 10;
+  bytes appData = 10;
   optional string unverifiedFingerprint = 11;
   optional string unverifiedCertPem = 12;
   uint32 cost = 13;
@@ -255,7 +261,7 @@ message Identity {
   uint32 defaultHostingCost = 11;
   map<string, uint32> serviceHostingPrecedences = 12;
   map<string, uint32> serviceHostingCosts = 13;
-  JsonMap appData = 14;
+  bytes appData = 14;
   string authPolicyId = 15;
   optional string externalId = 16;
   bool disabled = 17;

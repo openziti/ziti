@@ -35,6 +35,10 @@ type PostureCheckOperatingSystem struct {
 	OperatingSystems []OperatingSystem
 }
 
+func (p *PostureCheckOperatingSystem) TypeId() string {
+	return persistence.PostureCheckTypeOs
+}
+
 func (p *PostureCheckOperatingSystem) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	osList := &edge_cmd_pb.PostureCheck_OsList{}
 	for _, os := range p.OperatingSystems {

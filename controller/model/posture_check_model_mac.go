@@ -31,6 +31,10 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
 
+func (p *PostureCheckMacAddresses) TypeId() string {
+	return persistence.PostureCheckTypeMAC
+}
+
 func (p *PostureCheckMacAddresses) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	msg.Subtype = &edge_cmd_pb.PostureCheck_Mac_{
 		Mac: &edge_cmd_pb.PostureCheck_Mac{

@@ -17,6 +17,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
@@ -27,6 +28,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti"
@@ -64,6 +66,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 	manager.impl = manager
 
 	network.RegisterManagerDecoder[*Identity](env.GetHostController().GetNetwork().GetManagers(), manager)
+	RegisterCommand(env, &CreateIdentityWithEnrollmentsCmd{}, &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{})
 
 	return manager
 }
@@ -581,7 +584,7 @@ func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.
 		costMap[k] = uint32(v)
 	}
 
-	appData, err := edge_cmd_pb.EncodeJson(entity.AppData)
+	appData, err := json.Marshal(entity.AppData)
 	if err != nil {
 		return nil, err
 	}
@@ -652,6 +655,11 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		costMap[k] = uint16(v)
 	}
 
+	appData := map[string]interface{}{}
+	if err := json.Unmarshal(msg.AppData, &appData); err != nil {
+		return nil, err
+	}
+
 	return &Identity{
 		BaseEntity: models.BaseEntity{
 			Id:   msg.Id,
@@ -668,7 +676,7 @@ func (self *IdentityManager) ProtobufToIdentity(msg *edge_cmd_pb.Identity) (*Ide
 		DefaultHostingCost:        uint16(msg.DefaultHostingCost),
 		ServiceHostingPrecedences: precedenceMap,
 		ServiceHostingCosts:       costMap,
-		AppData:                   edge_cmd_pb.DecodeJson(msg.AppData),
+		AppData:                   appData,
 		AuthPolicyId:              msg.AuthPolicyId,
 		ExternalId:                msg.ExternalId,
 		Disabled:                  msg.Disabled,
@@ -713,7 +721,7 @@ func (self *CreateIdentityWithEnrollmentsCmd) Encode() ([]byte, error) {
 		cmd.Enrollments = append(cmd.Enrollments, enrollmentMsg)
 	}
 
-	return proto.Marshal(cmd)
+	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.CreateIdentityWithEnrollmentsCmd) error {

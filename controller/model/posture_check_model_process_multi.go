@@ -35,6 +35,10 @@ type PostureCheckProcessMulti struct {
 	Processes      []*ProcessMulti
 }
 
+func (p *PostureCheckProcessMulti) TypeId() string {
+	return persistence.PostureCheckTypeProcessMulti
+}
+
 func (p *PostureCheckProcessMulti) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
 	processMultiMsg := &edge_cmd_pb.PostureCheck_ProcessMulti{
 		Semantic: p.Semantic,

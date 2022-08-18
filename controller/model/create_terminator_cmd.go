@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -92,7 +93,14 @@ func (self *CreateEdgeTerminatorCmd) getTerminatorSession(tx *bbolt.Tx, terminat
 }
 
 func (self *CreateEdgeTerminatorCmd) Encode() ([]byte, error) {
-	return self.Env.GetManagers().Terminator.Marshall(self.Entity)
+	terminatorData, err := self.Env.GetManagers().Terminator.Marshall(self.Entity)
+	if err != nil {
+		return nil, err
+	}
+	cmd := &edge_cmd_pb.CreateEdgeTerminatorCommand{
+		TerminatorData: terminatorData,
+	}
+	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *CreateEdgeTerminatorCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdgeTerminatorCommand) error {

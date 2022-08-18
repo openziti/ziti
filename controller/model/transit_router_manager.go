@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -44,9 +45,9 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 	}
 	manager.impl = manager
 
+	RegisterCommand(env, &CreateTransitRouterCmd{}, &edge_cmd_pb.CreateTransitRouterCmd{})
 	network.RegisterUpdateDecoder[*TransitRouter](env.GetHostController().GetNetwork().Managers, manager)
 	network.RegisterDeleteDecoder(env.GetHostController().GetNetwork().Managers, manager)
-	RegisterCommand(env, &CreateTransitRouterCmd{}, &edge_cmd_pb.CreateTransitRouterCmd{})
 
 	return manager
 }
@@ -382,10 +383,12 @@ func (self *CreateTransitRouterCmd) Encode() ([]byte, error) {
 		Enrollment: enrollment,
 	}
 
-	return proto.Marshal(cmd)
+	return cmd_pb.EncodeProtobuf(cmd)
 }
 
 func (self *CreateTransitRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateTransitRouterCmd) error {
+	self.manager = env.GetManagers().TransitRouter
+
 	router, err := self.manager.ProtobufToTransitRouter(msg.Router)
 	if err != nil {
 		return err
@@ -396,7 +399,6 @@ func (self *CreateTransitRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateTrans
 		return err
 	}
 
-	self.manager = env.GetManagers().TransitRouter
 	self.router = router
 	self.enrollment = enrollment
 
