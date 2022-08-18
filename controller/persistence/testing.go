@@ -116,7 +116,7 @@ func (p *testDbProvider) GetManagers() *network.Managers {
 
 type TestContext struct {
 	boltz.BaseTestContext
-	db          *db.Db
+	db          boltz.Db
 	n           *network.Network
 	stores      *Stores
 	closeNotify chan struct{}

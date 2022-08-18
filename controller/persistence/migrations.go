@@ -18,6 +18,7 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 )
@@ -139,7 +140,7 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 }
 
 func (m *Migrations) dropEntity(step *boltz.MigrationStep, entityType string) {
-	rootBucket := step.Ctx.Tx().Bucket([]byte(boltz.RootBucket))
+	rootBucket := step.Ctx.Tx().Bucket([]byte(db.RootBucket))
 	if rootBucket != nil {
 		if rootBucket.Bucket([]byte(entityType)) != nil {
 			step.SetError(rootBucket.DeleteBucket([]byte(entityType)))

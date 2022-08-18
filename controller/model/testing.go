@@ -54,6 +54,10 @@ func (self testHostController) Stop() {
 	close(self.closeNotify)
 }
 
+func (ctx testHostController) IsRaftEnabled() bool {
+	return false
+}
+
 type TestContext struct {
 	*persistence.TestContext
 	managers        *Managers

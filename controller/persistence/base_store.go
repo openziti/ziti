@@ -45,7 +45,7 @@ func newBaseStore(stores *stores, entityType string) *baseStore {
 		stores: stores,
 		BaseStore: boltz.NewBaseStore(entityType, func(id string) error {
 			return boltz.NewNotFoundError(singularEntityType, "id", id)
-		}, boltz.RootBucket),
+		}, db.RootBucket),
 	}
 }
 

@@ -116,6 +116,11 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 		panic(err)
 	}
 
+	host.RegisterAgentBindHandler(channel.BindHandlerF(func(binding channel.Binding) error {
+		binding.AddTypedReceiveHandler(handler_edge_mgmt.NewInitEdgeHandler(c.AppEnv))
+		return nil
+	}))
+
 	api_impl.OverrideRequestWrapper(&fabricWrapper{ae: c.AppEnv})
 
 	return c, nil
@@ -279,15 +284,7 @@ func (c *Controller) Run() {
 		rf(c.AppEnv)
 	}
 
-	admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
-
-	if err != nil {
-		pfxlog.Logger().WithError(err).Panic("could not check if a default admin exists")
-	}
-
-	if admin == nil {
-		pfxlog.Logger().Fatal("the Ziti Edge has not been initialized via 'ziti-controller edge init', no default admin exists")
-	}
+	go c.checkEdgeInitialized()
 
 	managementApiFactory := NewManagementApiFactory(c.AppEnv)
 	clientApiFactory := NewClientApiFactory(c.AppEnv)
@@ -300,9 +297,45 @@ func (c *Controller) Run() {
 		pfxlog.Logger().Fatalf("failed to create Edge Client API factory: %v", err)
 	}
 
-	if err = c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {
+	if err := c.policyEngine.Start(c.AppEnv.HostController.GetCloseNotifyChannel()); err != nil {
 		log.WithError(err).Fatalf("error starting policy engine")
 	}
+}
+
+func (c *Controller) checkEdgeInitialized() {
+	log := pfxlog.Logger()
+	defaultAdminFound := false
+	lastWarn := time.Time{}
+	first := true
+
+	for !defaultAdminFound {
+		admin, err := c.AppEnv.Managers.Identity.ReadDefaultAdmin()
+
+		if err != nil {
+			log.WithError(err).Panic("could not check if a default admin exists")
+		}
+
+		if admin == nil {
+			if !c.AppEnv.GetHostController().IsRaftEnabled() {
+				log.Fatal("the Ziti Edge has not been initialized via 'ziti-controller edge init', no default admin exists")
+			}
+
+			if first {
+				time.Sleep(3 * time.Second)
+				first = false
+			}
+
+			now := time.Now()
+			if now.Sub(lastWarn) > time.Minute {
+				log.Warn("the Ziti Edge has not been initialized, no default admin exists. Please run 'ziti agent controller init' to configure the default admin'")
+				lastWarn = now
+			}
+			time.Sleep(time.Second)
+		} else {
+			defaultAdminFound = true
+		}
+	}
+	log.Info("edge initialized")
 }
 
 func (c *Controller) Shutdown() {
