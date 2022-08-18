@@ -16,7 +16,7 @@ require (
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/spec v0.20.7
 	github.com/go-openapi/strfmt v0.21.3
-	github.com/go-openapi/swag v0.22.0
+	github.com/go-openapi/swag v0.22.3
 	github.com/go-openapi/validate v0.22.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/go-cmp v0.5.8
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.60
-	github.com/openziti/fabric v0.19.42
+	github.com/openziti/fabric v0.19.44
 	github.com/openziti/foundation/v2 v2.0.2
 	github.com/openziti/identity v1.0.6
 	github.com/openziti/jwks v1.0.1
