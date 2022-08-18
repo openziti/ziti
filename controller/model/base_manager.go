@@ -172,19 +172,7 @@ func (self *baseEntityManager) createEntityInTx(ctx boltz.MutateContext, modelEn
 	return modelEntity.GetId(), nil
 }
 
-func (self *baseEntityManager) updateEntity(modelEntity edgeEntity, checker boltz.FieldChecker) error {
-	return self.updateGeneral(modelEntity, checker, false)
-}
-
-func (self *baseEntityManager) patchEntity(modelEntity edgeEntity, checker boltz.FieldChecker) error {
-	return self.updateGeneral(modelEntity, checker, true)
-}
-
-func (self *baseEntityManager) patchEntityBatch(modelEntity edgeEntity, checker boltz.FieldChecker) error {
-	return self.updateGeneralBatch(modelEntity, checker, true)
-}
-
-func (self *baseEntityManager) updateGeneralBatch(modelEntity edgeEntity, checker boltz.FieldChecker, patch bool) error {
+func (self *baseEntityManager) updateEntityBatch(modelEntity edgeEntity, checker boltz.FieldChecker) error {
 	return self.GetDb().Batch(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		existing := self.GetStore().NewStoreEntity()
@@ -195,12 +183,7 @@ func (self *baseEntityManager) updateGeneralBatch(modelEntity edgeEntity, checke
 		if !found {
 			return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
 		}
-		var boltEntity boltz.Entity
-		if patchable, ok := modelEntity.(patchableEdgeEntity); ok && patch {
-			boltEntity, err = patchable.toBoltEntityForPatch(tx, self.impl, checker)
-		} else {
-			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, self.impl)
-		}
+		boltEntity, err := modelEntity.toBoltEntityForUpdate(tx, self.impl, checker)
 		if err != nil {
 			return err
 		}
@@ -223,19 +206,14 @@ func (self *baseEntityManager) updateGeneralBatch(modelEntity edgeEntity, checke
 		}
 
 		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
-			pfxlog.Logger().Errorf("batch: entity of type %v is named, but store doesn't have name index", reflect.TypeOf(boltEntity))
-			if patch {
-				pfxlog.Logger().WithError(err).Errorf("batch: could not patch %v entity", self.GetStore().GetEntityType())
-			} else {
-				pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", self.GetStore().GetEntityType())
-			}
+			pfxlog.Logger().WithError(err).Errorf("batch: could not update %v entity", self.GetStore().GetEntityType())
 			return err
 		}
 		return nil
 	})
 }
 
-func (self *baseEntityManager) updateGeneral(modelEntity edgeEntity, checker boltz.FieldChecker, patch bool) error {
+func (self *baseEntityManager) updateEntity(modelEntity edgeEntity, checker boltz.FieldChecker) error {
 	return self.GetDb().Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		existing := self.GetStore().NewStoreEntity()
@@ -246,12 +224,7 @@ func (self *baseEntityManager) updateGeneral(modelEntity edgeEntity, checker bol
 		if !found {
 			return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", modelEntity.GetId())
 		}
-		var boltEntity boltz.Entity
-		if patchable, ok := modelEntity.(patchableEdgeEntity); ok && patch {
-			boltEntity, err = patchable.toBoltEntityForPatch(tx, self.impl, checker)
-		} else {
-			boltEntity, err = modelEntity.toBoltEntityForUpdate(tx, self.impl)
-		}
+		boltEntity, err := modelEntity.toBoltEntityForUpdate(tx, self.impl, checker)
 		if err != nil {
 			return err
 		}
@@ -274,11 +247,7 @@ func (self *baseEntityManager) updateGeneral(modelEntity edgeEntity, checker bol
 		}
 
 		if err := self.GetStore().Update(ctx, boltEntity, checker); err != nil {
-			if patch {
-				pfxlog.Logger().WithError(err).Errorf("could not patch %v entity", self.GetStore().GetEntityType())
-			} else {
-				pfxlog.Logger().WithError(err).Errorf("could not update %v entity", self.GetStore().GetEntityType())
-			}
+			pfxlog.Logger().WithError(err).Errorf("could not update %v entity", self.GetStore().GetEntityType())
 			return err
 		}
 		return nil

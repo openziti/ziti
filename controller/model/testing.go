@@ -163,8 +163,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
-	identity.Id, err = ctx.managers.Identity.Create(identity)
-	ctx.NoError(err)
+	ctx.NoError(ctx.managers.Identity.Create(identity))
 	return identity
 }
 

@@ -11,8 +11,8 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
-	idloader "github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/errorz"
+	idloader "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/api"
@@ -243,9 +243,7 @@ func (ctx *modelPerf) createServices(spec *perfScenarioSpec) {
 			Name:           id,
 			RoleAttributes: spec.serviceAttrs[i],
 		}
-		_, err := serviceHandler.Create(service)
-		ctx.Req.NoError(err)
-		service.Id = id
+		ctx.Req.NoError(serviceHandler.Create(service))
 		spec.services = append(spec.services, service)
 		if (i+1)%100 == 0 {
 			pfxlog.Logger().Tracef("created %v services\n", i)
@@ -280,8 +278,7 @@ func (ctx *modelPerf) createIdentities(spec *perfScenarioSpec) {
 			},
 		}
 
-		_, _, err := identityHandler.CreateWithEnrollments(identity, enrollments)
-		ctx.Req.NoError(err)
+		ctx.Req.NoError(identityHandler.CreateWithEnrollments(identity, enrollments))
 		spec.identities = append(spec.identities, identity)
 
 		if i == 0 {
@@ -307,8 +304,7 @@ func (ctx *modelPerf) createEdgeRouters(spec *perfScenarioSpec) {
 			RoleAttributes: spec.edgeRouterAttrs[i],
 			IsVerified:     false,
 		}
-		_, err := edgeRouterHandler.Create(edgeRouter)
-		ctx.Req.NoError(err)
+		ctx.Req.NoError(edgeRouterHandler.Create(edgeRouter))
 		spec.edgeRouters = append(spec.edgeRouters, edgeRouter)
 		if (i+1)%100 == 0 {
 			pfxlog.Logger().Tracef("created %v edge routers\n", i+1)
@@ -363,8 +359,7 @@ func (ctx *modelPerf) createServicePolicy(policyType string, identityRoles, serv
 		ServiceRoles:  serviceRoles,
 		Semantic:      persistence.SemanticAnyOf,
 	}
-	_, err := policyHandler.Create(policy)
-	ctx.Req.NoError(err)
+	ctx.Req.NoError(policyHandler.Create(policy))
 }
 
 func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) {
@@ -377,8 +372,7 @@ func (ctx *modelPerf) createEdgeRouterPolicy(identityRoles, edgeRouterRoles []st
 		EdgeRouterRoles: edgeRouterRoles,
 		Semantic:        persistence.SemanticAnyOf,
 	}
-	_, err := policyHandler.Create(policy)
-	ctx.Req.NoError(err)
+	ctx.NoError(policyHandler.Create(policy))
 }
 
 func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRoles []string) {
@@ -391,8 +385,7 @@ func (ctx *modelPerf) createServiceEdgeRouterPolicy(edgeRouterRoles, serviceRole
 		ServiceRoles:    serviceRoles,
 		Semantic:        persistence.SemanticAnyOf,
 	}
-	_, err := policyHandler.Create(policy)
-	ctx.Req.NoError(err)
+	ctx.NoError(policyHandler.Create(policy))
 }
 
 func (ctx *modelPerf) firstNPermuations(n int, v []string) [][]string {

@@ -45,7 +45,7 @@ func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bol
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

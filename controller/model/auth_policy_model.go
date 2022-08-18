@@ -130,6 +130,6 @@ func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz
 	return boltEntity, nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntityForCreate(tx, manager)
 }

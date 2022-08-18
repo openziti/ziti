@@ -100,7 +100,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager
 	return boltEntity, nil
 }
 
-func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return &persistence.Session{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,

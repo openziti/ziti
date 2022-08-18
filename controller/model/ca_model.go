@@ -174,7 +174,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (bo
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	if entity.IdentityNameFormat == "" {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}

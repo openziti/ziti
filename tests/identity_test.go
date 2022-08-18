@@ -47,7 +47,7 @@ func Test_Identity(t *testing.T) {
 		hostCost := rest_model.TerminatorCost(5)
 		hostPrecedence := rest_model.TerminatorPrecedenceDefault
 
-		identityType := rest_model.IdentityTypeRouter
+		identityType := rest_model.IdentityTypeUser
 
 		identityCreate := &rest_model.IdentityCreate{
 			AppData: &rest_model.Tags{
@@ -82,6 +82,7 @@ func Test_Identity(t *testing.T) {
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityCreateResp).SetBody(identityCreate).Post("/identities")
 		ctx.NoError(err)
 		ctx.NotNil(resp)
+		ctx.Equal(201, resp.StatusCode())
 
 		ctx.NoError(identityCreateResp.Validate(DefaultFormats))
 

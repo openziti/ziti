@@ -52,7 +52,7 @@ func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) 
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

@@ -29,6 +29,7 @@ const (
 	CommandType_ReplaceEnrollmentWithAuthenticatorType CommandType = 1001
 	CommandType_CreateEdgeRouterType                   CommandType = 1002
 	CommandType_CreateTransitRouterType                CommandType = 1003
+	CommandType_CreateIdentityWithEnrollmentsType      CommandType = 1004
 )
 
 // Enum value maps for CommandType.
@@ -39,6 +40,7 @@ var (
 		1001: "ReplaceEnrollmentWithAuthenticatorType",
 		1002: "CreateEdgeRouterType",
 		1003: "CreateTransitRouterType",
+		1004: "CreateIdentityWithEnrollmentsType",
 	}
 	CommandType_value = map[string]int32{
 		"Zero":                                   0,
@@ -46,6 +48,7 @@ var (
 		"ReplaceEnrollmentWithAuthenticatorType": 1001,
 		"CreateEdgeRouterType":                   1002,
 		"CreateTransitRouterType":                1003,
+		"CreateIdentityWithEnrollmentsType":      1004,
 	}
 )
 
@@ -1543,6 +1546,253 @@ func (x *ExternalJwtSigner) GetNotBefore() *timestamppb.Timestamp {
 	return nil
 }
 
+// Identities
+type Identity struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Id                        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name                      string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Tags                      map[string]*TagValue   `protobuf:"bytes,3,rep,name=tags,proto3" json:"tags,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	IdentityTypeId            string                 `protobuf:"bytes,4,opt,name=identityTypeId,proto3" json:"identityTypeId,omitempty"`
+	IsDefaultAdmin            bool                   `protobuf:"varint,5,opt,name=isDefaultAdmin,proto3" json:"isDefaultAdmin,omitempty"`
+	IsAdmin                   bool                   `protobuf:"varint,6,opt,name=isAdmin,proto3" json:"isAdmin,omitempty"`
+	RoleAttributes            []string               `protobuf:"bytes,7,rep,name=roleAttributes,proto3" json:"roleAttributes,omitempty"`
+	EnvInfo                   *Identity_EnvInfo      `protobuf:"bytes,8,opt,name=envInfo,proto3,oneof" json:"envInfo,omitempty"`
+	SdkInfo                   *Identity_SdkInfo      `protobuf:"bytes,9,opt,name=sdkInfo,proto3,oneof" json:"sdkInfo,omitempty"`
+	DefaultHostingPrecedence  uint32                 `protobuf:"varint,10,opt,name=defaultHostingPrecedence,proto3" json:"defaultHostingPrecedence,omitempty"`
+	DefaultHostingCost        uint32                 `protobuf:"varint,11,opt,name=defaultHostingCost,proto3" json:"defaultHostingCost,omitempty"`
+	ServiceHostingPrecedences map[string]uint32      `protobuf:"bytes,12,rep,name=serviceHostingPrecedences,proto3" json:"serviceHostingPrecedences,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	ServiceHostingCosts       map[string]uint32      `protobuf:"bytes,13,rep,name=serviceHostingCosts,proto3" json:"serviceHostingCosts,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
+	AppData                   *JsonMap               `protobuf:"bytes,14,opt,name=appData,proto3" json:"appData,omitempty"`
+	AuthPolicyId              string                 `protobuf:"bytes,15,opt,name=authPolicyId,proto3" json:"authPolicyId,omitempty"`
+	ExternalId                *string                `protobuf:"bytes,16,opt,name=externalId,proto3,oneof" json:"externalId,omitempty"`
+	Disabled                  bool                   `protobuf:"varint,17,opt,name=disabled,proto3" json:"disabled,omitempty"`
+	DisabledAt                *timestamppb.Timestamp `protobuf:"bytes,18,opt,name=disabledAt,proto3,oneof" json:"disabledAt,omitempty"`
+	DisabledUntil             *timestamppb.Timestamp `protobuf:"bytes,19,opt,name=disabledUntil,proto3,oneof" json:"disabledUntil,omitempty"`
+}
+
+func (x *Identity) Reset() {
+	*x = Identity{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_edge_cmd_proto_msgTypes[15]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Identity) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Identity) ProtoMessage() {}
+
+func (x *Identity) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_cmd_proto_msgTypes[15]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Identity.ProtoReflect.Descriptor instead.
+func (*Identity) Descriptor() ([]byte, []int) {
+	return file_edge_cmd_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *Identity) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Identity) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Identity) GetTags() map[string]*TagValue {
+	if x != nil {
+		return x.Tags
+	}
+	return nil
+}
+
+func (x *Identity) GetIdentityTypeId() string {
+	if x != nil {
+		return x.IdentityTypeId
+	}
+	return ""
+}
+
+func (x *Identity) GetIsDefaultAdmin() bool {
+	if x != nil {
+		return x.IsDefaultAdmin
+	}
+	return false
+}
+
+func (x *Identity) GetIsAdmin() bool {
+	if x != nil {
+		return x.IsAdmin
+	}
+	return false
+}
+
+func (x *Identity) GetRoleAttributes() []string {
+	if x != nil {
+		return x.RoleAttributes
+	}
+	return nil
+}
+
+func (x *Identity) GetEnvInfo() *Identity_EnvInfo {
+	if x != nil {
+		return x.EnvInfo
+	}
+	return nil
+}
+
+func (x *Identity) GetSdkInfo() *Identity_SdkInfo {
+	if x != nil {
+		return x.SdkInfo
+	}
+	return nil
+}
+
+func (x *Identity) GetDefaultHostingPrecedence() uint32 {
+	if x != nil {
+		return x.DefaultHostingPrecedence
+	}
+	return 0
+}
+
+func (x *Identity) GetDefaultHostingCost() uint32 {
+	if x != nil {
+		return x.DefaultHostingCost
+	}
+	return 0
+}
+
+func (x *Identity) GetServiceHostingPrecedences() map[string]uint32 {
+	if x != nil {
+		return x.ServiceHostingPrecedences
+	}
+	return nil
+}
+
+func (x *Identity) GetServiceHostingCosts() map[string]uint32 {
+	if x != nil {
+		return x.ServiceHostingCosts
+	}
+	return nil
+}
+
+func (x *Identity) GetAppData() *JsonMap {
+	if x != nil {
+		return x.AppData
+	}
+	return nil
+}
+
+func (x *Identity) GetAuthPolicyId() string {
+	if x != nil {
+		return x.AuthPolicyId
+	}
+	return ""
+}
+
+func (x *Identity) GetExternalId() string {
+	if x != nil && x.ExternalId != nil {
+		return *x.ExternalId
+	}
+	return ""
+}
+
+func (x *Identity) GetDisabled() bool {
+	if x != nil {
+		return x.Disabled
+	}
+	return false
+}
+
+func (x *Identity) GetDisabledAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DisabledAt
+	}
+	return nil
+}
+
+func (x *Identity) GetDisabledUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.DisabledUntil
+	}
+	return nil
+}
+
+type CreateIdentityWithEnrollmentsCmd struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Identity    *Identity     `protobuf:"bytes,1,opt,name=identity,proto3" json:"identity,omitempty"`
+	Enrollments []*Enrollment `protobuf:"bytes,2,rep,name=enrollments,proto3" json:"enrollments,omitempty"`
+}
+
+func (x *CreateIdentityWithEnrollmentsCmd) Reset() {
+	*x = CreateIdentityWithEnrollmentsCmd{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_edge_cmd_proto_msgTypes[16]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *CreateIdentityWithEnrollmentsCmd) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateIdentityWithEnrollmentsCmd) ProtoMessage() {}
+
+func (x *CreateIdentityWithEnrollmentsCmd) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_cmd_proto_msgTypes[16]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateIdentityWithEnrollmentsCmd.ProtoReflect.Descriptor instead.
+func (*CreateIdentityWithEnrollmentsCmd) Descriptor() ([]byte, []int) {
+	return file_edge_cmd_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *CreateIdentityWithEnrollmentsCmd) GetIdentity() *Identity {
+	if x != nil {
+		return x.Identity
+	}
+	return nil
+}
+
+func (x *CreateIdentityWithEnrollmentsCmd) GetEnrollments() []*Enrollment {
+	if x != nil {
+		return x.Enrollments
+	}
+	return nil
+}
+
 // MFA
 type Mfa struct {
 	state         protoimpl.MessageState
@@ -1560,7 +1810,7 @@ type Mfa struct {
 func (x *Mfa) Reset() {
 	*x = Mfa{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[15]
+		mi := &file_edge_cmd_proto_msgTypes[17]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1573,7 +1823,7 @@ func (x *Mfa) String() string {
 func (*Mfa) ProtoMessage() {}
 
 func (x *Mfa) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[15]
+	mi := &file_edge_cmd_proto_msgTypes[17]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1586,7 +1836,7 @@ func (x *Mfa) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Mfa.ProtoReflect.Descriptor instead.
 func (*Mfa) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{15}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *Mfa) GetId() string {
@@ -1649,7 +1899,7 @@ type Service struct {
 func (x *Service) Reset() {
 	*x = Service{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[16]
+		mi := &file_edge_cmd_proto_msgTypes[18]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1662,7 +1912,7 @@ func (x *Service) String() string {
 func (*Service) ProtoMessage() {}
 
 func (x *Service) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[16]
+	mi := &file_edge_cmd_proto_msgTypes[18]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1675,7 +1925,7 @@ func (x *Service) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Service.ProtoReflect.Descriptor instead.
 func (*Service) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{16}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *Service) GetId() string {
@@ -1744,7 +1994,7 @@ type ServiceEdgeRouterPolicy struct {
 func (x *ServiceEdgeRouterPolicy) Reset() {
 	*x = ServiceEdgeRouterPolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[17]
+		mi := &file_edge_cmd_proto_msgTypes[19]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1757,7 +2007,7 @@ func (x *ServiceEdgeRouterPolicy) String() string {
 func (*ServiceEdgeRouterPolicy) ProtoMessage() {}
 
 func (x *ServiceEdgeRouterPolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[17]
+	mi := &file_edge_cmd_proto_msgTypes[19]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1770,7 +2020,7 @@ func (x *ServiceEdgeRouterPolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceEdgeRouterPolicy.ProtoReflect.Descriptor instead.
 func (*ServiceEdgeRouterPolicy) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{17}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ServiceEdgeRouterPolicy) GetId() string {
@@ -1834,7 +2084,7 @@ type ServicePolicy struct {
 func (x *ServicePolicy) Reset() {
 	*x = ServicePolicy{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[18]
+		mi := &file_edge_cmd_proto_msgTypes[20]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1847,7 +2097,7 @@ func (x *ServicePolicy) String() string {
 func (*ServicePolicy) ProtoMessage() {}
 
 func (x *ServicePolicy) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[18]
+	mi := &file_edge_cmd_proto_msgTypes[20]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1860,7 +2110,7 @@ func (x *ServicePolicy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServicePolicy.ProtoReflect.Descriptor instead.
 func (*ServicePolicy) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{18}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ServicePolicy) GetId() string {
@@ -1939,7 +2189,7 @@ type TransitRouter struct {
 func (x *TransitRouter) Reset() {
 	*x = TransitRouter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[19]
+		mi := &file_edge_cmd_proto_msgTypes[21]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -1952,7 +2202,7 @@ func (x *TransitRouter) String() string {
 func (*TransitRouter) ProtoMessage() {}
 
 func (x *TransitRouter) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[19]
+	mi := &file_edge_cmd_proto_msgTypes[21]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1965,7 +2215,7 @@ func (x *TransitRouter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TransitRouter.ProtoReflect.Descriptor instead.
 func (*TransitRouter) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{19}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *TransitRouter) GetId() string {
@@ -2043,7 +2293,7 @@ type CreateTransitRouterCmd struct {
 func (x *CreateTransitRouterCmd) Reset() {
 	*x = CreateTransitRouterCmd{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[20]
+		mi := &file_edge_cmd_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2056,7 +2306,7 @@ func (x *CreateTransitRouterCmd) String() string {
 func (*CreateTransitRouterCmd) ProtoMessage() {}
 
 func (x *CreateTransitRouterCmd) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[20]
+	mi := &file_edge_cmd_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2069,7 +2319,7 @@ func (x *CreateTransitRouterCmd) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTransitRouterCmd.ProtoReflect.Descriptor instead.
 func (*CreateTransitRouterCmd) Descriptor() ([]byte, []int) {
-	return file_edge_cmd_proto_rawDescGZIP(), []int{20}
+	return file_edge_cmd_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CreateTransitRouterCmd) GetRouter() *TransitRouter {
@@ -2100,7 +2350,7 @@ type Authenticator_Cert struct {
 func (x *Authenticator_Cert) Reset() {
 	*x = Authenticator_Cert{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[22]
+		mi := &file_edge_cmd_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2113,7 +2363,7 @@ func (x *Authenticator_Cert) String() string {
 func (*Authenticator_Cert) ProtoMessage() {}
 
 func (x *Authenticator_Cert) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[22]
+	mi := &file_edge_cmd_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2170,7 +2420,7 @@ type Authenticator_Updb struct {
 func (x *Authenticator_Updb) Reset() {
 	*x = Authenticator_Updb{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[23]
+		mi := &file_edge_cmd_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2183,7 +2433,7 @@ func (x *Authenticator_Updb) String() string {
 func (*Authenticator_Updb) ProtoMessage() {}
 
 func (x *Authenticator_Updb) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[23]
+	mi := &file_edge_cmd_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2233,7 +2483,7 @@ type AuthPolicy_Primary struct {
 func (x *AuthPolicy_Primary) Reset() {
 	*x = AuthPolicy_Primary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[25]
+		mi := &file_edge_cmd_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2246,7 +2496,7 @@ func (x *AuthPolicy_Primary) String() string {
 func (*AuthPolicy_Primary) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[25]
+	mi := &file_edge_cmd_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2295,7 +2545,7 @@ type AuthPolicy_Secondary struct {
 func (x *AuthPolicy_Secondary) Reset() {
 	*x = AuthPolicy_Secondary{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[26]
+		mi := &file_edge_cmd_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2308,7 +2558,7 @@ func (x *AuthPolicy_Secondary) String() string {
 func (*AuthPolicy_Secondary) ProtoMessage() {}
 
 func (x *AuthPolicy_Secondary) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[26]
+	mi := &file_edge_cmd_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2350,7 +2600,7 @@ type AuthPolicy_Primary_Cert struct {
 func (x *AuthPolicy_Primary_Cert) Reset() {
 	*x = AuthPolicy_Primary_Cert{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[28]
+		mi := &file_edge_cmd_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2363,7 +2613,7 @@ func (x *AuthPolicy_Primary_Cert) String() string {
 func (*AuthPolicy_Primary_Cert) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_Cert) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[28]
+	mi := &file_edge_cmd_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2410,7 +2660,7 @@ type AuthPolicy_Primary_Updb struct {
 func (x *AuthPolicy_Primary_Updb) Reset() {
 	*x = AuthPolicy_Primary_Updb{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[29]
+		mi := &file_edge_cmd_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2423,7 +2673,7 @@ func (x *AuthPolicy_Primary_Updb) String() string {
 func (*AuthPolicy_Primary_Updb) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_Updb) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[29]
+	mi := &file_edge_cmd_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2501,7 +2751,7 @@ type AuthPolicy_Primary_ExtJwt struct {
 func (x *AuthPolicy_Primary_ExtJwt) Reset() {
 	*x = AuthPolicy_Primary_ExtJwt{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[30]
+		mi := &file_edge_cmd_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2514,7 +2764,7 @@ func (x *AuthPolicy_Primary_ExtJwt) String() string {
 func (*AuthPolicy_Primary_ExtJwt) ProtoMessage() {}
 
 func (x *AuthPolicy_Primary_ExtJwt) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[30]
+	mi := &file_edge_cmd_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2567,7 +2817,7 @@ type Ca_ExternalIdClaim struct {
 func (x *Ca_ExternalIdClaim) Reset() {
 	*x = Ca_ExternalIdClaim{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_edge_cmd_proto_msgTypes[31]
+		mi := &file_edge_cmd_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2580,7 +2830,7 @@ func (x *Ca_ExternalIdClaim) String() string {
 func (*Ca_ExternalIdClaim) ProtoMessage() {}
 
 func (x *Ca_ExternalIdClaim) ProtoReflect() protoreflect.Message {
-	mi := &file_edge_cmd_proto_msgTypes[31]
+	mi := &file_edge_cmd_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2636,6 +2886,164 @@ func (x *Ca_ExternalIdClaim) GetIndex() int64 {
 		return x.Index
 	}
 	return 0
+}
+
+type Identity_EnvInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Arch      string `protobuf:"bytes,1,opt,name=Arch,proto3" json:"Arch,omitempty"`
+	Os        string `protobuf:"bytes,2,opt,name=Os,proto3" json:"Os,omitempty"`
+	OsRelease string `protobuf:"bytes,3,opt,name=OsRelease,proto3" json:"OsRelease,omitempty"`
+	OsVersion string `protobuf:"bytes,4,opt,name=OsVersion,proto3" json:"OsVersion,omitempty"`
+}
+
+func (x *Identity_EnvInfo) Reset() {
+	*x = Identity_EnvInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_edge_cmd_proto_msgTypes[42]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Identity_EnvInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Identity_EnvInfo) ProtoMessage() {}
+
+func (x *Identity_EnvInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_cmd_proto_msgTypes[42]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Identity_EnvInfo.ProtoReflect.Descriptor instead.
+func (*Identity_EnvInfo) Descriptor() ([]byte, []int) {
+	return file_edge_cmd_proto_rawDescGZIP(), []int{15, 0}
+}
+
+func (x *Identity_EnvInfo) GetArch() string {
+	if x != nil {
+		return x.Arch
+	}
+	return ""
+}
+
+func (x *Identity_EnvInfo) GetOs() string {
+	if x != nil {
+		return x.Os
+	}
+	return ""
+}
+
+func (x *Identity_EnvInfo) GetOsRelease() string {
+	if x != nil {
+		return x.OsRelease
+	}
+	return ""
+}
+
+func (x *Identity_EnvInfo) GetOsVersion() string {
+	if x != nil {
+		return x.OsVersion
+	}
+	return ""
+}
+
+type Identity_SdkInfo struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	AppId      string `protobuf:"bytes,1,opt,name=AppId,proto3" json:"AppId,omitempty"`
+	AppVersion string `protobuf:"bytes,2,opt,name=AppVersion,proto3" json:"AppVersion,omitempty"`
+	Branch     string `protobuf:"bytes,3,opt,name=Branch,proto3" json:"Branch,omitempty"`
+	Revision   string `protobuf:"bytes,4,opt,name=Revision,proto3" json:"Revision,omitempty"`
+	Type       string `protobuf:"bytes,5,opt,name=Type,proto3" json:"Type,omitempty"`
+	Version    string `protobuf:"bytes,6,opt,name=Version,proto3" json:"Version,omitempty"`
+}
+
+func (x *Identity_SdkInfo) Reset() {
+	*x = Identity_SdkInfo{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_edge_cmd_proto_msgTypes[43]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *Identity_SdkInfo) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Identity_SdkInfo) ProtoMessage() {}
+
+func (x *Identity_SdkInfo) ProtoReflect() protoreflect.Message {
+	mi := &file_edge_cmd_proto_msgTypes[43]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Identity_SdkInfo.ProtoReflect.Descriptor instead.
+func (*Identity_SdkInfo) Descriptor() ([]byte, []int) {
+	return file_edge_cmd_proto_rawDescGZIP(), []int{15, 1}
+}
+
+func (x *Identity_SdkInfo) GetAppId() string {
+	if x != nil {
+		return x.AppId
+	}
+	return ""
+}
+
+func (x *Identity_SdkInfo) GetAppVersion() string {
+	if x != nil {
+		return x.AppVersion
+	}
+	return ""
+}
+
+func (x *Identity_SdkInfo) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+func (x *Identity_SdkInfo) GetRevision() string {
+	if x != nil {
+		return x.Revision
+	}
+	return ""
+}
+
+func (x *Identity_SdkInfo) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *Identity_SdkInfo) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
 }
 
 var File_edge_cmd_proto protoreflect.FileDescriptor
@@ -3063,7 +3471,116 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x61, 0x69, 0x6d, 0x73, 0x50, 0x72, 0x6f, 0x70, 0x65, 0x72, 0x74, 0x79, 0x42, 0x09, 0x0a, 0x07,
 	0x5f, 0x69, 0x73, 0x73, 0x75, 0x65, 0x72, 0x42, 0x0b, 0x0a, 0x09, 0x5f, 0x61, 0x75, 0x64, 0x69,
 	0x65, 0x6e, 0x63, 0x65, 0x42, 0x0e, 0x0a, 0x0c, 0x5f, 0x66, 0x69, 0x6e, 0x67, 0x65, 0x72, 0x70,
-	0x72, 0x69, 0x6e, 0x74, 0x22, 0x9d, 0x02, 0x0a, 0x03, 0x4d, 0x66, 0x61, 0x12, 0x0e, 0x0a, 0x02,
+	0x72, 0x69, 0x6e, 0x74, 0x22, 0xb0, 0x0c, 0x0a, 0x08, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74,
+	0x79, 0x12, 0x0e, 0x0a, 0x02, 0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69,
+	0x64, 0x12, 0x12, 0x0a, 0x04, 0x6e, 0x61, 0x6d, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52,
+	0x04, 0x6e, 0x61, 0x6d, 0x65, 0x12, 0x38, 0x0a, 0x04, 0x74, 0x61, 0x67, 0x73, 0x18, 0x03, 0x20,
+	0x03, 0x28, 0x0b, 0x32, 0x24, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f,
+	0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e,
+	0x54, 0x61, 0x67, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x04, 0x74, 0x61, 0x67, 0x73, 0x12,
+	0x26, 0x0a, 0x0e, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x54, 0x79, 0x70, 0x65, 0x49,
+	0x64, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0e, 0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74,
+	0x79, 0x54, 0x79, 0x70, 0x65, 0x49, 0x64, 0x12, 0x26, 0x0a, 0x0e, 0x69, 0x73, 0x44, 0x65, 0x66,
+	0x61, 0x75, 0x6c, 0x74, 0x41, 0x64, 0x6d, 0x69, 0x6e, 0x18, 0x05, 0x20, 0x01, 0x28, 0x08, 0x52,
+	0x0e, 0x69, 0x73, 0x44, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x41, 0x64, 0x6d, 0x69, 0x6e, 0x12,
+	0x18, 0x0a, 0x07, 0x69, 0x73, 0x41, 0x64, 0x6d, 0x69, 0x6e, 0x18, 0x06, 0x20, 0x01, 0x28, 0x08,
+	0x52, 0x07, 0x69, 0x73, 0x41, 0x64, 0x6d, 0x69, 0x6e, 0x12, 0x26, 0x0a, 0x0e, 0x72, 0x6f, 0x6c,
+	0x65, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65, 0x73, 0x18, 0x07, 0x20, 0x03, 0x28,
+	0x09, 0x52, 0x0e, 0x72, 0x6f, 0x6c, 0x65, 0x41, 0x74, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x65,
+	0x73, 0x12, 0x41, 0x0a, 0x07, 0x65, 0x6e, 0x76, 0x49, 0x6e, 0x66, 0x6f, 0x18, 0x08, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x22, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63,
+	0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e, 0x45,
+	0x6e, 0x76, 0x49, 0x6e, 0x66, 0x6f, 0x48, 0x00, 0x52, 0x07, 0x65, 0x6e, 0x76, 0x49, 0x6e, 0x66,
+	0x6f, 0x88, 0x01, 0x01, 0x12, 0x41, 0x0a, 0x07, 0x73, 0x64, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x18,
+	0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x22, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67,
+	0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74,
+	0x79, 0x2e, 0x53, 0x64, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x48, 0x01, 0x52, 0x07, 0x73, 0x64, 0x6b,
+	0x49, 0x6e, 0x66, 0x6f, 0x88, 0x01, 0x01, 0x12, 0x3a, 0x0a, 0x18, 0x64, 0x65, 0x66, 0x61, 0x75,
+	0x6c, 0x74, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65,
+	0x6e, 0x63, 0x65, 0x18, 0x0a, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x18, 0x64, 0x65, 0x66, 0x61, 0x75,
+	0x6c, 0x74, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65,
+	0x6e, 0x63, 0x65, 0x12, 0x2e, 0x0a, 0x12, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x48, 0x6f,
+	0x73, 0x74, 0x69, 0x6e, 0x67, 0x43, 0x6f, 0x73, 0x74, 0x18, 0x0b, 0x20, 0x01, 0x28, 0x0d, 0x52,
+	0x12, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x43,
+	0x6f, 0x73, 0x74, 0x12, 0x77, 0x0a, 0x19, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f,
+	0x73, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65, 0x6e, 0x63, 0x65, 0x73,
+	0x18, 0x0c, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x39, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64,
+	0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69,
+	0x74, 0x79, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e,
+	0x67, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65, 0x6e, 0x63, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x52, 0x19, 0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e,
+	0x67, 0x50, 0x72, 0x65, 0x63, 0x65, 0x64, 0x65, 0x6e, 0x63, 0x65, 0x73, 0x12, 0x65, 0x0a, 0x13,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x43, 0x6f,
+	0x73, 0x74, 0x73, 0x18, 0x0d, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x33, 0x2e, 0x7a, 0x69, 0x74, 0x69,
+	0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x49, 0x64, 0x65,
+	0x6e, 0x74, 0x69, 0x74, 0x79, 0x2e, 0x53, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73,
+	0x74, 0x69, 0x6e, 0x67, 0x43, 0x6f, 0x73, 0x74, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x52, 0x13,
+	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x43, 0x6f,
+	0x73, 0x74, 0x73, 0x12, 0x33, 0x0a, 0x07, 0x61, 0x70, 0x70, 0x44, 0x61, 0x74, 0x61, 0x18, 0x0e,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67, 0x65,
+	0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4a, 0x73, 0x6f, 0x6e, 0x4d, 0x61, 0x70, 0x52,
+	0x07, 0x61, 0x70, 0x70, 0x44, 0x61, 0x74, 0x61, 0x12, 0x22, 0x0a, 0x0c, 0x61, 0x75, 0x74, 0x68,
+	0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x49, 0x64, 0x18, 0x0f, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0c,
+	0x61, 0x75, 0x74, 0x68, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x49, 0x64, 0x12, 0x23, 0x0a, 0x0a,
+	0x65, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x49, 0x64, 0x18, 0x10, 0x20, 0x01, 0x28, 0x09,
+	0x48, 0x02, 0x52, 0x0a, 0x65, 0x78, 0x74, 0x65, 0x72, 0x6e, 0x61, 0x6c, 0x49, 0x64, 0x88, 0x01,
+	0x01, 0x12, 0x1a, 0x0a, 0x08, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x18, 0x11, 0x20,
+	0x01, 0x28, 0x08, 0x52, 0x08, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x12, 0x3f, 0x0a,
+	0x0a, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x41, 0x74, 0x18, 0x12, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
+	0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70, 0x48, 0x03, 0x52,
+	0x0a, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x41, 0x74, 0x88, 0x01, 0x01, 0x12, 0x45,
+	0x0a, 0x0d, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x55, 0x6e, 0x74, 0x69, 0x6c, 0x18,
+	0x13, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70,
+	0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d,
+	0x70, 0x48, 0x04, 0x52, 0x0d, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x64, 0x55, 0x6e, 0x74,
+	0x69, 0x6c, 0x88, 0x01, 0x01, 0x1a, 0x69, 0x0a, 0x07, 0x45, 0x6e, 0x76, 0x49, 0x6e, 0x66, 0x6f,
+	0x12, 0x12, 0x0a, 0x04, 0x41, 0x72, 0x63, 0x68, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x04,
+	0x41, 0x72, 0x63, 0x68, 0x12, 0x0e, 0x0a, 0x02, 0x4f, 0x73, 0x18, 0x02, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x02, 0x4f, 0x73, 0x12, 0x1c, 0x0a, 0x09, 0x4f, 0x73, 0x52, 0x65, 0x6c, 0x65, 0x61, 0x73,
+	0x65, 0x18, 0x03, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x4f, 0x73, 0x52, 0x65, 0x6c, 0x65, 0x61,
+	0x73, 0x65, 0x12, 0x1c, 0x0a, 0x09, 0x4f, 0x73, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18,
+	0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x09, 0x4f, 0x73, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x1a, 0xa1, 0x01, 0x0a, 0x07, 0x53, 0x64, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x14, 0x0a, 0x05,
+	0x41, 0x70, 0x70, 0x49, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x05, 0x41, 0x70, 0x70,
+	0x49, 0x64, 0x12, 0x1e, 0x0a, 0x0a, 0x41, 0x70, 0x70, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e,
+	0x18, 0x02, 0x20, 0x01, 0x28, 0x09, 0x52, 0x0a, 0x41, 0x70, 0x70, 0x56, 0x65, 0x72, 0x73, 0x69,
+	0x6f, 0x6e, 0x12, 0x16, 0x0a, 0x06, 0x42, 0x72, 0x61, 0x6e, 0x63, 0x68, 0x18, 0x03, 0x20, 0x01,
+	0x28, 0x09, 0x52, 0x06, 0x42, 0x72, 0x61, 0x6e, 0x63, 0x68, 0x12, 0x1a, 0x0a, 0x08, 0x52, 0x65,
+	0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x04, 0x20, 0x01, 0x28, 0x09, 0x52, 0x08, 0x52, 0x65,
+	0x76, 0x69, 0x73, 0x69, 0x6f, 0x6e, 0x12, 0x12, 0x0a, 0x04, 0x54, 0x79, 0x70, 0x65, 0x18, 0x05,
+	0x20, 0x01, 0x28, 0x09, 0x52, 0x04, 0x54, 0x79, 0x70, 0x65, 0x12, 0x18, 0x0a, 0x07, 0x56, 0x65,
+	0x72, 0x73, 0x69, 0x6f, 0x6e, 0x18, 0x06, 0x20, 0x01, 0x28, 0x09, 0x52, 0x07, 0x56, 0x65, 0x72,
+	0x73, 0x69, 0x6f, 0x6e, 0x1a, 0x53, 0x0a, 0x09, 0x54, 0x61, 0x67, 0x73, 0x45, 0x6e, 0x74, 0x72,
+	0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03,
+	0x6b, 0x65, 0x79, 0x12, 0x30, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01,
+	0x28, 0x0b, 0x32, 0x1a, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63,
+	0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x54, 0x61, 0x67, 0x56, 0x61, 0x6c, 0x75, 0x65, 0x52, 0x05,
+	0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x4c, 0x0a, 0x1e, 0x53, 0x65, 0x72,
+	0x76, 0x69, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x50, 0x72, 0x65, 0x63, 0x65,
+	0x64, 0x65, 0x6e, 0x63, 0x65, 0x73, 0x45, 0x6e, 0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b,
+	0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a,
+	0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0d, 0x52, 0x05, 0x76, 0x61,
+	0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x1a, 0x46, 0x0a, 0x18, 0x53, 0x65, 0x72, 0x76, 0x69,
+	0x63, 0x65, 0x48, 0x6f, 0x73, 0x74, 0x69, 0x6e, 0x67, 0x43, 0x6f, 0x73, 0x74, 0x73, 0x45, 0x6e,
+	0x74, 0x72, 0x79, 0x12, 0x10, 0x0a, 0x03, 0x6b, 0x65, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x03, 0x6b, 0x65, 0x79, 0x12, 0x14, 0x0a, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x18, 0x02,
+	0x20, 0x01, 0x28, 0x0d, 0x52, 0x05, 0x76, 0x61, 0x6c, 0x75, 0x65, 0x3a, 0x02, 0x38, 0x01, 0x42,
+	0x0a, 0x0a, 0x08, 0x5f, 0x65, 0x6e, 0x76, 0x49, 0x6e, 0x66, 0x6f, 0x42, 0x0a, 0x0a, 0x08, 0x5f,
+	0x73, 0x64, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x42, 0x0d, 0x0a, 0x0b, 0x5f, 0x65, 0x78, 0x74, 0x65,
+	0x72, 0x6e, 0x61, 0x6c, 0x49, 0x64, 0x42, 0x0d, 0x0a, 0x0b, 0x5f, 0x64, 0x69, 0x73, 0x61, 0x62,
+	0x6c, 0x65, 0x64, 0x41, 0x74, 0x42, 0x10, 0x0a, 0x0e, 0x5f, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c,
+	0x65, 0x64, 0x55, 0x6e, 0x74, 0x69, 0x6c, 0x22, 0x9a, 0x01, 0x0a, 0x20, 0x43, 0x72, 0x65, 0x61,
+	0x74, 0x65, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x57, 0x69, 0x74, 0x68, 0x45, 0x6e,
+	0x72, 0x6f, 0x6c, 0x6c, 0x6d, 0x65, 0x6e, 0x74, 0x73, 0x43, 0x6d, 0x64, 0x12, 0x36, 0x0a, 0x08,
+	0x69, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1a,
+	0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70,
+	0x62, 0x2e, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x52, 0x08, 0x69, 0x64, 0x65, 0x6e,
+	0x74, 0x69, 0x74, 0x79, 0x12, 0x3e, 0x0a, 0x0b, 0x65, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x6d, 0x65,
+	0x6e, 0x74, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x7a, 0x69, 0x74, 0x69,
+	0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x45, 0x6e, 0x72,
+	0x6f, 0x6c, 0x6c, 0x6d, 0x65, 0x6e, 0x74, 0x52, 0x0b, 0x65, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x6d,
+	0x65, 0x6e, 0x74, 0x73, 0x22, 0x9d, 0x02, 0x0a, 0x03, 0x4d, 0x66, 0x61, 0x12, 0x0e, 0x0a, 0x02,
 	0x69, 0x64, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x02, 0x69, 0x64, 0x12, 0x33, 0x0a, 0x04,
 	0x74, 0x61, 0x67, 0x73, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x1f, 0x2e, 0x7a, 0x69, 0x74,
 	0x69, 0x2e, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x4d, 0x66,
@@ -3188,7 +3705,7 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x1c, 0x2e, 0x7a, 0x69, 0x74, 0x69, 0x2e, 0x65,
 	0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x2e, 0x70, 0x62, 0x2e, 0x45, 0x6e, 0x72, 0x6f, 0x6c,
 	0x6c, 0x6d, 0x65, 0x6e, 0x74, 0x52, 0x0a, 0x65, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x6d, 0x65, 0x6e,
-	0x74, 0x2a, 0x9c, 0x01, 0x0a, 0x0b, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x54, 0x79, 0x70,
+	0x74, 0x2a, 0xc4, 0x01, 0x0a, 0x0b, 0x43, 0x6f, 0x6d, 0x6d, 0x61, 0x6e, 0x64, 0x54, 0x79, 0x70,
 	0x65, 0x12, 0x08, 0x0a, 0x04, 0x5a, 0x65, 0x72, 0x6f, 0x10, 0x00, 0x12, 0x1d, 0x0a, 0x18, 0x43,
 	0x72, 0x65, 0x61, 0x74, 0x65, 0x45, 0x64, 0x67, 0x65, 0x54, 0x65, 0x72, 0x6d, 0x69, 0x6e, 0x61,
 	0x74, 0x6f, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10, 0xe8, 0x07, 0x12, 0x2b, 0x0a, 0x26, 0x52, 0x65,
@@ -3198,10 +3715,12 @@ var file_edge_cmd_proto_rawDesc = []byte{
 	0x65, 0x45, 0x64, 0x67, 0x65, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10,
 	0xea, 0x07, 0x12, 0x1c, 0x0a, 0x17, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x54, 0x72, 0x61, 0x6e,
 	0x73, 0x69, 0x74, 0x52, 0x6f, 0x75, 0x74, 0x65, 0x72, 0x54, 0x79, 0x70, 0x65, 0x10, 0xeb, 0x07,
-	0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f,
-	0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f, 0x65, 0x64, 0x67, 0x65, 0x2f, 0x70, 0x62, 0x2f,
-	0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64, 0x5f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f,
-	0x74, 0x6f, 0x33,
+	0x12, 0x26, 0x0a, 0x21, 0x43, 0x72, 0x65, 0x61, 0x74, 0x65, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69,
+	0x74, 0x79, 0x57, 0x69, 0x74, 0x68, 0x45, 0x6e, 0x72, 0x6f, 0x6c, 0x6c, 0x6d, 0x65, 0x6e, 0x74,
+	0x73, 0x54, 0x79, 0x70, 0x65, 0x10, 0xec, 0x07, 0x42, 0x29, 0x5a, 0x27, 0x67, 0x69, 0x74, 0x68,
+	0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6f, 0x70, 0x65, 0x6e, 0x7a, 0x69, 0x74, 0x69, 0x2f,
+	0x65, 0x64, 0x67, 0x65, 0x2f, 0x70, 0x62, 0x2f, 0x65, 0x64, 0x67, 0x65, 0x5f, 0x63, 0x6d, 0x64,
+	0x5f, 0x70, 0x62, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -3217,7 +3736,7 @@ func file_edge_cmd_proto_rawDescGZIP() []byte {
 }
 
 var file_edge_cmd_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_edge_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_edge_cmd_proto_msgTypes = make([]protoimpl.MessageInfo, 52)
 var file_edge_cmd_proto_goTypes = []interface{}{
 	(CommandType)(0),                              // 0: ziti.edge_cmd.pb.CommandType
 	(*CreateEdgeTerminatorCommand)(nil),           // 1: ziti.edge_cmd.pb.CreateEdgeTerminatorCommand
@@ -3235,96 +3754,114 @@ var file_edge_cmd_proto_goTypes = []interface{}{
 	(*Enrollment)(nil),                            // 13: ziti.edge_cmd.pb.Enrollment
 	(*ReplaceEnrollmentWithAuthenticatorCmd)(nil), // 14: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd
 	(*ExternalJwtSigner)(nil),                     // 15: ziti.edge_cmd.pb.ExternalJwtSigner
-	(*Mfa)(nil),                                   // 16: ziti.edge_cmd.pb.Mfa
-	(*Service)(nil),                               // 17: ziti.edge_cmd.pb.Service
-	(*ServiceEdgeRouterPolicy)(nil),               // 18: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy
-	(*ServicePolicy)(nil),                         // 19: ziti.edge_cmd.pb.ServicePolicy
-	(*TransitRouter)(nil),                         // 20: ziti.edge_cmd.pb.TransitRouter
-	(*CreateTransitRouterCmd)(nil),                // 21: ziti.edge_cmd.pb.CreateTransitRouterCmd
-	nil,                                           // 22: ziti.edge_cmd.pb.JsonMap.ValueEntry
-	(*Authenticator_Cert)(nil),                    // 23: ziti.edge_cmd.pb.Authenticator.Cert
-	(*Authenticator_Updb)(nil),                    // 24: ziti.edge_cmd.pb.Authenticator.Updb
-	nil,                                           // 25: ziti.edge_cmd.pb.Authenticator.TagsEntry
-	(*AuthPolicy_Primary)(nil),                    // 26: ziti.edge_cmd.pb.AuthPolicy.Primary
-	(*AuthPolicy_Secondary)(nil),                  // 27: ziti.edge_cmd.pb.AuthPolicy.Secondary
-	nil,                                           // 28: ziti.edge_cmd.pb.AuthPolicy.TagsEntry
-	(*AuthPolicy_Primary_Cert)(nil),               // 29: ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
-	(*AuthPolicy_Primary_Updb)(nil),               // 30: ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
-	(*AuthPolicy_Primary_ExtJwt)(nil),             // 31: ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
-	(*Ca_ExternalIdClaim)(nil),                    // 32: ziti.edge_cmd.pb.Ca.ExternalIdClaim
-	nil,                                           // 33: ziti.edge_cmd.pb.Ca.TagsEntry
-	nil,                                           // 34: ziti.edge_cmd.pb.Config.TagsEntry
-	nil,                                           // 35: ziti.edge_cmd.pb.ConfigType.TagsEntry
-	nil,                                           // 36: ziti.edge_cmd.pb.EdgeRouter.TagsEntry
-	nil,                                           // 37: ziti.edge_cmd.pb.EdgeRouter.EdgeRouterProtocolsEntry
-	nil,                                           // 38: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
-	nil,                                           // 39: ziti.edge_cmd.pb.Enrollment.TagsEntry
-	nil,                                           // 40: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
-	nil,                                           // 41: ziti.edge_cmd.pb.Mfa.TagsEntry
-	nil,                                           // 42: ziti.edge_cmd.pb.Service.TagsEntry
-	nil,                                           // 43: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
-	nil,                                           // 44: ziti.edge_cmd.pb.ServicePolicy.TagsEntry
-	nil,                                           // 45: ziti.edge_cmd.pb.TransitRouter.TagsEntry
-	(*timestamppb.Timestamp)(nil),                 // 46: google.protobuf.Timestamp
+	(*Identity)(nil),                              // 16: ziti.edge_cmd.pb.Identity
+	(*CreateIdentityWithEnrollmentsCmd)(nil),      // 17: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd
+	(*Mfa)(nil),                                   // 18: ziti.edge_cmd.pb.Mfa
+	(*Service)(nil),                               // 19: ziti.edge_cmd.pb.Service
+	(*ServiceEdgeRouterPolicy)(nil),               // 20: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy
+	(*ServicePolicy)(nil),                         // 21: ziti.edge_cmd.pb.ServicePolicy
+	(*TransitRouter)(nil),                         // 22: ziti.edge_cmd.pb.TransitRouter
+	(*CreateTransitRouterCmd)(nil),                // 23: ziti.edge_cmd.pb.CreateTransitRouterCmd
+	nil,                                           // 24: ziti.edge_cmd.pb.JsonMap.ValueEntry
+	(*Authenticator_Cert)(nil),                    // 25: ziti.edge_cmd.pb.Authenticator.Cert
+	(*Authenticator_Updb)(nil),                    // 26: ziti.edge_cmd.pb.Authenticator.Updb
+	nil,                                           // 27: ziti.edge_cmd.pb.Authenticator.TagsEntry
+	(*AuthPolicy_Primary)(nil),                    // 28: ziti.edge_cmd.pb.AuthPolicy.Primary
+	(*AuthPolicy_Secondary)(nil),                  // 29: ziti.edge_cmd.pb.AuthPolicy.Secondary
+	nil,                                           // 30: ziti.edge_cmd.pb.AuthPolicy.TagsEntry
+	(*AuthPolicy_Primary_Cert)(nil),               // 31: ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
+	(*AuthPolicy_Primary_Updb)(nil),               // 32: ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
+	(*AuthPolicy_Primary_ExtJwt)(nil),             // 33: ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
+	(*Ca_ExternalIdClaim)(nil),                    // 34: ziti.edge_cmd.pb.Ca.ExternalIdClaim
+	nil,                                           // 35: ziti.edge_cmd.pb.Ca.TagsEntry
+	nil,                                           // 36: ziti.edge_cmd.pb.Config.TagsEntry
+	nil,                                           // 37: ziti.edge_cmd.pb.ConfigType.TagsEntry
+	nil,                                           // 38: ziti.edge_cmd.pb.EdgeRouter.TagsEntry
+	nil,                                           // 39: ziti.edge_cmd.pb.EdgeRouter.EdgeRouterProtocolsEntry
+	nil,                                           // 40: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
+	nil,                                           // 41: ziti.edge_cmd.pb.Enrollment.TagsEntry
+	nil,                                           // 42: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
+	(*Identity_EnvInfo)(nil),                      // 43: ziti.edge_cmd.pb.Identity.EnvInfo
+	(*Identity_SdkInfo)(nil),                      // 44: ziti.edge_cmd.pb.Identity.SdkInfo
+	nil,                                           // 45: ziti.edge_cmd.pb.Identity.TagsEntry
+	nil,                                           // 46: ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
+	nil,                                           // 47: ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
+	nil,                                           // 48: ziti.edge_cmd.pb.Mfa.TagsEntry
+	nil,                                           // 49: ziti.edge_cmd.pb.Service.TagsEntry
+	nil,                                           // 50: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
+	nil,                                           // 51: ziti.edge_cmd.pb.ServicePolicy.TagsEntry
+	nil,                                           // 52: ziti.edge_cmd.pb.TransitRouter.TagsEntry
+	(*timestamppb.Timestamp)(nil),                 // 53: google.protobuf.Timestamp
 }
 var file_edge_cmd_proto_depIdxs = []int32{
-	22, // 0: ziti.edge_cmd.pb.JsonMap.value:type_name -> ziti.edge_cmd.pb.JsonMap.ValueEntry
+	24, // 0: ziti.edge_cmd.pb.JsonMap.value:type_name -> ziti.edge_cmd.pb.JsonMap.ValueEntry
 	3,  // 1: ziti.edge_cmd.pb.JsonValue.mapValue:type_name -> ziti.edge_cmd.pb.JsonMap
-	25, // 2: ziti.edge_cmd.pb.Authenticator.tags:type_name -> ziti.edge_cmd.pb.Authenticator.TagsEntry
-	23, // 3: ziti.edge_cmd.pb.Authenticator.cert:type_name -> ziti.edge_cmd.pb.Authenticator.Cert
-	24, // 4: ziti.edge_cmd.pb.Authenticator.updb:type_name -> ziti.edge_cmd.pb.Authenticator.Updb
-	26, // 5: ziti.edge_cmd.pb.AuthPolicy.primary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary
-	27, // 6: ziti.edge_cmd.pb.AuthPolicy.secondary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Secondary
-	28, // 7: ziti.edge_cmd.pb.AuthPolicy.tags:type_name -> ziti.edge_cmd.pb.AuthPolicy.TagsEntry
-	33, // 8: ziti.edge_cmd.pb.Ca.tags:type_name -> ziti.edge_cmd.pb.Ca.TagsEntry
-	32, // 9: ziti.edge_cmd.pb.Ca.externalIdClaim:type_name -> ziti.edge_cmd.pb.Ca.ExternalIdClaim
+	27, // 2: ziti.edge_cmd.pb.Authenticator.tags:type_name -> ziti.edge_cmd.pb.Authenticator.TagsEntry
+	25, // 3: ziti.edge_cmd.pb.Authenticator.cert:type_name -> ziti.edge_cmd.pb.Authenticator.Cert
+	26, // 4: ziti.edge_cmd.pb.Authenticator.updb:type_name -> ziti.edge_cmd.pb.Authenticator.Updb
+	28, // 5: ziti.edge_cmd.pb.AuthPolicy.primary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary
+	29, // 6: ziti.edge_cmd.pb.AuthPolicy.secondary:type_name -> ziti.edge_cmd.pb.AuthPolicy.Secondary
+	30, // 7: ziti.edge_cmd.pb.AuthPolicy.tags:type_name -> ziti.edge_cmd.pb.AuthPolicy.TagsEntry
+	35, // 8: ziti.edge_cmd.pb.Ca.tags:type_name -> ziti.edge_cmd.pb.Ca.TagsEntry
+	34, // 9: ziti.edge_cmd.pb.Ca.externalIdClaim:type_name -> ziti.edge_cmd.pb.Ca.ExternalIdClaim
 	3,  // 10: ziti.edge_cmd.pb.Config.data:type_name -> ziti.edge_cmd.pb.JsonMap
-	34, // 11: ziti.edge_cmd.pb.Config.tags:type_name -> ziti.edge_cmd.pb.Config.TagsEntry
+	36, // 11: ziti.edge_cmd.pb.Config.tags:type_name -> ziti.edge_cmd.pb.Config.TagsEntry
 	3,  // 12: ziti.edge_cmd.pb.ConfigType.schema:type_name -> ziti.edge_cmd.pb.JsonMap
-	35, // 13: ziti.edge_cmd.pb.ConfigType.tags:type_name -> ziti.edge_cmd.pb.ConfigType.TagsEntry
-	36, // 14: ziti.edge_cmd.pb.EdgeRouter.tags:type_name -> ziti.edge_cmd.pb.EdgeRouter.TagsEntry
+	37, // 13: ziti.edge_cmd.pb.ConfigType.tags:type_name -> ziti.edge_cmd.pb.ConfigType.TagsEntry
+	38, // 14: ziti.edge_cmd.pb.EdgeRouter.tags:type_name -> ziti.edge_cmd.pb.EdgeRouter.TagsEntry
 	3,  // 15: ziti.edge_cmd.pb.EdgeRouter.appData:type_name -> ziti.edge_cmd.pb.JsonMap
-	37, // 16: ziti.edge_cmd.pb.EdgeRouter.edgeRouterProtocols:type_name -> ziti.edge_cmd.pb.EdgeRouter.EdgeRouterProtocolsEntry
+	39, // 16: ziti.edge_cmd.pb.EdgeRouter.edgeRouterProtocols:type_name -> ziti.edge_cmd.pb.EdgeRouter.EdgeRouterProtocolsEntry
 	10, // 17: ziti.edge_cmd.pb.CreateEdgeRouterCmd.edgeRouter:type_name -> ziti.edge_cmd.pb.EdgeRouter
 	13, // 18: ziti.edge_cmd.pb.CreateEdgeRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
-	38, // 19: ziti.edge_cmd.pb.EdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
-	39, // 20: ziti.edge_cmd.pb.Enrollment.tags:type_name -> ziti.edge_cmd.pb.Enrollment.TagsEntry
-	46, // 21: ziti.edge_cmd.pb.Enrollment.issuedAt:type_name -> google.protobuf.Timestamp
-	46, // 22: ziti.edge_cmd.pb.Enrollment.expiresAt:type_name -> google.protobuf.Timestamp
+	40, // 19: ziti.edge_cmd.pb.EdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry
+	41, // 20: ziti.edge_cmd.pb.Enrollment.tags:type_name -> ziti.edge_cmd.pb.Enrollment.TagsEntry
+	53, // 21: ziti.edge_cmd.pb.Enrollment.issuedAt:type_name -> google.protobuf.Timestamp
+	53, // 22: ziti.edge_cmd.pb.Enrollment.expiresAt:type_name -> google.protobuf.Timestamp
 	5,  // 23: ziti.edge_cmd.pb.ReplaceEnrollmentWithAuthenticatorCmd.authenticator:type_name -> ziti.edge_cmd.pb.Authenticator
-	40, // 24: ziti.edge_cmd.pb.ExternalJwtSigner.tags:type_name -> ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
-	46, // 25: ziti.edge_cmd.pb.ExternalJwtSigner.notAfter:type_name -> google.protobuf.Timestamp
-	46, // 26: ziti.edge_cmd.pb.ExternalJwtSigner.notBefore:type_name -> google.protobuf.Timestamp
-	41, // 27: ziti.edge_cmd.pb.Mfa.tags:type_name -> ziti.edge_cmd.pb.Mfa.TagsEntry
-	42, // 28: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
-	43, // 29: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
-	44, // 30: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
-	45, // 31: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
-	20, // 32: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
-	13, // 33: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
-	4,  // 34: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
-	2,  // 35: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	29, // 36: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
-	30, // 37: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
-	31, // 38: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
-	2,  // 39: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 40: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 41: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 42: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 43: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 44: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 45: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 46: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 47: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 48: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 49: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 50: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	2,  // 51: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
-	52, // [52:52] is the sub-list for method output_type
-	52, // [52:52] is the sub-list for method input_type
-	52, // [52:52] is the sub-list for extension type_name
-	52, // [52:52] is the sub-list for extension extendee
-	0,  // [0:52] is the sub-list for field type_name
+	42, // 24: ziti.edge_cmd.pb.ExternalJwtSigner.tags:type_name -> ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry
+	53, // 25: ziti.edge_cmd.pb.ExternalJwtSigner.notAfter:type_name -> google.protobuf.Timestamp
+	53, // 26: ziti.edge_cmd.pb.ExternalJwtSigner.notBefore:type_name -> google.protobuf.Timestamp
+	45, // 27: ziti.edge_cmd.pb.Identity.tags:type_name -> ziti.edge_cmd.pb.Identity.TagsEntry
+	43, // 28: ziti.edge_cmd.pb.Identity.envInfo:type_name -> ziti.edge_cmd.pb.Identity.EnvInfo
+	44, // 29: ziti.edge_cmd.pb.Identity.sdkInfo:type_name -> ziti.edge_cmd.pb.Identity.SdkInfo
+	46, // 30: ziti.edge_cmd.pb.Identity.serviceHostingPrecedences:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingPrecedencesEntry
+	47, // 31: ziti.edge_cmd.pb.Identity.serviceHostingCosts:type_name -> ziti.edge_cmd.pb.Identity.ServiceHostingCostsEntry
+	3,  // 32: ziti.edge_cmd.pb.Identity.appData:type_name -> ziti.edge_cmd.pb.JsonMap
+	53, // 33: ziti.edge_cmd.pb.Identity.disabledAt:type_name -> google.protobuf.Timestamp
+	53, // 34: ziti.edge_cmd.pb.Identity.disabledUntil:type_name -> google.protobuf.Timestamp
+	16, // 35: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.identity:type_name -> ziti.edge_cmd.pb.Identity
+	13, // 36: ziti.edge_cmd.pb.CreateIdentityWithEnrollmentsCmd.enrollments:type_name -> ziti.edge_cmd.pb.Enrollment
+	48, // 37: ziti.edge_cmd.pb.Mfa.tags:type_name -> ziti.edge_cmd.pb.Mfa.TagsEntry
+	49, // 38: ziti.edge_cmd.pb.Service.tags:type_name -> ziti.edge_cmd.pb.Service.TagsEntry
+	50, // 39: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.tags:type_name -> ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry
+	51, // 40: ziti.edge_cmd.pb.ServicePolicy.tags:type_name -> ziti.edge_cmd.pb.ServicePolicy.TagsEntry
+	52, // 41: ziti.edge_cmd.pb.TransitRouter.tags:type_name -> ziti.edge_cmd.pb.TransitRouter.TagsEntry
+	22, // 42: ziti.edge_cmd.pb.CreateTransitRouterCmd.router:type_name -> ziti.edge_cmd.pb.TransitRouter
+	13, // 43: ziti.edge_cmd.pb.CreateTransitRouterCmd.enrollment:type_name -> ziti.edge_cmd.pb.Enrollment
+	4,  // 44: ziti.edge_cmd.pb.JsonMap.ValueEntry.value:type_name -> ziti.edge_cmd.pb.JsonValue
+	2,  // 45: ziti.edge_cmd.pb.Authenticator.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	31, // 46: ziti.edge_cmd.pb.AuthPolicy.Primary.cert:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Cert
+	32, // 47: ziti.edge_cmd.pb.AuthPolicy.Primary.updb:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.Updb
+	33, // 48: ziti.edge_cmd.pb.AuthPolicy.Primary.extJwt:type_name -> ziti.edge_cmd.pb.AuthPolicy.Primary.ExtJwt
+	2,  // 49: ziti.edge_cmd.pb.AuthPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 50: ziti.edge_cmd.pb.Ca.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 51: ziti.edge_cmd.pb.Config.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 52: ziti.edge_cmd.pb.ConfigType.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 53: ziti.edge_cmd.pb.EdgeRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 54: ziti.edge_cmd.pb.EdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 55: ziti.edge_cmd.pb.Enrollment.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 56: ziti.edge_cmd.pb.ExternalJwtSigner.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 57: ziti.edge_cmd.pb.Identity.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 58: ziti.edge_cmd.pb.Mfa.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 59: ziti.edge_cmd.pb.Service.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 60: ziti.edge_cmd.pb.ServiceEdgeRouterPolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 61: ziti.edge_cmd.pb.ServicePolicy.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	2,  // 62: ziti.edge_cmd.pb.TransitRouter.TagsEntry.value:type_name -> ziti.edge_cmd.pb.TagValue
+	63, // [63:63] is the sub-list for method output_type
+	63, // [63:63] is the sub-list for method input_type
+	63, // [63:63] is the sub-list for extension type_name
+	63, // [63:63] is the sub-list for extension extendee
+	0,  // [0:63] is the sub-list for field type_name
 }
 
 func init() { file_edge_cmd_proto_init() }
@@ -3514,7 +4051,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[15].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Mfa); i {
+			switch v := v.(*Identity); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3526,7 +4063,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[16].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Service); i {
+			switch v := v.(*CreateIdentityWithEnrollmentsCmd); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3538,7 +4075,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[17].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServiceEdgeRouterPolicy); i {
+			switch v := v.(*Mfa); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3550,7 +4087,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[18].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ServicePolicy); i {
+			switch v := v.(*Service); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3562,7 +4099,7 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[19].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*TransitRouter); i {
+			switch v := v.(*ServiceEdgeRouterPolicy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3574,7 +4111,19 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[20].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*CreateTransitRouterCmd); i {
+			switch v := v.(*ServicePolicy); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_edge_cmd_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*TransitRouter); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3586,6 +4135,18 @@ func file_edge_cmd_proto_init() {
 			}
 		}
 		file_edge_cmd_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*CreateTransitRouterCmd); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_edge_cmd_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Authenticator_Cert); i {
 			case 0:
 				return &v.state
@@ -3597,7 +4158,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Authenticator_Updb); i {
 			case 0:
 				return &v.state
@@ -3609,7 +4170,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary); i {
 			case 0:
 				return &v.state
@@ -3621,7 +4182,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Secondary); i {
 			case 0:
 				return &v.state
@@ -3633,7 +4194,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_Cert); i {
 			case 0:
 				return &v.state
@@ -3645,7 +4206,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_Updb); i {
 			case 0:
 				return &v.state
@@ -3657,7 +4218,7 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*AuthPolicy_Primary_ExtJwt); i {
 			case 0:
 				return &v.state
@@ -3669,8 +4230,32 @@ func file_edge_cmd_proto_init() {
 				return nil
 			}
 		}
-		file_edge_cmd_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
+		file_edge_cmd_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Ca_ExternalIdClaim); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_edge_cmd_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Identity_EnvInfo); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_edge_cmd_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*Identity_SdkInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -3703,15 +4288,16 @@ func file_edge_cmd_proto_init() {
 	file_edge_cmd_proto_msgTypes[9].OneofWrappers = []interface{}{}
 	file_edge_cmd_proto_msgTypes[12].OneofWrappers = []interface{}{}
 	file_edge_cmd_proto_msgTypes[14].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[19].OneofWrappers = []interface{}{}
-	file_edge_cmd_proto_msgTypes[26].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[15].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[21].OneofWrappers = []interface{}{}
+	file_edge_cmd_proto_msgTypes[28].OneofWrappers = []interface{}{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_edge_cmd_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   45,
+			NumMessages:   52,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

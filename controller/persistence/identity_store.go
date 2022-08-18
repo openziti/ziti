@@ -411,6 +411,9 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 	}
 
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
+		if entity.IsDefaultAdmin {
+			return errorz.NewEntityCanNotBeDeleted()
+		}
 		if entity.IdentityTypeId == RouterIdentityType {
 			if !ctx.IsSystemContext() {
 				if router, _ := store.stores.Router.LoadOneByName(ctx.Tx(), entity.Name); router != nil {

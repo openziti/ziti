@@ -72,7 +72,7 @@ func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bo
 	return entity.toBoltEntity()
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

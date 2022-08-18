@@ -138,7 +138,7 @@ func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bo
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
 	return entity.toBoltEntity()
 }
 

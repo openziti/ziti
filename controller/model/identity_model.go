@@ -66,7 +66,27 @@ type Identity struct {
 	DisabledUntil             *time.Time
 }
 
-func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, _ EntityManager) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+	identityType, err := manager.GetEnv().GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
+
+	if err != nil && !boltz.IsErrNotFoundErr(err) {
+		return nil, err
+	}
+
+	if identityType == nil {
+		apiErr := errorz.NewNotFound()
+		apiErr.Cause = errorz.NewFieldError("typeId not found", "typeId", entity.IdentityTypeId)
+		apiErr.AppendCause = true
+		return nil, apiErr
+	}
+
+	if identityType.Name == persistence.RouterIdentityType {
+		fieldErr := errorz.NewFieldError("may not create identities with given typeId", "typeId", entity.IdentityTypeId)
+		return nil, errorz.NewFieldApiError(fieldErr)
+	}
+
+	entity.IdentityTypeId = identityType.Id
+
 	boltEntity := &persistence.Identity{
 		BaseExtEntity:             *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:                      entity.Name,
@@ -153,15 +173,24 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 }
 
-func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntityForChange(tx, manager, nil)
-}
+func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+	if checker == nil || checker.IsUpdated("type") {
+		identityType, err := manager.GetEnv().GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
 
-func (entity *Identity) toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForChange(tx, manager, checker)
-}
+		if err != nil && !boltz.IsErrNotFoundErr(err) {
+			return nil, err
+		}
 
-func (entity *Identity) toBoltEntityForChange(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+		if identityType == nil {
+			apiErr := errorz.NewNotFound()
+			apiErr.Cause = errorz.NewFieldError("identityTypeId not found", "identityTypeId", entity.IdentityTypeId)
+			apiErr.AppendCause = true
+			return nil, apiErr
+		}
+
+		entity.IdentityTypeId = identityType.Id
+	}
+
 	boltEntity := &persistence.Identity{
 		Name:                      entity.Name,
 		IdentityTypeId:            entity.IdentityTypeId,

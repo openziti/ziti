@@ -120,7 +120,7 @@ func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fi
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession) error {
 	apiSession.MfaComplete = true
-	return self.patchEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self})
+	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self})
 }
 
 func (self *ApiSessionManager) Delete(id string) error {
