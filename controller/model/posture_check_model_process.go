@@ -19,6 +19,8 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 	"time"
@@ -32,6 +34,37 @@ type PostureCheckProcess struct {
 	Path           string
 	Hashes         []string
 	Fingerprint    string
+}
+
+func (p *PostureCheckProcess) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	msg.Subtype = &edge_cmd_pb.PostureCheck_Process_{
+		Process: &edge_cmd_pb.PostureCheck_Process{
+			OsType:       p.OsType,
+			Path:         p.Path,
+			Hashes:       p.Hashes,
+			Fingerprints: []string{p.Fingerprint},
+		},
+	}
+}
+
+func (p *PostureCheckProcess) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if process_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_Process_); ok {
+		if process := process_.Process; process != nil {
+			p.PostureCheckId = msg.Id
+			p.OsType = process.OsType
+			p.Path = process.Path
+			p.Hashes = process.Hashes
+
+			var fingerprint string
+			if len(process.Fingerprints) > 0 {
+				fingerprint = process.Fingerprints[0]
+			}
+			p.Fingerprint = fingerprint
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of process, but got %T", msg.Subtype)
+	}
+	return nil
 }
 
 func (p *PostureCheckProcess) LastUpdatedAt(id string, pd *PostureData) *time.Time {
@@ -127,24 +160,6 @@ func (p *PostureCheckProcess) fillFrom(_ EntityManager, tx *bbolt.Tx, check *per
 }
 
 func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckProcess{
-		OperatingSystem: p.OsType,
-		Path:            p.Path,
-		Hashes:          p.Hashes,
-		Fingerprint:     p.Fingerprint,
-	}, nil
-}
-
-func (p *PostureCheckProcess) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckProcess{
-		OperatingSystem: p.OsType,
-		Path:            p.Path,
-		Hashes:          p.Hashes,
-		Fingerprint:     p.Fingerprint,
-	}, nil
-}
-
-func (p *PostureCheckProcess) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,

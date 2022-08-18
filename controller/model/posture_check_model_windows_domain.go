@@ -19,6 +19,8 @@ package model
 import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 	"time"
@@ -30,7 +32,26 @@ type PostureCheckDomains struct {
 	Domains []string
 }
 
-func (p *PostureCheckDomains) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+func (p *PostureCheckDomains) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	msg.Subtype = &edge_cmd_pb.PostureCheck_Domains_{
+		Domains: &edge_cmd_pb.PostureCheck_Domains{
+			Domains: p.Domains,
+		},
+	}
+}
+
+func (p *PostureCheckDomains) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if domains_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_Domains_); ok {
+		if domains := domains_.Domains; domains != nil {
+			p.Domains = domains.Domains
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of mfa, but got %T", msg.Subtype)
+	}
+	return nil
+}
+
+func (p *PostureCheckDomains) LastUpdatedAt(string, *PostureData) *time.Time {
 	return nil
 }
 
@@ -49,7 +70,7 @@ func (p *PostureCheckDomains) FailureValues(_ string, pd *PostureData) PostureCh
 	}
 }
 
-func (p *PostureCheckDomains) ActualValue(apiSessionId string, pd *PostureData) interface{} {
+func (p *PostureCheckDomains) ActualValue(_ string, pd *PostureData) interface{} {
 	return pd.Domain.Name
 }
 
@@ -77,7 +98,7 @@ func newPostureCheckWindowsDomains() PostureCheckSubType {
 	return &PostureCheckDomains{}
 }
 
-func (p *PostureCheckDomains) fillFrom(_ EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckDomains) fillFrom(_ EntityManager, _ *bbolt.Tx, _ *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
@@ -89,18 +110,6 @@ func (p *PostureCheckDomains) fillFrom(_ EntityManager, tx *bbolt.Tx, check *per
 }
 
 func (p *PostureCheckDomains) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckWindowsDomains{
-		Domains: p.Domains,
-	}, nil
-}
-
-func (p *PostureCheckDomains) toBoltEntityForUpdate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
-	return &persistence.PostureCheckWindowsDomains{
-		Domains: p.Domains,
-	}, nil
-}
-
-func (p *PostureCheckDomains) toBoltEntityForPatch(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil

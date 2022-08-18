@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"github.com/blang/semver"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -39,6 +41,31 @@ type PostureCheckMfa struct {
 	PromptOnWake          bool
 	PromptOnUnlock        bool
 	IgnoreLegacyEndpoints bool
+}
+
+func (p *PostureCheckMfa) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	msg.Subtype = &edge_cmd_pb.PostureCheck_Mfa_{
+		Mfa: &edge_cmd_pb.PostureCheck_Mfa{
+			TimeoutSeconds:        p.TimeoutSeconds,
+			PromptOnWake:          p.PromptOnWake,
+			PromptOnUnlock:        p.PromptOnUnlock,
+			IgnoreLegacyEndpoints: p.IgnoreLegacyEndpoints,
+		},
+	}
+}
+
+func (p *PostureCheckMfa) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if mfa_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_Mfa_); ok {
+		if mfa := mfa_.Mfa; mfa != nil {
+			p.TimeoutSeconds = mfa.TimeoutSeconds
+			p.PromptOnWake = mfa.PromptOnWake
+			p.PromptOnUnlock = mfa.PromptOnUnlock
+			p.IgnoreLegacyEndpoints = mfa.IgnoreLegacyEndpoints
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of mfa, but got %T", msg.Subtype)
+	}
+	return nil
 }
 
 func (p *PostureCheckMfa) LastUpdatedAt(apiSessionId string, pd *PostureData) *time.Time {
@@ -307,14 +334,6 @@ func (p *PostureCheckMfa) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persi
 		PromptOnUnlock:        p.PromptOnUnlock,
 		IgnoreLegacyEndpoints: p.IgnoreLegacyEndpoints,
 	}, nil
-}
-
-func (p *PostureCheckMfa) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, manager)
-}
-
-func (p *PostureCheckMfa) toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, manager)
 }
 
 type PostureCheckMfaValues struct {

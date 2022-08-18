@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -33,7 +35,46 @@ type PostureCheckProcessMulti struct {
 	Processes      []*ProcessMulti
 }
 
-func (p *PostureCheckProcessMulti) LastUpdatedAt(id string, pd *PostureData) *time.Time {
+func (p *PostureCheckProcessMulti) fillProtobuf(msg *edge_cmd_pb.PostureCheck) {
+	processMultiMsg := &edge_cmd_pb.PostureCheck_ProcessMulti{
+		Semantic: p.Semantic,
+	}
+
+	for _, process := range p.Processes {
+		processMultiMsg.Processes = append(processMultiMsg.Processes, &edge_cmd_pb.PostureCheck_Process{
+			OsType:       process.OsType,
+			Path:         process.Path,
+			Hashes:       process.Hashes,
+			Fingerprints: process.SignerFingerprints,
+		})
+	}
+
+	msg.Subtype = &edge_cmd_pb.PostureCheck_ProcessMulti_{
+		ProcessMulti: processMultiMsg,
+	}
+}
+
+func (p *PostureCheckProcessMulti) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
+	if processMulti_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_ProcessMulti_); ok {
+		if processMulti := processMulti_.ProcessMulti; processMulti != nil {
+			p.PostureCheckId = msg.Id
+			p.Semantic = processMulti.Semantic
+			for _, process := range processMulti.Processes {
+				p.Processes = append(p.Processes, &ProcessMulti{
+					OsType:             process.OsType,
+					Path:               process.Path,
+					Hashes:             process.Hashes,
+					SignerFingerprints: process.Fingerprints,
+				})
+			}
+		}
+	} else {
+		return errors.Errorf("expected posture check sub type data of process, but got %T", msg.Subtype)
+	}
+	return nil
+}
+
+func (p *PostureCheckProcessMulti) LastUpdatedAt(string, *PostureData) *time.Time {
 	return nil
 }
 
@@ -180,14 +221,6 @@ func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ EntityMa
 	}
 
 	return ret, nil
-}
-
-func (p *PostureCheckProcessMulti) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, manager)
-}
-
-func (p *PostureCheckProcessMulti) toBoltEntityForPatch(tx *bbolt.Tx, manager EntityManager) (persistence.PostureCheckSubType, error) {
-	return p.toBoltEntityForCreate(tx, manager)
 }
 
 type PostureCheckFailureValuesProcessMulti struct {
