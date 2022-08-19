@@ -18,15 +18,13 @@ package boltz
 
 import (
 	"github.com/kataras/go-events"
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
-	"io"
 	"time"
 )
 
 const (
-	RootBucket    = "ziti"
 	IndexesBucket = "indexes"
 )
 
@@ -42,22 +40,12 @@ const (
 	FieldIsSystemEntity = "isSystem"
 )
 
-type Db interface {
-	io.Closer
-	Update(fn func(tx *bbolt.Tx) error) error
-	Batch(fn func(tx *bbolt.Tx) error) error
-	View(fn func(tx *bbolt.Tx) error) error
-	RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error)
-
-	// Snapshot makes a copy of the bolt file
-	Snapshot(tx *bbolt.Tx) error
-}
-
 type ListStore interface {
 	ast.SymbolTypes
 
 	GetEntityType() string
 	GetSingularEntityType() string
+	GetRootPath() []string
 	GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket
 	GetOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
 	GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
