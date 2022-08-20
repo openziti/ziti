@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
@@ -25,49 +24,42 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
 type CtrlAccepter struct {
 	network      *network.Network
 	xctrls       []xctrl.Xctrl
-	listener     channel.UnderlayListener
 	options      *channel.Options
 	traceHandler *channel.TraceHandler
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
-	listener channel.UnderlayListener,
 	options *channel.Options,
 	traceHandler *channel.TraceHandler) *CtrlAccepter {
 	return &CtrlAccepter{
 		network:      network,
 		xctrls:       xctrls,
-		listener:     listener,
 		options:      options,
 		traceHandler: traceHandler,
 	}
 }
 
-func (self *CtrlAccepter) Run() {
-	log := pfxlog.Logger()
-	log.Info("started")
-	defer log.Warn("exited")
-
-	for {
-		ch, err := channel.NewChannel("ctrl", self.listener, channel.BindHandlerF(self.Bind), self.options)
-		if err != nil {
-			log.WithError(err).Error("error accepting control channel connection")
-			if err.Error() == "closed" {
-				return
-			}
-		} else if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
-			go self.network.ConnectRouter(r)
-		} else {
-			log.WithError(err).Error("error getting router for control channel")
-		}
+func (self *CtrlAccepter) AcceptUnderlay(underlay channel.Underlay) error {
+	ch, err := channel.NewChannelWithUnderlay("ctrl", underlay, channel.BindHandlerF(self.Bind), self.options)
+	if err != nil {
+		return err
 	}
+
+	if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
+		go self.network.ConnectRouter(r)
+	} else {
+		return errors.Wrap(err, "error get router for control channel")
+	}
+
+	return nil
 }
 
 func (self *CtrlAccepter) Bind(binding channel.Binding) error {

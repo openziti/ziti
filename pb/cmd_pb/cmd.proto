@@ -8,6 +8,7 @@ enum CommandType {
   CreateEntityType = 1;
   UpdateEntityType = 2;
   DeleteEntityType = 3;
+  SyncSnapshot = 4;
 }
 
 message CreateEntityCommand {
@@ -26,6 +27,11 @@ message UpdateEntityCommand {
 message DeleteEntityCommand {
   string entityId = 1;
   string entityType = 2;
+}
+
+message SyncSnapshotCommand {
+  string snapshotId = 1;
+  bytes snapshot = 2;
 }
 
 message TagValue {

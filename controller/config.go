@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
@@ -51,7 +52,7 @@ type Config struct {
 	Id      *identity.TokenId
 	Raft    *raft.Config
 	Network *network.Options
-	Db      *db.Db
+	Db      boltz.Db
 	Trace   struct {
 		Handler *channel.TraceHandler
 	}
@@ -75,7 +76,8 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	src map[interface{}]interface{}
+	SyncRaftToDb bool
+	src          map[interface{}]interface{}
 }
 
 // CtrlOptions extends channel.Options to include support for additional, non-channel specific options
@@ -161,9 +163,6 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["advertiseAddress"]; found {
 				controllerConfig.Raft.AdvertiseAddress = value.(string)
 			}
-			if value, found := submap["bindAddress"]; found {
-				controllerConfig.Raft.BindAddress = value.(string)
-			}
 			if value, found := submap["bootstrapMembers"]; found {
 				if lst, ok := value.([]interface{}); ok {
 					for idx, val := range lst {
@@ -189,6 +188,7 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, errors.New("invalid commandHandler value, should be map")
 				}
 			}
+		} else {
 			return nil, errors.Errorf("invalid raft configuration")
 		}
 	} else if value, found := cfgmap["db"]; found {

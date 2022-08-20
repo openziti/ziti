@@ -1112,6 +1112,36 @@ func (network *Network) SnapshotDatabase() error {
 	return err
 }
 
+func (network *Network) restoreSnapshot(cmd *command.SyncSnapshotCommand) error {
+	log := pfxlog.Logger()
+	currentSnapshotId, err := network.getDb().GetSnapshotId()
+	if err != nil {
+		log.WithError(err).Error("unable to get current snapshot id")
+	}
+	if currentSnapshotId != nil && *currentSnapshotId == cmd.SnapshotId {
+		log.WithField("snapshotId", cmd.SnapshotId).Info("snapshot already current, skipping reload")
+		return nil
+	}
+
+	network.getDb().RestoreSnapshot(cmd.Snapshot)
+	return nil
+}
+
+func (network *Network) SnapshotToRaft() error {
+	snapshotId, snapshot, err := network.getDb().SnapshotToMemory()
+	if err != nil {
+		return err
+	}
+
+	cmd := &command.SyncSnapshotCommand{
+		SnapshotId:   snapshotId,
+		Snapshot:     snapshot,
+		SnapshotSink: network.restoreSnapshot,
+	}
+
+	return network.Dispatch(cmd)
+}
+
 type Cache interface {
 	RemoveFromCache(id string)
 }

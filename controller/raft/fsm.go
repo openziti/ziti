@@ -5,6 +5,7 @@ import (
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -23,7 +24,7 @@ func NewFsm(dataDir string, decoders command.Decoders) *BoltDbFsm {
 }
 
 type BoltDbFsm struct {
-	db          *db.Db
+	db          boltz.Db
 	dataDir     string
 	dbPath      string
 	decoders    command.Decoders
@@ -45,7 +46,7 @@ func (self *BoltDbFsm) RaftInitialized() {
 	self.initialized.Set(true)
 }
 
-func (self *BoltDbFsm) GetDb() *db.Db {
+func (self *BoltDbFsm) GetDb() boltz.Db {
 	return self.db
 }
 

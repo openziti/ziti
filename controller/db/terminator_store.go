@@ -198,7 +198,7 @@ func newTerminatorStore(stores *stores) *terminatorStoreImpl {
 	store := &terminatorStoreImpl{
 		baseStore: baseStore{
 			stores:    stores,
-			BaseStore: boltz.NewBaseStore(EntityTypeTerminators, notFoundErrorFactory, boltz.RootBucket),
+			BaseStore: boltz.NewBaseStore(EntityTypeTerminators, notFoundErrorFactory, RootBucket),
 		},
 		sequence: sequence.NewSequence(),
 	}
