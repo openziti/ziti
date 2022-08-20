@@ -22,23 +22,23 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.5
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/agent v1.0.1
-	github.com/openziti/channel v0.18.58
-	github.com/openziti/edge v0.22.54
-	github.com/openziti/fabric v0.19.34
-	github.com/openziti/foundation/v2 v2.0.2
-	github.com/openziti/identity v1.0.5
-	github.com/openziti/metrics v1.0.3
-	github.com/openziti/sdk-golang v0.16.104
-	github.com/openziti/storage v0.1.16
-	github.com/openziti/transport/v2 v2.0.20
+	github.com/openziti/agent v1.0.2
+	github.com/openziti/channel v0.18.64
+	github.com/openziti/edge v0.22.72
+	github.com/openziti/fabric v0.19.48
+	github.com/openziti/foundation/v2 v2.0.3
+	github.com/openziti/identity v1.0.7
+	github.com/openziti/metrics v1.0.4
+	github.com/openziti/sdk-golang v0.16.110
+	github.com/openziti/storage v0.1.18
+	github.com/openziti/transport/v2 v2.0.24
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.22.6
+	github.com/shirou/gopsutil/v3 v3.22.7
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
 	github.com/spf13/pflag v1.0.5
@@ -80,13 +80,13 @@ require (
 	github.com/felixge/httpsnoop v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
-	github.com/go-openapi/analysis v0.21.2 // indirect
-	github.com/go-openapi/errors v0.20.2 // indirect
+	github.com/go-openapi/analysis v0.21.4 // indirect
+	github.com/go-openapi/errors v0.20.3 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
-	github.com/go-openapi/loads v0.21.1 // indirect
-	github.com/go-openapi/spec v0.20.6 // indirect
-	github.com/go-openapi/swag v0.21.1 // indirect
+	github.com/go-openapi/loads v0.21.2 // indirect
+	github.com/go-openapi/spec v0.20.7 // indirect
+	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-openapi/validate v0.22.0 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
@@ -99,7 +99,7 @@ require (
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/raft v1.3.9 // indirect
+	github.com/hashicorp/raft v1.3.10 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
@@ -115,8 +115,8 @@ require (
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
-	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mdlayher/netlink v1.6.0 // indirect
@@ -157,11 +157,11 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
-	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
+	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8 // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220808155132-1c4a2a72c664 // indirect
+	golang.org/x/sys v0.0.0-20220818161305-2296e01440c6 // indirect
 	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect

@@ -32,6 +32,7 @@ func init() {
 	root.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
 	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
 	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	root.PersistentFlags().BoolVar(&syncRaftToDb, "sync-raft-to-db", false, "Sync the current database state to raft as a snapshot. Use when moving an existing controller to run in HA/Raft")
 
 	edgeSubCmd.AddCommands(root, version.GetCmdBuildInfo())
 }
@@ -58,10 +59,12 @@ var root = &cobra.Command{
 
 	},
 }
+
 var verbose bool
 var cliAgentEnabled bool
 var cliAgentAddr string
 var logFormatter string
+var syncRaftToDb bool
 
 func Execute() {
 	if err := root.Execute(); err != nil {
