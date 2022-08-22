@@ -124,3 +124,20 @@ func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 		EntityType: self.Deleter.GetEntityTypeId(),
 	})
 }
+
+type SyncSnapshotCommand struct {
+	SnapshotId   string
+	Snapshot     []byte
+	SnapshotSink func(cmd *SyncSnapshotCommand) error
+}
+
+func (self *SyncSnapshotCommand) Apply() error {
+	return self.SnapshotSink(self)
+}
+
+func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
+	return cmd_pb.EncodeProtobuf(&cmd_pb.SyncSnapshotCommand{
+		SnapshotId: self.SnapshotId,
+		Snapshot:   self.Snapshot,
+	})
+}

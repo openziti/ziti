@@ -4,8 +4,8 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,6 +20,8 @@ const (
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
+
+	ChannelTypeMesh = "ctrl.mesh"
 )
 
 type Peer struct {
@@ -86,8 +88,7 @@ func (self meshAddr) String() string {
 type Mesh interface {
 	raft.StreamLayer
 
-	// Listen starts a network listener for the mesh on the given address
-	Listen(listenAddr string) error
+	channel.UnderlayAcceptor
 
 	// GetOrConnectPeer returns a peer for the given address. If a peer has already been established,
 	// it will be returned, otherwise a new connection will be established
@@ -115,7 +116,6 @@ type impl struct {
 	raftId      raft.ServerID
 	raftAddr    raft.ServerAddress
 	netAddr     net.Addr
-	listener    channel.UnderlayListener
 	Peers       map[string]*Peer
 	lock        sync.RWMutex
 	closeNotify chan struct{}
@@ -168,13 +168,14 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
-		logrus.WithError(err).Errorf("failed to dial %v", address)
+		logrus.WithError(err).WithField("address", address).Error("failed to parse address")
 		return nil, err
 	}
 
 	headers := map[int32][]byte{
-		PeerIdHeader:   []byte(self.raftId),
-		PeerAddrHeader: []byte(self.raftAddr),
+		PeerIdHeader:       []byte(self.raftId),
+		PeerAddrHeader:     []byte(self.raftAddr),
+		channel.TypeHeader: []byte(ChannelTypeMesh),
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -201,7 +202,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return nil
 	})
 
-	if _, err = channel.NewChannel("mesh", dialer, bindHandler, channel.DefaultOptions()); err != nil {
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != nil {
 		return nil, errors.Wrapf(err, "unable to dial %v", address)
 	}
 
@@ -228,68 +229,48 @@ func (self *impl) RemovePeer(peer *Peer) {
 	delete(self.Peers, peer.Address)
 }
 
-func (self *impl) Listen(listenAddr string) error {
-	addr, err := transport.ParseAddress(listenAddr)
-	if err != nil {
-		return err
-	}
-	listenerConfig := channel.ListenerConfig{
-		ConnectOptions:   channel.DefaultConnectOptions(),
-		PoolConfigurator: nil,
-	}
-	self.listener = channel.NewClassicListener(self.id, addr, listenerConfig)
-	if err := self.listener.Listen(); err != nil {
-		return err
-	}
-	go self.Run()
-	return nil
-}
-
-func (self *impl) Run() {
+func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 	log := pfxlog.Logger()
 	log.Info("started")
 	defer log.Warn("exited")
 
-	for {
-		peer := &Peer{
-			mesh: self,
-		}
-
-		bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
-			ch := binding.GetChannel()
-			id := string(ch.Underlay().Headers()[PeerIdHeader])
-			addr := string(ch.Underlay().Headers()[PeerAddrHeader])
-
-			if id == "" || addr == "" {
-				_ = ch.Close()
-				return errors.Errorf("connection didn't provide id '%v' or address '%v', closing connection", id, addr)
-			}
-
-			if err := binding.Bind(self.bindHandler); err != nil {
-				_ = ch.Close()
-				return errors.Wrapf(err, "error while binding channel from id '%v' or address '%v', closing connection", id, addr)
-			}
-
-			peer.Id = raft.ServerID(id)
-			peer.Address = addr
-			peer.Channel = ch
-
-			peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
-			binding.AddTypedReceiveHandler(peer)
-			binding.AddTypedReceiveHandler(peer.RaftConn)
-			binding.AddCloseHandler(peer)
-			return nil
-		})
-
-		_, err := channel.NewChannel("ctrl", self.listener, bindHandler, channel.DefaultOptions())
-		if err != nil {
-			log.Errorf("error accepting (%s)", err)
-			if err.Error() == "closed" {
-				return
-			}
-		} else {
-			self.AddPeer(peer)
-			logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
-		}
+	peer := &Peer{
+		mesh: self,
 	}
+
+	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
+		ch := binding.GetChannel()
+		id := string(ch.Underlay().Headers()[PeerIdHeader])
+		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
+
+		if id == "" || addr == "" {
+			_ = ch.Close()
+			return errors.Errorf("connection didn't provide id '%v' or address '%v', closing connection", id, addr)
+		}
+
+		if err := binding.Bind(self.bindHandler); err != nil {
+			_ = ch.Close()
+			return errors.Wrapf(err, "error while binding channel from id '%v' or address '%v', closing connection", id, addr)
+		}
+
+		peer.Id = raft.ServerID(id)
+		peer.Address = addr
+		peer.Channel = ch
+
+		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
+		binding.AddTypedReceiveHandler(peer)
+		binding.AddTypedReceiveHandler(peer.RaftConn)
+		binding.AddCloseHandler(peer)
+		return nil
+	})
+
+	_, err := channel.NewChannelWithUnderlay(ChannelTypeMesh, underlay, bindHandler, channel.DefaultOptions())
+	if err != nil {
+		return err
+	}
+
+	self.AddPeer(peer)
+	logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
+
+	return nil
 }

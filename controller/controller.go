@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/raft"
+	"github.com/openziti/fabric/controller/raft/mesh"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
@@ -46,6 +47,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
+	"time"
 )
 
 type Controller struct {
@@ -90,6 +92,10 @@ func (c *Controller) GetCommandDispatcher() command.Dispatcher {
 	return c.raftController
 }
 
+func (c *Controller) IsRaftEnabled() bool {
+	return c.raftController != nil
+}
+
 func (c *Controller) GetDb() boltz.Db {
 	return c.config.Db
 }
@@ -107,6 +113,8 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 
 	shutdownC := make(chan struct{})
 
+	log := pfxlog.Logger()
+
 	c := &Controller{
 		config:              cfg,
 		shutdownC:           shutdownC,
@@ -119,8 +127,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	if cfg.Raft != nil {
 		raftController, err := raft.NewController(cfg.Id, cfg.Raft, metricRegistry)
 		if err != nil {
-			fmt.Printf("error starting raft %+v\n", err)
-			panic(err)
+			log.WithError(err).Panic("error starting raft")
 		}
 
 		c.raftController = raftController
@@ -133,6 +140,27 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		c.network = n
 	} else {
 		return nil, err
+	}
+
+	if cfg.SyncRaftToDb {
+		if c.raftController == nil {
+			log.Panic("cannot sync raft to database, as raft is not configured to run")
+		}
+
+		log.Info("waiting for raft cluster to settle before syncing raft to database")
+		start := time.Now()
+		for !c.raftController.IsLeader() {
+			time.Sleep(time.Second)
+			if time.Now().Sub(start) > time.Second*30 {
+				log.Panic("cannot sync raft to database, as current node is not the leader")
+			} else {
+				log.Info("waiting for raft controller to become leader to allow syncing db to raft")
+			}
+		}
+
+		if err := c.network.SnapshotToRaft(); err != nil {
+			log.WithError(err).Fatal("unable to sync database to raft")
+		}
 	}
 
 	c.eventDispatcher.InitializeNetworkEvents(c.network)
@@ -207,8 +235,22 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
-	go ctrlAccepter.Run()
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
+
+	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
+	if c.raftController != nil {
+		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
+	}
+
+	underlayDispatcher := channel.NewUnderlayDispatcher(channel.UnderlayDispatcherConfig{
+		Listener:        ctrlListener,
+		ConnectTimeout:  c.config.Ctrl.Options.ConnectTimeout,
+		TransportConfig: nil,
+		Acceptors:       ctrlAcceptors,
+		DefaultAcceptor: ctrlAccepter,
+	})
+
+	go underlayDispatcher.Run()
 
 	if err := c.config.Configure(c.xweb); err != nil {
 		panic(err)

@@ -41,6 +41,7 @@ func (self *CommandManager) registerGenericCommands() {
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_CreateEntityType), self.decodeCreateEntityCommand)
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_UpdateEntityType), self.decodeUpdateEntityCommand)
 	self.Decoders.RegisterF(int32(cmd_pb.CommandType_DeleteEntityType), self.decodeDeleteEntityCommand)
+	self.Decoders.RegisterF(int32(cmd_pb.CommandType_SyncSnapshot), self.decodeSyncSnapshotCommand)
 }
 
 func (self *CommandManager) decodeCreateEntityCommand(_ int32, data []byte) (command.Command, error) {
@@ -83,6 +84,21 @@ func (self *CommandManager) decodeDeleteEntityCommand(_ int32, data []byte) (com
 	}
 
 	return decoder(msg)
+}
+
+func (self *CommandManager) decodeSyncSnapshotCommand(_ int32, data []byte) (command.Command, error) {
+	msg := &cmd_pb.SyncSnapshotCommand{}
+	if err := proto.Unmarshal(data, msg); err != nil {
+		return nil, err
+	}
+
+	cmd := &command.SyncSnapshotCommand{
+		SnapshotId:   msg.SnapshotId,
+		Snapshot:     msg.Snapshot,
+		SnapshotSink: self.network.restoreSnapshot,
+	}
+
+	return cmd, nil
 }
 
 // CommandMsg is a TypedMessage which is also a pointer type.

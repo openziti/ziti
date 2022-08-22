@@ -8,12 +8,12 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/raft/mesh"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io/fs"
@@ -29,7 +29,6 @@ type Config struct {
 	DataDir               string
 	MinClusterSize        uint32
 	AdvertiseAddress      string
-	BindAddress           string
 	BootstrapMembers      []string
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
@@ -75,7 +74,7 @@ func (self *Controller) GetMesh() mesh.Mesh {
 }
 
 // GetDb returns the DB instance
-func (self *Controller) GetDb() *db.Db {
+func (self *Controller) GetDb() boltz.Db {
 	return self.Fsm.GetDb()
 }
 
@@ -224,10 +223,6 @@ func (self *Controller) Init() error {
 	}
 
 	self.Mesh = mesh.New(self.Id, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
-	if err = self.Mesh.Listen(raftConfig.BindAddress); err != nil {
-		logrus.WithField("bindAddr", raftConfig.BindAddress).WithError(err).Error("failed to start mesh listener")
-		return err
-	}
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
@@ -293,7 +288,7 @@ func (self *Controller) Join(req *JoinRequest) error {
 	}
 
 	suffrage := raft.Voter
-	if req.IsVoter {
+	if !req.IsVoter {
 		suffrage = raft.Nonvoter
 	}
 
