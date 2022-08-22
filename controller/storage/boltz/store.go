@@ -35,6 +35,12 @@ func newBaseStore(parent CrudStore, parentMapper func(Entity) Entity, entityType
 	if parent == nil {
 		entityPath = append(entityPath, entityType)
 	}
+
+	indexPath := basePath
+	if parent != nil {
+		indexPath = parent.GetRootPath()
+	}
+
 	result := &BaseStore{
 		parent:       parent,
 		parentMapper: parentMapper,
@@ -43,7 +49,7 @@ func newBaseStore(parent CrudStore, parentMapper func(Entity) Entity, entityType
 		symbols:      map[string]EntitySymbol{},
 		mapSymbols:   map[string]*entityMapSymbol{},
 
-		Indexer:         *NewIndexer(RootBucket, IndexesBucket),
+		Indexer:         *NewIndexer(append(indexPath, IndexesBucket)...),
 		links:           map[string]LinkCollection{},
 		refCountedLinks: map[string]RefCountedLinkCollection{},
 		entityNotFoundF: entityNotFoundF,
@@ -108,6 +114,16 @@ func (store *BaseStore) InitImpl(impl CrudStore) {
 	if store.impl == nil {
 		store.impl = impl
 	}
+}
+
+func (store *BaseStore) GetRootPath() []string {
+	if store.parent != nil {
+		return store.parent.GetRootPath()
+	}
+	if len(store.entityPath) == 1 {
+		return nil
+	}
+	return store.basePath[0 : len(store.entityPath)-1]
 }
 
 func (store *BaseStore) GetEntityType() string {
