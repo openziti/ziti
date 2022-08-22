@@ -3,10 +3,10 @@ package xgress
 import (
 	"encoding/binary"
 	"github.com/openziti/channel"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/stretchr/testify/require"
 	"io"
 	"testing"

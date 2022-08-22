@@ -17,13 +17,13 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	trace_pb "github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/identity"
+	"google.golang.org/protobuf/proto"
 )
 
 func newTraceHandler(appId *identity.TokenId, controller trace.Controller) *traceHandler {

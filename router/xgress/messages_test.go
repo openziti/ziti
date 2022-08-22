@@ -32,11 +32,8 @@ func TestSetOriginatorFlag(t *testing.T) {
 		args args
 		want uint32
 	}{
-		struct {
-			name string
-			args args
-			want uint32
-		}{name: "set empty to ingress",
+
+		{name: "set empty to ingress",
 			args: args{
 				flags:      0,
 				originator: Initiator,
@@ -79,10 +76,8 @@ func TestAcknowledgement_marshallSequence(t *testing.T) {
 		name     string
 		sequence []int32
 	}{
-		struct {
-			name     string
-			sequence []int32
-		}{name: "nil", sequence: nil},
+
+		{name: "nil", sequence: nil},
 		{name: "empty", sequence: make([]int32, 0)},
 		{name: "one entry", sequence: []int32{1}},
 		{name: "many entries", sequence: []int32{1, -1, 100, 200, -3213232, 421123, -58903204, -4324, 432432, 0, 9}},

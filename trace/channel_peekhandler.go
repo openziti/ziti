@@ -18,7 +18,6 @@ package trace
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
@@ -26,6 +25,7 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
