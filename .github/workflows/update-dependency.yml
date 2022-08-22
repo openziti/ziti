@@ -11,17 +11,17 @@ concurrency: update-dependency
 jobs:
   build:
     if: github.ref == 'refs/heads/update-dependency'
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Install Go
         uses: actions/setup-go@v2
         with:
-          go-version: '~1.18.0'
+          go-version: '1.19.x'
 
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
