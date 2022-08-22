@@ -18,13 +18,14 @@ package persistence
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/boltz"
 	"math"
 	"time"
 )
 
 func (m *Migrations) initialize(step *boltz.MigrationStep) int {
-	versionBucket := boltz.GetOrCreatePath(step.Ctx.Tx(), boltz.RootBucket)
+	versionBucket := boltz.GetOrCreatePath(step.Ctx.Tx(), db.RootBucket)
 	if step.SetError(versionBucket.GetError()) {
 		return 0
 	}

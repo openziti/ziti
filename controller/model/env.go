@@ -48,6 +48,7 @@ type HostController interface {
 	GetNetwork() *network.Network
 	Shutdown()
 	GetCloseNotifyChannel() <-chan struct{}
+	IsRaftEnabled() bool
 }
 
 type Schemas interface {

@@ -158,6 +158,7 @@ type HostController interface {
 	GetCloseNotifyChannel() <-chan struct{}
 	Shutdown()
 	Identity() identity.Identity
+	IsRaftEnabled() bool
 }
 
 type Schemes struct {
