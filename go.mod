@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v0.18.65
-	github.com/openziti/fabric v0.19.49
+	github.com/openziti/fabric v0.19.50
 	github.com/openziti/foundation/v2 v2.0.3
 	github.com/openziti/identity v1.0.8
 	github.com/openziti/jwks v1.0.1
