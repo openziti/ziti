@@ -24,9 +24,9 @@ import (
 	"syscall"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/agent"
 	"github.com/openziti/edge/controller/server"
 	"github.com/openziti/fabric/controller"
-	"github.com/openziti/agent"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -57,6 +57,7 @@ func run(cmd *cobra.Command, args []string) {
 		startLogger.WithError(err).Error("error starting ziti-controller")
 		panic(err)
 	}
+	config.SyncRaftToDb = syncRaftToDb
 
 	startLogger = startLogger.WithField("nodeId", config.Id.Token)
 	startLogger.Info("starting ziti-controller")
