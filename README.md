@@ -25,7 +25,7 @@ The Ziti Fabric is a layer of the Ziti architecture, which implements a geo-scal
 
 ## Ziti Overview
 
-If you're new to Ziti, or want to get started with the entire Ziti ecosystem, please visit the [Ziti Overview](https://netfoundry.github.io/ziti-doc/ziti/overview.html) for more information.
+If you're new to Ziti, or want to get started with the entire Ziti ecosystem, please visit the [Ziti Overview](https://openziti.github.io/) for more information.
 
 ## Getting Started with Ziti Fabric Development
 
