@@ -1,3 +1,21 @@
+# Release 0.26.6
+
+## What's New
+
+- Edge
+  - N/A
+- Fabric
+  - N/A
+- Ziti CLI
+  - Bug Fixes
+- SDK Golang
+  - N/A
+
+## Ziti CLI
+### Bug Fixes
+
+* [Issue 823](https://github.com/openziti/ziti/issues/843): Fixed quickstart bug with architecture detection not supporting `aarch64`
+
 # Release 0.26.5
 
 ## What's New
