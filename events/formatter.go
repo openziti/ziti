@@ -33,12 +33,12 @@ type LoggingHandlerFactory interface {
 }
 
 type LoggingEvent interface {
-	WriteTo(output io.WriteCloser) error
+	WriteTo(output io.Writer) error
 }
 
 type BaseFormatter struct {
 	events chan LoggingEvent
-	output io.WriteCloser
+	output io.Writer
 }
 
 func (f *BaseFormatter) Run() {
@@ -54,7 +54,7 @@ func (f *BaseFormatter) AcceptLoggingEvent(event LoggingEvent) {
 	f.events <- event
 }
 
-func marshalJson(v interface{}, output io.WriteCloser) error {
+func marshalJson(v interface{}, output io.Writer) error {
 	buf, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -65,47 +65,47 @@ func marshalJson(v interface{}, output io.WriteCloser) error {
 
 type JsonCircuitEvent event.CircuitEvent
 
-func (event *JsonCircuitEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonCircuitEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonLinkEvent event.LinkEvent
 
-func (event *JsonLinkEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonLinkEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonMetricsEvent event.MetricsEvent
 
-func (event *JsonMetricsEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonMetricsEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonRouterEvent event.RouterEvent
 
-func (event *JsonRouterEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonRouterEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonServiceEvent event.ServiceEvent
 
-func (event *JsonServiceEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonServiceEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonTerminatorEvent event.TerminatorEvent
 
-func (event *JsonTerminatorEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonTerminatorEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
 type JsonUsageEvent event.UsageEvent
 
-func (event *JsonUsageEvent) WriteTo(output io.WriteCloser) error {
+func (event *JsonUsageEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
-func NewJsonFormatter(queueDepth int, output io.WriteCloser) *JsonFormatter {
+func NewJsonFormatter(queueDepth int, output io.Writer) *JsonFormatter {
 	return &JsonFormatter{
 		BaseFormatter: BaseFormatter{
 			events: make(chan LoggingEvent, queueDepth),
@@ -148,21 +148,21 @@ func (formatter *JsonFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
 
 type PlainTextCircuitEvent event.CircuitEvent
 
-func (self *PlainTextCircuitEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextCircuitEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.CircuitEvent)(self).String()))
 	return err
 }
 
 type PlainTextLinkEvent event.LinkEvent
 
-func (self *PlainTextLinkEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextLinkEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.LinkEvent)(self).String()))
 	return err
 }
 
 type PlainTextMetricsEvent event.MetricsEvent
 
-func (event *PlainTextMetricsEvent) WriteTo(output io.WriteCloser) error {
+func (event *PlainTextMetricsEvent) WriteTo(output io.Writer) error {
 	w := iomonad.Wrap(output)
 	for name, val := range event.Metrics {
 		if intVal, ok := val.(int64); ok {
@@ -177,33 +177,33 @@ func (event *PlainTextMetricsEvent) WriteTo(output io.WriteCloser) error {
 
 type PlainTextUsageEvent event.UsageEvent
 
-func (self *PlainTextUsageEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextUsageEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.UsageEvent)(self).String()))
 	return err
 }
 
 type PlainTextServiceEvent event.ServiceEvent
 
-func (self *PlainTextServiceEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextServiceEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.ServiceEvent)(self).String()))
 	return err
 }
 
 type PlainTextTerminatorEvent event.TerminatorEvent
 
-func (self *PlainTextTerminatorEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextTerminatorEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.TerminatorEvent)(self).String()))
 	return err
 }
 
 type PlainTextRouterEvent event.RouterEvent
 
-func (self *PlainTextRouterEvent) WriteTo(output io.WriteCloser) error {
+func (self *PlainTextRouterEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.RouterEvent)(self).String()))
 	return err
 }
 
-func NewPlainTextFormatter(queueDepth int, output io.WriteCloser) *PlainTextFormatter {
+func NewPlainTextFormatter(queueDepth int, output io.Writer) *PlainTextFormatter {
 	return &PlainTextFormatter{
 		BaseFormatter: BaseFormatter{
 			events: make(chan LoggingEvent, queueDepth),
@@ -297,7 +297,7 @@ func (event *PrometheusMetricsEvent) getTimestampString(includeTimestamps bool) 
 	var ts string
 
 	if includeTimestamps {
-		ts += fmt.Sprintf(" %d", event.Timestamp.AsTime().UnixMilli())
+		ts += fmt.Sprintf(" %d", event.Timestamp.UnixMilli())
 	}
 
 	ts += "\n"
