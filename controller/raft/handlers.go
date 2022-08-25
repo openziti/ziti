@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package raft
 
 import (
@@ -24,6 +40,7 @@ const (
 	RemoveRequestType   = 2054
 
 	HeaderErrorCode = 1000
+	IndexHeader     = 1001
 
 	ErrorCodeBadMessage = 1
 	ErrorCodeNotLeader  = 2
@@ -152,11 +169,12 @@ func (self *commandHandler) ContentType() int32 {
 
 func (self *commandHandler) HandleReceive(m *channel.Message, ch channel.Channel) {
 	err := self.pool.Queue(func() {
-		if err := self.controller.ApplyEncodedCommand(m.Body); err != nil {
+		if idx, err := self.controller.ApplyEncodedCommand(m.Body); err != nil {
 			sendErrorResponseCalculateType(m, ch, err)
 			return
+		} else {
+			sendSuccessResponse(m, ch, idx)
 		}
-		sendSuccessResponse(m, ch)
 	})
 
 	if err != nil {
@@ -183,7 +201,13 @@ func sendErrorResponse(m *channel.Message, ch channel.Channel, err error, errorC
 }
 
 func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.ApiError) {
-	buf, encodeErr := json.Marshal(err)
+	encodingMap := map[string]interface{}{}
+	encodingMap["code"] = err.Code
+	encodingMap["message"] = err.Message
+	encodingMap["status"] = err.Status
+	encodingMap["cause"] = err.Cause
+
+	buf, encodeErr := json.Marshal(encodingMap)
 	if encodeErr != nil {
 		logrus.WithError(encodeErr).WithField("apiErr", err).Error("unable to encode api error")
 		sendErrorResponse(m, ch, err, ErrorCodeGeneric)
@@ -197,9 +221,11 @@ func sendApiErrorResponse(m *channel.Message, ch channel.Channel, err *errorz.Ap
 		logrus.WithError(sendErr).Error("error while sending error response")
 	}
 }
-func sendSuccessResponse(m *channel.Message, ch channel.Channel) {
+
+func sendSuccessResponse(m *channel.Message, ch channel.Channel, index uint64) {
 	resp := channel.NewMessage(SuccessResponseType, nil)
 	resp.ReplyTo(m)
+	resp.PutUint64Header(IndexHeader, index)
 	if sendErr := ch.Send(resp); sendErr != nil {
 		logrus.WithError(sendErr).Error("error while sending success response")
 	}

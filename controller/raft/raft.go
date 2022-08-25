@@ -1,7 +1,24 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package raft
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -20,6 +37,7 @@ import (
 	"os"
 	"path"
 	"reflect"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -41,6 +59,7 @@ func NewController(id *identity.TokenId, config *Config, metricsRegistry metrics
 		Id:              id,
 		Config:          config,
 		metricsRegistry: metricsRegistry,
+		indexTracker:    NewIndexTracker(),
 	}
 	if err := result.Init(); err != nil {
 		return nil, err
@@ -61,6 +80,7 @@ type Controller struct {
 	servers         []raft.Server
 	metricsRegistry metrics.Registry
 	closeNotify     <-chan struct{}
+	indexTracker    IndexTracker
 }
 
 // GetRaft returns the managed raft instance
@@ -92,6 +112,7 @@ func (self *Controller) GetLeaderAddr() string {
 // Dispatch dispatches the given command to the current leader. If the current node is the leader, the command
 // will be applied and the result returned
 func (self *Controller) Dispatch(cmd command.Command) error {
+	log := pfxlog.Logger()
 	if validatable, ok := cmd.(command.Validatable); ok {
 		if err := validatable.Validate(); err != nil {
 			return err
@@ -99,8 +120,11 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	if self.IsLeader() {
-		return self.applyCommand(cmd)
+		_, err := self.applyCommand(cmd)
+		return err
 	}
+
+	log.WithField("cmd", reflect.TypeOf(cmd)).WithField("dest", self.GetLeaderAddr()).Info("forwarding command")
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
@@ -119,17 +143,19 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	if result.ContentType == SuccessResponseType {
+		idx, found := result.GetUint64Header(IndexHeader)
+		if found {
+			if err = self.indexTracker.WaitForIndex(idx, time.Now().Add(5*time.Second)); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 
 	if result.ContentType == ErrorResponseType {
 		errCode, found := result.GetUint32Header(HeaderErrorCode)
 		if found && errCode == ErrorCodeApiError {
-			apiErr := &errorz.ApiError{}
-			if err = json.Unmarshal(result.Body, apiErr); err != nil {
-				return errors.Wrap(err, "unable to decode api error response")
-			}
-			return apiErr
+			return self.decodeApiError(result.Body)
 		}
 		return errors.New(string(result.Body))
 	}
@@ -137,42 +163,131 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	return errors.Errorf("unexpected response type %v", result.ContentType)
 }
 
+func (self *Controller) decodeApiError(data []byte) error {
+	m := map[string]interface{}{}
+	if err := json.Unmarshal(data, &m); err != nil {
+		pfxlog.Logger().Warnf("invalid api error encoding, unable to decode: %v", string(data))
+		return errors.New(string(data))
+	}
+
+	apiErr := &errorz.ApiError{}
+
+	if code, ok := m["code"]; ok {
+		if apiErr.Code, ok = code.(string); !ok {
+			pfxlog.Logger().Warnf("invalid api error encoding, invalid code, not string: %v", string(data))
+			return errors.New(string(data))
+		}
+	} else {
+		pfxlog.Logger().Warnf("invalid api error encoding, no code: %v", string(data))
+		return errors.New(string(data))
+	}
+
+	if status, ok := m["status"]; ok {
+		statusStr := fmt.Sprintf("%v", status)
+		statusInt, err := strconv.Atoi(statusStr)
+		if err != nil {
+			pfxlog.Logger().Warnf("invalid api error encoding, invalid code, not int: %v", string(data))
+			return errors.New(string(data))
+		}
+		apiErr.Status = statusInt
+	} else {
+		pfxlog.Logger().Warnf("invalid api error encoding, no status: %v", string(data))
+		return errors.New(string(data))
+	}
+
+	if message, ok := m["message"]; ok {
+		if apiErr.Message, ok = message.(string); !ok {
+			pfxlog.Logger().Warnf("invalid api error encoding, no message: %v", string(data))
+			return errors.New(string(data))
+		}
+	} else {
+		pfxlog.Logger().Warnf("invalid api error encoding, invalid message, not string: %v", string(data))
+		return errors.New(string(data))
+	}
+
+	if cause, ok := m["cause"]; ok {
+		if strCause, ok := cause.(string); ok {
+			apiErr.Cause = errors.New(strCause)
+		} else if objCause, ok := cause.(map[string]interface{}); ok {
+			apiErr.Cause = self.parseFieldError(objCause)
+			if apiErr.Cause == nil {
+				if b, err := json.Marshal(objCause); err == nil {
+					apiErr.Cause = errors.New(string(b))
+				} else {
+					apiErr.Cause = errors.New(fmt.Sprintf("%+v", objCause))
+				}
+			}
+		} else {
+			pfxlog.Logger().Warnf("invalid api error encoding, no cause: %v", string(data))
+			return errors.New(string(data))
+		}
+	}
+
+	return apiErr
+}
+
+func (self *Controller) parseFieldError(m map[string]any) *errorz.FieldError {
+	var fieldError *errorz.FieldError
+	field, ok := m["field"]
+	if !ok {
+		return nil
+	}
+
+	fieldStr, ok := field.(string)
+	if !ok {
+		return nil
+	}
+
+	fieldError = &errorz.FieldError{
+		FieldName:  fieldStr,
+		FieldValue: m["value"],
+	}
+
+	if reason, ok := m["reason"]; ok {
+		if reasonStr, ok := reason.(string); ok {
+			fieldError.Reason = reasonStr
+		}
+	}
+
+	return fieldError
+}
+
 // applyCommand encodes the command and passes it to ApplyEncodedCommand
-func (self *Controller) applyCommand(cmd command.Command) error {
+func (self *Controller) applyCommand(cmd command.Command) (uint64, error) {
 	encoded, err := cmd.Encode()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	return self.ApplyEncodedCommand(encoded)
 }
 
 // ApplyEncodedCommand applies the command to the RAFT distributed log
-func (self *Controller) ApplyEncodedCommand(encoded []byte) error {
-	val, err := self.ApplyWithTimeout(encoded, 5*time.Second)
+func (self *Controller) ApplyEncodedCommand(encoded []byte) (uint64, error) {
+	val, idx, err := self.ApplyWithTimeout(encoded, 5*time.Second)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if err, ok := val.(error); ok {
-		return err
+		return 0, err
 	}
 	if val != nil {
 		cmd, err := self.Fsm.decoders.Decode(encoded)
 		if err != nil {
 			logrus.WithError(err).Error("failed to unmarshal command which returned non-nil, non-error value")
-			return err
+			return 0, err
 		}
 		pfxlog.Logger().WithField("cmdType", reflect.TypeOf(cmd)).Error("command return non-nil, non-error value")
 	}
-	return nil
+	return idx, nil
 }
 
 // ApplyWithTimeout applies the given command to the RAFT distributed log with the given timeout
-func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, error) {
+func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (interface{}, uint64, error) {
 	f := self.Raft.Apply(log, timeout)
 	if err := f.Error(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
-	return f.Response(), nil
+	return f.Response(), f.Index(), nil
 }
 
 // Init sets up the Mesh and Raft instances
@@ -226,7 +341,7 @@ func (self *Controller) Init() error {
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
-	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders())
+	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker)
 
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
