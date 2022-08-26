@@ -542,6 +542,11 @@ type simpleTestChannel struct {
 	isClosed bool
 }
 
+func (ch *simpleTestChannel) TrySend(s channel.Sendable) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (ch *simpleTestChannel) Send(s channel.Sendable) error {
 	//TODO implement me
 	panic("implement me")
