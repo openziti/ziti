@@ -116,7 +116,7 @@ func (self *Dispatcher) newMetricEvent(msg *metrics_pb.MetricsMessage, metricTyp
 		MetricType:    metricType,
 		Namespace:     event.MetricsEventsNs,
 		SourceAppId:   msg.SourceId,
-		Timestamp:     msg.Timestamp,
+		Timestamp:     msg.Timestamp.AsTime(),
 		Metric:        name,
 		Tags:          msg.Tags,
 		SourceEventId: id,
