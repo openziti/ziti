@@ -16,6 +16,7 @@ jobs:
   mattermost-ziti-webhook:
     runs-on: ubuntu-latest
     name: POST Webhook
+    if: github.actor != 'dependabot[bot]'
     steps:
     - uses: openziti/ziti-mattermost-action-py@main
       if: |
