@@ -1,12 +1,12 @@
 package handler_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
+	"google.golang.org/protobuf/proto"
 )
 
 type traceHandler struct {

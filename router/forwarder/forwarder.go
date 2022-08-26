@@ -23,9 +23,9 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/metrics"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -265,7 +265,6 @@ func (forwarder *Forwarder) Debug() string {
 // unrouteTimeout implements a goroutine to manage route timeout processing. Once a timeout processor has been launched
 // for a circuit, it will be checked repeatedly, looking to see if the circuit has crossed the inactivity threshold.
 // Once it crosses the inactivity threshold, it gets removed.
-//
 func (forwarder *Forwarder) unrouteTimeout(circuitId string, interval time.Duration) {
 	log := pfxlog.ContextLogger("c/" + circuitId)
 	log.Debug("scheduled")

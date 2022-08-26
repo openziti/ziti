@@ -18,11 +18,11 @@ package ctrl_pb
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/metrics/metrics_pb"
+	"google.golang.org/protobuf/proto"
 	"strconv"
 	"strings"
 )

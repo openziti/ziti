@@ -33,10 +33,10 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/info"
+	"github.com/openziti/identity"
 	"github.com/sirupsen/logrus"
 )
 
@@ -69,7 +69,6 @@ type Factory interface {
 type OptionsData map[interface{}]interface{}
 
 // The BindHandlers are invoked to install the appropriate handlers.
-//
 type BindHandler interface {
 	HandleXgressBind(x *Xgress)
 }
@@ -80,7 +79,6 @@ type ControlReceiver interface {
 
 // ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
 // is implemented to connect the xgress to a data plane data transmission system.
-//
 type ReceiveHandler interface {
 	// HandleXgressReceive is invoked when data is received from the connected xgress peer.
 	//
@@ -89,7 +87,6 @@ type ReceiveHandler interface {
 }
 
 // CloseHandler is invoked by an xgress when the connected peer terminates the communication.
-//
 type CloseHandler interface {
 	// HandleXgressClose is invoked when the connected peer terminates the communication.
 	//
@@ -286,7 +283,6 @@ Things which can trigger close
 2. Write fails
 3. End of Circuit received
 4. Unroute received
-
 */
 func (self *Xgress) Close() {
 	log := pfxlog.ContextLogger(self.Label())

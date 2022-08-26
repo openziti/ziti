@@ -18,7 +18,6 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"google.golang.org/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/controller/network"
@@ -26,6 +25,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/trace"
+	"google.golang.org/protobuf/proto"
 	"sync"
 	"time"
 )

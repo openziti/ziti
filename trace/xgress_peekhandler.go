@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"time"
 )
 

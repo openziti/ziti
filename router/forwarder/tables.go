@@ -26,7 +26,6 @@ import (
 )
 
 // circuitTable implements a directory of forwardTables, keyed by circuitId.
-//
 type circuitTable struct {
 	circuits cmap.ConcurrentMap[*forwardTable]
 }
@@ -65,7 +64,6 @@ func (st *circuitTable) debug() string {
 }
 
 // forwardTable implements a directory of destinations, keyed by source address.
-//
 type forwardTable struct {
 	last         int64
 	destinations cmap.ConcurrentMap[string]
@@ -97,7 +95,6 @@ func (ft *forwardTable) debug() string {
 }
 
 // destinationTable implements a directory of destinations, keyed by Address.
-//
 type destinationTable struct {
 	destinations cmap.ConcurrentMap[Destination]
 	xgress       cmap.ConcurrentMap[[]xgress.Address]

@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"google.golang.org/protobuf/proto"
 )
 
 // OnConnectSettingsHandler sends a ctrl_pb.ContentType_SettingsType message when routers connect if necessary
