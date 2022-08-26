@@ -1,35 +1,52 @@
+/*
+	Copyright NetFoundry Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package raft
 
 import (
 	"github.com/hashicorp/raft"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"go.etcd.io/bbolt"
 	"io"
-	"io/ioutil"
 	"os"
 	"sync/atomic"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders) *BoltDbFsm {
+func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker) *BoltDbFsm {
 	return &BoltDbFsm{
-		dataDir:  dataDir,
-		decoders: decoders,
-		dbPath:   dataDir + "ctrl.db",
+		dataDir:      dataDir,
+		decoders:     decoders,
+		dbPath:       dataDir + "ctrl.db",
+		indexTracker: indexTracker,
 	}
 }
 
 type BoltDbFsm struct {
-	db          boltz.Db
-	dataDir     string
-	dbPath      string
-	decoders    command.Decoders
-	env         atomic.Value
-	initialized concurrenz.AtomicBoolean
+	db           boltz.Db
+	dataDir      string
+	dbPath       string
+	decoders     command.Decoders
+	env          atomic.Value
+	initialized  concurrenz.AtomicBoolean
+	indexTracker IndexTracker
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -51,18 +68,21 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
+	logger := pfxlog.Logger()
 	if log.Type == raft.LogCommand {
+		defer self.indexTracker.NotifyOfIndex(log.Index)
+
 		if len(log.Data) >= 4 {
 			cmd, err := self.decoders.Decode(log.Data)
 			if err != nil {
-				logrus.WithError(err).Error("failed to create command")
+				logger.WithError(err).Error("failed to create command")
 				return err
 			}
 
-			logrus.Infof("apply log with type %T", cmd)
+			logger.Infof("[%v] apply log with type %T", log.Index, cmd)
 
 			if err = cmd.Apply(); err != nil {
-				logrus.WithError(err).Error("applying log resulted in error")
+				logger.WithError(err).Error("applying log resulted in error")
 			}
 
 			return err
@@ -74,23 +94,19 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 }
 
 func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
-	logrus.Info("creating snapshot")
+	logrus.Debug("creating snapshot")
 
-	file, err := ioutil.TempFile(self.dataDir, "raft-*.snapshot.db")
+	id, data, err := self.db.SnapshotToMemory()
 	if err != nil {
 		return nil, err
 	}
 
-	err = self.db.View(func(tx *bbolt.Tx) error {
-		_, err = tx.WriteTo(file)
-		return err
-	})
+	logrus.WithField("id", id).WithField("index", self.indexTracker.Index()).Info("creating snapshot")
 
-	if err != nil {
-		return nil, err
-	}
-
-	return &boltSnapshot{path: file.Name()}, nil
+	return &boltSnapshot{
+		snapshotId:   id,
+		snapshotData: data,
+	}, nil
 }
 
 func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
@@ -99,6 +115,7 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 			return err
 		}
 	}
+
 	logrus.Info("restoring from snapshot")
 
 	backup := self.dbPath + ".backup"
@@ -126,21 +143,15 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 }
 
 type boltSnapshot struct {
-	path string
+	snapshotId   string
+	snapshotData []byte
 }
 
 func (self *boltSnapshot) Persist(sink raft.SnapshotSink) error {
-	file, err := os.Open(self.path)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = file.Close() }()
-	_, err = io.Copy(sink, file)
+	_, err := sink.Write(self.snapshotData)
 	return err
 }
 
 func (self *boltSnapshot) Release() {
-	if err := os.Remove(self.path); err != nil {
-		logrus.WithError(err).WithField("path", self.path).Error("failed to remove bolt snapshot")
-	}
+	self.snapshotData = nil
 }
