@@ -293,6 +293,10 @@ func (ch *NoopTestChannel) SetLogicalName(string) {
 	panic("implement SetLogicalName")
 }
 
+func (ch *NoopTestChannel) TrySend(channel.Sendable) (bool, error) {
+	return true, nil
+}
+
 func (ch *NoopTestChannel) Send(channel.Sendable) error {
 	return nil
 }
