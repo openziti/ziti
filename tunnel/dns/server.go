@@ -42,12 +42,17 @@ type resolver struct {
 
 func flushDnsCaches() {
 	bin, err := exec.LookPath("systemd-resolve")
+	arg := "--flush-caches"
 	if err != nil {
-		logrus.WithError(err).Warn("unable to find systemd-resolve in path, consider adding a dns flush to your restart process")
-		return
+		bin, err = exec.LookPath("resolvectl")
+		if err != nil {
+			logrus.WithError(err).Warn("unable to find systemd-resolve or resolvectl in path, consider adding a dns flush to your restart process")
+			return
+		}
+		arg = "flush-caches"
 	}
 
-	cmd := exec.Command(bin, "--flush-caches")
+	cmd := exec.Command(bin, arg)
 	if err = cmd.Run(); err != nil {
 		logrus.WithError(err).Warn("unable to flush dns caches, consider adding a dns flush to your restart process")
 	} else {
