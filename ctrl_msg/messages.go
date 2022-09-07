@@ -31,6 +31,9 @@ const (
 	RouteResultErrorHeader      = 1103
 	RouteResultErrorCodeHeader  = 1104
 
+	TerminatorLocalAddressHeader  = 1110
+	TerminatorRemoteAddressHeader = 1111
+
 	ErrorTypeGeneric                 = 0
 	ErrorTypeInvalidTerminator       = 1
 	ErrorTypeMisconfiguredTerminator = 2

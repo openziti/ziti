@@ -17,6 +17,7 @@
 package xgress_transport
 
 import (
+	"github.com/openziti/fabric/ctrl_msg"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -78,5 +79,10 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	bindHandler.HandleXgressBind(x)
 	x.Start()
 
-	return nil, nil
+	peerData := xt.PeerData{
+		uint32(ctrl_msg.TerminatorLocalAddressHeader):  []byte(peer.LocalAddr().String()),
+		uint32(ctrl_msg.TerminatorRemoteAddressHeader): []byte(peer.RemoteAddr().String()),
+	}
+
+	return peerData, nil
 }

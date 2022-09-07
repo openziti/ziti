@@ -27,11 +27,12 @@ import (
 )
 
 type Path struct {
-	Nodes               []*Router
-	Links               []*Link
-	IngressId           string
-	EgressId            string
-	TerminatorLocalAddr string
+	Nodes                []*Router
+	Links                []*Link
+	IngressId            string
+	EgressId             string
+	TerminatorLocalAddr  string
+	TerminatorRemoteAddr string
 }
 
 func (self *Path) String() string {

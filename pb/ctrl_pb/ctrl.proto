@@ -32,7 +32,6 @@ enum ContentType {
   VerifyRouterType = 1036;
 
   ListenersHeader = 10;
-  TerminatorLocalAddressHeader = 1100;
 }
 
 // SettingTypes are used with the Settings message send arbitrary settings to routers.
