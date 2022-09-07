@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel v1.0.2
-	github.com/openziti/fabric v0.19.64
+	github.com/openziti/fabric v0.19.67
 	github.com/openziti/foundation/v2 v2.0.4
 	github.com/openziti/identity v1.0.11
 	github.com/openziti/jwks v1.0.1
@@ -57,7 +57,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261
+	golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0

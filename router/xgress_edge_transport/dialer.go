@@ -17,6 +17,7 @@
 package xgress_edge_transport
 
 import (
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/pkg/errors"
 	"time"
 
@@ -24,7 +25,6 @@ import (
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -72,7 +72,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Infof("successful connection to %v from %v (s/%v)", destination, peer.LocalAddr(), circuitId.Token)
 
 	xgConn := xgress_common.NewXgressConn(peer, true, true)
-	peerData := make(xt.PeerData, 1)
+	peerData := make(xt.PeerData, 3)
 	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {
 			return nil, err
@@ -81,7 +81,8 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 		}
 	}
 
-	peerData[uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader)] = []byte(peer.LocalAddr().String())
+	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(peer.LocalAddr().String())
+	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(peer.RemoteAddr().String())
 
 	x := xgress.NewXgress(circuitId, address, xgConn, xgress.Terminator, txd.options)
 	bindHandler.HandleXgressBind(x)
