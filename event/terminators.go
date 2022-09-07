@@ -40,6 +40,7 @@ type TerminatorEvent struct {
 	ServiceId                 string              `json:"service_id"`
 	TerminatorId              string              `json:"terminator_id"`
 	RouterId                  string              `json:"router_id"`
+	HostId                    string              `json:"host_id"`
 	RouterOnline              bool                `json:"router_online"`
 	Precedence                string              `json:"precedence"`
 	StaticCost                uint16              `json:"static_cost"`
