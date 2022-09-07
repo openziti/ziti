@@ -246,8 +246,7 @@ func main() {
 
 	model.AddBootstrapExtension(
 		zitilab.BootstrapWithFallbacks(
-			//&zitilab.BootstrapFromEnv{},
-			zitilab.BootstrapFromDir("/Users/cam/bin/linux/amd64", "/Users/cam/bin/linux/amd64"),
+			&zitilab.BootstrapFromEnv{},
 		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
