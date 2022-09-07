@@ -79,10 +79,6 @@ func (self *ServicePolicyManager) readInTx(tx *bbolt.Tx, id string) (*ServicePol
 }
 
 func (self *ServicePolicyManager) Marshall(entity *ServicePolicy) ([]byte, error) {
-	if err := entity.validatePolicyType(); err != nil {
-		return nil, err
-	}
-
 	tags, err := edge_cmd_pb.EncodeTags(entity.Tags)
 	if err != nil {
 		return nil, err
