@@ -18,10 +18,10 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/openziti/agent"
 	"github.com/openziti/channel"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/edge/pb/edge_mgmt_pb"
-	"github.com/openziti/agent"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
@@ -44,7 +44,7 @@ func NewAgentCtrlInit(p common.OptionsProvider) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(3, 4),
-		Use:  "route <optional-target> <username> <password> <name>",
+		Use:  "init <optional-target> <username> <password> <name>",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args

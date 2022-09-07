@@ -1,8 +1,63 @@
+# Release 0.26.6
+
+## What's New
+
+- Edge
+  - N/A
+- Fabric
+  - N/A
+- Ziti CLI
+  - Bug Fixes
+- SDK Golang
+  - N/A
+
+## Ziti CLI
+### Bug Fixes
+
+* [Issue 823](https://github.com/openziti/ziti/issues/843): Fixed quickstart bug with architecture detection not supporting `aarch64`
+
+# Release 0.26.5
+
+## What's New
+
+This build has no functional changes, but does have changes to the build workflow,
+because github is deprecating certain action runners. See
+https://github.blog/changelog/2022-08-09-github-actions-the-ubuntu-18-04-actions-runner-image-is-being-deprecated-and-will-be-removed-by-12-1-22/
+and
+https://github.blog/changelog/2022-07-20-github-actions-the-macos-10-15-actions-runner-image-is-being-deprecated-and-will-be-removed-by-8-30-22/
+for details 
+
+* MacOS builds are now done on the macos-11 github builder
+* Linux builds are now done on the ubuntu-20.04 builder
+
+This changes the oldest supported operating system versions for ziti-controller and ziti-router to those 
+listed above, due to dependencies on system shared libraries that may not be available on older operating 
+system versions.
+
+If this change negatively impacts you, please let us on [Discourse](https://openziti.discourse.group).
+
+# Release 0.26.4
+
+## What's New
+
+- Edge
+  - N/A
+- Fabric
+  - Bug Fixes
+- Ziti CLI
+  - `ziti fabric inspect` can now emit results to individual files using the `-f` flag 
+- SDK Golang
+  - N/A
+
+## Fabric
+### Bug Fixes
+
+* [Issue 463](https://github.com/openziti/fabric/issues/463): fix for panic when dial service with instanceId and service has terminators but non for requested instanceId
 
 # Release 0.26.3
 
 ## What's New
-- 
+
 - Edge
   - N/A
 - Fabric
