@@ -19,23 +19,23 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/gorilla/websocket v1.5.0
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
-	github.com/jedib0t/go-pretty/v6 v6.3.5
+	github.com/jedib0t/go-pretty/v6 v6.3.6
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.1
-	github.com/openziti/channel v0.18.57
-	github.com/openziti/edge v0.22.36
+	github.com/openziti/channel v0.18.58
+	github.com/openziti/edge v0.22.54
 	github.com/openziti/fablab v0.4.1-0.20220721141236-e2e82f42ed9b
-	github.com/openziti/fabric v0.19.28
-	github.com/openziti/foundation/v2 v2.0.1
+	github.com/openziti/fabric v0.19.34
+	github.com/openziti/foundation/v2 v2.0.2
 	github.com/openziti/identity v1.0.5
-	github.com/openziti/metrics v1.0.2
-	github.com/openziti/sdk-golang v0.16.102
-	github.com/openziti/storage v0.1.14
-	github.com/openziti/transport/v2 v2.0.19
+	github.com/openziti/metrics v1.0.3
+	github.com/openziti/sdk-golang v0.16.104
+	github.com/openziti/storage v0.1.16
+	github.com/openziti/transport/v2 v2.0.20
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
-	github.com/openziti/zitilab v0.0.0-20220721182626-cacc22cc4fb5
+	github.com/openziti/zitilab v0.0.0-20220907154220-c1bfc15346dd
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
@@ -50,7 +50,7 @@ require (
 	go.etcd.io/bbolt v1.3.6
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4
 	google.golang.org/grpc v1.42.0
-	google.golang.org/protobuf v1.28.0
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -97,14 +97,14 @@ require (
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
-	github.com/hashicorp/go-hclog v1.2.1 // indirect
+	github.com/hashicorp/go-hclog v1.2.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/raft v1.3.9 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/inconshreveable/mousetrap v1.0.1 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -139,17 +139,17 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
-	github.com/openziti/foundation v0.17.28 // indirect
+	github.com/openziti/foundation v0.17.31 // indirect
 	github.com/openziti/jwks v1.0.1 // indirect
 	github.com/openziti/x509-claims v1.0.2 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect
-	github.com/pkg/sftp v1.13.4 // indirect
+	github.com/pkg/sftp v1.13.5 // indirect
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/rivo/uniseg v0.2.0 // indirect
+	github.com/rivo/uniseg v0.3.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
@@ -167,12 +167,12 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20200128120323-432b2356ecb1 // indirect
-	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
+	golang.org/x/crypto v0.0.0-20220722155217-630584e8d5aa // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
-	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
-	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
-	golang.org/x/term v0.0.0-20220526004731-065cf7ba2467 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+	golang.org/x/sys v0.0.0-20220804214406-8e32c043e418 // indirect
+	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/tools v0.1.7 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect

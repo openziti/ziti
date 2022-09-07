@@ -298,33 +298,13 @@ jobs:
         with:
           go-version: '~1.18.1'
 
-      #- name: Install Zitilab Commands
-      #  run: go install github.com/openziti/zitilab/github@github-action
-
-      #- name: Checkout Zitilab
-      #  uses: actions/checkout@v3
-      #  with:
-      #    repository: openziti/zitilab
-      #    path: zitilab
-      #    ref: github-action
-
-      #- name: Install Zitilab Commands
-      #  run: |
-      #    cd zitilab
-      #    go install ./...
-
       - name: Move artifacts to bin subdir
         run: |
-          ls test/amd64/linux/bin
-          echo "--------"
           mv -v test/amd64/linux/bin/* release/amd64/linux/
           cd release/amd64/linux
-          ls .
-          echo "--------"
           mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
-          ls bin
           chmod +x bin/*
           
 
@@ -341,31 +321,6 @@ jobs:
           echo "  influxdb:"            >> ~/.fablab/bindings.yml
           echo "    username: fablab"   >> ~/.fablab/bindings.yml
           echo "    password: fablab"   >> ~/.fablab/bindings.yml
-
-      #- name: Test echo write
-      #  run: |
-      #    touch test
-      #    echo "testing ${{ github.run_id }}" >> test
-      #    cat test
-
-      #- name: Create AWS Credentials Config
-      #  run: |
-      #    mkdir ~/.aws
-      #    touch ~/.aws/credentials
-
-      #    echo "[default]"                                                    >> ~/.aws/credentials
-      #    echo "aws_access_key_id = ${{ secrets.AWS_ACCESS_KEY_ID }}"         >> ~/.aws/credentials
-      #    echo "aws_secret_access_key = ${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/credentials
-
-      #    ls ~/.aws
-      #    ls /home/runner/.aws/credentials
-
-      - name: AWS Test
-        run: |
-          wc -c <<< $AWS_ACCESS_KEY_ID
-          wc -c <<< $AWS_SECRET_ACCESS_KEY
-          aws ec2 describe-instances
-          aws sts get-caller-identity
 
       - name: Test Ziti Command
         env:

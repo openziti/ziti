@@ -28,7 +28,7 @@ func (a *startAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(zitilib_actions.StartMetricbeat("*", a.Metricbeat.ConfigPath, a.Metricbeat.DataPath, a.Metricbeat.LogPath))
-	workflow.AddAction(zitilib_actions.StartConsul("*", a.Consul.ServerAddr, a.Consul.ConfigDir, a.Consul.DataPath))
+	workflow.AddAction(zitilib_actions.StartConsul("*", a.Consul.ServerAddr, a.Consul.ConfigDir, a.Consul.DataPath, a.Consul.LogPath))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(util_actions.StartEchoServers("#echo-server"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
@@ -51,4 +51,5 @@ type ConsulConfig struct {
 	ConfigDir  string
 	ServerAddr string
 	DataPath   string
+	LogPath    string
 }

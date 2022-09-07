@@ -166,6 +166,7 @@ var m = &model.Model{
 				ServerAddr: os.Getenv("CONSUL_ENDPOINT"),
 				ConfigDir:  "consul",
 				DataPath:   "consul/data",
+				LogPath:    "consul/log.out",
 			}),
 		"stop": model.Bind(component.StopInParallel("*", 15)),
 	},
@@ -245,7 +246,8 @@ func main() {
 
 	model.AddBootstrapExtension(
 		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
+			//&zitilab.BootstrapFromEnv{},
+			zitilab.BootstrapFromDir("/Users/cam/bin/linux/amd64", "/Users/cam/bin/linux/amd64"),
 		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
