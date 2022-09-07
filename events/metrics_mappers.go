@@ -40,7 +40,10 @@ type linkMetricsMapper struct {
 func (self *linkMetricsMapper) mapMetrics(_ *metrics_pb.MetricsMessage, event *event.MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "link.") {
 		var name, linkId string
-		if strings.HasSuffix(event.Metric, "latency") || strings.HasSuffix(event.Metric, "queue_time") {
+		if parts := strings.Split(event.Metric, ":"); len(parts) == 2 {
+			name = parts[0]
+			linkId = parts[1]
+		} else if strings.HasSuffix(event.Metric, "latency") || strings.HasSuffix(event.Metric, "queue_time") {
 			name, linkId = ExtractId(event.Metric, "link.", 1)
 		} else {
 			name, linkId = ExtractId(event.Metric, "link.", 2)

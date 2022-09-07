@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -32,6 +33,7 @@ type dialer struct {
 	bindHandlerFactory BindHandlerFactory
 	acceptor           xlink.Acceptor
 	transportConfig    transport.Configuration
+	metricsRegistry    metrics.Registry
 }
 
 func (self *dialer) Dial(dial xlink.Dial) (xlink.Xlink, error) {
@@ -75,10 +77,12 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
-		link: &splitImpl{id: linkId,
-			routerId:      dial.GetRouterId(),
-			routerVersion: dial.GetRouterVersion(),
-			linkProtocol:  dial.GetLinkProtocol(),
+		link: &splitImpl{
+			id:              linkId,
+			routerId:        dial.GetRouterId(),
+			routerVersion:   dial.GetRouterVersion(),
+			linkProtocol:    dial.GetLinkProtocol(),
+			droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + linkId.Token),
 		},
 	}
 
@@ -117,10 +121,11 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	bindHandler := &dialBindHandler{
 		dialer: self,
 		link: &impl{
-			id:            linkId,
-			routerId:      dial.GetRouterId(),
-			linkProtocol:  dial.GetLinkProtocol(),
-			routerVersion: dial.GetRouterVersion(),
+			id:              linkId,
+			routerId:        dial.GetRouterId(),
+			linkProtocol:    dial.GetLinkProtocol(),
+			routerVersion:   dial.GetRouterVersion(),
+			droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + linkId.Token),
 		},
 	}
 
