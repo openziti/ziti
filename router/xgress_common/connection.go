@@ -127,6 +127,15 @@ func (self *XgressConn) setupCrypto(keyPair *kx.KeyPair, peerKey []byte, client 
 }
 
 func (self *XgressConn) LogContext() string {
+	if self == nil {
+		return "xgress-conn/nil"
+	}
+	if self.Conn == nil {
+		return "xgress-conn/no-conn"
+	}
+	if self.Conn.RemoteAddr() == nil {
+		return "xgress-conn/no-addr"
+	}
 	return self.Conn.RemoteAddr().String()
 }
 
