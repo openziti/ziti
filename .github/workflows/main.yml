@@ -22,6 +22,7 @@ env:
   ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
   CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
   CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
+  BUILD_NUMBER: ${{ env.GITHUB_RUN_ID }}-${{ GITHUB_RUN_NUMBER }}
 
 jobs:
   mac-os-build:
@@ -280,6 +281,8 @@ jobs:
     name: Run Zitilab Test Suite
     runs-on: ubuntu-18.04
     needs: [linux-build]
+    env:
+      ZITI_VERSION: ${{needs.linux-build.outputs.ziti-version}}
     steps:
       - name: Download Linux Release Artifact
         uses: actions/download-artifact@v2

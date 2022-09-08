@@ -207,6 +207,12 @@ var m = &model.Model{
 				"${password}": func(h *model.Host) string {
 					return os.Getenv("ELASTIC_PASSWORD")
 				},
+				"${build_number}": func(h *model.Host) string {
+					return os.Getenv("BUILD_NUMBER")
+				},
+				"${ziti_version}": func(h *model.Host) string {
+					return os.Getenv("ZITI_VERSION")
+				},
 			},
 		),
 
@@ -222,12 +228,27 @@ var m = &model.Model{
 				"${encryption_key}": func(h *model.Host) string {
 					return os.Getenv("CONSUL_ENCRYPTION_KEY")
 				},
+				"${build_number}": func(h *model.Host) string {
+					return os.Getenv("BUILD_NUMBER")
+				},
+				"${ziti_version}": func(h *model.Host) string {
+					return os.Getenv("ZITI_VERSION")
+				},
 			},
 		),
-		distribution.DistributeData(
+		distribution.DistributeDataWithReplaceCallbacks(
 			"#ctrl",
-			getConfigData("ziti.hcl"),
-			"consul/ziti.hcl"),
+			string(getConfigData("ziti.hcl")),
+			"consul/ziti.hcl",
+			os.FileMode(0644),
+			map[string]func(*model.Host) string{
+				"${build_number}": func(h *model.Host) string {
+					return os.Getenv("BUILD_NUMBER")
+				},
+				"${ziti_version}": func(h *model.Host) string {
+					return os.Getenv("ZITI_VERSION")
+				},
+			}),
 		distribution.DistributeData(
 			"*",
 			[]byte(os.Getenv("CONSUL_AGENT_CERT")),

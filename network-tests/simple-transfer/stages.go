@@ -4,7 +4,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"net/url"
 
 	fablib_5_operation "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
@@ -20,7 +19,6 @@ func newStageFactory() model.Factory {
 
 func (sf *stageFactory) Build(m *model.Model) error {
 	runPhase := fablib_5_operation.NewPhase()
-	fmt.Println("Added echo stage!")
 
 	//generate 10k random bytes
 	data := make([]byte, 10000)

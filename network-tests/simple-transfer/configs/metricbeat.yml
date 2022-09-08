@@ -36,12 +36,12 @@ metricbeat.modules:
 
 output.elasticsearch:
   # Array of hosts to connect to.
-  hosts: ["https://ziti-build-metrics.es.us-east-1.aws.found.io:443"] #https://ziti-build-metrics.kb.us-east-1.aws.found.io:443
+  hosts: ["${host}"]
 
   # Optional protocol and basic auth credentials.
   protocol: "https"
-  username: "beats_agent" #beats_agent
-  password: "s6eHpUU5K2774xCD" #s6eHpUU5K2774xCD
+  username: "${user}"
+  password: "${password}"
   index: 'zt-%{[agent.version]}-%{+yyyy.MM.dd}'
 
 setup.template.enabled: true
