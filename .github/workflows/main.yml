@@ -22,7 +22,7 @@ env:
   ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
   CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
   CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
-  BUILD_NUMBER: ${{ format('{0}-{1}'), env.GITHUB_RUN_ID, env.GITHUB_RUN_NUMBER }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}'), github.run_id, github.run_number, github.run_attempt }}
 
 jobs:
   mac-os-build:
