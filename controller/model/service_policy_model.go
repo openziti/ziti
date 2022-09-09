@@ -46,10 +46,13 @@ func (entity *ServicePolicy) validatePolicyType() error {
 	return nil
 }
 
-func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
-	if err := entity.validatePolicyType(); err != nil {
-		return nil, err
+func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (boltz.Entity, error) {
+	if checker == nil || checker.IsUpdated(persistence.FieldServicePolicyType) {
+		if err := entity.validatePolicyType(); err != nil {
+			return nil, err
+		}
 	}
+
 	policyType := persistence.PolicyTypeInvalid
 	if strings.EqualFold(entity.PolicyType, persistence.PolicyTypeDialName) {
 		policyType = persistence.PolicyTypeDial
@@ -69,11 +72,11 @@ func (entity *ServicePolicy) toBoltEntity() (boltz.Entity, error) {
 }
 
 func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity()
+	return entity.toBoltEntity(nil)
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity()
+func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+	return entity.toBoltEntity(checker)
 }
 
 func (entity *ServicePolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
