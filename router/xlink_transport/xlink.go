@@ -23,32 +23,46 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 )
 
 type impl struct {
-	id            *identity.TokenId
-	ch            channel.Channel
-	routerId      string
-	routerVersion string
-	linkProtocol  string
-	dialAddress   string
-	closeNotified concurrenz.AtomicBoolean
+	id              *identity.TokenId
+	ch              channel.Channel
+	routerId        string
+	routerVersion   string
+	linkProtocol    string
+	dialAddress     string
+	closeNotified   concurrenz.AtomicBoolean
+	droppedMsgMeter metrics.Meter
 }
 
 func (self *impl) Id() *identity.TokenId {
 	return self.id
 }
 
-func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return self.ch.Send(payload.Marshall())
+func (self *impl) SendPayload(msg *xgress.Payload) error {
+	sent, err := self.ch.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
-func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return self.ch.Send(acknowledgement.Marshall())
+func (self *impl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
+	sent, err := self.ch.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
-func (self *impl) SendControl(control *xgress.Control) error {
-	return self.ch.Send(control.Marshall())
+func (self *impl) SendControl(msg *xgress.Control) error {
+	sent, err := self.ch.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
 func (self *impl) Close() error {

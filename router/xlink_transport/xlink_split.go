@@ -23,34 +23,48 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 )
 
 type splitImpl struct {
-	id            *identity.TokenId
-	payloadCh     channel.Channel
-	ackCh         channel.Channel
-	routerId      string
-	routerVersion string
-	linkProtocol  string
-	dialAddress   string
-	closeNotified concurrenz.AtomicBoolean
+	id              *identity.TokenId
+	payloadCh       channel.Channel
+	ackCh           channel.Channel
+	routerId        string
+	routerVersion   string
+	linkProtocol    string
+	dialAddress     string
+	closeNotified   concurrenz.AtomicBoolean
+	droppedMsgMeter metrics.Meter
 }
 
 func (self *splitImpl) Id() *identity.TokenId {
 	return self.id
 }
 
-func (self *splitImpl) SendPayload(payload *xgress.Payload) error {
-	return self.payloadCh.Send(payload.Marshall())
+func (self *splitImpl) SendPayload(msg *xgress.Payload) error {
+	sent, err := self.payloadCh.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
-func (self *splitImpl) SendControl(control *xgress.Control) error {
-	return self.payloadCh.Send(control.Marshall())
+func (self *splitImpl) SendAcknowledgement(msg *xgress.Acknowledgement) error {
+	sent, err := self.ackCh.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
-func (self *splitImpl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return self.ackCh.Send(acknowledgement.Marshall())
+func (self *splitImpl) SendControl(msg *xgress.Control) error {
+	sent, err := self.payloadCh.TrySend(msg.Marshall())
+	if err == nil && !sent {
+		self.droppedMsgMeter.Mark(1)
+	}
+	return err
 }
 
 func (self *splitImpl) CloseNotified() error {

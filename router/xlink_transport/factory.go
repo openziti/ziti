@@ -18,6 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -82,12 +83,22 @@ func (self *factory) CreateDialer(id *identity.TokenId, _ xlink.Forwarder, confi
 	if err != nil {
 		return nil, fmt.Errorf("error loading dialer configuration (%w)", err)
 	}
+
+	if config.options == nil {
+		config.options = channel.DefaultOptions()
+	}
+
+	if config.options.OutQueueSize == channel.DefaultOutQueueSize {
+		config.options.OutQueueSize = 64
+	}
+
 	return &dialer{
 		id:                 id,
 		config:             config,
 		acceptor:           self.acceptor,
 		bindHandlerFactory: self.bindHandlerFactory,
 		transportConfig:    self.transportConfig,
+		metricsRegistry:    self.metricsRegistry,
 	}, nil
 }
 
