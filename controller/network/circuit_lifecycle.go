@@ -36,6 +36,7 @@ func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *Path) {
 	e.Path.IngressId = path.IngressId
 	e.Path.EgressId = path.EgressId
 	e.Path.TerminatorLocalAddr = path.TerminatorLocalAddr
+	e.Path.TerminatorRemoteAddr = path.TerminatorRemoteAddr
 	e.LinkCount = len(path.Links)
 }
 

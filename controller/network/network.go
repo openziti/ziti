@@ -519,10 +519,11 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
 
-		terminatorLocalAddress := peerData[uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader)]
-		path.TerminatorLocalAddr = string(terminatorLocalAddress)
+		path.TerminatorLocalAddr = string(peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)])
+		path.TerminatorRemoteAddr = string(peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)])
 
-		delete(peerData, uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader))
+		delete(peerData, uint32(ctrl_msg.TerminatorLocalAddressHeader))
+		delete(peerData, uint32(ctrl_msg.TerminatorRemoteAddressHeader))
 
 		// 6: Create Circuit Object
 		circuit := &Circuit{
@@ -540,6 +541,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 
 		logger.WithField("path", circuit.Path).
 			WithField("terminator_local_address", circuit.Path.TerminatorLocalAddr).
+			WithField("terminator_remote_address", circuit.Path.TerminatorRemoteAddr).
 			Debug("created circuit")
 		return circuit, nil
 	}

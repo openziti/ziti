@@ -35,11 +35,12 @@ const (
 var CircuitEventTypes = []CircuitEventType{CircuitCreated, CircuitUpdated, CircuitDeleted, CircuitFailed}
 
 type CircuitPath struct {
-	Nodes               []string `json:"nodes"`
-	Links               []string `json:"links"`
-	IngressId           string   `json:"ingress_id"`
-	EgressId            string   `json:"egress_id"`
-	TerminatorLocalAddr string   `json:"terminator_local_addr"`
+	Nodes                []string `json:"nodes"`
+	Links                []string `json:"links"`
+	IngressId            string   `json:"ingress_id"`
+	EgressId             string   `json:"egress_id"`
+	TerminatorLocalAddr  string   `json:"terminator_local_addr"`
+	TerminatorRemoteAddr string   `json:"terminator_remote_addr"`
 }
 
 func (self *CircuitPath) String() string {
