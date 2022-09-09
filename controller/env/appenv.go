@@ -91,6 +91,7 @@ type AppEnv struct {
 	findEnrollmentSignerOnce sync.Once
 	enrollmentSigner         jwtsigner.Signer
 	TraceManager             *TraceManager
+	EventDispatcher          *events.Dispatcher
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -466,7 +467,7 @@ func (ae *AppEnv) InitPersistence() error {
 	})
 
 	ae.Managers = model.InitEntityManagers(ae)
-	events.Init(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
+	ae.EventDispatcher = events.NewDispatcher(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
 	ae.BoltStores.Identity.AddListener(boltz.EventDelete, func(i ...interface{}) {

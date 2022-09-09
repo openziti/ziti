@@ -408,6 +408,14 @@ type SimpleTestIdentity struct {
 	setServerCertCalled bool
 }
 
+func (s SimpleTestIdentity) WatchFiles() error {
+	panic("implement me")
+}
+
+func (s SimpleTestIdentity) StopWatchingFiles() {
+	panic("implement me")
+}
+
 func (s SimpleTestIdentity) Cert() *tls.Certificate {
 	return s.TlsCert
 }

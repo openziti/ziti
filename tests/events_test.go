@@ -96,8 +96,9 @@ func Test_EventsTest(t *testing.T) {
 	dispatcher.AddCircuitEventHandler(ec)
 	defer dispatcher.RemoveCircuitEventHandler(ec)
 
-	events2.AddSessionEventHandler(ec)
-	defer events2.RemoveSessionEventHandler(ec)
+	edgeDispatcher := ctx.EdgeController.AppEnv.EventDispatcher
+	edgeDispatcher.AddSessionEventHandler(ec)
+	defer edgeDispatcher.RemoveSessionEventHandler(ec)
 
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
