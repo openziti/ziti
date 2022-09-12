@@ -34,7 +34,7 @@ require (
 	github.com/openziti/transport/v2 v2.0.24
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
-	github.com/openziti/zitilab v0.0.0-20220907154220-c1bfc15346dd
+	github.com/openziti/zitilab v0.0.0-20220912143528-970797aa0b7c
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475

@@ -722,6 +722,8 @@ github.com/openziti/ziti-db-explorer v1.1.1 h1:G0eoTby+aIjjt5TxEfR+FMI2CWd4RvZFj
 github.com/openziti/ziti-db-explorer v1.1.1/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
 github.com/openziti/zitilab v0.0.0-20220907154220-c1bfc15346dd h1:3n8EL559sFgMNBgK8qNbFUVE7vfVriFG1fx3IMGg1OM=
 github.com/openziti/zitilab v0.0.0-20220907154220-c1bfc15346dd/go.mod h1:R5bYPzJZqFJOCHKDBdWBxDmkYJpRuHQsVXSVS3LfpQE=
+github.com/openziti/zitilab v0.0.0-20220912143528-970797aa0b7c h1:5RReL472z6JEu11WAmT6gfiISTl3hsosROHk0dS0QDA=
+github.com/openziti/zitilab v0.0.0-20220912143528-970797aa0b7c/go.mod h1:R5bYPzJZqFJOCHKDBdWBxDmkYJpRuHQsVXSVS3LfpQE=
 github.com/oracle/oci-go-sdk v24.2.0+incompatible/go.mod h1:VQb79nF8Z2cwLkLS35ukwStZIg5F66tcBccjip/j888=
 github.com/orcaman/concurrent-map/v2 v2.0.0 h1:iSMwuBQvQ1nX5i9gYuGMiSy0fjWHmazdjF+NdSO9JzI=
 github.com/orcaman/concurrent-map/v2 v2.0.0/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=

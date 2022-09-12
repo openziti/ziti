@@ -174,7 +174,7 @@ var m = &model.Model{
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
-		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallMetricbeat("*"), 5),
+		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallMetricbeat("*", zitilib_runlevel_0_infrastructure.RECCOMENDED_METRICBEAT_VERSION), 5),
 		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallConsul("*"), 5),
 		semaphore_0.Restart(90 * time.Second),
 	},
@@ -267,7 +267,8 @@ func main() {
 
 	model.AddBootstrapExtension(
 		zitilab.BootstrapWithFallbacks(
-			&zitilab.BootstrapFromEnv{},
+			//&zitilab.BootstrapFromEnv{},
+			zitilab.BootstrapFromDir("/Users/cam/bin/linux/amd64", "/Users/cam/bin/linux/amd64"),
 		))
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
