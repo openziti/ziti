@@ -10,11 +10,20 @@
   - Bug Fixes
 - SDK Golang
   - N/A
+- Identity
 
 ## Ziti CLI
 ### Bug Fixes
 
 * [Issue 823](https://github.com/openziti/ziti/issues/843): Fixed quickstart bug with architecture detection not supporting `aarch64`
+
+## Identity
+
+Identity is a low-level library within Ziti and affects all Ziti components.
+
+### Bug Fixes
+
+* Fixed an issue where `alt_server_certs` were not always loaded and used for presenting TLS configurations
 
 # Release 0.26.5
 
