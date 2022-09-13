@@ -1,3 +1,101 @@
+# Release 0.26.6
+
+## What's New
+
+- Edge
+  - N/A
+- Fabric
+  - Don't allow slow or blocked links to impede other links
+  - Add destination address to circuit events
+- Ziti CLI
+  - Bug Fixes
+- SDK Golang
+  - N/A
+- Identity
+
+## Fabric
+### Address slow/blocked links
+
+Previously if a router had multiple links and one of them was slow or blocked, it could prevent other traffic from moving. Now, if a link is unable to keep up with incoming traffic, payloads will be dropped. The end-to-end flow control and retransmission logic will handle re-sending the packet. 
+
+Links have a 64 message queue for incoming messages. Up to 64 messages are taken off the queue, sorted in priority order and then sent. Once the sorted list of messages has been sent, the next set of messages are dequeue, sorted and sent. If the queue fills while the current set of sorted messges is being sent, message will now be dropped instead of waiting for queue space to open up.
+
+There is now a new per-link `link.dropped_msgs` metric to track how often links are dropping messages.
+
+### Destination Address added to Circuit Events
+
+When available, the remote address of the terminating side of a circuit is now available in the circuit event.
+
+Example:
+
+```
+{
+  "namespace": "fabric.circuits",
+  "version": 2,
+  "event_type": "created",
+  "circuit_id": "kh7myU.bX",
+  "timestamp": "2022-09-12T19:08:20.461576428-04:00",
+  "client_id": "cl7zdm0d0000fbygdlzh268uq",
+  "service_id": "6SIomYCjH5Jio52szEtX7W",
+  "terminator_id": "7IIb1nU5yTfJVbaD8Tjuf3",
+  "instance_id": "",
+  "creation_timespan": 949916,
+  "path": {
+    "nodes": [
+      "B3V.1kN40Y"
+    ],
+    "links": null,
+    "ingress_id": "26D7",
+    "egress_id": "wjo7",
+    "terminator_local_addr": "127.0.0.1:44822",
+    "terminator_remote_addr": "127.0.0.1:1234"
+  },
+  "link_count": 0,
+  "path_cost": 262140
+}
+```
+
+## Ziti CLI
+### Bug Fixes
+
+* [Issue 823](https://github.com/openziti/ziti/issues/843): Fixed quickstart bug with architecture detection not supporting `aarch64`
+
+## Identity
+
+Identity is a low-level library within Ziti and affects all Ziti components.
+
+### Bug Fixes
+
+* Fixed an issue where `alt_server_certs` were not always loaded and used for presenting TLS configurations
+
+## Ziti Library Updates
+
+* github.com/openziti/agent: [v1.0.1 -> v1.0.3](https://github.com/openziti/agent/compare/v1.0.1...v1.0.3)
+* github.com/openziti/channel: [v0.18.58 -> v1.0.2](https://github.com/openziti/channel/compare/v0.18.58...v1.0.2)
+    * [Issue #68](https://github.com/openziti/channel/issues/68) - Allow send with no wait, if queue is full
+    * [Issue #69](https://github.com/openziti/channel/issues/69) - Respect OutQueueSize option
+
+* github.com/openziti/edge: [v0.22.54 -> v0.22.91](https://github.com/openziti/edge/compare/v0.22.54...v0.22.91)
+    * [Issue #1167](https://github.com/openziti/edge/issues/1167) - Send remote addr of dialed connection for xgress_edge_tunnel and xgress_edge_transport
+    * [Issue #1169](https://github.com/openziti/edge/issues/1169) - Update of service policy with patch fails if service policy type is not provided
+    * [Issue #1163](https://github.com/openziti/edge/issues/1163) - Support flushing dns cache with resolvectl
+    * [Issue #1164](https://github.com/openziti/edge/issues/1164) - Fix panic in xgress conn LogContext()
+
+* github.com/openziti/fabric: [v0.19.34 -> v0.19.67](https://github.com/openziti/fabric/compare/v0.19.34...v0.19.67)
+    * [Issue #484](https://github.com/openziti/fabric/issues/484) - Don't let slow/stalled links block other links
+    * [Issue #459](https://github.com/openziti/fabric/issues/459) - Add destination IP to fabric.circuits created message
+    * [Issue #492](https://github.com/openziti/fabric/issues/492) - Add HostId to terminator events
+    * [Issue #485](https://github.com/openziti/fabric/issues/485) - Metrics events timestamp format changed 
+
+* github.com/openziti/foundation/v2: [v2.0.2 -> v2.0.4](https://github.com/openziti/foundation/compare/v2.0.2...v2.0.4)
+* github.com/openziti/identity: [v1.0.5 -> v1.0.11](https://github.com/openziti/identity/compare/v1.0.5...v1.0.11)
+* github.com/openziti/metrics: [v1.0.3 -> v1.0.7](https://github.com/openziti/metrics/compare/v1.0.3...v1.0.7)
+* github.com/openziti/sdk-golang: [v0.16.104 -> v0.16.119](https://github.com/openziti/sdk-golang/compare/v0.16.104...v0.16.119)
+* github.com/openziti/storage: [v0.1.16 -> v0.1.20](https://github.com/openziti/storage/compare/v0.1.16...v0.1.20)
+* github.com/openziti/transport/v2: [v2.0.20 -> v2.0.28](https://github.com/openziti/transport/compare/v2.0.20...v2.0.28)
+* github.com/openziti/ziti: [0.26.5 -> 0.26.6](https://github.com/openziti/ziti/compare/0.26.5...0.26.6)
+>>>>>>> 7f698a9 (Update deps and changelog)
+
 # Release 0.26.5
 
 ## What's New
