@@ -174,7 +174,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		return
 	}
 
-	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options)
+	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options, response.Tags)
 	self.listener.bindHandler.HandleXgressBind(x)
 	conn.ctrlRx = x
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected

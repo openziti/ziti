@@ -133,7 +133,7 @@ func Test_EventsTest(t *testing.T) {
 	conn.WriteString("hello, hello, how are you?", time.Second)
 
 	testServer.waitForDone(ctx, 5*time.Second)
-	ctx.router.GetMetricsRegistry().Flush()
+	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
 	err = ec.waitForUsage(2 * time.Minute)
 	ctx.Req.NoError(err)
 

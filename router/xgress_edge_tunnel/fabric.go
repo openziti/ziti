@@ -29,8 +29,8 @@ import (
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -223,7 +223,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		}
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options)
+	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
 	self.tunneler.bindHandler.HandleXgressBind(x)
 	x.AddCloseHandler(xgress.CloseHandlerF(func(x *xgress.Xgress) { cleanupCallback() }))
 	x.Start()

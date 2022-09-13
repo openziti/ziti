@@ -99,6 +99,7 @@ func (self *createCircuitHandler) CreateCircuit(ctx *CreateCircuitRequestContext
 		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
 		PeerData:  peerData,
+		Tags:      circuitInfo.Tags,
 	}
 
 	log.Debugf("responding with successful circuit setup")

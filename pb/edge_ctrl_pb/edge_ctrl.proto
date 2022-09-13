@@ -163,6 +163,7 @@ message CreateCircuitResponse {
   string circuitId = 1;
   string address = 2;
   map<uint32, bytes> peerData = 3;
+  map<string, string> tags = 4;
 }
 
 enum TerminatorPrecedence {
@@ -261,6 +262,7 @@ message CreateCircuitForServiceResponse {
   string circuitId = 3;
   string address = 4;
   map<uint32, bytes> peerData = 5;
+  map<string, string> tags = 6;
 }
 
 message ServicesList {

@@ -17,16 +17,13 @@
 package xgress_edge_tunnel
 
 import (
-	"github.com/openziti/fabric/ctrl_msg"
-	"time"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 )
@@ -36,8 +33,11 @@ func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
 	return found
 }
 
-func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
+	destination := params.GetDestination()
+	circuitId := params.GetCircuitId()
+
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "edge").
 		WithField("destination", destination)
 
@@ -72,8 +72,8 @@ func (self *tunneler) Dial(destination string, circuitId *identity.TokenId, addr
 	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
 	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
-	x := xgress.NewXgress(circuitId, address, xgConn, xgress.Terminator, self.dialOptions.Options)
-	bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(circuitId, params.GetAddress(), xgConn, xgress.Terminator, self.dialOptions.Options, params.GetCircuitTags())
+	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 
 	return peerData, nil

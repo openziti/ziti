@@ -103,6 +103,7 @@ func (self *createCircuitForServiceHandler) CreateCircuit(ctx *CreateCircuitForS
 		CircuitId: circuitInfo.Id,
 		Address:   circuitInfo.Path.IngressId,
 		PeerData:  peerData,
+		Tags:      circuitInfo.Tags,
 	}
 
 	if newApiSession {

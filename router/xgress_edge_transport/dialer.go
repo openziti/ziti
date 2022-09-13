@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/transport/v2"
 )
@@ -48,8 +47,10 @@ func newDialer(ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.Dialer,
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+	destination := params.GetDestination()
+	circuitId := params.GetCircuitId()
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "edge_transport").
 		WithField("destination", destination)
 
@@ -60,7 +61,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	log.Debug("dialing")
 	to := txd.options.ConnectTimeout
-	timeToDeadline := time.Until(deadline)
+	timeToDeadline := time.Until(params.GetDeadline())
 	if timeToDeadline > 0 && timeToDeadline < to {
 		to = timeToDeadline
 	}
@@ -84,8 +85,8 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(peer.LocalAddr().String())
 	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(peer.RemoteAddr().String())
 
-	x := xgress.NewXgress(circuitId, address, xgConn, xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(circuitId, params.GetAddress(), xgConn, xgress.Terminator, txd.options, params.GetCircuitTags())
+	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 
 	return peerData, nil

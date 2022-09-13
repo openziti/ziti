@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 )
@@ -61,8 +60,10 @@ func newDialer(factory *Factory, options *Options) xgress.Dialer {
 	return txd
 }
 
-func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+	destination := params.GetDestination()
+	circuitId := params.GetCircuitId()
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "edge").
 		WithField("destination", destination)
 
@@ -115,15 +116,15 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 
 		// On the terminator, which this is, this only starts the txer, which pulls data from the link
 		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
-		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
-		bindHandler.HandleXgressBind(x)
+		x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
+		params.GetBindHandler().HandleXgressBind(x)
 		conn.ctrlRx = x
 		x.Start()
 
 		log.Debug("xgress start, sending dial to SDK")
 		to := 5 * time.Second
 
-		timeToDeadline := time.Until(deadline)
+		timeToDeadline := time.Until(params.GetDeadline())
 		if timeToDeadline > 0 && timeToDeadline < to {
 			to = timeToDeadline
 		}
@@ -178,8 +179,8 @@ func (dialer *dialer) Dial(destination string, circuitId *identity.TokenId, addr
 			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
 		}
 
-		x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, &dialer.options.Options)
-		bindHandler.HandleXgressBind(x)
+		x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
+		params.GetBindHandler().HandleXgressBind(x)
 		conn.ctrlRx = x
 		x.Start()
 
