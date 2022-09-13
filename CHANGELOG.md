@@ -1,3 +1,9 @@
+# Release 0.26.7
+
+## What's New
+
+The only change in this release is updating from Golang 1.18 to 1.19
+
 # Release 0.26.6
 
 ## What's New
@@ -94,7 +100,6 @@ Identity is a low-level library within Ziti and affects all Ziti components.
 * github.com/openziti/storage: [v0.1.16 -> v0.1.20](https://github.com/openziti/storage/compare/v0.1.16...v0.1.20)
 * github.com/openziti/transport/v2: [v2.0.20 -> v2.0.28](https://github.com/openziti/transport/compare/v2.0.20...v2.0.28)
 * github.com/openziti/ziti: [0.26.5 -> 0.26.6](https://github.com/openziti/ziti/compare/0.26.5...0.26.6)
->>>>>>> 7f698a9 (Update deps and changelog)
 
 # Release 0.26.5
 
