@@ -42,6 +42,7 @@ type Terminator interface {
 	GetAddress() string
 	GetPeerData() PeerData
 	GetCreatedAt() time.Time
+	GetHostId() string
 }
 
 type PeerData map[uint32][]byte

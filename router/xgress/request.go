@@ -191,7 +191,9 @@ func CreateCircuit(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 		return &Response{Success: false, Message: err.Error()}
 	}
 
-	x := NewXgress(circuitInfo.CircuitId, circuitInfo.Address, peer, Initiator, options)
+	x := NewXgress(circuitInfo.CircuitId, circuitInfo.Address, peer, Initiator, options, map[string]string{
+		"serviceId": request.ServiceId,
+	})
 	bindHandler.HandleXgressBind(x)
 	x.Start()
 

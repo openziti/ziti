@@ -105,6 +105,12 @@ func (event *JsonUsageEvent) WriteTo(output io.Writer) error {
 	return marshalJson(event, output)
 }
 
+type JsonUsageEventV3 event.UsageEventV3
+
+func (event *JsonUsageEventV3) WriteTo(output io.Writer) error {
+	return marshalJson(event, output)
+}
+
 func NewJsonFormatter(queueDepth int, output io.Writer) *JsonFormatter {
 	return &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -146,6 +152,10 @@ func (formatter *JsonFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
 	formatter.AcceptLoggingEvent((*JsonUsageEvent)(evt))
 }
 
+func (formatter *JsonFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
+	formatter.AcceptLoggingEvent((*JsonUsageEventV3)(evt))
+}
+
 type PlainTextCircuitEvent event.CircuitEvent
 
 func (self *PlainTextCircuitEvent) WriteTo(output io.Writer) error {
@@ -179,6 +189,13 @@ type PlainTextUsageEvent event.UsageEvent
 
 func (self *PlainTextUsageEvent) WriteTo(output io.Writer) error {
 	_, err := output.Write([]byte((*event.UsageEvent)(self).String()))
+	return err
+}
+
+type PlainTextUsageEventV3 event.UsageEventV3
+
+func (self *PlainTextUsageEventV3) WriteTo(output io.Writer) error {
+	_, err := output.Write([]byte((*event.UsageEventV3)(self).String()))
 	return err
 }
 
@@ -242,6 +259,10 @@ func (formatter *PlainTextFormatter) AcceptTerminatorEvent(evt *event.Terminator
 
 func (formatter *PlainTextFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
 	formatter.AcceptLoggingEvent((*PlainTextUsageEvent)(evt))
+}
+
+func (formatter *PlainTextFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
+	formatter.AcceptLoggingEvent((*PlainTextUsageEventV3)(evt))
 }
 
 var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}

@@ -407,7 +407,13 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context, deadline time.Time) (*Circuit, error) {
+func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, error) {
+	srcR := params.GetSourceRouter()
+	clientId := params.GetClientId()
+	service := params.GetServiceId()
+	ctx := params.GetLogContext()
+	deadline := params.GetDeadline()
+
 	startTime := time.Now()
 
 	instanceId, serviceId := parseInstanceIdAndService(service)
@@ -453,15 +459,18 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			return nil, pathErr
 		}
 
+		// get circuit tags
+		tags := params.GetCircuitTags(terminator)
+
 		// 4a: Create Route Messages
 		rms := path.CreateRouteMessages(attempt, circuitId, terminator, deadline)
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
-
 		for _, msg := range rms {
 			msg.Context = &ctrl_pb.Context{
 				Fields:      ctx.GetStringFields(),
 				ChannelMask: ctx.GetChannelsMask(),
 			}
+			msg.Tags = tags
 		}
 
 		// 5: Routing
@@ -534,6 +543,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			Terminator: terminator,
 			PeerData:   peerData,
 			CreatedAt:  time.Now(),
+			Tags:       tags,
 		}
 		network.circuitController.add(circuit)
 		creationTimespan := time.Since(startTime)

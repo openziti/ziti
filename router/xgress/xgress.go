@@ -56,8 +56,18 @@ type Listener interface {
 	Close() error
 }
 
+type DialParams interface {
+	GetDestination() string
+	GetCircuitId() *identity.TokenId
+	GetAddress() Address
+	GetBindHandler() BindHandler
+	GetLogContext() logcontext.Context
+	GetDeadline() time.Time
+	GetCircuitTags() map[string]string
+}
+
 type Dialer interface {
-	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context, deadline time.Time) (xt.PeerData, error)
+	Dial(params DialParams) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 
@@ -132,9 +142,18 @@ type Xgress struct {
 	peekHandlers         []PeekHandler
 	flags                concurrenz.AtomicBitSet
 	timeOfLastRxFromLink int64
+	tags                 map[string]string
 }
 
-func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options) *Xgress {
+func (self *Xgress) GetIntervalId() string {
+	return self.circuitId
+}
+
+func (self *Xgress) GetTags() map[string]string {
+	return self.tags
+}
+
+func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options, tags map[string]string) *Xgress {
 	result := &Xgress{
 		circuitId:            circuitId.Token,
 		address:              address,
@@ -146,6 +165,7 @@ func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, or
 		rxSequence:           0,
 		linkRxBuffer:         NewLinkReceiveBuffer(),
 		timeOfLastRxFromLink: info.NowInMilliseconds(),
+		tags:                 tags,
 	}
 	result.payloadBuffer = NewLinkSendBuffer(result)
 	return result

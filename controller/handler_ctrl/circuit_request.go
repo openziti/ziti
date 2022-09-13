@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/fabric/controller/xt"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -60,7 +61,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 				}
 			}
 			log = log.WithField("serviceId", service)
-			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext(), time.Now().Add(network.DefaultNetworkOptionsRouteTimeout)); err == nil {
+			if circuit, err := h.network.CreateCircuit(h.newCircuitCreateParms(service, h.r, id)); err == nil {
 				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 
@@ -93,4 +94,48 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 	} else {
 		log.Errorf("unexpected error (%s)", err)
 	}
+}
+
+func (h *circuitRequestHandler) newCircuitCreateParms(serviceId string, sourceRouter *network.Router, clientId *identity.TokenId) network.CreateCircuitParams {
+	return &circuitParams{
+		serviceId:    serviceId,
+		sourceRouter: sourceRouter,
+		clientId:     clientId,
+		ctx:          logcontext.NewContext(),
+		deadline:     time.Now().Add(h.network.GetOptions().RouteTimeout),
+	}
+}
+
+type circuitParams struct {
+	serviceId    string
+	sourceRouter *network.Router
+	clientId     *identity.TokenId
+	ctx          logcontext.Context
+	deadline     time.Time
+}
+
+func (self *circuitParams) GetServiceId() string {
+	return self.serviceId
+}
+
+func (self *circuitParams) GetSourceRouter() *network.Router {
+	return self.sourceRouter
+}
+
+func (self *circuitParams) GetClientId() *identity.TokenId {
+	return self.clientId
+}
+
+func (self *circuitParams) GetCircuitTags(xt.CostedTerminator) map[string]string {
+	return map[string]string{
+		"svcId": self.serviceId,
+	}
+}
+
+func (self *circuitParams) GetLogContext() logcontext.Context {
+	return self.ctx
+}
+
+func (self *circuitParams) GetDeadline() time.Time {
+	return self.deadline
 }

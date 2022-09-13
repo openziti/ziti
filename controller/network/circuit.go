@@ -19,7 +19,9 @@ package network
 import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/identity"
 	"github.com/orcaman/concurrent-map/v2"
 	"time"
 )
@@ -30,6 +32,7 @@ type Circuit struct {
 	Service    *Service
 	Terminator xt.CostedTerminator
 	Path       *Path
+	Tags       map[string]string
 	Rerouting  concurrenz.AtomicBoolean
 	PeerData   xt.PeerData
 	CreatedAt  time.Time
@@ -95,4 +98,13 @@ func (self *circuitController) all() []*Circuit {
 
 func (self *circuitController) remove(circuit *Circuit) {
 	self.circuits.Remove(circuit.Id)
+}
+
+type CreateCircuitParams interface {
+	GetServiceId() string
+	GetSourceRouter() *Router
+	GetClientId() *identity.TokenId
+	GetCircuitTags(terminator xt.CostedTerminator) map[string]string
+	GetLogContext() logcontext.Context
+	GetDeadline() time.Time
 }

@@ -169,6 +169,7 @@ message Route {
   repeated Forward forwards = 4;
   Context context = 5;
   uint64 timeout = 6;
+  map<string, string> tags = 7;
 }
 
 message Unroute {
