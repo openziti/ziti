@@ -18,11 +18,13 @@ const SessionEventNS = "edge.sessions"
 type SessionEvent struct {
 	Namespace    string    `json:"namespace"`
 	EventType    string    `json:"event_type"`
+	SessionType  string    `json:"session_type"`
 	Id           string    `json:"id"`
 	Timestamp    time.Time `json:"timestamp"`
 	Token        string    `json:"token"`
 	ApiSessionId string    `json:"api_session_id"`
 	IdentityId   string    `json:"identity_id"`
+	ServiceId    string    `json:"service_id"`
 }
 
 func (event *SessionEvent) String() string {
@@ -56,10 +58,12 @@ func sessionCreated(args ...interface{}) {
 		Namespace:    SessionEventNS,
 		EventType:    SessionEventTypeCreated,
 		Id:           session.Id,
+		SessionType:  session.Type,
 		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
 		IdentityId:   session.ApiSession.IdentityId,
+		ServiceId:    session.ServiceId,
 	}
 
 	for _, handler := range getSessionEventHandlers() {
