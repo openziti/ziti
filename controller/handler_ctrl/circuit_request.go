@@ -18,9 +18,9 @@ package handler_ctrl
 
 import (
 	"github.com/openziti/fabric/controller/xt"
+	"google.golang.org/protobuf/proto"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
@@ -128,7 +128,7 @@ func (self *circuitParams) GetClientId() *identity.TokenId {
 
 func (self *circuitParams) GetCircuitTags(xt.CostedTerminator) map[string]string {
 	return map[string]string{
-		"svcId": self.serviceId,
+		"serviceId": self.serviceId,
 	}
 }
 

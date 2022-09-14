@@ -28,8 +28,8 @@ import (
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/identity"
 	"github.com/openziti/xweb/v2"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -77,7 +77,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 
 	if value, found := options["scrapeCert"]; found {
 		if f, ok := value.(string); ok {
-			p, err := ioutil.ReadFile(f)
+			p, err := os.ReadFile(f)
 			if nil != err {
 				return nil, err
 			}

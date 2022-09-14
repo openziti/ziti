@@ -20,15 +20,15 @@ import (
 	"bytes"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/idgen"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
 func NewRequestContext(rw http.ResponseWriter, r *http.Request) api.RequestContext {
 	rid := idgen.New()
 
-	body, _ := ioutil.ReadAll(r.Body)
-	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+	body, _ := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	requestContext := &api.RequestContextImpl{
 		Id:             rid,

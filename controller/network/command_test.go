@@ -1,7 +1,6 @@
 package network
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -9,14 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"testing"
 )
-
-func testFactory[T proto.Message](msgType T) func([]byte) (T, error) {
-	return func(b []byte) (T, error) {
-		var msg T = proto.MessageV1(proto.MessageV2(msgType).ProtoReflect().New()).(T)
-		err := proto.Unmarshal(b, msg)
-		return msg, err
-	}
-}
 
 func TestProtobufFactory(t *testing.T) {
 	ctx := db.NewTestContext(t)
