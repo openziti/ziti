@@ -19,7 +19,6 @@ package boltz
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/stringz"
 	"strings"
 
 	"github.com/openziti/storage/ast"
@@ -28,15 +27,33 @@ import (
 )
 
 func (store *BaseStore) MakeSymbolPublic(symbol string) {
-	if store.GetSymbol(symbol) != nil {
-		store.publicSymbols = append(store.publicSymbols, symbol)
+	if _, isMapSymbol := store.mapSymbols[symbol]; isMapSymbol || store.GetSymbol(symbol) != nil {
+		store.publicSymbols[symbol] = struct{}{}
 	} else {
 		pfxlog.Logger().Errorf("%v can't mark unknown symbol %v public", store.GetEntityType(), symbol)
 	}
 }
 
 func (store *BaseStore) GetPublicSymbols() []string {
-	return store.publicSymbols
+	var symbols []string
+	for k := range store.publicSymbols {
+		symbols = append(symbols, k)
+	}
+	return symbols
+}
+
+func (store *BaseStore) IsPublicSymbol(symbol string) bool {
+	if _, ok := store.publicSymbols[symbol]; ok {
+		return true
+	}
+	if parts := strings.Split(symbol, "."); len(parts) > 1 {
+		baseName := parts[0]
+		if _, isMapSymbol := store.mapSymbols[baseName]; isMapSymbol {
+			_, isPublic := store.publicSymbols[baseName]
+			return isPublic
+		}
+	}
+	return false
 }
 
 func (store *BaseStore) GetSymbolType(name string) (ast.NodeType, bool) {
@@ -85,15 +102,7 @@ func (store *BaseStore) GetSymbol(name string) EntitySymbol {
 		parts := strings.Split(name, ".")
 		// If it's a map symbol, create that now and return it
 		if mapSymbol := store.mapSymbols[parts[0]]; mapSymbol != nil {
-			var prefix []string
-			prefix = append(prefix, mapSymbol.prefix...)
-			prefix = append(prefix, mapSymbol.key)
-			if len(parts) > 2 {
-				middle := parts[1 : len(parts)-1]
-				prefix = append(prefix, middle...)
-			}
-			key := parts[len(parts)-1]
-			return store.newEntitySymbol(name, mapSymbol.symbolType, key, nil, prefix...)
+			return mapSymbol.createElementSymbol(name, parts)
 		}
 
 		if result := store.GetSymbol(parts[0]); result != nil {
@@ -109,7 +118,6 @@ func (store *BaseStore) GetSymbol(name string) EntitySymbol {
 			return store.createCompositeEntitySymbol(name, linkedEntitySymbol, rest)
 		}
 	}
-
 	return nil
 }
 
@@ -173,15 +181,24 @@ func (store *BaseStore) createCompositeEntitySymbol(name string, first linkedEnt
 func (store *BaseStore) addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol {
 	store.symbols[name] = symbol
 	if public {
-		store.publicSymbols = append(store.publicSymbols, name)
+		store.publicSymbols[name] = struct{}{}
 	}
 	return symbol
 }
 
+func (store *BaseStore) inheritMapSymbol(symbol *entityMapSymbol) {
+	store.mapSymbols[symbol.key] = symbol
+}
+
 func (store *BaseStore) GrantSymbols(child ListStore) {
 	for name, value := range store.symbols {
-		public := stringz.Contains(store.publicSymbols, name)
-		child.addSymbol(name, public, value)
+		child.addSymbol(name, store.IsPublicSymbol(name), value)
+	}
+	for name, value := range store.mapSymbols {
+		child.inheritMapSymbol(value)
+		if store.IsPublicSymbol(name) {
+			child.MakeSymbolPublic(name)
+		}
 	}
 }
 
@@ -219,6 +236,7 @@ func (store *BaseStore) AddFkSymbolWithKey(name string, key string, linkedStore 
 
 func (store *BaseStore) AddMapSymbol(name string, nodeType ast.NodeType, key string, prefix ...string) {
 	store.mapSymbols[name] = &entityMapSymbol{
+		store:      store,
 		key:        key,
 		symbolType: nodeType,
 		prefix:     prefix,
@@ -267,7 +285,7 @@ func (store *BaseStore) AddSetSymbol(name string, nodeType ast.NodeType) EntityS
 
 func (store *BaseStore) AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol {
 	result := store.addSetSymbol(name, nodeType, nil)
-	store.publicSymbols = append(store.publicSymbols, name)
+	store.publicSymbols[name] = struct{}{}
 	return result
 }
 
@@ -289,6 +307,7 @@ func (store *BaseStore) AddExtEntitySymbols() {
 	store.AddSymbol(FieldCreatedAt, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldUpdatedAt, ast.NodeTypeDatetime)
 	store.AddMapSymbol(FieldTags, ast.NodeTypeAnyType, FieldTags)
+	store.MakeSymbolPublic(FieldTags)
 	store.AddSymbol(FieldIsSystemEntity, ast.NodeTypeBool)
 }
 
