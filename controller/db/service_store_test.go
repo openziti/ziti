@@ -85,6 +85,10 @@ type serviceTestEntities struct {
 func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 	service1 := ctx.requireNewService()
 	service2 := ctx.requireNewService()
+	service2.Tags = map[string]interface{}{
+		"location": "NY",
+	}
+	ctx.RequireUpdate(service2)
 	router := ctx.requireNewRouter()
 
 	terminator := &Terminator{
@@ -126,6 +130,18 @@ func (ctx *TestContext) testLoadQueryServices(t *testing.T) {
 
 		query := fmt.Sprintf(`anyOf(terminators) = "%v"`, entities.terminator.Id)
 		ids, _, err := ctx.stores.Service.QueryIds(tx, query)
+		ctx.NoError(err)
+		ctx.EqualValues(1, len(ids))
+		ctx.Equal(entities.service1.Id, ids[0])
+
+		query = `tags.location = "NY"`
+		ids, _, err = ctx.stores.Service.QueryIds(tx, query)
+		ctx.NoError(err)
+		ctx.EqualValues(1, len(ids))
+		ctx.Equal(entities.service2.Id, ids[0])
+
+		query = `tags.location = null`
+		ids, _, err = ctx.stores.Service.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(1, len(ids))
 		ctx.Equal(entities.service1.Id, ids[0])

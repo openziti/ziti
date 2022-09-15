@@ -101,7 +101,7 @@ func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"))
 	})
 }
 
