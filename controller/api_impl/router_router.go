@@ -101,7 +101,7 @@ func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params 
 
 func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.ConcatNestedNames().FilterMaps("tags"))
+		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.FilterMaps("tags"))
 	})
 }
 
