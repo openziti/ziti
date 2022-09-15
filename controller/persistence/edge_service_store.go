@@ -147,6 +147,7 @@ func (store *edgeServiceStoreImpl) initializeLocal() {
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
 	store.symbolConfigs = store.AddFkSetSymbol(EntityTypeConfigs, store.stores.config)
+	store.MakeSymbolPublic(EntityTypeConfigs)
 
 	store.symbolBindIdentities = store.AddFkSetSymbol(FieldEdgeServiceBindIdentities, store.stores.identity)
 	store.symbolDialIdentities = store.AddFkSetSymbol(FieldEdgeServiceDialIdentities, store.stores.identity)
