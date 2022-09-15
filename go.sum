@@ -447,8 +447,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel v1.0.2 h1:hNnmIHDb3RY7B0wX9TOn+XqObjfoTPWDBNjTa42nvxA=
 github.com/openziti/channel v1.0.2/go.mod h1:vb2IonzG4uLmFj7UTIHTKViI2W8tHE+skFTeynZ+hJE=
-github.com/openziti/fabric v0.19.67 h1:rH2EEwo6y7th0HXdjhkHJeIYq8il6Z3Fu/5Qh2icSZ8=
-github.com/openziti/fabric v0.19.67/go.mod h1:xYVUbDJA1NZae+Wpo5Lc1N1XF+cnLnqaYwi+KiEXUMs=
+github.com/openziti/fabric v0.19.68 h1:JVluF4bCa173ctndtQdXy8kvk22uBVdMSs8Wb0cFIXs=
+github.com/openziti/fabric v0.19.68/go.mod h1:xYVUbDJA1NZae+Wpo5Lc1N1XF+cnLnqaYwi+KiEXUMs=
 github.com/openziti/foundation/v2 v2.0.4 h1:QnpbNgRzPTnbu/QIqdNhYJl4nrhxrX7VXiIF5yIqQhc=
 github.com/openziti/foundation/v2 v2.0.4/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.11 h1:66tdzw5gillevcTNXZGbLxB03d/l2KTGbS4mrDJg7WY=
