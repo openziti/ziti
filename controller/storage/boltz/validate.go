@@ -18,7 +18,6 @@ package boltz
 
 import (
 	"github.com/openziti/storage/ast"
-	"github.com/openziti/foundation/v2/stringz"
 )
 
 type publicSymbolValidator struct {
@@ -28,7 +27,7 @@ type publicSymbolValidator struct {
 }
 
 func (visitor *publicSymbolValidator) VisitSymbol(symbol string, _ ast.NodeType) {
-	if visitor.err == nil && !stringz.Contains(visitor.store.GetPublicSymbols(), symbol) {
+	if visitor.err == nil && !visitor.store.IsPublicSymbol(symbol) {
 		visitor.err = ast.NewUnknownSymbolError(symbol)
 	}
 }

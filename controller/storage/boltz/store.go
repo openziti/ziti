@@ -42,13 +42,13 @@ func newBaseStore(parent CrudStore, parentMapper func(Entity) Entity, entityType
 	}
 
 	result := &BaseStore{
-		parent:       parent,
-		parentMapper: parentMapper,
-		entityType:   entityType,
-		entityPath:   entityPath,
-		symbols:      map[string]EntitySymbol{},
-		mapSymbols:   map[string]*entityMapSymbol{},
-
+		parent:          parent,
+		parentMapper:    parentMapper,
+		entityType:      entityType,
+		entityPath:      entityPath,
+		symbols:         map[string]EntitySymbol{},
+		mapSymbols:      map[string]*entityMapSymbol{},
+		publicSymbols:   map[string]struct{}{},
 		Indexer:         *NewIndexer(append(indexPath, IndexesBucket)...),
 		links:           map[string]LinkCollection{},
 		refCountedLinks: map[string]RefCountedLinkCollection{},
@@ -94,7 +94,7 @@ type BaseStore struct {
 	entityType    string
 	entityPath    []string
 	symbols       map[string]EntitySymbol
-	publicSymbols []string
+	publicSymbols map[string]struct{}
 	mapSymbols    map[string]*entityMapSymbol
 	isExtended    bool
 	Indexer
