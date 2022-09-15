@@ -24,8 +24,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 )
 
@@ -152,6 +152,10 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 
 	ctx.RequireCreate(service1)
 	service2 := ctx.RequireNewService(eid.New())
+	service2.Tags = map[string]interface{}{
+		"location": "NY",
+	}
+	ctx.RequireUpdate(service2)
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
 	ctx.RequireCreate(session1)
@@ -190,6 +194,18 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 		ids, _, err := ctx.stores.EdgeService.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.True(stringz.Contains(ids, entities.service1.Id))
+
+		query = `tags.location = "NY"`
+		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
+		ctx.NoError(err)
+		ctx.EqualValues(1, len(ids))
+		ctx.Equal(entities.service2.Id, ids[0])
+
+		query = `tags.location = null`
+		ids, _, err = ctx.stores.EdgeService.QueryIds(tx, query)
+		ctx.NoError(err)
+		ctx.EqualValues(1, len(ids))
+		ctx.Equal(entities.service1.Id, ids[0])
 
 		return nil
 	})
