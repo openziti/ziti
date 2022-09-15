@@ -245,7 +245,7 @@ func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, para
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"))
 	})
 }
 

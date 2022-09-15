@@ -119,6 +119,6 @@ func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterPatch) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.ConcatNestedNames().FilterMaps("tags"))
+		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.FilterMaps("tags"))
 	})
 }
