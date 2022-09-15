@@ -105,7 +105,8 @@ func (self *CaManager) IsUpdated(field string) bool {
 		strings.EqualFold(field, persistence.FieldCaIsOttCaEnrollmentEnabled) ||
 		strings.EqualFold(field, persistence.FieldCaIsAuthEnabled) ||
 		strings.EqualFold(field, persistence.FieldIdentityRoles) ||
-		strings.EqualFold(field, persistence.FieldCaIdentityNameFormat)
+		strings.EqualFold(field, persistence.FieldCaIdentityNameFormat) ||
+		strings.HasPrefix(field, persistence.FieldCaExternalIdClaim+".")
 }
 
 func (self *CaManager) Verified(ca *Ca) error {
