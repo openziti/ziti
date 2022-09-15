@@ -679,10 +679,10 @@ github.com/openziti/channel v1.0.2 h1:hNnmIHDb3RY7B0wX9TOn+XqObjfoTPWDBNjTa42nvx
 github.com/openziti/channel v1.0.2/go.mod h1:vb2IonzG4uLmFj7UTIHTKViI2W8tHE+skFTeynZ+hJE=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.22.91 h1:/55k3noqvY5CYJlY8ySC17Q2mEcI5/nbj1/6+HS7EA0=
-github.com/openziti/edge v0.22.91/go.mod h1:GE3iyHd1VCY7NU10RQaFSTWi+9GrDN84eyarWAIzW7A=
-github.com/openziti/fabric v0.19.67 h1:rH2EEwo6y7th0HXdjhkHJeIYq8il6Z3Fu/5Qh2icSZ8=
-github.com/openziti/fabric v0.19.67/go.mod h1:xYVUbDJA1NZae+Wpo5Lc1N1XF+cnLnqaYwi+KiEXUMs=
+github.com/openziti/edge v0.22.95 h1:24jZlqNNAxazib3qma+SbaC+8Mc7F1XEje+ckvQuBZs=
+github.com/openziti/edge v0.22.95/go.mod h1:Fdjjs+eVf3nAuGfZAvlU39a4bi/tJMoBfG+Ylv63BJE=
+github.com/openziti/fabric v0.19.69 h1:vCJPmANIyiq/kUaVx9CU+RljnJIpvcJaYM8fv1kiQkY=
+github.com/openziti/fabric v0.19.69/go.mod h1:XSbL0gbTyhd76yYPNNg/CTJsdaYWUg3Thm8Fs9clpd0=
 github.com/openziti/foundation/v2 v2.0.4 h1:QnpbNgRzPTnbu/QIqdNhYJl4nrhxrX7VXiIF5yIqQhc=
 github.com/openziti/foundation/v2 v2.0.4/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.11 h1:66tdzw5gillevcTNXZGbLxB03d/l2KTGbS4mrDJg7WY=
@@ -693,8 +693,8 @@ github.com/openziti/metrics v1.0.7 h1:gI1Vk2HIPUwIgS42bZJ0MZx+ATfIU1Pnv5troch8R5
 github.com/openziti/metrics v1.0.7/go.mod h1:x+2e9YQyZjf94KFWW3rr9hx+agfk50kP53vMP/6eMzo=
 github.com/openziti/sdk-golang v0.16.119 h1:B51X/3/qpSNYJIF9D903nvPVR0suGw/fZvw6aNzF/bo=
 github.com/openziti/sdk-golang v0.16.119/go.mod h1:ln61i+bB/Qy8IsjDzu8iw8V//PFefCY9UuhCsz60fPk=
-github.com/openziti/storage v0.1.20 h1:6wYIwtNeymni4bVSznelVQ4WIkSPzYjh6ybIO704QVY=
-github.com/openziti/storage v0.1.20/go.mod h1:onJ7mLnnB2nfKdNCJHZlVRnPZSSPUJvuu3gzZ8vR2Mo=
+github.com/openziti/storage v0.1.21 h1:m8ny8AuCqjZQRpiHUhQlmZjUGAW1LCRjrPA93WQsjP0=
+github.com/openziti/storage v0.1.21/go.mod h1:onJ7mLnnB2nfKdNCJHZlVRnPZSSPUJvuu3gzZ8vR2Mo=
 github.com/openziti/transport/v2 v2.0.28 h1:ptfqproXYToJR2QncsbdlRjHh7OGBlo2Jgmk+dFpNsc=
 github.com/openziti/transport/v2 v2.0.28/go.mod h1:I0JnNq899+rwArGlSq9sVqCCD5c805FUv0VQgFhWNYI=
 github.com/openziti/x509-claims v1.0.2 h1:PSv/xRfejIAcPc16A902k08rSBs3R8bjtL4qq6WEwCI=
@@ -1193,8 +1193,8 @@ golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2 h1:wM1k/lXfpc5HdkJJyW9GELpd8ERGdnh8sMGL6Gzq3Ho=
-golang.org/x/sys v0.0.0-20220909162455-aba9fc2a8ff2/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220913175220-63ea55921009 h1:PuvuRMeLWqsf/ZdT1UUZz0syhioyv1mzuFZsXs4fvhw=
+golang.org/x/sys v0.0.0-20220913175220-63ea55921009/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.0.0-20210927222741-03fcf44c2211/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=
