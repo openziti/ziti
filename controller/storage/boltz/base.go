@@ -60,6 +60,7 @@ type ListStore interface {
 	MapSymbol(name string, wrapper SymbolMapper)
 	GrantSymbols(child ListStore)
 	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
+	inheritMapSymbol(symbol *entityMapSymbol)
 	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
 	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
 	AddFkSymbol(name string, linkedType ListStore, path ...string) EntitySymbol
@@ -75,6 +76,7 @@ type ListStore interface {
 
 	NewRowComparator(sort []ast.SortField) (RowComparator, error)
 	GetPublicSymbols() []string
+	IsPublicSymbol(symbol string) bool
 
 	FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string
 
