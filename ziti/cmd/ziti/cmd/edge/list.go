@@ -1050,8 +1050,8 @@ func outputPostureChecks(options *api.Options, children []*gabs.Container, pagin
 	return nil
 }
 
-func runListCAs(o *api.Options) error {
-	client, err := util.NewEdgeManagementClient(o)
+func runListCAs(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
 
 	if err != nil {
 		return err
@@ -1059,11 +1059,11 @@ func runListCAs(o *api.Options) error {
 
 	var filter *string = nil
 
-	if len(o.Args) > 0 {
-		filter = &o.Args[0]
+	if len(options.Args) > 0 {
+		filter = &options.Args[0]
 	}
 
-	context, cancelContext := o.TimeoutContext()
+	context, cancelContext := options.TimeoutContext()
 	defer cancelContext()
 
 	result, err := client.CertificateAuthority.ListCas(&certificate_authority.ListCasParams{
@@ -1075,7 +1075,7 @@ func runListCAs(o *api.Options) error {
 		return util.WrapIfApiError(err)
 	}
 
-	if o.OutputJSONResponse {
+	if options.OutputJSONResponse {
 		return nil
 	}
 
@@ -1085,7 +1085,26 @@ func runListCAs(o *api.Options) error {
 		return errors.New("unexpected empty response payload")
 	}
 
-	for _, entity := range result.GetPayload().Data {
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+	outTable.Style().Options.SeparateRows = true
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Flags", "Token", "Fingerprint", "Configuration", "Configuration", "Configuration"}, rowConfigAutoMerge)
+
+	outTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 2, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 3, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 4, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 5, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 6, AutoMerge: true, WidthMax: 20, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 7, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+		{Number: 8, WidthMax: 50, WidthMaxEnforcer: WrapHardEllipses, Align: text.AlignLeft},
+	})
+
+	for i, entity := range result.GetPayload().Data {
 		id := *entity.ID
 		name := *entity.Name
 		identityRoles := make([]string, 0)
@@ -1125,19 +1144,51 @@ func runListCAs(o *api.Options) error {
 
 		flags = "[" + flags + "]"
 
-		if _, err := fmt.Fprintf(o.Out, "id: %v    name: %v   token: %v    identityRoles: %v    flags: %s    identityNameFormat: %v    fingerprint: %v\n",
-			id, name, token, identityRoles, flags, identityNameFormat, getEllipsesString(fingerprint, 4, 2),
-		); err != nil {
-			return err
+		identityRolesStr := strings.Join(identityRoles, ",")
+		shortFingerprint := getEllipsesString(fingerprint, 4, 2)
+
+		if token == "" {
+			token = "-"
+		}
+
+		if shortFingerprint == "" {
+			shortFingerprint = "-"
+		}
+
+		if i%2 == 0 {
+			flags = flags + " "
+			token = token + " "
+			identityNameFormat = identityNameFormat + " "
+			identityRolesStr = identityRolesStr + " "
+			shortFingerprint = shortFingerprint + " "
+		}
+
+		outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "AutoCA", "Identity Name Format", identityNameFormat})
+		outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "AutoCA", "Identity Roles", identityRolesStr})
+
+		if entity.ExternalIDClaim != nil {
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Index", int64OrDefault(entity.ExternalIDClaim.Index)})
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Location", stringz.OrEmpty(entity.ExternalIDClaim.Location)})
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Matcher", stringz.OrEmpty(entity.ExternalIDClaim.Matcher)})
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Matcher Criteria", stringz.OrEmpty(entity.ExternalIDClaim.MatcherCriteria)})
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Parser", stringz.OrEmpty(entity.ExternalIDClaim.Parser)})
+			outTable.AppendRow(table.Row{id, name, flags, token, shortFingerprint, "ExternalIdClaim", "Parser Criteria", stringz.OrEmpty(entity.ExternalIDClaim.ParserCriteria)})
 		}
 	}
 
 	pagingInfo := newPagingInfo(payload.Meta)
-	pagingInfo.Output(o)
+	api.RenderTable(options, outTable, pagingInfo)
 
-	_, _ = fmt.Fprint(o.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
+	_, _ = fmt.Fprint(options.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
 
 	return nil
+}
+
+func int64OrDefault(i *int64) int64 {
+	if i == nil {
+		return 0
+	}
+	return *i
 }
 
 func runListConfigTypes(o *api.Options) error {

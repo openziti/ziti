@@ -1,3 +1,99 @@
+# Release 0.26.8
+
+## What's New
+
+- Edge
+  - Bug Fixes
+- Ziti CLI
+  - `ziti edge create|update ca` now supports `externalIdClaim`
+  - Improved List CAs
+- Identity
+  - Automatic File Reloads
+
+## Edge
+### Bug Fixes
+
+* [Issue 1176](https://github.com/openziti/edge/issues/1176): Patching CA `externalIdClaim` Does Not Work
+
+## Ziti CLI
+
+### `ziti edge create|update ca` now support `externalIdClaim
+
+Identities now have a field named `externalId` that can be used with 3rd Party CAs in addition to the existing
+External JWT Signer support. 3rd Party CAs now support the following optional fields:
+
+- `externalIdClaim.index` - if multiple externalId claims are located, the index will be used to select one, default 0
+- `externalIdClaim.location` - extracts values from one of the following locations on a x509 certificate: `SAN_URI`, `SAN_EMAIL`, `COMMON_NAME`
+- `externalIdClaim.matcher` - matches values in one of the following ways  `PREFIX`, `SUFFIX`, `SCHEME` in conjunction with `matcherCriteria` or select all values via `ALL`
+- `externalIdClaim.matcherCriteria` - `matcher` values of `PREFIX`, `SUFFIX`, and `SCHEME` will use `matcherCriteria` as a matching value
+- `externalIdClaim.parser`: - supports parsing values from all matched externalIds via `SPLIT` or `NONE`
+- `externalIdClaim.parserCriteria` - for a `parser` value of `SPLIT`, `parserCriteria` will be used to split values
+
+When defined the `externalIdClaim` configuration will be used to locate any `externalId`s present in the client
+supplied x509 certificate. If an `externalId` is located, it will be used to associate the authentication request
+with an identity. If found, authentication is considered successful if not the authentication request fails. If the 
+client certificate does not contain an `externalId` then identities will be searched for that have a certificate
+authenticator that matches the supplied client certificate. Should that fail, the authentication request fails.
+
+This functionality can be used to support SPIFFE provisioned identities. For any specific SPIFFE ID, assign it to an
+identity's `externalId` and then use the following `externalIdClaim` configurations.
+
+#### CA Create/Update REST API
+```json
+{
+  ...
+  "externalIdClaim": {
+    "location": "SAN_URI",
+    "index": 0,
+    "matcher": "SCHEME",
+    "matcherCriteria": "spiffe",
+    "parser": "NONE",
+    "parserCriteria": ""
+  }
+}
+```
+#### Ziti CLI
+
+```
+ziti edge create ca myCa ca.pem -l SAN_URI -m SCHEME -x spiffe -p "NONE"
+```
+
+```
+ziti edge update ca myCa -l SAN_URI -m SCHEME -x spiffe -p "NONE"
+```
+
+### Improved List CAs Output
+
+The output for listing CAs in non-JSON format has been improved.
+
+Example:
+
+```text
+╭────────────────────────┬─────────┬────────┬────────────┬─────────────┬─────────────────────────────────────────────────────────────────╮
+│ ID                     │ NAME    │ FLAGS  │ TOKEN      │ FINGERPRINT │ CONFIGURATION                                                   │
+├────────────────────────┼─────────┼────────┼────────────┼─────────────┼─────────────────┬──────────────────────┬────────────────────────┤
+│ 1tu6CbXT18Dd9rybjCW5eX │ 2       │ [AOE]  │ KaPxRiKbk  │ -           │ AutoCA          │ Identity Name Format │ [caName]-[commonName]  │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Identity Roles       │ a,b,c                  │
+│                        │         │        │            │             ├─────────────────┼──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │ ExternalIdClaim │ Index                │ 2                      │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Location             │ SAN_URI                │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Matcher              │ ALL                    │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Matcher Criteria     │                        │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Parser               │ NONE                   │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Parser Criteria      │                        │
+├────────────────────────┼─────────┼────────┼────────────┼─────────────┼─────────────────┼──────────────────────┼────────────────────────┤
+│ 7AGp9vUttJHKA1JWujNtpR │ test-ca │ [VAOE] │ -          │ 315e...ba   │ AutoCA          │ Identity Name Format │ [caName]-[commonName]  │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Identity Roles       │  three, two,one        │
+╰────────────────────────┴─────────┴────────┴────────────┴─────────────┴─────────────────┴──────────────────────┴────────────────────────╯
+```
+
 # Release 0.26.7
 
 ## What's New
