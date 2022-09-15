@@ -623,4 +623,124 @@ func Test_CA(t *testing.T) {
 		ctx.NoError(err)
 		ctx.Equal(http.StatusBadRequest, resp.StatusCode(), string(resp.Body()))
 	})
+
+	t.Run("can update a CA with externalIdClaim with a CN location, no parsing, all matcher", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem:                   S(caPEM.String()),
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		t.Run("can patch externalIdClaim", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			caPatch := &rest_model.CaPatch{
+				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
+					Index:           I(0),
+					Location:        S(rest_model.ExternalIDClaimLocationCOMMONNAME),
+					Matcher:         S(rest_model.ExternalIDClaimMatcherALL),
+					MatcherCriteria: S(""),
+					Parser:          S(rest_model.ExternalIDClaimParserNONE),
+					ParserCriteria:  S(""),
+				},
+			}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+			t.Run("patched ca values are correct", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				caGetResult := &rest_model.DetailCaEnvelope{}
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+				ctx.NoError(err)
+				ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+				ctx.NotNil(caGetResult, string(resp.Body()))
+				ctx.NotNil(caGetResult.Data, string(resp.Body()))
+				ctx.Equal(caCreateResult.Data.ID, *caGetResult.Data.ID, string(resp.Body()))
+				ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+
+				ctx.Equal(*caPatch.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
+				ctx.Equal(*caPatch.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
+				ctx.Equal(*caPatch.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
+				ctx.Equal(caPatch.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
+				ctx.Equal(*caPatch.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
+				ctx.Equal(caPatch.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+			})
+		})
+	})
+
+	t.Run("can update a CA with externalIdClaim with SAN location, SCHEME matcher, spiffe scheme, no parsing", func(t *testing.T) {
+		ctx.testContextChanged(t)
+
+		_, _, caPEM := newTestCaCert() //x509.Cert, PrivKey, caPem
+
+		caCreate := &rest_model.CaCreate{
+			CertPem:                   S(caPEM.String()),
+			IdentityRoles:             []string{},
+			IsAuthEnabled:             B(true),
+			IsAutoCaEnrollmentEnabled: B(true),
+			IsOttCaEnrollmentEnabled:  B(true),
+			Name:                      S(eid.New()),
+		}
+
+		caCreateResult := &rest_model.CreateEnvelope{}
+
+		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResult).Post("/cas")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+
+		t.Run("can patch externalIdClaim", func(t *testing.T) {
+			ctx.testContextChanged(t)
+			caPatch := &rest_model.CaPatch{
+				ExternalIDClaim: &rest_model.ExternalIDClaimPatch{
+					Index:           I(0),
+					Location:        S(rest_model.ExternalIDClaimPatchLocationSANURI),
+					Matcher:         S(rest_model.ExternalIDClaimMatcherSCHEME),
+					MatcherCriteria: S("spiffe"),
+					Parser:          S(rest_model.ExternalIDClaimParserNONE),
+					ParserCriteria:  S(""),
+				},
+			}
+
+			resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caPatch).Patch("/cas/" + caCreateResult.Data.ID)
+			ctx.NoError(err)
+			ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+
+			t.Run("patched ca values are correct", func(t *testing.T) {
+				ctx.testContextChanged(t)
+
+				caGetResult := &rest_model.DetailCaEnvelope{}
+
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(caGetResult).Get("/cas/" + caCreateResult.Data.ID)
+				ctx.NoError(err)
+				ctx.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+				ctx.NotNil(caGetResult, string(resp.Body()))
+				ctx.NotNil(caGetResult.Data, string(resp.Body()))
+				ctx.Equal(caCreateResult.Data.ID, *caGetResult.Data.ID, string(resp.Body()))
+				ctx.NotNil(caGetResult.Data.ExternalIDClaim, string(resp.Body()))
+
+				ctx.Equal(*caPatch.ExternalIDClaim.Index, *caGetResult.Data.ExternalIDClaim.Index)
+				ctx.Equal(*caPatch.ExternalIDClaim.Location, *caGetResult.Data.ExternalIDClaim.Location)
+				ctx.Equal(*caPatch.ExternalIDClaim.Matcher, *caGetResult.Data.ExternalIDClaim.Matcher)
+				ctx.Equal(caPatch.ExternalIDClaim.MatcherCriteria, caGetResult.Data.ExternalIDClaim.MatcherCriteria)
+				ctx.Equal(*caPatch.ExternalIDClaim.Parser, *caGetResult.Data.ExternalIDClaim.Parser)
+				ctx.Equal(caPatch.ExternalIDClaim.ParserCriteria, caGetResult.Data.ExternalIDClaim.ParserCriteria)
+			})
+		})
+	})
 }
