@@ -50,8 +50,11 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+	destination := params.GetDestination()
+	circuitId := params.GetCircuitId()
+
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "transport").
 		WithField("destination", destination)
 
@@ -63,7 +66,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Debug("dialing")
 
 	to := txd.options.ConnectTimeout
-	timeToDeadline := time.Until(deadline)
+	timeToDeadline := time.Until(params.GetDeadline())
 	if timeToDeadline > 0 && timeToDeadline < to {
 		to = timeToDeadline
 	}
@@ -75,8 +78,8 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Infof("successful connection to %v from %v", destination, peer.LocalAddr())
 
 	conn := &transportXgressConn{Conn: peer}
-	x := xgress.NewXgress(circuitId, address, conn, xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, txd.options, params.GetCircuitTags())
+	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 
 	peerData := xt.PeerData{

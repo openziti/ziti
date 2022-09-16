@@ -29,8 +29,12 @@ import (
 	"github.com/openziti/identity"
 )
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
-	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
+func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
+	destination := params.GetDestination()
+	circuitId := params.GetCircuitId()
+	address := params.GetAddress()
+
+	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
 		WithField("binding", "transport_udp").
 		WithField("destination", destination)
 
@@ -41,7 +45,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	}
 
 	log.Debugf("dialing packet address [%v]", packetAddress)
-	deadlineTo := time.Until(deadline)
+	deadlineTo := time.Until(params.GetDeadline())
 	var conn net.Conn
 	if deadlineTo > 0 {
 		conn, err = net.DialTimeout(packetAddress.Network(), packetAddress.Address(), deadlineTo)
@@ -54,8 +58,8 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 
 	log.Infof("bound on [%v]", conn.LocalAddr())
 
-	x := xgress.NewXgress(circuitId, address, newPacketConn(conn), xgress.Terminator, txd.options)
-	bindHandler.HandleXgressBind(x)
+	x := xgress.NewXgress(circuitId, address, newPacketConn(conn), xgress.Terminator, txd.options, params.GetCircuitTags())
+	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 
 	return nil, nil

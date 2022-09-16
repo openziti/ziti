@@ -33,7 +33,7 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
+	"os"
 	"strings"
 	"time"
 )
@@ -92,7 +92,7 @@ func (config *Config) Configure(sub config.Subconfig) error {
 }
 
 func LoadConfig(path string) (*Config, error) {
-	cfgBytes, err := ioutil.ReadFile(path)
+	cfgBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

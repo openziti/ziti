@@ -41,8 +41,7 @@ func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channe
 	linkRxMsgMeter := registry.Meter("link." + linkId + ".rx.msgrate")
 	linkRxMsgSizeHistogram := registry.Histogram("link." + linkId + ".rx.msgsize")
 
-	usageRxCounter := registry.IntervalCounter("usage.fabric.rx", time.Minute)
-	usageTxCounter := registry.IntervalCounter("usage.fabric.tx", time.Minute)
+	usageCounter := registry.UsageCounter("fabricUsage", time.Minute)
 
 	closeHook := func() {
 		linkTxBytesMeter.Dispose()
@@ -67,8 +66,7 @@ func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channe
 		linkRxBytesMeter:       linkRxBytesMeter,
 		linkRxMsgMeter:         linkRxMsgMeter,
 		linkRxMsgSizeHistogram: linkRxMsgSizeHistogram,
-		usageRxCounter:         usageRxCounter,
-		usageTxCounter:         usageTxCounter,
+		usageCounter:           usageCounter,
 		closeHook:              closeHook,
 	}
 }
@@ -89,8 +87,7 @@ type channelPeekHandler struct {
 	linkTxMsgSizeHistogram metrics.Histogram
 	linkRxMsgSizeHistogram metrics.Histogram
 
-	usageRxCounter metrics.IntervalCounter
-	usageTxCounter metrics.IntervalCounter
+	usageCounter metrics.UsageCounter
 
 	closeHook func()
 }
@@ -109,9 +106,9 @@ func (h *channelPeekHandler) Rx(msg *channel.Message, _ channel.Channel) {
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
 		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
-			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
+			pfxlog.Logger().WithError(err).Error("Failed to unmarshal payload")
 		} else {
-			h.usageRxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
+			h.usageCounter.Update(circuitUsageSource(payload.CircuitId), "fabric.rx", time.Now(), uint64(len(payload.Data)))
 		}
 	}
 }
@@ -127,9 +124,9 @@ func (h *channelPeekHandler) Tx(msg *channel.Message, _ channel.Channel) {
 
 	if msg.ContentType == int32(xgress.ContentTypePayloadType) {
 		if payload, err := xgress.UnmarshallPayload(msg); err != nil {
-			pfxlog.Logger().Errorf("Failed to unmarshal payload. Error: %v", err)
+			pfxlog.Logger().WithError(err).Error("Failed to unmarshal payload")
 		} else {
-			h.usageTxCounter.Update(payload.CircuitId, time.Now(), uint64(len(payload.Data)))
+			h.usageCounter.Update(circuitUsageSource(payload.CircuitId), "fabric.tx", time.Now(), uint64(len(payload.Data)))
 		}
 	}
 }
@@ -171,11 +168,18 @@ func NewXgressPeekHandler(registry metrics.UsageRegistry) xgress.PeekHandler {
 		egressTxMsgSizeHistogram:  egressTxMsgSizeHistogram,
 		egressRxMsgSizeHistogram:  egressRxMsgSizeHistogram,
 
-		ingressRxUsageCounter: registry.IntervalCounter("usage.ingress.rx", time.Minute),
-		ingressTxUsageCounter: registry.IntervalCounter("usage.ingress.tx", time.Minute),
-		egressRxUsageCounter:  registry.IntervalCounter("usage.egress.rx", time.Minute),
-		egressTxUsageCounter:  registry.IntervalCounter("usage.egress.tx", time.Minute),
+		usageCounter: registry.UsageCounter("usage", time.Minute),
 	}
+}
+
+type circuitUsageSource string
+
+func (c circuitUsageSource) GetIntervalId() string {
+	return string(c)
+}
+
+func (c circuitUsageSource) GetTags() map[string]string {
+	return nil
 }
 
 type xgressPeekHandler struct {
@@ -193,21 +197,18 @@ type xgressPeekHandler struct {
 	egressTxMsgSizeHistogram  metrics.Histogram
 	egressRxMsgSizeHistogram  metrics.Histogram
 
-	ingressRxUsageCounter metrics.IntervalCounter
-	ingressTxUsageCounter metrics.IntervalCounter
-	egressRxUsageCounter  metrics.IntervalCounter
-	egressTxUsageCounter  metrics.IntervalCounter
+	usageCounter metrics.UsageCounter
 }
 
 func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressRxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
+		handler.usageCounter.Update(x, "ingress.rx", time.Now(), uint64(msgSize))
 		handler.ingressRxMsgMeter.Mark(1)
 		handler.ingressRxBytesMeter.Mark(msgSize)
 		handler.ingressRxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressRxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
+		handler.usageCounter.Update(x, "egress.rx", time.Now(), uint64(msgSize))
 		handler.egressRxMsgMeter.Mark(1)
 		handler.egressRxBytesMeter.Mark(msgSize)
 		handler.egressRxMsgSizeHistogram.Update(msgSize)
@@ -217,12 +218,13 @@ func (handler *xgressPeekHandler) Rx(x *xgress.Xgress, payload *xgress.Payload) 
 func (handler *xgressPeekHandler) Tx(x *xgress.Xgress, payload *xgress.Payload) {
 	msgSize := int64(len(payload.Data))
 	if x.Originator() == xgress.Initiator {
-		handler.ingressTxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
+		handler.usageCounter.Update(x, "ingress.tx", time.Now(), uint64(msgSize))
+
 		handler.ingressTxMsgMeter.Mark(1)
 		handler.ingressTxBytesMeter.Mark(msgSize)
 		handler.ingressTxMsgSizeHistogram.Update(msgSize)
 	} else {
-		handler.egressTxUsageCounter.Update(x.CircuitId(), time.Now(), uint64(msgSize))
+		handler.usageCounter.Update(x, "egress.tx", time.Now(), uint64(msgSize))
 		handler.egressTxMsgMeter.Mark(1)
 		handler.egressTxBytesMeter.Mark(msgSize)
 		handler.egressTxMsgSizeHistogram.Update(msgSize)

@@ -157,8 +157,6 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 
 	if factory, err := xgress.GlobalRegistry().Factory(route.Egress.Binding); err == nil {
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
-			circuitId := &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData}
-
 			bindHandler := handler_xgress.NewBindHandler(
 				handler_xgress.NewReceiveHandler(rh.forwarder),
 				handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
@@ -169,7 +167,8 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 			}
 
-			if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx, deadline); err == nil {
+			params := newDialParams(route, bindHandler, ctx, deadline)
+			if peerData, err := dialer.Dial(params); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {
 				var errCode byte
@@ -197,4 +196,50 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 		var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
 		rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), errCode, log)
 	}
+}
+
+func newDialParams(route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {
+	return &dialParams{
+		Route:       route,
+		circuitId:   &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData},
+		bindHandler: bindHandler,
+		logContext:  logContext,
+		deadline:    deadline,
+	}
+}
+
+type dialParams struct {
+	*ctrl_pb.Route
+	circuitId   *identity.TokenId
+	bindHandler xgress.BindHandler
+	logContext  logcontext.Context
+	deadline    time.Time
+}
+
+func (self *dialParams) GetDestination() string {
+	return self.Egress.Destination
+}
+
+func (self *dialParams) GetCircuitId() *identity.TokenId {
+	return self.circuitId
+}
+
+func (self *dialParams) GetAddress() xgress.Address {
+	return xgress.Address(self.Egress.Address)
+}
+
+func (self *dialParams) GetBindHandler() xgress.BindHandler {
+	return self.bindHandler
+}
+
+func (self *dialParams) GetLogContext() logcontext.Context {
+	return self.logContext
+}
+
+func (self *dialParams) GetDeadline() time.Time {
+	return self.deadline
+}
+
+func (self *dialParams) GetCircuitTags() map[string]string {
+	return self.Tags
 }

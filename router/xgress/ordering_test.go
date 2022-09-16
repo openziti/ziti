@@ -73,7 +73,7 @@ func Test_Ordering(t *testing.T) {
 		closeNotify: make(chan struct{}),
 	}
 
-	x := NewXgress(&identity.TokenId{Token: "test"}, "test", conn, Initiator, DefaultOptions())
+	x := NewXgress(&identity.TokenId{Token: "test"}, "test", conn, Initiator, DefaultOptions(), nil)
 	x.receiveHandler = noopReceiveHandler{}
 	go x.tx()
 

@@ -57,6 +57,7 @@ type Dispatcher struct {
 	serviceEventHandlers    concurrenz.CopyOnWriteSlice[event.ServiceEventHandler]
 	terminatorEventHandlers concurrenz.CopyOnWriteSlice[event.TerminatorEventHandler]
 	usageEventHandlers      concurrenz.CopyOnWriteSlice[event.UsageEventHandler]
+	usageEventV3Handlers    concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
 
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 

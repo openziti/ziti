@@ -79,6 +79,10 @@ func (entity *Terminator) GetPeerData() xt.PeerData {
 	return entity.PeerData
 }
 
+func (entity *Terminator) GetHostId() string {
+	return entity.HostId
+}
+
 func (entity *Terminator) toBolt() *db.Terminator {
 	precedence := xt.Precedences.Default.String()
 	if entity.Precedence != nil {
