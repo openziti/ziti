@@ -34,6 +34,7 @@ type updateServiceEdgeRouterPolicyOptions struct {
 	name            string
 	edgeRouterRoles []string
 	serviceRoles    []string
+	tags            map[string]string
 }
 
 func newUpdateServiceEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -63,6 +64,8 @@ func newUpdateServiceEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the edge router policy")
 	cmd.Flags().StringSliceVar(&options.edgeRouterRoles, "edge-router-roles", nil, "Edge router roles of the service edge router policy")
 	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Service roles of the service edge router policy")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -99,6 +102,11 @@ func runUpdateServiceEdgeRouterPolicy(o *updateServiceEdgeRouterPolicyOptions) e
 
 	if o.Cmd.Flags().Changed("service-roles") {
 		api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 

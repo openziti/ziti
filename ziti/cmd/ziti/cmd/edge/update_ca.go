@@ -43,6 +43,7 @@ type updateCaOptions struct {
 	authEnabled        bool
 	identityAttributes []string
 	identityNameFormat string
+	tags               map[string]string
 
 	externalIDClaim rest_model.ExternalIDClaimPatch
 }
@@ -123,6 +124,7 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.externalIDClaim.MatcherCriteria, "matcher-criteria", "x", "", "criteria used with the given matcher")
 	cmd.Flags().StringVarP(options.externalIDClaim.Parser, "parser", "p", "", "the parser to use on found external ids")
 	cmd.Flags().StringVarP(options.externalIDClaim.ParserCriteria, "parser-criteria", "z", "", "criteria used with the given parser")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 	return cmd
@@ -206,6 +208,16 @@ func runUpdateCa(options updateCaOptions) error {
 
 	if options.Cmd.Flag("parser-criteria").Changed {
 		ca.ExternalIDClaim.ParserCriteria = options.externalIDClaim.ParserCriteria
+		changed = true
+	}
+
+	if options.Cmd.Flags().Changed("tags") {
+		ca.Tags = &rest_model.Tags{
+			SubTags: rest_model.SubTags{},
+		}
+		for k, v := range options.tags {
+			ca.Tags.SubTags[k] = v
+		}
 		changed = true
 	}
 

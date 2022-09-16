@@ -37,6 +37,7 @@ type updateTerminatorOptions struct {
 	binding    string
 	cost       int32
 	precedence string
+	tags       map[string]string
 }
 
 func newUpdateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
@@ -64,6 +65,7 @@ func newUpdateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVar(&options.binding, "binding", "", "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -108,6 +110,11 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 			return errors2.Errorf("Invalid precedence %v. Must be one of %+v", o.precedence, validValues)
 		}
 		api.SetJSONValue(entityData, o.precedence, "precedence")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 

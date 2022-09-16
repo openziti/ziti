@@ -32,6 +32,7 @@ type updateServiceOptions struct {
 	api.Options
 	name               string
 	terminatorStrategy string
+	tags               map[string]string
 }
 
 func newUpdateServiceCmd(p common.OptionsProvider) *cobra.Command {
@@ -56,6 +57,7 @@ func newUpdateServiceCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the service")
 	cmd.Flags().StringVar(&options.terminatorStrategy, "terminator-strategy", "", "Specifies the terminator strategy for the service")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -77,6 +79,11 @@ func runUpdateService(o *updateServiceOptions) error {
 
 	if o.Cmd.Flags().Changed("terminator-strategy") {
 		api.SetJSONValue(entityData, o.terminatorStrategy, "terminatorStrategy")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 

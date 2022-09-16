@@ -36,6 +36,7 @@ type updateConfigOptions struct {
 	name     string
 	data     string
 	jsonFile string
+	tags     map[string]string
 }
 
 // newUpdateConfigCmd updates the 'edge controller update service-policy' command
@@ -65,6 +66,8 @@ func newUpdateConfigCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&options.data, "data", "d", "", "Set the data of the config")
 	cmd.Flags().StringVarP(&options.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -98,6 +101,11 @@ func runUpdateConfig(o *updateConfigOptions) error {
 		if jsonBytes, err = ioutil.ReadFile(o.jsonFile); err != nil {
 			return fmt.Errorf("failed to read config json file %v: %w", o.jsonFile, err)
 		}
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
+		change = true
 	}
 
 	if len(jsonBytes) > 0 {
