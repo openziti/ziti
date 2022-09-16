@@ -36,6 +36,7 @@ type updateServiceOptions struct {
 	roleAttributes     []string
 	encryption         encryptionVar
 	configs            []string
+	tags               map[string]string
 }
 
 func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -68,6 +69,8 @@ func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options.encryption.Set("ON")
 	cmd.Flags().VarP(&options.encryption, "encryption", "e", "Controls end-to-end encryption for the service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -108,6 +111,11 @@ func runUpdateService(o *updateServiceOptions) error {
 			return err
 		}
 		api.SetJSONValue(entityData, configs, "configs")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 

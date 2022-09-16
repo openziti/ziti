@@ -113,6 +113,8 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringSliceVarP(&options.addresses, "mac-addresses", "m", nil,
 		"Set MAC addresses of the posture check")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	return cmd
 }
 
@@ -137,6 +139,11 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 
 	if o.Cmd.Flags().Changed("mac-addresses") {
 		api.SetJSONValue(entityData, o.addresses, "macAddresses")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 
