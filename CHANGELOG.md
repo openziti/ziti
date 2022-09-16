@@ -2,6 +2,10 @@
 
 ## What's New
 
+- General
+  - Allow filtering model entities by tag
+- Fabric
+  - Usage v3 metrics
 - Edge
   - Bug Fixes
 - Ziti CLI
@@ -9,6 +13,105 @@
   - Improved List CAs
 - Identity
   - Automatic File Reloads
+
+## General
+Model entities can now be filtered by tags. This works via the fabric and edge REST APIs and can be 
+used from the `ziti` CLI.
+
+Example:
+
+```
+$ ziti edge update service demo --tags location=PA 
+$ ziti edge update service echo --tags location=NY 
+$ ziti edge ls services 'limit 4'
+╭────────────────────────┬──────────────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME         │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │              │  REQUIRED  │                     │            │
+├────────────────────────┼──────────────┼────────────┼─────────────────────┼────────────┤
+│ 1WztJ.YuMY             │ demo         │ true       │ smartrouting        │            │
+│ 68kYZOS54kAbU4hEhKHgHT │ echo         │ true       │ smartrouting        │ echo       │
+│ EjaiJkYuMY             │ project.mgmt │ true       │ smartrouting        │            │
+│ F0JVJkY40Y             │ mattermost   │ true       │ smartrouting        │            │
+╰────────────────────────┴──────────────┴────────────┴─────────────────────┴────────────╯
+results: 1-4 of 13
+
+$ ziti edge ls services 'tags.location != null'
+╭────────────────────────┬──────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │      │  REQUIRED  │                     │            │
+├────────────────────────┼──────┼────────────┼─────────────────────┼────────────┤
+│ 1WztJ.YuMY             │ demo │ true       │ smartrouting        │            │
+│ 68kYZOS54kAbU4hEhKHgHT │ echo │ true       │ smartrouting        │ echo       │
+╰────────────────────────┴──────┴────────────┴─────────────────────┴────────────╯
+results: 1-2 of 2
+
+$ ziti edge ls services 'tags.location = "NY"'
+╭────────────────────────┬──────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │      │  REQUIRED  │                     │            │
+├────────────────────────┼──────┼────────────┼─────────────────────┼────────────┤
+│ 68kYZOS54kAbU4hEhKHgHT │ echo │ true       │ smartrouting        │ echo       │
+╰────────────────────────┴──────┴────────────┴─────────────────────┴────────────╯
+results: 1-1 of 1
+```
+
+## Fabric
+### Usage v3
+
+This a new version of usage events available. The existing v2 version events can still be used. The version
+is selected in the events configuration.
+
+Here is a config showing how to get both sets of events:
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.usage
+        version: 2
+      - type: fabric.usage
+        versin: 3
+```
+If no version is provided for usage, then v2 events will still be outputted by default.
+
+### Event Consolidation
+
+V3 events consolidate multiple usage metrics together to minimize the number of events.
+
+Example:
+
+```
+{
+  "namespace": "fabric.usage",
+  "version": 3,
+  "source_id": "cjc.1kYu0",
+  "circuit_id": "CwbENl.lW",
+  "usage": {
+    "egress.rx": 47,
+    "egress.tx": 47
+  },
+  "interval_start_utc": 1663342500,
+  "interval_length": 60,
+  "tags": {
+    "clientId": "XtYOStBYgd",
+    "hostId": "f3ltEI8Iok",
+    "serviceId": "fclVFecdgakAoHyBvtIGy"
+  }
+}
+```
+
+Ingress and egress usage for a given circuit will consolidated into a single event per router. Fabric usage 
+will also be consolided into a single, separate event.
+
+### Event tagging
+
+Usage events for ingress and egress usage will be annotated with edge information for both v2 and v3.
+
+In the example above the event has tags for `clientId`, `hostId` and `serviceId`.
+
+* `clientId` - The id of the edge identity using the service
+* `hostId` - The id of the edge identity hosting the service (will be blank if not applicable, such as for router hosted)
+* `serviceId` - The id of the service being used
 
 ## Edge
 ### Bug Fixes
@@ -93,6 +196,31 @@ Example:
 │                        │         │        │            │             │                 │ Identity Roles       │  three, two,one        │
 ╰────────────────────────┴─────────┴────────┴────────────┴─────────────┴─────────────────┴──────────────────────┴────────────────────────╯
 ```
+
+## Ziti Library Updates
+
+* github.com/openziti/channel: [v1.0.2 -> v1.0.3](https://github.com/openziti/channel/compare/v1.0.2...v1.0.3)
+* github.com/openziti/edge: [v0.22.91 -> v0.23.0](https://github.com/openziti/edge/compare/v0.22.91...v0.23.0)
+    * [Issue #1173](https://github.com/openziti/edge/issues/1173) - Add session_type and service_id to edge session events
+    * [Issue #1176](https://github.com/openziti/edge/issues/1176) - Patching CA ExternalIdClaim Does Not Work
+    * [Issue #1174](https://github.com/openziti/edge/issues/1174) - Fix patching tags on services and transit routers
+    * [Issue #1154](https://github.com/openziti/edge/issues/1154) - Additional filters for service list endpoint
+
+* github.com/openziti/fabric: [v0.19.67 -> v0.20.0](https://github.com/openziti/fabric/compare/v0.19.67...v0.20.0)
+    * [Issue #496](https://github.com/openziti/fabric/issues/496) - Reduce utiliztion messages by combining directionality
+    * [Issue #499](https://github.com/openziti/fabric/issues/499) - Fix tag patching tags on service and router
+
+* github.com/openziti/identity: [v1.0.11 -> v1.0.12](https://github.com/openziti/identity/compare/v1.0.11...v1.0.12)
+* github.com/openziti/metrics: [v1.0.7 -> v1.1.0](https://github.com/openziti/metrics/compare/v1.0.7...v1.1.0)
+    * [Issue #15](https://github.com/openziti/metrics/issues/15) - Support tags and multiple values on usage
+
+* github.com/openziti/sdk-golang: [v0.16.119 -> v0.16.121](https://github.com/openziti/sdk-golang/compare/v0.16.119...v0.16.121)
+* github.com/openziti/storage: [v0.1.20 -> v0.1.21](https://github.com/openziti/storage/compare/v0.1.20...v0.1.21)
+    * [Issue #21](https://github.com/openziti/storage/issues/21) - Support querying tags by default
+
+* github.com/openziti/transport/v2: [v2.0.28 -> v2.0.29](https://github.com/openziti/transport/compare/v2.0.28...v2.0.29)
+* github.com/openziti/ziti: [0.26.7 -> 0.26.8](https://github.com/openziti/ziti/compare/0.26.7...0.26.8)
+    * [Issue #835](https://github.com/openziti/ziti/issues/835) - Ensure model entity tags can be updated via CLI where appropriate
 
 # Release 0.26.7
 
