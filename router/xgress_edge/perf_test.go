@@ -164,7 +164,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 		},
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgress.DefaultOptions())
+	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
@@ -238,7 +238,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 		},
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgOptions)
+	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgOptions, nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 

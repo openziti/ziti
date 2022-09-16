@@ -392,6 +392,17 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 	}
 }
 
+func (self *baseSessionRequestContext) newCircuitCreateParms(serviceId string, peerData map[uint32][]byte) network.CreateCircuitParams {
+	return &circuitParams{
+		serviceId:    serviceId,
+		sourceRouter: self.sourceRouter,
+		clientId:     &identity.TokenId{Token: self.session.Id, Data: peerData},
+		logCtx:       self.logContext,
+		deadline:     time.Now().Add(self.handler.getAppEnv().GetHostController().GetNetwork().GetOptions().RouteTimeout),
+		reqCtx:       self,
+	}
+}
+
 func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string, peerData map[uint32][]byte) (*network.Circuit, map[uint32][]byte) {
 	var circuit *network.Circuit
 	returnPeerData := map[uint32][]byte{}
@@ -407,11 +418,10 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 			serviceId = terminatorInstanceId + "@" + serviceId
 		}
 
-		clientId := &identity.TokenId{Token: self.session.Id, Data: peerData}
-
 		n := self.handler.getAppEnv().GetHostController().GetNetwork()
+		params := self.newCircuitCreateParms(serviceId, peerData)
 		var err error
-		circuit, err = n.CreateCircuit(self.sourceRouter, clientId, serviceId, self.logContext, time.Now().Add(network.DefaultNetworkOptionsRouteTimeout))
+		circuit, err = n.CreateCircuit(params)
 		if err != nil {
 			self.err = internalError(err)
 		}
@@ -441,4 +451,42 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 		}
 	}
 	return circuit, returnPeerData
+}
+
+type circuitParams struct {
+	serviceId    string
+	sourceRouter *network.Router
+	clientId     *identity.TokenId
+	logCtx       logcontext.Context
+	deadline     time.Time
+	reqCtx       *baseSessionRequestContext
+}
+
+func (self *circuitParams) GetServiceId() string {
+	return self.serviceId
+}
+
+func (self *circuitParams) GetSourceRouter() *network.Router {
+	return self.sourceRouter
+}
+
+func (self *circuitParams) GetClientId() *identity.TokenId {
+	return self.clientId
+}
+
+func (self *circuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
+	hostId := t.GetHostId()
+	return map[string]string{
+		"serviceId": self.reqCtx.session.ServiceId,
+		"clientId":  self.reqCtx.session.IdentityId,
+		"hostId":    hostId,
+	}
+}
+
+func (self *circuitParams) GetLogContext() logcontext.Context {
+	return self.logCtx
+}
+
+func (self *circuitParams) GetDeadline() time.Time {
+	return self.deadline
 }

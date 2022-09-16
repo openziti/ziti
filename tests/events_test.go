@@ -96,8 +96,9 @@ func Test_EventsTest(t *testing.T) {
 	dispatcher.AddCircuitEventHandler(ec)
 	defer dispatcher.RemoveCircuitEventHandler(ec)
 
-	events2.AddSessionEventHandler(ec)
-	defer events2.RemoveSessionEventHandler(ec)
+	edgeDispatcher := ctx.EdgeController.AppEnv.EventDispatcher
+	edgeDispatcher.AddSessionEventHandler(ec)
+	defer edgeDispatcher.RemoveSessionEventHandler(ec)
 
 	dispatcher.AddUsageEventHandler(ec)
 	defer dispatcher.RemoveUsageEventHandler(ec)
@@ -133,7 +134,7 @@ func Test_EventsTest(t *testing.T) {
 	conn.WriteString("hello, hello, how are you?", time.Second)
 
 	testServer.waitForDone(ctx, 5*time.Second)
-	ctx.router.GetMetricsRegistry().Flush()
+	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
 	err = ec.waitForUsage(2 * time.Minute)
 	ctx.Req.NoError(err)
 
