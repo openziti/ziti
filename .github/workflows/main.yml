@@ -48,8 +48,6 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_OUTPUT ./...
 
-          $(go env GOPATH)/bin/gox -cgo -os=darwin -arch=amd64 -output=$GOX_TEST_OUTPUT -tags=all ./...
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -87,8 +85,6 @@ jobs:
           go install github.com/mitchellh/gox@latest
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_OUTPUT ./...
-
-          $(go env GOPATH)/bin/gox -cgo -os=windows -arch=amd64 -output=$GOX_TEST_OUTPUT -tags=all ./...
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
