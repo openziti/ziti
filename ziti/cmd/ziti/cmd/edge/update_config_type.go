@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"io"
-	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 
@@ -36,6 +36,7 @@ type updateConfigTypeAction struct {
 	name     string
 	data     string
 	jsonFile string
+	tags     map[string]string
 }
 
 func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -63,6 +64,8 @@ func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&action.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&action.data, "data", "d", "", "Set the data of the config")
 	cmd.Flags().StringVarP(&action.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
+	cmd.Flags().StringToStringVar(&action.tags, "tags", nil, "Custom management tags")
+
 	action.AddCommonFlags(cmd)
 
 	return cmd
@@ -93,9 +96,14 @@ func (self *updateConfigTypeAction) run() error {
 			return errors.New("only one of --data and --json-file is allowed")
 		}
 		var err error
-		if jsonBytes, err = ioutil.ReadFile(self.jsonFile); err != nil {
+		if jsonBytes, err = os.ReadFile(self.jsonFile); err != nil {
 			return fmt.Errorf("failed to read config json file %v: %w", self.jsonFile, err)
 		}
+	}
+
+	if self.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, self.tags, "tags")
+		change = true
 	}
 
 	if len(jsonBytes) > 0 {
