@@ -11,18 +11,18 @@ on:
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
-  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
+  #GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  AWS_DEFAULT_REGION: "us-east-2"
+  #AWS_DEFAULT_REGION: "us-east-2"
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
-  CONSUL_ENCRYPTION_KEY: ${{ secrets.CONSUL_ENCRYPTION_KEY }}
-  ELASTIC_ENDPOINT: ${{ secrets.ELASTIC_ENDPOINT }}
-  ELASTIC_USERNAME: ${{ secrets.ELASTIC_USERNAME }}
-  ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
-  CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
-  CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
-  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+  #CONSUL_ENCRYPTION_KEY: ${{ secrets.CONSUL_ENCRYPTION_KEY }}
+  #ELASTIC_ENDPOINT: ${{ secrets.ELASTIC_ENDPOINT }}
+  #ELASTIC_USERNAME: ${{ secrets.ELASTIC_USERNAME }}
+  #ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
+  #CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
+  #CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
+  #BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
 
 jobs:
   mac-os-build:
@@ -85,7 +85,6 @@ jobs:
           name: windows-release-${{ github.run_id }}
           path: release/
           retention-days: 5
-
 
   linux-build:
     name: Build and Publish Linux Binaries and Docker Image
