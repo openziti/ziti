@@ -126,6 +126,11 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+          mkdir -p test/amd64/linux/bin
+          go build -tags=all,tests -o test/amd64/linux/bin ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
@@ -157,6 +162,45 @@ jobs:
             echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
             echo ::set-output name=ziti-version::${ZITI_VERSION}
           fi
+      - name: Move artifacts to bin subdir
+        run: |
+          mv -v linux-test-${{ github.run_id }}/amd64/linux/bin/* linux-release-${{ github.run_id }}/amd64/linux/
+          cd linux-release-${{ github.run_id }}/amd64/linux
+          mkdir bin
+          shopt -s extglob
+          mv -- !(bin) bin
+          chmod +x bin/*
+
+      - name: Create Zitilab Bindings
+        run: |
+          mkdir ~/.fablab
+          touch ~/.fablab/bindings.yml
+          echo "credentials:"           >> ~/.fablab/bindings.yml
+          echo "  aws:"                 >> ~/.fablab/bindings.yml
+          echo "    managed_key: true"  >> ~/.fablab/bindings.yml
+          echo "  edge:"                >> ~/.fablab/bindings.yml
+          echo "    username: admin"    >> ~/.fablab/bindings.yml
+          echo "    password: admin"    >> ~/.fablab/bindings.yml
+          echo "  influxdb:"            >> ~/.fablab/bindings.yml
+          echo "    username: fablab"   >> ~/.fablab/bindings.yml
+          echo "    password: fablab"   >> ~/.fablab/bindings.yml
+
+      - name: Test Ziti Command
+        env:
+          ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
+          ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
+        run: |
+          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer create
+          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer up
+          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer run
+
+      - name: Test Ziti Command Teardown
+        if: always()
+        env:
+            ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
+        run: |
+          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer dispose
+          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer clean
 
       # END linux-build-steps
 
@@ -165,6 +209,9 @@ jobs:
     runs-on: ubuntu-20.04
     needs: [ mac-os-build, windows-build, linux-build ]
     steps:
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
       - name: Download Linux Release Artifact
         uses: actions/download-artifact@v2
         with:
