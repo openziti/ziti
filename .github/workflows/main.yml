@@ -110,6 +110,51 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
+      - name: Compute the Ziti Version String for CI Jobs
+        id: get_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leading 'v', if any
+          ZITI_VERSION=${ZITI_VERSION#v}
+          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # fail the job because we could not obtain the current version from ziti-ci
+            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
+            exit 1
+          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
+            # Set output parameters for release branches
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
+          else
+            # Append build / run number for non-release refs
+            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
+          fi
+
+      # END linux-build-steps
+
+  publish:
+    name: Publish Binaries and Docker Image
+    runs-on: ubuntu-20.04
+    needs: [ mac-os-build, windows-build, linux-build ]
+    steps:
+      - name: Download Linux Release Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
         with:
@@ -137,30 +182,6 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
-      - name: Compute the Ziti Version String for CI Jobs
-        id: get_version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-        run: |
-          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          ZITI_VERSION=${ZITI_VERSION#v}
-          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # fail the job because we could not obtain the current version from ziti-ci
-            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
-            exit 1
-          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
-            # Set output parameters for release branches
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ::set-output name=ziti-version::${ZITI_VERSION}
-          else
-            # Append build / run number for non-release refs
-            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ::set-output name=ziti-version::${ZITI_VERSION}
-          fi
 
       - name: Publish to Artifactory
         if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
@@ -193,7 +214,7 @@ jobs:
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
-          ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
+          ZITI_VERSION: ${{ needs.linux-build.outputs.ziti-version }} 
         id: tagprep
         run: |
           # the Docker cross-build only runs on branches main or release-v*
@@ -218,8 +239,6 @@ jobs:
           platforms: linux/amd64,linux/arm/v7,linux/arm64
           push: true
           tags: ${{ steps.tagprep.outputs.tags }}
-
-      # END linux-build-steps
 
   smoketest:
     # BEGIN smoketest-job
