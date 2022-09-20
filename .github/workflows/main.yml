@@ -73,7 +73,6 @@ jobs:
   linux-build:
     name: Build and Publish Linux Binaries and Docker Image
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build ]
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
     steps:
