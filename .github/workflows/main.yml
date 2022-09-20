@@ -103,11 +103,9 @@ jobs:
   zitilab-test:
     name: Run Zitilab Test Suite
     runs-on: ubuntu-18.04
-    needs:
     env:
       ZITI_VERSION: ${{needs.linux-build.outputs.ziti-version}}
     steps:
-
       - name: Git Checkout
         uses: actions/checkout@v2
         with:
