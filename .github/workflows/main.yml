@@ -88,7 +88,7 @@ jobs:
           retention-days: 5
 
   linux-build:
-    name: Build and Publish Linux Binaries and Docker Image
+    name: Build Linux Binaries
     runs-on: ubuntu-20.04
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
@@ -164,8 +164,8 @@ jobs:
           fi
       - name: Move artifacts to bin subdir
         run: |
-          mv -v linux-test-${{ github.run_id }}/amd64/linux/bin/* linux-release-${{ github.run_id }}/amd64/linux/
-          cd linux-release-${{ github.run_id }}/amd64/linux
+          mv -v test/amd64/linux/bin/* release/amd64/linux/
+          cd release/amd64/linux
           mkdir bin
           shopt -s extglob
           mv -- !(bin) bin
@@ -190,17 +190,17 @@ jobs:
           ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
           ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
         run: |
-          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer create
-          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer up
-          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer run
+          release/amd64/linux/bin/simple-transfer create
+          release/amd64/linux/bin/simple-transfer up
+          release/amd64/linux/bin/simple-transfer run
 
       - name: Test Ziti Command Teardown
         if: always()
         env:
             ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
         run: |
-          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer dispose
-          linux-release-${{ github.run_id }}/amd64/linux/bin/simple-transfer clean
+          release/amd64/linux/bin/simple-transfer dispose
+          release/amd64/linux/bin/simple-transfer clean
 
       # END linux-build-steps
 
