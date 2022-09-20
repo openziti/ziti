@@ -187,7 +187,7 @@ jobs:
 
       - name: Test Ziti Command
         env:
-          ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
+          ZITI_ROOT: release/amd64/linux/
           ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
         run: |
           release/amd64/linux/bin/simple-transfer create
@@ -197,7 +197,7 @@ jobs:
       - name: Test Ziti Command Teardown
         if: always()
         env:
-            ZITI_ROOT: linux-release-${{ github.run_id }}/amd64/linux/
+            ZITI_ROOT: release/amd64/linux/
         run: |
           release/amd64/linux/bin/simple-transfer dispose
           release/amd64/linux/bin/simple-transfer clean
