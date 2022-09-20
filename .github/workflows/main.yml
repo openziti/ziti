@@ -14,7 +14,7 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
-  
+
 jobs:
   mac-os-build:
     name: Build Mac OS binaries
