@@ -35,6 +35,7 @@ type updateServicePolicyOptions struct {
 	serviceRoles      []string
 	identityRoles     []string
 	postureCheckRoles []string
+	tags              map[string]string
 }
 
 func newUpdateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -65,6 +66,8 @@ func newUpdateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Service roles of the service policy")
 	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the service policy")
 	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture Check roles of the service policy")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
@@ -111,6 +114,11 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 
 	if o.Cmd.Flags().Changed("posture-check-roles") {
 		api.SetJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("tags") {
+		api.SetJSONValue(entityData, o.tags, "tags")
 		change = true
 	}
 

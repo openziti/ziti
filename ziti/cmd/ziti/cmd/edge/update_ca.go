@@ -43,6 +43,9 @@ type updateCaOptions struct {
 	authEnabled        bool
 	identityAttributes []string
 	identityNameFormat string
+	tags               map[string]string
+
+	externalIDClaim rest_model.ExternalIDClaimPatch
 }
 
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
@@ -53,6 +56,14 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 			OutputJSONResponse: false,
 		},
 		verify: false,
+		externalIDClaim: rest_model.ExternalIDClaimPatch{
+			Index:           I64(0),
+			Location:        S(""),
+			Matcher:         S(""),
+			MatcherCriteria: S(""),
+			Parser:          S(""),
+			ParserCriteria:  S(""),
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -106,6 +117,15 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.autoCaEnrollment, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
 	cmd.Flags().StringSliceVarP(&options.identityAttributes, "identity-attributes", "a", nil, "The roles to give to identities enrolled via the CA")
 	cmd.Flags().StringVarP(&options.identityNameFormat, "identity-name-format", "f", "", "The naming format to use for identities enrolling via the CA")
+
+	cmd.Flags().Int64VarP(options.externalIDClaim.Index, "index", "d", 0, "the index to use if multiple external ids are found, default 0")
+	cmd.Flags().StringVarP(options.externalIDClaim.Location, "location", "l", "", "the location to search for external ids")
+	cmd.Flags().StringVarP(options.externalIDClaim.Matcher, "matcher", "m", "", "the matcher to use at the given location")
+	cmd.Flags().StringVarP(options.externalIDClaim.MatcherCriteria, "matcher-criteria", "x", "", "criteria used with the given matcher")
+	cmd.Flags().StringVarP(options.externalIDClaim.Parser, "parser", "p", "", "the parser to use on found external ids")
+	cmd.Flags().StringVarP(options.externalIDClaim.ParserCriteria, "parser-criteria", "z", "", "criteria used with the given parser")
+	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
+
 	options.AddCommonFlags(cmd)
 	return cmd
 }
@@ -157,6 +177,47 @@ func runUpdateCa(options updateCaOptions) error {
 
 	if options.Cmd.Flag("identity-name-format").Changed {
 		ca.IdentityNameFormat = &options.identityNameFormat
+		changed = true
+	}
+
+	ca.ExternalIDClaim = &rest_model.ExternalIDClaimPatch{}
+	if options.Cmd.Flag("location").Changed {
+		ca.ExternalIDClaim.Location = options.externalIDClaim.Location
+		changed = true
+	}
+
+	if options.Cmd.Flag("index").Changed {
+		ca.ExternalIDClaim.Index = options.externalIDClaim.Index
+		changed = true
+	}
+
+	if options.Cmd.Flag("matcher").Changed {
+		ca.ExternalIDClaim.Matcher = options.externalIDClaim.Matcher
+		changed = true
+	}
+
+	if options.Cmd.Flag("matcher-criteria").Changed {
+		ca.ExternalIDClaim.MatcherCriteria = options.externalIDClaim.MatcherCriteria
+		changed = true
+	}
+
+	if options.Cmd.Flag("parser").Changed {
+		ca.ExternalIDClaim.Parser = options.externalIDClaim.Parser
+		changed = true
+	}
+
+	if options.Cmd.Flag("parser-criteria").Changed {
+		ca.ExternalIDClaim.ParserCriteria = options.externalIDClaim.ParserCriteria
+		changed = true
+	}
+
+	if options.Cmd.Flags().Changed("tags") {
+		ca.Tags = &rest_model.Tags{
+			SubTags: rest_model.SubTags{},
+		}
+		for k, v := range options.tags {
+			ca.Tags.SubTags[k] = v
+		}
 		changed = true
 	}
 

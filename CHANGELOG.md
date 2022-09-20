@@ -1,3 +1,233 @@
+# Release 0.26.8
+
+## What's New
+
+- General
+  - Allow filtering model entities by tag
+- Fabric
+  - Usage v3 metrics
+- Edge
+  - Bug Fixes
+- Ziti CLI
+  - `ziti edge create|update ca` now supports `externalIdClaim`
+  - Improved List CAs
+- Identity
+  - Automatic File Reloads
+
+## General
+Model entities can now be filtered by tags. This works via the fabric and edge REST APIs and can be 
+used from the `ziti` CLI.
+
+Example:
+
+```
+$ ziti edge update service demo --tags location=PA 
+$ ziti edge update service echo --tags location=NY 
+$ ziti edge ls services 'limit 4'
+╭────────────────────────┬──────────────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME         │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │              │  REQUIRED  │                     │            │
+├────────────────────────┼──────────────┼────────────┼─────────────────────┼────────────┤
+│ 1WztJ.YuMY             │ demo         │ true       │ smartrouting        │            │
+│ 68kYZOS54kAbU4hEhKHgHT │ echo         │ true       │ smartrouting        │ echo       │
+│ EjaiJkYuMY             │ project.mgmt │ true       │ smartrouting        │            │
+│ F0JVJkY40Y             │ mattermost   │ true       │ smartrouting        │            │
+╰────────────────────────┴──────────────┴────────────┴─────────────────────┴────────────╯
+results: 1-4 of 13
+
+$ ziti edge ls services 'tags.location != null'
+╭────────────────────────┬──────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │      │  REQUIRED  │                     │            │
+├────────────────────────┼──────┼────────────┼─────────────────────┼────────────┤
+│ 1WztJ.YuMY             │ demo │ true       │ smartrouting        │            │
+│ 68kYZOS54kAbU4hEhKHgHT │ echo │ true       │ smartrouting        │ echo       │
+╰────────────────────────┴──────┴────────────┴─────────────────────┴────────────╯
+results: 1-2 of 2
+
+$ ziti edge ls services 'tags.location = "NY"'
+╭────────────────────────┬──────┬────────────┬─────────────────────┬────────────╮
+│ ID                     │ NAME │ ENCRYPTION │ TERMINATOR STRATEGY │ ATTRIBUTES │
+│                        │      │  REQUIRED  │                     │            │
+├────────────────────────┼──────┼────────────┼─────────────────────┼────────────┤
+│ 68kYZOS54kAbU4hEhKHgHT │ echo │ true       │ smartrouting        │ echo       │
+╰────────────────────────┴──────┴────────────┴─────────────────────┴────────────╯
+results: 1-1 of 1
+```
+
+## Fabric
+### Usage v3
+
+This a new version of usage events available. The existing v2 version events can still be used. The version
+is selected in the events configuration.
+
+Here is a config showing how to get both sets of events:
+
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.usage
+        version: 2
+      - type: fabric.usage
+        versin: 3
+```
+If no version is provided for usage, then v2 events will still be outputted by default.
+
+### Event Consolidation
+
+V3 events consolidate multiple usage metrics together to minimize the number of events.
+
+Example:
+
+```
+{
+  "namespace": "fabric.usage",
+  "version": 3,
+  "source_id": "cjc.1kYu0",
+  "circuit_id": "CwbENl.lW",
+  "usage": {
+    "egress.rx": 47,
+    "egress.tx": 47
+  },
+  "interval_start_utc": 1663342500,
+  "interval_length": 60,
+  "tags": {
+    "clientId": "XtYOStBYgd",
+    "hostId": "f3ltEI8Iok",
+    "serviceId": "fclVFecdgakAoHyBvtIGy"
+  }
+}
+```
+
+Ingress and egress usage for a given circuit will consolidated into a single event per router. Fabric usage 
+will also be consolided into a single, separate event.
+
+### Event tagging
+
+Usage events for ingress and egress usage will be annotated with edge information for both v2 and v3.
+
+In the example above the event has tags for `clientId`, `hostId` and `serviceId`.
+
+* `clientId` - The id of the edge identity using the service
+* `hostId` - The id of the edge identity hosting the service (will be blank if not applicable, such as for router hosted)
+* `serviceId` - The id of the service being used
+
+## Edge
+### Bug Fixes
+
+* [Issue 1176](https://github.com/openziti/edge/issues/1176): Patching CA `externalIdClaim` Does Not Work
+
+## Ziti CLI
+
+### `ziti edge create|update ca` now support `externalIdClaim
+
+Identities now have a field named `externalId` that can be used with 3rd Party CAs in addition to the existing
+External JWT Signer support. 3rd Party CAs now support the following optional fields:
+
+- `externalIdClaim.index` - if multiple externalId claims are located, the index will be used to select one, default 0
+- `externalIdClaim.location` - extracts values from one of the following locations on a x509 certificate: `SAN_URI`, `SAN_EMAIL`, `COMMON_NAME`
+- `externalIdClaim.matcher` - matches values in one of the following ways  `PREFIX`, `SUFFIX`, `SCHEME` in conjunction with `matcherCriteria` or select all values via `ALL`
+- `externalIdClaim.matcherCriteria` - `matcher` values of `PREFIX`, `SUFFIX`, and `SCHEME` will use `matcherCriteria` as a matching value
+- `externalIdClaim.parser`: - supports parsing values from all matched externalIds via `SPLIT` or `NONE`
+- `externalIdClaim.parserCriteria` - for a `parser` value of `SPLIT`, `parserCriteria` will be used to split values
+
+When defined the `externalIdClaim` configuration will be used to locate any `externalId`s present in the client
+supplied x509 certificate. If an `externalId` is located, it will be used to associate the authentication request
+with an identity. If found, authentication is considered successful if not the authentication request fails. If the 
+client certificate does not contain an `externalId` then identities will be searched for that have a certificate
+authenticator that matches the supplied client certificate. Should that fail, the authentication request fails.
+
+This functionality can be used to support SPIFFE provisioned identities. For any specific SPIFFE ID, assign it to an
+identity's `externalId` and then use the following `externalIdClaim` configurations.
+
+#### CA Create/Update REST API
+```json
+{
+  ...
+  "externalIdClaim": {
+    "location": "SAN_URI",
+    "index": 0,
+    "matcher": "SCHEME",
+    "matcherCriteria": "spiffe",
+    "parser": "NONE",
+    "parserCriteria": ""
+  }
+}
+```
+#### Ziti CLI
+
+```
+ziti edge create ca myCa ca.pem -l SAN_URI -m SCHEME -x spiffe -p "NONE"
+```
+
+```
+ziti edge update ca myCa -l SAN_URI -m SCHEME -x spiffe -p "NONE"
+```
+
+### Improved List CAs Output
+
+The output for listing CAs in non-JSON format has been improved.
+
+Example:
+
+```text
+╭────────────────────────┬─────────┬────────┬────────────┬─────────────┬─────────────────────────────────────────────────────────────────╮
+│ ID                     │ NAME    │ FLAGS  │ TOKEN      │ FINGERPRINT │ CONFIGURATION                                                   │
+├────────────────────────┼─────────┼────────┼────────────┼─────────────┼─────────────────┬──────────────────────┬────────────────────────┤
+│ 1tu6CbXT18Dd9rybjCW5eX │ 2       │ [AOE]  │ KaPxRiKbk  │ -           │ AutoCA          │ Identity Name Format │ [caName]-[commonName]  │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Identity Roles       │ a,b,c                  │
+│                        │         │        │            │             ├─────────────────┼──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │ ExternalIdClaim │ Index                │ 2                      │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Location             │ SAN_URI                │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Matcher              │ ALL                    │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Matcher Criteria     │                        │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Parser               │ NONE                   │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Parser Criteria      │                        │
+├────────────────────────┼─────────┼────────┼────────────┼─────────────┼─────────────────┼──────────────────────┼────────────────────────┤
+│ 7AGp9vUttJHKA1JWujNtpR │ test-ca │ [VAOE] │ -          │ 315e...ba   │ AutoCA          │ Identity Name Format │ [caName]-[commonName]  │
+│                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
+│                        │         │        │            │             │                 │ Identity Roles       │  three, two,one        │
+╰────────────────────────┴─────────┴────────┴────────────┴─────────────┴─────────────────┴──────────────────────┴────────────────────────╯
+```
+
+## Ziti Library Updates
+
+* github.com/openziti/channel: [v1.0.2 -> v1.0.3](https://github.com/openziti/channel/compare/v1.0.2...v1.0.3)
+* github.com/openziti/edge: [v0.22.91 -> v0.23.0](https://github.com/openziti/edge/compare/v0.22.91...v0.23.0)
+    * [Issue #1173](https://github.com/openziti/edge/issues/1173) - Add session_type and service_id to edge session events
+    * [Issue #1176](https://github.com/openziti/edge/issues/1176) - Patching CA ExternalIdClaim Does Not Work
+    * [Issue #1174](https://github.com/openziti/edge/issues/1174) - Fix patching tags on services and transit routers
+    * [Issue #1154](https://github.com/openziti/edge/issues/1154) - Additional filters for service list endpoint
+
+* github.com/openziti/fabric: [v0.19.67 -> v0.20.0](https://github.com/openziti/fabric/compare/v0.19.67...v0.20.0)
+    * [Issue #496](https://github.com/openziti/fabric/issues/496) - Reduce utiliztion messages by combining directionality
+    * [Issue #499](https://github.com/openziti/fabric/issues/499) - Fix tag patching tags on service and router
+
+* github.com/openziti/identity: [v1.0.11 -> v1.0.12](https://github.com/openziti/identity/compare/v1.0.11...v1.0.12)
+* github.com/openziti/metrics: [v1.0.7 -> v1.1.0](https://github.com/openziti/metrics/compare/v1.0.7...v1.1.0)
+    * [Issue #15](https://github.com/openziti/metrics/issues/15) - Support tags and multiple values on usage
+
+* github.com/openziti/sdk-golang: [v0.16.119 -> v0.16.121](https://github.com/openziti/sdk-golang/compare/v0.16.119...v0.16.121)
+* github.com/openziti/storage: [v0.1.20 -> v0.1.21](https://github.com/openziti/storage/compare/v0.1.20...v0.1.21)
+    * [Issue #21](https://github.com/openziti/storage/issues/21) - Support querying tags by default
+
+* github.com/openziti/transport/v2: [v2.0.28 -> v2.0.29](https://github.com/openziti/transport/compare/v2.0.28...v2.0.29)
+* github.com/openziti/ziti: [0.26.7 -> 0.26.8](https://github.com/openziti/ziti/compare/0.26.7...0.26.8)
+    * [Issue #835](https://github.com/openziti/ziti/issues/835) - Ensure model entity tags can be updated via CLI where appropriate
+
+# Release 0.26.7
+
+## What's New
+
+The only change in this release is updating from Golang 1.18 to 1.19
+
 # Release 0.26.6
 
 ## What's New
@@ -5,16 +235,95 @@
 - Edge
   - N/A
 - Fabric
-  - N/A
+  - Don't allow slow or blocked links to impede other links
+  - Add destination address to circuit events
 - Ziti CLI
   - Bug Fixes
 - SDK Golang
   - N/A
+- Identity
+
+## Fabric
+### Address slow/blocked links
+
+Previously if a router had multiple links and one of them was slow or blocked, it could prevent other traffic from moving. Now, if a link is unable to keep up with incoming traffic, payloads will be dropped. The end-to-end flow control and retransmission logic will handle re-sending the packet. 
+
+Links have a 64 message queue for incoming messages. Up to 64 messages are taken off the queue, sorted in priority order and then sent. Once the sorted list of messages has been sent, the next set of messages are dequeue, sorted and sent. If the queue fills while the current set of sorted messges is being sent, message will now be dropped instead of waiting for queue space to open up.
+
+There is now a new per-link `link.dropped_msgs` metric to track how often links are dropping messages.
+
+### Destination Address added to Circuit Events
+
+When available, the remote address of the terminating side of a circuit is now available in the circuit event.
+
+Example:
+
+```
+{
+  "namespace": "fabric.circuits",
+  "version": 2,
+  "event_type": "created",
+  "circuit_id": "kh7myU.bX",
+  "timestamp": "2022-09-12T19:08:20.461576428-04:00",
+  "client_id": "cl7zdm0d0000fbygdlzh268uq",
+  "service_id": "6SIomYCjH5Jio52szEtX7W",
+  "terminator_id": "7IIb1nU5yTfJVbaD8Tjuf3",
+  "instance_id": "",
+  "creation_timespan": 949916,
+  "path": {
+    "nodes": [
+      "B3V.1kN40Y"
+    ],
+    "links": null,
+    "ingress_id": "26D7",
+    "egress_id": "wjo7",
+    "terminator_local_addr": "127.0.0.1:44822",
+    "terminator_remote_addr": "127.0.0.1:1234"
+  },
+  "link_count": 0,
+  "path_cost": 262140
+}
+```
 
 ## Ziti CLI
 ### Bug Fixes
 
 * [Issue 823](https://github.com/openziti/ziti/issues/843): Fixed quickstart bug with architecture detection not supporting `aarch64`
+
+## Identity
+
+Identity is a low-level library within Ziti and affects all Ziti components.
+
+### Bug Fixes
+
+* Fixed an issue where `alt_server_certs` were not always loaded and used for presenting TLS configurations
+
+## Ziti Library Updates
+
+* github.com/openziti/agent: [v1.0.1 -> v1.0.3](https://github.com/openziti/agent/compare/v1.0.1...v1.0.3)
+* github.com/openziti/channel: [v0.18.58 -> v1.0.2](https://github.com/openziti/channel/compare/v0.18.58...v1.0.2)
+    * [Issue #68](https://github.com/openziti/channel/issues/68) - Allow send with no wait, if queue is full
+    * [Issue #69](https://github.com/openziti/channel/issues/69) - Respect OutQueueSize option
+
+* github.com/openziti/edge: [v0.22.54 -> v0.22.91](https://github.com/openziti/edge/compare/v0.22.54...v0.22.91)
+    * [Issue #1167](https://github.com/openziti/edge/issues/1167) - Send remote addr of dialed connection for xgress_edge_tunnel and xgress_edge_transport
+    * [Issue #1169](https://github.com/openziti/edge/issues/1169) - Update of service policy with patch fails if service policy type is not provided
+    * [Issue #1163](https://github.com/openziti/edge/issues/1163) - Support flushing dns cache with resolvectl
+    * [Issue #1164](https://github.com/openziti/edge/issues/1164) - Fix panic in xgress conn LogContext()
+
+* github.com/openziti/fabric: [v0.19.34 -> v0.19.67](https://github.com/openziti/fabric/compare/v0.19.34...v0.19.67)
+    * [Issue #484](https://github.com/openziti/fabric/issues/484) - Don't let slow/stalled links block other links
+    * [Issue #459](https://github.com/openziti/fabric/issues/459) - Add destination IP to fabric.circuits created message
+    * [Issue #492](https://github.com/openziti/fabric/issues/492) - Add HostId to terminator events
+    * [Issue #485](https://github.com/openziti/fabric/issues/485) - Metrics events timestamp format changed 
+
+* github.com/openziti/foundation/v2: [v2.0.2 -> v2.0.4](https://github.com/openziti/foundation/compare/v2.0.2...v2.0.4)
+* github.com/openziti/identity: [v1.0.5 -> v1.0.11](https://github.com/openziti/identity/compare/v1.0.5...v1.0.11)
+* github.com/openziti/metrics: [v1.0.3 -> v1.0.7](https://github.com/openziti/metrics/compare/v1.0.3...v1.0.7)
+* github.com/openziti/sdk-golang: [v0.16.104 -> v0.16.119](https://github.com/openziti/sdk-golang/compare/v0.16.104...v0.16.119)
+* github.com/openziti/storage: [v0.1.16 -> v0.1.20](https://github.com/openziti/storage/compare/v0.1.16...v0.1.20)
+* github.com/openziti/transport/v2: [v2.0.20 -> v2.0.28](https://github.com/openziti/transport/compare/v2.0.20...v2.0.28)
+* github.com/openziti/ziti: [0.26.5 -> 0.26.6](https://github.com/openziti/ziti/compare/0.26.5...0.26.6)
 
 # Release 0.26.5
 
