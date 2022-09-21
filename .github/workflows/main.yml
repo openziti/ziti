@@ -207,17 +207,62 @@ jobs:
   publish:
     name: Publish Binaries and Docker Image
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build, linux-build ]
+    needs: [ mac-os-build, windows-build ]
+    outputs:
+      ziti-version: ${{ steps.get_version.outputs.ziti-version }}
     steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.18.x'
+
+      - name: Install Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
 
-      - name: Download Linux Release Artifact
-        uses: actions/download-artifact@v2
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        run: |
+          sudo apt-get update
+          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          go install github.com/mitchellh/gox@latest
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+
+          mkdir -p test/amd64/linux/bin
+          go build -tags=all,tests -o test/amd64/linux/bin ./...
+          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
+          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
+          retention-days: 5
 
+      - name: Upload Test artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: linux-test-${{ github.run_id }}
+          path: test/
+          retention-days: 5
+      
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
         with:
@@ -245,6 +290,30 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci publish-to-github
 
       # only ziti-ci computed version for release branches and {version}-{run_id} for non-release branches
+      - name: Compute the Ziti Version String for CI Jobs
+        id: get_version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
+          # drop the leading 'v', if any
+          ZITI_VERSION=${ZITI_VERSION#v}
+          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # fail the job because we could not obtain the current version from ziti-ci
+            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
+            exit 1
+          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
+            # Set output parameters for release branches
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
+          else
+            # Append build / run number for non-release refs
+            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
+            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
+            echo ::set-output name=ziti-version::${ZITI_VERSION}
+          fi
 
       - name: Publish to Artifactory
         if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
@@ -277,7 +346,7 @@ jobs:
         env:
           SNAPSHOT_REPO: openziti/ziti-tunnel
           RELEASE_REPO: netfoundry/ziti-tunnel
-          ZITI_VERSION: ${{ needs.linux-build.outputs.ziti-version }} 
+          ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
         id: tagprep
         run: |
           # the Docker cross-build only runs on branches main or release-v*
