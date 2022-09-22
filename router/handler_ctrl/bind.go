@@ -86,12 +86,12 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newRouteHandler(self.env, self.forwarder, xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
-	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController()))
+	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env.GetRouterId(), self.env.GetXlinkRegistry(), self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 	latency.AddLatencyProbeResponder(binding)
 
 	cb := &heartbeatCallback{}

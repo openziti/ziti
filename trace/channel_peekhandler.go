@@ -37,74 +37,79 @@ type ChannelPeekHandler struct {
 	enabled    concurrenz.AtomicBoolean
 	controller Controller
 	decoders   []channel.TraceMessageDecoder
-	eventSink  EventHandler
+	eventSinks concurrenz.CopyOnWriteSlice[EventHandler]
 }
 
-func (handler *ChannelPeekHandler) EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
-	handler.ToggleTracing(sourceType, matcher, true, resultChan)
+func (self *ChannelPeekHandler) EnableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult) {
+	self.ToggleTracing(sourceType, matcher, true, handler, resultChan)
 }
 
-func (handler *ChannelPeekHandler) DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
-	handler.ToggleTracing(sourceType, matcher, false, resultChan)
+func (self *ChannelPeekHandler) DisableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult) {
+	self.ToggleTracing(sourceType, matcher, false, handler, resultChan)
 }
 
-func (handler *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher SourceMatcher, enable bool, resultChan chan<- ToggleApplyResult) {
-	name := handler.ch.LogicalName()
+func (self *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher SourceMatcher, enable bool, handler EventHandler, resultChan chan<- ToggleApplyResult) {
+	name := self.ch.LogicalName()
 	matched := sourceType == SourceTypePipe && matcher.Matches(name)
-	prevState := handler.IsEnabled()
+	prevState := self.IsEnabled()
 	nextState := prevState
+
 	if matched {
-		handler.enable(enable)
 		nextState = enable
+		if enable {
+			self.enabled.Set(true)
+			self.eventSinks.Append(handler)
+		} else {
+			self.eventSinks.Delete(handler)
+			if len(self.eventSinks.Value()) == 0 {
+				self.enabled.Set(false)
+			}
+		}
 	}
+
 	resultChan <- &ToggleApplyResultImpl{matched,
 		fmt.Sprintf("Link %v.%v matched? %v. Old trace state: %v, New trace state: %v",
-			handler.appId, name, matched, prevState, nextState)}
+			self.appId, name, matched, prevState, nextState)}
 }
 
-func NewChannelPeekHandler(appId string, ch channel.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
+func NewChannelPeekHandler(appId string, ch channel.Channel, controller Controller) *ChannelPeekHandler {
 	handler := &ChannelPeekHandler{
 		appId:      appId,
 		ch:         ch,
 		controller: controller,
 		decoders:   decoders,
-		eventSink:  eventSink,
 	}
 	controller.AddSource(handler)
 	return handler
 }
 
-func (handler *ChannelPeekHandler) enable(enabled bool) {
-	handler.enabled.Set(true)
+func (self *ChannelPeekHandler) IsEnabled() bool {
+	return self.enabled.Get()
 }
 
-func (handler *ChannelPeekHandler) IsEnabled() bool {
-	return handler.enabled.Get()
+func (*ChannelPeekHandler) Connect(channel.Channel, string) {
 }
 
-func (*ChannelPeekHandler) Connect(ch channel.Channel, remoteAddress string) {
+func (self *ChannelPeekHandler) Rx(msg *channel.Message, ch channel.Channel) {
+	self.trace(msg, ch, false)
 }
 
-func (handler *ChannelPeekHandler) Rx(msg *channel.Message, ch channel.Channel) {
-	handler.trace(msg, ch, false)
+func (self *ChannelPeekHandler) Tx(msg *channel.Message, ch channel.Channel) {
+	self.trace(msg, ch, true)
 }
 
-func (handler *ChannelPeekHandler) Tx(msg *channel.Message, ch channel.Channel) {
-	handler.trace(msg, ch, true)
+func (self *ChannelPeekHandler) Close(channel.Channel) {
+	self.controller.RemoveSource(self)
 }
 
-func (handler *ChannelPeekHandler) Close(ch channel.Channel) {
-	handler.controller.RemoveSource(handler)
-}
-
-func (handler *ChannelPeekHandler) trace(msg *channel.Message, ch channel.Channel, rx bool) {
-	if !handler.IsEnabled() || msg.ContentType == int32(ctrl_pb.ContentType_TraceEventType) ||
+func (self *ChannelPeekHandler) trace(msg *channel.Message, ch channel.Channel, rx bool) {
+	if !self.IsEnabled() || msg.ContentType == int32(ctrl_pb.ContentType_TraceEventType) ||
 		msg.ContentType == int32(mgmt_pb.ContentType_StreamTracesEventType) {
 		return
 	}
 
 	var decode []byte
-	for _, decoder := range handler.decoders {
+	for _, decoder := range self.decoders {
 		if str, ok := decoder.Decode(msg); ok {
 			decode = str
 			break
@@ -113,7 +118,7 @@ func (handler *ChannelPeekHandler) trace(msg *channel.Message, ch channel.Channe
 
 	traceMsg := &trace_pb.ChannelMessage{
 		Timestamp:   time.Now().UnixNano(),
-		Identity:    handler.appId,
+		Identity:    self.appId,
 		Channel:     ch.LogicalName(),
 		IsRx:        rx,
 		ContentType: msg.ContentType,
@@ -124,7 +129,9 @@ func (handler *ChannelPeekHandler) trace(msg *channel.Message, ch channel.Channe
 	}
 
 	// This can result in a message send. Doing a send from inside a peekhandler can cause deadlocks, so it's best avoided
-	go handler.eventSink.Accept(traceMsg)
+	for _, eventSink := range self.eventSinks.Value() {
+		go eventSink.Accept(traceMsg)
+	}
 }
 
 func NewChannelSink(ch channel.Channel) EventHandler {

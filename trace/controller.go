@@ -139,20 +139,19 @@ func NewSourceMatcher(regex *regexp.Regexp) SourceMatcher {
 }
 
 type Source interface {
-	EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult)
-	DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult)
+	EnableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult)
+	DisableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult)
 }
 
 type Controller interface {
-	EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult)
-	DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult)
+	Source
 	AddSource(source Source)
 	RemoveSource(source Source)
 }
 
 func NewController(closeNotify <-chan struct{}) Controller {
 	controller := &controllerImpl{
-		events:      make(chan interface{}, 1),
+		events:      make(chan controllerEvent, 1),
 		sources:     make(map[Source]Source),
 		closeNotify: closeNotify,
 	}
@@ -163,42 +162,68 @@ func NewController(closeNotify <-chan struct{}) Controller {
 type enableSourcesEvent struct {
 	sourceType SourceType
 	matcher    SourceMatcher
+	handler    EventHandler
 	resultChan chan<- ToggleApplyResult
+}
+
+func (event *enableSourcesEvent) handle(controller *controllerImpl) {
+	for source := range controller.sources {
+		source.EnableTracing(event.sourceType, event.matcher, event.handler, event.resultChan)
+	}
+	close(event.resultChan)
 }
 
 type disableSourcesEvent struct {
 	sourceType SourceType
 	matcher    SourceMatcher
+	handler    EventHandler
 	resultChan chan<- ToggleApplyResult
+}
+
+func (event *disableSourcesEvent) handle(controller *controllerImpl) {
+	for handler := range controller.sources {
+		handler.DisableTracing(event.sourceType, event.matcher, event.handler, event.resultChan)
+	}
+	close(event.resultChan)
 }
 
 type sourceAddedEvent struct {
 	source Source
 }
 
+func (event *sourceAddedEvent) handle(controller *controllerImpl) {
+	controller.sources[event.source] = event.source
+}
+
 type sourceRemovedEvent struct {
 	source Source
 }
 
+func (event *sourceRemovedEvent) handle(controller *controllerImpl) {
+	delete(controller.sources, event.source)
+}
+
+type controllerEvent interface {
+	handle(impl *controllerImpl)
+}
+
 type controllerImpl struct {
-	events      chan interface{}
+	events      chan controllerEvent
 	sources     map[Source]Source
 	closeNotify <-chan struct{}
 }
 
-func (controller *controllerImpl) EnableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
+func (controller *controllerImpl) EnableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult) {
 	select {
-	case controller.events <- &enableSourcesEvent{sourceType, matcher, resultChan}:
+	case controller.events <- &enableSourcesEvent{sourceType: sourceType, matcher: matcher, handler: handler, resultChan: resultChan}:
 	case <-controller.closeNotify:
-		return
 	}
 }
 
-func (controller *controllerImpl) DisableTracing(sourceType SourceType, matcher SourceMatcher, resultChan chan<- ToggleApplyResult) {
+func (controller *controllerImpl) DisableTracing(sourceType SourceType, matcher SourceMatcher, handler EventHandler, resultChan chan<- ToggleApplyResult) {
 	select {
-	case controller.events <- &disableSourcesEvent{sourceType, matcher, resultChan}:
+	case controller.events <- &disableSourcesEvent{sourceType: sourceType, matcher: matcher, handler: handler, resultChan: resultChan}:
 	case <-controller.closeNotify:
-		return
 	}
 }
 
@@ -206,7 +231,6 @@ func (controller *controllerImpl) AddSource(source Source) {
 	select {
 	case controller.events <- &sourceAddedEvent{source}:
 	case <-controller.closeNotify:
-		return
 	}
 }
 
@@ -214,7 +238,6 @@ func (controller *controllerImpl) RemoveSource(source Source) {
 	select {
 	case controller.events <- &sourceRemovedEvent{source}:
 	case <-controller.closeNotify:
-		return
 	}
 }
 
@@ -223,23 +246,8 @@ func (controller *controllerImpl) run() {
 		select {
 		case <-controller.closeNotify:
 			return
-		case i := <-controller.events:
-			switch event := i.(type) {
-			case *enableSourcesEvent:
-				for handler := range controller.sources {
-					handler.EnableTracing(event.sourceType, event.matcher, event.resultChan)
-				}
-				close(event.resultChan)
-			case *disableSourcesEvent:
-				for handler := range controller.sources {
-					handler.DisableTracing(event.sourceType, event.matcher, event.resultChan)
-				}
-				close(event.resultChan)
-			case *sourceAddedEvent:
-				controller.sources[event.source] = event.source
-			case *sourceRemovedEvent:
-				delete(controller.sources, event.source)
-			}
+		case evt := <-controller.events:
+			evt.handle(controller)
 		}
 	}
 }

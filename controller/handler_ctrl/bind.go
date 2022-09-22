@@ -62,7 +62,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newTraceHandler(traceDispatchWrapper))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.network))
 	binding.AddTypedReceiveHandler(newPingHandler())
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController(), traceDispatchWrapper))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
 	doHeartbeat, err := self.router.VersionInfo.HasMinimumVersion("0.25.5")

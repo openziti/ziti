@@ -49,8 +49,7 @@ func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 
 	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
 
-	traceDispatchWrapper := trace.NewDispatchWrapper(bindHandler.network.GetEventDispatcher().Dispatch)
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController(), traceDispatchWrapper))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(bindHandler.network.GetAppId(), binding.GetChannel(), bindHandler.network.GetTraceController()))
 
 	xmgmtDone := make(chan struct{})
 	for _, x := range bindHandler.xmgmts {
