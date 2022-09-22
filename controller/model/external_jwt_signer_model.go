@@ -100,8 +100,9 @@ func (entity *ExternalJwtSigner) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEnti
 	entity.JwksEndpoint = boltExternalJwtSigner.JwksEndpoint
 	entity.Fingerprint = boltExternalJwtSigner.Fingerprint
 	entity.Enabled = boltExternalJwtSigner.Enabled
-	entity.NotBefore = *boltExternalJwtSigner.NotBefore
-	entity.NotAfter = *boltExternalJwtSigner.NotAfter
+
+	entity.NotBefore = timeOrEmpty(boltExternalJwtSigner.NotBefore)
+	entity.NotAfter = timeOrEmpty(boltExternalJwtSigner.NotAfter)
 	entity.ExternalAuthUrl = boltExternalJwtSigner.ExternalAuthUrl
 	entity.ClaimsProperty = boltExternalJwtSigner.ClaimsProperty
 	entity.UseExternalId = boltExternalJwtSigner.UseExternalId
@@ -109,4 +110,12 @@ func (entity *ExternalJwtSigner) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEnti
 	entity.Issuer = boltExternalJwtSigner.Issuer
 	entity.Audience = boltExternalJwtSigner.Audience
 	return nil
+}
+
+func timeOrEmpty(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+
+	return *t
 }
