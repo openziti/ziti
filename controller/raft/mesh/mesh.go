@@ -25,7 +25,6 @@ import (
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
@@ -145,7 +144,7 @@ type impl struct {
 	Peers       map[string]*Peer
 	lock        sync.RWMutex
 	closeNotify chan struct{}
-	closed      concurrenz.AtomicBoolean
+	closed      atomic.Bool
 	raftAccepts chan net.Conn
 	bindHandler channel.BindHandler
 	version     string

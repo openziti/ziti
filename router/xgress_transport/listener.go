@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
@@ -27,13 +28,13 @@ import (
 
 type listener struct {
 	id          *identity.TokenId
-	ctrl        xgress.CtrlChannel
+	ctrl        env.NetworkControllers
 	options     *xgress.Options
 	tcfg        transport.Configuration
 	closeHelper *xgress.CloseHelper
 }
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, tcfg transport.Configuration) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) xgress.Listener {
 	return &listener{
 		id:          id,
 		ctrl:        ctrl,

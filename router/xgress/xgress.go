@@ -57,6 +57,7 @@ type Listener interface {
 }
 
 type DialParams interface {
+	GetCtrlId() string
 	GetDestination() string
 	GetCircuitId() *identity.TokenId
 	GetAddress() Address
@@ -127,6 +128,7 @@ type Connection interface {
 
 type Xgress struct {
 	circuitId            string
+	ctrlId               string
 	address              Address
 	peer                 Connection
 	originator           Originator
@@ -153,9 +155,10 @@ func (self *Xgress) GetTags() map[string]string {
 	return self.tags
 }
 
-func NewXgress(circuitId *identity.TokenId, address Address, peer Connection, originator Originator, options *Options, tags map[string]string) *Xgress {
+func NewXgress(circuitId string, ctrlId string, address Address, peer Connection, originator Originator, options *Options, tags map[string]string) *Xgress {
 	result := &Xgress{
-		circuitId:            circuitId.Token,
+		circuitId:            circuitId,
+		ctrlId:               ctrlId,
 		address:              address,
 		peer:                 peer,
 		originator:           originator,
@@ -177,6 +180,10 @@ func (self *Xgress) GetTimeOfLastRxFromLink() int64 {
 
 func (self *Xgress) CircuitId() string {
 	return self.circuitId
+}
+
+func (self *Xgress) CtrlId() string {
+	return self.ctrlId
 }
 
 func (self *Xgress) Address() Address {
@@ -483,7 +490,7 @@ func (self *Xgress) tx() {
 func (self *Xgress) flushSendThenClose() {
 	self.CloseTimeout(self.Options.MaxCloseWait)
 	self.ForwardEndOfCircuit(func(payload *Payload) bool {
-		if self.payloadBuffer.closed.Get() {
+		if self.payloadBuffer.closed.Load() {
 			// Avoid spurious 'failed to forward payload' error if the buffer is already closed
 			return false
 		}

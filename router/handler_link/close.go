@@ -21,22 +21,22 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/v2/concurrenz"
+	"sync/atomic"
 )
 
 type closeHandler struct {
 	link          xlink.Xlink
-	ctrl          xgress.CtrlChannel
+	ctrl          env.NetworkControllers
 	forwarder     *forwarder.Forwarder
 	closeNotify   chan struct{}
-	closed        concurrenz.AtomicBoolean
+	closed        atomic.Bool
 	xlinkRegistry xlink.Registry
 }
 
-func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder, closeNotify chan struct{}, registry xlink.Registry) *closeHandler {
+func newCloseHandler(link xlink.Xlink, ctrl env.NetworkControllers, forwarder *forwarder.Forwarder, closeNotify chan struct{}, registry xlink.Registry) *closeHandler {
 	return &closeHandler{
 		link:          link,
 		ctrl:          ctrl,
@@ -62,12 +62,14 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 		log.Info("link closed")
 
 		self.link.HandleCloseNotification(func() {
-			fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id()}
-			if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err == nil {
-				log.Debug("transmitted link fault")
-			} else {
-				log.WithError(err).Error("unexpected error transmitting link fault")
-			}
+			self.ctrl.ForEach(func(controllerId string, ch channel.Channel) {
+				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id()}
+				if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
+					log.WithField("ctrlId", controllerId).Debug("transmitted link fault")
+				} else {
+					log.WithField("ctrlId", controllerId).WithError(err).Error("unexpected error transmitting link fault")
+				}
+			})
 		})
 
 		self.forwarder.UnregisterLink(self.link)

@@ -18,11 +18,12 @@ package xgress_proxy_udp
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
+func NewFactory(ctrl env.NetworkControllers) xgress.Factory {
 	return &factory{ctrl: ctrl}
 }
 
@@ -45,6 +46,6 @@ func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
 }
 
 type factory struct {
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 }

@@ -6,18 +6,19 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"sync"
 	"time"
 )
 
-func NewLinkRegistry() xlink.Registry {
+func NewLinkRegistry(ctrls env.NetworkControllers) *linkRegistryImpl {
 	return &linkRegistryImpl{
 		linkMap:     map[string]xlink.Xlink{},
 		linkByIdMap: map[string]xlink.Xlink{},
 		dialLocks:   map[string]int64{},
+		ctrls:       ctrls,
 	}
 }
 
@@ -26,17 +27,7 @@ type linkRegistryImpl struct {
 	linkByIdMap map[string]xlink.Xlink
 	dialLocks   map[string]int64
 	sync.Mutex
-	ctrlCh channel.Channel
-}
-
-func (self *linkRegistryImpl) ControlChannel() channel.Channel {
-	// we may get link requests before the control channel is fully
-	// established. wait until it's set before we return. Will only
-	// happen right at startup
-	for self.ctrlCh == nil {
-		time.Sleep(30 * time.Millisecond)
-	}
-	return self.ctrlCh
+	ctrls env.NetworkControllers
 }
 
 func (self *linkRegistryImpl) GetLink(routerId, linkProtocol string) (xlink.Xlink, bool) {
@@ -66,7 +57,7 @@ func (self *linkRegistryImpl) GetDialLock(dial xlink.Dial) (xlink.Xlink, bool) {
 
 	val, found := self.linkMap[key]
 	if found {
-		self.sendRouterLinkMessage(val)
+		self.sendRouterLinkMessage(self.notifySingle(dial.GetCtrlId()), val)
 		return val, false
 	}
 
@@ -158,7 +149,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		log = log.WithField("currentLinkId", existing.Id())
 		if existing.Id() < link.Id() {
 			log.Info("duplicate link detected. closing new link (new link id is > than current link id)")
-			self.sendRouterLinkMessage(existing)
+			self.sendRouterLinkMessage(self.ctrls.ForEach, existing)
 			if err := link.Close(); err != nil {
 				log.WithError(err).Error("error closing duplicate link")
 			}
@@ -166,15 +157,19 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		}
 		log.Info("duplicate link detected. closing current link (current link id is > than new link id)")
 
-		// report link fault, then close link after allowing some time for circuits to be re-routed
-		fault := &ctrl_pb.Fault{
-			Id:      existing.Id(),
-			Subject: ctrl_pb.FaultSubject_LinkFault,
-		}
+		self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+			// report link fault, then close link after allowing some time for circuits to be re-routed
+			fault := &ctrl_pb.Fault{
+				Id:      existing.Id(),
+				Subject: ctrl_pb.FaultSubject_LinkFault,
+			}
 
-		if err := protobufs.MarshalTyped(fault).Send(self.ControlChannel()); err != nil {
-			logrus.WithError(err).Error("failed to send router fault when duplicate link detected")
-		}
+			if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
+				log.WithField("ctrlId", ctrlId).
+					WithError(err).
+					Error("failed to send router fault when duplicate link detected")
+			}
+		})
 
 		time.AfterFunc(5*time.Minute, func() {
 			_ = existing.Close()
@@ -206,7 +201,7 @@ func (self *linkRegistryImpl) Shutdown() {
 	log.WithField("linkCount", linkCount).Info("shutdown links in link registry")
 }
 
-func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
+func (self *linkRegistryImpl) sendRouterLinkMessage(notifier notifierF, link xlink.Xlink) {
 	linkMsg := &ctrl_pb.RouterLinks{
 		Links: []*ctrl_pb.RouterLinks_RouterLink{
 			{
@@ -217,11 +212,28 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 			},
 		},
 	}
-	if err := protobufs.MarshalTyped(linkMsg).Send(self.ControlChannel()); err != nil {
-		pfxlog.Logger().WithField("linkId", link.Id()).
-			WithField("dest", link.DestinationId()).
-			WithField("linkProtocol", link.LinkProtocol()).
-			WithError(err).Error("error sending router link message")
+
+	log := pfxlog.Logger().
+		WithField("linkId", link.Id()).
+		WithField("dest", link.DestinationId()).
+		WithField("linkProtocol", link.LinkProtocol())
+
+	notifier(func(ctrlId string, ch channel.Channel) {
+		if err := protobufs.MarshalTyped(linkMsg).Send(ch); err != nil {
+			log.WithError(err).Error("error sending router link message")
+		}
+	})
+}
+
+type notifierF func(func(ctrlId string, ch channel.Channel))
+
+func (self *linkRegistryImpl) notifySingle(ctrlId string) notifierF {
+	return func(f func(ctrlId string, ch channel.Channel)) {
+		if ch := self.ctrls.GetCtrlChannel(ctrlId); ch != nil {
+			f(ctrlId, ch)
+		} else {
+			pfxlog.Logger().WithField("ctrlId", ctrlId).Error("control channel for controller not available")
+		}
 	}
 }
 
@@ -231,8 +243,7 @@ func (self *linkRegistryImpl) LoadConfig(map[interface{}]interface{}) error {
 	return nil
 }
 
-func (self *linkRegistryImpl) BindChannel(binding channel.Binding) error {
-	self.ctrlCh = binding.GetChannel()
+func (self *linkRegistryImpl) BindChannel(channel.Binding) error {
 	return nil
 }
 
@@ -240,7 +251,7 @@ func (self *linkRegistryImpl) Enabled() bool {
 	return true
 }
 
-func (self *linkRegistryImpl) Run(channel.Channel, boltz.Db, chan struct{}) error {
+func (self *linkRegistryImpl) Run(env env.RouterEnv) error {
 	return nil
 }
 
@@ -261,7 +272,7 @@ func (self *linkRegistryImpl) Iter() <-chan xlink.Xlink {
 	return result
 }
 
-func (self *linkRegistryImpl) NotifyOfReconnect() {
+func (self *linkRegistryImpl) NotifyOfReconnect(ch channel.Channel) {
 	routerLinks := &ctrl_pb.RouterLinks{}
 	for link := range self.Iter() {
 		routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{
@@ -272,7 +283,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect() {
 		})
 	}
 
-	if err := protobufs.MarshalTyped(routerLinks).Send(self.ControlChannel()); err != nil {
+	if err := protobufs.MarshalTyped(routerLinks).Send(ch); err != nil {
 		logrus.WithError(err).Error("failed to send router links on reconnect")
 	}
 }

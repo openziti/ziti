@@ -54,7 +54,7 @@ func (handler *validateTerminatorsHandler) HandleReceive(msg *channel.Message, c
 }
 
 func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.ValidateTerminatorsRequest) {
-	log := pfxlog.ContextLogger(handler.env.Channel().Label())
+	log := pfxlog.Logger()
 
 	log.Debugf("validate terminators route request received: %v terminators", len(req.Terminators))
 	dialers := map[string]xgress.Dialer{}
@@ -73,7 +73,7 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		//       rather than deleting them
 		if dialer == nil || !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
 			log.Infof("removing invalid terminator %v with binding: %v. had dialer? %v", terminator.Id, terminator.Binding, dialer != nil)
-			if err := xgress.RemoveTerminator(handler.env, terminator.Id); err != nil {
+			if err := xgress.RemoveTerminator(handler.env.GetNetworkControllers(), terminator.Id); err != nil {
 				log.Errorf("failed to remove invalid terminator %v (%v)", terminator.Id, err)
 			}
 		}

@@ -17,7 +17,6 @@
 package xlink
 
 import (
-	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
@@ -27,8 +26,6 @@ import (
 
 // Registry contains known link instances and manages link de-duplication
 type Registry interface {
-	xctrl.Xctrl
-
 	// GetLink returns the link to the given router, of the given type, if one exists
 	GetLink(routerId, linkType string) (Xlink, bool)
 	// GetLinkById returns the link for the given id, if it exists
@@ -72,6 +69,7 @@ type Acceptor interface {
 
 // A Dial contains the information need to dial another router
 type Dial interface {
+	GetCtrlId() string
 	GetLinkId() string
 	GetRouterId() string
 	GetAddress() string

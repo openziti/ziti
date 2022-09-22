@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -49,7 +48,7 @@ type Router struct {
 	Fingerprint *string
 	Listeners   []Listener
 	Control     channel.Channel
-	Connected   concurrenz.AtomicBoolean
+	Connected   atomic.Bool
 	ConnectTime time.Time
 	VersionInfo *versions.VersionInfo
 	routerLinks RouterLinks
@@ -141,12 +140,12 @@ func (self *RouterManager) markConnected(r *Router) {
 		}
 	}
 
-	r.Connected.Set(true)
+	r.Connected.Store(true)
 	self.connected.Set(r.Id, r)
 }
 
 func (self *RouterManager) markDisconnected(r *Router) {
-	r.Connected.Set(false)
+	r.Connected.Store(false)
 	self.connected.RemoveCb(r.Id, func(key string, v *Router, exists bool) bool {
 		if exists && v != r {
 			pfxlog.Logger().WithField("routerId", r.Id).Info("router not current connect, not clearing from connected map")

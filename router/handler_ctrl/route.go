@@ -39,17 +39,18 @@ import (
 
 type routeHandler struct {
 	id        *identity.TokenId
-	ctrl      xgress.CtrlChannel
+	ch        channel.Channel
+	env       env.RouterEnv
 	dialerCfg map[string]xgress.OptionsData
 	forwarder *forwarder.Forwarder
 	pool      goroutines.Pool
 }
 
-func newRouteHandler(env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
+func newRouteHandler(ch channel.Channel, env env.RouterEnv, forwarder *forwarder.Forwarder, pool goroutines.Pool) *routeHandler {
 	handler := &routeHandler{
 		id:        env.GetRouterId(),
-		ctrl:      env,
-		dialerCfg: env.GetDialerCfg(),
+		ch:        ch,
+		env:       env,
 		forwarder: forwarder,
 		pool:      pool,
 	}
@@ -111,7 +112,7 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 }
 
 func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *ctrl_pb.Route, peerData xt.PeerData, log *logrus.Entry) {
-	if err := rh.forwarder.Route(route); err != nil {
+	if err := rh.forwarder.Route(rh.ch.Id(), route); err != nil {
 		rh.fail(msg, attempt, route, err, ctrl_msg.ErrorTypeGeneric, log)
 		return
 	}
@@ -126,7 +127,7 @@ func (rh *routeHandler) completeRoute(msg *channel.Message, attempt int, route *
 	response.ReplyTo(msg)
 
 	log.Debug("sending success response")
-	if err := response.WithTimeout(rh.ctrl.DefaultRequestTimeout()).Send(rh.ctrl.Channel()); err == nil {
+	if err := response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch); err == nil {
 		log.Debug("handled route")
 	} else {
 		log.WithError(err).Error("send response failed")
@@ -140,7 +141,7 @@ func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.R
 	response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, errorHeader)
 
 	response.ReplyTo(msg)
-	if err = response.WithTimeout(rh.ctrl.DefaultRequestTimeout()).Send(rh.ctrl.Channel()); err != nil {
+	if err = response.WithTimeout(rh.env.GetNetworkControllers().DefaultRequestTimeout()).Send(rh.ch); err != nil {
 		log.WithError(err).Error("send failure response failed")
 	}
 }
@@ -159,7 +160,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 		if dialer, err := factory.CreateDialer(rh.dialerCfg[route.Egress.Binding]); err == nil {
 			bindHandler := handler_xgress.NewBindHandler(
 				handler_xgress.NewReceiveHandler(rh.forwarder),
-				handler_xgress.NewCloseHandler(rh.ctrl, rh.forwarder),
+				handler_xgress.NewCloseHandler(rh.env.GetNetworkControllers(), rh.forwarder),
 				rh.forwarder)
 
 			if rh.forwarder.Options.XgressDialDwellTime > 0 {
@@ -167,7 +168,7 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 			}
 
-			params := newDialParams(route, bindHandler, ctx, deadline)
+			params := newDialParams(rh.ch.Id(), route, bindHandler, ctx, deadline)
 			if peerData, err := dialer.Dial(params); err == nil {
 				rh.completeRoute(msg, attempt, route, peerData, log)
 			} else {
@@ -198,8 +199,9 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 	}
 }
 
-func newDialParams(route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {
+func newDialParams(ctrlId string, route *ctrl_pb.Route, bindHandler xgress.BindHandler, logContext logcontext.Context, deadline time.Time) *dialParams {
 	return &dialParams{
+		ctrlId:      ctrlId,
 		Route:       route,
 		circuitId:   &identity.TokenId{Token: route.CircuitId, Data: route.Egress.PeerData},
 		bindHandler: bindHandler,
@@ -210,10 +212,15 @@ func newDialParams(route *ctrl_pb.Route, bindHandler xgress.BindHandler, logCont
 
 type dialParams struct {
 	*ctrl_pb.Route
+	ctrlId      string
 	circuitId   *identity.TokenId
 	bindHandler xgress.BindHandler
 	logContext  logcontext.Context
 	deadline    time.Time
+}
+
+func (self *dialParams) GetCtrlId() string {
+	return self.ctrlId
 }
 
 func (self *dialParams) GetDestination() string {

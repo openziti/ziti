@@ -9,6 +9,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
@@ -67,18 +68,31 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 		"split": false,
 	}
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(), metricsRegistery)
+	ctrls := env.NewNetworkControllers(time.Second)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
-	dial := &ctrl_pb.Dial{
-		LinkId:       "testLinkId",
-		Address:      "tls:127.0.0.1:6004",
-		RouterId:     "002",
-		LinkProtocol: "tls",
+	dialReq := &dial{
+		Dial: &ctrl_pb.Dial{
+			LinkId:       "testLinkId",
+			Address:      "tls:127.0.0.1:6004",
+			RouterId:     "002",
+			LinkProtocol: "tls",
+		},
+		ctrlId: "test",
 	}
-	_, err = dialer.Dial(dial)
+	_, err = dialer.Dial(dialReq)
 	ctx.Req.Error(err)
 	ctx.Req.ErrorIs(err, io.EOF)
+}
+
+type dial struct {
+	*ctrl_pb.Dial
+	ctrlId string
+}
+
+func (self *dial) GetCtrlId() string {
+	return self.ctrlId
 }
 
 func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
@@ -103,16 +117,20 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	}
 
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(), metricsRegistery)
+	ctrls := env.NewNetworkControllers(time.Second)
+	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
-	dial := &ctrl_pb.Dial{
-		LinkId:       "testLinkId",
-		Address:      "tls:127.0.0.1:6004",
-		RouterId:     "002",
-		LinkProtocol: "tls",
+	dialReq := &dial{
+		Dial: &ctrl_pb.Dial{
+			LinkId:       "testLinkId",
+			Address:      "tls:127.0.0.1:6004",
+			RouterId:     "002",
+			LinkProtocol: "tls",
+		},
+		ctrlId: "test",
 	}
-	_, err = dialer.Dial(dial)
+	_, err = dialer.Dial(dialReq)
 	if err != nil {
 		ctx.Req.ErrorIs(err, io.EOF, "unexpected error: %v", err)
 	} else {

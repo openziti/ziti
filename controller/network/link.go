@@ -17,7 +17,6 @@
 package network
 
 import (
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"sync"
 	"sync/atomic"
@@ -36,7 +35,7 @@ type Link struct {
 	SrcLatency  int64
 	DstLatency  int64
 	Cost        int64
-	usable      concurrenz.AtomicBoolean
+	usable      atomic.Bool
 	lock        sync.Mutex
 }
 
@@ -95,16 +94,16 @@ func (link *Link) IsDown() bool {
 
 func (link *Link) recalculateUsable() {
 	if link.down {
-		link.usable.Set(false)
+		link.usable.Store(false)
 	} else if len(link.state) < 1 || link.state[0].Mode != Connected {
-		link.usable.Set(false)
+		link.usable.Store(false)
 	} else {
-		link.usable.Set(true)
+		link.usable.Store(true)
 	}
 }
 
 func (link *Link) IsUsable() bool {
-	return link.usable.Get()
+	return link.usable.Load()
 }
 
 func (link *Link) GetStaticCost() int32 {

@@ -120,13 +120,13 @@ func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
 	forwarder.destinations.removeDestination(xgress.Address(link.Id()))
 }
 
-func (forwarder *Forwarder) Route(route *ctrl_pb.Route) error {
+func (forwarder *Forwarder) Route(ctrlId string, route *ctrl_pb.Route) error {
 	circuitId := route.CircuitId
 	var circuitFt *forwardTable
 	if ft, found := forwarder.circuits.getForwardTable(circuitId); found {
 		circuitFt = ft
 	} else {
-		circuitFt = newForwardTable()
+		circuitFt = newForwardTable(ctrlId)
 	}
 	for _, forward := range route.Forwards {
 		if !forwarder.HasDestination(xgress.Address(forward.DstAddress)) {
@@ -250,9 +250,9 @@ func (forwarder *Forwarder) ForwardControl(srcAddr xgress.Address, control *xgre
 	return err
 }
 
-func (forwarder *Forwarder) ReportForwardingFault(circuitId string) {
+func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId string) {
 	if forwarder.faulter != nil {
-		forwarder.faulter.report(circuitId)
+		forwarder.faulter.report(circuitId, ctrlId)
 	} else {
 		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
 	}

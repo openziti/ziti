@@ -18,6 +18,7 @@ package xgress_transport
 
 import (
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/router/env"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -31,7 +32,7 @@ import (
 
 type dialer struct {
 	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 	tcfg    transport.Configuration
 }
@@ -40,7 +41,7 @@ func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options, tcfg transport.Configuration) (xgress.Dialer, error) {
+func newDialer(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options, tcfg transport.Configuration) (xgress.Dialer, error) {
 	txd := &dialer{
 		id:      id,
 		ctrl:    ctrl,
@@ -78,7 +79,7 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	log.Infof("successful connection to %v from %v", destination, peer.LocalAddr())
 
 	conn := &transportXgressConn{Conn: peer}
-	x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, txd.options, params.GetCircuitTags())
+	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, txd.options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 

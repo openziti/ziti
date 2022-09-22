@@ -21,8 +21,8 @@ import (
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
+	"sync/atomic"
 )
 
 type impl struct {
@@ -32,7 +32,7 @@ type impl struct {
 	routerVersion   string
 	linkProtocol    string
 	dialAddress     string
-	closeNotified   concurrenz.AtomicBoolean
+	closeNotified   atomic.Bool
 	droppedMsgMeter metrics.Meter
 }
 
@@ -69,7 +69,7 @@ func (self *impl) Close() error {
 }
 
 func (self *impl) CloseNotified() error {
-	self.closeNotified.Set(true)
+	self.closeNotified.Store(true)
 	return self.Close()
 }
 

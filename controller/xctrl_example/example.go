@@ -88,7 +88,7 @@ func (example *example) Run(ctrl channel.Channel, _ boltz.Db, done chan struct{}
 	return nil
 }
 
-func (example *example) NotifyOfReconnect() {
+func (example *example) NotifyOfReconnect(channel.Channel) {
 	logrus.Info("control channel reconnected")
 }
 

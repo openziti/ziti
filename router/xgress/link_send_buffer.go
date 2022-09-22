@@ -19,7 +19,6 @@ package xgress
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/inspect"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -46,14 +45,14 @@ type LinkSendBuffer struct {
 	duplicateAcks         uint32
 	retransmits           uint32
 	closeNotify           chan struct{}
-	closed                concurrenz.AtomicBoolean
+	closed                atomic.Bool
 	blockedByLocalWindow  bool
 	blockedByRemoteWindow bool
 	retxScale             float64
 	retxThreshold         uint32
 	lastRtt               uint16
 	lastRetransmitTime    int64
-	closeWhenEmpty        concurrenz.AtomicBoolean
+	closeWhenEmpty        atomic.Bool
 	inspectRequests       chan *sendBufferInspectEvent
 }
 
@@ -192,7 +191,7 @@ func (buffer *LinkSendBuffer) run() {
 	for {
 		// don't block when we're closing, since the only thing that should still be coming in is end-of-circuit
 		// if we're blocked, but empty, let one payload in to reduce the chances of a stall
-		if buffer.isBlocked() && !buffer.closeWhenEmpty.Get() && buffer.linkSendBufferSize != 0 {
+		if buffer.isBlocked() && !buffer.closeWhenEmpty.Load() && buffer.linkSendBufferSize != 0 {
 			buffered = nil
 		} else {
 			buffered = buffer.newlyBuffered
@@ -218,7 +217,7 @@ func (buffer *LinkSendBuffer) run() {
 		case ack := <-buffer.newlyReceivedAcks:
 			buffer.receiveAcknowledgement(ack)
 			buffer.retransmit()
-			if buffer.closeWhenEmpty.Get() && len(buffer.buffer) == 0 && !buffer.x.Closed() && buffer.x.IsEndOfCircuitSent() {
+			if buffer.closeWhenEmpty.Load() && len(buffer.buffer) == 0 && !buffer.x.Closed() && buffer.x.IsEndOfCircuitSent() {
 				go buffer.x.Close()
 			}
 
@@ -350,13 +349,13 @@ func (buffer *LinkSendBuffer) inspect() *inspect.XgressSendBufferDetail {
 		SuccessfulAcks:        buffer.successfulAcks,
 		DuplicateAcks:         buffer.duplicateAcks,
 		Retransmits:           buffer.retransmits,
-		Closed:                buffer.closed.Get(),
+		Closed:                buffer.closed.Load(),
 		BlockedByLocalWindow:  buffer.blockedByLocalWindow,
 		BlockedByRemoteWindow: buffer.blockedByRemoteWindow,
 		RetxScale:             buffer.retxScale,
 		RetxThreshold:         buffer.retxThreshold,
 		TimeSinceLastRetx:     timeSinceLastRetransmit.String(),
-		CloseWhenEmpty:        buffer.closeWhenEmpty.Get(),
+		CloseWhenEmpty:        buffer.closeWhenEmpty.Load(),
 	}
 	return result
 }

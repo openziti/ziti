@@ -18,11 +18,11 @@ package mesh
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
@@ -46,7 +46,7 @@ type raftPeerConn struct {
 	readC         chan []byte
 	leftOver      []byte
 	closeNotify   chan struct{}
-	closed        concurrenz.AtomicBoolean
+	closed        atomic.Bool
 }
 
 func (self *raftPeerConn) ContentType() int32 {
@@ -113,7 +113,7 @@ func (self *raftPeerConn) Read(b []byte) (n int, err error) {
 }
 
 func (self *raftPeerConn) Write(b []byte) (n int, err error) {
-	if self.closed.Get() {
+	if self.closed.Load() {
 		return 0, errors.New("connection closed")
 	}
 	// logrus.Infof("writing %v bytes to raft peer %v", len(b), self.peer.Id)

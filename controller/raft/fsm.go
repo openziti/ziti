@@ -21,7 +21,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -44,8 +43,7 @@ type BoltDbFsm struct {
 	dataDir      string
 	dbPath       string
 	decoders     command.Decoders
-	env          atomic.Value
-	initialized  concurrenz.AtomicBoolean
+	initialized  atomic.Bool
 	indexTracker IndexTracker
 }
 
@@ -60,7 +58,7 @@ func (self *BoltDbFsm) Init() error {
 }
 
 func (self *BoltDbFsm) RaftInitialized() {
-	self.initialized.Set(true)
+	self.initialized.Store(true)
 }
 
 func (self *BoltDbFsm) GetDb() boltz.Db {
@@ -134,7 +132,7 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		return err
 	}
 
-	if self.initialized.Get() {
+	if self.initialized.Load() {
 		// figure out what happens when we restore a snapshot on startup, vs during runtime
 		os.Exit(0)
 	}

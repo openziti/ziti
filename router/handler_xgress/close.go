@@ -20,17 +20,18 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 )
 
 type closeHandler struct {
-	ctrl      xgress.CtrlChannel
+	ctrls     env.NetworkControllers
 	forwarder *forwarder.Forwarder
 }
 
-func NewCloseHandler(ctrl xgress.CtrlChannel, forwarder *forwarder.Forwarder) *closeHandler {
-	return &closeHandler{ctrl: ctrl, forwarder: forwarder}
+func NewCloseHandler(ctrl env.NetworkControllers, forwarder *forwarder.Forwarder) xgress.CloseHandler {
+	return &closeHandler{ctrls: ctrl, forwarder: forwarder}
 }
 
 func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
@@ -60,8 +61,13 @@ func (txc *closeHandler) HandleXgressClose(x *xgress.Xgress) {
 		fault.Subject = ctrl_pb.FaultSubject_EgressFault
 	}
 
-	log.Debug("notifying controller of fault")
-	if err := protobufs.MarshalTyped(fault).Send(txc.ctrl.Channel()); err != nil {
-		log.WithError(err).Error("error sending fault")
+	ch := txc.ctrls.GetCtrlChannel(x.CtrlId())
+	if ch == nil {
+		log.WithField("ctrlId", x.CtrlId()).Error("control channel not available")
+	} else {
+		log.Debug("notifying controller of fault")
+		if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
+			log.WithError(err).Error("error sending fault")
+		}
 	}
 }

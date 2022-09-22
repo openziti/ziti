@@ -14,14 +14,18 @@
 	limitations under the License.
 */
 
-package xgress
+package env
 
 import (
 	"github.com/openziti/channel/v2"
-	"time"
+	"github.com/openziti/fabric/config"
 )
 
-type CtrlChannel interface {
-	Channel() channel.Channel
-	DefaultRequestTimeout() time.Duration
+type Xrctrl interface {
+	config.Subconfig
+	channel.BindHandler
+	Enabled() bool
+	Run(env RouterEnv) error
+	NotifyOfReconnect(ch channel.Channel)
+	GetTraceDecoders() []channel.TraceMessageDecoder
 }

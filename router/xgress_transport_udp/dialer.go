@@ -17,6 +17,7 @@
 package xgress_transport_udp
 
 import (
+	"github.com/openziti/fabric/router/env"
 	"github.com/pkg/errors"
 	"net"
 	"time"
@@ -58,7 +59,7 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 	log.Infof("bound on [%v]", conn.LocalAddr())
 
-	x := xgress.NewXgress(circuitId, address, newPacketConn(conn), xgress.Terminator, txd.options, params.GetCircuitTags())
+	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), address, newPacketConn(conn), xgress.Terminator, txd.options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 
@@ -69,7 +70,7 @@ func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) (*dialer, error) {
+func newDialer(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options) (*dialer, error) {
 	txd := &dialer{
 		id:      id,
 		ctrl:    ctrl,
@@ -80,6 +81,6 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 
 type dialer struct {
 	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 }

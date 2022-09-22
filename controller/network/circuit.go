@@ -20,9 +20,9 @@ import (
 	"github.com/openziti/fabric/controller/idgen"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/orcaman/concurrent-map/v2"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,7 +33,7 @@ type Circuit struct {
 	Terminator xt.CostedTerminator
 	Path       *Path
 	Tags       map[string]string
-	Rerouting  concurrenz.AtomicBoolean
+	Rerouting  atomic.Bool
 	PeerData   xt.PeerData
 	CreatedAt  time.Time
 }

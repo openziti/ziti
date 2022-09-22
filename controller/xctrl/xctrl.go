@@ -27,6 +27,6 @@ type Xctrl interface {
 	channel.BindHandler
 	Enabled() bool
 	Run(ctrl channel.Channel, db boltz.Db, done chan struct{}) error
-	NotifyOfReconnect()
+	NotifyOfReconnect(ch channel.Channel)
 	GetTraceDecoders() []channel.TraceMessageDecoder
 }

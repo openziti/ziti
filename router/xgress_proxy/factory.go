@@ -18,13 +18,14 @@ package xgress_proxy
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Configuration) xgress.Factory {
+func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress.Factory {
 	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }
 
@@ -48,7 +49,7 @@ func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type factory struct {
 	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 	tcfg    transport.Configuration
 }

@@ -23,12 +23,13 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
+	"sync/atomic"
 	"time"
 )
 
 type XgressPeekHandler struct {
 	appId      *identity.TokenId
-	enabled    concurrenz.AtomicBoolean
+	enabled    atomic.Bool
 	controller Controller
 	decoders   []channel.TraceMessageDecoder
 	eventSinks concurrenz.CopyOnWriteSlice[EventHandler]
@@ -51,12 +52,12 @@ func (self *XgressPeekHandler) ToggleTracing(sourceType SourceType, matcher Sour
 	if matched {
 		nextState = enable
 		if enable {
-			self.enabled.Set(true)
+			self.enabled.Store(true)
 			self.eventSinks.Append(handler)
 		} else {
 			self.eventSinks.Delete(handler)
 			if len(self.eventSinks.Value()) == 0 {
-				self.enabled.Set(false)
+				self.enabled.Store(false)
 			}
 		}
 	}
@@ -89,7 +90,7 @@ func NewXgressPeekHandler(appId *identity.TokenId, controller Controller) *Xgres
 }
 
 func (self *XgressPeekHandler) IsEnabled() bool {
-	return self.enabled.Get()
+	return self.enabled.Load()
 }
 
 func (self *XgressPeekHandler) trace(x *xgress.Xgress, payload *xgress.Payload, rx bool) {

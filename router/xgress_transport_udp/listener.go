@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/v2/info"
@@ -163,7 +164,7 @@ func (l *listener) handleConnect(initialRequest []byte, session xgress_udp.Sessi
 	l.eventChan <- &sessionResponse{addr: session.Address(), response: response}
 }
 
-func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {
+func newListener(id *identity.TokenId, ctrl env.NetworkControllers, options *xgress.Options) xgress.Listener {
 	return &listener{
 		id:        id,
 		ctrl:      ctrl,
@@ -176,7 +177,7 @@ func newListener(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.
 
 type listener struct {
 	id          *identity.TokenId
-	ctrl        xgress.CtrlChannel
+	ctrl        env.NetworkControllers
 	options     *xgress.Options
 	address     string
 	bindHandler xgress.BindHandler

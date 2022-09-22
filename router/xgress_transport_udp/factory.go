@@ -17,12 +17,13 @@
 package xgress_transport_udp
 
 import (
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 )
 
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel) xgress.Factory {
+func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers) xgress.Factory {
 	return &factory{id: id, ctrl: ctrl}
 }
 
@@ -44,6 +45,6 @@ func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 
 type factory struct {
 	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 }

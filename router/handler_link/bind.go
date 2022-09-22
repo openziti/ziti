@@ -6,9 +6,9 @@ import (
 	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
-	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -20,7 +20,7 @@ import (
 	"time"
 )
 
-func NewBindHandlerFactory(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *forwarder.Options, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
+func NewBindHandlerFactory(c env.NetworkControllers, f *forwarder.Forwarder, fo *forwarder.Options, mr metrics.Registry, registry xlink.Registry) *bindHandlerFactory {
 	return &bindHandlerFactory{
 		ctrl:             c,
 		forwarder:        f,
@@ -31,7 +31,7 @@ func NewBindHandlerFactory(c xgress.CtrlChannel, f *forwarder.Forwarder, fo *for
 }
 
 type bindHandlerFactory struct {
-	ctrl             xgress.CtrlChannel
+	ctrl             env.NetworkControllers
 	forwarder        *forwarder.Forwarder
 	forwarderOptions *forwarder.Options
 	metricsRegistry  metrics.Registry
@@ -141,7 +141,7 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 		Fingerprints: fingerprints,
 	}
 
-	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.Channel())
+	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.AnyCtrlChannel())
 	if err != nil {
 		return errors.Wrapf(err, "unable to verify router %v for link %v", l.DestinationId(), l.Id())
 	}

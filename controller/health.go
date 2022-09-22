@@ -4,11 +4,11 @@ import (
 	"context"
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"sync/atomic"
 	"time"
 )
 
@@ -39,7 +39,7 @@ func (c *Controller) initializeHealthChecks() (gosundheit.Health, error) {
 type boltPinger struct {
 	dbProvider  func() boltz.Db
 	openReadTxs metrics.Gauge
-	running     concurrenz.AtomicBoolean
+	running     atomic.Bool
 }
 
 func (self *boltPinger) PingContext(ctx context.Context) error {
@@ -55,13 +55,13 @@ func (self *boltPinger) PingContext(ctx context.Context) error {
 	}
 
 	if !hasDeadline {
-		defer self.running.Set(false)
+		defer self.running.Store(false)
 		return self.dbProvider().View(checkFunc)
 	}
 
 	errC := make(chan error, 1)
 	go func() {
-		defer self.running.Set(false)
+		defer self.running.Store(false)
 		errC <- self.dbProvider().View(checkFunc)
 	}()
 

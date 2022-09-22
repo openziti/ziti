@@ -17,24 +17,26 @@
 package forwarder
 
 import (
-	"github.com/openziti/channel/v2"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	"github.com/sirupsen/logrus"
 	"sync/atomic"
 	"time"
 )
 
 type Scanner struct {
-	ctrl        channel.Channel
+	ctrls       env.NetworkControllers
 	circuits    *circuitTable
 	interval    time.Duration
 	timeout     time.Duration
 	closeNotify <-chan struct{}
 }
 
-func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
+func NewScanner(ctrls env.NetworkControllers, options *Options, closeNotify <-chan struct{}) *Scanner {
 	s := &Scanner{
+		ctrls:       ctrls,
 		interval:    options.IdleTxInterval,
 		timeout:     options.IdleCircuitTimeout,
 		closeNotify: closeNotify,
@@ -45,10 +47,6 @@ func NewScanner(options *Options, closeNotify <-chan struct{}) *Scanner {
 		logrus.Warnf("scanner disabled")
 	}
 	return s
-}
-
-func (self *Scanner) SetCtrl(ch channel.Channel) {
-	self.ctrl = ch
 }
 
 func (self *Scanner) setCircuitTable(circuits *circuitTable) {
@@ -74,31 +72,35 @@ func (self *Scanner) scan() {
 	circuits := self.circuits.circuits.Items()
 	logrus.Debugf("scanning [%d] circuits", len(circuits))
 
-	var idleCircuitIds []string
 	now := time.Now().UnixMilli()
+	idleCircuits := map[string][]string{}
 	for circuitId, ft := range circuits {
 		idleTime := time.Duration(now-atomic.LoadInt64(&ft.last)) * time.Millisecond
 		if idleTime > self.timeout {
-			idleCircuitIds = append(idleCircuitIds, circuitId)
+			idleCircuits[ft.ctrlId] = append(idleCircuits[ft.ctrlId], circuitId)
 			logrus.WithField("circuitId", circuitId).
+				WithField("ctrlId", ft.ctrlId).
 				WithField("idleTime", idleTime).
 				WithField("idleThreshold", self.timeout).
 				Warn("circuit exceeds idle threshold")
 		}
 	}
 
-	if len(idleCircuitIds) > 0 {
-		logrus.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitIds))
+	for ctrlId, idleCircuitIds := range idleCircuits {
+		if len(idleCircuitIds) > 0 {
+			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+			log.Debugf("found [%d] idle circuits, confirming with controller", len(idleCircuitIds))
 
-		if self.ctrl != nil {
-			confirm := &ctrl_pb.CircuitConfirmation{CircuitIds: idleCircuitIds}
-			if err := protobufs.MarshalTyped(confirm).Send(self.ctrl); err == nil {
-				logrus.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
+			if ctrl := self.ctrls.GetCtrlChannel(ctrlId); ctrl != nil {
+				confirm := &ctrl_pb.CircuitConfirmation{CircuitIds: idleCircuitIds}
+				if err := protobufs.MarshalTyped(confirm).Send(ctrl); err == nil {
+					log.WithField("circuitCount", len(idleCircuitIds)).Warnf("sent confirmation for circuits")
+				} else {
+					log.WithError(err).Error("error sending confirmation request")
+				}
 			} else {
-				logrus.WithError(err).Error("error sending confirmation request")
+				log.Errorf("no ctrl channel, cannot request circuit confirmations")
 			}
-		} else {
-			logrus.Errorf("no ctrl channel, cannot request circuit confirmations")
 		}
 	}
 }

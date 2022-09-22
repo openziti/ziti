@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
@@ -33,16 +32,16 @@ import (
 
 type dialHandler struct {
 	id       *identity.TokenId
-	ctrl     xgress.CtrlChannel
+	ch       channel.Channel
 	dialers  []xlink.Dialer
 	registry xlink.Registry
 	pool     goroutines.Pool
 }
 
-func newDialHandler(env env.RouterEnv, pool goroutines.Pool) *dialHandler {
+func newDialHandler(ch channel.Channel, env env.RouterEnv, pool goroutines.Pool) *dialHandler {
 	handler := &dialHandler{
 		id:       env.GetRouterId(),
-		ctrl:     env,
+		ch:       ch,
 		dialers:  env.GetXlinkDialer(),
 		pool:     pool,
 		registry: env.GetXlinkRegistry(),
@@ -71,8 +70,12 @@ func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel)
 	}
 }
 
-func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
-	log := self.getLogger(dial)
+func (self *dialHandler) handle(dialMsg *ctrl_pb.Dial, _ channel.Channel) {
+	log := self.getLogger(dialMsg)
+	dial := &dial{
+		Dial:   dialMsg,
+		ctrlId: self.ch.Id(),
+	}
 
 	if len(self.dialers) != 1 {
 		log.Errorf("invalid Xlink dialers configuration")
@@ -119,7 +122,7 @@ func (self *dialHandler) sendLinkMessage(link xlink.Xlink) error {
 		Id:    link.Id(),
 		Conns: link.GetAddresses(),
 	}
-	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrl.Channel()); err != nil {
+	if err := protobufs.MarshalTyped(linkMsg).Send(self.ch); err != nil {
 		return errors.Wrap(err, "error sending link message")
 	}
 	return nil
@@ -127,7 +130,7 @@ func (self *dialHandler) sendLinkMessage(link xlink.Xlink) error {
 
 func (self *dialHandler) sendLinkFault(linkId string) error {
 	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
-	if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err != nil {
+	if err := protobufs.MarshalTyped(fault).Send(self.ch); err != nil {
 		return errors.Wrap(err, "error sending fault")
 	}
 	return nil
@@ -142,4 +145,13 @@ func (self *dialHandler) getLogger(dial *ctrl_pb.Dial) *logrus.Entry {
 			"linkProtocol":  dial.LinkProtocol,
 			"routerVersion": dial.RouterVersion,
 		})
+}
+
+type dial struct {
+	*ctrl_pb.Dial
+	ctrlId string
+}
+
+func (self *dial) GetCtrlId() string {
+	return self.ctrlId
 }

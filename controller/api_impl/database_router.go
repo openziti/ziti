@@ -26,9 +26,9 @@ import (
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/database"
+	"sync/atomic"
 
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"net/http"
 	"sync"
 	"time"
@@ -40,7 +40,7 @@ func init() {
 }
 
 type integrityCheckOp struct {
-	running       concurrenz.AtomicBoolean
+	running       atomic.Bool
 	results       []*rest_model.DataIntegrityCheckDetail
 	lock          sync.Mutex
 	fixingErrors  bool
@@ -114,7 +114,7 @@ func (r *DatabaseRouter) GetCheckProgress(_ *network.Network, rc api.RequestCont
 		err = &errStr
 	}
 
-	inProgress := integrityCheck.running.Get()
+	inProgress := integrityCheck.running.Load()
 
 	result := rest_model.DataIntegrityCheckResultEnvelope{
 		Data: &rest_model.DataIntegrityCheckDetails{
@@ -144,7 +144,7 @@ func (r *DatabaseRouter) runDataIntegrityCheck(n *network.Network, fixErrors boo
 		r.integrityCheck.lock.Lock()
 		now := time.Now()
 		r.integrityCheck.endTime = &now
-		r.integrityCheck.running.Set(false)
+		r.integrityCheck.running.Store(false)
 		r.integrityCheck.lock.Unlock()
 	}()
 

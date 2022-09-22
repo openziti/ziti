@@ -18,6 +18,7 @@ package xgress_proxy_udp
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
 	"github.com/openziti/foundation/v2/info"
@@ -154,7 +155,7 @@ func (l *listener) Close() error {
 	return nil
 }
 
-func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Options) xgress.Listener {
+func newListener(service string, ctrl env.NetworkControllers, options *xgress.Options) xgress.Listener {
 	return &listener{
 		service:   service,
 		ctrl:      ctrl,
@@ -167,7 +168,7 @@ func newListener(service string, ctrl xgress.CtrlChannel, options *xgress.Option
 
 type listener struct {
 	service     string
-	ctrl        xgress.CtrlChannel
+	ctrl        env.NetworkControllers
 	options     *xgress.Options
 	address     string
 	bindHandler xgress.BindHandler
