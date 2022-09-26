@@ -2,9 +2,9 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/latency"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/latency"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	metrics2 "github.com/openziti/fabric/router/metrics"
@@ -63,23 +63,23 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	}
 
 	log := pfxlog.Logger().WithFields(map[string]interface{}{
-		"linkId":        self.xlink.Id().Token,
+		"linkId":        self.xlink.Id(),
 		"routerId":      self.xlink.DestinationId(),
 		"routerVersion": self.xlink.DestVersion(),
 	})
 
 	closeNotify := make(chan struct{})
 
-	binding.GetChannel().SetLogicalName("l/" + self.xlink.Id().Token)
-	binding.SetUserData(self.xlink.Id().Token)
+	binding.GetChannel().SetLogicalName("l/" + self.xlink.Id())
+	binding.SetUserData(self.xlink.Id())
 	binding.AddCloseHandler(newCloseHandler(self.xlink, self.ctrl, self.forwarder, closeNotify, self.xlinkRegistry))
 	binding.AddErrorHandler(newErrorHandler(self.xlink, self.ctrl))
 	binding.AddTypedReceiveHandler(newPayloadHandler(self.xlink, self.forwarder))
 	binding.AddTypedReceiveHandler(newQueuingAckHandler(self.xlink, self.forwarder, closeNotify))
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
-	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id().Token, self.forwarder.MetricsRegistry()))
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id().Token, ch, self.forwarder.TraceController()))
+	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id(), ch, self.forwarder.TraceController()))
 
 	doHeartbeat, err := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
 	if err != nil {
@@ -87,8 +87,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		log.WithError(err).Error("version parsing error")
 	}
 
-	latencyMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id().Token + ".latency")
-	queueTimeMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id().Token + ".queue_time")
+	latencyMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id() + ".latency")
+	queueTimeMetric := self.metricsRegistry.Histogram("link." + self.xlink.Id() + ".queue_time")
 	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
 		latencyMetric.Dispose()
 		queueTimeMetric.Dispose()
@@ -143,7 +143,7 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 
 	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.Channel())
 	if err != nil {
-		return errors.Wrapf(err, "unable to verify router %v for link %v", l.DestinationId(), l.Id().Token)
+		return errors.Wrapf(err, "unable to verify router %v for link %v", l.DestinationId(), l.Id())
 	}
 
 	if reply.ContentType != channel.ContentTypeResultType {
@@ -152,7 +152,7 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
-		logrus.WithField("linkId", l.Id().Token).
+		logrus.WithField("linkId", l.Id()).
 			WithField("routerId", l.DestinationId()).
 			Info("successfully verified router for link")
 		return nil
@@ -198,7 +198,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 }
 
 func (self *heartbeatCallback) checkQueueTime() {
-	log := pfxlog.Logger().WithField("linkId", self.ch.Id().Token)
+	log := pfxlog.Logger().WithField("linkId", self.ch.Id())
 	if !self.latencySemaphore.TryAcquire() {
 		log.Warn("unable to check queue time, too many check already running")
 		return

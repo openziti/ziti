@@ -18,7 +18,7 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
@@ -45,7 +45,7 @@ func (self *controlHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 	log := pfxlog.ContextLogger(ch.Label())
 
 	if control, err := xgress.UnmarshallControl(msg); err == nil {
-		if err = self.forwarder.ForwardControl(xgress.Address(self.link.Id().Token), control); err != nil {
+		if err = self.forwarder.ForwardControl(xgress.Address(self.link.Id()), control); err != nil {
 			log.WithError(err).Debug("unable to forward")
 		}
 	} else {

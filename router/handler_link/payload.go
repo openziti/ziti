@@ -18,7 +18,7 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
@@ -42,12 +42,12 @@ func (self *payloadHandler) ContentType() int32 {
 
 func (self *payloadHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("linkId", self.link.Id().Token).
+		WithField("linkId", self.link.Id()).
 		WithField("routerId", self.link.DestinationId())
 
 	payload, err := xgress.UnmarshallPayload(msg)
 	if err == nil {
-		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id().Token), payload); err != nil {
+		if err := self.forwarder.ForwardPayload(xgress.Address(self.link.Id()), payload); err != nil {
 			log.WithError(err).Debug("unable to forward")
 		}
 		if payload.IsCircuitEndFlagSet() {

@@ -17,7 +17,7 @@
 package xgress_transport_udp
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/pkg/errors"

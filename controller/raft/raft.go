@@ -31,7 +31,7 @@ import (
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/raft/mesh"
 	"github.com/openziti/foundation/v2/concurrenz"

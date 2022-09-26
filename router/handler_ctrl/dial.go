@@ -18,8 +18,8 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
@@ -83,8 +83,8 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 	}
 
 	link, lockAcquired := self.registry.GetDialLock(dial)
-	if link != nil && link.Id().Token != dial.LinkId {
-		log.WithField("existingLinkId", link.Id().Token).Info("existing link found")
+	if link != nil && link.Id() != dial.LinkId {
+		log.WithField("existingLinkId", link.Id()).Info("existing link found")
 		if err := self.sendLinkFault(dial.LinkId); err != nil {
 			log.WithError(err).Error("error sending link fault")
 		}
@@ -100,7 +100,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 					log.WithError(err).Error("error sending link message ")
 				}
 			} else if existingLink != nil {
-				log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
+				log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
 			}
 		} else {
 			log.WithError(err).Error("link dialing failed")
@@ -116,7 +116,7 @@ func (self *dialHandler) handle(dial *ctrl_pb.Dial, _ channel.Channel) {
 
 func (self *dialHandler) sendLinkMessage(link xlink.Xlink) error {
 	linkMsg := &ctrl_pb.LinkConnected{
-		Id:    link.Id().Token,
+		Id:    link.Id(),
 		Conns: link.GetAddresses(),
 	}
 	if err := protobufs.MarshalTyped(linkMsg).Send(self.ctrl.Channel()); err != nil {

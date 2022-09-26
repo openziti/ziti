@@ -18,8 +18,8 @@ package handler_mgmt
 
 import (
 	"fmt"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/trace/pb"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"

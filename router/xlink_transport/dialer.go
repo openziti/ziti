@@ -18,7 +18,7 @@ package xlink_transport
 
 import (
 	"github.com/google/uuid"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -78,7 +78,7 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
 		link: &splitImpl{
-			id:              linkId,
+			id:              linkId.Token,
 			routerId:        dial.GetRouterId(),
 			routerVersion:   dial.GetRouterVersion(),
 			linkProtocol:    dial.GetLinkProtocol(),
@@ -121,7 +121,7 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	bindHandler := &dialBindHandler{
 		dialer: self,
 		link: &impl{
-			id:              linkId,
+			id:              linkId.Token,
 			routerId:        dial.GetRouterId(),
 			linkProtocol:    dial.GetLinkProtocol(),
 			routerVersion:   dial.GetRouterVersion(),
@@ -157,7 +157,7 @@ func (self *splitDialBindHandler) bindPayloadChannel(binding channel.Binding) er
 	self.link.payloadCh = binding.GetChannel()
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, true, false)
 	if err := bindHandler.BindChannel(binding); err != nil {
-		return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id.Token)
+		return errors.Wrapf(err, "error accepting outgoing payload channel for [l/%s]", self.link.id)
 	}
 	return nil
 }
@@ -166,7 +166,7 @@ func (self *splitDialBindHandler) bindAckChannel(binding channel.Binding) error 
 	self.link.ackCh = binding.GetChannel()
 	bindHandler := self.dialer.bindHandlerFactory.NewBindHandler(self.link, false, false)
 	if err := bindHandler.BindChannel(binding); err != nil {
-		return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id.Token)
+		return errors.Wrapf(err, "error accepting outgoing ack channel for [l/%s]", self.link.id)
 	}
 	return nil
 }

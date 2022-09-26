@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/stretchr/testify/require"

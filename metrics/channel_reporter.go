@@ -18,7 +18,7 @@ package metrics
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"google.golang.org/protobuf/proto"

@@ -17,7 +17,7 @@
 package xgress
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"time"
 )
 

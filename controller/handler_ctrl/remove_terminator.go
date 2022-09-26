@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -60,7 +60,7 @@ func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, c
 
 	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
 		log.
-			WithField("routerId", ch.Id().Token).
+			WithField("routerId", ch.Id()).
 			WithField("serviceId", terminator.Service).
 			WithField("terminator", request.TerminatorId).
 			Info("removed terminator")

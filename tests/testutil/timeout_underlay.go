@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"time"

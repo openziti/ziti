@@ -110,14 +110,14 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 }
 
 func (forwarder *Forwarder) RegisterLink(link xlink.Xlink) error {
-	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id().Token), link) {
-		return errors.Errorf("unable to register link %v as it is already registered", link.Id().Token)
+	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id()), link) {
+		return errors.Errorf("unable to register link %v as it is already registered", link.Id())
 	}
 	return nil
 }
 
 func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
-	forwarder.destinations.removeDestination(xgress.Address(link.Id().Token))
+	forwarder.destinations.removeDestination(xgress.Address(link.Id()))
 }
 
 func (forwarder *Forwarder) Route(route *ctrl_pb.Route) error {

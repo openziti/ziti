@@ -19,8 +19,8 @@ package handler_ctrl
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/ctrl_pb"

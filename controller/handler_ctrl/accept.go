@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -53,7 +53,7 @@ func (self *CtrlAccepter) AcceptUnderlay(underlay channel.Underlay) error {
 		return err
 	}
 
-	if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
+	if r, err := self.network.GetRouter(ch.Id()); err == nil {
 		go self.network.ConnectRouter(r)
 	} else {
 		return errors.Wrap(err, "error get router for control channel")
@@ -63,12 +63,12 @@ func (self *CtrlAccepter) AcceptUnderlay(underlay channel.Underlay) error {
 }
 
 func (self *CtrlAccepter) Bind(binding channel.Binding) error {
-	binding.GetChannel().SetLogicalName(binding.GetChannel().Id().Token)
+	binding.GetChannel().SetLogicalName(binding.GetChannel().Id())
 	ch := binding.GetChannel()
 
-	log := pfxlog.Logger().WithField("routerId", ch.Id().Token)
+	log := pfxlog.Logger().WithField("routerId", ch.Id())
 
-	if r, err := self.network.GetRouter(ch.Id().Token); err == nil {
+	if r, err := self.network.GetRouter(ch.Id()); err == nil {
 		if ch.Underlay().Headers() != nil {
 			if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 				if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
