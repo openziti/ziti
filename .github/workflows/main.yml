@@ -122,22 +122,10 @@ jobs:
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
-          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
-          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
+          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=release/amd64/linux/bin ./...
 
-          mkdir -p test/amd64/linux/bin
-          go build -tags=all,tests -o test/amd64/linux/bin ./...
-          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
-          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-release-${{ github.run_id }}
-          path: release/
-          retention-days: 5
-
+          go build -tags=all,tests -o release/amd64/linux/bin ./...
+          
       - name: Compute the Ziti Version String for CI Jobs
         id: get_version
         env:
@@ -248,20 +236,6 @@ jobs:
           go build -tags=all,tests -o test/amd64/linux/bin ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-release-${{ github.run_id }}
-          path: release/
-          retention-days: 5
-
-      - name: Upload Test artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: linux-test-${{ github.run_id }}
-          path: test/
-          retention-days: 5
       
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
