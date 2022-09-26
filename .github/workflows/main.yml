@@ -151,14 +151,6 @@ jobs:
             echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
             echo ::set-output name=ziti-version::${ZITI_VERSION}
           fi
-      - name: Move artifacts to bin subdir
-        run: |
-          mv -v test/amd64/linux/bin/* release/amd64/linux/
-          cd release/amd64/linux
-          mkdir bin
-          shopt -s extglob
-          mv -- !(bin) bin
-          chmod +x bin/*
 
       - name: Create Zitilab Bindings
         run: |
