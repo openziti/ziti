@@ -26,18 +26,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func newTraceHandler(appId *identity.TokenId, controller trace.Controller) *traceHandler {
+func newTraceHandler(appId *identity.TokenId, controller trace.Controller, ctrlCh channel.Channel) *traceHandler {
 	return &traceHandler{
-		appId:      appId,
-		controller: controller,
-		enabled:    false,
+		appId:        appId,
+		controller:   controller,
+		enabled:      false,
+		eventHandler: trace.NewChannelSink(ctrlCh),
 	}
 }
 
 type traceHandler struct {
-	appId      *identity.TokenId
-	controller trace.Controller
-	enabled    bool
+	appId        *identity.TokenId
+	controller   trace.Controller
+	enabled      bool
+	eventHandler trace.EventHandler
 }
 
 func (*traceHandler) ContentType() int32 {
@@ -59,9 +61,9 @@ func (handler *traceHandler) HandleReceive(msg *channel.Message, ch channel.Chan
 
 		if matchers.AppMatcher.Matches(handler.appId.Token) {
 			if request.Enable {
-				handler.controller.EnableTracing(trace.SourceTypePipe, matchers.PipeMatcher, resultChan)
+				handler.controller.EnableTracing(trace.SourceTypePipe, matchers.PipeMatcher, handler.eventHandler, resultChan)
 			} else {
-				handler.controller.DisableTracing(trace.SourceTypePipe, matchers.PipeMatcher, resultChan)
+				handler.controller.DisableTracing(trace.SourceTypePipe, matchers.PipeMatcher, handler.eventHandler, resultChan)
 			}
 		}
 

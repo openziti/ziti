@@ -79,7 +79,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id().Token, self.forwarder.MetricsRegistry()))
-	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id().Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(self.ctrl.Channel())))
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id().Token, ch, self.forwarder.TraceController()))
 
 	doHeartbeat, err := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
 	if err != nil {

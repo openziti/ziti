@@ -31,11 +31,15 @@ import (
 )
 
 type traceTogglePipeHandler struct {
-	network *network.Network
+	eventHandler trace.EventHandler
+	network      *network.Network
 }
 
 func newTogglePipeTracesHandler(network *network.Network) *traceTogglePipeHandler {
-	return &traceTogglePipeHandler{network: network}
+	return &traceTogglePipeHandler{
+		eventHandler: trace.NewDispatchWrapper(network.GetEventDispatcher().Dispatch),
+		network:      network,
+	}
 }
 
 func (*traceTogglePipeHandler) ContentType() int32 {
@@ -63,9 +67,9 @@ func (handler *traceTogglePipeHandler) HandleReceive(msg *channel.Message, ch ch
 
 	if checkMatch(handler.network.GetAppId(), matchers, verbosity, result) {
 		if request.Enable {
-			handler.network.GetTraceController().EnableTracing(trace.SourceTypePipe, matchers.PipeMatcher, resultChan)
+			handler.network.GetTraceController().EnableTracing(trace.SourceTypePipe, matchers.PipeMatcher, handler.eventHandler, resultChan)
 		} else {
-			handler.network.GetTraceController().DisableTracing(trace.SourceTypePipe, matchers.PipeMatcher, resultChan)
+			handler.network.GetTraceController().DisableTracing(trace.SourceTypePipe, matchers.PipeMatcher, handler.eventHandler, resultChan)
 		}
 		getApplyResults(resultChan, verbosity, result)
 	}
