@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -62,7 +62,7 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 	logger := pfxlog.
 		ContextLogger(self.ch.Label()).
 		WithError(err).
-		WithField("routerId", ctx.GetHandler().getChannel().Id().Token).
+		WithField("routerId", ctx.GetHandler().getChannel().Id()).
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
@@ -78,7 +78,7 @@ func (self *baseRequestHandler) returnError(ctx requestContext, err controllerEr
 
 func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 	logger := logrus.
-		WithField("routerId", ctx.GetHandler().getChannel().Id().Token).
+		WithField("routerId", ctx.GetHandler().getChannel().Id()).
 		WithField("operation", ctx.GetHandler().Label())
 
 	if sessionCtx, ok := ctx.(sessionRequestContext); ok {
@@ -135,7 +135,7 @@ func (self *baseSessionRequestContext) GetHandler() requestHandler {
 }
 
 func (self *baseSessionRequestContext) loadRouter() bool {
-	routerId := self.handler.getChannel().Id().Token
+	routerId := self.handler.getChannel().Id()
 	var err error
 	self.sourceRouter, err = self.handler.getNetwork().GetRouter(routerId)
 	if err != nil {

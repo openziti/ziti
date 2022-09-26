@@ -3,7 +3,7 @@ package xgress_edge
 import (
 	"crypto/x509"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
@@ -77,8 +77,8 @@ func (link *mirrorLink) DestinationId() string {
 	return "test"
 }
 
-func (link *mirrorLink) Id() *identity.TokenId {
-	return &identity.TokenId{Token: "router1"}
+func (link *mirrorLink) Id() string {
+	return "router1"
 }
 
 func (link *mirrorLink) SendPayload(payload *xgress.Payload) error {
@@ -269,7 +269,7 @@ func (ch *NoopTestChannel) Underlay() channel.Underlay {
 func (ch *NoopTestChannel) StartRx() {
 }
 
-func (ch *NoopTestChannel) Id() *identity.TokenId {
+func (ch *NoopTestChannel) Id() string {
 	panic("implement Id()")
 }
 

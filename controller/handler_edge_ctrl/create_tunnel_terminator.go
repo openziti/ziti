@@ -19,7 +19,7 @@ package handler_edge_ctrl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
@@ -74,7 +74,7 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, c
 }
 
 func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTerminatorRequestContext) {
-	logger := logrus.WithField("routerId", self.ch.Id().Token)
+	logger := logrus.WithField("routerId", self.ch.Id())
 
 	if !ctx.loadRouter() {
 		return

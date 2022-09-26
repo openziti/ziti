@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/metrics"

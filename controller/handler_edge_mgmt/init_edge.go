@@ -18,7 +18,7 @@ package handler_edge_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_mgmt_pb"
 	"github.com/openziti/fabric/handler_common"

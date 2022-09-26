@@ -19,8 +19,8 @@ package xgress_edge
 import (
 	"errors"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/latency"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"math"

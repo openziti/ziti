@@ -2,7 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"encoding/json"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/storage/ast"
@@ -36,7 +36,7 @@ func (self *listTunnelServicesHandler) Label() string {
 }
 
 func (self *listTunnelServicesHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
-	logger := logrus.WithField("router", self.ch.Id().Token)
+	logger := logrus.WithField("router", self.ch.Id())
 
 	ctx := &listTunnelServicesRequestContext{
 		baseTunnelRequestContext: baseTunnelRequestContext{

@@ -17,7 +17,7 @@
 package handler_edge_ctrl
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
@@ -55,7 +55,7 @@ func (self *removeTunnelTerminatorHandler) HandleReceive(msg *channel.Message, _
 }
 
 func (self *removeTunnelTerminatorHandler) RemoveTerminator(ctx *RemoveTunnelTerminatorRequestContext) {
-	logger := logrus.WithField("routerId", self.ch.Id().Token).WithField("terminatorId", ctx.terminatorId)
+	logger := logrus.WithField("routerId", self.ch.Id()).WithField("terminatorId", ctx.terminatorId)
 
 	if !ctx.loadRouter() {
 		return

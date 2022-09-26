@@ -30,7 +30,7 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 
 	identity2 "github.com/openziti/identity"
 	"github.com/pkg/errors"

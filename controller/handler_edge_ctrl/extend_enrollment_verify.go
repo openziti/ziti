@@ -19,7 +19,7 @@ package handler_edge_ctrl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"google.golang.org/protobuf/proto"
@@ -62,7 +62,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 			return
 		}
 
-		if verifyMsg == nil || len(verifyMsg.ClientCertPem) == 0 {
+		if len(verifyMsg.ClientCertPem) == 0 {
 			h.respond(&edge_ctrl_pb.Error{
 				Code:    "MISSING_CLIENT_PEM",
 				Message: "request did not contain a client certificate PEM",
@@ -70,7 +70,7 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 			return
 		}
 
-		routerId := ch.Id().Token
+		routerId := ch.Id()
 		edgeRouter, _ := h.appEnv.Managers.EdgeRouter.Read(routerId)
 
 		if edgeRouter != nil {

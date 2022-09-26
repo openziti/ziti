@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
 	cmap "github.com/orcaman/concurrent-map/v2"

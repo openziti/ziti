@@ -17,13 +17,13 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type updateTunnelTerminatorHandler struct {
@@ -67,7 +67,7 @@ func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTer
 		return
 	}
 
-	logger := logrus.WithField("routerId", self.ch.Id().Token).
+	logger := logrus.WithField("routerId", self.ch.Id()).
 		WithField("terminatorId", ctx.req.TerminatorId).
 		WithField("cost", ctx.req.Cost).
 		WithField("updateCost", ctx.req.UpdateCost).

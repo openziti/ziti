@@ -2,7 +2,7 @@ package xgress_edge
 
 import (
 	"context"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"

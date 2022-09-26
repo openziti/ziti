@@ -1,8 +1,8 @@
 package xgress_common
 
 import (
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
