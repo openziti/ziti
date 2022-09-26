@@ -10,7 +10,6 @@ import (
 	"github.com/openziti/fabric/router/handler_xgress"
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -155,7 +154,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 	link := newMirrorLink(fwd)
 
 	fwd.RegisterLink(link)
-	fwd.Route(&ctrl_pb.Route{
+	fwd.Route("test", &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -164,7 +163,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 		},
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
+	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 
@@ -229,7 +228,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 	link := newMirrorLink(fwd)
 
 	fwd.RegisterLink(link)
-	fwd.Route(&ctrl_pb.Route{
+	fwd.Route("test", &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -238,7 +237,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 		},
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: "test"}, "test", conn, xgress.Initiator, xgOptions, nil)
+	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
 	x.AddPeekHandler(metrics2.NewXgressPeekHandler(fwd.MetricsRegistry()))
 

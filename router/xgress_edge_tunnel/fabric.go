@@ -30,10 +30,11 @@ import (
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/identity"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"net"
 	"runtime"
@@ -44,10 +45,11 @@ import (
 
 func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
 	return &fabricProvider{
-		factory:      factory,
-		tunneler:     tunneler,
-		dialSessions: cmap.New[string](),
-		bindSessions: cmap.New[string](),
+		factory:          factory,
+		tunneler:         tunneler,
+		apiSessionTokens: map[string]string{},
+		dialSessions:     cmap.New[string](),
+		bindSessions:     cmap.New[string](),
 	}
 }
 
@@ -55,9 +57,9 @@ type fabricProvider struct {
 	factory  *Factory
 	tunneler *tunneler
 
-	apiSessionLock  sync.Mutex
-	apiSessionToken string
-	currentIdentity *edge.CurrentIdentity
+	apiSessionLock   sync.Mutex
+	apiSessionTokens map[string]string
+	currentIdentity  *edge.CurrentIdentity
 
 	dialSessions cmap.ConcurrentMap[string]
 	bindSessions cmap.ConcurrentMap[string]
@@ -73,13 +75,18 @@ func (self *fabricProvider) getBindSession(serviceName string) string {
 	return sessionId
 }
 
-func (self *fabricProvider) updateApiSession(resp *edge_ctrl_pb.CreateApiSessionResponse) {
+func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.CreateApiSessionResponse) {
 	self.apiSessionLock.Lock()
 	defer self.apiSessionLock.Unlock()
 
-	self.tunneler.stateManager.RemoveConnectedApiSession(self.apiSessionToken)
+	currentToken := self.apiSessionTokens[ctrlId]
+	if currentToken == resp.Token {
+		return
+	}
 
-	self.apiSessionToken = resp.Token
+	self.tunneler.stateManager.RemoveConnectedApiSession(currentToken)
+
+	self.apiSessionTokens[ctrlId] = resp.Token
 	self.currentIdentity = &edge.CurrentIdentity{
 		Id:                        resp.IdentityId,
 		Name:                      resp.IdentityName,
@@ -106,7 +113,7 @@ func (self *fabricProvider) updateApiSession(resp *edge_ctrl_pb.CreateApiSession
 		}
 	}
 
-	self.tunneler.stateManager.AddConnectedApiSession(self.apiSessionToken)
+	self.tunneler.stateManager.AddConnectedApiSession(resp.Token)
 }
 
 func (self *fabricProvider) authenticate() error {
@@ -151,16 +158,27 @@ func (self *fabricProvider) authenticate() error {
 		},
 	}
 
-	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(30 * time.Second).SendForReply(self.factory.Channel())
+	ctrlMap := self.factory.ctrls.GetAll()
+	results := newAuthResults(len(ctrlMap))
+	for k, v := range ctrlMap {
+		ctrlId := k
+		ctrl := v
+		go func() {
+			respMsg, err := protobufs.MarshalTyped(request).WithTimeout(30 * time.Second).SendForReply(ctrl.Channel())
 
-	resp := &edge_ctrl_pb.CreateApiSessionResponse{}
-	if err = xgress_common.GetResultOrFailure(respMsg, err, resp); err != nil {
-		return err
+			resp := &edge_ctrl_pb.CreateApiSessionResponse{}
+			if err = xgress_common.GetResultOrFailure(respMsg, err, resp); err != nil {
+				results.Error(err)
+				pfxlog.Logger().WithError(err).WithField("ctrlId", ctrlId).Error("failed to authenticate")
+				return
+			}
+
+			self.updateApiSession(ctrlId, resp)
+			results.Success()
+		}()
 	}
 
-	self.updateApiSession(resp)
-
-	return nil
+	return results.GetResults()
 }
 
 func (self *fabricProvider) PrepForUse(string) {}
@@ -191,7 +209,14 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		PeerData:             peerData,
 	}
 
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(self.factory.Channel())
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create circuit"
+		log.Error(errStr)
+		return errors.New(errStr)
+	}
+
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(service.GetDialTimeout()).SendForReply(ctrlCh)
 
 	response := &edge_ctrl_pb.CreateCircuitForServiceResponse{}
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
@@ -201,7 +226,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	if response.ApiSession != nil {
 		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new apiSession")
-		self.updateApiSession(response.ApiSession)
+		self.updateApiSession(ctrlCh.Id(), response.ApiSession)
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
@@ -223,7 +248,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		}
 	})
 
-	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
+	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), xgConn, xgress.Initiator, self.tunneler.listenOptions.Options, response.Tags)
 	self.tunneler.bindHandler.HandleXgressBind(x)
 	x.AddCloseHandler(xgress.CloseHandlerF(func(x *xgress.Xgress) { cleanupCallback() }))
 	x.Start()
@@ -303,8 +328,15 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 		InstanceId:  terminator.context.ListenOptions().Identity,
 	}
 
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create terminator"
+		log.Error(errStr)
+		return errors.New(errStr)
+	}
+
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{}
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(self.factory.Channel())
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(ctrlCh)
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
 		log.WithError(err).Error("error creating terminator")
 		return err
@@ -312,7 +344,7 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 
 	if response.ApiSession != nil {
 		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new api-session")
-		self.updateApiSession(response.ApiSession)
+		self.updateApiSession(ctrlCh.Id(), response.ApiSession)
 	}
 
 	if response.Session != nil && response.Session.SessionId != sessionId {
@@ -336,12 +368,22 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 }
 
 func (self *fabricProvider) removeTerminator(terminator *tunnelTerminator) error {
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		return errors.New("no controller available, cannot remove terminator")
+	}
+
 	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_RemoveTunnelTerminatorRequestType), []byte(terminator.terminatorId.Load()))
-	responseMsg, err := msg.WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(self.factory.Channel())
+	responseMsg, err := msg.WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(ctrlCh)
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTunnelTerminatorResponseType)
 }
 
 func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, precedence *edge.Precedence) error {
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		return errors.New("no controller available, cannot update terminator")
+	}
+
 	request := &edge_ctrl_pb.UpdateTunnelTerminatorRequest{
 		TerminatorId: terminatorId,
 	}
@@ -369,7 +411,7 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 
 	log.Debug("updating terminator")
 
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(self.factory.Channel())
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(self.factory.DefaultRequestTimeout()).SendForReply(ctrlCh)
 	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTunnelTerminatorResponseType); err != nil {
 		log.WithError(err).Error("terminator update failed")
 		return err
@@ -380,6 +422,11 @@ func (self *fabricProvider) updateTerminator(terminatorId string, cost *uint16, 
 }
 
 func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed bool) error {
+	ctrlCh := self.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		return errors.New("no controller available, cannot forward health event")
+	}
+
 	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_TunnelHealthEventType), nil)
 	msg.Headers[int32(edge_ctrl_pb.Header_TerminatorId)] = []byte(terminatorId)
 	msg.PutBoolHeader(int32(edge_ctrl_pb.Header_CheckPassed), checkPassed)
@@ -388,7 +435,7 @@ func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed boo
 		WithField("checkPassed", checkPassed)
 	logger.Debug("sending health event")
 
-	if err := self.factory.Channel().Send(msg); err != nil {
+	if err := msg.WithTimeout(self.factory.ctrls.DefaultRequestTimeout()).Send(ctrlCh); err != nil {
 		logger.WithError(err).Error("health event send failed")
 	} else {
 		logger.Debug("health event sent")
@@ -397,9 +444,9 @@ func (self *fabricProvider) sendHealthEvent(terminatorId string, checkPassed boo
 	return nil
 }
 
-func (self *fabricProvider) requestServiceList(lastUpdateToken []byte) {
+func (self *fabricProvider) requestServiceList(ctrlCh channel.Channel, lastUpdateToken []byte) {
 	msg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_ListServicesRequestType), lastUpdateToken)
-	if err := self.factory.Channel().Send(msg); err != nil {
+	if err := ctrlCh.Send(msg); err != nil {
 		logrus.WithError(err).Error("failed to send service list request to controller")
 	}
 }
@@ -455,4 +502,44 @@ func (self *tunnelTerminator) UpdateCostAndPrecedence(cost uint16, precedence ed
 
 func (self *tunnelTerminator) updateCostAndPrecedence(cost *uint16, precedence *edge.Precedence) error {
 	return self.provider.updateTerminator(self.terminatorId.Load(), cost, precedence)
+}
+
+func newAuthResults(count int) *authResults {
+	return &authResults{
+		ctrlCount: count,
+		okCh:      make(chan interface{}, 1),
+		errCh:     make(chan error, count),
+	}
+}
+
+type authResults struct {
+	ctrlCount int
+	okCh      chan interface{}
+	errCh     chan error
+}
+
+func (self *authResults) Success() {
+	select {
+	case self.okCh <- nil:
+	default:
+	}
+}
+
+func (self *authResults) Error(err error) {
+	self.errCh <- err
+}
+
+func (self *authResults) GetResults() error {
+	var errList []error
+	for {
+		select {
+		case <-self.okCh: // if any succeeded, return nil
+			return nil
+		case err := <-self.errCh:
+			errList = append(errList, err)
+			if len(errList) == self.ctrlCount {
+				return errorz.MultipleErrors(errList)
+			}
+		}
+	}
 }

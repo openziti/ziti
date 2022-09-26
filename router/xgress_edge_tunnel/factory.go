@@ -22,10 +22,10 @@ import (
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/identity"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -39,14 +39,14 @@ const (
 
 type Factory struct {
 	id                 identity.Identity
-	ctrl               channel.Channel
+	ctrls              env.NetworkControllers
 	routerConfig       *router.Config
 	stateManager       fabric.StateManager
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
 	tunneler           *tunneler
 }
 
-func (self *Factory) NotifyOfReconnect() {
+func (self *Factory) NotifyOfReconnect(channel.Channel) {
 	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
 	self.tunneler.servicePoller.serviceListener.NotifyOfReconnect()
 }
@@ -55,25 +55,20 @@ func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (self *Factory) Channel() channel.Channel {
-	return self.ctrl
-}
-
 func (self *Factory) Enabled() bool {
 	return true
 }
 
 func (self *Factory) BindChannel(binding channel.Binding) error {
-	self.ctrl = binding.GetChannel()
 	self.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(self.tunneler.servicePoller.handleServiceListUpdate)
 	binding.AddTypedReceiveHandler(self.serviceListHandler)
 	return nil
 }
 
-func (self *Factory) Run(ctrl channel.Channel, _ boltz.Db, notifyClose chan struct{}) error {
-	self.ctrl = ctrl
+func (self *Factory) Run(env env.RouterEnv) error {
+	self.ctrls = env.GetNetworkControllers()
 	if self.tunneler.listenOptions != nil {
-		return self.tunneler.Start(notifyClose)
+		return self.tunneler.Start(env.GetCloseNotify())
 	}
 	return nil
 }

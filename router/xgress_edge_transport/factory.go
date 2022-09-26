@@ -24,13 +24,12 @@ import (
 const BindingName = "edge_transport"
 
 type factory struct {
-	ctrl    xgress.CtrlChannel
 	options *xgress.Options
 }
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(ctrl xgress.CtrlChannel) xgress.Factory {
-	return &factory{ctrl: ctrl}
+func NewFactory() xgress.Factory {
+	return &factory{}
 }
 
 func (factory *factory) CreateListener(optionsData xgress.OptionsData) (xgress.Listener, error) {
@@ -42,5 +41,5 @@ func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 	if err != nil {
 		return nil, errors.Wrap(err, "error loading options")
 	}
-	return newDialer(factory.ctrl, options)
+	return newDialer(options)
 }

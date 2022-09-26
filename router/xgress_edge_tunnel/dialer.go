@@ -72,7 +72,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
 	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
-	x := xgress.NewXgress(circuitId, params.GetAddress(), xgConn, xgress.Terminator, self.dialOptions.Options, params.GetCircuitTags())
+	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), xgConn, xgress.Terminator, self.dialOptions.Options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 

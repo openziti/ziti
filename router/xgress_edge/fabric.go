@@ -72,7 +72,10 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 
 	if self.terminatorId.Load() != "" {
 		logger.Info("removing terminator on controller")
-		if err := self.edgeClientConn.removeTerminator(self); err != nil {
+		ctrlCh := self.edgeClientConn.listener.factory.ctrls.AnyCtrlChannel()
+		if ctrlCh == nil {
+			logger.Error("no controller available, unable to remove terminator")
+		} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self); err != nil {
 			logger.WithError(err).Error("failed to remove terminator")
 		}
 	} else {

@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel/v2 v2.0.0
-	github.com/openziti/fabric v0.20.4
+	github.com/openziti/fabric v0.21.0
 	github.com/openziti/foundation/v2 v2.0.4
 	github.com/openziti/identity v1.0.12
 	github.com/openziti/jwks v1.0.2
@@ -41,7 +41,7 @@ require (
 	github.com/openziti/sdk-golang v0.16.124
 	github.com/openziti/storage v0.1.21
 	github.com/openziti/transport/v2 v2.0.29
-	github.com/openziti/x509-claims v1.0.2
+	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.0
 	github.com/pkg/errors v0.9.1
@@ -57,7 +57,7 @@ require (
 	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50
 	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7
-	golang.org/x/sys v0.0.0-20220926163933-8cfa568d3c25
+	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0

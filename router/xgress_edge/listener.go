@@ -102,9 +102,15 @@ func (self *edgeClientConn) HandleClose(_ channel.Channel) {
 	log := pfxlog.ContextLogger(self.ch.Label())
 	log.Debugf("closing")
 	terminators := self.listener.factory.hostedServices.cleanupServices(self)
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
 	for _, terminator := range terminators {
+		if ctrlCh == nil {
+			log.WithField("terminatorId", terminator.terminatorId).Error("unable to notify controller of removed terminator")
+			continue
+		}
+
 		tLog := log.WithField("terminatorId", terminator.terminatorId.Load()).WithField("token", terminator.token)
-		if err := self.removeTerminator(terminator); err != nil {
+		if err := self.removeTerminator(ctrlCh, terminator); err != nil {
 			tLog.Warn("failed to remove terminator for session on channel close")
 		} else {
 			tLog.Info("Successfully removed terminator on channel close")
@@ -126,6 +132,14 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		return
 	}
 
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create circuit"
+		log.Error(errStr)
+		self.sendStateClosedReply(errStr, req)
+		return
+	}
+
 	conn := &edgeXgressConn{
 		mux:        self.msgMux,
 		MsgChannel: *edge.NewEdgeMsgChannel(self.ch, connId),
@@ -139,7 +153,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	// We can't fix conn id, since it's provided by the client
 	if err := self.msgMux.AddMsgSink(conn); err != nil {
-		log.WithField("token", token).Error(err)
+		log.WithError(err).WithField("token", token).Error("error adding to msg mux")
 		self.sendStateClosedReply(err.Error(), req)
 		return
 	}
@@ -165,7 +179,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 
 	response := &edge_ctrl_pb.CreateCircuitResponse{}
 	timeout := self.listener.options.Options.GetCircuitTimeout
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 
 	if err = getResultOrFailure(responseMsg, err, response); err != nil {
 		log.WithError(err).Warn("failed to dial fabric")
@@ -174,7 +188,7 @@ func (self *edgeClientConn) processConnect(req *channel.Message, ch channel.Chan
 		return
 	}
 
-	x := xgress.NewXgress(&identity.TokenId{Token: response.CircuitId}, xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options, response.Tags)
+	x := xgress.NewXgress(response.CircuitId, ctrlCh.Id(), xgress.Address(response.Address), conn, xgress.Initiator, &self.listener.options.Options, response.Tags)
 	self.listener.bindHandler.HandleXgressBind(x)
 	conn.ctrlRx = x
 	// send the state_connected before starting the xgress. That way we can't get a state_closed before we get state_connected
@@ -193,6 +207,14 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	connId, found := req.GetUint32Header(edge.ConnIdHeader)
 	if !found {
 		pfxlog.Logger().Errorf("connId not set. unable to process bind message")
+		return
+	}
+
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot create terminator"
+		log.Error(errStr)
+		self.sendStateClosedReply(errStr, req)
 		return
 	}
 
@@ -254,8 +276,8 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 		InstanceSecret: terminatorIdentitySecret,
 	}
 
-	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
+	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 	if err = xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_CreateTerminatorResponseType); err != nil {
 		log.WithError(err).Warn("error creating terminator")
 		messageSink.close(false, "") // don't notify here, as we're notifying next line with a response
@@ -286,6 +308,14 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 		WithField("sessionId", token).
 		WithFields(edge.GetLoggerFields(req))
 
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		errStr := "no controller available, cannot remove terminator"
+		log.Error(errStr)
+		self.sendStateClosedReply(errStr, req)
+		return
+	}
+
 	terminator, ok := self.listener.factory.hostedServices.Get(token)
 	if ok {
 		log = log.WithField("routerId", self.listener.id.Token).
@@ -294,7 +324,7 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 		defer self.listener.factory.hostedServices.Delete(token)
 
 		log.Debug("removing terminator")
-		if err := self.removeTerminator(terminator); err != nil {
+		if err := self.removeTerminator(ctrlCh, terminator); err != nil {
 			log.WithError(err).Error("error while removing terminator")
 			self.sendStateClosedReply(err.Error(), req)
 		} else {
@@ -306,15 +336,15 @@ func (self *edgeClientConn) processUnbind(req *channel.Message, ch channel.Chann
 	}
 }
 
-func (self *edgeClientConn) removeTerminator(terminator *edgeTerminator) error {
+func (self *edgeClientConn) removeTerminator(ctrlCh channel.Channel, terminator *edgeTerminator) error {
 	request := &edge_ctrl_pb.RemoveTerminatorRequest{
 		SessionToken: terminator.token,
 		Fingerprints: self.fingerprints.Prints(),
 		TerminatorId: terminator.terminatorId.Load(),
 	}
 
-	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
+	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 	return xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_RemoveTerminatorResponseType)
 }
 
@@ -326,6 +356,12 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 
 	if !ok {
 		log.Error("failed to update bind, no listener found")
+		return
+	}
+
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		log.Error("no controller available, cannot update terminator")
 		return
 	}
 
@@ -359,8 +395,8 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 
 	log.Debug("updating terminator")
 
-	timeout := self.listener.factory.DefaultRequestTimeout()
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(self.listener.factory.Channel())
+	timeout := self.listener.factory.ctrls.DefaultRequestTimeout()
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(timeout).SendForReply(ctrlCh)
 	if err := xgress_common.CheckForFailureResult(responseMsg, err, edge_ctrl_pb.ContentType_UpdateTerminatorResponseType); err != nil {
 		log.WithError(err).Error("terminator update failed")
 	} else {
@@ -371,6 +407,12 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.Channel) {
 	token := string(req.Body)
 	log := pfxlog.ContextLogger(ch.Label()).WithField("sessionId", token).WithFields(edge.GetLoggerFields(req))
+
+	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		log.Error("no controller available, cannot forward health event")
+		return
+	}
 
 	terminator, ok := self.listener.factory.hostedServices.Get(token)
 
@@ -391,8 +433,8 @@ func (self *edgeClientConn) processHealthEvent(req *channel.Message, ch channel.
 	log = log.WithField("terminator", terminator.terminatorId.Load()).WithField("checkPassed", checkPassed)
 	log.Debug("sending health event")
 
-	if err := protobufs.MarshalTyped(request).Send(self.listener.factory.Channel()); err != nil {
-		log.WithError(err).Error("send failed")
+	if err := protobufs.MarshalTyped(request).Send(ctrlCh); err != nil {
+		log.WithError(err).Error("send of health event failed")
 	}
 }
 

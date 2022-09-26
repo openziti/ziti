@@ -31,7 +31,6 @@ import (
 )
 
 type dialer struct {
-	ctrl    xgress.CtrlChannel
 	options *xgress.Options
 }
 
@@ -39,9 +38,8 @@ func (txd *dialer) IsTerminatorValid(string, string) bool {
 	return true
 }
 
-func newDialer(ctrl xgress.CtrlChannel, options *xgress.Options) (xgress.Dialer, error) {
+func newDialer(options *xgress.Options) (xgress.Dialer, error) {
 	txd := &dialer{
-		ctrl:    ctrl,
 		options: options,
 	}
 	return txd, nil
@@ -85,7 +83,7 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(peer.LocalAddr().String())
 	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(peer.RemoteAddr().String())
 
-	x := xgress.NewXgress(circuitId, params.GetAddress(), xgConn, xgress.Terminator, txd.options, params.GetCircuitTags())
+	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), xgConn, xgress.Terminator, txd.options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)
 	x.Start()
 

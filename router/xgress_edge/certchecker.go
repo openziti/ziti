@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/internal/edgerouter"
+	routerEnv "github.com/openziti/fabric/router/env"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
@@ -43,8 +44,8 @@ type CertExtender interface {
 
 type CertExpirationChecker struct {
 	id           *identity.TokenId
-	closeNotify  chan struct{}
-	ctrl         channel.Channel
+	closeNotify  <-chan struct{}
+	ctrls        routerEnv.NetworkControllers
 	edgeConfig   *edgerouter.Config
 	certsUpdated chan struct{}
 
@@ -57,11 +58,11 @@ type CertExpirationChecker struct {
 	extender CertExtender
 }
 
-func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *edgerouter.Config, ctrl channel.Channel, closeNotify chan struct{}) *CertExpirationChecker {
+func NewCertExpirationChecker(id *identity.TokenId, edgeConfig *edgerouter.Config, ctrls routerEnv.NetworkControllers, closeNotify <-chan struct{}) *CertExpirationChecker {
 	ret := &CertExpirationChecker{
 		id:              id,
 		closeNotify:     closeNotify,
-		ctrl:            ctrl,
+		ctrls:           ctrls,
 		edgeConfig:      edgeConfig,
 		certsUpdated:    make(chan struct{}, 1),
 		timeoutDuration: DefaultTimeoutDuration,
@@ -134,7 +135,12 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 		return fmt.Errorf("could not send enrollment extension request, a request has already been sent")
 	}
 
-	if self.ctrl.IsClosed() {
+	ctrlCh := self.ctrls.AnyCtrlChannel()
+	if ctrlCh == nil {
+		return errors.New("cannot request updates, no controller is available")
+	}
+
+	if ctrlCh.IsClosed() {
 		return errors.New("cannot request updates, control channel has closed")
 	}
 
@@ -166,7 +172,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 
 	msg := channel.NewMessage(env.EnrollmentExtendRouterRequestType, body)
 
-	if err = self.ctrl.Send(msg); err != nil {
+	if err = ctrlCh.Send(msg); err != nil {
 		return fmt.Errorf("could not send enrollment extension request, error: %v", err)
 	}
 
