@@ -17,7 +17,7 @@
 package mesh
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

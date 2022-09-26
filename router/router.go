@@ -24,7 +24,7 @@ import (
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/health"
 	fabricMetrics "github.com/openziti/fabric/metrics"

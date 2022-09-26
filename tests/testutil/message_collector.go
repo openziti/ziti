@@ -2,7 +2,7 @@ package testutil
 
 import (
 	"fmt"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"

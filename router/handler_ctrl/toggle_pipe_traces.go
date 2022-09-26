@@ -18,8 +18,8 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	trace_pb "github.com/openziti/channel/trace/pb"
+	"github.com/openziti/channel/v2"
+	trace_pb "github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/identity"

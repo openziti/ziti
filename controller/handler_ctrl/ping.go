@@ -17,7 +17,7 @@
 package handler_ctrl
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/handler_common"
 )
 

@@ -2,7 +2,7 @@ package handler_common
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"time"
 )
 

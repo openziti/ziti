@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"

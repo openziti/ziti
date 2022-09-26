@@ -18,7 +18,7 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
@@ -42,11 +42,11 @@ func (self *ackHandler) ContentType() int32 {
 
 func (self *ackHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).
-		WithField("linkId", self.link.Id().Token).
+		WithField("linkId", self.link.Id()).
 		WithField("routerId", self.link.DestinationId())
 
 	if ack, err := xgress.UnmarshallAcknowledgement(msg); err == nil {
-		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
+		if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id()), ack); err != nil {
 			log.WithError(err).Debug("unable to forward acknowledgement")
 		}
 	} else {

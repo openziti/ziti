@@ -18,8 +18,8 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
@@ -49,7 +49,7 @@ func newCloseHandler(link xlink.Xlink, ctrl xgress.CtrlChannel, forwarder *forwa
 func (self *closeHandler) HandleClose(ch channel.Channel) {
 	if self.closed.CompareAndSwap(false, true) {
 		log := pfxlog.ContextLogger(ch.Label()).
-			WithField("linkId", self.link.Id().Token).
+			WithField("linkId", self.link.Id()).
 			WithField("routerId", self.link.DestinationId())
 
 		// ensure that both parts of a split link are closed, if one side closes
@@ -62,7 +62,7 @@ func (self *closeHandler) HandleClose(ch channel.Channel) {
 		log.Info("link closed")
 
 		self.link.HandleCloseNotification(func() {
-			fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id().Token}
+			fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: self.link.Id()}
 			if err := protobufs.MarshalTyped(fault).Send(self.ctrl.Channel()); err == nil {
 				log.Debug("transmitted link fault")
 			} else {

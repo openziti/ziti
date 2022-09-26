@@ -3,8 +3,8 @@ package controller
 import (
 	"bufio"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/mgmt_pb"

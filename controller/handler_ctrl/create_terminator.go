@@ -19,7 +19,7 @@ package handler_ctrl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"

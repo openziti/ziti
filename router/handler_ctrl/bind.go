@@ -18,8 +18,8 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/latency"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"

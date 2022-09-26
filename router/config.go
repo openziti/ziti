@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/config"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"

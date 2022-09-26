@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
@@ -108,7 +108,7 @@ func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
 func (self *Router) debugOpWriteLinks(c *bufio.ReadWriter) error {
 	noLinks := true
 	for link := range self.xlinkRegistry.Iter() {
-		line := fmt.Sprintf("id: %v dest: %v protocol: %v\n", link.Id().Token, link.DestinationId(), link.LinkProtocol())
+		line := fmt.Sprintf("id: %v dest: %v protocol: %v\n", link.Id(), link.DestinationId(), link.LinkProtocol())
 		_, err := c.WriteString(line)
 		if err != nil {
 			return err

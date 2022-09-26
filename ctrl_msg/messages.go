@@ -17,7 +17,7 @@
 package ctrl_msg
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 )
 
 const (

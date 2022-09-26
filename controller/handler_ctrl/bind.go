@@ -20,8 +20,8 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/latency"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/latency"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	metrics2 "github.com/openziti/fabric/router/metrics"
@@ -166,7 +166,7 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 }
 
 func (self *heartbeatCallback) checkQueueTime() {
-	log := pfxlog.Logger().WithField("bindingId", self.ch.Id().Token)
+	log := pfxlog.Logger().WithField("bindingId", self.ch.Id())
 	if !self.latencySemaphore.TryAcquire() {
 		log.Warn("unable to check queue time, too many check already running")
 		return

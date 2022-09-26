@@ -18,7 +18,7 @@ package handler_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 )
 
 type xmgmtCloseHandler struct {

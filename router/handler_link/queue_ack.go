@@ -19,7 +19,7 @@ package handler_link
 import (
 	"github.com/ef-ds/deque"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
@@ -68,7 +68,7 @@ func (self *queuingAckHandler) HandleReceive(msg *channel.Message, ch channel.Ch
 		}
 	} else {
 		pfxlog.ContextLogger(ch.Label()).
-			WithField("linkId", self.link.Id().Token).
+			WithField("linkId", self.link.Id()).
 			WithField("routerId", self.link.DestinationId()).
 			WithError(err).
 			Error("error unmarshalling ack")
@@ -110,8 +110,8 @@ func (self *queuingAckHandler) ackForwarder() {
 	for {
 		select {
 		case ack := <-self.ackForward:
-			if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id().Token), ack); err != nil {
-				logger.WithField("linkId", self.link.Id().Token).
+			if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.link.Id()), ack); err != nil {
+				logger.WithField("linkId", self.link.Id()).
 					WithField("routerId", self.link.DestinationId()).
 					WithError(err).
 					Debug("unable to forward acknowledgement")

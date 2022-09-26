@@ -18,7 +18,7 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
@@ -50,7 +50,7 @@ func (h *routerLinkHandler) HandleReceive(msg *channel.Message, ch channel.Chann
 }
 
 func (h *routerLinkHandler) HandleLinks(ch channel.Channel, links *ctrl_pb.RouterLinks) {
-	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", ch.Id().Token)
+	log := pfxlog.ContextLogger(ch.Label()).WithField("routerId", ch.Id())
 
 	for _, link := range links.Links {
 		linkLog := log.WithField("linkId", link.Id).

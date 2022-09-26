@@ -19,7 +19,7 @@ package xlink_transport
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
@@ -94,7 +94,7 @@ func (self *listener) acceptLoop() {
 func (self *listener) BindChannel(binding channel.Binding) error {
 	log := pfxlog.ChannelLogger("link", "linkListener").
 		WithField("linkProtocol", self.GetLinkProtocol()).
-		WithField("linkId", binding.GetChannel().Id().Token)
+		WithField("linkId", binding.GetChannel().Id())
 
 	headers := binding.GetChannel().Underlay().Headers()
 	var chanType channelType
@@ -158,7 +158,7 @@ func (self *listener) bindSplitChannel(binding channel.Binding, chanType channel
 		if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 			log.Info("link registered")
 		} else if existingLink != nil {
-			log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
+			log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
 		}
 	}
 
@@ -181,7 +181,7 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 				routerId:        routerId,
 				routerVersion:   routerVersion,
 				linkProtocol:    self.GetLinkProtocol(),
-				droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id().Token),
+				droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id()),
 			},
 			eventTime: time.Now(),
 		}
@@ -213,8 +213,9 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, rou
 		id:              binding.GetChannel().Id(),
 		ch:              binding.GetChannel(),
 		routerId:        routerId,
+		routerVersion:   routerVersion,
 		linkProtocol:    self.GetLinkProtocol(),
-		droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id().Token),
+		droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id()),
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)
@@ -235,7 +236,7 @@ func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, rou
 	if existingLink, applied := self.xlinkRegistery.LinkAccepted(xli); applied {
 		log.Info("link registered")
 	} else if existingLink != nil {
-		log.WithField("existingLinkId", existingLink.Id().Token).Info("existing link found, new link closed")
+		log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
 	}
 
 	log.Info("accepted link")

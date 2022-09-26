@@ -22,7 +22,7 @@ import (
 	"encoding/json"
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/v2/errorz"

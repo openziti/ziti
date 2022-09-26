@@ -18,7 +18,7 @@ package handler_xgress
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"

@@ -3,8 +3,8 @@ package router
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/storage/boltz"
@@ -147,7 +147,7 @@ func (self *linkRegistryImpl) DialSucceeded(link xlink.Xlink) (xlink.Xlink, bool
 func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 	log := logrus.WithField("dest", link.DestinationId()).
 		WithField("linkProtocol", link.LinkProtocol()).
-		WithField("newLinkId", link.Id().Token)
+		WithField("newLinkId", link.Id())
 
 	key := self.getLinkLookupKey(link)
 	if link.IsClosed() {
@@ -155,8 +155,8 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		return nil, false
 	}
 	if existing := self.linkMap[key]; existing != nil {
-		log = log.WithField("currentLinkId", existing.Id().Token)
-		if existing.Id().Token < link.Id().Token {
+		log = log.WithField("currentLinkId", existing.Id())
+		if existing.Id() < link.Id() {
 			log.Info("duplicate link detected. closing new link (new link id is > than current link id)")
 			self.sendRouterLinkMessage(existing)
 			if err := link.Close(); err != nil {
@@ -168,7 +168,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 
 		// report link fault, then close link after allowing some time for circuits to be re-routed
 		fault := &ctrl_pb.Fault{
-			Id:      existing.Id().Token,
+			Id:      existing.Id(),
 			Subject: ctrl_pb.FaultSubject_LinkFault,
 		}
 
@@ -181,7 +181,7 @@ func (self *linkRegistryImpl) applyLink(link xlink.Xlink) (xlink.Xlink, bool) {
 		})
 	}
 	self.linkMap[key] = link
-	self.linkByIdMap[link.Id().Token] = link
+	self.linkByIdMap[link.Id()] = link
 	return nil, true
 }
 
@@ -192,14 +192,14 @@ func (self *linkRegistryImpl) LinkClosed(link xlink.Xlink) {
 	if val := self.linkMap[key]; val == link {
 		delete(self.linkMap, key)
 	}
-	delete(self.linkByIdMap, link.Id().Token)
+	delete(self.linkByIdMap, link.Id())
 }
 
 func (self *linkRegistryImpl) Shutdown() {
 	log := pfxlog.Logger()
 	linkCount := 0
 	for link := range self.Iter() {
-		log.WithField("linkId", link.Id().Token).Info("closing link")
+		log.WithField("linkId", link.Id()).Info("closing link")
 		_ = link.Close()
 		linkCount++
 	}
@@ -210,7 +210,7 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 	linkMsg := &ctrl_pb.RouterLinks{
 		Links: []*ctrl_pb.RouterLinks_RouterLink{
 			{
-				Id:           link.Id().Token,
+				Id:           link.Id(),
 				DestRouterId: link.DestinationId(),
 				LinkProtocol: link.LinkProtocol(),
 				DialAddress:  link.DialAddress(),
@@ -218,7 +218,7 @@ func (self *linkRegistryImpl) sendRouterLinkMessage(link xlink.Xlink) {
 		},
 	}
 	if err := protobufs.MarshalTyped(linkMsg).Send(self.ControlChannel()); err != nil {
-		pfxlog.Logger().WithField("linkId", link.Id().Token).
+		pfxlog.Logger().WithField("linkId", link.Id()).
 			WithField("dest", link.DestinationId()).
 			WithField("linkProtocol", link.LinkProtocol()).
 			WithError(err).Error("error sending router link message")
@@ -265,7 +265,7 @@ func (self *linkRegistryImpl) NotifyOfReconnect() {
 	routerLinks := &ctrl_pb.RouterLinks{}
 	for link := range self.Iter() {
 		routerLinks.Links = append(routerLinks.Links, &ctrl_pb.RouterLinks_RouterLink{
-			Id:           link.Id().Token,
+			Id:           link.Id(),
 			DestRouterId: link.DestinationId(),
 			LinkProtocol: link.LinkProtocol(),
 			DialAddress:  link.DialAddress(),

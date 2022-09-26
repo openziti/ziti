@@ -2,7 +2,7 @@ package xgress
 
 import (
 	"encoding/binary"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

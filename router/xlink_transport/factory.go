@@ -18,7 +18,7 @@ package xlink_transport
 
 import (
 	"fmt"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"

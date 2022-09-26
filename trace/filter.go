@@ -16,7 +16,7 @@
 
 package trace
 
-import "github.com/openziti/channel/trace/pb"
+import "github.com/openziti/channel/v2/trace/pb"
 
 type Filter interface {
 	Accept(event *trace_pb.ChannelMessage) bool

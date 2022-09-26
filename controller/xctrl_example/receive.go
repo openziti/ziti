@@ -20,7 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 )
 
 type receiveHandler struct{}

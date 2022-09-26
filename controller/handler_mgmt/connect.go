@@ -18,7 +18,7 @@ package handler_mgmt
 
 import (
 	"crypto/x509"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"

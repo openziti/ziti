@@ -84,7 +84,7 @@ type Dialer interface {
 }
 
 type Xlink interface {
-	Id() *identity.TokenId
+	Id() string
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error

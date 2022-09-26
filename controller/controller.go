@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"

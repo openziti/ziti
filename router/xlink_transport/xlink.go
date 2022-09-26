@@ -17,17 +17,16 @@
 package xlink_transport
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 )
 
 type impl struct {
-	id              *identity.TokenId
+	id              string
 	ch              channel.Channel
 	routerId        string
 	routerVersion   string
@@ -37,7 +36,7 @@ type impl struct {
 	droppedMsgMeter metrics.Meter
 }
 
-func (self *impl) Id() *identity.TokenId {
+func (self *impl) Id() string {
 	return self.id
 }
 
@@ -101,12 +100,12 @@ func (self *impl) IsClosed() bool {
 }
 
 func (self *impl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
-	detail.LinkDetails[self.id.Token] = self.InspectLink()
+	detail.LinkDetails[self.id] = self.InspectLink()
 }
 
 func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
-		Id:          self.Id().Token,
+		Id:          self.Id(),
 		Split:       false,
 		Protocol:    self.LinkProtocol(),
 		DialAddress: self.DialAddress(),

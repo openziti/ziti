@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
 )
 

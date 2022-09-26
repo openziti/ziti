@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/concurrenz"
