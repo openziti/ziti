@@ -117,6 +117,7 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
+          mkdir -p release/amd64/linux/bin
           sudo apt-get update
           sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
           $(go env GOPATH)/bin/ziti-ci configure-git
@@ -231,11 +232,6 @@ jobs:
           $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
-
-          mkdir -p test/amd64/linux/bin
-          go build -tags=all,tests -o test/amd64/linux/bin ./...
-          CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_TEST_OUTPUT -tags=all ./...
-          CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_TEST_OUTPUT -tags=all ./...
       
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
