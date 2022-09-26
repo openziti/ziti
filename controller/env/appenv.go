@@ -29,7 +29,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"

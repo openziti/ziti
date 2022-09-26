@@ -18,7 +18,7 @@ package handler_edge_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"google.golang.org/protobuf/proto"
@@ -41,7 +41,7 @@ func (h *sessionHeartbeatHandler) ContentType() int32 {
 func (h *sessionHeartbeatHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	go func() {
 		req := &edge_ctrl_pb.ApiSessionHeartbeat{}
-		routerId := ch.Id().Token
+		routerId := ch.Id()
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
 			notFoundTokens, err := h.appEnv.GetManagers().ApiSession.MarkActivityByTokens(req.Tokens...)

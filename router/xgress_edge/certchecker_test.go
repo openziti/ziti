@@ -7,7 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -568,7 +568,7 @@ func (ch *simpleTestChannel) Underlay() channel.Underlay {
 func (ch *simpleTestChannel) StartRx() {
 }
 
-func (ch *simpleTestChannel) Id() *identity.TokenId {
+func (ch *simpleTestChannel) Id() string {
 	panic("implement Id()")
 }
 

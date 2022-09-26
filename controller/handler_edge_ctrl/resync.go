@@ -17,12 +17,12 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/network"
+	"google.golang.org/protobuf/proto"
 )
 
 type resyncHandler struct {
@@ -48,9 +48,9 @@ func (h *resyncHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 		return
 	}
 
-	r, err := h.appEnv.GetHostController().GetNetwork().GetRouter(ch.Id().Token)
+	r, err := h.appEnv.GetHostController().GetNetwork().GetRouter(ch.Id())
 	if err != nil {
-		pfxlog.Logger().WithError(err).Errorf("could not find router %v, closing channel", ch.Id().Token)
+		pfxlog.Logger().WithError(err).Errorf("could not find router %v, closing channel", ch.Id())
 		_ = ch.Close()
 		return
 	}

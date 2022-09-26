@@ -17,14 +17,14 @@
 package handler_edge_ctrl
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type removeTerminatorHandler struct {
@@ -111,7 +111,7 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 	}
 
 	logrus.
-		WithField("routerId", self.ch.Id().Token).
+		WithField("routerId", self.ch.Id()).
 		WithField("serviceId", terminator.Service).
 		WithField("token", ctx.req.SessionToken).
 		WithField("terminator", ctx.req.TerminatorId).

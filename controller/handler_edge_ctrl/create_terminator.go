@@ -19,7 +19,7 @@ package handler_edge_ctrl
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
@@ -69,7 +69,7 @@ func (self *createTerminatorHandler) HandleReceive(msg *channel.Message, ch chan
 }
 
 func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorRequestContext) {
-	log := pfxlog.ContextLogger(self.ch.Label()).WithField("routerId", self.ch.Id().Token).WithField("token", ctx.req.SessionToken)
+	log := pfxlog.ContextLogger(self.ch.Label()).WithField("routerId", self.ch.Id()).WithField("token", ctx.req.SessionToken)
 
 	if !ctx.loadRouter() {
 		return

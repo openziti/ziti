@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/handler_edge_ctrl"
 	"github.com/openziti/edge/controller/model"
