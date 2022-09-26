@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	edge "github.com/openziti/edge/controller/config"
 	fabCtrl "github.com/openziti/fabric/controller"
 	fabForwarder "github.com/openziti/fabric/router/forwarder"
