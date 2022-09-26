@@ -20,6 +20,8 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/api_impl"
@@ -47,7 +49,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type Controller struct {
@@ -125,7 +126,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		raftController, err := raft.NewController(cfg.Id, cfg.Raft, metricRegistry)
+		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry)
 		if err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}

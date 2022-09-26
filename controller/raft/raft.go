@@ -19,6 +19,14 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"os"
+	"path"
+	"reflect"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -33,13 +41,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io/fs"
-	"os"
-	"path"
-	"reflect"
-	"strconv"
-	"sync"
-	"time"
 )
 
 type Config struct {
@@ -54,12 +55,13 @@ type Config struct {
 	}
 }
 
-func NewController(id *identity.TokenId, config *Config, metricsRegistry metrics.Registry) (*Controller, error) {
+func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry) (*Controller, error) {
 	result := &Controller{
 		Id:              id,
 		Config:          config,
 		metricsRegistry: metricsRegistry,
 		indexTracker:    NewIndexTracker(),
+		version:         version,
 	}
 	if err := result.Init(); err != nil {
 		return nil, err
@@ -81,6 +83,7 @@ type Controller struct {
 	metricsRegistry metrics.Registry
 	closeNotify     <-chan struct{}
 	indexTracker    IndexTracker
+	version         string
 }
 
 // GetRaft returns the managed raft instance
@@ -117,6 +120,10 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		if err := validatable.Validate(); err != nil {
 			return err
 		}
+	}
+
+	if self.Mesh.IsReadOnly() {
+		return errors.New("unable to execute command. In a readonly state: different versions detected in cluster")
 	}
 
 	if self.IsLeader() {
@@ -337,7 +344,7 @@ func (self *Controller) Init() error {
 		return nil
 	}
 
-	self.Mesh = mesh.New(self.Id, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
+	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
