@@ -19,8 +19,8 @@ package fabric
 import (
 	"fmt"
 	"google.golang.org/protobuf/proto"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/trace/pb"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/trace/pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"

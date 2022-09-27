@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/agent"
