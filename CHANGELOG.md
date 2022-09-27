@@ -11,6 +11,7 @@
 - Ziti CLI
   - `ziti edge create|update ca` now supports `externalIdClaim`
   - Improved List CAs
+  - Bug Fixes
 - Identity
   - Automatic File Reloads
 
@@ -196,6 +197,9 @@ Example:
 │                        │         │        │            │             │                 │ Identity Roles       │  three, two,one        │
 ╰────────────────────────┴─────────┴────────┴────────────┴─────────────┴─────────────────┴──────────────────────┴────────────────────────╯
 ```
+### Bug Fixes
+
+* [Issue 845](https://github.com/openziti/ziti/issues/845): Setting ZITI_EDGE_ROUTER_IP_OVERRIDE now adds the IP to the CSR SANs of the router config
 
 ## Ziti Library Updates
 

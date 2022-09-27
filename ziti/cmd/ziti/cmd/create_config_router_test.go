@@ -4,6 +4,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -315,4 +316,33 @@ func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) 
 	for field, value := range expectedNonEmptyTimeValues {
 		assert.NotZero(t, *value, expectedNonEmptyTimeFields[field]+" should be a non-zero value")
 	}
+}
+
+func TestEdgeRouterIPOverrideIsConsumed(t *testing.T) {
+	routerName := "MyFabricRouter"
+	blank := ""
+	externalIP := "123.456.78.9"
+
+	// Setup options
+	clearOptionsAndTemplateData()
+	routerOptions.Output = defaultOutput
+
+	// Set the env variable to non-empty value
+	_ = os.Setenv(constants.ZitiEdgeRouterIPOverrideVarName, externalIP)
+
+	// Check that template value is currently blank
+	assert.Equal(t, blank, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", blank, data.Router.Edge.IPOverride)
+
+	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
+	cmd := NewCmdCreateConfigRouter()
+	cmd.SetArgs([]string{"edge", "--routerName", routerName})
+	configOutput := captureOutput(func() {
+		_ = cmd.Execute()
+	})
+
+	// Check that the template values now contains the custom external IP override value
+	assert.Equal(t, externalIP, data.Router.Edge.IPOverride, "Mismatch router IP override, expected %s but got %s", externalIP, data.Router.Edge.IPOverride)
+
+	// Check that the config output has the IP
+	assert.True(t, strings.Contains(configOutput, externalIP), "Expected value not found; expected to find value of "+constants.ZitiEdgeRouterIPOverrideVarName+" in config output.")
 }
