@@ -17,10 +17,10 @@
 package persistence
 
 import (
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
@@ -198,7 +198,7 @@ func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Sess
 	if id != nil {
 		return store.LoadOneById(tx, string(id))
 	}
-	return nil, nil
+	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
 }
 
 func (store *sessionStoreImpl) LoadCerts(tx *bbolt.Tx, id string) ([]*SessionCert, error) {
