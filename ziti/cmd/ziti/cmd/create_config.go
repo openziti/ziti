@@ -128,8 +128,9 @@ type RouterTemplateValues struct {
 }
 
 type EdgeRouterTemplateValues struct {
-	Hostname string
-	Port     string
+	Hostname   string
+	Port       string
+	IPOverride string
 }
 
 type WSSRouterTemplateValues struct {

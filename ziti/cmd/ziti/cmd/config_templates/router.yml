@@ -50,6 +50,7 @@ csr:
       - localhost
     ip:
       - "127.0.0.1"
+{{ if .Router.Edge.IPOverride }}      - "{{ .Router.Edge.IPOverride }}"{{ end }}
 {{ else }}
 edge:
   csr:
@@ -64,6 +65,7 @@ edge:
         - localhost
       ip:
         - "127.0.0.1"
+{{ if .Router.Edge.IPOverride }}        - "{{ .Router.Edge.IPOverride }}"{{ end }}
 {{ end }}
 {{ if not .Router.IsWss }}#{{ end }}transport:
 {{ if not .Router.IsWss }}#{{ end }}  ws:

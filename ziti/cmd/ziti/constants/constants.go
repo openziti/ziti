@@ -99,4 +99,6 @@ const (
 	ZitiEdgeCtrlAdvertisedPortVarName            = "ZITI_EDGE_CONTROLLER_PORT"
 	ZitiEdgeCtrlAdvertisedPortVarDescription     = "The advertised port of the edge controller"
 	ExternalDNSVarName                           = "EXTERNAL_DNS"
+	ZitiEdgeRouterIPOverrideVarName              = "ZITI_EDGE_ROUTER_IP_OVERRIDE"
+	ZitiEdgeRouterIPOverrideVarDescription       = "Override the default edge router IP with a custom IP, this IP will also be added to the PKI"
 )
