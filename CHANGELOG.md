@@ -11,6 +11,7 @@
 - Ziti CLI
   - `ziti edge create|update ca` now supports `externalIdClaim`
   - Improved List CAs
+  - Allow dynamic modification of enrollment durations
   - Bug Fixes
 - Identity
   - Automatic File Reloads
@@ -196,6 +197,51 @@ Example:
 │                        │         │        │            │             │                 ├──────────────────────┼────────────────────────┤
 │                        │         │        │            │             │                 │ Identity Roles       │  three, two,one        │
 ╰────────────────────────┴─────────┴────────┴────────────┴─────────────┴─────────────────┴──────────────────────┴────────────────────────╯
+```
+### Allow dynamic modification of enrollment durations
+#### Identity Enrollment Duration
+Setting the environment variable `ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION` to some value **in minutes** will override the default identity enrollment duration configuration
+when creating new controller configurations. If left unset, the default value is used. Using this method applies to controller config generation through the CLI as 
+well as quickstart deployments.
+
+Example:
+```shell
+# Set identity enrollment to 60 minutes, controller configs created afterward will use this value
+export ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=60
+```
+
+An additional argument `--identityEnrollmentDuration` has been added to the CLI controller config generation. If the argument is provided, the value of the argument will take 
+precedence, followed by the value of the environment variable (noted above), and if neither are used, the default value is used. Note that the argument takes a time unit 
+(m for minutes, h for hour, etc.)
+
+Example:
+```shell
+# Create a controller config with an identity enrollment duration of 60 minutes
+ziti create config controller --identityEnrollmentDuration 60m
+# OR
+ziti create config controller --identityEnrollmentDuration 1h
+```
+#### Router Enrollment Duration
+Setting the environment variable `ZITI_EDGE_ROUTER_ENROLLMENT_DURATION` to some value **in minutes** will override the default router enrollment duration configuration
+when creating new controller configurations. If left unset, the default value is used. Using this method applies to controller config generation through the CLI as
+well as quickstart deployments.
+
+Example:
+```shell
+# Set router enrollment to 60 minutes, controller configs created afterward will use this value
+export ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=60
+```
+
+An additional argument `--routerEnrollmentDuration` has been added to the CLI controller config generation. If the argument is provided, the value of the argument will take
+precedence, followed by the value of the environment variable (noted above), and if neither are used, the default value is used. Note that the argument takes a time unit
+(m for minutes, h for hour, etc.)
+
+Example:
+```shell
+# Create a controller config with a router enrollment duration of 60 minutes
+ziti create config controller --routerEnrollmentDuration 60m
+# OR
+ziti create config controller --routerEnrollmentDuration 1h
 ```
 ### Bug Fixes
 
@@ -857,7 +903,7 @@ The `ziti fabric list terminators` operation now shows `InstanceId` instead of `
 - Fabric
   - N/A
 - Ziti CLI
-  - N/A
+  - Allow dynamic modification of enrollment durations
 - SDK Golang
   - N/A
 
@@ -949,6 +995,28 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 The following new endpoint has been added:
 - `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.
 
+
+# Ziti CLI
+## Enhancements
+### Allow dynamic modification of enrollment durations
+The enrollment period for Edge Identities as well as Edge Routers was previously modifiable through the controller config file. However, modifying the controller config requires restarting the controller which is not always easily done.
+
+Using one of the following methods will change the duration in the config as it is written therefore providing these durations on initial startup of the controller.
+
+NOTE: The command line flag option will override any environment variable that is set. Only one of the methods modify these values is necessary with the CLI command taking priority. The default value will be used if no modification is provided 
+#### Environment Variable(s)
+```shell
+# Example set Ziti Edge Identity Enrollment duration to 20 minutes
+export ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=20
+
+# Example set Ziti Edge Router Enrollment duration to 30 minutes
+export ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=30
+```
+#### CLI - Controller config creation optional flag(s)
+```shell
+# Example set Edge Identity Enrollment and Edge Router Enrollment durations to 20 and 30 minutes respectively
+ziti create config controller --identityEnrollmentDuration 20m --routerEnrollmentDuration 30m
+```
 
 # Release 0.25.10
 

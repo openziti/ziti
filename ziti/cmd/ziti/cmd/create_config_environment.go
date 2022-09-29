@@ -117,6 +117,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort},
 				{constants.ZitiEdgeCtrlAdvertisedHostPortVarName, constants.ZitiEdgeCtrlAdvertisedHostPortVarDescription, data.Controller.Edge.AdvertisedHostPort},
 				{constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.ZitiEdgeCtrlAdvertisedPortVarDescription, data.Controller.Edge.AdvertisedPort},
+				{constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, data.Controller.EdgeIdentityDuration.String()},
+				{constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, data.Controller.EdgeRouterDuration.String()},
 			}
 
 			// Setup logging
@@ -155,30 +157,32 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
 		"The following environment variables can be set to override config values (current value is displayed):\n"+
 		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s\n"+
-		"%-36s %-50s %s",
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
 		constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name,
@@ -203,7 +207,9 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiEdgeCtrlIdentityKeyVarName, constants.ZitiEdgeCtrlIdentityKeyVarDescription, data.Controller.Edge.IdentityKey,
 		constants.ZitiEdgeCtrlIdentityCAVarName, constants.ZitiEdgeCtrlIdentityCAVarDescription, data.Controller.Edge.IdentityCA,
 		constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
-		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey)
+		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey,
+		constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeIdentityDuration.Minutes()),
+		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeRouterDuration.Minutes()))
 
 	cmd.Long = createConfigLong
 

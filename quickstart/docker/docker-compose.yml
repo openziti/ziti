@@ -6,6 +6,9 @@ services:
       - ./.env
     ports:
       - "1280:1280"
+    environment:
+      - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
+      - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
     networks:
       zitiblue:
         aliases:
