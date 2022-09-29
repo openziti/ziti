@@ -464,8 +464,8 @@ github.com/openziti/storage v0.1.21 h1:m8ny8AuCqjZQRpiHUhQlmZjUGAW1LCRjrPA93WQsj
 github.com/openziti/storage v0.1.21/go.mod h1:onJ7mLnnB2nfKdNCJHZlVRnPZSSPUJvuu3gzZ8vR2Mo=
 github.com/openziti/transport/v2 v2.0.29 h1:lT9FyDUF3bxkMYjFACW909LSc7sonLK86ghRDXN05Ug=
 github.com/openziti/transport/v2 v2.0.29/go.mod h1:vYXp00wBXxq3s5ffSJEfkscOBH2+/d29FK1l7yMid4g=
-github.com/openziti/x509-claims v1.0.2 h1:PSv/xRfejIAcPc16A902k08rSBs3R8bjtL4qq6WEwCI=
-github.com/openziti/x509-claims v1.0.2/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
+github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
+github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0cU=
 github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
 github.com/orcaman/concurrent-map/v2 v2.0.0 h1:iSMwuBQvQ1nX5i9gYuGMiSy0fjWHmazdjF+NdSO9JzI=
