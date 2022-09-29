@@ -89,6 +89,10 @@ func (self *baseTunnelRequestContext) loadIdentity() {
 }
 
 func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) bool {
+	return self.ensureApiSessionLocking(configTypes, false)
+}
+
+func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []string, locked bool) bool {
 	if self.err == nil {
 		logger := logrus.
 			WithField("operation", self.handler.Label()).
@@ -115,8 +119,11 @@ func (self *baseTunnelRequestContext) ensureApiSession(configTypes []string) boo
 			state.clearCurrentApiSessionId()
 		}
 
-		state.createApiSessionLock.Lock()
-		defer state.createApiSessionLock.Unlock()
+		if !locked {
+			state.createApiSessionLock.Lock()
+			defer state.createApiSessionLock.Unlock()
+			return self.ensureApiSessionLocking(configTypes, true)
+		}
 
 		// If none are passed in use the cached set. If the cached set is empty, use 'all'
 		if len(configTypes) == 0 {
