@@ -212,7 +212,7 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 	}
 
 	provider := &x509claims.ProviderBasic{
-		Definitions: make([]x509claims.Definition, 1),
+		Definitions: []x509claims.Definition{},
 	}
 
 	switch entity.ExternalIdClaim.Location {
@@ -223,7 +223,7 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 			return "", err
 		}
 
-		provider.Definitions[0] = definition
+		provider.Definitions = append(provider.Definitions, definition)
 
 	case persistence.ExternalIdClaimLocSanUri:
 		definition, err := getUriDefinition(entity.ExternalIdClaim)
@@ -232,7 +232,7 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 			return "", err
 		}
 
-		provider.Definitions[0] = definition
+		provider.Definitions = append(provider.Definitions, definition)
 	case persistence.ExternalIdClaimLocSanEmail:
 		definition, err := getStringDefinition(entity.ExternalIdClaim)
 		definition.Locator = &x509claims.LocatorSanEmail{}
@@ -240,7 +240,7 @@ func (entity *Ca) GetExternalId(cert *x509.Certificate) (string, error) {
 			return "", err
 		}
 
-		provider.Definitions[0] = definition
+		provider.Definitions = append(provider.Definitions, definition)
 	}
 
 	claims := provider.Claims(cert)
