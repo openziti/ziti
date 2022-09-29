@@ -143,7 +143,8 @@ func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
 	logrus.Errorf("updating with route: %+v", route)
 	logrus.Errorf("updating with route: %v", route)
 
-	self.forwarder.Route(route)
+	// TODO: Fix. See fabric#508
+	self.forwarder.Route(self.ctrls.AnyCtrlChannel().Id(), route)
 	_, _ = c.WriteString("route added")
 	return nil
 }
@@ -151,35 +152,41 @@ func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
 func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
 	logrus.Warn("control channel: closing")
 	_, _ = c.WriteString("control channel: closing\n")
-	if toggleable, ok := self.Channel().Underlay().(connectionToggle); ok {
-		if err := toggleable.Disconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to close")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+	self.ctrls.ForEach(func(controllerId string, ch channel.Channel) {
+		log := pfxlog.Logger().WithField("ctrlId", controllerId)
+		if toggleable, ok := ch.Underlay().(connectionToggle); ok {
+			if err := toggleable.Disconnect(); err != nil {
+				log.WithError(err).Error("control channel: failed to close")
+				_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
+			} else {
+				log.Warn("control channel: closed")
+				_, _ = c.WriteString("control channel: closed")
+			}
 		} else {
-			logrus.Warn("control channel: closed")
-			_, _ = c.WriteString("control channel: closed")
+			log.Warn("control channel: error not toggleable")
+			_, _ = c.WriteString("control channel: error not toggleable")
 		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
+	})
 	return nil
 }
 
 func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
 	logrus.Warn("control channel: reconnecting")
-	if togglable, ok := self.Channel().Underlay().(connectionToggle); ok {
-		if err := togglable.Reconnect(); err != nil {
-			logrus.WithError(err).Error("control channel: failed to reconnect")
-			_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+	self.ctrls.ForEach(func(controllerId string, ch channel.Channel) {
+		log := pfxlog.Logger().WithField("ctrlId", controllerId)
+		if togglable, ok := ch.(connectionToggle); ok {
+			if err := togglable.Reconnect(); err != nil {
+				log.WithError(err).Error("control channel: failed to reconnect")
+				_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
+			} else {
+				log.Warn("control channel: reconnected")
+				_, _ = c.WriteString("control channel: reconnected")
+			}
 		} else {
-			logrus.Warn("control channel: reconnected")
-			_, _ = c.WriteString("control channel: reconnected")
+			log.Warn("control channel: error not toggleable")
+			_, _ = c.WriteString("control channel: error not toggleable")
 		}
-	} else {
-		logrus.Warn("control channel: error not toggleable")
-		_, _ = c.WriteString("control channel: error not toggleable")
-	}
+	})
 	return nil
 }
 

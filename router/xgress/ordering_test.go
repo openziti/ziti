@@ -3,12 +3,11 @@ package xgress
 import (
 	"encoding/binary"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/stretchr/testify/require"
 	"io"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -16,7 +15,7 @@ import (
 type testConn struct {
 	ch          chan uint64
 	closeNotify chan struct{}
-	closed      concurrenz.AtomicBoolean
+	closed      atomic.Bool
 }
 
 func (conn *testConn) Close() error {
@@ -73,7 +72,7 @@ func Test_Ordering(t *testing.T) {
 		closeNotify: make(chan struct{}),
 	}
 
-	x := NewXgress(&identity.TokenId{Token: "test"}, "test", conn, Initiator, DefaultOptions(), nil)
+	x := NewXgress("test", "ctrl", "test", conn, Initiator, DefaultOptions(), nil)
 	x.receiveHandler = noopReceiveHandler{}
 	go x.tx()
 

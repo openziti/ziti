@@ -35,55 +35,59 @@ type bindHandler struct {
 	env                env.RouterEnv
 	forwarder          *forwarder.Forwarder
 	ctrlAddressChanger CtrlAddressChanger
+	xgDialerPool       goroutines.Pool
+	linkDialerPool     goroutines.Pool
 }
 
-func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger) channel.BindHandler {
-	return &bindHandler{
-		env:                routerEnv,
-		forwarder:          forwarder,
-		ctrlAddressChanger: ctrlAddressChanger,
-	}
-}
-
-func (self *bindHandler) BindChannel(binding channel.Binding) error {
+func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger) (channel.BindHandler, error) {
 	linkDialerPoolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(self.forwarder.Options.LinkDial.QueueLength),
+		QueueSize:   uint32(forwarder.Options.LinkDial.QueueLength),
 		MinWorkers:  0,
-		MaxWorkers:  uint32(self.forwarder.Options.LinkDial.WorkerCount),
+		MaxWorkers:  uint32(forwarder.Options.LinkDial.WorkerCount),
 		IdleTime:    30 * time.Second,
-		CloseNotify: self.env.GetCloseNotify(),
+		CloseNotify: routerEnv.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during link dial")
 		},
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.env.GetMetricsRegistry(), "pool.link.dialer")
+	metrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.link.dialer")
 
 	linkDialerPool, err := goroutines.NewPool(linkDialerPoolConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating link dialer pool")
+		return nil, errors.Wrap(err, "error creating link dialer pool")
 	}
 
 	xgDialerPoolConfig := goroutines.PoolConfig{
-		QueueSize:   uint32(self.forwarder.Options.XgressDial.QueueLength),
+		QueueSize:   uint32(forwarder.Options.XgressDial.QueueLength),
 		MinWorkers:  0,
-		MaxWorkers:  uint32(self.forwarder.Options.XgressDial.WorkerCount),
+		MaxWorkers:  uint32(forwarder.Options.XgressDial.WorkerCount),
 		IdleTime:    30 * time.Second,
-		CloseNotify: self.env.GetCloseNotify(),
+		CloseNotify: routerEnv.GetCloseNotify(),
 		PanicHandler: func(err interface{}) {
 			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during xgress dial")
 		},
 	}
 
-	metrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, self.env.GetMetricsRegistry(), "pool.route.handler")
+	metrics.ConfigureGoroutinesPoolMetrics(&xgDialerPoolConfig, routerEnv.GetMetricsRegistry(), "pool.route.handler")
 
 	xgDialerPool, err := goroutines.NewPool(xgDialerPoolConfig)
 	if err != nil {
-		return errors.Wrap(err, "error creating xgress route handler pool")
+		return nil, errors.Wrap(err, "error creating xgress route handler pool")
 	}
 
-	binding.AddTypedReceiveHandler(newDialHandler(self.env, linkDialerPool))
-	binding.AddTypedReceiveHandler(newRouteHandler(self.env, self.forwarder, xgDialerPool))
+	return &bindHandler{
+		env:                routerEnv,
+		forwarder:          forwarder,
+		ctrlAddressChanger: ctrlAddressChanger,
+		xgDialerPool:       xgDialerPool,
+		linkDialerPool:     linkDialerPool,
+	}, nil
+}
+
+func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(newDialHandler(binding.GetChannel(), self.env, self.linkDialerPool))
+	binding.AddTypedReceiveHandler(newRouteHandler(binding.GetChannel(), self.env, self.forwarder, self.xgDialerPool))
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
@@ -94,15 +98,16 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 	latency.AddLatencyProbeResponder(binding)
 
-	cb := &heartbeatCallback{}
+	ctrl := self.env.GetNetworkControllers().Add(binding.GetChannel())
 
-	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+	// make configurable. see fabric#507
+	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, ctrl.HeartbeatCallback())
 
 	if self.env.GetTraceHandler() != nil {
 		binding.AddPeekHandler(self.env.GetTraceHandler())
 	}
 
-	for _, x := range self.env.GetXtrls() {
+	for _, x := range self.env.GetXrctrls() {
 		if err := binding.Bind(x); err != nil {
 			return err
 		}
@@ -110,15 +115,3 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	return nil
 }
-
-type heartbeatCallback struct{}
-
-func (self *heartbeatCallback) HeartbeatTx(int64) {}
-
-func (self *heartbeatCallback) HeartbeatRx(int64) {}
-
-func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
-
-func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {}
-
-func (self *heartbeatCallback) CheckHeartBeat() {}

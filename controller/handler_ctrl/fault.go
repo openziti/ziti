@@ -70,7 +70,7 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 				}
 
 				if wasConnected {
-					if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Get() {
+					if ctrl := otherRouter.Control; ctrl != nil && otherRouter.Connected.Load() {
 						if err := protobufs.MarshalTyped(fault).Send(ctrl); err != nil {
 							log.WithField("routerId", otherRouter.Id).
 								WithError(err).Error("failed to forward link fault to other router")

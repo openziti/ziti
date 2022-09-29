@@ -18,7 +18,6 @@ package env
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/identity"
@@ -26,11 +25,11 @@ import (
 )
 
 type RouterEnv interface {
-	xgress.CtrlChannel
+	GetNetworkControllers() NetworkControllers
 	GetRouterId() *identity.TokenId
 	GetDialerCfg() map[string]xgress.OptionsData
 	GetXlinkDialer() []xlink.Dialer
-	GetXtrls() []xctrl.Xctrl
+	GetXrctrls() []Xrctrl
 	GetTraceHandler() *channel.TraceHandler
 	GetXlinkRegistry() xlink.Registry
 	GetCloseNotify() <-chan struct{}

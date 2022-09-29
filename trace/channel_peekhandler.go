@@ -26,6 +26,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"google.golang.org/protobuf/proto"
+	"sync/atomic"
 	"time"
 )
 
@@ -34,7 +35,7 @@ var decoders = []channel.TraceMessageDecoder{channel.Decoder{}, ctrl_pb.Decoder{
 type ChannelPeekHandler struct {
 	appId      string
 	ch         channel.Channel
-	enabled    concurrenz.AtomicBoolean
+	enabled    atomic.Bool
 	controller Controller
 	decoders   []channel.TraceMessageDecoder
 	eventSinks concurrenz.CopyOnWriteSlice[EventHandler]
@@ -57,12 +58,12 @@ func (self *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher Sou
 	if matched {
 		nextState = enable
 		if enable {
-			self.enabled.Set(true)
+			self.enabled.Store(true)
 			self.eventSinks.Append(handler)
 		} else {
 			self.eventSinks.Delete(handler)
 			if len(self.eventSinks.Value()) == 0 {
-				self.enabled.Set(false)
+				self.enabled.Store(false)
 			}
 		}
 	}
@@ -84,7 +85,7 @@ func NewChannelPeekHandler(appId string, ch channel.Channel, controller Controll
 }
 
 func (self *ChannelPeekHandler) IsEnabled() bool {
-	return self.enabled.Get()
+	return self.enabled.Load()
 }
 
 func (*ChannelPeekHandler) Connect(channel.Channel, string) {

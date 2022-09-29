@@ -916,7 +916,7 @@ func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) {
 func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) error {
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 	if circuit.Rerouting.CompareAndSwap(false, true) {
-		defer circuit.Rerouting.Set(false)
+		defer circuit.Rerouting.Store(false)
 
 		log.Warn("rerouting circuit")
 
@@ -948,7 +948,7 @@ func (network *Network) smartReroute(circuit *Circuit, cq *Path, deadline time.T
 	retry := false
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 	if circuit.Rerouting.CompareAndSwap(false, true) {
-		defer circuit.Rerouting.Set(false)
+		defer circuit.Rerouting.Store(false)
 
 		circuit.Path = cq
 

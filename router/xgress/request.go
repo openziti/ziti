@@ -128,16 +128,24 @@ func ReceiveResponse(peer transport.Conn) (*Response, error) {
 }
 
 type CircuitInfo struct {
+	CtrlId      string
 	CircuitId   *identity.TokenId
 	Address     Address
 	ResponseMsg *channel.Message
-	ctrl        CtrlChannel
 }
 
 var circuitError = errors.New("error connecting circuit")
 
-func GetCircuit(ctrl CtrlChannel, ingressId string, service string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
-	if ctrl == nil || ctrl.Channel() == channel.Channel(nil) {
+type networkControllers interface {
+	AnyCtrlChannel() channel.Channel
+	GetCtrlChannel(ctrlId string) channel.Channel
+	DefaultRequestTimeout() time.Duration
+	ForEach(f func(ctrlId string, ch channel.Channel))
+}
+
+func GetCircuit(ctrl networkControllers, ingressId string, service string, timeout time.Duration, peerData map[uint32][]byte) (*CircuitInfo, error) {
+	ch := ctrl.AnyCtrlChannel()
+	if ch == nil {
 		return nil, errors.New("ctrl not ready")
 	}
 
@@ -147,7 +155,7 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, service string, timeout time
 		Service:   service,
 		PeerData:  peerData,
 	}
-	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ctrl.Channel())
+	reply, err := protobufs.MarshalTyped(circuitRequest).WithTimeout(timeout).SendForReply(ch)
 	if err != nil {
 		log.Errorf("failed to send CircuitRequest message (%v)", err)
 		return nil, circuitError
@@ -168,10 +176,11 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, service string, timeout time
 
 		log.WithField("circuitId", circuitId.Token).Debug("created new circuit")
 		return &CircuitInfo{
+			CtrlId:      ch.Id(),
 			CircuitId:   circuitId,
 			Address:     Address(address),
 			ResponseMsg: reply,
-			ctrl:        ctrl}, nil
+		}, nil
 
 	} else if reply.ContentType == ctrl_msg.CircuitFailedType {
 		errMsg := string(reply.Body)
@@ -185,13 +194,13 @@ func GetCircuit(ctrl CtrlChannel, ingressId string, service string, timeout time
 
 }
 
-func CreateCircuit(ctrl CtrlChannel, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
+func CreateCircuit(ctrl networkControllers, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
 	circuitInfo, err := GetCircuit(ctrl, request.Id, request.ServiceId, options.GetCircuitTimeout, nil)
 	if err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}
 
-	x := NewXgress(circuitInfo.CircuitId, circuitInfo.Address, peer, Initiator, options, map[string]string{
+	x := NewXgress(circuitInfo.CircuitId.Token, circuitInfo.CtrlId, circuitInfo.Address, peer, Initiator, options, map[string]string{
 		"serviceId": request.ServiceId,
 	})
 	bindHandler.HandleXgressBind(x)
@@ -200,12 +209,12 @@ func CreateCircuit(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, CircuitId: circuitInfo.CircuitId.Token}
 }
 
-func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
+func RemoveTerminator(ctrls networkControllers, terminatorId string) error {
 	log := pfxlog.Logger()
 	request := &ctrl_pb.RemoveTerminatorRequest{
 		TerminatorId: terminatorId,
 	}
-	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctrl.DefaultRequestTimeout()).SendForReply(ctrl.Channel())
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctrls.DefaultRequestTimeout()).SendForReply(ctrls.AnyCtrlChannel())
 	if err != nil {
 		log.WithError(err).Errorf("failed to send RemoveTerminatorRequest message")
 		return err

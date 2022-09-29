@@ -19,16 +19,16 @@ package handler_link
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xlink"
 )
 
 type errorHandler struct {
 	link xlink.Xlink
-	ctrl xgress.CtrlChannel
+	ctrl env.NetworkControllers
 }
 
-func newErrorHandler(link xlink.Xlink, ctrl xgress.CtrlChannel) *errorHandler {
+func newErrorHandler(link xlink.Xlink, ctrl env.NetworkControllers) *errorHandler {
 	return &errorHandler{link: link, ctrl: ctrl}
 }
 

@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"strings"
@@ -28,36 +29,44 @@ import (
 )
 
 type Faulter struct {
-	ctrl        channel.Channel
+	ctrls       env.NetworkControllers
 	interval    time.Duration
-	circuitIds  cmap.ConcurrentMap[struct{}]
+	circuitIds  cmap.ConcurrentMap[string]
 	closeNotify chan struct{}
 }
 
-func NewFaulter(interval time.Duration, closeNotify chan struct{}) *Faulter {
-	f := &Faulter{interval: interval, circuitIds: cmap.New[struct{}](), closeNotify: closeNotify}
+func NewFaulter(ctrls env.NetworkControllers, interval time.Duration, closeNotify chan struct{}) *Faulter {
+	f := &Faulter{
+		ctrls:       ctrls,
+		interval:    interval,
+		circuitIds:  cmap.New[string](),
+		closeNotify: closeNotify,
+	}
+
 	if interval > 0 {
 		go f.run()
 	}
+
 	return f
 }
 
-func (self *Faulter) SetCtrl(ch channel.Channel) {
-	self.ctrl = ch
-}
-
-func (self *Faulter) report(circuitId string) {
+func (self *Faulter) report(circuitId string, ctrlId string) {
 	if self.interval > 0 {
-		self.circuitIds.Set(circuitId, struct{}{})
+		self.circuitIds.Set(circuitId, ctrlId)
 	}
 }
 
 func (self *Faulter) notifyInvalidLink(linkId string) {
 	log := pfxlog.Logger()
-	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
-	if err := protobufs.MarshalTyped(fault).Send(self.ctrl); err != nil {
-		log.WithError(err).WithField("linkId", linkId).Error("failed to notify of invalid link")
-	}
+	self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+		fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
+		if err := protobufs.MarshalTyped(fault).WithTimeout(self.ctrls.DefaultRequestTimeout()).Send(ch); err != nil {
+			log.WithError(err).
+				WithField("ctrlId", ctrlId).
+				WithField("linkId", linkId).
+				Error("failed to notify of invalid link")
+		}
+	})
 }
 
 func (self *Faulter) run() {
@@ -67,8 +76,12 @@ func (self *Faulter) run() {
 	for {
 		select {
 		case <-time.After(self.interval):
-			workload := self.circuitIds.Keys()
-			if len(workload) > 0 {
+			workloadByCtrl := map[string][]string{}
+			self.circuitIds.IterCb(func(circuitId, ctrlId string) {
+				workloadByCtrl[ctrlId] = append(workloadByCtrl[ctrlId], circuitId)
+			})
+
+			for ctrlId, workload := range workloadByCtrl {
 				// Proactively remove from reported circuitIds. If we fail below, forwarder will continue to report.
 				for _, circuitId := range workload {
 					self.circuitIds.Remove(circuitId)
@@ -76,10 +89,18 @@ func (self *Faulter) run() {
 
 				circuitIds := strings.Join(workload, " ")
 				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
-				if err := protobufs.MarshalTyped(fault).Send(self.ctrl); err == nil {
-					logrus.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+
+				log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+				ch := self.ctrls.GetCtrlChannel(ctrlId)
+				if ch == nil {
+					log.Error("no control channel for controller")
+					continue
+				}
+
+				if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
+					log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
 				} else {
-					logrus.WithError(err).Error("error sending fault report")
+					log.WithError(err).Error("error sending fault report")
 				}
 			}
 

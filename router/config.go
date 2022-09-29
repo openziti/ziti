@@ -25,15 +25,14 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
 	"io"
-	"io/ioutil"
 	"os"
-	"sync/atomic"
 	"time"
 )
 
@@ -52,6 +51,9 @@ const (
 	// CtrlEndpointMapKey is the string key for the ctrl.endpoint section
 	CtrlEndpointMapKey = "endpoint"
 
+	// CtrlEndpointsMapKey is the string key for the ctrl.endpoints section
+	CtrlEndpointsMapKey = "endpoints"
+
 	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
 	CtrlEndpointBindMapKey = "bind"
 )
@@ -63,7 +65,7 @@ var internalConfigKeys = []string{
 }
 
 func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
-	yamlBytes, err := ioutil.ReadFile(path)
+	yamlBytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +103,7 @@ type Config struct {
 		}
 	}
 	Ctrl struct {
-		Endpoint              *UpdatableAddress
+		Endpoints             []*UpdatableAddress
 		LocalBinding          string
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
@@ -130,7 +132,7 @@ type Config struct {
 }
 
 func (config *Config) CurrentCtrlAddress() string {
-	return config.Ctrl.Endpoint.String()
+	return config.Ctrl.Endpoints[0].String()
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -234,7 +236,7 @@ func (config *Config) Save() error {
 // internal map configuration.
 func (config *Config) UpdateControllerEndpoint(address string) error {
 	if parsedAddress, err := transport.ParseAddress(address); parsedAddress != nil && err == nil {
-		if config.Ctrl.Endpoint.String() != address {
+		if config.Ctrl.Endpoints[0].String() != address {
 			//config file update
 			if ctrlVal, ok := config.src[CtrlMapKey]; ok {
 				if ctrlMap, ok := ctrlVal.(map[interface{}]interface{}); ok {
@@ -247,8 +249,7 @@ func (config *Config) UpdateControllerEndpoint(address string) error {
 			}
 
 			//runtime update
-			config.Ctrl.Endpoint.Store(parsedAddress)
-
+			config.Ctrl.Endpoints[0].Store(parsedAddress)
 		}
 	} else {
 		return fmt.Errorf("could not parse address: %v", err)
@@ -260,7 +261,7 @@ func (config *Config) UpdateControllerEndpoint(address string) error {
 // UpdatableAddress allows a single address to be passed to multiple channel implementations and be centrally updated
 // in a thread safe manner.
 type UpdatableAddress struct {
-	wrapped atomic.Value
+	wrapped concurrenz.AtomicValue[transport.Address]
 }
 
 // UpdatableAddress implements transport.Address
@@ -305,7 +306,7 @@ func (c *UpdatableAddress) DialWithLocalBinding(name string, binding string, i *
 
 // getWrapped loads the current transport.Address
 func (c *UpdatableAddress) getWrapped() transport.Address {
-	return c.wrapped.Load().(transport.Address)
+	return c.wrapped.Load()
 }
 
 // Store updates the address currently used by this configuration instance
@@ -407,13 +408,6 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.Ctrl.Options = channel.DefaultOptions()
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap[CtrlEndpointMapKey]; found {
-				address, err := transport.ParseAddress(value.(string))
-				if err != nil {
-					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
-				}
-				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
-			}
 			if value, found := submap[CtrlEndpointBindMapKey]; found {
 				_, err := transport.ResolveInterface(value.(string))
 				if err != nil {
@@ -421,6 +415,31 @@ func LoadConfig(path string) (*Config, error) {
 				}
 				cfg.Ctrl.LocalBinding = value.(string)
 			}
+
+			if value, found := submap[CtrlEndpointMapKey]; found {
+				address, err := transport.ParseAddress(value.(string))
+				if err != nil {
+					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
+				}
+				cfg.Ctrl.Endpoints = append(cfg.Ctrl.Endpoints, NewUpdatableAddress(address))
+			} else if value, found := submap[CtrlEndpointsMapKey]; found {
+				if addresses, ok := value.([]interface{}); ok {
+					for idx, value := range addresses {
+						addressStr, ok := value.(string)
+						if !ok {
+							return nil, errors.Errorf("[ctrl/endpoints] value at position %v is not a string. value: %v", idx+1, value)
+						}
+						address, err := transport.ParseAddress(addressStr)
+						if err != nil {
+							return nil, errors.Wrapf(err, "cannot parse [ctrl/endpoints] value at position %v", idx+1)
+						}
+						cfg.Ctrl.Endpoints = append(cfg.Ctrl.Endpoints, NewUpdatableAddress(address))
+					}
+				} else {
+					return nil, errors.New("cannot parse [ctrl/endpoints], must be list")
+				}
+			}
+
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
 					options, err := channel.LoadOptions(optionsMap)

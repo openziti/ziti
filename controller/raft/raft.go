@@ -25,6 +25,7 @@ import (
 	"reflect"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,7 +35,6 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/raft/mesh"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -77,7 +77,7 @@ type Controller struct {
 	Mesh            mesh.Mesh
 	Raft            *raft.Raft
 	Fsm             *BoltDbFsm
-	bootstrapped    concurrenz.AtomicBoolean
+	bootstrapped    atomic.Bool
 	clusterLock     sync.Mutex
 	servers         []raft.Server
 	metricsRegistry metrics.Registry
@@ -372,12 +372,12 @@ func (self *Controller) Init() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
-	self.Fsm.initialized.Set(true)
+	self.Fsm.initialized.Store(true)
 	self.Raft = r
 
 	if r.LastIndex() > 0 {
 		logrus.Info("raft already bootstrapped")
-		self.bootstrapped.Set(true)
+		self.bootstrapped.Store(true)
 	} else {
 		logrus.Infof("waiting for cluster size: %v", raftConfig.MinClusterSize)
 		req := &JoinRequest{
@@ -405,7 +405,7 @@ func (self *Controller) Join(req *JoinRequest) error {
 		return errors.Errorf("invalid server addr '%v' for servier %v", req.Addr, req.Id)
 	}
 
-	if self.bootstrapped.Get() || self.GetRaft().LastIndex() > 0 {
+	if self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0 {
 		return self.HandleJoin(req)
 	}
 
@@ -432,7 +432,7 @@ func (self *Controller) Join(req *JoinRequest) error {
 		if err := f.Error(); err != nil {
 			return errors.Wrapf(err, "failed to bootstrap cluster")
 		}
-		self.bootstrapped.Set(true)
+		self.bootstrapped.Store(true)
 	}
 
 	return nil

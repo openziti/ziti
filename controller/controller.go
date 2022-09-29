@@ -20,6 +20,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -42,7 +43,6 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -66,7 +66,7 @@ type Controller struct {
 	mgmtListener channel.UnderlayListener
 
 	shutdownC         chan struct{}
-	isShutdown        concurrenz.AtomicBoolean
+	isShutdown        atomic.Bool
 	agentHandlers     map[byte]func(conn *bufio.ReadWriter) error
 	agentBindHandlers []channel.BindHandler
 	metricsRegistry   metrics.Registry

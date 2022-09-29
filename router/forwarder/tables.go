@@ -65,12 +65,14 @@ func (st *circuitTable) debug() string {
 
 // forwardTable implements a directory of destinations, keyed by source address.
 type forwardTable struct {
+	ctrlId       string
 	last         int64
 	destinations cmap.ConcurrentMap[string]
 }
 
-func newForwardTable() *forwardTable {
+func newForwardTable(ctrlId string) *forwardTable {
 	return &forwardTable{
+		ctrlId:       ctrlId,
 		destinations: cmap.New[string](),
 	}
 }

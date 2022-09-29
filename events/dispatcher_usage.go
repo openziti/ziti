@@ -116,7 +116,7 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 				for usageType, usage := range bucket.Values {
 					evt := &event.UsageEvent{
 						Namespace:        event.UsageEventsNs,
-						Version:          event.UsageEventsVersion,
+						Version:          2,
 						EventType:        "usage." + usageType,
 						SourceId:         message.SourceId,
 						CircuitId:        circuitId,

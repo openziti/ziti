@@ -25,11 +25,11 @@ import (
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/health"
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/profiler"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
 	"github.com/openziti/fabric/router/handler_link"
@@ -53,25 +53,27 @@ import (
 	"google.golang.org/protobuf/proto"
 	"math/rand"
 	"plugin"
+	"sync/atomic"
 	"time"
 )
 
 type Router struct {
 	config          *Config
-	ctrl            concurrenz.AtomicValue[channel.Channel]
+	ctrls           env.NetworkControllers
+	ctrlBindhandler channel.BindHandler
 	faulter         *forwarder.Faulter
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
-	xctrls          []xctrl.Xctrl
+	xrctrls         []env.Xrctrl
 	xlinkFactories  map[string]xlink.Factory
 	xlinkListeners  []xlink.Listener
 	xlinkDialers    []xlink.Dialer
-	xlinkRegistry   xlink.Registry
+	xlinkRegistry   *linkRegistryImpl
 	xgressListeners []xgress.Listener
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
 	shutdownDoneC   chan struct{}
-	isShutdown      concurrenz.AtomicBoolean
+	isShutdown      atomic.Bool
 	metricsReporter metrics.Handler
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
@@ -85,6 +87,10 @@ func (self *Router) GetRouterId() *identity.TokenId {
 	return self.config.Id
 }
 
+func (self *Router) GetNetworkControllers() env.NetworkControllers {
+	return self.ctrls
+}
+
 func (self *Router) GetDialerCfg() map[string]xgress.OptionsData {
 	return self.config.Dialers
 }
@@ -93,8 +99,8 @@ func (self *Router) GetXlinkDialer() []xlink.Dialer {
 	return self.xlinkDialers
 }
 
-func (self *Router) GetXtrls() []xctrl.Xctrl {
-	return self.xctrls
+func (self *Router) GetXrctrls() []env.Xrctrl {
+	return self.xrctrls
 }
 
 func (self *Router) GetTraceHandler() *channel.TraceHandler {
@@ -113,16 +119,8 @@ func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
-func (self *Router) Channel() channel.Channel {
-	// if we're just starting up, we may be nil. wait till initialized
-	// The initial control channel connect has a timeout, so if that timeouts the process will exit
-	// Once connected the control channel will never get set back to nil. Reconnects happen under the hood
-	ch := self.ctrl.Load()
-	for ch == nil {
-		time.Sleep(50 * time.Millisecond)
-		ch = self.ctrl.Load()
-	}
-	return self.ctrl.Load()
+func (self *Router) GetChannel(controllerId string) channel.Channel {
+	return self.ctrls.GetCtrlChannel(controllerId)
 }
 
 func (self *Router) DefaultRequestTimeout() time.Duration {
@@ -135,16 +133,18 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
-	faulter := forwarder.NewFaulter(config.Forwarder.FaultTxInterval, closeNotify)
-	scanner := forwarder.NewScanner(config.Forwarder, closeNotify)
+	ctrls := env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout)
+	faulter := forwarder.NewFaulter(ctrls, config.Forwarder.FaultTxInterval, closeNotify)
+	scanner := forwarder.NewScanner(ctrls, config.Forwarder, closeNotify)
 	fwd := forwarder.NewForwarder(metricsRegistry, faulter, scanner, config.Forwarder, closeNotify)
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
 	xgress.InitRetransmitter(fwd, fwd, metricsRegistry, closeNotify)
 
-	return &Router{
+	router := &Router{
 		config:              config,
+		ctrls:               ctrls,
 		faulter:             faulter,
 		scanner:             scanner,
 		forwarder:           fwd,
@@ -154,16 +154,24 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
-		xlinkRegistry:       NewLinkRegistry(),
+		xlinkRegistry:       NewLinkRegistry(ctrls),
 	}
+
+	var err error
+	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config)
+	if err != nil {
+		panic(err)
+	}
+
+	return router
 }
 
-func (self *Router) RegisterXctrl(x xctrl.Xctrl) error {
+func (self *Router) RegisterXrctrl(x env.Xrctrl) error {
 	if err := self.config.Configure(x); err != nil {
 		return err
 	}
 	if x.Enabled() {
-		self.xctrls = append(self.xctrls, x)
+		self.xrctrls = append(self.xrctrls, x)
 	}
 	return nil
 }
@@ -215,19 +223,17 @@ func (self *Router) Start() error {
 }
 
 func (self *Router) Shutdown() error {
-	var errors []error
+	var errs []error
 	if self.isShutdown.CompareAndSwap(false, true) {
-		if ch := self.ctrl.Load(); ch != nil {
-			if err := ch.Close(); err != nil {
-				errors = append(errors, err)
-			}
+		if err := self.ctrls.Close(); err != nil {
+			errs = append(errs, err)
 		}
 
 		close(self.shutdownC)
 
 		for _, xlinkListener := range self.xlinkListeners {
 			if err := xlinkListener.Close(); err != nil {
-				errors = append(errors, err)
+				errs = append(errs, err)
 			}
 		}
 
@@ -235,7 +241,7 @@ func (self *Router) Shutdown() error {
 
 		for _, xgressListener := range self.xgressListeners {
 			if err := xgressListener.Close(); err != nil {
-				errors = append(errors, err)
+				errs = append(errs, err)
 			}
 		}
 
@@ -245,13 +251,13 @@ func (self *Router) Shutdown() error {
 
 		close(self.shutdownDoneC)
 	}
-	if len(errors) == 0 {
+	if len(errs) == 0 {
 		return nil
 	}
-	if len(errors) == 1 {
-		return errors[0]
+	if len(errs) == 1 {
+		return errs[0]
 	}
-	return errorz.MultipleErrors(errors)
+	return errorz.MultipleErrors(errs)
 }
 
 func (self *Router) Run() error {
@@ -295,7 +301,7 @@ func (self *Router) registerComponents() error {
 	self.xlinkFactories = make(map[string]xlink.Factory)
 	xlinkAccepter := newXlinkAccepter(self.forwarder)
 	xlinkChAccepter := handler_link.NewBindHandlerFactory(
-		self,
+		self.ctrls,
 		self.forwarder,
 		self.config.Forwarder,
 		self.metricsRegistry,
@@ -303,16 +309,16 @@ func (self *Router) registerComponents() error {
 	)
 	self.xlinkFactories["transport"] = xlink_transport.NewFactory(xlinkAccepter, xlinkChAccepter, self.config.Transport, self.xlinkRegistry, self.metricsRegistry)
 
-	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self, self.config.Transport))
-	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
-	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
-	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("proxy", xgress_proxy.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self.ctrls))
+	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self.ctrls, self.config.Transport))
+	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self.ctrls))
 
 	if err := self.RegisterXweb(xweb.NewDefaultInstance(self.xwebFactoryRegistry, self.config.Id)); err != nil {
 		return err
 	}
 
-	if err := self.RegisterXctrl(self.xlinkRegistry); err != nil {
+	if err := self.RegisterXrctrl(self.xlinkRegistry); err != nil {
 		return err
 	}
 
@@ -391,7 +397,7 @@ func (self *Router) startXgressListeners() {
 		err = listener.Listen(address,
 			handler_xgress.NewBindHandler(
 				handler_xgress.NewReceiveHandler(self.forwarder),
-				handler_xgress.NewCloseHandler(self, self.forwarder),
+				handler_xgress.NewCloseHandler(self.ctrls, self.forwarder),
 				self.forwarder,
 			),
 		)
@@ -403,6 +409,25 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
+	for _, endpoint := range self.config.Ctrl.Endpoints {
+		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
+			return err
+		}
+	}
+
+	for _, x := range self.xrctrls {
+		if err := x.Run(self); err != nil {
+			return err
+		}
+	}
+
+	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
+	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
+
+	return nil
+}
+
+func (self *Router) connectToController(addr *UpdatableAddress, localBinding string) error {
 	attributes := map[int32][]byte{}
 
 	version, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
@@ -434,36 +459,25 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
+	var channelRef concurrenz.AtomicValue[channel.Channel]
 	reconnectHandler := func() {
-		for _, x := range self.xctrls {
-			go x.NotifyOfReconnect()
+		if ch := channelRef.Load(); ch != nil {
+			for _, x := range self.xrctrls {
+				go x.NotifyOfReconnect(ch)
+			}
 		}
 	}
 
 	if "" != self.config.Ctrl.LocalBinding {
 		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
 	}
-	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, self.config.Ctrl.Endpoint, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
+	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, localBinding, attributes, reconnectHandler)
 
-	bindHandler := handler_ctrl.NewBindHandler(self, self.forwarder, self.config)
-
-	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
+	ch, err := channel.NewChannel("ctrl", dialer, self.ctrlBindhandler, self.config.Ctrl.Options)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
-
-	self.ctrl.Store(ch)
-	self.faulter.SetCtrl(ch)
-	self.scanner.SetCtrl(ch)
-
-	for _, x := range self.xctrls {
-		if err := x.Run(ch, nil, self.shutdownC); err != nil {
-			return err
-		}
-	}
-
-	self.metricsReporter = fabricMetrics.NewChannelReporter(ch)
-	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
+	channelRef.Store(ch)
 
 	return nil
 }
@@ -520,21 +534,22 @@ type controllerPinger struct {
 }
 
 func (self *controllerPinger) PingContext(ctx context.Context) error {
-	ch := self.router.Channel()
-	if ch == nil {
-		return errors.Errorf("control channel not yet established")
+	ctrls := self.router.ctrls.GetAll()
+
+	if len(ctrls) == 0 {
+		return errors.New("no control channels established yet")
 	}
 
-	if ch.IsClosed() {
-		return errors.Errorf("control channel not yet established")
+	hasGoodConn := false
+
+	for _, ctrl := range ctrls {
+		if !ctrl.IsUnresponsive() {
+			hasGoodConn = true
+		}
 	}
 
-	msg := channel.NewMessage(channel.ContentTypePingType, nil)
-	deadline, ok := ctx.Deadline()
-	if !ok {
-		deadline = time.Now().Add(30 * time.Second)
+	if hasGoodConn {
+		return nil
 	}
-	timeout := deadline.Sub(time.Now())
-	_, err := msg.WithTimeout(timeout).SendForReply(ch)
-	return err
+	return errors.New("control channels are slow")
 }

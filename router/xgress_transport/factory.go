@@ -17,6 +17,7 @@
 package xgress_transport
 
 import (
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
 	"github.com/openziti/transport/v2"
@@ -25,13 +26,13 @@ import (
 
 type factory struct {
 	id      *identity.TokenId
-	ctrl    xgress.CtrlChannel
+	ctrl    env.NetworkControllers
 	options *xgress.Options
 	tcfg    transport.Configuration
 }
 
 // NewFactory returns a new Transport Xgress factory
-func NewFactory(id *identity.TokenId, ctrl xgress.CtrlChannel, tcfg transport.Configuration) xgress.Factory {
+func NewFactory(id *identity.TokenId, ctrl env.NetworkControllers, tcfg transport.Configuration) xgress.Factory {
 	return &factory{id: id, ctrl: ctrl, tcfg: tcfg}
 }
 
