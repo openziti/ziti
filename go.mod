@@ -24,7 +24,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.3
 	github.com/openziti/channel/v2 v2.0.0
-	github.com/openziti/edge v0.23.7
+	github.com/openziti/edge v0.23.9
 	github.com/openziti/fabric v0.20.4
 	github.com/openziti/foundation/v2 v2.0.4
 	github.com/openziti/identity v1.0.12
@@ -132,7 +132,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/x509-claims v1.0.2 // indirect
+	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pelletier/go-toml v1.9.4 // indirect

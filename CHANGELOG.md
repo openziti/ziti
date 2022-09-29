@@ -1,3 +1,22 @@
+# Release 0.26.9
+
+## What's New
+N/A
+
+## Ziti Library Updates / Bug Fixes
+
+* github.com/openziti/channel/v2: v2.0.0 (new)
+* github.com/openziti/edge: [v0.23.0 -> v0.23.9](https://github.com/openziti/edge/compare/v0.23.0...v0.23.9)
+  * [Issue #1186](https://github.com/openziti/edge/issues/1186) - Panic when creating sdk hosted terminator
+  * [Issue #853](https://github.com/openziti/ziti/issues/853) - x509 claims panic
+* github.com/openziti/fabric: [v0.20.0 -> v0.20.4](https://github.com/openziti/fabric/compare/v0.20.0...v0.20.4)
+* github.com/openziti/sdk-golang: [v0.16.121 -> v0.16.124](https://github.com/openziti/sdk-golang/compare/v0.16.121...v0.16.124)
+* github.com/openziti/jwks: [v1.0.1 -> v1.0.2](https://github.com/openziti/jwks/compare/v1.0.1...v1.0.2)
+* github.com/openziti/x509-claims: [v1.0.2 -> v1.0.3](https://github.com/openziti/x509-claims/compare/v1.0.2...v1.0.3)]
+* github.com/openziti/ziti: [0.26.8 -> 0.26.9](https://github.com/openziti/ziti/compare/0.26.8...0.26.9)
+  * [Issue #845](https://github.com/openziti/ziti/issues/845) - Edge router csr sans should include public IP if provided
+
+
 # Release 0.26.8
 
 ## What's New
