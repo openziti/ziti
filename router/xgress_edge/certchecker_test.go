@@ -10,6 +10,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/identity"
@@ -24,7 +25,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 	t.Run("getWaitTime", func(t *testing.T) {
 		t.Run("both 30d out is 23d", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.Add(30 * time.Hour * 24).Add(30 * time.Second)
@@ -44,7 +45,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both 7d out is 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 7)
@@ -60,7 +61,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both 4d out is 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 4)
@@ -76,7 +77,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both 1m out is 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.Add(1 * time.Minute)
@@ -92,7 +93,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both 0s out errors", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now
@@ -108,7 +109,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both -1s prior errors", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.Add(-1 * time.Second)
@@ -124,7 +125,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both -1d prior errors", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, -1)
@@ -140,7 +141,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("both -1d prior errors", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, -1)
@@ -156,7 +157,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("client 5d prior to server, returns client wait time", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			serverNotAfter := now.Add(30 * time.Hour * 24)
@@ -174,7 +175,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("server -1d prior returns 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, -1)
@@ -189,7 +190,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("server 5d out returns 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 5)
@@ -204,7 +205,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("server 7d out returns 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.AddDate(0, 0, 7)
@@ -219,7 +220,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("server 7d30s out returns 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			now := time.Now()
 			notAfter := now.Add(7 * 24 * time.Hour).Add(30 * time.Second)
@@ -235,7 +236,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("force returns 0", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			certChecker.edgeConfig.ExtendEnrollment = true
 
@@ -251,7 +252,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("after wait invokes extendFunc", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, closeF := newCertChecker()
 			certChecker.timeoutDuration = 10 * time.Millisecond
 
 			var invoked concurrenz.AtomicBoolean
@@ -277,12 +278,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			req.True(invoked.Get())
 
-			certChecker.closeNotify <- struct{}{}
+			closeF()
 		})
 
 		t.Run("double run errors", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, closeF := newCertChecker()
 
 			certChecker.isRequesting.Set(true)
 
@@ -295,12 +296,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 			err := certChecker.Run()
 			req.Error(err)
 
-			certChecker.closeNotify <- struct{}{}
+			closeF()
 		})
 
 		t.Run("timeoutDuration clears isRequesting", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, closeF := newCertChecker()
 			certChecker.timeoutDuration = 10 * time.Millisecond
 
 			certChecker.isRequesting.Set(true)
@@ -313,12 +314,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			req.False(certChecker.isRequesting.Get())
 
-			certChecker.closeNotify <- struct{}{}
+			closeF()
 		})
 
 		t.Run("certsUpdated channel clears isRequesting pre-run", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, closeF := newCertChecker()
 
 			go func() {
 				_ = certChecker.Run()
@@ -333,12 +334,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			req.False(certChecker.isRequesting.Get())
 
-			certChecker.closeNotify <- struct{}{}
+			closeF()
 		})
 
 		t.Run("certsUpdated channel clears isRequesting post-run", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, closeF := newCertChecker()
 
 			certChecker.isRequesting.Set(true)
 
@@ -352,12 +353,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			req.False(certChecker.isRequesting.Get())
 
-			certChecker.closeNotify <- struct{}{}
+			closeF()
 		})
 
 		t.Run("client cert expired returns error", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(0, 0, -1)
 
@@ -371,9 +372,9 @@ func Test_CertExpirationChecker(t *testing.T) {
 	t.Run("ExtendEnrollment", func(t *testing.T) {
 		t.Run("errors if control channel is closed", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
-			testChannel := certChecker.ctrl.(*simpleTestChannel)
+			testChannel := certChecker.ctrls.AnyCtrlChannel().(*simpleTestChannel)
 			req.NotNil(testChannel)
 			testChannel.isClosed = true
 
@@ -385,7 +386,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 		t.Run("errors if isRequesting = true", func(t *testing.T) {
 			req := require.New(t)
-			certChecker := newCertChecker()
+			certChecker, _ := newCertChecker()
 
 			certChecker.isRequesting.Set(true)
 
@@ -470,7 +471,7 @@ func (s SimpleTestIdentity) GetConfig() *identity.Config {
 	return nil
 }
 
-func newCertChecker() *CertExpirationChecker {
+func newCertChecker() (*CertExpirationChecker, func()) {
 	privateKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	var template = &x509.Certificate{
 		NotBefore:    time.Now(),
@@ -542,7 +543,9 @@ func newCertChecker() *CertExpirationChecker {
 		Token:    eid.New(),
 		Data:     nil,
 	}
-	return NewCertExpirationChecker(id, &edgerouter.Config{}, testChannel, closeNotify)
+	ctrls := env.NewNetworkControllers(time.Second)
+	ctrls.Add(testChannel)
+	return NewCertExpirationChecker(id, &edgerouter.Config{}, ctrls, closeNotify), func() { close(closeNotify) }
 
 }
 
@@ -569,7 +572,7 @@ func (ch *simpleTestChannel) StartRx() {
 }
 
 func (ch *simpleTestChannel) Id() string {
-	panic("implement Id()")
+	return "test"
 }
 
 func (ch *simpleTestChannel) LogicalName() string {

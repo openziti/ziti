@@ -24,10 +24,7 @@ import (
 	events2 "github.com/openziti/edge/events"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/event"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
 	"testing"
@@ -36,32 +33,16 @@ import (
 
 type eventsCollector struct {
 	sync.Mutex
-	events           []interface{}
-	usageEventNotify chan struct{}
-	notified         concurrenz.AtomicBoolean
-}
-
-func (self *eventsCollector) waitForUsage(timeout time.Duration) error {
-	select {
-	case <-self.usageEventNotify:
-		return nil
-	case <-time.After(timeout):
-		return errors.New("timed out waiting for usage data")
-	}
+	events chan interface{}
 }
 
 func (self *eventsCollector) acceptEvent(event interface{}) {
-	self.Lock()
-	defer self.Unlock()
-	self.events = append(self.events, event)
-	logrus.Warnf("%v: %v %+v\n", reflect.TypeOf(event), event, event)
+	self.events <- event
+	fmt.Printf("\nNEXT EVENT: %v: %v %+v\n", reflect.TypeOf(event), event, event)
 }
 
 func (self *eventsCollector) AcceptUsageEvent(event *event.UsageEvent) {
 	self.acceptEvent(event)
-	if self.notified.CompareAndSwap(false, true) {
-		close(self.usageEventNotify)
-	}
 }
 
 func (self *eventsCollector) AcceptSessionEvent(event *events2.SessionEvent) {
@@ -72,13 +53,14 @@ func (self *eventsCollector) AcceptCircuitEvent(event *event.CircuitEvent) {
 	self.acceptEvent(event)
 }
 
-func (self *eventsCollector) PopNextEvent(ctx *TestContext) interface{} {
-	self.Lock()
-	defer self.Unlock()
-	ctx.Req.True(len(self.events) > 0)
-	result := self.events[0]
-	self.events = self.events[1:]
-	return result
+func (self *eventsCollector) PopNextEvent(ctx *TestContext, desc string, timeout time.Duration) interface{} {
+	select {
+	case evt := <-self.events:
+		return evt
+	case <-time.After(timeout):
+		ctx.Fail("timed out waiting for event", desc)
+		return nil
+	}
 }
 
 func Test_EventsTest(t *testing.T) {
@@ -88,7 +70,7 @@ func Test_EventsTest(t *testing.T) {
 	ctx.StartServer()
 
 	ec := &eventsCollector{
-		usageEventNotify: make(chan struct{}),
+		events: make(chan interface{}, 50),
 	}
 
 	dispatcher := ctx.fabricController.GetEventDispatcher()
@@ -135,30 +117,23 @@ func Test_EventsTest(t *testing.T) {
 
 	testServer.waitForDone(ctx, 5*time.Second)
 	// TODO: Figure out how to make this test faster. Was using ctx.router.GetMetricsRegistry().Flush(), but it's not ideal
-	err = ec.waitForUsage(2 * time.Minute)
 	ctx.Req.NoError(err)
 
-	ctx.Teardown()
-
-	for _, evt := range ec.events {
-		fmt.Printf("%v: %v %+v\n", reflect.TypeOf(evt), evt, evt)
-	}
-
-	evt := ec.PopNextEvent(ctx)
+	evt := ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok := evt.(*events2.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(hostIdentity.Id, edgeSession.IdentityId)
 
-	evt = ec.PopNextEvent(ctx)
+	evt = ec.PopNextEvent(ctx, "edge.sessions.created", time.Second)
 	edgeSession, ok = evt.(*events2.SessionEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("edge.sessions", edgeSession.Namespace)
 	ctx.Req.Equal("created", edgeSession.EventType)
 	ctx.Req.Equal(clientIdentity.Id, edgeSession.IdentityId)
 
-	evt = ec.PopNextEvent(ctx)
+	evt = ec.PopNextEvent(ctx, "fabric.circuits.created", time.Second)
 	circuitEvent, ok := evt.(*event.CircuitEvent)
 	ctx.Req.True(ok)
 	ctx.Req.Equal("fabric.circuits", circuitEvent.Namespace)
@@ -166,9 +141,11 @@ func Test_EventsTest(t *testing.T) {
 	ctx.Req.Equal(service.Id, circuitEvent.ServiceId)
 	ctx.Req.Equal(edgeSession.Id, circuitEvent.ClientId)
 
+	timeout := time.Minute * 2
 	for i := 0; i < 3; i++ {
-		evt = ec.PopNextEvent(ctx)
+		evt = ec.PopNextEvent(ctx, fmt.Sprintf("usage or circuits deleted %v", i+1), timeout)
 		if usage, ok := evt.(*event.UsageEvent); ok {
+			timeout = time.Second * 10
 			ctx.Req.Equal("fabric.usage", usage.Namespace)
 			ctx.Req.Equal(uint32(2), usage.Version)
 			ctx.Req.Equal(circuitEvent.CircuitId, usage.CircuitId)

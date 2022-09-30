@@ -466,8 +466,8 @@ func (ctx *TestContext) startEdgeRouter() {
 	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
 	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
 
-	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeFactory))
-	ctx.Req.NoError(ctx.router.RegisterXctrl(xgressEdgeTunnelFactory))
+	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeFactory))
+	ctx.Req.NoError(ctx.router.RegisterXrctrl(xgressEdgeTunnelFactory))
 	ctx.Req.NoError(ctx.router.Start())
 }
 

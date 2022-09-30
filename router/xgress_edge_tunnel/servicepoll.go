@@ -1,21 +1,22 @@
 /*
-	Copyright NetFoundry Inc.
+Copyright NetFoundry Inc.
 
-	Licensed under the Apache License, Version 2.0 (the "License");
-	you may not use this file except in compliance with the License.
-	You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-	https://www.apache.org/licenses/LICENSE-2.0
+https://www.apache.org/licenses/LICENSE-2.0
 
-	Unless required by applicable law or agreed to in writing, software
-	distributed under the License is distributed on an "AS IS" BASIS,
-	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-	See the License for the specific language governing permissions and
-	limitations under the License.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 */
 package xgress_edge_tunnel
 
 import (
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
@@ -23,7 +24,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -39,13 +39,13 @@ func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
 type servicePoller struct {
 	services                cmap.ConcurrentMap[*edge.Service]
 	serviceListener         *intercept.ServiceListener
-	servicesLastUpdateToken atomic.Value
+	servicesLastUpdateToken cmap.ConcurrentMap[[]byte]
 	serviceListenerLock     sync.Mutex
 
 	fabricProvider *fabricProvider
 }
 
-func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, services []*edge.Service) {
+func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdateToken []byte, services []*edge.Service) {
 	self.serviceListenerLock.Lock()
 	defer self.serviceListenerLock.Unlock()
 
@@ -56,7 +56,7 @@ func (self *servicePoller) handleServiceListUpdate(lastUpdateToken []byte, servi
 
 	logrus.Debugf("procesing service updates with %v services", len(services))
 
-	self.servicesLastUpdateToken.Store(lastUpdateToken)
+	self.servicesLastUpdateToken.Set(ch.Id(), lastUpdateToken)
 
 	idMap := make(map[string]*edge.Service)
 	for _, s := range services {
@@ -118,10 +118,7 @@ func (self *servicePoller) pollServices(pollInterval time.Duration, notifyClose 
 }
 
 func (self *servicePoller) requestServiceListUpdate() {
-	lastUpdateTokenIntf := self.servicesLastUpdateToken.Load()
-	var lastUpdateToken []byte
-	if lastUpdateTokenIntf != nil {
-		lastUpdateToken = lastUpdateTokenIntf.([]byte)
-	}
-	self.fabricProvider.requestServiceList(lastUpdateToken)
+	ctrlCh := self.fabricProvider.factory.ctrls.AnyCtrlChannel()
+	lastUpdateToken, _ := self.servicesLastUpdateToken.Get(ctrlCh.Id())
+	self.fabricProvider.requestServiceList(ctrlCh, lastUpdateToken)
 }

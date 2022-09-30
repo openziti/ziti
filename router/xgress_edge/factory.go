@@ -25,11 +25,11 @@ import (
 	"github.com/openziti/edge/router/internal/apiproxy"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"strings"
 	"time"
@@ -37,7 +37,7 @@ import (
 
 type Factory struct {
 	id               *identity.TokenId
-	ctrl             channel.Channel
+	ctrls            env.NetworkControllers
 	enabled          bool
 	routerConfig     *router.Config
 	edgeRouterConfig *edgerouter.Config
@@ -48,12 +48,8 @@ type Factory struct {
 	metricsRegistry  metrics.Registry
 }
 
-func (factory *Factory) Channel() channel.Channel {
-	return factory.ctrl
-}
-
-func (factory *Factory) DefaultRequestTimeout() time.Duration {
-	return factory.routerConfig.Ctrl.DefaultRequestTimeout
+func (factory *Factory) GetNetworkControllers() env.NetworkControllers {
+	return factory.ctrls
 }
 
 func (factory *Factory) Enabled() bool {
@@ -65,8 +61,6 @@ const (
 )
 
 func (factory *Factory) BindChannel(binding channel.Binding) error {
-	factory.ctrl = binding.GetChannel()
-
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewHelloHandler(factory.edgeRouterConfig.EdgeListeners))
 
 	binding.AddTypedReceiveHandler(handler_edge_ctrl.NewSessionRemovedHandler(factory.stateManager))
@@ -82,18 +76,22 @@ func (factory *Factory) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-func (factory *Factory) NotifyOfReconnect() {
-	go factory.stateManager.ValidateSessions(factory.Channel(), factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
+func (factory *Factory) NotifyOfReconnect(ch channel.Channel) {
+	go factory.stateManager.ValidateSessions(ch, factory.edgeRouterConfig.SessionValidateChunkSize, factory.edgeRouterConfig.SessionValidateMinInterval, factory.edgeRouterConfig.SessionValidateMaxInterval)
 }
 
 func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 	return nil
 }
 
-func (factory *Factory) Run(ctrl channel.Channel, _ boltz.Db, closeNotify chan struct{}) error {
-	factory.ctrl = ctrl
-	factory.stateManager.StartHeartbeat(ctrl, factory.edgeRouterConfig.HeartbeatIntervalSeconds, closeNotify)
-	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, ctrl, closeNotify)
+func (factory *Factory) Run(env env.RouterEnv) error {
+	factory.ctrls = env.GetNetworkControllers()
+
+	env.GetNetworkControllers().ForEach(func(_ string, ch channel.Channel) {
+		factory.stateManager.StartHeartbeat(ch, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
+	})
+
+	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
 	go factory.certChecker.Run()
 

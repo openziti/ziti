@@ -448,8 +448,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel/v2 v2.0.0 h1:Jx7sSaeUdW9DaYA/FVEld+clNWeOB51mEPd8UrfokWg=
 github.com/openziti/channel/v2 v2.0.0/go.mod h1:60BzIk6+SdHP4JUS1pwzYL+QFvriyA+EzWLhZBCn+pA=
-github.com/openziti/fabric v0.20.4 h1:4UOrKTKcYQLB8oUPCIkWqLO2VvW6h+XAB1hxz6GAkDY=
-github.com/openziti/fabric v0.20.4/go.mod h1:JUVBZlHxHfXqyUiunS9vYkUpYfEyxAKnDgT2JCcdZ9w=
+github.com/openziti/fabric v0.21.0 h1:br7vPfl68wKpAq/oWT4XrgE7jYHmKsBPUQcACCfydRY=
+github.com/openziti/fabric v0.21.0/go.mod h1:JUVBZlHxHfXqyUiunS9vYkUpYfEyxAKnDgT2JCcdZ9w=
 github.com/openziti/foundation/v2 v2.0.4 h1:QnpbNgRzPTnbu/QIqdNhYJl4nrhxrX7VXiIF5yIqQhc=
 github.com/openziti/foundation/v2 v2.0.4/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.12 h1:Y6adirthFBpMSI0fyWWGR/fUFtaMOIWQIvyr2yTeIcM=
@@ -806,8 +806,8 @@ golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220926163933-8cfa568d3c25 h1:nwzwVf0l2Y/lkov/+IYgMMbFyI+QypZDds9RxlSmsFQ=
-golang.org/x/sys v0.0.0-20220926163933-8cfa568d3c25/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec h1:BkDtF2Ih9xZ7le9ndzTA7KJow28VbQW3odyk/8drmuI=
+golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/term v0.0.0-20210927222741-03fcf44c2211/go.mod h1:jbD1KX2456YbFQfuXm/mYQcufACuNUgVhRMnK/tPxf8=

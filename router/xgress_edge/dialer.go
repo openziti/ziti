@@ -116,7 +116,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 
 		// On the terminator, which this is, this only starts the txer, which pulls data from the link
 		// Since the opposing xgress doesn't start until this call returns, nothing should be coming this way yet
-		x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
+		x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
 		params.GetBindHandler().HandleXgressBind(x)
 		conn.ctrlRx = x
 		x.Start()
@@ -179,7 +179,7 @@ func (dialer *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 			return nil, errors.Wrapf(err, "failed to create edge xgress conn for token %v", token)
 		}
 
-		x := xgress.NewXgress(circuitId, params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
+		x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), conn, xgress.Terminator, &dialer.options.Options, params.GetCircuitTags())
 		params.GetBindHandler().HandleXgressBind(x)
 		conn.ctrlRx = x
 		x.Start()

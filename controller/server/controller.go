@@ -370,7 +370,7 @@ func (c *subctrl) GetTraceDecoders() []channel.TraceMessageDecoder {
 	}
 }
 
-func (c *subctrl) NotifyOfReconnect() {
+func (c *subctrl) NotifyOfReconnect(channel.Channel) {
 }
 
 func (c *subctrl) LoadConfig(map[interface{}]interface{}) error {
