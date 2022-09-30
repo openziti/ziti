@@ -18,6 +18,7 @@ package cmd
 
 import (
 	_ "embed"
+	edge "github.com/openziti/edge/controller/config"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
@@ -28,11 +29,14 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 )
 
 const (
-	optionCtrlPort     = "ctrlPort"
-	optionDatabaseFile = "databaseFile"
+	optionCtrlPort                       = "ctrlPort"
+	optionDatabaseFile                   = "databaseFile"
+	optionEdgeIdentityEnrollmentDuration = "identityEnrollmentDuration"
+	optionEdgeRouterEnrollmentDuration   = "routerEnrollmentDuration"
 )
 
 var (
@@ -52,6 +56,11 @@ var (
 
 		# Print the controller config to a file
 		ziti create config controller --output <path to file>/<filename>.yaml
+
+		# Create the controller config with an edge router enrollment duration of 2 hours
+		ziti create config controller --identityEnrollmentDuration 2h
+		# OR
+		ziti create config controller --identityEnrollmentDuration 120m
 	`)
 )
 
@@ -62,8 +71,10 @@ var controllerConfigTemplate string
 type CreateConfigControllerOptions struct {
 	CreateConfigOptions
 
-	CtrlPort     string
-	MgmtListener string
+	CtrlPort                       string
+	MgmtListener                   string
+	EdgeIdentityEnrollmentDuration time.Duration
+	EdgeRouterEnrollmentDuration   time.Duration
 }
 
 // NewCmdCreateConfigController creates a command object for the "create" command
@@ -97,6 +108,13 @@ func NewCmdCreateConfigController() *cobra.Command {
 			if data.Controller.Port == "" || controllerOptions.CtrlPort != constants.DefaultZitiControllerPort {
 				data.Controller.Port = controllerOptions.CtrlPort
 			}
+			// Update with the passed in arg if it's not the default (CLI flag should override other methods of modifying these values)
+			if controllerOptions.EdgeIdentityEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+				data.Controller.EdgeIdentityDuration = controllerOptions.EdgeIdentityEnrollmentDuration
+			}
+			if controllerOptions.EdgeRouterEnrollmentDuration != edge.DefaultEdgeEnrollmentDuration {
+				data.Controller.EdgeRouterDuration = controllerOptions.EdgeRouterEnrollmentDuration
+			}
 
 			// process identity information
 			SetControllerIdentity(&data.Controller)
@@ -122,8 +140,10 @@ func NewCmdCreateConfigController() *cobra.Command {
 }
 
 func (options *CreateConfigControllerOptions) addFlags(cmd *cobra.Command) {
-	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultZitiControllerPort, "port to use for the config controller")
+	cmd.Flags().StringVar(&options.CtrlPort, optionCtrlPort, constants.DefaultZitiControllerPort, "port used for the router to controller communication")
 	cmd.Flags().StringVar(&options.DatabaseFile, optionDatabaseFile, "ctrl.db", "location of the database file")
+	cmd.Flags().DurationVar(&options.EdgeIdentityEnrollmentDuration, optionEdgeIdentityEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge identity enrollment duration, use 0h0m0s format")
+	cmd.Flags().DurationVar(&options.EdgeRouterEnrollmentDuration, optionEdgeRouterEnrollmentDuration, edge.DefaultEdgeEnrollmentDuration, "the edge router enrollment duration, use 0h0m0s format")
 }
 
 // run implements the command
