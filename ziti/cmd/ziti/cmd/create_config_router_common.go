@@ -38,6 +38,12 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	} else {
 		r.Edge.Hostname, _ = os.Hostname()
 	}
+
+	// Edge router IP override
+	edgeRouterIPOverride := os.Getenv(constants.ZitiEdgeRouterIPOverrideVarName)
+	if edgeRouterIPOverride != "" {
+		r.Edge.IPOverride = edgeRouterIPOverride
+	}
 }
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {
 	val := os.Getenv(constants.ZitiRouterIdentityCertVarName)

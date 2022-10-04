@@ -66,12 +66,12 @@ There are various levels of accessibility a network application/service can have
 
 Making something dark can be done in a few ways, but the way it's generally handled in Ziti is that services reach out and establish one or more connections to the Ziti network fabric. Clients coming into the fabric can then reach the service through these connections after being authenticated and authorized. 
 
-Ziti routers, which make up the fabric, can also be dark. Routers located in private networks will usually be made dark. These routers will reach out of the private network to talk to the controller and to make connections to join the network fabric mesh. This allows the services and routers in your private networks to make only outbound connections, so no holes have to opened for inbound traffic.
+Ziti routers, which make up the fabric, can also be dark. Routers located in private networks will usually be made dark. These routers will reach out of the private network to talk to the controller and to make connections to join the network fabric mesh. This allows the services and routers in your private networks to make only outbound connections, so no holes have to be opened for inbound traffic.
 
 Services can be completely dark if they are implemented with a Ziti SDK. If this is not possible a Ziti tunneler or proxy can be colocated with the service. The service then only needs to allow connections from the local machine or network, depending on how close you colocate the proxy to the service.   
 
 ### End to End Encryption
-If you take advantage of Ziti's developer SDKs and embed Ziti in your client and server applications, your traffic can be configured to be seamlessly encrypted from the client application to server application. If you prefer to use tunnelers or proxy applications, the traffic can be ecnrypted for you from machine to machine or private network to private network. Various combinations of the above are also supported.
+If you take advantage of Ziti's developer SDKs and embed Ziti in your client and server applications, your traffic can be configured to be seamlessly encrypted from the client application to server application. If you prefer to use tunnelers or proxy applications, the traffic can be encrypted for you from machine to machine or private network to private network. Various combinations of the above are also supported.
 
 End-to-end encryption means that even if systems between the client and server are compromised, your traffic cannot be decrypted or tampered with.
 
@@ -83,7 +83,7 @@ If you are looking to jump right in feet first you can follow along with one of 
 guides](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html). These guides are designed to get an 
 overlay network quickly and allow you to run it all locally, use docker or host it anywhere.
 
-This environment is perfect for evaluators to get to know Ziti and the capabilities it offers.  The environement was not
+This environment is perfect for evaluators to get to know Ziti and the capabilities it offers.  The environment was not
 designed for large scale deployment or for long-term usage. If you are looking for a managed service to help you run a
 truly global, scalable network browse over to our website at http://netfoundry.io to learn more.
 

@@ -20,7 +20,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/agent"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
