@@ -18,11 +18,12 @@ package tutorial
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/fatih/color"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
-	"net"
-	"net/http"
 )
 
 type zitiEchoServer struct {
