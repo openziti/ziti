@@ -322,8 +322,8 @@ github.com/hashicorp/logutils v1.0.0/go.mod h1:QIAnNjmIWmVIIkWDTG1z5v++HQmx9WQRO
 github.com/hashicorp/mdns v1.0.0/go.mod h1:tL+uN++7HEJ6SQLQ2/p+z2pH24WQKWjBPkE0mNTz8vQ=
 github.com/hashicorp/memberlist v0.1.3/go.mod h1:ajVTdAv/9Im8oMAAj5G31PhhMCZJV2pPBoIllUwCN7I=
 github.com/hashicorp/raft v1.1.0/go.mod h1:4Ak7FSPnuvmb0GV6vgIAJ4vYT4bek9bb6Q+7HVbyzqM=
-github.com/hashicorp/raft v1.3.10 h1:LR5QZX1VQd0DFWZfeCwWawyeKfpS/Tm1yjnJIY5X4Tw=
-github.com/hashicorp/raft v1.3.10/go.mod h1:J8naEwc6XaaCfts7+28whSeRvCqTd6e20BlCU3LtEO4=
+github.com/hashicorp/raft v1.3.11 h1:p3v6gf6l3S797NnK5av3HcczOC1T5CLoaRvg0g9ys4A=
+github.com/hashicorp/raft v1.3.11/go.mod h1:J8naEwc6XaaCfts7+28whSeRvCqTd6e20BlCU3LtEO4=
 github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 h1:CO8dBMLH6dvE1jTn/30ZZw3iuPsNfajshWoJTnVc5cc=
 github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0/go.mod h1:nTakvJ4XYq45UXtn0DbwR4aU9ZdjlnIenpbs6Cd+FM0=
 github.com/hashicorp/serf v0.8.2/go.mod h1:6hOLApaqBFA1NXqRQAsxw9QxuDEvNxSQRwA/JwenrHc=
@@ -448,8 +448,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel/v2 v2.0.1 h1:Y+4BQ+AbrUKO7WLLwnhHmdOKTFf7auNcsGiaco3SfEE=
 github.com/openziti/channel/v2 v2.0.1/go.mod h1:uD5oDrP/iuOnawxeVUqcJ25zMHAd2+gH5VfF+F+XWhc=
-github.com/openziti/fabric v0.21.0 h1:br7vPfl68wKpAq/oWT4XrgE7jYHmKsBPUQcACCfydRY=
-github.com/openziti/fabric v0.21.0/go.mod h1:JUVBZlHxHfXqyUiunS9vYkUpYfEyxAKnDgT2JCcdZ9w=
+github.com/openziti/fabric v0.21.1 h1:RBkF4JSU5Bef3cYMjhkQPx/LRCdGue5QaPRG23X7yeM=
+github.com/openziti/fabric v0.21.1/go.mod h1:UPn/QcN/7AbbkB+74wTWoxA9JZVN0CDixJHQhpjBt78=
 github.com/openziti/foundation/v2 v2.0.4 h1:QnpbNgRzPTnbu/QIqdNhYJl4nrhxrX7VXiIF5yIqQhc=
 github.com/openziti/foundation/v2 v2.0.4/go.mod h1:L75kwCC5WTUPqxuAd3G+WMBompaElMb/nYlJjR1sJ9Q=
 github.com/openziti/identity v1.0.13 h1:hpEXZo/xwED6jSXhpS6wJwQ+7o1YKKrIXs3TKHe2HPI=
@@ -460,8 +460,8 @@ github.com/openziti/metrics v1.1.0 h1:V3stVSxGz0Rq3GXxQz+ahMH8D3jR8yVT+IrJZNWdFx
 github.com/openziti/metrics v1.1.0/go.mod h1:N3ffH3Vp7czCpyDSk1hFE3DZ3bTEUSiubHWHZFUuP2g=
 github.com/openziti/sdk-golang v0.16.125 h1:4ZTV+YyaztsmYUxkQgztRtfRDEISpKZzw3vuvv51l4M=
 github.com/openziti/sdk-golang v0.16.125/go.mod h1:nd6m4FYbBvEFg9Mgy9lNeqecN5sCmyqkaXK6+7DdS8k=
-github.com/openziti/storage v0.1.21 h1:m8ny8AuCqjZQRpiHUhQlmZjUGAW1LCRjrPA93WQsjP0=
-github.com/openziti/storage v0.1.21/go.mod h1:onJ7mLnnB2nfKdNCJHZlVRnPZSSPUJvuu3gzZ8vR2Mo=
+github.com/openziti/storage v0.1.22 h1:sn3SC6S8W5TSlYr9Z+RtwygAogAVBuDLX7c9nUD4id8=
+github.com/openziti/storage v0.1.22/go.mod h1:onJ7mLnnB2nfKdNCJHZlVRnPZSSPUJvuu3gzZ8vR2Mo=
 github.com/openziti/transport/v2 v2.0.30 h1:g8qM6ZN2PXsig73I8nYV8S+7i//YolCd5uAPJ3dWPOI=
 github.com/openziti/transport/v2 v2.0.30/go.mod h1:VABFew9Ls3/3ITFgpAK6s/l9JvKVc+jFMyFTnsmkTWw=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
