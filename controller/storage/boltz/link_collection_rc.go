@@ -123,11 +123,10 @@ func (collection *rcLinkCollectionImpl) EntityDeleted(tx *bbolt.Tx, id string) e
 }
 
 func (collection *rcLinkCollectionImpl) IterateLinks(tx *bbolt.Tx, id []byte) ast.SeekableSetCursor {
-	fieldBucket := collection.getFieldBucket(tx, id)
-	if !fieldBucket.HasError() {
+	if fieldBucket := collection.getFieldBucket(tx, id); !fieldBucket.HasError() {
 		return fieldBucket.IterateStringList()
 	}
-	return nil
+	return ast.EmptyCursor
 }
 
 func (collection *rcLinkCollectionImpl) setLinkCount(tx *bbolt.Tx, fieldBucket *TypedBucket, id []byte, associatedId []byte, value int) (*int32, *int32, error) {
