@@ -23,8 +23,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
@@ -118,14 +118,11 @@ func (test *boltTest) createTestSchema() {
 			}
 			serviceBucket.SetStringList("numbers", numbers, nil)
 
-			var personPlaceNames []string
 			var personPlaceIds []string
 			placeName := places[placeIndex%len(places)]
-			personPlaceNames = append(personPlaceNames, placeName)
 			personPlaceIds = append(personPlaceIds, placeMap[placeName])
 			placeIndex++
 			placeName = places[placeIndex%len(places)]
-			personPlaceNames = append(personPlaceNames, placeName)
 			personPlaceIds = append(personPlaceIds, placeMap[placeName])
 			placeIndex++
 
@@ -616,10 +613,10 @@ func (test *boltQueryTests) testIterateIdsPaging(t *testing.T) {
 func (test *boltQueryTests) testIterateIdsScan(t *testing.T) {
 	test.switchTestContext(t)
 
-	ids, count := test.query("true")
+	ids, _ := test.query("true")
 	middle := ids[len(ids)/2]
 
-	ids, count = test.query(fmt.Sprintf(`id >= "%v"`, middle))
+	ids, count := test.query(fmt.Sprintf(`id >= "%v"`, middle))
 
 	iterIdMap := map[string]struct{}{}
 	err := test.db.View(func(tx *bbolt.Tx) error {

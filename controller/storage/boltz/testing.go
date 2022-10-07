@@ -18,7 +18,6 @@ package boltz
 
 import (
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"reflect"
@@ -61,7 +60,7 @@ func (ctx *BaseTestContext) NextTest(t *testing.T) {
 
 func (ctx *BaseTestContext) InitDbFile() {
 	var err error
-	ctx.dbFile, err = ioutil.TempFile("", "query-bolt-ctx-db")
+	ctx.dbFile, err = os.CreateTemp("", "query-bolt-ctx-db")
 	ctx.NoError(err)
 
 	err = ctx.dbFile.Close()
