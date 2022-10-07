@@ -322,7 +322,7 @@ func TestUniqueIndex_CheckIntegrity(t *testing.T) {
 	})
 	test.NoError(err)
 
-	expectedMsg := fmt.Sprintf("unique index employees.name references somebadid for value jojo, which doesn't exist")
+	expectedMsg := "unique index employees.name references somebadid for value jojo, which doesn't exist"
 	test.requireIntegrityErrorAndFixResult(test.empStore, expectedMsg, true)
 	test.Nil(test.readEmployeeNameIndex("jojo"))
 
@@ -399,7 +399,7 @@ func TestSetIndex_CheckIntegrity(t *testing.T) {
 	})
 	test.NoError(err)
 
-	expectedMsg := fmt.Sprintf("for index on employees.roleAttributes, val bash references id invalid, which doesn't exist")
+	expectedMsg := "for index on employees.roleAttributes, val bash references id invalid, which doesn't exist"
 	test.requireIntegrityErrorAndFixResult(test.empStore, expectedMsg, true)
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
@@ -943,6 +943,7 @@ func (test *crudTest) testCompositeSymbol(t *testing.T) {
 		}
 		return nil
 	})
+	test.NoError(err)
 
 	for idx, e := range employees {
 		err = test.db.Update(func(tx *bbolt.Tx) error {

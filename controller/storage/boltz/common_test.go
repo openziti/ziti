@@ -5,7 +5,6 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -19,7 +18,7 @@ type dbTest struct {
 
 func (test *dbTest) init() {
 	var err error
-	test.dbFile, err = ioutil.TempFile("", "query-bolt-test-db")
+	test.dbFile, err = os.CreateTemp("", "query-bolt-test-db")
 	test.NoError(err)
 	test.NoError(test.dbFile.Close())
 	test.db, err = bbolt.Open(test.dbFile.Name(), 0, bbolt.DefaultOptions)
