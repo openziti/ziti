@@ -19,9 +19,9 @@ package boltz
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
@@ -839,7 +839,6 @@ const (
 type fkConstraint struct {
 	symbol   EntitySymbol
 	nullable bool
-	cascade  CascadeType
 }
 
 func (index *fkConstraint) ProcessBeforeUpdate(ctx *IndexingContext) {

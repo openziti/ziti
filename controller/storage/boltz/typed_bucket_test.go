@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/stretchr/testify/require"
 	"go.etcd.io/bbolt"
-	"io/ioutil"
 	"os"
 	"testing"
 )
@@ -36,9 +35,9 @@ type bucketTest struct {
 	db     *bbolt.DB
 }
 
-func (test *bucketTest) init(constaint bool) {
+func (test *bucketTest) init() {
 	var err error
-	test.dbFile, err = ioutil.TempFile("", "typed-bucket-test-db")
+	test.dbFile, err = os.CreateTemp("", "typed-bucket-test-db")
 	test.NoError(err)
 	test.NoError(test.dbFile.Close())
 	test.db, err = bbolt.Open(test.dbFile.Name(), 0, bbolt.DefaultOptions)
@@ -63,7 +62,7 @@ func TestTypedBuckets(t *testing.T) {
 	test := &bucketTest{
 		Assertions: require.New(t),
 	}
-	test.init(false)
+	test.init()
 	defer test.cleanup()
 
 	t.Run("test maps", test.testMaps)
@@ -114,6 +113,7 @@ func (test *bucketTest) testMaps(t *testing.T) {
 		basepath.PutMap("test-map", testMap, nil, true)
 		return basepath.GetError()
 	})
+	test.NoError(err)
 
 	var testMapRead map[string]interface{}
 
