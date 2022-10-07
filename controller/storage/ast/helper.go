@@ -19,13 +19,13 @@ package ast
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/zitiql"
-	"github.com/openziti/foundation/v2/concurrenz"
+	"sync/atomic"
 )
 
-var EnableQueryDebug concurrenz.AtomicBoolean
+var EnableQueryDebug atomic.Bool
 
 func Parse(symbolTypes SymbolTypes, query string) (Query, error) {
-	if EnableQueryDebug.Get() {
+	if EnableQueryDebug.Load() {
 		pfxlog.Logger().Debugf(`parsing filter: %v`, query)
 	}
 	listener := NewListener()
