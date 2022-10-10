@@ -92,7 +92,7 @@ func TestAcknowledgement_marshallSequence(t *testing.T) {
 			err := ack2.unmarshallSequence(got)
 			assert.NoError(t, err)
 
-			if len(ack.Sequence) == 0 && len(ack.Sequence) == 0 {
+			if len(ack.Sequence) == 0 {
 				return
 			}
 			if !reflect.DeepEqual(ack, ack2) {

@@ -373,9 +373,7 @@ func (self *RouterLinks) Add(link *Link, other *Router) {
 	defer self.Unlock()
 	links := self.GetLinks()
 	newLinks := make([]*Link, 0, len(links)+1)
-	for _, l := range links {
-		newLinks = append(newLinks, l)
-	}
+	newLinks = append(newLinks, links...)
 	newLinks = append(newLinks, link)
 	self.allLinks.Store(newLinks)
 

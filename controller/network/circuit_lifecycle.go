@@ -131,7 +131,7 @@ func (network *Network) CircuitFailedEvent(circuitId string, clientId string, se
 		terminatorId = t.GetId()
 	}
 
-	elapsed := time.Now().Sub(startTime)
+	elapsed := time.Since(startTime)
 	circuitEvent := &event.CircuitEvent{
 		Namespace:        event.CircuitEventsNs,
 		Version:          event.CircuitEventsVersion,

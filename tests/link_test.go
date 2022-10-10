@@ -261,6 +261,9 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	router2 := ctx.startRouter(2)
 
 	router2cc, _ := acceptControl("router-2")
+	defer func(ch channel.Channel) {
+		_ = router2cc.Close()
+	}(router2cc)
 
 	dial1 := &ctrl_pb.Dial{
 		LinkId:       uuid.NewString(),
@@ -314,6 +317,9 @@ func Test_DuplicateLinkWithLinkCloseListener(t *testing.T) {
 	ctx.Req.NoError(ctx.waitForPortClose("localhost:6005", 2*time.Second))
 	log.Info("---------- router 2: stopped  ------------------------")
 	router2 = ctx.startRouter(2)
+	defer func() {
+		ctx.Req.NoError(router2.Shutdown())
+	}()
 
 	router2cc, _ = acceptControl("router-2")
 
@@ -404,6 +410,9 @@ func Test_DuplicateLinkWithLinkCloseDialer(t *testing.T) {
 	ctx.Req.NoError(router1.Shutdown())
 	ctx.Req.NoError(ctx.waitForPortClose("localhost:6004", 2*time.Second))
 	router1 = ctx.startRouter(1)
+	defer func() {
+		ctx.Req.NoError(router1.Shutdown())
+	}()
 
 	router1cc, msgc1 = acceptControl("router-1")
 

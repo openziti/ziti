@@ -247,21 +247,18 @@ func (self *listener) cleanupExpiredPartialLinks() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
-	for {
-		select {
-		case <-ticker.C:
-			func() {
-				self.lock.Lock()
-				defer self.lock.Unlock()
-				now := time.Now()
-				for k, v := range self.pendingLinks {
-					if now.Sub(v.eventTime) > (30 * time.Second) {
-						_ = v.link.Close()
-						delete(self.pendingLinks, k)
-					}
+	for range ticker.C {
+		func() {
+			self.lock.Lock()
+			defer self.lock.Unlock()
+			now := time.Now()
+			for k, v := range self.pendingLinks {
+				if now.Sub(v.eventTime) > (30 * time.Second) {
+					_ = v.link.Close()
+					delete(self.pendingLinks, k)
 				}
-			}()
-		}
+			}
+		}()
 	}
 }
 

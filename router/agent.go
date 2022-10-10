@@ -144,7 +144,9 @@ func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
 	logrus.Errorf("updating with route: %v", route)
 
 	// TODO: Fix. See fabric#508
-	self.forwarder.Route(self.ctrls.AnyCtrlChannel().Id(), route)
+	if err := self.forwarder.Route(self.ctrls.AnyCtrlChannel().Id(), route); err != nil {
+		return err
+	}
 	_, _ = c.WriteString("route added")
 	return nil
 }

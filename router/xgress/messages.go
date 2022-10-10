@@ -296,7 +296,7 @@ func (self ControlType) String() string {
 
 const (
 	ControlTypeTraceRoute         ControlType = 1
-	ControlTypeTraceRouteResponse             = 2
+	ControlTypeTraceRouteResponse ControlType = 2
 )
 
 const (

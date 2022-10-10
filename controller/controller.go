@@ -152,7 +152,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		start := time.Now()
 		for !c.raftController.IsLeader() {
 			time.Sleep(time.Second)
-			if time.Now().Sub(start) > time.Second*30 {
+			if time.Since(start) > time.Second*30 {
 				log.Panic("cannot sync raft to database, as current node is not the leader")
 			} else {
 				log.Info("waiting for raft controller to become leader to allow syncing db to raft")

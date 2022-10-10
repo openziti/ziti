@@ -85,7 +85,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
 
 	if router := self.network.GetConnectedRouter(id); router != nil {
-		if time.Now().Sub(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
+		if time.Since(router.ConnectTime) < self.network.GetOptions().RouterConnectChurnLimit {
 			log.WithField("routerName", router.Name).Error("router already connected and churn threshold not met")
 			return errors.Errorf("router already connected id: %s, name: %s", id, router.Name)
 		}

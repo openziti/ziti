@@ -48,13 +48,11 @@ func (s *PacketSession) Address() net.Addr {
 }
 
 func (s *PacketSession) ReadPayload() ([]byte, map[uint8][]byte, error) {
-	select {
-	case buffer, chanOpen := <-s.readC:
-		if !chanOpen {
-			return buffer, nil, io.EOF
-		}
-		return buffer, nil, nil
+	buffer, chanOpen := <-s.readC
+	if !chanOpen {
+		return buffer, nil, io.EOF
 	}
+	return buffer, nil, nil
 }
 
 func (s *PacketSession) Write(p []byte) (n int, err error) {

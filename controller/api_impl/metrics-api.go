@@ -23,7 +23,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/identity"
@@ -121,7 +120,6 @@ type MetricsApiHandler struct {
 	scrapeCert  *x509.Certificate
 	modelMapper MetricsModelMapper
 	options     map[interface{}]interface{}
-	bindHandler channel.BindHandler
 }
 
 func (metricsApi *MetricsApiHandler) Binding() string {
@@ -166,10 +164,12 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 		metricsResult, err := metricsApi.modelMapper.MapInspectResultToMetricsResult(inspection)
 
 		if err != nil {
-			rw.Write([]byte(fmt.Sprintf("Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())))
+			_, _ = rw.Write([]byte(fmt.Sprintf("Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())))
 			rw.WriteHeader(http.StatusInternalServerError)
 		} else {
-			rw.Write([]byte(*metricsResult))
+			if _, err = rw.Write([]byte(*metricsResult)); err != nil {
+				rw.WriteHeader(http.StatusInternalServerError)
+			}
 		}
 	})
 

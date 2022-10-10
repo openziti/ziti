@@ -44,7 +44,6 @@ func (factory *factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dia
 }
 
 type factory struct {
-	id      *identity.TokenId
-	ctrl    env.NetworkControllers
-	options *xgress.Options
+	id   *identity.TokenId
+	ctrl env.NetworkControllers
 }

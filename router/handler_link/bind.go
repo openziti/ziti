@@ -75,7 +75,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddCloseHandler(newCloseHandler(self.xlink, self.ctrl, self.forwarder, closeNotify, self.xlinkRegistry))
 	binding.AddErrorHandler(newErrorHandler(self.xlink, self.ctrl))
 	binding.AddTypedReceiveHandler(newPayloadHandler(self.xlink, self.forwarder))
-	binding.AddTypedReceiveHandler(newQueuingAckHandler(self.xlink, self.forwarder, closeNotify))
+	binding.AddTypedReceiveHandler(newAckHandler(self.xlink, self.forwarder, closeNotify))
 	binding.AddTypedReceiveHandler(&latency.LatencyHandler{})
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))

@@ -79,7 +79,7 @@ func (self *Path) EgressRouter() *Router {
 
 func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator, deadline time.Time) []*ctrl_pb.Route {
 	var routeMessages []*ctrl_pb.Route
-	remainingTime := deadline.Sub(time.Now())
+	remainingTime := time.Until(deadline)
 	if len(self.Links) == 0 {
 		// single router path
 		routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}

@@ -82,10 +82,6 @@ type ServiceManager struct {
 	store db.ServiceStore
 }
 
-func (self *ServiceManager) newModelEntity() *Service {
-	return &Service{}
-}
-
 func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *db.Terminator {
 	// patched entities may not have all fields, if service is blank, load terminator
 	serviceId := terminator.Service

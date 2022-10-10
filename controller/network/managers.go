@@ -238,10 +238,6 @@ func (ctrl *baseEntityManager[T]) BaseLoadInTx(tx *bbolt.Tx, id string) (T, erro
 	return entity, nil
 }
 
-func (ctrl *baseEntityManager[T]) getManagers() *Managers {
-	return ctrl.Managers
-}
-
 func (ctrl *baseEntityManager[T]) readEntity(id string, modelEntity T) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.readEntityInTx(tx, id, modelEntity)

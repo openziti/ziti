@@ -18,11 +18,11 @@ package events
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/iomonad"
+	"github.com/pkg/errors"
 	"io"
 	"reflect"
 	"strings"
@@ -376,7 +376,7 @@ func (event *PrometheusMetricsEvent) Marshal(includeTimestamps bool) ([]byte, er
 	case "timer":
 		result += event.toHistogram(includeTimestamps)
 	default:
-		return nil, errors.New(fmt.Sprintf("Unhandled metric type %s", event.MetricType))
+		return nil, errors.Errorf("Unhandled metric type %s", event.MetricType)
 	}
 
 	return []byte(result), nil
