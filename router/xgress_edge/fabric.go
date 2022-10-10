@@ -110,7 +110,7 @@ type edgeXgressConn struct {
 	mux     edge.MsgMux
 	seq     MsgQueue
 	onClose func()
-	closed  concurrenz.AtomicBoolean
+	closed  atomic.Bool
 	ctrlRx  xgress.ControlReceiver
 }
 

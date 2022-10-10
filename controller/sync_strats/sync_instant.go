@@ -29,13 +29,13 @@ import (
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/build"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -67,15 +67,15 @@ type InstantStrategyOptions struct {
 // and full set of API Sessions. Send individual create, update, delete events for sessions after synchronization.
 //
 // This strategy uses a series of queues and workers to managed synchronization state. The order of events is as follows:
-// 1. An edge router connects to the controller, triggering RouterConnected()
-// 2. A RouterSender is created encapsulating the Edge Router, Router, and Sync State
-// 3. The RouterSender is queued on the routerConnectedQueue channel which buffers up to options.MaxQueuedRouterConnects
-// 4. The routerConnectedQueue is read and the edge server hello is sent
-// 5. The controller waits for a client hello to be received via ReceiveClientHello message
-// 6. The client hello is used to identity the RouterSender associated with the client and is queued on
-//    the receivedClientHelloQueue channel which buffers up to options.MaxQueuedClientHellos
-// 7. A startSynchronizeWorker will pick up the RouterSender from the receivedClientHelloQueue and being to
-//    send data to the edge router via the RouterSender
+//  1. An edge router connects to the controller, triggering RouterConnected()
+//  2. A RouterSender is created encapsulating the Edge Router, Router, and Sync State
+//  3. The RouterSender is queued on the routerConnectedQueue channel which buffers up to options.MaxQueuedRouterConnects
+//  4. The routerConnectedQueue is read and the edge server hello is sent
+//  5. The controller waits for a client hello to be received via ReceiveClientHello message
+//  6. The client hello is used to identity the RouterSender associated with the client and is queued on
+//     the receivedClientHelloQueue channel which buffers up to options.MaxQueuedClientHellos
+//  7. A startSynchronizeWorker will pick up the RouterSender from the receivedClientHelloQueue and being to
+//     send data to the edge router via the RouterSender
 type InstantStrategy struct {
 	InstantStrategyOptions
 
@@ -89,7 +89,7 @@ type InstantStrategy struct {
 	receivedClientHelloQueue chan *RouterSender
 
 	stopNotify chan struct{}
-	stopped    concurrenz.AtomicBoolean
+	stopped    atomic.Bool
 }
 
 func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *InstantStrategy {

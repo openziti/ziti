@@ -21,7 +21,6 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -272,9 +271,10 @@ const (
 // Work is performed on a configurable basis via the Interval property in FIFO order.
 //
 // Events are stored in the following format:
-//		id   - CUID   - a monotonic reference id
-//      name - string - an event name, used for log output
-//      data - []byte - a string array of arguments
+//
+//			id   - CUID   - a monotonic reference id
+//	     name - string - an event name, used for log output
+//	     data - []byte - a string array of arguments
 type EventualEventerBbolt struct {
 	events.EventEmmiter
 	handlerMap        cmap.ConcurrentMap[[]EventListenerFunc] //eventName -> handlers
@@ -286,7 +286,7 @@ type EventualEventerBbolt struct {
 
 	waiters sync.Map //id -> chan struct{}
 
-	running    concurrenz.AtomicBoolean
+	running    atomic.Bool
 	batchSize  int
 	dbProvider DbProvider
 	store      EventualEventStore
@@ -379,10 +379,10 @@ func (a *EventualEventerBbolt) run() {
 	for {
 		select {
 		case <-a.closeNotify:
-			a.running.Set(false)
+			a.running.Store(false)
 			return
 		case <-a.stopNotify:
-			a.running.Set(false)
+			a.running.Store(false)
 			return
 		case <-a.trigger:
 			a.process()
@@ -402,7 +402,7 @@ func (a *EventualEventerBbolt) Stop() error {
 }
 
 func (a *EventualEventerBbolt) Trigger() (<-chan struct{}, error) {
-	if a.running.Get() {
+	if a.running.Load() {
 		doneNotify := make(chan struct{})
 		a.waiters.Store(cuid.New(), doneNotify)
 

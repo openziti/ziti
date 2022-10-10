@@ -18,7 +18,6 @@ package udp_vconn
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/mempool"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -35,7 +34,7 @@ type udpConn struct {
 	manager     *manager
 	writeConn   UDPWriterTo
 	lastUse     atomic.Value
-	closed      concurrenz.AtomicBoolean
+	closed      atomic.Bool
 	leftOver    []byte
 	leftOverBuf mempool.PooledBuffer
 }
@@ -182,17 +181,17 @@ func (conn *udpConn) RemoteAddr() net.Addr {
 	return conn
 }
 
-func (conn *udpConn) SetDeadline(t time.Time) error {
+func (conn *udpConn) SetDeadline(time.Time) error {
 	// ignore, since this is a shared connection
 	return nil
 }
 
-func (conn *udpConn) SetReadDeadline(t time.Time) error {
+func (conn *udpConn) SetReadDeadline(time.Time) error {
 	// ignore, since this is a shared connection
 	return nil
 }
 
-func (conn *udpConn) SetWriteDeadline(t time.Time) error {
+func (conn *udpConn) SetWriteDeadline(time.Time) error {
 	// ignore, since this is a shared connection
 	return nil
 }

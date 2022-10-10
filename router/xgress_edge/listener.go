@@ -233,7 +233,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
 	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-		edgePrecedence := precedenceData[0]
+		edgePrecedence := edge.Precedence(precedenceData[0])
 		if edgePrecedence == edge.PrecedenceRequired {
 			precedence = edge_ctrl_pb.TerminatorPrecedence_Required
 		} else if edgePrecedence == edge.PrecedenceFailed {
@@ -377,7 +377,7 @@ func (self *edgeClientConn) processUpdateBind(req *channel.Message, ch channel.C
 	}
 
 	if precedenceData, hasPrecedence := req.Headers[edge.PrecedenceHeader]; hasPrecedence && len(precedenceData) > 0 {
-		edgePrecedence := precedenceData[0]
+		edgePrecedence := edge.Precedence(precedenceData[0])
 		request.Precedence = edge_ctrl_pb.TerminatorPrecedence_Default
 		request.UpdatePrecedence = true
 		if edgePrecedence == edge.PrecedenceRequired {

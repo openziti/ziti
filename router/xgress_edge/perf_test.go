@@ -115,11 +115,6 @@ func (link *mirrorLink) Close() error {
 	panic("implement me")
 }
 
-func Benchmark_ChMsgMuxWritePerf(b *testing.B) {
-	mux := edge.NewChMsgMux()
-	writePerf(b, mux)
-}
-
 func Benchmark_CowMapWritePerf(b *testing.B) {
 	mux := edge.NewCowMapMsgMux()
 	writePerf(b, mux)

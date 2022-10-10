@@ -105,7 +105,7 @@ func (self *tunneler) removeStaleConnections(notifyClose <-chan struct{}) {
 			var toRemove []string
 			self.terminators.IterCb(func(key string, t *tunnelTerminator) {
 
-				if t.closed.Get() {
+				if t.closed.Load() {
 					toRemove = append(toRemove, key)
 				}
 

@@ -26,10 +26,10 @@ import (
 	"github.com/openziti/edge/router/enroll"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	routerEnv "github.com/openziti/fabric/router/env"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
+	"sync/atomic"
 	"time"
 )
 
@@ -49,9 +49,9 @@ type CertExpirationChecker struct {
 	edgeConfig   *edgerouter.Config
 	certsUpdated chan struct{}
 
-	isRunning concurrenz.AtomicBoolean
+	isRunning atomic.Bool
 
-	isRequesting    concurrenz.AtomicBoolean
+	isRequesting    atomic.Bool
 	requestSentAt   time.Time
 	timeoutDuration time.Duration
 
@@ -78,11 +78,11 @@ func (self *CertExpirationChecker) IsRequestingCompareAndSwap(expected bool, val
 }
 
 func (self *CertExpirationChecker) IsRequesting() bool {
-	return self.isRequesting.Get()
+	return self.isRequesting.Load()
 }
 
 func (self *CertExpirationChecker) SetIsRequesting(value bool) {
-	self.isRequesting.Set(value)
+	self.isRequesting.Store(value)
 }
 
 func (self *CertExpirationChecker) CertsUpdated() {
@@ -104,7 +104,7 @@ func (self *CertExpirationChecker) Run() error {
 			case <-time.After(self.timeoutDuration):
 				self.extender.SetIsRequesting(false)
 			case <-self.closeNotify:
-				self.isRunning.Set(false)
+				self.isRunning.Store(false)
 				return nil
 			}
 		}

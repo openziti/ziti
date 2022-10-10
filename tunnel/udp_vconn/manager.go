@@ -126,7 +126,7 @@ func (manager *manager) dropExpired() {
 	log := pfxlog.Logger()
 	now := time.Now()
 	for key, conn := range manager.connMap {
-		if conn.closed.Get() {
+		if conn.closed.Load() {
 			delete(manager.connMap, conn.srcAddr.String())
 		}
 		if manager.expirationPolicy.IsExpired(now, conn.GetLastUsed()) {

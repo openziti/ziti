@@ -3,10 +3,10 @@ package xgress_edge
 import (
 	"context"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/sequencer"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"golang.org/x/sync/semaphore"
+	"sync/atomic"
 )
 
 type MsgQueue interface {
@@ -30,7 +30,7 @@ func NewMsgQueue(queueDepth int) *baseMsgQ {
 type baseMsgQ struct {
 	ch          chan *channel.Message
 	closeNotify chan struct{}
-	closed      concurrenz.AtomicBoolean
+	closed      atomic.Bool
 }
 
 func (mq *baseMsgQ) Push(msg *channel.Message) error {
@@ -74,7 +74,7 @@ func NewSizeLimitedMsgQueue(size int32) *sizeLimitedMsgQ {
 type sizeLimitedMsgQ struct {
 	ch          chan *channel.Message
 	closeNotify chan struct{}
-	closed      concurrenz.AtomicBoolean
+	closed      atomic.Bool
 	sizeSem     semaphore.Weighted
 	next        *channel.Message
 }

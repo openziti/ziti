@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -32,15 +32,15 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel/v2 v2.0.1
-	github.com/openziti/fabric v0.21.1
-	github.com/openziti/foundation/v2 v2.0.4
-	github.com/openziti/identity v1.0.13
+	github.com/openziti/channel/v2 v2.0.4
+	github.com/openziti/fabric v0.21.2
+	github.com/openziti/foundation/v2 v2.0.5
+	github.com/openziti/identity v1.0.16
 	github.com/openziti/jwks v1.0.2
-	github.com/openziti/metrics v1.1.0
-	github.com/openziti/sdk-golang v0.16.125
-	github.com/openziti/storage v0.1.22
-	github.com/openziti/transport/v2 v2.0.30
+	github.com/openziti/metrics v1.1.2
+	github.com/openziti/sdk-golang v0.16.127
+	github.com/openziti/storage v0.1.23
+	github.com/openziti/transport/v2 v2.0.33
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.0
@@ -54,10 +54,10 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be
+	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50
 	golang.org/x/sync v0.0.0-20220923202941-7f9b1623fab7
-	golang.org/x/sys v0.0.0-20220928140112-f11e5e49a4ec
+	golang.org/x/sys v0.0.0-20221010170243-090e33056c14
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -108,7 +108,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.8 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.9 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
