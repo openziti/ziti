@@ -336,6 +336,10 @@ func (self *Controller) Init() error {
 	}
 
 	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, hclLogger)
+	if err != nil {
+		logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize raft snapshot store in: '%v'", snapshotsDir)
+		return err
+	}
 
 	bindHandler := func(binding channel.Binding) error {
 		binding.AddTypedReceiveHandler(NewCommandHandler(self))

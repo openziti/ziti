@@ -119,7 +119,7 @@ func (dt *destinationTable) addDestinationIfAbsent(addr xgress.Address, destinat
 
 func (dt *destinationTable) getDestination(addr xgress.Address) (Destination, bool) {
 	if dst, found := dt.destinations.Get(string(addr)); found {
-		return dst.(Destination), true
+		return dst, true
 	}
 	return nil, false
 }
@@ -153,7 +153,7 @@ func (dt *destinationTable) unlinkCircuit(circuitId string) {
 func (dt *destinationTable) debug() string {
 	out := fmt.Sprintf("\ndestinations (%d):\n\n", dt.destinations.Count())
 	for i := range dt.destinations.IterBuffered() {
-		out += fmt.Sprintf("\t@/%s -> (%s (%p))\n", i.Key, reflect.TypeOf(i.Val.(Destination)).String(), i.Val)
+		out += fmt.Sprintf("\t@/%s -> (%s (%p))\n", i.Key, reflect.TypeOf(i.Val).String(), i.Val)
 	}
 	out += "\n"
 

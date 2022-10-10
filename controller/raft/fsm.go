@@ -123,6 +123,9 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 	}
 
 	dbFile, err := os.OpenFile(self.dbPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0600)
+	if err != nil {
+		return err
+	}
 	_, err = io.Copy(dbFile, snapshot)
 	if err != nil {
 		_ = os.Remove(self.dbPath)

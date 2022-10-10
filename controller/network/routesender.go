@@ -58,8 +58,6 @@ func (self *routeSenderController) removeRouteSender(rs *routeSender) {
 
 type routeSender struct {
 	circuitId       string
-	path            *Path
-	routeMsgs       []*ctrl_pb.Route
 	timeout         time.Duration
 	in              chan *RouteStatus
 	attendance      map[string]bool

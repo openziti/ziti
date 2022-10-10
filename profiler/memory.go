@@ -49,7 +49,6 @@ type Memory struct {
 }
 
 // NewGoroutineMonitor can be used to track down goroutine leaks
-//
 func NewGoroutineMonitor(interval time.Duration) {
 	var m Monitor
 	var rtm runtime.MemStats
@@ -85,7 +84,9 @@ func NewGoroutineMonitor(interval time.Duration) {
 		stack := debug.Stack()
 		fmt.Println(string(stack))
 		buf := new(bytes.Buffer)
-		pprof.Lookup("goroutine").WriteTo(buf, 2)
+		if err := pprof.Lookup("goroutine").WriteTo(buf, 2); err != nil {
+			fmt.Printf("err writing memstats to buffer: %v\n", err)
+		}
 		fmt.Println(buf.String())
 	}
 }

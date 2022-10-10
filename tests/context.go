@@ -41,7 +41,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Jeffail/gabs/v2"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/transport/v2"
@@ -71,10 +70,8 @@ func init() {
 }
 
 type TestContext struct {
-	fabricController    *controller.Controller
-	Req                 *require.Assertions
-	managementApiClient *resty.Client
-	enabledJsonLogging  bool
+	fabricController *controller.Controller
+	Req              *require.Assertions
 
 	routers          []*router.Router
 	testing          *testing.T
@@ -273,47 +270,6 @@ func (ctx *TestContext) Teardown() {
 	}
 }
 
-func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity *gabs.Container) time.Time {
-	// we lose a little time resolution, so if it's in the same millisecond, it's ok
-	start = start.Add(-time.Millisecond)
-	now := time.Now().Add(time.Millisecond)
-	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
-	ctx.Req.Equal(createdAt, updatedAt)
-
-	ctx.Req.True(start.Before(createdAt) || start.Equal(createdAt), "%v should be before or equal to %v", start, createdAt)
-	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt), "%v should be after or equal to %v", now, createdAt)
-
-	return createdAt
-}
-
-func (ctx *TestContext) getEntityDates(jsonEntity *gabs.Container) (time.Time, time.Time) {
-	createdAtStr := jsonEntity.S("createdAt").Data().(string)
-	updatedAtStr := jsonEntity.S("updatedAt").Data().(string)
-
-	ctx.Req.NotNil(createdAtStr)
-	ctx.Req.NotNil(updatedAtStr)
-
-	createdAt, err := time.Parse(time.RFC3339, createdAtStr)
-	ctx.Req.NoError(err)
-	updatedAt, err := time.Parse(time.RFC3339, updatedAtStr)
-	ctx.Req.NoError(err)
-	return createdAt, updatedAt
-}
-
-func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreatedAt time.Time, jsonEntity *gabs.Container) time.Time {
-	// we lose a little time resolution, so if it's in the same millisecond, it's ok
-	start = start.Add(-time.Millisecond)
-	now := time.Now().Add(time.Millisecond)
-	createdAt, updatedAt := ctx.getEntityDates(jsonEntity)
-	ctx.Req.Equal(origCreatedAt, createdAt)
-
-	ctx.Req.True(createdAt.Before(updatedAt))
-	ctx.Req.True(start.Before(updatedAt) || start.Equal(updatedAt))
-	ctx.Req.True(now.After(updatedAt) || now.Equal(updatedAt))
-
-	return createdAt
-}
-
 func (ctx *TestContext) createFabricRestClient() *rest_client.ZitiFabric {
 	id, err := identity.LoadClientIdentity(
 		"./testdata/valid_client_cert/client.cert",
@@ -345,7 +301,9 @@ func (self *RestClient) EnrollRouter(id string, name string, certFile string) {
 
 	fingerprint := fmt.Sprintf("%x", sha1.Sum(cert[0].Raw))
 
-	timeoutContext, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	timeoutContext, cancelF := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancelF()
+
 	createRouterParams := &restClientRouter.CreateRouterParams{
 		Router: &rest_model.RouterCreate{
 			Cost:        util.Ptr(int64(0)),

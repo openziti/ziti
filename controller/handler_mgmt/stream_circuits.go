@@ -104,12 +104,8 @@ func (handler *CircuitsStreamHandler) close() {
 
 func NewPath(path *event.CircuitPath) *mgmt_pb.Path {
 	mgmtPath := &mgmt_pb.Path{}
-	for _, routerId := range path.Nodes {
-		mgmtPath.Nodes = append(mgmtPath.Nodes, routerId)
-	}
-	for _, linkId := range path.Links {
-		mgmtPath.Links = append(mgmtPath.Links, linkId)
-	}
+	mgmtPath.Nodes = append(mgmtPath.Nodes, path.Nodes...)
+	mgmtPath.Links = append(mgmtPath.Links, path.Links...)
 	mgmtPath.TerminatorLocalAddress = path.TerminatorLocalAddr
 	return mgmtPath
 }

@@ -22,6 +22,12 @@ import (
 	"github.com/openziti/storage/boltz"
 )
 
+// An Xctrl allows adding handlers to the router <-> controller connection
+// on the controller side. This means you can support additional message
+// types/flows to extend the basic fabric functionality.
+//
+// There is a corresponding Xrctrl interface for extending communication on
+// the router side
 type Xctrl interface {
 	config.Subconfig
 	channel.BindHandler

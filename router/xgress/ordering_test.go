@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
 	"github.com/stretchr/testify/require"
 	"io"
 	"sync/atomic"
@@ -46,17 +45,17 @@ func (conn *testConn) HandleControlMsg(ControlType, channel.Headers, ControlRece
 
 type noopForwarder struct{}
 
-func (n noopForwarder) ForwardPayload(srcAddr Address, payload *Payload) error {
+func (n noopForwarder) ForwardPayload(Address, *Payload) error {
 	return nil
 }
 
-func (n noopForwarder) ForwardAcknowledgement(srcAddr Address, acknowledgement *Acknowledgement) error {
+func (n noopForwarder) ForwardAcknowledgement(Address, *Acknowledgement) error {
 	return nil
 }
 
 type noopReceiveHandler struct{}
 
-func (n noopReceiveHandler) HandleXgressReceive(payload *Payload, x *Xgress) {}
+func (n noopReceiveHandler) HandleXgressReceive(*Payload, *Xgress) {}
 
 func (n noopReceiveHandler) HandleControlReceive(*Control, *Xgress) {}
 
@@ -120,9 +119,4 @@ func Test_Ordering(t *testing.T) {
 			req.Failf("timed out", "count at %v", i)
 		}
 	}
-}
-
-type noopMetricsHandler struct{}
-
-func (n noopMetricsHandler) AcceptMetrics(message *metrics_pb.MetricsMessage) {
 }

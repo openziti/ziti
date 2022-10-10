@@ -112,7 +112,8 @@ func (l *listener) relayIncomingPackets() {
 func (l *listener) rx() {
 	logger := pfxlog.ContextLogger(l.address)
 
-	sessionScanTimer := time.Tick(time.Second * 10)
+	sessionScanTicker := time.NewTicker(time.Second * 10)
+	defer sessionScanTicker.Stop()
 
 	for {
 		select {
@@ -137,7 +138,7 @@ func (l *listener) rx() {
 		case event := <-l.eventChan:
 			event.Handle(l)
 
-		case tick := <-sessionScanTimer:
+		case tick := <-sessionScanTicker.C:
 			nowNanos := tick.UnixNano()
 			for _, session := range l.sessions {
 				if session.TimeoutNanos() < nowNanos {

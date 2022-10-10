@@ -60,11 +60,6 @@ func (h *inspectHandler) handleInspect(request *channel.Message, ch channel.Chan
 	h.respond(ch, request, response)
 }
 
-func (h *inspectHandler) respondWithError(ch channel.Channel, request *channel.Message, errs ...string) {
-	response := &ctrl_pb.InspectResponse{Success: false, Errors: errs}
-	h.respond(ch, request, response)
-}
-
 func (h *inspectHandler) respond(ch channel.Channel, request *channel.Message, response *ctrl_pb.InspectResponse) {
 	log := pfxlog.ContextLogger(ch.Label())
 

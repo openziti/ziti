@@ -21,6 +21,12 @@ import (
 	"github.com/openziti/fabric/config"
 )
 
+// An Xrctrl allows adding handlers to the router <-> controller connection
+// on the router side. This means you can support additional message
+// types/flows to extend the basic fabric functionality.
+//
+// There is a corresponding Xctrl interface for extending communication on
+// the controller side
 type Xrctrl interface {
 	config.Subconfig
 	channel.BindHandler

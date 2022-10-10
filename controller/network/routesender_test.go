@@ -35,8 +35,6 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	term := entityHelper.addTestTerminator(svc.Id, router1.Id, instanceId, true)
 	term.Binding = "edge"
 
-	network.Terminators.Create(term)
-
 	errCode := byte(ctrl_msg.ErrorTypeInvalidTerminator)
 
 	rs := routeSender{
@@ -89,8 +87,6 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 
 	term := entityHelper.addTestTerminator(svc.Id, router1.Id, identity, true)
 	term.Binding = "DNE"
-
-	network.Terminators.Create(term)
 
 	errCode := byte(ctrl_msg.ErrorTypeInvalidTerminator)
 

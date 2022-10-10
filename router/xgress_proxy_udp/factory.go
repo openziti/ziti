@@ -46,6 +46,5 @@ func (f *factory) CreateDialer(_ xgress.OptionsData) (xgress.Dialer, error) {
 }
 
 type factory struct {
-	ctrl    env.NetworkControllers
-	options *xgress.Options
+	ctrl env.NetworkControllers
 }

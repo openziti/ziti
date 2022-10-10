@@ -18,9 +18,6 @@ package network
 
 import (
 	"fmt"
-	"os"
-	"sort"
-
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 
@@ -35,15 +32,16 @@ func newTestEntityHelper(ctx *db.TestContext, network *Network) *testEntityHelpe
 	ctx.NoError(err)
 
 	return &testEntityHelper{
+		ctx:           ctx,
 		network:       network,
 		transportAddr: transportAddr,
 	}
 }
 
 type testEntityHelper struct {
+	ctx           *db.TestContext
 	network       *Network
 	routerIdx     int
-	linkIdx       int
 	serviceIdx    int
 	terminatorIdx int
 	transportAddr transport.Address
@@ -52,7 +50,7 @@ type testEntityHelper struct {
 func (self *testEntityHelper) addTestRouter() *Router {
 	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, false)
 	self.network.Routers.markConnected(router)
-	self.network.Routers.Create(router)
+	self.ctx.NoError(self.network.Routers.Create(router))
 	self.routerIdx++
 	return router
 }
@@ -69,7 +67,7 @@ func (self *testEntityHelper) addTestTerminator(serviceName string, routerName s
 		InstanceId: instanceId,
 		Address:    "ToDo",
 	}
-	self.network.Terminators.Create(term)
+	self.ctx.NoError(self.network.Terminators.Create(term))
 	self.terminatorIdx++
 	return term
 }
@@ -82,7 +80,7 @@ func (self *testEntityHelper) addTestService(serviceName string) *Service {
 		TerminatorStrategy: xt_smartrouting.Name,
 	}
 	self.serviceIdx++
-	self.network.Services.Create(svc)
+	self.ctx.NoError(self.network.Services.Create(svc))
 	return svc
 }
 
@@ -99,73 +97,73 @@ func (self *testEntityHelper) discardControllerEvents() {
 
 // these debug methods can be used to dump routing evaluation steps to a file for easier analysis
 
-func initDebug(path string) {
-	f, err := os.Create(path)
-	if err != nil {
-		panic(err)
-	}
-	dbg = &debugger{f: f}
-}
-
-func stopDebug() {
-	if err := dbg.f.Close(); err != nil {
-		panic(err)
-	}
-}
-
-var dbg *debugger
-
-type debugger struct {
-	f   *os.File
-	err error
-}
-
-func debugf(v string, args ...interface{}) {
-	if dbg.err == nil {
-		_, dbg.err = fmt.Fprintf(dbg.f, v, args...)
-	}
-}
-
-func debugDumpDistance(dist map[*Router]int64) {
-	var keys []*Router
-	for k := range dist {
-		keys = append(keys, k)
-	}
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i].Id < keys[j].Id
-	})
-	for _, k := range keys {
-		debugf("   ->%v = %v\n", k.Id, dist[k])
-	}
-}
-
-func debugPath(p *Path) {
-	nodes := p.Nodes
-	debugf("[r/%v]", nodes[0].Id)
-	if len(p.Links) > 0 {
-		nodes = nodes[1:]
-		for _, link := range p.Links {
-			debugf(" -> [l/%v cost=%v] -> [r/%v]", link.Id, link.Cost, nodes[0].Id)
-		}
-	}
-	debugf("\n")
-}
-
-func debugNetwork(n *Network) {
-	routers := n.AllConnectedRouters()
-	sort.Slice(routers, func(i, j int) bool {
-		return routers[i].Id < routers[j].Id
-	})
-
-	for rIdx, router := range routers {
-		debugf("%v router: %v\n", rIdx, router.Id)
-		links := router.routerLinks.GetLinks()
-		sort.Slice(links, func(i, j int) bool {
-			return links[i].Id < links[j].Id
-		})
-		for lIdx, link := range links {
-			debugf("    %v link %v for (%v -> %v) c: %v sc: %v sl:%v dl: %v\n",
-				lIdx, link.Id, link.Src.Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
-		}
-	}
-}
+//func initDebug(path string) {
+//	f, err := os.Create(path)
+//	if err != nil {
+//		panic(err)
+//	}
+//	dbg = &debugger{f: f}
+//}
+//
+//func stopDebug() {
+//	if err := dbg.f.Close(); err != nil {
+//		panic(err)
+//	}
+//}
+//
+//var dbg *debugger
+//
+//type debugger struct {
+//	f   *os.File
+//	err error
+//}
+//
+//func debugf(v string, args ...interface{}) {
+//	if dbg.err == nil {
+//		_, dbg.err = fmt.Fprintf(dbg.f, v, args...)
+//	}
+//}
+//
+//func debugDumpDistance(dist map[*Router]int64) {
+//	var keys []*Router
+//	for k := range dist {
+//		keys = append(keys, k)
+//	}
+//	sort.Slice(keys, func(i, j int) bool {
+//		return keys[i].Id < keys[j].Id
+//	})
+//	for _, k := range keys {
+//		debugf("   ->%v = %v\n", k.Id, dist[k])
+//	}
+//}
+//
+//func debugPath(p *Path) {
+//	nodes := p.Nodes
+//	debugf("[r/%v]", nodes[0].Id)
+//	if len(p.Links) > 0 {
+//		nodes = nodes[1:]
+//		for _, link := range p.Links {
+//			debugf(" -> [l/%v cost=%v] -> [r/%v]", link.Id, link.Cost, nodes[0].Id)
+//		}
+//	}
+//	debugf("\n")
+//}
+//
+//func debugNetwork(n *Network) {
+//	routers := n.AllConnectedRouters()
+//	sort.Slice(routers, func(i, j int) bool {
+//		return routers[i].Id < routers[j].Id
+//	})
+//
+//	for rIdx, router := range routers {
+//		debugf("%v router: %v\n", rIdx, router.Id)
+//		links := router.routerLinks.GetLinks()
+//		sort.Slice(links, func(i, j int) bool {
+//			return links[i].Id < links[j].Id
+//		})
+//		for lIdx, link := range links {
+//			debugf("    %v link %v for (%v -> %v) c: %v sc: %v sl:%v dl: %v\n",
+//				lIdx, link.Id, link.Src.Id, link.Dst.Id, link.GetCost(), link.StaticCost, link.SrcLatency, link.DstLatency)
+//		}
+//	}
+//}

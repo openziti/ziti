@@ -73,14 +73,6 @@ func (self *Controller) HandleCustomAgentOp(conn net.Conn) error {
 	return errors.Errorf("invalid operation %v", op)
 }
 
-func (self *Controller) agentOpSnapshotDb(c *bufio.ReadWriter) error {
-	if err := self.network.SnapshotDatabase(); err != nil {
-		return err
-	}
-	_, err := c.WriteString("success\n")
-	return err
-}
-
 func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 	logrus.Debug("received agent operation request")
 

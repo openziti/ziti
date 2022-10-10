@@ -95,7 +95,8 @@ func (l *listener) relay() {
 }
 
 func (l *listener) rx() {
-	scanTimer := time.Tick(time.Second * 10)
+	scanTicker := time.NewTicker(time.Second * 10)
+	defer scanTicker.Stop()
 
 	for {
 		select {
@@ -126,7 +127,7 @@ func (l *listener) rx() {
 		case event := <-l.eventChan:
 			event.Handle(l)
 
-		case tick := <-scanTimer:
+		case tick := <-scanTicker.C:
 			now := tick.UnixNano()
 			for _, session := range l.sessions {
 				if session.TimeoutNanos() < now {
