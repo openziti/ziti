@@ -28,9 +28,8 @@ import (
 const hostFormat = "%s\t%s\t# NetFoundry"
 
 type hostFile struct {
-	path    string
-	mutex   sync.Mutex
-	domains map[string]*domainEntry
+	path  string
+	mutex sync.Mutex
 }
 
 func NewHostFile(path string) Resolver {

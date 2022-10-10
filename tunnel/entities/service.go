@@ -306,6 +306,9 @@ func (self *HostV2Terminator) GetPort(options map[string]interface{}) (string, e
 			return portStr, err
 		}
 		port, err := strconv.Atoi(portStr)
+		if err != nil {
+			return "", errors.Wrapf(err, "invalid destination port %v", portStr)
+		}
 		for _, portRange := range self.AllowedPortRanges {
 			if uint16(port) >= portRange.Low && uint16(port) <= portRange.High {
 				return portStr, nil

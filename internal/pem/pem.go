@@ -22,7 +22,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"strings"
 )
 
@@ -61,7 +61,7 @@ func NewKeyPair(privPath, pubPath, password string) (*KeyPair, error) {
 }
 
 func (kp *KeyPair) loadKey(privPath, password string) error {
-	pemBytes, err := ioutil.ReadFile(privPath)
+	pemBytes, err := os.ReadFile(privPath)
 	kp.KeyPem = pemBytes
 	if err != nil {
 		return err
@@ -74,8 +74,8 @@ func (kp *KeyPair) loadKey(privPath, password string) error {
 
 	derBytes := block.Bytes
 
-	if x509.IsEncryptedPEMBlock(block) {
-		derBytes, err = x509.DecryptPEMBlock(block, []byte(password))
+	if x509.IsEncryptedPEMBlock(block) { //nolint:staticcheck
+		derBytes, err = x509.DecryptPEMBlock(block, []byte(password)) //nolint:staticcheck
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ func (kp *KeyPair) loadKey(privPath, password string) error {
 }
 
 func (kp *KeyPair) loadCertificate(pubPath string) error {
-	pemBytes, err := ioutil.ReadFile(pubPath)
+	pemBytes, err := os.ReadFile(pubPath)
 	kp.CertPem = pemBytes
 
 	if err != nil {

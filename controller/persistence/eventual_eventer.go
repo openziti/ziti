@@ -364,7 +364,7 @@ func (a *EventualEventerBbolt) Start(closeNotify <-chan struct{}) error {
 	if !a.running.CompareAndSwap(false, true) {
 		return errors.New("already started")
 	}
-	a.stopNotify = make(chan struct{}, 0)
+	a.stopNotify = make(chan struct{})
 	a.closeNotify = closeNotify
 	go a.run()
 

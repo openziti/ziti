@@ -184,10 +184,6 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 	return nil
 }
 
-func (config *Config) LoadIdentity() (identity.Identity, error) {
-	return config.LoadIdentity()
-}
-
 func (config *Config) loadApiProxy(edgeConfigMap map[interface{}]interface{}) error {
 	config.ApiProxy = ApiProxy{}
 

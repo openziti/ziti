@@ -104,6 +104,7 @@ func (r *LimitedRunner) Start(closeNotify <-chan struct{}) error {
 	r.isRunning = true
 
 	for _, te := range r.tickerEnforcers {
+		te := te // ensure te isn't changed during loop evaluation in gorutine capture below
 		if te.Ticker != nil {
 			return errors.New("dirty ticker encountered")
 		}

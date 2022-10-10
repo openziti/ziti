@@ -225,6 +225,11 @@ func (r *CurrentIdentityAuthenticatorRouter) Extend(ae *env.AppEnv, rc *response
 
 func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *response.RequestContext, extend *rest_model.IdentityExtendValidateEnrollmentRequest) {
 	authId, err := rc.GetEntityId()
+	if err != nil {
+		rc.RespondWithError(err)
+		return
+	}
+
 	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.Identity.Id, authId, *extend.ClientCert)
 
 	if err != nil {

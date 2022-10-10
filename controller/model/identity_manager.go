@@ -779,20 +779,17 @@ func (statusMap *identityStatusMap) IsActive(identityId string) bool {
 func (statusMap *identityStatusMap) start() {
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				var toRemove []string
-				now := time.Now()
-				statusMap.identityIdToStatus.IterCb(func(key string, stat *status) {
-					if stat.expiresAt.Before(now) {
-						toRemove = append(toRemove, key)
-					}
-				})
-
-				for _, identityId := range toRemove {
-					statusMap.identityIdToStatus.Remove(identityId)
+		for range ticker.C {
+			var toRemove []string
+			now := time.Now()
+			statusMap.identityIdToStatus.IterCb(func(key string, stat *status) {
+				if stat.expiresAt.Before(now) {
+					toRemove = append(toRemove, key)
 				}
+			})
+
+			for _, identityId := range toRemove {
+				statusMap.identityIdToStatus.Remove(identityId)
 			}
 		}
 	}()

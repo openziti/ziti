@@ -263,7 +263,7 @@ func (self *edgeClientConn) processBind(req *channel.Message, ch channel.Channel
 	terminatorIdentity, _ := req.GetStringHeader(edge.TerminatorIdentityHeader)
 	var terminatorIdentitySecret []byte
 	if terminatorIdentity != "" {
-		terminatorIdentitySecret, _ = req.Headers[edge.TerminatorIdentitySecretHeader]
+		terminatorIdentitySecret = req.Headers[edge.TerminatorIdentitySecretHeader]
 	}
 
 	request := &edge_ctrl_pb.CreateTerminatorRequest{

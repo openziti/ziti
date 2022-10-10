@@ -180,7 +180,7 @@ func (self *CertExpirationChecker) ExtendEnrollment() error {
 }
 
 func (self *CertExpirationChecker) getWaitTime() (time.Duration, error) {
-	var durationToWait time.Duration = 0
+	var durationToWait time.Duration
 
 	if self.edgeConfig.ExtendEnrollment {
 		self.edgeConfig.ExtendEnrollment = false

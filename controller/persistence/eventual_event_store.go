@@ -66,8 +66,6 @@ func newEventualEventStore(stores *stores) *eventualEventStoreImpl {
 
 type eventualEventStoreImpl struct {
 	*baseStore
-	indexName         boltz.ReadIndex
-	symbolEnrollments boltz.EntitySetSymbol
 }
 
 func (store *eventualEventStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EventualEvent, error) {

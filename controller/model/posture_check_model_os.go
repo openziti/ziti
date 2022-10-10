@@ -55,7 +55,7 @@ func (p *PostureCheckOperatingSystem) fillProtobuf(msg *edge_cmd_pb.PostureCheck
 
 func (p *PostureCheckOperatingSystem) fillFromProtobuf(msg *edge_cmd_pb.PostureCheck) error {
 	if osList_, ok := msg.Subtype.(*edge_cmd_pb.PostureCheck_OsList_); ok {
-		if osList := osList_.OsList; osList_ != nil {
+		if osList := osList_.OsList; osList != nil {
 			for _, os := range osList.OsList {
 				p.OperatingSystems = append(p.OperatingSystems, OperatingSystem{
 					OsType:     os.OsType,
@@ -114,32 +114,6 @@ func (p *PostureCheckOperatingSystem) Evaluate(_ string, pd *PostureData) bool {
 				return true
 			}
 		}
-	}
-
-	return false
-}
-
-type version struct {
-	value       int64
-	orHigher    bool
-	subVersions map[int64]*version
-}
-
-func (version *version) isValid(checkVersions []int64) bool {
-	if len(checkVersions) == 0 {
-		return false //not enough versions to check
-	}
-
-	if checkVersions[0] == version.value {
-		if len(version.subVersions) == 0 {
-			return true
-		}
-
-		for _, subVersion := range version.subVersions {
-			return subVersion.isValid(checkVersions[1:])
-		}
-	} else if version.orHigher && checkVersions[0] > version.value {
-		return true
 	}
 
 	return false

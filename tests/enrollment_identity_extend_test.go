@@ -30,8 +30,8 @@ import (
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/identity/certtools"
 	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"gopkg.in/resty.v1"
 	"net/http"
@@ -54,9 +54,12 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ctx.NoError(err)
+
 		request, err := certtools.NewCertRequest(map[string]string{
 			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
 		}, nil)
+		ctx.NoError(err)
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
 		ctx.Req.NoError(err)
@@ -181,9 +184,12 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ctx.Req.NoError(err)
+
 		request, err := certtools.NewCertRequest(map[string]string{
 			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
 		}, nil)
+		ctx.Req.NoError(err)
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
 		ctx.Req.NoError(err)
@@ -205,6 +211,8 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 		path := fmt.Sprintf("/edge/client/v1/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
 		resolvedUrl, err := identityApiSession.resolveApiUrl(ctx.ApiHost, path)
+		ctx.Req.NoError(err)
+
 		client := resty.New().SetTLSClientConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		})
@@ -226,9 +234,12 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ctx.Req.NoError(err)
+
 		request, err := certtools.NewCertRequest(map[string]string{
 			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
 		}, nil)
+		ctx.Req.NoError(err)
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
 		ctx.Req.NoError(err)
@@ -294,13 +305,15 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		name := eid.New()
 		_, identityAuth := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(name, false)
 		identityApiSession, err := identityAuth.AuthenticateClientApi(ctx)
-
 		ctx.Req.NoError(err)
 
 		newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ctx.Req.NoError(err)
+
 		request, err := certtools.NewCertRequest(map[string]string{
 			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
 		}, nil)
+		ctx.Req.NoError(err)
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
 		ctx.Req.NoError(err)
@@ -313,6 +326,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 		path := fmt.Sprintf("/current-identity/authenticators/%s/extend", "fake")
 		resolvedUrl, err := identityApiSession.resolveApiUrl(ctx.ApiHost, path)
+		ctx.Req.NoError(err)
 
 		extendResp, err := identityApiSession.NewRequest().SetBody(csrRequest).Post(resolvedUrl)
 		ctx.Req.NoError(err)
@@ -332,9 +346,12 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 
 		newPrivateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+		ctx.Req.NoError(err)
+
 		request, err := certtools.NewCertRequest(map[string]string{
 			"C": "US", "O": "NetFoundry-API-Test", "CN": identityAuth.cert.Subject.CommonName,
 		}, nil)
+		ctx.Req.NoError(err)
 
 		csr, err := x509.CreateCertificateRequest(rand.Reader, request, newPrivateKey)
 		ctx.Req.NoError(err)
@@ -360,5 +377,4 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})
-
 }

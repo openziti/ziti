@@ -21,7 +21,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"github.com/fullsailor/pkcs7"
-	"io/ioutil"
+	"io"
 )
 
 // VerifyController will attempt to use the provided x509.CertPool to connect to the provided controller.
@@ -71,7 +71,7 @@ func GetControllerWellKnownCas(controllerAddr string) ([]*x509.Certificate, erro
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	encoded, err := ioutil.ReadAll(resp.Body)
+	encoded, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

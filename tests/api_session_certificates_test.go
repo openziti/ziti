@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -56,7 +55,8 @@ func Test_Api_Session_Certs(t *testing.T) {
 			request := ctx.AdminClientSession.newAuthenticatedRequest()
 
 			body := gabs.New()
-			body.Set(string(csrPem), "csr")
+			_, err = body.Set(string(csrPem), "csr")
+			ctx.Req.NoError(err)
 			bodyStr := body.String()
 			request.SetBody(bodyStr)
 

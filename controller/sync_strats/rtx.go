@@ -49,7 +49,7 @@ func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendB
 		EdgeRouter:  edgeRouter,
 		Router:      router,
 		send:        make(chan *channel.Message, sendBufferSize),
-		closeNotify: make(chan struct{}, 0),
+		closeNotify: make(chan struct{}),
 		RouterState: env.NewLockingRouterStatus(),
 	}
 	rtx.running.Store(true)

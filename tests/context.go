@@ -538,11 +538,6 @@ func (ctx *TestContext) newAnonymousClientApiRequest() *resty.Request {
 		SetHeader("content-type", "application/json")
 }
 
-func (ctx *TestContext) newAnonymousManagementApiRequest() *resty.Request {
-	return ctx.DefaultClientApiClient().R().
-		SetHeader("content-type", "application/json")
-}
-
 func (ctx *TestContext) newRequestWithClientCert(cert *x509.Certificate, privateKey crypto.PrivateKey) *resty.Request {
 	client, _, _ := ctx.NewClientComponentsWithClientCert(cert, privateKey)
 
@@ -626,6 +621,7 @@ func (ctx *TestContext) completeOttEnrollment(identityId string) *certAuthentica
 	request, err := certtools.NewCertRequest(map[string]string{
 		"C": "US", "O": "NetFoundry-API-Test", "CN": identityId,
 	}, nil)
+	ctx.Req.NoError(err)
 
 	csr, err := x509.CreateCertificateRequest(rand.Reader, request, privateKey)
 	ctx.Req.NoError(err)
@@ -668,15 +664,6 @@ func (ctx *TestContext) validateDateFieldsForCreate(start time.Time, jsonEntity 
 	ctx.Req.True(now.After(createdAt) || now.Equal(createdAt), "%v should be after or equal to %v", now, createdAt)
 
 	return createdAt
-}
-
-func (ctx *TestContext) newPostureCheckMFA(roleAttributes []string) *postureCheck {
-	return &postureCheck{
-		name:           eid.New(),
-		typeId:         "MFA",
-		roleAttributes: roleAttributes,
-		tags:           nil,
-	}
 }
 
 func (ctx *TestContext) newPostureCheckProcessMulti(semantic rest_model.Semantic, processes []*rest_model.ProcessMulti, roleAttributes []string) *rest_model.PostureCheckProcessMultiCreate {
@@ -779,12 +766,6 @@ func (ctx *TestContext) validateDateFieldsForUpdate(start time.Time, origCreated
 func (ctx *TestContext) validateEntity(entity entity, jsonEntity *gabs.Container) *gabs.Container {
 	entity.validate(ctx, jsonEntity)
 	return jsonEntity
-}
-
-func (ctx *TestContext) idsJson(ids ...string) *gabs.Container {
-	entityData := gabs.New()
-	ctx.setJsonValue(entityData, ids, "ids")
-	return entityData
 }
 
 func (ctx *TestContext) requireEntityNotEnrolled(name string, entity *gabs.Container) {

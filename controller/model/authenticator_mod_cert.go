@@ -44,7 +44,6 @@ type AuthModuleCert struct {
 	env                  Env
 	method               string
 	fingerprintGenerator cert.FingerprintGenerator
-	caChain              []byte
 	staticCaCerts        []*x509.Certificate
 	dynamicCaCache       cmap.ConcurrentMap[[]*x509.Certificate]
 }
@@ -160,7 +159,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 
 	if externalId != "" {
 		logger = logger.WithField("externalId", externalId)
-		identity, err = module.env.GetManagers().Identity.ReadByExternalId(externalId)
+		identity, _ = module.env.GetManagers().Identity.ReadByExternalId(externalId)
 
 		if identity == nil {
 			logger.Error("failed to find identity by externalId")
@@ -173,14 +172,14 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		fingerprint := module.env.GetFingerprintGenerator().FromCert(clientCert)
 		logger = logger.WithField("fingerprint", fingerprint)
 
-		authenticator, err = module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
+		authenticator, _ = module.env.GetManagers().Authenticator.ReadByFingerprint(fingerprint)
 
 		if authenticator == nil {
 			logger.Error("failed to find authenticator by fingerprint")
 			return nil, apierror.NewInvalidAuth()
 		}
 
-		identity, err = module.env.GetManagers().Identity.Read(authenticator.IdentityId)
+		identity, _ = module.env.GetManagers().Identity.Read(authenticator.IdentityId)
 	}
 
 	if identity == nil {
@@ -201,7 +200,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	authPolicy, err := module.env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
+	authPolicy, _ := module.env.GetManagers().AuthPolicy.Read(identity.AuthPolicyId)
 
 	if authPolicy == nil {
 		logger.Error("failed to obtain authPolicy by id")

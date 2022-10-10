@@ -362,10 +362,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(0, 0, -1)
 
-			var err error
-
-			err = certChecker.Run()
-			req.Error(err)
+			req.Error(certChecker.Run())
 		})
 	})
 
@@ -409,27 +406,27 @@ type SimpleTestIdentity struct {
 	setServerCertCalled bool
 }
 
-func (s SimpleTestIdentity) WatchFiles() error {
+func (s *SimpleTestIdentity) WatchFiles() error {
 	panic("implement me")
 }
 
-func (s SimpleTestIdentity) StopWatchingFiles() {
+func (s *SimpleTestIdentity) StopWatchingFiles() {
 	panic("implement me")
 }
 
-func (s SimpleTestIdentity) Cert() *tls.Certificate {
+func (s *SimpleTestIdentity) Cert() *tls.Certificate {
 	return s.TlsCert
 }
 
-func (s SimpleTestIdentity) ServerCert() []*tls.Certificate {
+func (s *SimpleTestIdentity) ServerCert() []*tls.Certificate {
 	return s.TlsServerCert
 }
 
-func (s SimpleTestIdentity) CA() *x509.CertPool {
+func (s *SimpleTestIdentity) CA() *x509.CertPool {
 	return s.CaPool
 }
 
-func (s SimpleTestIdentity) ServerTLSConfig() *tls.Config {
+func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 	var certs []tls.Certificate
 
 	for _, cert := range s.TlsServerCert {
@@ -445,29 +442,29 @@ func (s SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 	}
 }
 
-func (s SimpleTestIdentity) ClientTLSConfig() *tls.Config {
+func (s *SimpleTestIdentity) ClientTLSConfig() *tls.Config {
 	return &tls.Config{
 		RootCAs:      s.CaPool,
 		Certificates: []tls.Certificate{*s.TlsCert},
 	}
 }
 
-func (s SimpleTestIdentity) Reload() error {
+func (s *SimpleTestIdentity) Reload() error {
 	s.reloadCalled = true
 	return nil
 }
 
-func (s SimpleTestIdentity) SetCert(string) error {
+func (s *SimpleTestIdentity) SetCert(string) error {
 	s.setCertCalled = true
 	return nil
 }
 
-func (s SimpleTestIdentity) SetServerCert(string) error {
+func (s *SimpleTestIdentity) SetServerCert(string) error {
 	s.setServerCertCalled = true
 	return nil
 }
 
-func (s SimpleTestIdentity) GetConfig() *identity.Config {
+func (s *SimpleTestIdentity) GetConfig() *identity.Config {
 	return nil
 }
 
@@ -612,15 +609,15 @@ type stubExtender struct {
 	done         func() error
 }
 
-func (s stubExtender) IsRequestingCompareAndSwap(expected bool, value bool) bool {
+func (s *stubExtender) IsRequestingCompareAndSwap(expected bool, value bool) bool {
 	return s.isRequesting.CompareAndSwap(expected, value)
 }
 
-func (s stubExtender) SetIsRequesting(value bool) {
+func (s *stubExtender) SetIsRequesting(value bool) {
 	s.isRequesting.Store(value)
 }
 
-func (s stubExtender) ExtendEnrollment() error {
+func (s *stubExtender) ExtendEnrollment() error {
 	s.SetIsRequesting(true)
 
 	if s.done != nil {
@@ -630,6 +627,6 @@ func (s stubExtender) ExtendEnrollment() error {
 	return nil
 }
 
-func (s stubExtender) IsRequesting() bool {
+func (s *stubExtender) IsRequesting() bool {
 	return s.isRequesting.Load()
 }

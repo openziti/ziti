@@ -32,9 +32,9 @@ import (
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
-	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
@@ -190,15 +190,15 @@ func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg
 		return fmt.Errorf("enrollment response did not contain a CA chain")
 	}
 
-	if err = ioutil.WriteFile(identityConfig.Cert, []byte(resp.Cert), 0600); err != nil {
+	if err = os.WriteFile(identityConfig.Cert, []byte(resp.Cert), 0600); err != nil {
 		return fmt.Errorf("unable to write client cert to [%s]: %s", identityConfig.Cert, err)
 	}
 
-	if err = ioutil.WriteFile(identityConfig.ServerCert, []byte(resp.ServerCert), 0600); err != nil {
+	if err = os.WriteFile(identityConfig.ServerCert, []byte(resp.ServerCert), 0600); err != nil {
 		return fmt.Errorf("unable to write server cert to [%s]: %s", identityConfig.ServerCert, err)
 	}
 
-	if err = ioutil.WriteFile(identityConfig.CA, []byte(resp.Ca), 0600); err != nil {
+	if err = os.WriteFile(identityConfig.CA, []byte(resp.Ca), 0600); err != nil {
 		return fmt.Errorf("unable to write CA certs to [%s]: %s", identityConfig.CA, err)
 	}
 

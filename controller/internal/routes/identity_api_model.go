@@ -223,7 +223,6 @@ func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e model
 }
 
 func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_model.IdentityDetail, error) {
-
 	identityType, err := ae.Managers.IdentityType.ReadByIdOrName(identity.IdentityTypeId)
 
 	if err != nil {
@@ -231,6 +230,9 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 	}
 
 	mfa, err := ae.Managers.Mfa.ReadByIdentityId(identity.Id)
+	if err != nil {
+		return nil, err
+	}
 
 	isMfaEnabled := mfa != nil && mfa.IsVerified
 

@@ -96,8 +96,8 @@ func (p *PostureCheckProcess) FailureValues(_ string, pd *PostureData) PostureCh
 	for _, processData := range pd.Processes {
 		if processData.PostureCheckId == p.PostureCheckId {
 			ret.ActualValue = *processData
+			break
 		}
-		break
 	}
 
 	return ret

@@ -593,6 +593,9 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authen
 // or an error.
 func (self *AuthenticatorManager) ReEnroll(id string, expiresAt time.Time) (string, error) {
 	authenticator, err := self.Read(id)
+	if err != nil {
+		return "", err
+	}
 
 	enrollment := &Enrollment{
 		IdentityId: &authenticator.IdentityId,
@@ -648,7 +651,7 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 	cert := certs[0]
 
 	caId := ""
-	env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+	err := env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		for cursor := env.GetStores().Ca.IterateIds(tx, ast.BoolNodeTrue); cursor.IsValid(); cursor.Next() {
 			ca, err := env.GetStores().Ca.LoadOneById(tx, string(cursor.Current()))
 			if err != nil {
@@ -672,6 +675,9 @@ func getCaId(env Env, auth *AuthenticatorCert) string {
 		}
 		return nil
 	})
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error while getting CaId")
+	}
 
 	return caId
 }

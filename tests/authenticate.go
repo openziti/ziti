@@ -553,12 +553,6 @@ func (request *authenticatedRequests) requireNewPostureCheckDomain(domains []str
 	return postureCheck
 }
 
-func (request *authenticatedRequests) requireNewPostureCheckMFA(roleAttributes []string) *postureCheck {
-	postureCheck := request.testContext.newPostureCheckMFA(roleAttributes)
-	request.requireCreateEntity(postureCheck)
-	return postureCheck
-}
-
 func (request *authenticatedRequests) requireNewPostureCheckProcessMulti(semantic rest_model.Semantic, processes []*rest_model.ProcessMulti, roleAttributes []string) *rest_model.PostureCheckProcessMultiDetail {
 	postureCheck := request.testContext.newPostureCheckProcessMulti(semantic, processes, roleAttributes)
 	id := request.requireCreateRestModelEntity("posture-checks", postureCheck)
@@ -580,12 +574,6 @@ func (request *authenticatedRequests) requireNewService(roleAttributes, configs 
 	service := request.testContext.newService(roleAttributes, configs)
 	id := request.requireCreateEntity(service)
 	service.Id = id
-	return service
-}
-
-func (request *authenticatedRequests) newServiceBulk(roleAttributes, configs []string) *service {
-	service := request.testContext.newService(roleAttributes, configs)
-	request.requireCreateEntity(service)
 	return service
 }
 
@@ -719,16 +707,6 @@ func (request *authenticatedRequests) requireCreateRestModelPostureResponse(enti
 	standardJsonResponseTests(resp, http.StatusCreated, request.testContext.testing)
 }
 
-func (request *authenticatedRequests) createEntityBulk(entity entity) string {
-	resp := request.createEntity(entity)
-	if http.StatusCreated != resp.StatusCode() {
-		panic(errors.Errorf("expected error code %v", resp.StatusCode()))
-	}
-	id := request.testContext.getEntityId(resp.Body())
-	entity.setId(id)
-	return id
-}
-
 func (request *authenticatedRequests) requireDeleteEntity(entity entity) {
 	resp := request.deleteEntityOfType(entity.getEntityType(), entity.getId())
 	standardJsonResponseTests(resp, http.StatusOK, request.testContext.testing)
@@ -762,16 +740,6 @@ func (request *authenticatedRequests) requireQuery(url string) *gabs.Container {
 	request.testContext.logJson(body)
 	request.testContext.Req.Equal(http.StatusOK, httpStatus)
 	return request.testContext.parseJson(body)
-}
-
-func (request *authenticatedRequests) requireAddAssociation(url string, ids ...string) {
-	httpStatus, _ := request.addAssociation(url, ids...)
-	request.testContext.Req.Equal(http.StatusOK, httpStatus)
-}
-
-func (request *authenticatedRequests) requireRemoveAssociation(url string, ids ...string) {
-	httpStatus, _ := request.removeAssociation(url, ids...)
-	request.testContext.Req.Equal(http.StatusOK, httpStatus)
 }
 
 func (request *authenticatedRequests) createEntityOfType(entityType string, body interface{}) *resty.Response {
@@ -902,14 +870,6 @@ func (request *authenticatedRequests) query(url string) (int, []byte) {
 	return resp.StatusCode(), resp.Body()
 }
 
-func (request *authenticatedRequests) addAssociation(url string, ids ...string) (int, []byte) {
-	return request.updateAssociation(http.MethodPut, url, ids...)
-}
-
-func (request *authenticatedRequests) removeAssociation(url string, ids ...string) (int, []byte) {
-	return request.updateAssociation(http.MethodDelete, url, ids...)
-}
-
 func (request *authenticatedRequests) validateAssociations(entity entity, childType string, children ...entity) {
 	var ids []string
 	for _, child := range children {
@@ -958,16 +918,6 @@ func (request *authenticatedRequests) validateAssociationsAtContains(url string,
 	}
 }
 
-func (request *authenticatedRequests) updateAssociation(method, url string, ids ...string) (int, []byte) {
-
-	resp, err := request.newAuthenticatedRequest().
-		SetBody(request.testContext.idsJson(ids...).String()).
-		Execute(method, url)
-	request.testContext.Req.NoError(err)
-	request.testContext.logJson(resp.Body())
-	return resp.StatusCode(), resp.Body()
-}
-
 func (request *authenticatedRequests) isServiceVisibleToUser(serviceId string) bool {
 	query := url.QueryEscape(fmt.Sprintf(`id = "%v"`, serviceId))
 	result := request.requireQuery("services?filter=" + query)
@@ -982,20 +932,6 @@ func (request *authenticatedRequests) createUserAndLoginClientApi(isAdmin bool, 
 	session, _ := userAuth.AuthenticateClientApi(request.testContext)
 
 	return session
-}
-
-func (request *authenticatedRequests) createUserAndLoginManagementApi(isAdmin bool, roleAttributes, configTypes []string) *session {
-	_, userAuth := request.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), isAdmin, roleAttributes...)
-	userAuth.ConfigTypes = configTypes
-
-	session, _ := userAuth.AuthenticateManagementApi(request.testContext)
-
-	return session
-}
-
-func (request *authenticatedRequests) refreshServiceUpdateTime() {
-	lastUpdated := request.getServiceUpdateTime()
-	request.session.lastServiceUpdate = lastUpdated
 }
 
 func (request *authenticatedRequests) requireServiceUpdateTimeUnchanged() {

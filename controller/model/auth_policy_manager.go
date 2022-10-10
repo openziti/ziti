@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -99,14 +98,6 @@ func (self *AuthPolicyManager) verifyExtJwt(id string, fieldName string) error {
 func (self *AuthPolicyManager) Read(id string) (*AuthPolicy, error) {
 	modelEntity := &AuthPolicy{}
 	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-func (self *AuthPolicyManager) readInTx(tx *bbolt.Tx, id string) (*AuthPolicy, error) {
-	modelEntity := &AuthPolicy{}
-	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
 	return modelEntity, nil

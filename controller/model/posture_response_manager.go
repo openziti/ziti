@@ -101,7 +101,7 @@ func (self *PostureResponseManager) SetMfaPostureForIdentity(identityId string, 
 			pd = newPostureData()
 		}
 
-		for apiSessionId, _ := range pd.ApiSessions {
+		for apiSessionId := range pd.ApiSessions {
 			postureSubType := &PostureResponseMfa{
 				ApiSessionId: apiSessionId,
 				PassedMfaAt:  passedAt,
@@ -282,7 +282,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 		if err != nil {
 			pfxlog.Logger().Errorf("error querying for onWake/onUnlock posture checks: %v", err)
 		} else {
-			self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
+			err = self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 				cursor := self.env.GetStores().PostureCheck.IterateIds(tx, query)
 
 				for cursor.IsValid() {
@@ -300,6 +300,9 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 				}
 				return nil
 			})
+			if err != nil {
+				pfxlog.Logger().WithError(err).Error("error querying for onWake/onUnlock posture by id")
+			}
 		}
 	}
 

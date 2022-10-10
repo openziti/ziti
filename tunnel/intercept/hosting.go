@@ -173,7 +173,9 @@ func (self *hostingContext) OnClose() {
 		if err != nil {
 			log.WithError(err).Error("failed to get dial IP")
 		} else if self.addrTracker.RemoveAddress(ipNet.String()) {
-			err = router.RemoveLocalAddress(ipNet, "lo")
+			if err = router.RemoveLocalAddress(ipNet, "lo"); err != nil {
+				log.WithError(err).Error("failed to remove local address")
+			}
 		}
 	}
 

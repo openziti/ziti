@@ -24,8 +24,8 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -250,7 +250,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 
 			if value, found := signingCertSubMap["cert"]; found {
 				c.Enrollment.SigningCertConfig.Cert = value.(string)
-				certPem, err := ioutil.ReadFile(c.Enrollment.SigningCertConfig.Cert)
+				certPem, err := os.ReadFile(c.Enrollment.SigningCertConfig.Cert)
 				if err != nil {
 					pfxlog.Logger().WithError(err).Panic("unable to read [edge.enrollment.cert]")
 				}
@@ -271,7 +271,7 @@ func (c *Config) loadEnrollmentSection(edgeConfigMap map[interface{}]interface{}
 			if value, found := signingCertSubMap["ca"]; found {
 				c.Enrollment.SigningCertConfig.CA = value.(string)
 
-				if c.Enrollment.SigningCertCaPem, err = ioutil.ReadFile(c.Enrollment.SigningCertConfig.CA); err != nil {
+				if c.Enrollment.SigningCertCaPem, err = os.ReadFile(c.Enrollment.SigningCertConfig.CA); err != nil {
 					return fmt.Errorf("could not read file CA file from [edge.enrollment.signingCert.ca]")
 				}
 

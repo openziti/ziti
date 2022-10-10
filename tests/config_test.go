@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -167,7 +166,6 @@ func Test_Configs(t *testing.T) {
 		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
 
 		time.Sleep(time.Millisecond * 10)
-		now = time.Now()
 		newName := eid.New()
 		config.Name = newName
 		config.Data = map[string]interface{}{"foo": "bar"}
@@ -180,7 +178,6 @@ func Test_Configs(t *testing.T) {
 		ctx.validateDateFieldsForUpdate(now, createdAt, jsonConfig)
 
 		time.Sleep(time.Millisecond * 10)
-		now = time.Now()
 		config.Name = eid.New()
 		config.Data = map[string]interface{}{"foo": "bar"}
 		config.Tags = map[string]interface{}{"baz": "bam"}
@@ -191,7 +188,6 @@ func Test_Configs(t *testing.T) {
 		ctx.AdminManagementSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
-		now = time.Now()
 		config.Name = eid.New()
 		config.Data = map[string]interface{}{"bim": "bam"}
 		config.Tags = map[string]interface{}{"enlightened": false}
@@ -202,7 +198,6 @@ func Test_Configs(t *testing.T) {
 		ctx.AdminManagementSession.validateUpdate(config)
 
 		time.Sleep(time.Millisecond * 10)
-		now = time.Now()
 		config.Name = eid.New()
 		config.Data = map[string]interface{}{"bim": "bom"}
 		config.Tags = map[string]interface{}{"enlightened": true}

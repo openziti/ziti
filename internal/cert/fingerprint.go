@@ -17,12 +17,10 @@
 package cert
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"strings"
 )
 
 type Fingerprints map[string]*x509.Certificate
@@ -121,15 +119,4 @@ func (fpg *defaultFingerprintGenerator) FromCerts(certs []*x509.Certificate) Fin
 func (fpg *defaultFingerprintGenerator) FromRaw(raw []byte) string {
 	// #nosec
 	return fmt.Sprintf("%x", sha1.Sum(raw))
-}
-
-func (fpg *defaultFingerprintGenerator) toHex(f []byte) string {
-	var buf bytes.Buffer
-	for i, b := range f {
-		if i > 0 {
-			fmt.Fprintf(&buf, ":")
-		}
-		fmt.Fprintf(&buf, "%02x", b)
-	}
-	return strings.ToUpper(buf.String())
 }

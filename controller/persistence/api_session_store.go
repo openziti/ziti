@@ -37,8 +37,9 @@ const (
 	FieldApiSessionLastActivityAt = "lastActivityAt"
 	FieldApiSessionAuthenticator  = "authenticator"
 
-	EventFullyAuthenticated       events.EventName = "FULLY_AUTHENTICATED"
-	EventualEventApiSessionDelete                  = "ApiSessionDelete"
+	EventFullyAuthenticated events.EventName = "FULLY_AUTHENTICATED"
+
+	EventualEventApiSessionDelete = "ApiSessionDelete"
 )
 
 type ApiSession struct {
@@ -157,7 +158,7 @@ func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 
 	if err == nil {
 		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
-			if apiSession.MfaRequired == false || apiSession.MfaComplete == true {
+			if !apiSession.MfaRequired || apiSession.MfaComplete {
 				store.Emit(EventFullyAuthenticated, apiSession)
 			}
 		}
@@ -170,7 +171,7 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity boltz.E
 
 	if err == nil {
 		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
-			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete == true {
+			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete {
 				store.Emit(EventFullyAuthenticated, apiSession)
 			}
 		}

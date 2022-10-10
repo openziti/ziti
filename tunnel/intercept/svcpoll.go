@@ -76,7 +76,7 @@ func (self *ServiceListenerGroup) NewServiceListener() *ServiceListener {
 
 func (self *ServiceListenerGroup) WaitForShutdown() {
 	sig := make(chan os.Signal, 1) //signal.Notify expects a buffered chan of at least 1
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	for s := range sig {
 		logrus.Debugf("caught signal %v", s)
@@ -115,7 +115,7 @@ type ServiceListener struct {
 
 func (self *ServiceListener) WaitForShutdown() {
 	sig := make(chan os.Signal, 1) //signal.Notify expects a buffered chan of at least 1
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 
 	for s := range sig {
 		logrus.Debugf("caught signal %v", s)
