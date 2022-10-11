@@ -8,8 +8,6 @@
   - Bug Fixes
 - Ziti CLI
   - Allow dynamic modification of enrollment durations
-  - Add public attributes and service policies allowing public access to routers in docker-compose quickstart
-  - Add file overwrite checks for the "Local ziti quickstart" script
   - Bug Fixes
 - SDK Golang
   - Bug Fixes
@@ -99,8 +97,6 @@ ziti create config controller --routerEnrollmentDuration 1h
 - Ziti CLI
   - `ziti edge create|update ca` now supports `externalIdClaim`
   - Improved List CAs
-  - Allow dynamic modification of enrollment durations
-  - Bug Fixes
 - Identity
   - Automatic File Reloads
 
@@ -943,7 +939,7 @@ The `ziti fabric list terminators` operation now shows `InstanceId` instead of `
 - Fabric
   - N/A
 - Ziti CLI
-  - N/A 
+  - N/A
 - SDK Golang
   - N/A
 
@@ -1034,6 +1030,7 @@ will be interrogated for new signing keys. The `jwksEndpoint` will only be inter
 
 The following new endpoint has been added:
 - `GET /metrics` - returns metrics for the controller and all routers in the Prometheus text exposition format.  See [https://openziti.github.io/ziti/metrics/prometheus.html] for more information and instructions to set it up.
+
 
 # Release 0.25.10
 
