@@ -87,8 +87,8 @@ jobs:
           path: release/
           retention-days: 5
 
-  linux-build:
-    name: Build Linux Binaries
+  fablab-smoketest:
+    name: Fablab Smoketest
     runs-on: ubuntu-20.04
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
@@ -103,11 +103,6 @@ jobs:
         with:
           go-version: '1.19.x'
 
-      - name: Install Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: '3.7'
-
       - name: Install Ziti CI
         uses: netfoundry/ziti-ci@v1
 
@@ -117,40 +112,12 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
-          mkdir -p release/amd64/linux/bin
-          sudo apt-get update
-          sudo apt-get -yq install gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf gcc-aarch64-linux-gnu
+          mkdir -p dist/bin
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          go install github.com/mitchellh/gox@latest
-          $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=release/amd64/linux/bin ./...
-
-          go build -tags=all,tests -o release/amd64/linux/bin ./...
-          
-      - name: Compute the Ziti Version String for CI Jobs
-        id: get_version
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_RUN_ID: ${{ github.run_id }}
-        run: |
-          ZITI_VERSION="$($(go env GOPATH)/bin/ziti-ci -q get-current-version)"
-          # drop the leading 'v', if any
-          ZITI_VERSION=${ZITI_VERSION#v}
-          if ! [[ "${ZITI_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            # fail the job because we could not obtain the current version from ziti-ci
-            echo "ERROR: ZITI_VERSION=${ZITI_VERSION}"
-            exit 1
-          elif [[ "${GITHUB_REF}" =~ ^refs/heads/(release-v|main$) ]]; then
-            # Set output parameters for release branches
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ::set-output name=ziti-version::${ZITI_VERSION}
-          else
-            # Append build / run number for non-release refs
-            ZITI_VERSION="${ZITI_VERSION}-${GITHUB_RUN_ID}"
-            echo "DEBUG: ZITI_VERSION=${ZITI_VERSION}"
-            echo ::set-output name=ziti-version::${ZITI_VERSION}
-          fi
+          pushd network-tests && go install ./... && popd
+          pushd network-tests && go build -o ../dist/bin/ ./utils/... && popd 
+          go build -tags=all,tests -o dist/bin/ ./...
 
       - name: Create Zitilab Bindings
         run: |
@@ -165,30 +132,31 @@ jobs:
           echo "  influxdb:"            >> ~/.fablab/bindings.yml
           echo "    username: fablab"   >> ~/.fablab/bindings.yml
           echo "    password: fablab"   >> ~/.fablab/bindings.yml
+          echo "ziti_version: $($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> ~/.fablab/bindings.yml
+          cat ~/.fablab/bindings.yml
 
       - name: Test Ziti Command
         env:
-          ZITI_ROOT: release/amd64/linux/
-          ZITI_VERSION: ${{ steps.get_version.outputs.ziti-version }}
+          ZITI_ROOT: dist/
         run: |
-          release/amd64/linux/bin/simple-transfer create
-          release/amd64/linux/bin/simple-transfer up
-          release/amd64/linux/bin/simple-transfer run
+          $(go env GOPATH)/bin/simple-transfer create
+          $(go env GOPATH)/bin/simple-transfer up
+          $(go env GOPATH)/bin/simple-transfer run
 
       - name: Test Ziti Command Teardown
         if: always()
         env:
-            ZITI_ROOT: release/amd64/linux/
+          ZITI_ROOT: dist/
         run: |
-          release/amd64/linux/bin/simple-transfer dispose
-          release/amd64/linux/bin/simple-transfer clean
+          $(go env GOPATH)/bin/simple-transfer dispose
+          $(go env GOPATH)/bin/simple-transfer clean
 
       # END linux-build-steps
 
   publish:
     name: Publish Binaries and Docker Image
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build ]
+    needs: [ mac-os-build, windows-build, fablab-smoketest ]
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
     steps:
@@ -224,7 +192,7 @@ jobs:
           $(go env GOPATH)/bin/gox -cgo -os=linux -arch=amd64 -output=$GOX_OUTPUT ./...
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
-      
+
       - name: Download darwin release artifact
         uses: actions/download-artifact@v2
         with:
@@ -334,14 +302,14 @@ jobs:
           push: true
           tags: ${{ steps.tagprep.outputs.tags }}
 
-  smoketest:
+  jenkins-smoketest:
     # BEGIN smoketest-job
     #
     # Any event that triggers this main workflow also triggers the smoketest
     #
-    needs: linux-build
+    needs: publish
     name: Call the On-Demand Smoketest Workflow
     uses: ./.github/workflows/jenkins-smoketest.yml
     secrets: inherit
     with:
-      ziti-version: ${{ needs.linux-build.outputs.ziti-version }} 
+      ziti-version: ${{ needs.publish.outputs.ziti-version }}

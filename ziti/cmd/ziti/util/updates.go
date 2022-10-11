@@ -40,7 +40,7 @@ func LogReleaseVersionCheck(ziti_component string) {
 	currentBuildVersion := version.GetVersion()
 	currentBuildSemver, err := semver.ParseTolerant(currentBuildVersion) // ParseTolerant trims leading "v"
 	if err != nil {
-		logger.Warnln("failed to parse current build version as semver: '%s' with error: %s", version.GetVersion(), err)
+		logger.Warnf("failed to parse current build version as semver: '%s' with error: %s", version.GetVersion(), err)
 		return
 	}
 	// ignore non-release builds and current release build

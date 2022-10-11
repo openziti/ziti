@@ -1,5 +1,3 @@
-//go:build tests
-
 package main
 
 import (
@@ -211,7 +209,7 @@ var m = &model.Model{
 					return os.Getenv("BUILD_NUMBER")
 				},
 				"${ziti_version}": func(h *model.Host) string {
-					return os.Getenv("ZITI_VERSION")
+					return h.MustStringVariable("ziti_version")
 				},
 			},
 		),
@@ -232,7 +230,7 @@ var m = &model.Model{
 					return os.Getenv("BUILD_NUMBER")
 				},
 				"${ziti_version}": func(h *model.Host) string {
-					return os.Getenv("ZITI_VERSION")
+					return h.MustStringVariable("ziti_version")
 				},
 			},
 		),
@@ -246,7 +244,7 @@ var m = &model.Model{
 					return os.Getenv("BUILD_NUMBER")
 				},
 				"${ziti_version}": func(h *model.Host) string {
-					return os.Getenv("ZITI_VERSION")
+					return h.MustStringVariable("ziti_version")
 				},
 			}),
 		distribution.DistributeData(
