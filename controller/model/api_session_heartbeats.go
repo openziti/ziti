@@ -19,9 +19,9 @@ package model
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
+	"sync/atomic"
 	"time"
 )
 
@@ -29,7 +29,7 @@ type HeartbeatCollector struct {
 	apiSessionLastAccessedAtMap cmap.ConcurrentMap[*HeartbeatStatus]
 	updateInterval              time.Duration
 	closeNotify                 chan struct{}
-	isFlushing                  concurrenz.AtomicBoolean
+	isFlushing                  atomic.Bool
 	flushAction                 func(beats []*Heartbeat)
 	batchSize                   int
 }

@@ -22,13 +22,13 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"regexp"
 	"strings"
+	"sync/atomic"
 	"time"
 )
 
@@ -40,7 +40,7 @@ type PostureCache struct {
 	identityToPostureData    cmap.ConcurrentMap[*PostureData]
 	apiSessionIdToIdentityId cmap.ConcurrentMap[string]
 	ticker                   *time.Ticker
-	isRunning                concurrenz.AtomicBoolean
+	isRunning                atomic.Bool
 	events.EventEmmiter
 	env Env
 }
@@ -52,7 +52,6 @@ func newPostureCache(env Env) *PostureCache {
 		ticker:                   time.NewTicker(5 * time.Second),
 		EventEmmiter:             events.New(),
 		env:                      env,
-		isRunning:                concurrenz.AtomicBoolean(0),
 	}
 
 	pc.run(env.GetHostController().GetCloseNotifyChannel())
@@ -93,7 +92,7 @@ func (pc *PostureCache) evaluate() {
 			log.Errorf("error during posture timeout enforcement: %v", r)
 		}
 
-		pc.isRunning.Set(false)
+		pc.isRunning.Store(false)
 	}()
 
 	var lastId []byte
@@ -328,8 +327,8 @@ func (pc *PostureCache) IdentityDeleted(args ...interface{}) {
 	pc.identityToPostureData.Remove(identity.Id)
 }
 
-//PostureCheckChanged notifies all associated identities that posture configuration has changed
-//and that endpoints may need to reevaluate posture queries.
+// PostureCheckChanged notifies all associated identities that posture configuration has changed
+// and that endpoints may need to reevaluate posture queries.
 func (pc *PostureCache) PostureCheckChanged(args ...interface{}) {
 	var entity boltz.Entity
 	if len(args) == 1 {

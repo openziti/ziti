@@ -23,10 +23,10 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
+	"sync/atomic"
 )
 
 // RouterSender represents a connection from an Edge Router to the controller. Used
@@ -38,7 +38,7 @@ type RouterSender struct {
 	Router      *network.Router
 	send        chan *channel.Message
 	closeNotify chan struct{}
-	running     concurrenz.AtomicBoolean
+	running     atomic.Bool
 
 	sync.Mutex
 }
@@ -50,9 +50,9 @@ func newRouterSender(edgeRouter *model.EdgeRouter, router *network.Router, sendB
 		Router:      router,
 		send:        make(chan *channel.Message, sendBufferSize),
 		closeNotify: make(chan struct{}, 0),
-		running:     concurrenz.AtomicBoolean(1),
 		RouterState: env.NewLockingRouterStatus(),
 	}
+	rtx.running.Store(true)
 
 	go rtx.run()
 
@@ -94,7 +94,7 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 }
 
 func (rtx *RouterSender) Send(msg *channel.Message) error {
-	if !rtx.running.Get() {
+	if !rtx.running.Load() {
 		rtx.logger().Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
 		return errors.Errorf("cannot send to router [%s], rtx'er is stopped", rtx.Router.Id)
 	}

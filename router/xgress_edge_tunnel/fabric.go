@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -40,6 +41,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -270,7 +272,7 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTerminator) {
 	log := logrus.WithField("service", terminator.context.ServiceName())
 
-	if terminator.closed.Get() {
+	if terminator.closed.Load() {
 		log.Info("not attempting to establish terminator, service not hostable")
 		return
 	}
@@ -278,7 +280,7 @@ func (self *fabricProvider) establishTerminatorWithRetry(terminator *tunnelTermi
 	operation := func() error {
 		log.Info("attempting to establish terminator")
 		err := self.establishTerminator(terminator)
-		if err != nil && terminator.closed.Get() {
+		if err != nil && terminator.closed.Load() {
 			return backoff.Permanent(err)
 		}
 		return err
@@ -309,9 +311,9 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 	hostData[edge.PublicKeyHeader] = keyPair.Public()
 
 	precedence := edge_ctrl_pb.TerminatorPrecedence_Default
-	if terminator.context.ListenOptions().Precedence == edge.PrecedenceRequired {
+	if terminator.context.ListenOptions().Precedence == ziti.PrecedenceRequired {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Required
-	} else if terminator.context.ListenOptions().Precedence == edge.PrecedenceFailed {
+	} else if terminator.context.ListenOptions().Precedence == ziti.PrecedenceFailed {
 		precedence = edge_ctrl_pb.TerminatorPrecedence_Failed
 	}
 
@@ -456,7 +458,7 @@ type tunnelTerminator struct {
 	context       tunnel.HostingContext
 	terminatorId  concurrenz.AtomicValue[string]
 	closeCallback concurrenz.AtomicValue[func()]
-	closed        concurrenz.AtomicBoolean
+	closed        atomic.Bool
 }
 
 func (self *tunnelTerminator) SendHealthEvent(pass bool) error {

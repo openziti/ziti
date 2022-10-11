@@ -27,10 +27,10 @@ import (
 	"github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/fabric"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -42,7 +42,7 @@ type apiSessionAddedHandler struct {
 	reqChan chan *apiSessionAddedWithState
 
 	stop        chan struct{}
-	stopped     concurrenz.AtomicBoolean
+	stopped     atomic.Bool
 	trackerLock sync.Mutex
 }
 
@@ -119,7 +119,7 @@ func (h *apiSessionAddedHandler) applySync(tracker *apiSessionSyncTracker) {
 	h.sm.RemoveMissingApiSessions(apiSessions, lastId)
 	h.sm.MarkSyncStopped(tracker.syncId)
 
-	tracker.isDone.Set(true)
+	tracker.isDone.Store(true)
 	duration := tracker.endTime.Sub(tracker.startTime)
 	logrus.Infof("finished sychronizing api sessions [count: %d, syncId: %s, duration: %v]", len(apiSessions), tracker.syncId, duration)
 }
@@ -194,11 +194,11 @@ func (h *apiSessionAddedHandler) instantSync(reqWithState *apiSessionAddedWithSt
 	}
 
 	//if no id or the sync id is newer, reset
-	if h.syncTracker == nil || h.syncTracker.syncId == "" || h.syncTracker.isDone.Get() || h.syncTracker.syncId < reqWithState.Id {
+	if h.syncTracker == nil || h.syncTracker.syncId == "" || h.syncTracker.isDone.Load() || h.syncTracker.syncId < reqWithState.Id {
 
 		if h.syncTracker == nil || h.syncTracker.syncId == "" {
 			logger.Infof("first api session syncId [%s], starting", reqWithState.Id)
-		} else if h.syncTracker.isDone.Get() {
+		} else if h.syncTracker.isDone.Load() {
 			logger.Infof("api session syncId [%s], starting", reqWithState.Id)
 		} else {
 			logger.Infof("api session with newer syncId [old: %s, new: %s], aborting old, starting new", h.syncTracker.syncId, reqWithState.Id)
@@ -228,7 +228,7 @@ type apiSessionSyncTracker struct {
 	hasLast       bool
 	lastSeq       int
 	stop          chan struct{}
-	isDone        concurrenz.AtomicBoolean
+	isDone        atomic.Bool
 	lock          sync.Mutex
 	startTime     time.Time
 	endTime       time.Time

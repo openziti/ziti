@@ -11,12 +11,12 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -255,11 +255,11 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker, closeF := newCertChecker()
 			certChecker.timeoutDuration = 10 * time.Millisecond
 
-			var invoked concurrenz.AtomicBoolean
+			var invoked atomic.Bool
 
 			extender := &stubExtender{
 				done: func() error {
-					invoked.Set(true)
+					invoked.Store(true)
 					certChecker.id.Cert().Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					certChecker.id.ServerCert()[0].Leaf.NotAfter = time.Now().AddDate(1, 0, 0)
 					return errors.New("test")
@@ -276,7 +276,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			time.Sleep(200 * time.Millisecond)
 
-			req.True(invoked.Get())
+			req.True(invoked.Load())
 
 			closeF()
 		})
@@ -285,7 +285,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, closeF := newCertChecker()
 
-			certChecker.isRequesting.Set(true)
+			certChecker.isRequesting.Store(true)
 
 			go func() {
 				_ = certChecker.Run()
@@ -304,7 +304,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			certChecker, closeF := newCertChecker()
 			certChecker.timeoutDuration = 10 * time.Millisecond
 
-			certChecker.isRequesting.Set(true)
+			certChecker.isRequesting.Store(true)
 
 			go func() {
 				_ = certChecker.Run()
@@ -312,7 +312,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			time.Sleep(50 * time.Millisecond)
 
-			req.False(certChecker.isRequesting.Get())
+			req.False(certChecker.isRequesting.Load())
 
 			closeF()
 		})
@@ -327,12 +327,12 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			time.Sleep(50 * time.Millisecond)
 
-			certChecker.isRequesting.Set(true)
+			certChecker.isRequesting.Store(true)
 			certChecker.CertsUpdated()
 
 			time.Sleep(50 * time.Millisecond)
 
-			req.False(certChecker.isRequesting.Get())
+			req.False(certChecker.isRequesting.Load())
 
 			closeF()
 		})
@@ -341,7 +341,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 			req := require.New(t)
 			certChecker, closeF := newCertChecker()
 
-			certChecker.isRequesting.Set(true)
+			certChecker.isRequesting.Store(true)
 
 			go func() {
 				_ = certChecker.Run()
@@ -351,7 +351,7 @@ func Test_CertExpirationChecker(t *testing.T) {
 
 			time.Sleep(50 * time.Millisecond)
 
-			req.False(certChecker.isRequesting.Get())
+			req.False(certChecker.isRequesting.Load())
 
 			closeF()
 		})
@@ -381,19 +381,19 @@ func Test_CertExpirationChecker(t *testing.T) {
 			err := certChecker.ExtendEnrollment()
 
 			req.Error(err)
-			req.True(certChecker.isRequesting.Get())
+			req.True(certChecker.isRequesting.Load())
 		})
 
 		t.Run("errors if isRequesting = true", func(t *testing.T) {
 			req := require.New(t)
 			certChecker, _ := newCertChecker()
 
-			certChecker.isRequesting.Set(true)
+			certChecker.isRequesting.Store(true)
 
 			err := certChecker.ExtendEnrollment()
 
 			req.Error(err)
-			req.True(certChecker.isRequesting.Get())
+			req.True(certChecker.isRequesting.Load())
 		})
 	})
 }
@@ -608,7 +608,7 @@ func (ch *simpleTestChannel) GetTimeSinceLastRead() time.Duration {
 }
 
 type stubExtender struct {
-	isRequesting concurrenz.AtomicBoolean
+	isRequesting atomic.Bool
 	done         func() error
 }
 
@@ -617,7 +617,7 @@ func (s stubExtender) IsRequestingCompareAndSwap(expected bool, value bool) bool
 }
 
 func (s stubExtender) SetIsRequesting(value bool) {
-	s.isRequesting.Set(value)
+	s.isRequesting.Store(value)
 }
 
 func (s stubExtender) ExtendEnrollment() error {
@@ -631,5 +631,5 @@ func (s stubExtender) ExtendEnrollment() error {
 }
 
 func (s stubExtender) IsRequesting() bool {
-	return s.isRequesting.Get()
+	return s.isRequesting.Load()
 }

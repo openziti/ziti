@@ -5,12 +5,12 @@ import (
 	"fmt"
 	health "github.com/AppsFlyer/go-sundheit"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -129,7 +129,7 @@ type manager struct {
 	checks  sync.Map
 	health  health.Health
 	results chan *result
-	closed  concurrenz.AtomicBoolean
+	closed  atomic.Bool
 }
 
 func (self *manager) Shutdown() {
@@ -251,7 +251,7 @@ func (self *manager) OnCheckRegistered(string, health.Result) {
 }
 
 func (self *manager) OnCheckCompleted(name string, r health.Result) {
-	if self.closed.Get() {
+	if self.closed.Load() {
 		return
 	}
 
