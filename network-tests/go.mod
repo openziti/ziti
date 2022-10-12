@@ -6,7 +6,7 @@ replace github.com/openziti/ziti => ../
 
 require (
 	github.com/openziti/fablab v0.4.7
-	github.com/openziti/sdk-golang v0.16.128
+	github.com/openziti/sdk-golang v0.16.129
 	github.com/openziti/zitilab v0.1.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.0
@@ -107,9 +107,9 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/agent v1.0.3 // indirect
-	github.com/openziti/channel/v2 v2.0.4 // indirect
-	github.com/openziti/edge v0.24.4 // indirect
-	github.com/openziti/fabric v0.21.2 // indirect
+	github.com/openziti/channel/v2 v2.0.5 // indirect
+	github.com/openziti/edge v0.24.7 // indirect
+	github.com/openziti/fabric v0.21.3 // indirect
 	github.com/openziti/foundation/v2 v2.0.5 // indirect
 	github.com/openziti/identity v1.0.16 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
@@ -154,7 +154,7 @@ require (
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2 // indirect
+	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50 // indirect
