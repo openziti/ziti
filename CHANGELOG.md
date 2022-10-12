@@ -81,8 +81,7 @@ ziti create config controller --routerEnrollmentDuration 1h
 * github.com/openziti/metrics: [v1.1.0 -> v1.1.2](https://github.com/openziti/metrics/compare/v1.1.0...v1.1.2)
 * github.com/openziti/x509-claims: [v1.0.2 -> v1.0.3](https://github.com/openziti/x509-claims/compare/v1.0.2...v1.0.3)
 * github.com/openziti/ziti: [0.26.8 -> 0.26.9](https://github.com/openziti/ziti/compare/0.26.8...0.26.9)
-    * [Issue #845](https://github.com/openziti/ziti/issues/845) - Edge router csr sans should include public IP if provided
-    * [Issue 845](https://github.com/openziti/ziti/issues/845): Setting ZITI_EDGE_ROUTER_IP_OVERRIDE now adds the IP to the CSR SANs of the router config
+    * [Issue #845](https://github.com/openziti/ziti/issues/845) - Setting ZITI_EDGE_ROUTER_IP_OVERRIDE now adds the IP to the CSR SANs of the router config
 
 # Release 0.26.8
 
