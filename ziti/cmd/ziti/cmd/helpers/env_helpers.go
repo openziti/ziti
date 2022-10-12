@@ -17,10 +17,13 @@
 package helpers
 
 import (
+	edge "github.com/openziti/edge/controller/config"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 func HomeDir() string {
@@ -145,6 +148,45 @@ func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
 
 func GetZitiEdgeCtrlAdvertisedPort() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.DefaultZitiEdgeAPIPort)
+}
+
+func GetZitiEdgeIdentityEnrollmentDuration() (time.Duration, error) {
+	retVal, err := getValueOrSetAndGetDefault(constants.ZitiEdgeIdentityEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeIdentityEnrollmentDurationVarDescription)
+		if err != nil {
+			return edge.DefaultEdgeEnrollmentDuration, err
+		}
+	}
+	retValInt, err := strconv.Atoi(retVal)
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeIdentityEnrollmentDurationVarDescription)
+		if err != nil {
+			return edge.DefaultEdgeEnrollmentDuration, err
+		}
+	}
+
+	return time.Duration(retValInt) * time.Minute, nil
+}
+
+func GetZitiEdgeRouterEnrollmentDuration() (time.Duration, error) {
+	retVal, err := getValueOrSetAndGetDefault(constants.ZitiEdgeRouterEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeRouterEnrollmentDurationVarDescription)
+		if err != nil {
+			return edge.DefaultEdgeEnrollmentDuration, err
+		}
+	}
+	retValInt, err := strconv.Atoi(retVal)
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeRouterEnrollmentDurationVarDescription)
+		if err != nil {
+			return edge.DefaultEdgeEnrollmentDuration, err
+		}
+	}
+
+	//fmt.Println("Router Duration: " + retVal + " - " + (time.Duration(retValInt) * time.Minute).String())
+	return time.Duration(retValInt) * time.Minute, nil
 }
 
 func getValueOrSetAndGetDefault(envVarName string, defaultValue string) (string, error) {

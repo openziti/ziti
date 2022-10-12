@@ -11,9 +11,19 @@ on:
 env:
   GOFLAGS: "-trimpath"
   GOX_OUTPUT: "release/{{.Arch}}/{{.OS}}/{{.Dir}}"
+  GOX_TEST_OUTPUT: "test/{{.Arch}}/{{.OS}}/bin/{{.Dir}}"
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: "us-east-2"
   gh_ci_key: ${{ secrets.GH_CI_KEY }}
+  CONSUL_ENCRYPTION_KEY: ${{ secrets.CONSUL_ENCRYPTION_KEY }}
+  ELASTIC_ENDPOINT: ${{ secrets.ELASTIC_ENDPOINT }}
+  ELASTIC_USERNAME: ${{ secrets.ELASTIC_USERNAME }}
+  ELASTIC_PASSWORD: ${{ secrets.ELASTIC_PASSWORD }}
+  CONSUL_ENDPOINT: ${{ secrets.CONSUL_ENDPOINT }}
+  CONSUL_AGENT_CERT: ${{ secrets.CONSUL_AGENT_CERT }}
+  BUILD_NUMBER: ${{ format('{0}-{1}-{2}', github.run_id, github.run_number, github.run_attempt) }}
+
 
 jobs:
   mac-os-build:
@@ -77,10 +87,76 @@ jobs:
           path: release/
           retention-days: 5
 
-  linux-build:
-    name: Build and Publish Linux Binaries and Docker Image
+  fablab-smoketest:
+    name: Fablab Smoketest
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build ]
+    outputs:
+      ziti-version: ${{ steps.get_version.outputs.ziti-version }}
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Install Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.19.x'
+
+      - name: Install Ziti CI
+        uses: netfoundry/ziti-ci@v1
+
+      - name: Build and Test
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
+          ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
+        run: |
+          mkdir -p dist/bin
+          $(go env GOPATH)/bin/ziti-ci configure-git
+          $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
+          pushd network-tests && go install ./... && popd
+          pushd network-tests && go build -o ../dist/bin/ ./utils/... && popd 
+          go build -tags=all,tests -o dist/bin/ ./...
+
+      - name: Create Zitilab Bindings
+        run: |
+          mkdir ~/.fablab
+          touch ~/.fablab/bindings.yml
+          echo "credentials:"           >> ~/.fablab/bindings.yml
+          echo "  aws:"                 >> ~/.fablab/bindings.yml
+          echo "    managed_key: true"  >> ~/.fablab/bindings.yml
+          echo "  edge:"                >> ~/.fablab/bindings.yml
+          echo "    username: admin"    >> ~/.fablab/bindings.yml
+          echo "    password: admin"    >> ~/.fablab/bindings.yml
+          echo "  influxdb:"            >> ~/.fablab/bindings.yml
+          echo "    username: fablab"   >> ~/.fablab/bindings.yml
+          echo "    password: fablab"   >> ~/.fablab/bindings.yml
+          echo "ziti_version: $($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> ~/.fablab/bindings.yml
+          cat ~/.fablab/bindings.yml
+
+      - name: Test Ziti Command
+        env:
+          ZITI_ROOT: dist/
+        run: |
+          $(go env GOPATH)/bin/simple-transfer create
+          $(go env GOPATH)/bin/simple-transfer up
+          $(go env GOPATH)/bin/simple-transfer run
+
+      - name: Test Ziti Command Teardown
+        if: always()
+        env:
+          ZITI_ROOT: dist/
+        run: |
+          $(go env GOPATH)/bin/simple-transfer dispose
+          $(go env GOPATH)/bin/simple-transfer clean
+
+      # END linux-build-steps
+
+  publish:
+    name: Publish Binaries and Docker Image
+    runs-on: ubuntu-20.04
+    needs: [ mac-os-build, windows-build, fablab-smoketest ]
     outputs:
       ziti-version: ${{ steps.get_version.outputs.ziti-version }}
     steps:
@@ -226,16 +302,14 @@ jobs:
           push: true
           tags: ${{ steps.tagprep.outputs.tags }}
 
-      # END linux-build-steps
-
-  smoketest:
+  jenkins-smoketest:
     # BEGIN smoketest-job
     #
     # Any event that triggers this main workflow also triggers the smoketest
     #
-    needs: linux-build
+    needs: publish
     name: Call the On-Demand Smoketest Workflow
     uses: ./.github/workflows/jenkins-smoketest.yml
     secrets: inherit
     with:
-      ziti-version: ${{ needs.linux-build.outputs.ziti-version }} 
+      ziti-version: ${{ needs.publish.outputs.ziti-version }}

@@ -19,8 +19,8 @@ package cmd
 import (
 	"fmt"
 	"github.com/openziti/agent"
-	"github.com/openziti/channel"
-	"github.com/openziti/channel/protobufs"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge/pb/edge_mgmt_pb"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"

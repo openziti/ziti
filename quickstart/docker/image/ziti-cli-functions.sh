@@ -1380,6 +1380,14 @@ function createZacSystemdFile {
     return 1
   fi
 
+  if which node >/dev/null; then
+    # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
+    NODE_BIN=$(readlink -f $(which node))
+  else
+    echo "ERROR: missing executable 'node'" >&2
+    return 1
+  fi
+
 cat > "${output_file}" <<HeredocForSystemd
 [Unit]
 Description=Ziti-Console
@@ -1388,7 +1396,7 @@ After=network.target
 [Service]
 User=root
 WorkingDirectory=${ZITI_HOME}/ziti-console
-ExecStart=node "${ZITI_HOME}/ziti-console/server.js"
+ExecStart=${NODE_BIN} "${ZITI_HOME}/ziti-console/server.js"
 Restart=always
 RestartSec=2
 LimitNOFILE=65536

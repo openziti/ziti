@@ -1,3 +1,88 @@
+# Release 0.26.9
+
+## What's New
+
+- Edge
+  - Bug Fixes
+- Fabric
+  - Bug Fixes
+- Ziti CLI
+  - Allow dynamic modification of enrollment durations
+  - Bug Fixes
+- SDK Golang
+  - Bug Fixes
+- Identity
+
+## Ziti CLI
+### Allow dynamic modification of enrollment durations
+#### Identity Enrollment Duration
+Setting the environment variable `ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION` to some value **in minutes** will override the default identity enrollment duration configuration
+when creating new controller configurations. If left unset, the default value is used. Using this method applies to controller config generation through the CLI as
+well as quickstart deployments.
+
+Example:
+```shell
+# Set identity enrollment to 60 minutes, controller configs created afterward will use this value
+export ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=60
+```
+
+An additional argument `--identityEnrollmentDuration` has been added to the CLI controller config generation. If the argument is provided, the value of the argument will take
+precedence, followed by the value of the environment variable (noted above), and if neither are used, the default value is used. Note that the argument takes a time unit
+(m for minutes, h for hour, etc.)
+
+Example:
+```shell
+# Create a controller config with an identity enrollment duration of 60 minutes
+ziti create config controller --identityEnrollmentDuration 60m
+# OR
+ziti create config controller --identityEnrollmentDuration 1h
+```
+#### Router Enrollment Duration
+Setting the environment variable `ZITI_EDGE_ROUTER_ENROLLMENT_DURATION` to some value **in minutes** will override the default router enrollment duration configuration
+when creating new controller configurations. If left unset, the default value is used. Using this method applies to controller config generation through the CLI as
+well as quickstart deployments.
+
+Example:
+```shell
+# Set router enrollment to 60 minutes, controller configs created afterward will use this value
+export ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=60
+```
+
+An additional argument `--routerEnrollmentDuration` has been added to the CLI controller config generation. If the argument is provided, the value of the argument will take
+precedence, followed by the value of the environment variable (noted above), and if neither are used, the default value is used. Note that the argument takes a time unit
+(m for minutes, h for hour, etc.)
+
+Example:
+```shell
+# Create a controller config with a router enrollment duration of 60 minutes
+ziti create config controller --routerEnrollmentDuration 60m
+# OR
+ziti create config controller --routerEnrollmentDuration 1h
+```
+
+### Ziti Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v1.0.3 -> v2.0.4](https://github.com/openziti/channel/compare/v1.0.3...v2.0.4)
+* github.com/openziti/edge: [v0.23.0 -> v0.24.3](https://github.com/openziti/edge/compare/v0.23.0...v0.24.3)
+    * [Issue #1189](https://github.com/openziti/edge/issues/1189) - router embedded tunneler can create redundant api session if initial requests come in a flood
+    * [Issue #1186](https://github.com/openziti/edge/issues/1186) - Panic when creating sdk hosted terminator
+
+* github.com/openziti/fabric: [v0.20.0 -> v0.21.2](https://github.com/openziti/fabric/compare/v0.20.0...v0.21.2)
+    * [Issue #469](https://github.com/openziti/fabric/issues/469) - Initial support for multiple control channels in routers
+
+* github.com/openziti/foundation/v2: [v2.0.4 -> v2.0.5](https://github.com/openziti/foundation/compare/v2.0.4...v2.0.5)
+* github.com/openziti/identity: [v1.0.12 -> v1.0.16](https://github.com/openziti/identity/compare/v1.0.12...v1.0.16)
+* github.com/openziti/sdk-golang: [v0.16.121 -> v0.16.128](https://github.com/openziti/sdk-golang/compare/v0.16.121...v0.16.128)
+* github.com/openziti/storage: [v0.1.21 -> v0.1.23](https://github.com/openziti/storage/compare/v0.1.21...v0.1.23)
+    * [Issue #23](https://github.com/openziti/storage/issues/23) - fix panic: IterateLink on ref counted link collection should never return a nil cursor 
+
+* github.com/openziti/transport/v2: [v2.0.29 -> v2.0.33](https://github.com/openziti/transport/compare/v2.0.29...v2.0.33)
+* github.com/openziti/jwks: [v1.0.1 -> v1.0.2](https://github.com/openziti/jwks/compare/v1.0.1...v1.0.2)
+* github.com/openziti/metrics: [v1.1.0 -> v1.1.2](https://github.com/openziti/metrics/compare/v1.1.0...v1.1.2)
+* github.com/openziti/x509-claims: [v1.0.2 -> v1.0.3](https://github.com/openziti/x509-claims/compare/v1.0.2...v1.0.3)
+* github.com/openziti/ziti: [0.26.8 -> 0.26.9](https://github.com/openziti/ziti/compare/0.26.8...0.26.9)
+    * [Issue #845](https://github.com/openziti/ziti/issues/845) - Setting ZITI_EDGE_ROUTER_IP_OVERRIDE now adds the IP to the CSR SANs of the router config
+
 # Release 0.26.8
 
 ## What's New

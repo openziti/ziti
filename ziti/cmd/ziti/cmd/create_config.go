@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	"github.com/openziti/channel"
+	"github.com/openziti/channel/v2"
 	edge "github.com/openziti/edge/controller/config"
 	fabCtrl "github.com/openziti/fabric/controller"
 	fabForwarder "github.com/openziti/fabric/router/forwarder"
@@ -58,28 +58,30 @@ type ConfigTemplateValues struct {
 }
 
 type ControllerTemplateValues struct {
-	Name                       string
-	Port                       string
-	AdvertisedAddress          string
-	ListenerAddress            string
-	IdentityCert               string
-	IdentityServerCert         string
-	IdentityKey                string
-	IdentityCA                 string
-	MinQueuedConnects          int
-	MaxQueuedConnects          int
-	DefaultQueuedConnects      int
-	MinOutstandingConnects     int
-	MaxOutstandingConnects     int
-	DefaultOutstandingConnects int
-	MinConnectTimeout          time.Duration
-	MaxConnectTimeout          time.Duration
-	DefaultConnectTimeout      time.Duration
-	EdgeIdentityDuration       time.Duration
-	EdgeRouterDuration         time.Duration
-	Edge                       EdgeControllerValues
-	WebListener                ControllerWebListenerValues
-	HealthCheck                ControllerHealthCheckValues
+	Name                        string
+	Port                        string
+	AdvertisedAddress           string
+	ListenerAddress             string
+	IdentityCert                string
+	IdentityServerCert          string
+	IdentityKey                 string
+	IdentityCA                  string
+	MinQueuedConnects           int
+	MaxQueuedConnects           int
+	DefaultQueuedConnects       int
+	MinOutstandingConnects      int
+	MaxOutstandingConnects      int
+	DefaultOutstandingConnects  int
+	MinConnectTimeout           time.Duration
+	MaxConnectTimeout           time.Duration
+	DefaultConnectTimeout       time.Duration
+	EdgeIdentityDuration        time.Duration
+	EdgeRouterDuration          time.Duration
+	DefaultEdgeIdentityDuration time.Duration
+	DefaultEdgeRouterDuration   time.Duration
+	Edge                        EdgeControllerValues
+	WebListener                 ControllerWebListenerValues
+	HealthCheck                 ControllerHealthCheckValues
 }
 
 type EdgeControllerValues struct {
@@ -128,8 +130,9 @@ type RouterTemplateValues struct {
 }
 
 type EdgeRouterTemplateValues struct {
-	Hostname string
-	Port     string
+	Hostname   string
+	Port       string
+	IPOverride string
 }
 
 type WSSRouterTemplateValues struct {
@@ -241,6 +244,14 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiEdgeCtrlAdvertisedPort, err := cmdhelper.GetZitiEdgeCtrlAdvertisedPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlAdvertisedPortVarName)
 
+	// Get Ziti edge Identity enrollment duration
+	zitiEdgeIdentityEnrollmentDuration, err := cmdhelper.GetZitiEdgeIdentityEnrollmentDuration()
+	handleVariableError(err, constants.ZitiEdgeIdentityEnrollmentDurationVarName)
+
+	// Get Ziti edge Router enrollment duration
+	zitiEdgeRouterEnrollmentDuration, err := cmdhelper.GetZitiEdgeRouterEnrollmentDuration()
+	handleVariableError(err, constants.ZitiEdgeRouterEnrollmentDurationVarName)
+
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
 	data.Controller.Name = zitiCtrlHostname
@@ -251,6 +262,10 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort
 	data.Router.Edge.Port = zitiEdgeRouterPort
 	data.Controller.Edge.AdvertisedPort = zitiEdgeCtrlAdvertisedPort
+	data.Controller.EdgeIdentityDuration = zitiEdgeIdentityEnrollmentDuration
+	data.Controller.EdgeRouterDuration = zitiEdgeRouterEnrollmentDuration
+	data.Controller.DefaultEdgeIdentityDuration = edge.DefaultEdgeEnrollmentDuration
+	data.Controller.DefaultEdgeRouterDuration = edge.DefaultEdgeEnrollmentDuration
 }
 
 func (data *ConfigTemplateValues) populateDefaults() {
@@ -272,8 +287,6 @@ func (data *ConfigTemplateValues) populateDefaults() {
 	data.Controller.Edge.APIActivityUpdateBatchSize = edge.DefaultEdgeApiActivityUpdateBatchSize
 	data.Controller.Edge.APIActivityUpdateInterval = edge.DefaultEdgeAPIActivityUpdateInterval
 	data.Controller.Edge.APISessionTimeout = edge.DefaultEdgeSessionTimeout
-	data.Controller.EdgeIdentityDuration = edge.DefaultEdgeEnrollmentDuration
-	data.Controller.EdgeRouterDuration = edge.DefaultEdgeEnrollmentDuration
 	data.Controller.WebListener.IdleTimeout = edge.DefaultHttpIdleTimeout
 	data.Controller.WebListener.ReadTimeout = edge.DefaultHttpReadTimeout
 	data.Controller.WebListener.WriteTimeout = edge.DefaultHttpWriteTimeout
