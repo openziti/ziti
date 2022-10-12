@@ -22,12 +22,12 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.3
-	github.com/openziti/channel/v2 v2.0.4
-	github.com/openziti/edge v0.24.3
-	github.com/openziti/fabric v0.21.2
+	github.com/openziti/channel/v2 v2.0.5
+	github.com/openziti/edge v0.24.7
+	github.com/openziti/fabric v0.21.3
 	github.com/openziti/foundation/v2 v2.0.5
 	github.com/openziti/identity v1.0.16
-	github.com/openziti/sdk-golang v0.16.128
+	github.com/openziti/sdk-golang v0.16.129
 	github.com/openziti/storage v0.1.23
 	github.com/openziti/transport/v2 v2.0.33
 	github.com/openziti/xweb/v2 v2.0.2
@@ -38,7 +38,7 @@ require (
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.22.9
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.5.0
+	github.com/spf13/cobra v1.6.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.0
@@ -157,7 +157,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2 // indirect
+	golang.org/x/crypto v0.0.0-20221012134737-56aed061732a // indirect
 	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
 	golang.org/x/mod v0.5.1 // indirect
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect
