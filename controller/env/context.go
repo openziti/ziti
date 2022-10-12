@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/edge/eid"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
 func NewRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
 	rid := eid.New()
 
-	body, _ := ioutil.ReadAll(r.Body)
-	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+	body, _ := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	requestContext := &response.RequestContext{
 		Id:                rid,

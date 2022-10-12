@@ -94,7 +94,7 @@ func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestC
 			apiPostureData := postureData.ApiSessions[rc.ApiSession.Id]
 			if passedMfaAt := apiPostureData.GetPassedMfaAt(); passedMfaAt != nil {
 				//if the last time Mfa was passed at is outside of the grace period, send timeout update
-				durationSinceLastMfa := time.Now().Sub(*passedMfaAt)
+				durationSinceLastMfa := time.Since(*passedMfaAt)
 
 				modelServicesWithTimeouts := ae.Managers.PostureResponse.GetEndpointStateChangeAffectedServices(durationSinceLastMfa, gracePeriod, onWake, onUnlock)
 
@@ -119,10 +119,8 @@ func (r *PostureResponseRouter) CreateBulk(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *response.RequestContext, apiPostureResponse rest_model.PostureResponseCreate) {
-	switch apiPostureResponse.(type) {
+	switch apiPostureResponse := apiPostureResponse.(type) {
 	case *rest_model.PostureResponseDomainCreate:
-		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseDomainCreate)
-
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
 			TypeId:         string(apiPostureResponse.TypeID()),
@@ -140,7 +138,6 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 
 	case *rest_model.PostureResponseMacAddressCreate:
-		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseMacAddressCreate)
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
 			TypeId:         string(apiPostureResponse.TypeID()),
@@ -158,8 +155,6 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 
 	case *rest_model.PostureResponseProcessCreate:
-		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseProcessCreate)
-
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
 			TypeId:         string(apiPostureResponse.TypeID()),
@@ -179,8 +174,6 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 
 		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 	case *rest_model.PostureResponseOperatingSystemCreate:
-		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseOperatingSystemCreate)
-
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
 			TypeId:         string(apiPostureResponse.TypeID()),
@@ -199,8 +192,6 @@ func (r *PostureResponseRouter) handlePostureResponse(ae *env.AppEnv, rc *respon
 
 		ae.Managers.PostureResponse.Create(rc.Identity.Id, []*model.PostureResponse{postureResponse})
 	case *rest_model.PostureResponseEndpointStateCreate:
-		apiPostureResponse := apiPostureResponse.(*rest_model.PostureResponseEndpointStateCreate)
-
 		postureResponse := &model.PostureResponse{
 			PostureCheckId: *apiPostureResponse.ID(),
 			TypeId:         string(apiPostureResponse.TypeID()),

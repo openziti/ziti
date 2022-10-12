@@ -126,7 +126,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
 		receivedClientHelloQueue: make(chan *RouterSender, options.MaxQueuedClientHellos),
 
-		stopNotify: make(chan struct{}, 0),
+		stopNotify: make(chan struct{}),
 	}
 
 	strategy.helloHandler = handler_edge_ctrl.NewHelloHandler(ae, strategy.ReceiveClientHello)

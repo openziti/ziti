@@ -99,7 +99,7 @@ func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.Re
 }
 
 func (r *DatabaseRouter) GetCheckProgress(rc *response.RequestContext) {
-	integrityCheck := r.integrityCheck
+	integrityCheck := &r.integrityCheck
 
 	integrityCheck.lock.Lock()
 	defer integrityCheck.lock.Unlock()

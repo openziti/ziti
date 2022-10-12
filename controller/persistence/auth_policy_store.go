@@ -169,7 +169,6 @@ func newAuthPolicyStore(stores *stores) *AuthPolicyStoreImpl {
 type AuthPolicyStoreImpl struct {
 	*baseStore
 	indexName                             boltz.ReadIndex
-	symbolExtJwtSignerId                  boltz.EntitySymbol
 	symbolPrimaryAllowedExtJwtSigners     boltz.EntitySetSymbol
 	symbolSecondaryRequiredExtJwtSignerId boltz.EntitySymbol
 }

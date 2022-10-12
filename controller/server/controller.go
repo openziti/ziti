@@ -24,7 +24,7 @@ import (
 	sync2 "github.com/openziti/edge/controller/sync_strats"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/controller/api_impl"
-	"io/ioutil"
+	"os"
 	"sync"
 	"time"
 
@@ -102,7 +102,7 @@ func NewController(cfg config.Configurable, host env.HostController) (*Controlle
 	}
 
 	// Add the root host controller's identity's CAs to the ca's served by well-known urls
-	if caCerts, err := ioutil.ReadFile(c.AppEnv.HostController.Identity().GetConfig().CA); err == nil {
+	if caCerts, err := os.ReadFile(c.AppEnv.HostController.Identity().GetConfig().CA); err == nil {
 		c.config.AddCaPems(caCerts)
 	} else {
 		pfxlog.Logger().Fatalf("could not read controller identity CA file: %s: %v", c.AppEnv.HostController.Identity().GetConfig().CA, err)

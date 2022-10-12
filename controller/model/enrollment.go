@@ -22,7 +22,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/edge/controller/apierror"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 )
@@ -142,7 +142,7 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 	}
 
 	var enrollData interface{}
-	body, _ := ioutil.ReadAll(request.Body)
+	body, _ := io.ReadAll(request.Body)
 
 	contentType := strings.Split(request.Header.Get("content-type"), ";")
 

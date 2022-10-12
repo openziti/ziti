@@ -51,9 +51,7 @@ func (entity *PostureCheckOperatingSystem) LoadValues(_ boltz.CrudStore, bucket 
 			OsType: osBucket.GetStringOrError(FieldPostureCheckOsType),
 		}
 
-		for _, osVersion := range osBucket.GetStringList(FieldPostureCheckOsVersions) {
-			newOsMatch.OsVersions = append(newOsMatch.OsVersions, osVersion)
-		}
+		newOsMatch.OsVersions = append(newOsMatch.OsVersions, osBucket.GetStringList(FieldPostureCheckOsVersions)...)
 		entity.OperatingSystems = append(entity.OperatingSystems, newOsMatch)
 	}
 
@@ -70,8 +68,7 @@ func (entity *PostureCheckOperatingSystem) SetValues(ctx *boltz.PersistContext, 
 
 		cursor := bucket.Cursor()
 		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
-			osType := string(key)
-			if _, found := osMap[osType]; !found {
+			if _, found := osMap[string(key)]; !found {
 				err := bucket.DeleteBucket(key)
 				if err != nil {
 					pfxlog.Logger().Errorf(err.Error())

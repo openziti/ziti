@@ -115,7 +115,7 @@ func (pc *PostureCache) evaluate() {
 				cursor.Seek(lastId)
 
 				if cursor.IsValid() {
-					if bytes.Compare(cursor.Current(), lastId) == 0 {
+					if bytes.Equal(cursor.Current(), lastId) {
 						cursor.Next()
 					}
 				}
@@ -403,7 +403,7 @@ type PostureCheckFailureSubType interface {
 }
 
 type PostureCheckFailure struct {
-	PostureCheckId   string `json:"postureCheckId'"`
+	PostureCheckId   string `json:"postureCheckId"`
 	PostureCheckName string `json:"postureCheckName"`
 	PostureCheckType string `json:"postureCheckType"`
 	PostureCheckFailureValues
@@ -501,7 +501,7 @@ type PostureResponseSubType interface {
 	Apply(postureData *PostureData)
 }
 
-var macClean = regexp.MustCompile("[^a-f\\d]+")
+var macClean = regexp.MustCompile(`[^a-f\d]+`)
 
 func CleanHexString(hexString string) string {
 	return macClean.ReplaceAllString(strings.ToLower(hexString), "")

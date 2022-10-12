@@ -129,19 +129,16 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 		RoleAttributes: AttributesOrDefault(postureCheck.RoleAttributes()),
 	}
 
-	switch postureCheck.(type) {
+	switch check := postureCheck.(type) {
 	case *rest_model.PostureCheckDomainUpdate:
-		check := postureCheck.(*rest_model.PostureCheckDomainUpdate)
 		ret.SubType = &model.PostureCheckDomains{
 			Domains: check.Domains,
 		}
 	case *rest_model.PostureCheckMacAddressUpdate:
-		check := postureCheck.(*rest_model.PostureCheckMacAddressUpdate)
 		ret.SubType = &model.PostureCheckMacAddresses{
 			MacAddresses: check.MacAddresses,
 		}
 	case *rest_model.PostureCheckProcessUpdate:
-		check := postureCheck.(*rest_model.PostureCheckProcessUpdate)
 		ret.SubType = &model.PostureCheckProcess{
 			OsType:      string(*check.Process.OsType),
 			Path:        stringz.OrEmpty(check.Process.Path),
@@ -149,7 +146,6 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			Fingerprint: check.Process.SignerFingerprint,
 		}
 	case *rest_model.PostureCheckOperatingSystemUpdate:
-		check := postureCheck.(*rest_model.PostureCheckOperatingSystemUpdate)
 		osCheck := &model.PostureCheckOperatingSystem{}
 		ret.SubType = osCheck
 
@@ -161,7 +157,6 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			osCheck.OperatingSystems = append(osCheck.OperatingSystems, modelOs)
 		}
 	case *rest_model.PostureCheckMfaUpdate:
-		check := postureCheck.(*rest_model.PostureCheckMfaUpdate)
 		ret.SubType = &model.PostureCheckMfa{
 			TimeoutSeconds:        check.TimeoutSeconds,
 			PromptOnWake:          check.PromptOnWake,
@@ -169,12 +164,11 @@ func MapUpdatePostureCheckToModel(id string, postureCheck rest_model.PostureChec
 			IgnoreLegacyEndpoints: check.IgnoreLegacyEndpoints,
 		}
 	case *rest_model.PostureCheckProcessMultiUpdate:
-		apiCheck := postureCheck.(*rest_model.PostureCheckProcessMultiUpdate)
 		modelCheck := &model.PostureCheckProcessMulti{
-			Semantic: string(*apiCheck.Semantic),
+			Semantic: string(*check.Semantic),
 		}
 
-		for _, process := range apiCheck.Processes {
+		for _, process := range check.Processes {
 			newProc := &model.ProcessMulti{
 				Hashes:             process.Hashes,
 				OsType:             string(*process.OsType),
@@ -203,23 +197,20 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 		RoleAttributes: AttributesOrDefault(postureCheck.RoleAttributes()),
 	}
 
-	switch postureCheck.(type) {
+	switch check := postureCheck.(type) {
 	case *rest_model.PostureCheckDomainPatch:
-		check := postureCheck.(*rest_model.PostureCheckDomainPatch)
 		ret.SubType = &model.PostureCheckDomains{
 			Domains: check.Domains,
 		}
 		ret.TypeId = model.PostureCheckTypeDomain
 
 	case *rest_model.PostureCheckMacAddressPatch:
-		check := postureCheck.(*rest_model.PostureCheckMacAddressPatch)
 		ret.SubType = &model.PostureCheckMacAddresses{
 			MacAddresses: check.MacAddresses,
 		}
 		ret.TypeId = model.PostureCheckTypeMAC
 
 	case *rest_model.PostureCheckProcessPatch:
-		check := postureCheck.(*rest_model.PostureCheckProcessPatch)
 		subType := &model.PostureCheckProcess{}
 		ret.SubType = subType
 
@@ -232,7 +223,6 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 		ret.TypeId = model.PostureCheckTypeProcess
 
 	case *rest_model.PostureCheckOperatingSystemPatch:
-		check := postureCheck.(*rest_model.PostureCheckOperatingSystemPatch)
 		osCheck := &model.PostureCheckOperatingSystem{}
 		ret.SubType = osCheck
 
@@ -246,7 +236,6 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 
 		ret.TypeId = model.PostureCheckTypeOs
 	case *rest_model.PostureCheckMfaPatch:
-		check := postureCheck.(*rest_model.PostureCheckMfaPatch)
 		ret.SubType = &model.PostureCheckMfa{
 			TimeoutSeconds:        Int64OrDefault(check.TimeoutSeconds),
 			PromptOnWake:          BoolOrDefault(check.PromptOnWake),
@@ -255,12 +244,11 @@ func MapPatchPostureCheckToModel(id string, postureCheck rest_model.PostureCheck
 		}
 		ret.TypeId = model.PostureCheckTypeMFA
 	case *rest_model.PostureCheckProcessMultiPatch:
-		apiCheck := postureCheck.(*rest_model.PostureCheckProcessMultiPatch)
 		modelCheck := &model.PostureCheckProcessMulti{
-			Semantic: string(apiCheck.Semantic),
+			Semantic: string(check.Semantic),
 		}
 
-		for _, process := range apiCheck.Processes {
+		for _, process := range check.Processes {
 			newProc := &model.ProcessMulti{
 				Hashes:             process.Hashes,
 				OsType:             string(*process.OsType),

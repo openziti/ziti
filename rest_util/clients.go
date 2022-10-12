@@ -101,6 +101,9 @@ func NewEdgeManagementClientWithAuthenticator(authenticator Authenticator, apiAd
 	}
 
 	httpClient, err := authenticator.BuildHttpClient()
+	if err != nil {
+		return nil, err
+	}
 
 	return NewEdgeManagementClientWithToken(httpClient, apiAddress, *apiSession.Token)
 }
@@ -162,6 +165,9 @@ func NewEdgeClientClientWithAuthenticator(authenticator Authenticator, apiAddres
 	}
 
 	httpClient, err := authenticator.BuildHttpClient()
+	if err != nil {
+		return nil, err
+	}
 
 	return NewEdgeClientClientWithToken(httpClient, apiAddress, *apiSession.Token)
 }

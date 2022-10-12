@@ -130,10 +130,7 @@ func (r *resolvConn) Write(b []byte) (int, error) {
 
 	q = dnsMessage.Question[0]
 
-	matchName = q.Name
-	if strings.HasSuffix(matchName, ".") {
-		matchName = matchName[0 : len(matchName)-1]
-	}
+	matchName = strings.TrimSuffix(q.Name, ".")
 	log.WithField("name", matchName).WithField("type", q.Type).Info("resolving")
 	for _, allowed := range r.ctx.config.GetAllowedAddresses() {
 		if allowed.Allows(matchName) {

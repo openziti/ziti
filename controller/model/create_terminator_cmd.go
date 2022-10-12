@@ -38,6 +38,10 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, te
 	}
 
 	identityTerminators, err := self.Env.GetStores().Terminator.GetTerminatorsInIdentityGroup(tx, terminator.GetId())
+	if err != nil {
+		return err
+	}
+
 	for _, otherTerminator := range identityTerminators {
 		otherSession, err := self.getTerminatorSession(tx, otherTerminator, "sibling ")
 		if err != nil {

@@ -65,7 +65,10 @@ func (self *MfaManager) CreateForIdentity(identity *Identity) (string, error) {
 	_, _ = rand.Read(secretBytes)
 	secret := base32.StdEncoding.EncodeToString(secretBytes)
 
-	recoveryCodes := self.generateRecoveryCodes()
+	recoveryCodes, err := self.generateRecoveryCodes()
+	if err != nil {
+		return "", err
+	}
 
 	mfa := &Mfa{
 		BaseEntity:    models.BaseEntity{},
@@ -76,7 +79,7 @@ func (self *MfaManager) CreateForIdentity(identity *Identity) (string, error) {
 		RecoveryCodes: recoveryCodes,
 	}
 
-	err := self.Create(mfa)
+	err = self.Create(mfa)
 	if err != nil {
 		return "", err
 	}
@@ -226,25 +229,30 @@ func (self *MfaManager) GetProvisioningUrl(mfa *Mfa) string {
 }
 
 func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa) error {
-	newCodes := self.generateRecoveryCodes()
+	newCodes, err := self.generateRecoveryCodes()
+	if err != nil {
+		return err
+	}
 
 	mfa.RecoveryCodes = newCodes
 
 	return self.Update(mfa, nil)
 }
 
-func (self *MfaManager) generateRecoveryCodes() []string {
+func (self *MfaManager) generateRecoveryCodes() ([]string, error) {
 	recoveryCodes := []string{}
 
 	for i := 0; i < 20; i++ {
 		backupBytes := make([]byte, 8)
-		rand.Read(backupBytes)
+		if _, err := rand.Read(backupBytes); err != nil {
+			return nil, err
+		}
 		backupStr := base32.StdEncoding.EncodeToString(backupBytes)
 		backupCode := strings.Replace(backupStr, "=", "", -1)[:6]
 		recoveryCodes = append(recoveryCodes, backupCode)
 	}
 
-	return recoveryCodes
+	return recoveryCodes, nil
 }
 
 func (self *MfaManager) Marshall(entity *Mfa) ([]byte, error) {

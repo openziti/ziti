@@ -49,7 +49,7 @@ func NewHeartbeatCollector(env Env, batchSize int, updateInterval time.Duration,
 		updateInterval:              updateInterval,
 		batchSize:                   batchSize,
 		flushAction:                 action,
-		closeNotify:                 make(chan struct{}, 0),
+		closeNotify:                 make(chan struct{}),
 	}
 
 	env.GetStores().ApiSession.AddListener(boltz.EventDelete, collector.onApiSessionDelete)

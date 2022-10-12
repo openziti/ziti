@@ -42,12 +42,16 @@ func Test_EnrollmentUpdb(t *testing.T) {
 		updbPassword := uuid.New().String()
 		updbType := "User"
 
-		updbCreate.Set(updbName, "name")
-		updbCreate.Set(updbType, "type")
-		updbCreate.Set(map[string]string{
+		_, err := updbCreate.Set(updbName, "name")
+		ctx.Req.NoError(err)
+		_, err = updbCreate.Set(updbType, "type")
+		ctx.Req.NoError(err)
+		_, err = updbCreate.Set(map[string]string{
 			"updb": updbUsername,
 		}, "enrollment")
-		updbCreate.Set(false, "isAdmin")
+		ctx.Req.NoError(err)
+		_, err = updbCreate.Set(false, "isAdmin")
+		ctx.Req.NoError(err)
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(updbCreate.String()).Post("identities")
 		ctx.Req.NoError(err)
@@ -93,7 +97,8 @@ func Test_EnrollmentUpdb(t *testing.T) {
 
 				enrollmentBody := gabs.New()
 
-				enrollmentBody.Set(updbPassword, "password")
+				_, err = enrollmentBody.Set(updbPassword, "password")
+				ctx.Req.NoError(err)
 
 				resp, err := ctx.newAnonymousClientApiRequest().SetBody(enrollmentBody.String()).Post("enroll?method=updb&token=" + updbEnrollmentToken)
 				ctx.Req.NoError(err)

@@ -53,9 +53,7 @@ func (entity *PostureCheckOs) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedB
 			OsType: curOs.GetStringOrError(FieldPostureCheckOsType),
 		}
 
-		for _, osVersion := range curOs.GetStringList(FieldPostureCheckOsVersions) {
-			newOsMatch.OsVersions = append(newOsMatch.OsVersions, osVersion)
-		}
+		newOsMatch.OsVersions = append(newOsMatch.OsVersions, curOs.GetStringList(FieldPostureCheckOsVersions)...)
 		entity.OperatingSystems = append(entity.OperatingSystems, newOsMatch)
 	}
 }

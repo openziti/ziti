@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"io"
-	"io/ioutil"
 )
 
 type PemProducer struct{}
@@ -30,7 +29,7 @@ func (p PemProducer) Produce(writer io.Writer, i interface{}) error {
 		_, err := writer.Write(buffer)
 		return err
 	} else if reader, ok := i.(io.Reader); ok {
-		buffer, err := ioutil.ReadAll(reader)
+		buffer, err := io.ReadAll(reader)
 		if err != nil {
 			return err
 		}
@@ -42,7 +41,6 @@ func (p PemProducer) Produce(writer io.Writer, i interface{}) error {
 	}
 	return fmt.Errorf("unsupported type for PEM producer: %T", i)
 }
-
 
 type YamlProducer struct{}
 

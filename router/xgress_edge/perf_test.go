@@ -11,17 +11,12 @@ import (
 	metrics2 "github.com/openziti/fabric/router/metrics"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/metrics"
-	"github.com/openziti/metrics/metrics_pb"
 	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
-
-type noopMetricsHandler struct{}
-
-func (n noopMetricsHandler) AcceptMetrics(*metrics_pb.MetricsMessage) {
-}
 
 func newMirrorLink(fwd *forwarder.Forwarder) *mirrorLink {
 	result := &mirrorLink{
@@ -148,8 +143,10 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 
 	link := newMirrorLink(fwd)
 
-	fwd.RegisterLink(link)
-	fwd.Route("test", &ctrl_pb.Route{
+	err := fwd.RegisterLink(link)
+	assert.NoError(b, err)
+
+	err = fwd.Route("test", &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -157,6 +154,7 @@ func writePerf(b *testing.B, mux edge.MsgMux) {
 			{SrcAddress: "router1", DstAddress: "test"},
 		},
 	})
+	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgress.DefaultOptions(), nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))
@@ -222,8 +220,10 @@ func Benchmark_BaselinePerf(b *testing.B) {
 
 	link := newMirrorLink(fwd)
 
-	fwd.RegisterLink(link)
-	fwd.Route("test", &ctrl_pb.Route{
+	err := fwd.RegisterLink(link)
+	assert.NoError(b, err)
+
+	err = fwd.Route("test", &ctrl_pb.Route{
 		CircuitId: "test",
 		Egress:    nil,
 		Forwards: []*ctrl_pb.Route_Forward{
@@ -231,6 +231,7 @@ func Benchmark_BaselinePerf(b *testing.B) {
 			{SrcAddress: "router1", DstAddress: "test"},
 		},
 	})
+	assert.NoError(b, err)
 
 	x := xgress.NewXgress("test", "test", "test", conn, xgress.Initiator, xgOptions, nil)
 	x.SetReceiveHandler(handler_xgress.NewReceiveHandler(fwd))

@@ -544,12 +544,6 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 	return impl.MultipleErrors(errorList)
 }
 
-func (self *tProxy) logAddresses() {
-	for idx, addr := range self.addresses {
-		fmt.Printf("%v: (%p) %v\n", idx, addr, addr)
-	}
-}
-
 type IPPortAddr interface {
 	GetIP() net.IP
 	GetPort() int

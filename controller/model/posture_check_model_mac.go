@@ -119,7 +119,7 @@ type PostureCheckFailureValuesMac struct {
 }
 
 func (p PostureCheckFailureValuesMac) Expected() interface{} {
-	return p.Expected()
+	return p.ExpectedValue
 }
 
 func (p PostureCheckFailureValuesMac) Actual() interface{} {

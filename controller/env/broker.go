@@ -17,7 +17,6 @@
 package env
 
 import (
-	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/persistence"
@@ -48,7 +47,6 @@ const (
 // and dealing with casting arguments to their proper concrete types.
 type Broker struct {
 	ae                  *AppEnv
-	events              map[events.EventEmmiter]map[events.EventName][]events.Listener
 	sessionChunkSize    int
 	apiSessionChunkSize int
 	routerMsgBufferSize int

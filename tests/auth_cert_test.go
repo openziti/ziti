@@ -115,6 +115,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 		resp, err := testClient.NewRequest().
 			SetHeader("content-type", "application/json").
 			Post("/authenticate?method=cert")
+		r.NoError(err)
 
 		standardJsonResponseTests(resp, http.StatusOK, t)
 

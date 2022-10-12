@@ -93,7 +93,11 @@ func (factory *Factory) Run(env env.RouterEnv) error {
 
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 
-	go factory.certChecker.Run()
+	go func() {
+		if err := factory.certChecker.Run(); err != nil {
+			pfxlog.Logger().WithError(err).Error("error while running certchecker")
+		}
+	}()
 
 	return nil
 }

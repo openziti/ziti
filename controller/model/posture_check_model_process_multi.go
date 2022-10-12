@@ -105,8 +105,8 @@ func (p *PostureCheckProcessMulti) FailureValues(_ string, pd *PostureData) Post
 	for _, processData := range pd.Processes {
 		if processData.PostureCheckId == p.PostureCheckId {
 			ret.ActualValue = []PostureResponseProcess{*processData}
+			break
 		}
-		break
 	}
 
 	return ret

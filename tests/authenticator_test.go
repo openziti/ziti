@@ -51,6 +51,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		standardJsonResponseTests(resp, http.StatusOK, t)
 
 		authenticatorsBody, err := gabs.ParseJSON(resp.Body())
+		req.NoError(err)
 
 		t.Run("can see three authenticators", func(t *testing.T) {
 			req := require.New(t)
@@ -77,6 +78,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		req.NotEmpty(authenticatorId)
 
 		detailResp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/authenticators/" + authenticatorId)
+		req.NoError(err)
 
 		standardJsonResponseTests(detailResp, http.StatusOK, t)
 	})

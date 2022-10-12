@@ -662,41 +662,6 @@ func (entity *configType) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.Tags, path("tags"))
 }
 
-type apiSession struct {
-	id          string
-	token       string
-	identityId  string
-	configTypes []string
-	tags        map[string]interface{}
-}
-
-func (entity *apiSession) getId() string {
-	return entity.id
-}
-
-func (entity *apiSession) setId(id string) {
-	entity.id = id
-}
-
-func (entity *apiSession) getEntityType() string {
-	return "apiSessions"
-}
-
-func (entity *apiSession) toJson(_ bool, ctx *TestContext, _ ...string) string {
-	ctx.Req.FailNow("should not be called")
-	return ""
-}
-
-func (entity *apiSession) validate(ctx *TestContext, c *gabs.Container) {
-	if entity.tags == nil {
-		entity.tags = map[string]interface{}{}
-	}
-	ctx.pathEquals(c, entity.token, path("token"))
-	ctx.pathEquals(c, entity.identityId, path("identity", "id"))
-	ctx.pathEquals(c, entity.configTypes, path("configTypes"))
-	ctx.pathEquals(c, entity.tags, path("tags"))
-}
-
 type configValidatingService struct {
 	*service
 	configs map[string]*Config
@@ -758,27 +723,27 @@ func (entity *transitRouter) validate(ctx *TestContext, c *gabs.Container) {
 
 type ca struct {
 	id                        string
-	name                      string                 `json:"name"`
-	isAutoCaEnrollmentEnabled bool                   `json:"isAutoCaEnrollmentEnabled"`
-	isAuthEnabled             bool                   `json:"isAuthEnabled"`
-	isOttCaEnrollmentEnabled  bool                   `json:"isOttCaEnrollmentEnabled"`
-	certPem                   string                 `json:"certPem"`
-	identityRoles             []string               `json:"identityRoles"`
-	identityNameFormat        string                 `json:"identityNameFormat"`
-	tags                      map[string]interface{} `json:"tags"`
-	externalIdClaim           *externalIdClaim       `json:"externalIdClaim"`
+	name                      string
+	isAutoCaEnrollmentEnabled bool
+	isAuthEnabled             bool
+	isOttCaEnrollmentEnabled  bool
+	certPem                   string
+	identityRoles             []string
+	identityNameFormat        string
+	tags                      map[string]interface{}
+	externalIdClaim           *externalIdClaim
 
-	privateKey crypto.Signer     `json:"-"` //utility property, not used in API calls
-	publicCert *x509.Certificate `json:"-"` //utility property, not used in API calls
+	privateKey crypto.Signer     //utility property, not used in API calls
+	publicCert *x509.Certificate //utility property, not used in API calls
 }
 
 type externalIdClaim struct {
-	location        string `json:"location"`
-	matcher         string `json:"matcher"`
-	matcherCriteria string `json:"matcherCriteria"`
-	parser          string `json:"parser"`
-	parserCriteria  string `json:"parserCriteria"`
-	index           int64  `json:"index"`
+	location        string
+	matcher         string
+	matcherCriteria string
+	parser          string
+	parserCriteria  string
+	index           int64
 }
 
 func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
@@ -809,6 +774,9 @@ func newTestCaCert() (*x509.Certificate, *ecdsa.PrivateKey, *bytes.Buffer) {
 	}
 
 	caCert, err = x509.ParseCertificate(caBytes)
+	if err != nil {
+		panic(err)
+	}
 
 	caPEM := new(bytes.Buffer)
 	_ = pem.Encode(caPEM, &pem.Block{
@@ -840,19 +808,19 @@ func newTestCa(identityRoles ...string) *ca {
 	}
 }
 
-func (entity ca) getId() string {
+func (entity *ca) getId() string {
 	return entity.id
 }
 
-func (entity ca) setId(id string) {
+func (entity *ca) setId(id string) {
 	entity.id = id
 }
 
-func (entity ca) getEntityType() string {
+func (entity *ca) getEntityType() string {
 	return "cas"
 }
 
-func (entity ca) toJson(create bool, ctx *TestContext, fields ...string) string {
+func (entity *ca) toJson(create bool, ctx *TestContext, fields ...string) string {
 	entityData := gabs.New()
 	ctx.setValue(entityData, entity.name, fields, "name")
 	ctx.setValue(entityData, entity.isOttCaEnrollmentEnabled, fields, "isOttCaEnrollmentEnabled")
@@ -878,7 +846,7 @@ func (entity ca) toJson(create bool, ctx *TestContext, fields ...string) string 
 	return entityData.String()
 }
 
-func (entity ca) validate(ctx *TestContext, c *gabs.Container) {
+func (entity *ca) validate(ctx *TestContext, c *gabs.Container) {
 	if entity.tags == nil {
 		entity.tags = map[string]interface{}{}
 	}
@@ -893,7 +861,7 @@ func (entity ca) validate(ctx *TestContext, c *gabs.Container) {
 	ctx.pathEquals(c, entity.tags, path("tags"))
 }
 
-func (entity ca) CreateSignedCert(name string) *certAuthenticator {
+func (entity *ca) CreateSignedCert(name string) *certAuthenticator {
 	clientKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)

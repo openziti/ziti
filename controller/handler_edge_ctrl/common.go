@@ -282,9 +282,9 @@ func (self *baseSessionRequestContext) loadService() {
 
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
-				err = InvalidServiceError{}
+				self.err = InvalidServiceError{}
 			} else {
-				err = internalError(err)
+				self.err = internalError(err)
 			}
 			logrus.
 				WithField("sessionId", self.session.Id).

@@ -51,11 +51,7 @@ loop:
 				return nil, os.NewSyscallError("parsenetlinkrouteattr", err)
 			}
 			ifa := newAddr(ifam, attrs)
-			if ifa != nil {
-				for _, a := range ifa {
-					ifat = append(ifat, a)
-				}
-			}
+			ifat = append(ifat, ifa...)
 		}
 	}
 	return ifat, nil

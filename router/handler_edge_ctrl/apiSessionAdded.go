@@ -51,7 +51,7 @@ func NewApiSessionAddedHandler(sm fabric.StateManager, binding channel.Binding) 
 		control: binding.GetChannel(),
 		sm:      sm,
 		reqChan: make(chan *apiSessionAddedWithState, 100),
-		stop:    make(chan struct{}, 0),
+		stop:    make(chan struct{}),
 	}
 
 	go handler.startReceiveSync()
@@ -238,7 +238,7 @@ func newApiSessionSyncTracker(id string) *apiSessionSyncTracker {
 	return &apiSessionSyncTracker{
 		syncId:        id,
 		reqsWithState: map[int]*apiSessionAddedWithState{},
-		stop:          make(chan struct{}, 0),
+		stop:          make(chan struct{}),
 		startTime:     time.Now(),
 	}
 }
@@ -256,9 +256,7 @@ func (tracker *apiSessionSyncTracker) Add(reqWithState *apiSessionAddedWithState
 	if reqWithState.isPostSyncData {
 		current := tracker.reqsWithState[-1]
 		if current != nil {
-			for _, session := range reqWithState.ApiSessions {
-				current.ApiSessions = append(current.ApiSessions, session)
-			}
+			current.ApiSessions = append(current.ApiSessions, reqWithState.ApiSessions...)
 		} else {
 			tracker.reqsWithState[-1] = reqWithState
 		}
@@ -329,18 +327,14 @@ func (tracker *apiSessionSyncTracker) all() []*edge_ctrl_pb.ApiSession {
 	var result []*edge_ctrl_pb.ApiSession
 	for i := 0; i <= tracker.lastSeq; i++ {
 		if req, ok := tracker.reqsWithState[i]; ok {
-			for _, apiSession := range req.ApiSessions {
-				result = append(result, apiSession)
-			}
+			result = append(result, req.ApiSessions...)
 		} else {
 			pfxlog.Logger().WithField("strategy", sync_strats.RouterSyncStrategyInstant).Error("all failed to have all update sequences")
 		}
 	}
 
 	if req, ok := tracker.reqsWithState[-1]; ok {
-		for _, apiSession := range req.ApiSessions {
-			result = append(result, apiSession)
-		}
+		result = append(result, req.ApiSessions...)
 	}
 
 	return result

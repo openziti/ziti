@@ -90,7 +90,7 @@ func (p *PostureCheckDomains) Evaluate(_ string, pd *PostureData) bool {
 	}
 
 	for _, domain := range p.Domains {
-		if strings.ToLower(domain) == strings.ToLower(pd.Domain.Name) {
+		if strings.EqualFold(domain, pd.Domain.Name) {
 			return true
 		}
 	}

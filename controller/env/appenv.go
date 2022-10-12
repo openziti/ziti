@@ -57,10 +57,8 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/xeipuuv/gojsonschema"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -77,21 +75,20 @@ type AppEnv struct {
 	ApiClientCsrSigner     cert.Signer
 	ControlClientCsrSigner cert.Signer
 
-	FingerprintGenerator     cert.FingerprintGenerator
-	AuthRegistry             model.AuthRegistry
-	EnrollRegistry           model.EnrollmentRegistry
-	Broker                   *Broker
-	HostController           HostController
-	ManagementApi            *managementOperations.ZitiEdgeManagementAPI
-	ClientApi                *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap       cmap.ConcurrentMap[time.Time]
-	identityRefreshMeter     metrics.Meter
-	StartupTime              time.Time
-	InstanceId               string
-	findEnrollmentSignerOnce sync.Once
-	enrollmentSigner         jwtsigner.Signer
-	TraceManager             *TraceManager
-	EventDispatcher          *events.Dispatcher
+	FingerprintGenerator cert.FingerprintGenerator
+	AuthRegistry         model.AuthRegistry
+	EnrollRegistry       model.EnrollmentRegistry
+	Broker               *Broker
+	HostController       HostController
+	ManagementApi        *managementOperations.ZitiEdgeManagementAPI
+	ClientApi            *clientOperations.ZitiEdgeClientAPI
+	IdentityRefreshMap   cmap.ConcurrentMap[time.Time]
+	identityRefreshMeter metrics.Meter
+	StartupTime          time.Time
+	InstanceId           string
+	enrollmentSigner     jwtsigner.Signer
+	TraceManager         *TraceManager
+	EventDispatcher      *events.Dispatcher
 }
 
 func (ae *AppEnv) GetApiServerCsrSigner() cert.Signer {
@@ -514,8 +511,8 @@ func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
 	rid := eid.New()
 
-	body, _ := ioutil.ReadAll(r.Body)
-	r.Body = ioutil.NopCloser(bytes.NewReader(body))
+	body, _ := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewReader(body))
 
 	requestContext := &response.RequestContext{
 		Id:                rid,

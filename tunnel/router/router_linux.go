@@ -28,7 +28,7 @@ import (
 	"os"
 )
 
-// Add an address (or prefix) to the specified network interface.
+// AddLocalAddress adds an address (or prefix) to the specified network interface.
 func AddLocalAddress(prefix *net.IPNet, ifName string) error {
 	logrus.Debugf("adding local address '%v' to interface %v", prefix.String(), ifName)
 	return nlAddrReq(prefix, nil, ifName, unix.RTM_NEWADDR)
@@ -144,19 +144,6 @@ func marshalIfAddrmsg(m *unix.IfAddrmsg) []byte {
 	b[2] = m.Flags
 	b[3] = m.Scope
 	nlenc.PutUint32(b[4:8], m.Index)
-
-	return b
-}
-
-func marshalIfInfomsg(m *unix.IfInfomsg) []byte {
-	b := make([]byte, unix.SizeofIfInfomsg)
-
-	b[0] = m.Family
-	b[1] = 0 // pad
-	nlenc.PutUint16(b[2:4], m.Type)
-	nlenc.PutInt32(b[4:8], m.Index)
-	nlenc.PutUint32(b[8:12], m.Flags)
-	nlenc.PutUint32(b[12:16], m.Change)
 
 	return b
 }

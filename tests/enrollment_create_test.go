@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -199,6 +198,8 @@ func Test_EnrollmentCreate(t *testing.T) {
 		caCreateResp := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResp).Post("cas/")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
 		ctx.NotNil(caCreateResp)
 		ctx.NotNil(caCreateResp.Data)
 		ctx.NotEmpty(caCreateResp.Data.ID)
@@ -294,6 +295,8 @@ func Test_EnrollmentCreate(t *testing.T) {
 		caCreateResp := &rest_model.CreateEnvelope{}
 
 		resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetBody(caCreate).SetResult(caCreateResp).Post("cas/")
+		ctx.NoError(err)
+		ctx.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
 		ctx.NotNil(caCreateResp)
 		ctx.NotNil(caCreateResp.Data)
 		ctx.NotEmpty(caCreateResp.Data.ID)

@@ -28,8 +28,8 @@ import (
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -47,7 +47,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 		for _, api := range webListener.APIs {
 
 			if webListener.Identity != nil && (api.Binding() == controller.ClientApiBinding || api.Binding() == controller.ManagementApiBinding) {
-				caBytes, err := ioutil.ReadFile(webListener.Identity.GetConfig().CA)
+				caBytes, err := os.ReadFile(webListener.Identity.GetConfig().CA)
 
 				if err != nil {
 					return errors.Errorf("could not read xweb web listener [%s]'s CA file [%s] to retrieve CA PEMs: %v", webListener.Name, webListener.Identity.GetConfig().CA, err)

@@ -72,7 +72,7 @@ func (pr *PostureResponseProcess) VerifyMultiCriteria(process *ProcessMulti) boo
 		foundValidHash = true //no hash to check for
 	} else {
 		for _, validHash := range process.Hashes {
-			if strings.ToLower(validHash) == strings.ToLower(pr.BinaryHash) {
+			if strings.EqualFold(validHash, pr.BinaryHash) {
 				foundValidHash = true
 				break
 			}

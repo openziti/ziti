@@ -23,9 +23,7 @@ import (
 
 const BindingName = "edge_transport"
 
-type factory struct {
-	options *xgress.Options
-}
+type factory struct{}
 
 // NewFactory returns a new Transport Xgress factory
 func NewFactory() xgress.Factory {

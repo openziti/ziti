@@ -161,7 +161,6 @@ type externalJwtSignerStoreImpl struct {
 	*baseStore
 	indexName          boltz.ReadIndex
 	symbolFingerprint  boltz.EntitySymbol
-	symbolEnrollments  boltz.EntitySetSymbol
 	symbolAuthPolicies boltz.EntitySetSymbol
 	fingerprintIndex   boltz.ReadIndex
 	symbolKid          boltz.EntitySymbol

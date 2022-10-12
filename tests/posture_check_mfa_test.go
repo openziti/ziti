@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -909,7 +908,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 				t.Run("after the MFA posture check timeout", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					durationTillTimeout := timeoutAt.Sub(time.Now())
+					durationTillTimeout := time.Until(timeoutAt)
 					if durationTillTimeout > 0 {
 						time.Sleep(durationTillTimeout)
 					}

@@ -259,7 +259,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 
 		self.session, err = self.handler.getAppEnv().Managers.Session.Read(id)
 		if err != nil {
-			err = internalError(err)
+			self.err = internalError(err)
 			return
 		}
 		self.newSession = true
