@@ -75,7 +75,7 @@ func FirstNotEmptyString(values ...string) string {
 
 // SortedMapKeys returns the sorted keys of the given map
 func SortedMapKeys(m map[string]string) []string {
-	answer := []string{}
+	answer := make([]string, 0, len(m))
 	for k := range m {
 		answer = append(answer, k)
 	}
@@ -91,7 +91,7 @@ func ReverseStrings(a []string) {
 
 // StringArrayToLower returns a string slice with all the values converted to lower case
 func StringArrayToLower(values []string) []string {
-	answer := []string{}
+	answer := make([]string, 0, len(values))
 	for _, v := range values {
 		answer = append(answer, strings.ToLower(v))
 	}
