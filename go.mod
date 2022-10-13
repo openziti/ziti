@@ -39,7 +39,7 @@ require (
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.1.4
 	github.com/openziti/sdk-golang v0.16.133
-	github.com/openziti/storage v0.1.24
+	github.com/openziti/storage v0.1.25
 	github.com/openziti/transport/v2 v2.0.36
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
