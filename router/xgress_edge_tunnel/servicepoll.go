@@ -1,3 +1,5 @@
+package xgress_edge_tunnel
+
 /*
 Copyright NetFoundry Inc.
 
@@ -13,7 +15,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-package xgress_edge_tunnel
 
 import (
 	"github.com/openziti/channel/v2"
@@ -29,8 +30,9 @@ import (
 
 func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
 	result := &servicePoller{
-		services:       cmap.New[*edge.Service](),
-		fabricProvider: fabricProvider,
+		services:                cmap.New[*edge.Service](),
+		servicesLastUpdateToken: cmap.New[[]byte](),
+		fabricProvider:          fabricProvider,
 	}
 
 	return result
