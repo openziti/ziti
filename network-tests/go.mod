@@ -6,7 +6,7 @@ replace github.com/openziti/ziti => ../
 
 require (
 	github.com/openziti/fablab v0.4.7
-	github.com/openziti/sdk-golang v0.16.129
+	github.com/openziti/sdk-golang v0.16.135
 	github.com/openziti/zitilab v0.1.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.0
@@ -42,7 +42,7 @@ require (
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa // indirect
 	github.com/go-acme/lego/v4 v4.2.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
@@ -106,16 +106,16 @@ require (
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/openziti/agent v1.0.3 // indirect
-	github.com/openziti/channel/v2 v2.0.5 // indirect
-	github.com/openziti/edge v0.24.7 // indirect
-	github.com/openziti/fabric v0.21.3 // indirect
-	github.com/openziti/foundation/v2 v2.0.5 // indirect
-	github.com/openziti/identity v1.0.16 // indirect
+	github.com/openziti/agent v1.0.4 // indirect
+	github.com/openziti/channel/v2 v2.0.9 // indirect
+	github.com/openziti/edge v0.24.12 // indirect
+	github.com/openziti/fabric v0.21.9 // indirect
+	github.com/openziti/foundation/v2 v2.0.6 // indirect
+	github.com/openziti/identity v1.0.18 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/metrics v1.1.2 // indirect
-	github.com/openziti/storage v0.1.23 // indirect
-	github.com/openziti/transport/v2 v2.0.33 // indirect
+	github.com/openziti/metrics v1.1.4 // indirect
+	github.com/openziti/storage v0.1.25 // indirect
+	github.com/openziti/transport/v2 v2.0.36 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.0.2 // indirect
 	github.com/openziti/ziti v0.26.8 // indirect
