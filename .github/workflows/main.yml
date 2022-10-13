@@ -207,6 +207,8 @@ jobs:
 
       - name: Install Jfrog CLI
         uses: jfrog/setup-jfrog-cli@v2
+        with:
+          version: 1.51.1
 
       # remaining steps in job only run on the upstream repo, not forks
       - name: Publish
