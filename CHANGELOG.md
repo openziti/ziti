@@ -1,3 +1,24 @@
+# Release 0.26.10
+
+## What's New
+This release has a single fix for a panic in edge routers with embedded tunnelers hosting services.
+The only other changes are build updates.
+
+## Ziti Component Updates and Bug Fixes
+* github.com/openziti/agent: [v1.0.3 -> v1.0.4](https://github.com/openziti/agent/compare/v1.0.3...v1.0.4)
+* github.com/openziti/channel/v2: [v2.0.5 -> v2.0.9](https://github.com/openziti/channel/compare/v2.0.5...v2.0.9)
+* github.com/openziti/edge: [v0.24.7 -> v0.24.12](https://github.com/openziti/edge/compare/v0.24.7...v0.24.12)
+    * [Issue #1209](https://github.com/openziti/edge/issues/1209) - edge router with embedded tunneler panics when intercepting services 
+
+* github.com/openziti/fabric: [v0.21.3 -> v0.21.9](https://github.com/openziti/fabric/compare/v0.21.3...v0.21.9)
+* github.com/openziti/foundation/v2: [v2.0.5 -> v2.0.6](https://github.com/openziti/foundation/compare/v2.0.5...v2.0.6)
+* github.com/openziti/identity: [v1.0.16 -> v1.0.18](https://github.com/openziti/identity/compare/v1.0.16...v1.0.18)
+* github.com/openziti/sdk-golang: [v0.16.129 -> v0.16.135](https://github.com/openziti/sdk-golang/compare/v0.16.129...v0.16.135)
+* github.com/openziti/storage: [v0.1.23 -> v0.1.25](https://github.com/openziti/storage/compare/v0.1.23...v0.1.25)
+* github.com/openziti/transport/v2: [v2.0.33 -> v2.0.36](https://github.com/openziti/transport/compare/v2.0.33...v2.0.36)
+* github.com/openziti/metrics: [v1.1.2 -> v1.1.4](https://github.com/openziti/metrics/compare/v1.1.2...v1.1.4)
+* github.com/openziti/ziti: [v0.26.9 -> v0.26.10](https://github.com/openziti/ziti/compare/v0.26.9...v0.26.10)
+
 # Release 0.26.9
 
 ## What's New

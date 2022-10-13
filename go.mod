@@ -21,15 +21,15 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/agent v1.0.3
-	github.com/openziti/channel/v2 v2.0.5
-	github.com/openziti/edge v0.24.7
-	github.com/openziti/fabric v0.21.3
-	github.com/openziti/foundation/v2 v2.0.5
-	github.com/openziti/identity v1.0.16
-	github.com/openziti/sdk-golang v0.16.129
-	github.com/openziti/storage v0.1.23
-	github.com/openziti/transport/v2 v2.0.33
+	github.com/openziti/agent v1.0.4
+	github.com/openziti/channel/v2 v2.0.9
+	github.com/openziti/edge v0.24.12
+	github.com/openziti/fabric v0.21.9
+	github.com/openziti/foundation/v2 v2.0.6
+	github.com/openziti/identity v1.0.18
+	github.com/openziti/sdk-golang v0.16.135
+	github.com/openziti/storage v0.1.25
+	github.com/openziti/transport/v2 v2.0.36
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
@@ -77,7 +77,7 @@ require (
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/errors v0.20.3 // indirect
@@ -131,7 +131,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/metrics v1.1.2 // indirect
+	github.com/openziti/metrics v1.1.4 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
