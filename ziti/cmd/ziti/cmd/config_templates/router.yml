@@ -21,7 +21,7 @@ link:
 {{ if .Router.IsPrivate }}#{{ end }}  listeners:
 {{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
 {{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
-{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:{{ .Router.Listener.BindPort }}
 {{ if .Router.IsPrivate }}#{{ end }}      options:
 {{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
 
@@ -30,7 +30,7 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
 {{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
 {{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}  - binding: tunnel
