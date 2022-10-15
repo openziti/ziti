@@ -33,9 +33,10 @@ const (
 type CreateConfigRouterOptions struct {
 	CreateConfigOptions
 
-	RouterName string
-	WssEnabled bool
-	IsPrivate  bool
+	RouterName       string
+	WssEnabled       bool
+	IsPrivate        bool
+	TunnelerDisabled bool
 }
 
 var routerOptions = CreateConfigRouterOptions{}

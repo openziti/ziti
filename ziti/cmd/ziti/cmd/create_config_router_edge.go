@@ -64,6 +64,7 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.Router.IsWss = routerOptions.WssEnabled
 			data.Router.IsPrivate = routerOptions.IsPrivate
+			data.Router.TunnelerDisabled = routerOptions.TunnelerDisabled
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			routerOptions.Cmd = cmd
@@ -82,6 +83,7 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
+	cmd.PersistentFlags().BoolVarP(&options.TunnelerDisabled, "disableTunneler", "t", false, "whether the router has tunneling disabled")
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {

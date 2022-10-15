@@ -119,6 +119,7 @@ type RouterTemplateValues struct {
 	IsPrivate          bool
 	IsFabric           bool
 	IsWss              bool
+	TunnelerDisabled   bool
 	IdentityCert       string
 	IdentityServerCert string
 	IdentityKey        string
