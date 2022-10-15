@@ -182,6 +182,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
