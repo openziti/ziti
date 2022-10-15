@@ -157,8 +157,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		},
 	}
 
-	createConfigLong := fmt.Sprintf(
-		"Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
+	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
 			"The following environment variables can be set to override config values (current value is displayed):\n"+
 			"%-36s %-50s %s\n"+
 			"%-40s %-50s %s\n"+
@@ -217,8 +216,6 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
 		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey,
 		constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeIdentityDuration.Minutes()),
-		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeRouterDuration.Minutes()),
-	)
 
 	cmd.Long = createConfigLong
 
