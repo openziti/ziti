@@ -33,9 +33,9 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
-{{ if .Router.IsFabric }}#{{ end }}  - binding: tunnel
-{{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      mode: host #tproxy|host
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}  - binding: tunnel
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}    options:
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}      mode: host #tproxy|host
 
 {{ if or .Router.IsFabric }}
 csr:
