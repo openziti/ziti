@@ -19,17 +19,18 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"text/template"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"text/template"
 )
 
 type EnvVariableTemplateData struct {
@@ -112,6 +113,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey},
 				{constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA},
 				{constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride},
+				{constants.ZitiRouterAdvertisedHostVarName, constants.ZitiRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost},
+				{constants.ZitiEdgeRouterLanInterfaceVarName, constants.ZitiEdgeRouterLanInterfaceVarDescription, data.Router.Edge.LanInterface},
 				{constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress},
 				{constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress},
 				{constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort},
@@ -154,35 +157,38 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		},
 	}
 
-	createConfigLong := fmt.Sprintf("Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
-		"The following environment variables can be set to override config values (current value is displayed):\n"+
-		"%-36s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s\n"+
-		"%-40s %-50s %s",
+	createConfigLong := fmt.Sprintf(
+		"Creates a config file for specified Ziti component using environment variables which have default values but can be manually set to override the config output.\n\n"+
+			"The following environment variables can be set to override config values (current value is displayed):\n"+
+			"%-36s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s\n"+
+			"%-40s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
 		constants.ZitiCtrlNameVarName, constants.ZitiCtrlNameVarDescription, data.Controller.Name,
@@ -199,6 +205,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA,
 		constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride,
 		constants.ZitiRouterAdvertisedHostVarName, constants.ZitiRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost,
+		constants.ZitiEdgeRouterLanInterfaceVarName, constants.ZitiEdgeRouterLanInterfaceVarDescription, data.Router.Edge.LanInterface,
 		constants.ZitiCtrlIdentityCertVarName, constants.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
 		constants.ZitiCtrlIdentityServerCertVarName, constants.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
 		constants.ZitiCtrlIdentityKeyVarName, constants.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,
@@ -210,7 +217,8 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiSigningCertVarName, constants.ZitiSigningCertVarDescription, data.Controller.Edge.ZitiSigningCert,
 		constants.ZitiSigningKeyVarName, constants.ZitiSigningKeyVarDescription, data.Controller.Edge.ZitiSigningKey,
 		constants.ZitiEdgeIdentityEnrollmentDurationVarName, constants.ZitiEdgeIdentityEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeIdentityDuration.Minutes()),
-		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeRouterDuration.Minutes()))
+		constants.ZitiEdgeRouterEnrollmentDurationVarName, constants.ZitiEdgeRouterEnrollmentDurationVarDescription, fmt.Sprintf("%.0f", data.Controller.EdgeRouterDuration.Minutes()),
+	)
 
 	cmd.Long = createConfigLong
 

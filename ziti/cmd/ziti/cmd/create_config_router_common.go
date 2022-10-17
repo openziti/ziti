@@ -18,10 +18,11 @@ package cmd
 
 import (
 	_ "embed"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"log"
 	"os"
+
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
+	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 )
 
 func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
@@ -34,6 +35,12 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	edgeRouterIPOverride := os.Getenv(constants.ZitiEdgeRouterIPOverrideVarName)
 	if edgeRouterIPOverride != "" {
 		r.Edge.IPOverride = edgeRouterIPOverride
+	}
+
+	// Egde Router Lan Interface
+	edgeRouterLanInterface := os.Getenv(constants.ZitiEdgeRouterLanInterfaceVarName)
+	if edgeRouterLanInterface != "" {
+		r.Edge.LanInterface = edgeRouterLanInterface
 	}
 
 	externalDNS := os.Getenv(constants.ExternalDNSVarName)

@@ -35,8 +35,9 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
 {{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}  - binding: tunnel
 {{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}      mode: host #tproxy|host
-
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}#{{ end }}      mode: host
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ else }}#{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}      lanIf: {{ .Router.Edge.LanInterface }}{{ else }}#{{ end }}
 {{ if or .Router.IsFabric }}
 csr:
   country: US

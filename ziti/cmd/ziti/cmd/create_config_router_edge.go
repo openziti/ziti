@@ -18,15 +18,16 @@ package cmd
 
 import (
 	_ "embed"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"strings"
-	"text/template"
 )
 
 const (
@@ -65,6 +66,7 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 			data.Router.IsWss = routerOptions.WssEnabled
 			data.Router.IsPrivate = routerOptions.IsPrivate
 			data.Router.TunnelerDisabled = routerOptions.TunnelerDisabled
+			data.Router.Tproxy = routerOptions.Tproxy
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			routerOptions.Cmd = cmd
@@ -84,6 +86,7 @@ func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
 	cmd.PersistentFlags().BoolVarP(&options.TunnelerDisabled, "disableTunneler", "t", false, "whether the router has tunneling disabled")
+	cmd.PersistentFlags().BoolVarP(&options.Tproxy, "Tproxy", "x", false, "enable tproxy if disableTunneler")
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -96,6 +99,11 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 	// Ensure private and wss are not both used
 	if options.IsPrivate && options.WssEnabled {
 		return errors.New("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
+	}
+
+	// Ensure disableTunneler and Tproxy are not both used
+	if options.TunnelerDisabled && options.Tproxy {
+		return errors.New("Flags for TunnelerDisabled and Tproxy are mutually exclusive. You must choose one, but not both")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
