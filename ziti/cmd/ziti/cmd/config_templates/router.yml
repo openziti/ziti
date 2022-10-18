@@ -32,12 +32,12 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}    options:
 {{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
-{{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}  - binding: tunnel
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}#{{ end }}      mode: host
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ else }}#{{ end }}
-{{ if .Router.IsFabric }}#{{ end }}{{ if .Router.TunnelerDisabled }}#{{ end }}{{ if .Router.Tproxy }}      lanIf: {{ .Router.Edge.LanInterface }}{{ else }}#{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}
+{{ if .Router.IsFabric }}#{{ else if .Router.TunnelerDisabled }}#{{ end }}  - binding: tunnel
+{{ if .Router.IsFabric }}#{{ else if .Router.TunnelerDisabled }}#{{ end }}    options:
+{{ if .Router.IsFabric }}#{{ else if .Router.TunnelerDisabled }}#{{ else if .Router.Tproxy }}      mode: tproxy{{ else }}      mode: host{{ end }}
+{{ if .Router.IsFabric }}#{{ else if .Router.TunnelerDisabled }}#{{ else if .Router.Tproxy }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ else }}#{{ end }}
+{{ if .Router.IsFabric }}#{{ else if .Router.TunnelerDisabled }}#{{ else if .Router.Tproxy }}      lanIf: {{ .Router.Edge.LanInterface }}{{ else }}#{{ end }}
 {{ if or .Router.IsFabric }}
 csr:
   country: US
