@@ -67,7 +67,7 @@ Let's get a local Ziti stack up and running now that you have built and installe
 
 ### Initialize the Environment
 
-You'll need to define two environment variables that are employed by the included controller and router configuration YAML files. The must be exported to child processes of the current shell.
+You'll need to export two environment variables that are employed by the included controller and router configuration YAML files. These are needed in each shell where you'll run a controller or router process. You could manage them all as background processes in a single shell, but it's easier to use separate shells for each if only to have a dedicated view for the log messages of each process.
 
 1. `ZITI_SOURCE`: the parent directory of this Git repo's checked-out copy
 
@@ -91,7 +91,7 @@ You'll need to define two environment variables that are employed by the include
 Before you can run the controller you have to initialize it's database with an administrative user.
 
 ```bash
-ziti-controller edge init ./etc/ctrl.with.edge.yml -u <admin name> -p <admin password>
+ziti-controller edge init ./etc/ctrl.with.edge.yml -u ADMIN_NAME -p ADMIN_PW
 ```
 
 ### Run the Controller
@@ -116,35 +116,36 @@ will not be usable. The remainder of this article will assume you're running the
 This step will save a session token in the `ziti` CLI's configuration cache.
 
 ```bash
-ziti edge login -u admin
+ziti edge login -u ADMIN_NAME -p ADMIN_PW
 ```
 
-Subsequent `ziti` CLI commands will automatically re-use this session token. If the token expires you'll need to perform this step again.
+Subsequent `ziti` CLI commands will automatically re-use this session token. You'll need to perform this login step again when the token expires.
 
 ### Enroll the Routers
 
-The Ziti Fabric requires at least one router (fabric router or edge router). There are four predefined configuration files
+The Ziti Fabric requires at least one router to function. There are four predefined configuration files
 for running routers in `etc/` named `001.yml` to `004.yml`.
 
 Each configuration file refers to certificate and private keys kept in `etc/ca/intermediate/certs` and
-`etc/ca/intermediate/private/`. The steps for starting the router is to first register the router then
-start it.
+`etc/ca/intermediate/private/`.
 
 Register:
 
 ```bash
-ziti fabric create router etc/ca/intermediate/certs/XXX-client.cert.pem
+ziti fabric create router etc/ca/intermediate/certs/SERIAL-client.cert.pem
 ```
 
-Where `XXX` is replaced with `001` through `004`.
+Where `SERIAL` is replaced with `001` through `004`.
 
 ### Start the Routers
 
+You'll need at least one running edge router. Remember to initialize the environment in each shell.
+
 ```bash
-ziti-router run etc/XXX.yml
+ziti-router run etc/SERIAL.yml
 ```
 
-Where `XXX` is replaced with `001` through `004`.
+Where `SERIAL` is replaced with `001` through `004`.
 
 Edge routers are routers that have the Edge functionality enabled and allow Ziti SDK enabled application to connect to
 Ziti. Starting an edge router requires that the controller be running with the Edge functionality
@@ -206,7 +207,7 @@ GET /edge-routers/<id>
 ```
 
 ...where `id` is provided in the response to creating an edge router. It can be re-retrieved by listing the existing
-edge routers via `GET /edge-routers`. The response from retrieving a edge router should contain an enrollment JWT in the 
+edge routers via `GET /edge-routers`. The response from retrieving a edge router should contain an enrollment JWT in the
 `enrollmentJwt` field. Retain the enrollment JWT in a text file named `enrollment.jwt`.
 
 ### Enroll the Edge Router
