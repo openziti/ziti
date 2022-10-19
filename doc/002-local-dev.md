@@ -1,6 +1,6 @@
 # Overview
 
-This local development README guides you to set up a running Ziti stack that is built from source in this repo without any downloads, scripts, or magic. If you are looking for more automation and less do-it-yourself then check out [the quickstarts](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html).
+This local development README guides you to set up a running Ziti stack that is built from source in this repo without any downloads, containers, scripts, or magic. If you are looking for more automation and less do-it-yourself then check out [the quickstarts](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html).
 
 ## Minimum Go Version
 
@@ -84,9 +84,11 @@ You'll need to define two environment variables that are employed by the include
     mkdir -p ${ZITI_DATA}/db
     ```
 
+1. Crucially, the remaining examples assume that the name of the directory where this repo is checked-out is exactly "ziti".
+
 ### Initialize the Controller DB
 
-Before you can run the controller you have to initialize it's database with an administrative user. Assuming you want to run with the edge enabled, this can be done using as follows:
+Before you can run the controller you have to initialize it's database with an administrative user.
 
 ```bash
 ziti-controller edge init ./etc/ctrl.with.edge.yml -u <admin name> -p <admin password>
@@ -109,7 +111,17 @@ ziti-controller run etc/ctrl.yml
 Please note that if you start the controller without the Ziti Edge enabled then Ziti SDK and edge router functionality
 will not be usable. The remainder of this article will assume you're running the controller with Edge enabled.
 
-### Starting  Routers
+### Login to the Controller
+
+This step will save a session token in the `ziti` CLI's configuration cache.
+
+```bash
+ziti edge login -u admin
+```
+
+Subsequent `ziti` CLI commands will automatically re-use this session token. If the token expires you'll need to perform this step again.
+
+### Enroll the Routers
 
 The Ziti Fabric requires at least one router (fabric router or edge router). There are four predefined configuration files
 for running routers in `etc/` named `001.yml` to `004.yml`.
@@ -121,12 +133,12 @@ start it.
 Register:
 
 ```bash
-ziti-fabric create router etc/ca/intermediate/certs/XXX-client.cert.pem
+ziti fabric create router etc/ca/intermediate/certs/XXX-client.cert.pem
 ```
 
 Where `XXX` is replaced with `001` through `004`.
 
-Run:
+### Start the Routers
 
 ```bash
 ziti-router run etc/XXX.yml
@@ -134,25 +146,31 @@ ziti-router run etc/XXX.yml
 
 Where `XXX` is replaced with `001` through `004`.
 
-### Starting Router As An Edge Router
-
-Edge routers are routers that have the Edge functionality enabled and allow Ziti SDK enabled application to connect to 
-Ziti. Starting an edge eouter requires that the controller be running with the Edge functionality
+Edge routers are routers that have the Edge functionality enabled and allow Ziti SDK enabled application to connect to
+Ziti. Starting an edge router requires that the controller be running with the Edge functionality
 enabled. This requires the use of the `ctrl.with.edge.yml` configuration to run the controller (see example above).
 
 To start an edge router the Edge REST API will be used to prime the enrollment process and the
 `ziti-router enroll` command will be used to finalize the process. The enrollment command will handle adding the fabric
-and edge router entries necessary. Using the `ziti-fabric create router` command should not and can not be run.
+and edge router entries necessary. Using the `ziti fabric create router` command should not and can not be run.
 
-
-There is only one example configuration file for an edge router: 
+There is only one example configuration file for an edge router:
 `etc/edge.router.yml`. Additional configuration files can be created by copying and altering the
 file. Specifically the identity section needs to point to unique file locations that do not collide with other identity
-file and the listening ports need to not be in use.
+files, and the listening ports need to be available to bind.
+
+## Ziti Edge REST API Primer
+
+The Edge REST API is actually two APIs in one:
+
+* `edge-client` REST API
+* `edge-management` REST API
+
+All API operations from both APIs are exposed on the default server listener unless the controller is configured to bind these two APIs separately. The API spec for each is served from the API itself. Read more about the spec [in the docs](https://openziti.github.io/api/rest/).
+
+All of these example requests have analogous commands in the `ziti` CLI.
 
 ### Authenticate w/ the Ziti Edge API
-
-Please note that this is not a complete API reference and all of these request have analogous commands in the Ziti CLI via the `ziti` binary.
 
 ```http
 POST /authenticate?method=password
@@ -208,8 +226,8 @@ ziti-router run etc/edge.router.yml
 ## Further Exploration
 
 At this point the controller should be running with some number of routers running. It is now possible
-to explore the Ziti Fabric capabilities via the `ziti-fabric` executable.
+to explore the Ziti Fabric capabilities via the `ziti fabric` command.
 
-If the controller was started with the Edge functionality enabled the Ziti Edge API can be explored. A POSTMAN collection
-can be found in `github.com/openziti/edge/controller/postman` and the Ziti SDK can be found in
-`netfoundry/sdk-golang`. Additionally the `ziti-enroller` and `ziti-tunnel` command in this repository contain reference implementations.
+If the controller was started with the Edge functionality enabled the Ziti Edge API can be explored.
+
+The Ziti Go SDK that is used by the apps in this repo can be found [in GitHub](https://github.com/openziti/sdk-golang).
