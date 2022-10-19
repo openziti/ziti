@@ -1,147 +1,121 @@
 # Overview
 
-This README aims to allow the setup of a development local environment as quick as possible. It uses predefined
-configuration files that are maintained with the source code as well as Docker to run ancillary services (such as databases).
+This local development README guides you to set up a running Ziti stack that is built from source in this repo without any downloads, scripts, or magic. If you are looking for more automation and less do-it-yourself then check out [the quickstarts](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html).
 
-## Dependencies
+## Minimum Go Version
 
-You may verify the currently-required version of Go with this command, or by peeking inside the file named `go.mod`.
+You will need a version of [Go](https://go.dev/) that is as recent as the version used by this project. Find the current minimum version by running this command to inspect `go.mod`.
 
 ```bash
-$ /bin/grep -Po '^go\s+\K\d+\.\d+$' go.mod
-1.17
+grep -Po '^go\s+\K\d+\.\d+$' go.mod
 ```
 
-## Debugging
+## Build and Install All Applications
 
-This guide can be used to run all of the Ziti applications via command line or in the debugger of an IDE.
+This repo contains several Go applications. The easiest way to build and install all to `${GOPATH}/bin` is:
 
-## Get Started
+```bash
+# build and install all apps
+go install ./...
+```
 
-### Checkout & Build
+If you add `${GOPATH}/bin` to your executable search `${PATH}` then you may immediately run the newly-built binaries. For example,
 
-1. Checkout the `ziti` repository from `github.com/openziti/ziti`
-    - `git clone https://github.com/openziti/ziti.git`
-2. Change into the `ziti` dirrectory
-    - `cd ziti`
-3. Build all commands
-    - `go install ./...`
-4. Build one command
+```bash
+$ ziti-controller version
+v0.0.0
+```
+
+The remainder of this article will assume you have installed all apps to be available in your `PATH`.
+
+## Build Applications Individually
+
+### `ziti` CLI
+
+```bash
+# build the binary without installing in GOPATH
+go build -o ./build/ziti ./ziti/cmd/ziti/
+# execute the binary
+./build/ziti version
+```
+
+### `ziti-controller`
+
+```bash
+# build the binary without installing in GOPATH
+go build -o ./build/ziti-controller ./ziti-controller/
+# execute the binary
+./build/ziti-controller version
+```
+
+### `ziti-router`
+
+```bash
+# build the binary without installing in GOPATH
+go build -o ./build/ziti-router ./ziti-router/
+# execute the binary
+./build/ziti-router version
+```
+
+## Crossbuilds
+
+When you push to your repo fork then GitHub Actions will automatically crossbuild for several OSs and CPU architectures. You'll then be able to download the built artifacts from the GitHub UI. The easiest way to crossbuild the Linux exectuables locally is to build and run the crossbuild container. Please refer to [the crossbuild container README](../Dockerfile.linux-build.README) for those steps. For hints on crossbuilding on MacOS and Windows see [the main GitHub Actions workflow](../.github/workflows/main.yml) which defines the steps that are run when you push to GitHub.
+
+## Run a Local Ziti Stack
+
+Let's get a local Ziti stack up and running now that you have built and installed all the Ziti apps in this repo.
+
+### Initialize the Environment
+
+You'll need to define two environment variables that are employed by the included controller and router configuration YAML files. The must be exported to child processes of the current shell.
+
+1. `ZITI_SOURCE`: the parent directory of this Git repo's checked-out copy
 
     ```bash
-    ZITI_CMD=ziti-tunnel
-    rm -f ./build/${ZITI_CMD} \
-        && mkdir -p ./build \
-        && go build -o ./build/${ZITI_CMD} ./${ZITI_CMD}/cmd/${ZITI_CMD}/ \
-        && ls -lARh ./build/${ZITI_CMD}
+    # assuming PWD is your checked-out copy of this repo
+    export ZITI_SOURCE=..
     ```
 
-### Multi-Platform Linux Builder Container
+1. `ZITI_DATA`: the directory where the controller's database and the router's identity will be stored
 
-The purpose of this container is to document the process of building locally the Linux executables in the same way as the GitHub Actions workflow (CI) which automation is not accessible to downstream contributors. By default, this produces three executables for each Ziti component, one for each platform architecture: amd64, arm, arm64. You may instead build for one or more of these by specifying the architecture as a parameter to the `docker run` command as shown below.
+    ```bash
+    # assuming a temporary location is desired
+    export ZITI_DATA=/tmp/ziti-data
+    mkdir -p ${ZITI_DATA}/db
+    ```
 
-#### Build the Container Image
+### Initialize the Controller DB
 
-You only need to build the container image once unless you change the Dockerfile or `./linux-build.sh` (the container's entrypoint).
-
-```bash
-# find the latest Go distribution's semver
-LATEST_GOLANG=$(curl -sSfL "https://go.dev/VERSION?m=text" | /bin/grep -Po '^go(\s+)?\K\d+\.\d+\.\d+$')
-# build a container image named "zitibuilder" with the Dockerfile in the top-level of this repo
-docker build \
-    --tag=zitibuilder \
-    --file=Dockerfile.linux-build \
-    --build-arg latest_golang=${LATEST_GOLANG} \
-    --build-arg uid=$UID \
-    --build-arg gid=$GID .
-```
-
-#### Run the Container to Build Executables for the Desired Architectures
-
-Executing the following `docker run` command will:
-1. Mount the top-level of this repo on the container's `/mnt`
-2. Run `./linux-build.sh ${@}` inside the container
-3. Deposit built executables in `./release`
-
-```bash
-# build for all three architectures: amd64 arm arm64
-docker run \
-    --rm \
-    --name=zitibuilder \
-    --volume=$PWD:/mnt \
-    zitibuilder
-
-# build only amd64 
-docker run \
-    --rm \
-    --name=zitibuilder \
-    --volume=$PWD:/mnt \
-    zitibuilder \
-        amd64
-```
-
-You will find the built artifacts in `./release`.
-
-```bash
-$ tree ./release
-./release
-├── amd64
-│   └── linux
-│       ├── ziti
-│       ├── ziti-controller
-│       ├── ziti-router
-│       └── ziti-tunnel
-├── arm
-│   └── linux
-│       ├── ziti
-│       ├── ziti-controller
-│       ├── ziti-router
-│       └── ziti-tunnel
-└── arm64
-    └── linux
-        ├── ziti
-        ├── ziti-controller
-        ├── ziti-router
-        └── ziti-tunnel
-```
-
-### Initializing the Controller
 Before you can run the controller you have to initialize it's database with an administrative user. Assuming you want to run with the edge enabled, this can be done using as follows:
 
 ```bash
-ziti-controller edge init etc/ctrl.with.edge.yml -u <admin name> -p <admin password>
+ziti-controller edge init ./etc/ctrl.with.edge.yml -u <admin name> -p <admin password>
 ```
 
-Example:
+### Run the Controller
 
-```bash
-ziti-controller edge init etc/ctrl.with.edge.yml -u admin -p o93wjh5n
-```
-
-### Starting the Controller
-
-If you wish to start the controller with the Ziti Fabric and Ziti Edge enabled:
+Start the controller with the Ziti Fabric and Ziti Edge enabled (typical):
 
 ```bash
 ziti-controller run etc/ctrl.with.edge.yml
 ```
 
-If you wish to start the Ziti Fabric standalone:
+Alternatively, you may start the controller Ziti Fabric standalone, without the Edge APIs:
 
 ```bash
 ziti-controller run etc/ctrl.yml
 ```
 
-Please note that if you start the controller without the Ziti Edge enabled, the Ziti SDK, and edge router functionality
-will not be usable. The controller can be started and stopped both ways without issue.
+Please note that if you start the controller without the Ziti Edge enabled then Ziti SDK and edge router functionality
+will not be usable. The remainder of this article will assume you're running the controller with Edge enabled.
 
 ### Starting  Routers
 
-The Ziti Fabric requires at least one router (fabric router or edge router). There are four predefined configuration files 
-for running routers in `etc/` named `001.yml` to `004.yml`. 
+The Ziti Fabric requires at least one router (fabric router or edge router). There are four predefined configuration files
+for running routers in `etc/` named `001.yml` to `004.yml`.
 
 Each configuration file refers to certificate and private keys kept in `etc/ca/intermediate/certs` and
-`etc/ca/intermediate/private/`. The steps for starting the router is to first register the router then 
+`etc/ca/intermediate/private/`. The steps for starting the router is to first register the router then
 start it.
 
 Register:
