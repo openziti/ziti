@@ -12,16 +12,16 @@ v: 3
 # Define all of the paths to the certificates and key required to establish the controller's identity.
 #
 identity:
-  cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
-  ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert:                 etc/ca/intermediate/certs/ctrl-client.cert.pem
+  server_cert:          etc/ca/intermediate/certs/ctrl-server.cert.pem
+  key:                  etc/ca/intermediate/private/ctrl.key.pem
+  ca:                   etc/ca/intermediate/certs/ca-chain.cert.pem
 
 raft:
   minClusterSize: 1
   advertiseAddress: tcp:localhost:1380
   bindAddress: tcp:0.0.0.0:1380
-  dataDir: ${ZITI_DATA}/db
+  dataDir: /home/plorenz/work/var/data/
 
 # Network Configuration
 #
@@ -77,7 +77,7 @@ raft:
 #
 # Define the path to where the controller's database will be stored.
 #
-db: ${ZITI_DATA}/db/ctrl.db
+db:                     /tmp/devctrl.db
 #dbTrace:		true
 
 # Overlay Tracing
