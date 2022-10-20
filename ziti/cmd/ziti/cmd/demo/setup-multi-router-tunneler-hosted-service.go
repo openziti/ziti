@@ -18,12 +18,12 @@ package demo
 
 import (
 	_ "embed"
+	"github.com/openziti/runzmd"
+	"github.com/openziti/runzmd/actionz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	tutorial2 "github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial/actions"
-	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial"
 	"github.com/spf13/cobra"
 	"time"
 )
@@ -33,7 +33,7 @@ var multiRouterTunnelerHostedScriptSource []byte
 
 type multiRouterTunnelerHosted struct {
 	api.Options
-	tutorial2.TutorialOptions
+	tutorial.TutorialOptions
 	interactive bool
 }
 
@@ -70,17 +70,17 @@ func newMultiRouterTunnelerHostedCmd(p common.OptionsProvider) *cobra.Command {
 }
 
 func (self *multiRouterTunnelerHosted) run() error {
-	t := tutorial.NewRunner()
+	t := runzmd.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = !self.interactive
 
-	t.RegisterActionHandler("ziti", &actions.ZitiRunnerAction{})
-	t.RegisterActionHandler("ziti-login", &actions.ZitiEnsureLoggedIn{
+	t.RegisterActionHandler("ziti", &actionz.ZitiRunnerAction{})
+	t.RegisterActionHandler("ziti-login", &actionz.ZitiEnsureLoggedIn{
 		LoginParams: &self.TutorialOptions,
 	})
-	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
-	t.RegisterActionHandler("ziti-create-config", &actions.ZitiCreateConfigAction{})
-	t.RegisterActionHandler("ziti-for-each", &actions.ZitiForEach{})
+	t.RegisterActionHandler("keep-session-alive", &actionz.KeepSessionAliveAction{})
+	t.RegisterActionHandler("ziti-create-config", &actionz.ZitiCreateConfigAction{})
+	t.RegisterActionHandler("ziti-for-each", &actionz.ZitiForEach{})
 
 	return t.Run(multiRouterTunnelerHostedScriptSource)
 }
