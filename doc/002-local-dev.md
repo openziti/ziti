@@ -59,13 +59,13 @@ go build -o ./build/ziti-router ./ziti-router/
 
 ## Crossbuilds
 
-When you push to your repo fork then GitHub Actions will automatically crossbuild for several OSs and CPU architectures. You'll then be able to download the built artifacts from the GitHub UI. The easiest way to crossbuild the Linux exectuables locally is to build and run the crossbuild container. Please refer to [the crossbuild container README](../Dockerfile.linux-build.README) for those steps. For hints on crossbuilding on MacOS and Windows see [the main GitHub Actions workflow](../.github/workflows/main.yml) which defines the steps that are run when you push to GitHub.
+When you push to your repo fork then GitHub Actions will automatically crossbuild for several OSs and CPU architectures. You'll then be able to download the built artifacts from the GitHub UI. The easiest way to crossbuild the Linux exectuables locally is to build and run the crossbuild container. Please refer to [the crossbuild container README](../Dockerfile.linux-build.README) for those steps. For hints on crossbuilding for MacOS and Windows see [the main GitHub Actions workflow](../.github/workflows/main.yml) which defines the steps that are run when you push to GitHub.
 
 ## Run a Local Ziti Stack
 
 Let's get a local Ziti stack up and running now that you have built and installed all the Ziti apps in this repo.
 
-### Initialize the Environment
+### Initialize the Shell Environment
 
 You'll need to export two environment variables that are employed by the included controller and router configuration YAML files. These are needed in each shell where you'll run a controller or router process. You could manage them all as background processes in a single shell, but it's easier to use separate shells for each if only to have a dedicated view for the log messages of each process.
 
@@ -85,6 +85,36 @@ You'll need to export two environment variables that are employed by the include
     ```
 
 1. Crucially, the remaining examples assume that the name of the directory where this repo is checked-out is exactly "ziti".
+
+### Initialize the Go Workspace
+
+You may skip initializing a Go workspace if you will only need release builds from other Go modules that this project depends upon e.g. `openziti/edge`, `openziti/fabric`.
+
+A Go workspace is the best way to use the checked out copy of other modules' source instead of downloading from GitHub.
+
+For each Ziti module you wish to develop (modify) you will need to add it to your workspace.
+
+For this example, we'll only add the `edge` module.
+
+```bash
+go work init
+go work use .
+go work use ../edge  # assumes openziti/edge is checked out in sibling dir "edge"
+```
+
+This produces a `go.work` file.
+
+```bash
+$ cat go.work
+go 1.19
+
+use (
+        .
+        ../edge
+)
+```
+
+You must be aware of the checked out revision in each module because it is used to satisfy imports at a higher precedence than pinned versions in `go.mod`. That is, you may change the version of `edge` that is imported by this module at build time by checking out a different version in the `edge` repo.
 
 ### Initialize the Controller DB
 
