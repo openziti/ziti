@@ -208,6 +208,10 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 	store.indexToken = store.AddUniqueIndex(symbolToken)
 	store.symbolIdentity = store.AddFkSymbol(FieldApiSessionIdentity, store.stores.identity)
 	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldApiSessionAuthenticator, ast.NodeTypeString)
+	store.AddSymbol(FieldApiSessionIdentity, ast.NodeTypeString)
+	store.AddSymbol(FieldApiSessionIPAddress, ast.NodeTypeString)
+	store.AddSymbol(FieldApiSessionLastActivityAt, ast.NodeTypeDatetime)
 
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)
 }

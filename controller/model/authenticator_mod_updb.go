@@ -149,7 +149,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 		identity:        identity,
 		identityId:      updb.IdentityId,
 		authenticator:   authenticator,
-		authenticatorId: authenticator.IdentityId,
+		authenticatorId: authenticator.Id,
 		env:             module.env,
 	}, nil
 }

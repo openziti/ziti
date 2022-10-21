@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
@@ -235,4 +236,13 @@ func (store *authenticatorStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) 
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (store *authenticatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	err := store.baseStore.DeleteById(ctx, id)
+
+	if err == nil {
+		return store.stores.apiSession.DeleteWhere(ctx, fmt.Sprintf(`%s="%s"`, FieldApiSessionAuthenticator, id))
+	}
+	return err
 }
