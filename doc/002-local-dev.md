@@ -178,6 +178,4 @@ ziti-router run ./db/router01-config.yml
 
 ## Further Exploration
 
-At this point the controller should be running with one router. The Ziti Go SDK that is used by the apps in this repo can be found [in GitHub](https://github.com/openziti/sdk-golang).
-
-<!-- TODO: add tutorial steps to use the running controller and router to create a functioning service with one of the Go SDK examples e.g. Reflect Server -->
+Continue your OpenZiti exploration in [the next article about running an OpenZiti stack locally for development](./003-local-deploy.md).

@@ -84,3 +84,7 @@ networks.
 | ziti-tunnel       | Provides the ability to intercept traffic to route traffic across Ziti|
 
 All of the above binaries are cross platform compatible, except ziti-tunnel which is currently Linux only.
+
+## Further Exploration
+
+Continue your OpenZiti exploration in [the next article about getting set up for local development](./002-local-dev.md) and building the apps from source.
