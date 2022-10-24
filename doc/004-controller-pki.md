@@ -2,6 +2,28 @@
 
 This tutorial covers composing the controller PKI and controller and router configs from scratch. [The previous tutorial](./003-local-deploy.md) guided you to run a controller with the demo PKI checked in to this repo under `./etc/ca` and with controller and router configs generated with the `ziti create config` command.
 
+## Hosts File
+
+This document assumes that the following hostnames will resolve on your local system:
+
+- up-and-running-ctrl.ziti.netfoundry.io
+- up-and-running-er01.ziti.netfoundry.io
+- up-and-running-r01.ziti.netfoundry.io
+
+This means that temporarily adding these to your system hosts file (outlined below) is required for this guide.
+
+- Windows: `windows: %windir%\system32\drivers\etc\hosts`
+- Linux: `/etc/hosts`
+
+    127.0.0.1   up-and-running-ctrl.ziti.netfoundry.io
+    127.0.0.1   up-and-running-er01.ziti.netfoundry.io
+    127.0.0.1   up-and-running-r01.ziti.netfoundry.io
+
+If you are deploying on multiple machines with their own resolvable hostnames, this is not required. However, it will
+be necessary to alter the Environment Variable DNS San values to match your environment. Also, all generated Ziti
+Identities (server, client, and private keys), configuration files, and binaries will need to be copied to the correct
+hosts.
+
 ## Establish Environment Variables
 
 The environment variables ZITI_HOME and ZITI_NETWORK will be used to boostrap an environment configuration file and directory structure to hold the various certificate, private keys, configuration files, and enrollment tokens that will be generated in this guide. This will help keep them separated on your file system for easy deletion later.
