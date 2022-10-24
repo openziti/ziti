@@ -87,6 +87,10 @@ This environment is perfect for evaluators to get to know Ziti and the capabilit
 designed for large scale deployment or for long-term usage. If you are looking for a managed service to help you run a
 truly global, scalable network browse over to our website at http://netfoundry.io to learn more.
 
+## Build from Source
+
+Please refer to [the local development README](./doc/002-local-dev.md) for build instructions.
+
 ---
 
 ## Adopters
