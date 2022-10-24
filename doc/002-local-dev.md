@@ -57,10 +57,6 @@ go build -o ./build/ziti-router ./ziti-router/
 ./build/ziti-router version
 ```
 
-## Crossbuilds
-
-When you push to your repo fork then GitHub Actions will automatically crossbuild for several OSs and CPU architectures. You'll then be able to download the built artifacts from the GitHub UI. The easiest way to crossbuild the Linux exectuables locally is to build and run the crossbuild container. Please refer to [the crossbuild container README](../Dockerfile.linux-build.README) for those steps. For hints on crossbuilding for MacOS and Windows see [the main GitHub Actions workflow](../.github/workflows/main.yml) which defines the steps that are run when you push to GitHub.
-
 ## Run a Local Ziti Stack
 
 Let's get a local Ziti stack up and running now that you have built and installed all the Ziti apps in this repo.
