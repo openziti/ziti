@@ -48,18 +48,8 @@ func NewCtrlAccepter(network *network.Network,
 }
 
 func (self *CtrlAccepter) AcceptUnderlay(underlay channel.Underlay) error {
-	ch, err := channel.NewChannelWithUnderlay("ctrl", underlay, channel.BindHandlerF(self.Bind), self.options)
-	if err != nil {
-		return err
-	}
-
-	if r, err := self.network.GetRouter(ch.Id()); err == nil {
-		go self.network.ConnectRouter(r)
-	} else {
-		return errors.Wrap(err, "error get router for control channel")
-	}
-
-	return nil
+	_, err := channel.NewChannelWithUnderlay("ctrl", underlay, channel.BindHandlerF(self.Bind), self.options)
+	return err
 }
 
 func (self *CtrlAccepter) Bind(binding channel.Binding) error {
@@ -68,7 +58,10 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 
 	log := pfxlog.Logger().WithField("routerId", ch.Id())
 
-	if r, err := self.network.GetRouter(ch.Id()); err == nil {
+	// Use a new copy of the router instance each time we connect. That way we can tell on disconnect
+	// if we're working with the right connection, in case connects and disconnects happen quickly.
+	// It also means that the channel and connected time fields don't change and we don't have to protect them
+	if r, err := self.network.GetReloadedRouter(ch.Id()); err == nil {
 		if ch.Underlay().Headers() != nil {
 			if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
 				if versionInfo, err := self.network.VersionProvider.EncoderDecoder().Decode(versionValue); err == nil {
@@ -117,6 +110,8 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 		}
 
 		log.Infof("accepted new router connection [r/%s]", r.Id)
+
+		self.network.ConnectRouter(r)
 	}
 	return nil
 }

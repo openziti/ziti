@@ -90,10 +90,6 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 			return errors.Errorf("router already connected id: %s, name: %s", id, router.Name)
 		}
 		log.WithField("routerName", router.Name).Warn("router already connected, but churn threshold met. replacing connection")
-		// make sure we're setting up a new router instance. Otherwise we'll be overwriting the current cached router
-		// and the connect/disconnect processes will get confused. We could disconnect the existing router here, but it's
-		// probably better to wait until this connection is fully setup and there isn't any chance of error
-		self.network.Routers.RemoveFromCache(id)
 	}
 
 	if r, err := self.network.GetRouter(id); err == nil {

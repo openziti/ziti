@@ -192,6 +192,11 @@ func (network *Network) GetConnectedRouter(routerId string) *Router {
 	return network.Routers.getConnected(routerId)
 }
 
+func (network *Network) GetReloadedRouter(routerId string) (*Router, error) {
+	network.Routers.RemoveFromCache(routerId)
+	return network.Routers.Read(routerId)
+}
+
 func (network *Network) GetRouter(routerId string) (*Router, error) {
 	return network.Routers.Read(routerId)
 }
@@ -274,13 +279,14 @@ func (network *Network) ConnectRouter(r *Router) {
 }
 
 func (network *Network) ValidateTerminators(r *Router) {
+	logger := pfxlog.Logger().WithField("routerId", r.Id)
 	result, err := network.Terminators.Query(fmt.Sprintf(`router.id = "%v" limit none`, r.Id))
 	if err != nil {
-		pfxlog.Logger().Errorf("failed to get termintors for router %v (%v)", r.Id, err)
+		logger.WithError(err).Error("failed to get terminators for router")
 		return
 	}
 
-	pfxlog.Logger().Debugf("%v terminators on %v to validate", len(result.Entities), r.Id)
+	logger.Debugf("%v terminators to validate", len(result.Entities))
 	if len(result.Entities) == 0 {
 		return
 	}
@@ -300,7 +306,7 @@ func (network *Network) ValidateTerminators(r *Router) {
 	}
 
 	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
-		pfxlog.Logger().WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
+		logger.WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
 	}
 }
 
@@ -312,11 +318,12 @@ func (network *Network) DisconnectRouter(r *Router) {
 	}
 	// 2: remove Router
 	network.Routers.markDisconnected(r)
-	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
 		h.RouterDisconnected(r)
 	}
+
+	network.routerChanged <- r
 }
 
 func (network *Network) NotifyExistingLink(id, linkProtocol, dialAddress string, srcRouter *Router, dstRouterId string) (bool, error) {
