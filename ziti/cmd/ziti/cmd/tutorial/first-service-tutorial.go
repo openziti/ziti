@@ -18,11 +18,11 @@ package tutorial
 
 import (
 	_ "embed"
+	"github.com/openziti/runzmd"
+	"github.com/openziti/runzmd/actionz"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/tutorial/actions"
-	"github.com/openziti/ziti/ziti/cmd/ziti/tutorial"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"time"
@@ -81,16 +81,16 @@ func newFirstServiceTutorialCmd(p common.OptionsProvider) *cobra.Command {
 }
 
 func (self *firstServiceTutorialOptions) run() error {
-	t := tutorial.NewRunner()
+	t := runzmd.NewRunner()
 	t.NewLinePause = self.NewlinePause
 	t.AssumeDefault = self.AssumeDefault
 
-	t.RegisterActionHandler("ziti", &actions.ZitiRunnerAction{})
-	t.RegisterActionHandler("ziti-login", &actions.ZitiLoginAction{
+	t.RegisterActionHandler("ziti", &actionz.ZitiRunnerAction{})
+	t.RegisterActionHandler("ziti-login", &actionz.ZitiLoginAction{
 		LoginParams: &self.TutorialOptions,
 	})
-	t.RegisterActionHandler("keep-session-alive", &actions.KeepSessionAliveAction{})
-	t.RegisterActionHandler("select-edge-router", &actions.SelectEdgeRouterAction{})
+	t.RegisterActionHandler("keep-session-alive", &actionz.KeepSessionAliveAction{})
+	t.RegisterActionHandler("select-edge-router", &actionz.SelectEdgeRouterAction{})
 
 	plainEchoServerActions := &PlainEchoServerActions{}
 	t.RegisterActionHandlerF("run-plain-echo-server", plainEchoServerActions.Start)
@@ -100,7 +100,7 @@ func (self *firstServiceTutorialOptions) run() error {
 	t.RegisterActionHandlerF("run-ziti-echo-server", zitiEchoServerActions.Start)
 	t.RegisterActionHandlerF("stop-ziti-echo-server", zitiEchoServerActions.Stop)
 
-	showActionHandler := tutorial.NewShowActionHandler()
+	showActionHandler := runzmd.NewShowActionHandler()
 	showActionHandler.Add("plain_echo_server.go", plainEchoServerSource)
 	showActionHandler.Add("plain_echo_client.go", plainEchoClientSource)
 	showActionHandler.Add("ziti_echo_client.go", zitiEchoClientSource)
@@ -114,9 +114,9 @@ type PlainEchoServerActions struct {
 	server plainEchoServer
 }
 
-func (self *PlainEchoServerActions) Start(ctx *tutorial.ActionContext) error {
+func (self *PlainEchoServerActions) Start(ctx *runzmd.ActionContext) error {
 	if !ctx.Runner.AssumeDefault {
-		start, err := tutorial.AskYesNoWithDefault("Start plain-echo-server? [Y/N] (default Y): ", true)
+		start, err := runzmd.AskYesNoWithDefault("Start plain-echo-server? [Y/N] (default Y): ", true)
 		if err != nil {
 			return err
 		}
@@ -132,9 +132,9 @@ func (self *PlainEchoServerActions) Start(ctx *tutorial.ActionContext) error {
 	return nil
 }
 
-func (self *PlainEchoServerActions) Stop(ctx *tutorial.ActionContext) error {
+func (self *PlainEchoServerActions) Stop(ctx *runzmd.ActionContext) error {
 	if !ctx.Runner.AssumeDefault {
-		start, err := tutorial.AskYesNoWithDefault("Stop plain-echo-server? [Y/N] (default Y): ", true)
+		start, err := runzmd.AskYesNoWithDefault("Stop plain-echo-server? [Y/N] (default Y): ", true)
 		if err != nil {
 			return err
 		}
@@ -153,12 +153,12 @@ type ZitiEchoServerActions struct {
 	server zitiEchoServer
 }
 
-func (self *ZitiEchoServerActions) Start(ctx *tutorial.ActionContext) error {
+func (self *ZitiEchoServerActions) Start(ctx *runzmd.ActionContext) error {
 	logrus.SetLevel(logrus.WarnLevel)
 
 	self.server.identityJson = "echo-server.json"
 	if !ctx.Runner.AssumeDefault {
-		start, err := tutorial.AskYesNoWithDefault("Start ziti-echo-server? [Y/N] (default Y): ", true)
+		start, err := runzmd.AskYesNoWithDefault("Start ziti-echo-server? [Y/N] (default Y): ", true)
 		if err != nil {
 			return err
 		}
@@ -173,7 +173,7 @@ func (self *ZitiEchoServerActions) Start(ctx *tutorial.ActionContext) error {
 	return nil
 }
 
-func (self *ZitiEchoServerActions) Stop(*tutorial.ActionContext) error {
+func (self *ZitiEchoServerActions) Stop(*runzmd.ActionContext) error {
 	if self.server.listener != nil {
 		return self.server.stop()
 	}
