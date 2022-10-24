@@ -5,6 +5,7 @@ should be possible to extrapolate the setup to multiple machines. This setup inc
 Edge components:
 
 - 1x Ziti Controller + Edge
+- 1x Ziti Fabric Router
 - 1x Ziti Edge Router
 - 1x Ziti Tunneler
 - 1x Ziti Service (a demo netcat service)
