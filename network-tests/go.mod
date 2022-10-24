@@ -2,8 +2,6 @@ module github.com/openziti/ziti/network-tests
 
 go 1.19
 
-replace github.com/openziti/ziti => ../
-
 require (
 	github.com/openziti/fablab v0.4.7
 	github.com/openziti/sdk-golang v0.16.135
@@ -118,7 +116,7 @@ require (
 	github.com/openziti/transport/v2 v2.0.36 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.0.2 // indirect
-	github.com/openziti/ziti v0.26.8 // indirect
+	github.com/openziti/ziti v0.26.10 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
