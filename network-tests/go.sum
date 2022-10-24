@@ -623,6 +623,8 @@ github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY
 github.com/openziti/x509-claims v1.0.3/go.mod h1:Z0WIpBm6c4ecrpRKrou6Gk2wrLWxJO/+tuUwKh8VewE=
 github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0cU=
 github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
+github.com/openziti/ziti v0.26.10 h1:aPikHYJa/KvzgTiRW2hGw8f2L/+NsFgy8sbHXcuxwbU=
+github.com/openziti/ziti v0.26.10/go.mod h1:hbl02rbQ8l6+kF/vXolNPCdZLQ3WKkSGEc7xeRPEl4c=
 github.com/openziti/ziti-db-explorer v1.1.1 h1:G0eoTby+aIjjt5TxEfR+FMI2CWd4RvZFjzaIMX2lEBw=
 github.com/openziti/ziti-db-explorer v1.1.1/go.mod h1:h76h7Tsb+khb0v+CqYKL6ifUfJbUMjGBFU2IvupfBE4=
 github.com/openziti/zitilab v0.1.1 h1:Ewp7qghV78Te1JWwMZV2tvkm0M0xHDJWTgx56sMx5bg=
