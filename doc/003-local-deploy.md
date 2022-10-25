@@ -17,8 +17,9 @@ Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may nee
 
 The remainder of this local development tutorital will instruct you to run terminal commands with current working directory of the top-level of this checked-out repo. The generated configuration files will use filesystem paths that are relative to this directory.
 
+Go ahead and create a `./db` directory. Git is configured to ignore this directory and it will house the tutorial files. You may delete this directory to reset the tutorial.
+
 ```bash
-# this ./db directory is ignored by Git and will house the tutorial files
 mkdir -p ./db
 ```
 
