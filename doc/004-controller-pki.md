@@ -19,7 +19,7 @@ router egress.  The full connection will be:
 
 These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
-Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the examples.
+Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the example commands.
 
 ## Hosts File
 
