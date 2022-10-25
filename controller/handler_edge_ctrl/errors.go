@@ -25,27 +25,17 @@ func (internalErrorWrapper) ErrorCode() uint32 {
 type InvalidApiSessionError struct{}
 
 func (InvalidApiSessionError) Error() string {
-	return "Invalid Session"
+	return "invalid api session"
 }
 
 func (self InvalidApiSessionError) ErrorCode() uint32 {
 	return edge.ErrorCodeInvalidApiSession
 }
 
-type InvalidSessionError struct{}
-
-func (InvalidSessionError) Error() string {
-	return "Invalid Session"
-}
-
-func (self InvalidSessionError) ErrorCode() uint32 {
-	return edge.ErrorCodeInvalidSession
-}
-
 type WrongSessionTypeError struct{}
 
 func (WrongSessionTypeError) Error() string {
-	return "Invalid Session"
+	return "incorrect session type"
 }
 
 func (self WrongSessionTypeError) ErrorCode() uint32 {
@@ -55,7 +45,7 @@ func (self WrongSessionTypeError) ErrorCode() uint32 {
 type InvalidEdgeRouterForSessionError struct{}
 
 func (InvalidEdgeRouterForSessionError) Error() string {
-	return "Invalid Session"
+	return "invalid edge router for session"
 }
 
 func (self InvalidEdgeRouterForSessionError) ErrorCode() uint32 {
