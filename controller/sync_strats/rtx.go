@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/network"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"sync"
@@ -115,19 +116,19 @@ func (rtx *RouterSender) Send(msg *channel.Message) error {
 
 // Map used make working with internal RouterSender easier as sync.Map accepts and returns interface{}
 type routerTxMap struct {
-	internalMap *sync.Map //id -> RouterSender
+	internalMap cmap.ConcurrentMap[*RouterSender] //id -> RouterSender
 }
 
 func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {
-	m.internalMap.Store(id, routerMessageTxer)
+	m.internalMap.Set(id, routerMessageTxer)
 }
 
 func (m *routerTxMap) Get(id string) *RouterSender {
-	val, found := m.internalMap.Load(id)
+	val, found := m.internalMap.Get(id)
 	if !found {
 		return nil
 	}
-	return val.(*RouterSender)
+	return val
 }
 
 func (m *routerTxMap) GetState(id string) env.RouterStateValues {
@@ -135,29 +136,28 @@ func (m *routerTxMap) GetState(id string) env.RouterStateValues {
 	return rtx.GetState()
 }
 
-func (m *routerTxMap) Remove(id string) {
-	if val, found := m.internalMap.LoadAndDelete(id); found {
-		entry := val.(*RouterSender)
-		entry.Stop()
+func (m *routerTxMap) Remove(r *network.Router) {
+	var rtx *RouterSender
+	m.internalMap.RemoveCb(r.Id, func(key string, v *RouterSender, exists bool) bool {
+		if !exists {
+			return false
+		}
+		if v.Router == r {
+			rtx = v
+			return true
+		}
+		return false
+	})
+
+	if rtx != nil {
+		rtx.Stop()
 	}
 }
 
 // Range creates a snapshot of the rtx's to loop over and will execute callback
 // with each rtx.
 func (m *routerTxMap) Range(callback func(entries *RouterSender)) {
-	var rtxs []*RouterSender
-
-	m.internalMap.Range(func(edgeRouterId, value interface{}) bool {
-		if rtx, ok := value.(*RouterSender); ok {
-			rtxs = append(rtxs, rtx)
-		} else {
-			pfxlog.Logger().Errorf("could not convert edge router entry got %t: %v", value, value)
-		}
-
-		return true
-	})
-
-	for _, rtx := range rtxs {
-		callback(rtx)
+	for entry := range m.internalMap.IterBuffered() {
+		callback(entry.Val)
 	}
 }

@@ -31,10 +31,10 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/storage/ast"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -120,7 +120,7 @@ func NewInstantStrategy(ae *env.AppEnv, options InstantStrategyOptions) *Instant
 	strategy := &InstantStrategy{
 		InstantStrategyOptions: options,
 		rtxMap: &routerTxMap{
-			internalMap: &sync.Map{},
+			internalMap: cmap.New[*RouterSender](),
 		},
 		ae:                       ae,
 		routerConnectedQueue:     make(chan *RouterSender, options.MaxQueuedRouterConnects),
@@ -180,7 +180,7 @@ func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
 		WithField("routerName", router.Name).
 		WithField("routerFingerprint", router.Fingerprint).
 		Infof("edge router [%s] disconnecting", router.Id)
-	strategy.rtxMap.Remove(router.Id)
+	strategy.rtxMap.Remove(router)
 }
 
 func (strategy *InstantStrategy) GetReceiveHandlers() []channel.TypedReceiveHandler {
