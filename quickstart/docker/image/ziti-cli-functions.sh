@@ -495,8 +495,8 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' > /dev/null
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcAllRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcAllRouters --edge-router-roles '#all' --service-roles '#all' > /dev/null
 
   if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
     echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
