@@ -1,6 +1,25 @@
 # Overview
 
-This tutorial covers composing the controller PKI and controller and router configs from scratch. [The previous tutorial](./003-local-deploy.md) guided you to run a controller with the demo PKI checked in to this repo under `./etc/ca` and with controller and router configs generated with the `ziti create config` command.
+This tutorial covers composing the controller PKI and minimal controller and router configs from scratch. [The previous tutorial](./003-local-deploy.md) guided you to run a controller with the demo PKI checked in to this repo under `./etc/ca` and with annotated and complete controller and router configs generated with the `ziti create config` command.
+
+You will configure:
+
+- 1x Ziti Controller + Edge
+- 1x Ziti Fabric Router
+- 1x Ziti Edge Router
+- 1x Ziti Tunneler
+- 1x Ziti Service (a demo netcat service)
+
+It will also include provisioning and running a Ziti Tunneler with a demo netcat service. The services will use Ziti
+router egress.  The full connection will be:
+
+    SDK -> Edge Router -> Router -> Service
+
+## A Note About Windows
+
+These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
+
+Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the examples.
 
 ## Hosts File
 
