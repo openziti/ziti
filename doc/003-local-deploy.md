@@ -1,17 +1,17 @@
 # Overview
 
-This local deployment README guides you to set up a running Ziti stack that is built from source in this repo without any downloads, containers, scripts, or magic. If you have not already built the apps in this repo you may go back to [the previous tutorial about getting set up for local development](./002-local-dev.md) for build instructions. The remainder of the tutorial will assume you have installed all the apps so they can be found in your shell's executable search `PATH`.
+This local deployment README guides you to set up a running local Ziti stack. If you have not already built the apps in this repo you may go back to [the previous tutorial about getting set up for local development](./002-local-dev.md) for build instructions. The remainder of the tutorial will assume you have installed all the apps so they can be found in your shell's executable search `PATH`.
 
 You will configure and run:
 
-- `ziti-controller` with the provided demo PKI in `./etc`
-- `ziti-router` as an edge router with a new identity
+- `ziti-controller` with the provided demo certificate authority in `./etc/ca`
+- `ziti-router` as an edge router
 
 ## A Note About Windows
 
 These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
-Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the examples.
+Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the example commands.
 
 ## Initialize the Environment
 
@@ -24,7 +24,7 @@ mkdir -p ./db
 
 ## Initialize the Controller
 
-Before you can run the controller will initialize its configuration and database. We'll use the demo PKI that's checked in to this repo in `./etc/`.
+Before you can run the controller will initialize its configuration and database. We'll use the demo CA that's checked in to this repo in `./etc/ca`.
 
 ```bash
 ZITI_HOME=. \                              
@@ -47,7 +47,7 @@ ziti-controller edge init ./db/ctrl-config.yml -u ADMIN_NAME -p ADMIN_PW
 
 ## Run the Controller
 
-Edge SDKs will connect to the running controller to authenticate and request a session.
+Edge SDKs will connect to the running controller to authenticate and request a session. Leave the controller running in a terminal so that you may inspect the log messages.
 
 ```bash
 ziti-controller run ./db/ctrl-config.yml
@@ -55,7 +55,7 @@ ziti-controller run ./db/ctrl-config.yml
 
 ## Login to the Controller
 
-This step will save a session token in the `ziti` CLI's configuration cache.
+You will need a new terminal with current directory set to the top-level of this repo.This login step will save a session token in the `ziti` CLI's configuration cache.
 
 ```bash
 ziti edge login -u ADMIN_NAME -p ADMIN_PW
@@ -92,7 +92,7 @@ ziti-router enroll --jwt /tmp/router01.jwt ./db/router01-config.yml
 
 ## Run the Edge Router
 
-Edge SDKs will connect to the running edge router to connect to services.
+Edge SDKs will connect to the running edge router to connect to services. Leave the router process running in a terminal so you can monitor the log messages while you continue the tutorial in a new terminal.
 
 ```bash
 ziti-router run ./db/router01-config.yml
@@ -100,10 +100,15 @@ ziti-router run ./db/router01-config.yml
 
 ## Create Your First Service
 
-A service is an entity that stores metadata about a server application. We'll attach two configs to the service:
+A service is an entity that stores metadata about a server application. The `ziti` CLI has an interactive tutorial to step you through creating your first service.
 
-The `ziti` CLI has an interactive tutorial to step you through creating your first service.
+When prompted, select your running edge router `router01`.
 
 ```bash
 ziti edge tutorial first-service
 ```
+
+## Further Exploration
+
+- The [Go SDK examples](https://github.com/openziti/sdk-golang/tree/main/example#readme) illustrate embedding OpenZiti in both client and server applications.
+- You may wish to [know more about controller PKI](./004-controller-pki.md).

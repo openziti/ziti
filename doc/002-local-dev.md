@@ -1,10 +1,10 @@
 # Overview
 
-This local development README guides you to set up a running Ziti stack that is built from source in this repo without any downloads, containers, scripts, or magic.
+This local development README guides you to install the Ziti stack built from the currently checked out source branch in this repo without any downloads, containers, scripts, or magic.
 
 ## Minimum Go Version
 
-You will need a version of [Go](https://go.dev/) that is as recent as the version used by this project. Find the current minimum version by running this command to inspect `go.mod`.
+You will need to [install a version of Go](https://go.dev/) that is as recent as the version used by this project. Find the current minimum version by running this command to inspect `go.mod`.
 
 ```bash
 grep -Po '^go\s+\K\d+\.\d+$' go.mod
