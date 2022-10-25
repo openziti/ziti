@@ -109,6 +109,8 @@ When prompted, select your running edge router `router01`.
 ziti edge tutorial first-service
 ```
 
+If you prefer, you may read [the first-service tutorial as a web site](../ziti/cmd/ziti/cmd/tutorial/tutorials/first-service.md)
+
 ## Further Exploration
 
 - The [Go SDK examples](https://github.com/openziti/sdk-golang/tree/main/example#readme) illustrate embedding OpenZiti in both client and server applications.
