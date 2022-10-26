@@ -18,11 +18,12 @@ package cmd
 
 import (
 	_ "embed"
+	"os"
+	"strings"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
 )
 
 const (
@@ -37,6 +38,7 @@ type CreateConfigRouterOptions struct {
 	WssEnabled       bool
 	IsPrivate        bool
 	TunnelerDisabled bool
+	Tproxy           bool
 }
 
 var routerOptions = CreateConfigRouterOptions{}
