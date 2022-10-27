@@ -106,6 +106,11 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 		return errors.New("Flags for TunnelerDisabled and Tproxy are mutually exclusive. You must choose one, but not both")
 	}
 
+	// Ensure ZITI_EDGE_ROUTER_LAN_INTERFACE is set, when Tproxy is enabled
+	if options.Tproxy && data.Router.Edge.LanInterface == "" {
+		return errors.New("Tproxy option requires environmental variable ZITI_EDGE_ROUTER_LAN_INTERFACE to be set")
+	}
+
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
 	if err != nil {
 		return err
