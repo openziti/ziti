@@ -1471,7 +1471,7 @@ function getFileOverwritePermission() {
   fi
 }
 
-function checkIfPortForZitiEdgeControllerPortIsListening(){
+function isZitiEdgeControllerPortListening(){
   ports=()
   while IFS= read -r line; do
     ports+=( "$line" )
