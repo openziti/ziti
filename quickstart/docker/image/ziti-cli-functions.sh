@@ -255,6 +255,11 @@ function getZiti {
 }
 
 function checkPrereqs {
+  if !isPortAvailable 1280
+  then
+    echo "Port 1280 is not available hence exiting"
+    return 0
+  fi
   commands_to_test=(curl jq)
   missing_requirements=""
   # verify all the commands required in the automation exist before trying to run the full suite
@@ -1471,11 +1476,11 @@ function getFileOverwritePermission() {
   fi
 }
 
-function isZitiEdgeControllerPortListening(){
+function isPortAvailable(){
   ports=()
   while IFS= read -r line; do
     ports+=( "$line" )
-  done < <("sudo lsof -i:1280")
+  done < <("sudo lsof -i:$1")
   if ["${#ports[*]}" == 0]
   then
    return 0
