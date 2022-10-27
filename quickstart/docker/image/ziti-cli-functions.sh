@@ -1471,4 +1471,17 @@ function getFileOverwritePermission() {
   fi
 }
 
+function checkIfPortForZitiEdgeControllerPortIsListening(){
+  ports=()
+  while IFS= read -r line; do
+    ports+=( "$line" )
+  done < <("sudo lsof -i:1280")
+  if ["${#ports[*]}" == 0]
+  then
+   return 0
+  else
+   return 1
+  fi
+}
+
 set +uo pipefail
