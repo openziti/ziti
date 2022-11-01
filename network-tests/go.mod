@@ -2,12 +2,10 @@ module github.com/openziti/ziti/network-tests
 
 go 1.19
 
-replace github.com/openziti/ziti => ../
-
 require (
-	github.com/openziti/fablab v0.4.7
+	github.com/openziti/fablab v0.4.11
 	github.com/openziti/sdk-golang v0.16.135
-	github.com/openziti/zitilab v0.1.1
+	github.com/openziti/zitilab v0.1.8
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.0
 )
@@ -24,7 +22,7 @@ require (
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
-	github.com/aws/aws-sdk-go v1.44.114 // indirect
+	github.com/aws/aws-sdk-go v1.44.118 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -113,12 +111,11 @@ require (
 	github.com/openziti/identity v1.0.18 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
 	github.com/openziti/metrics v1.1.4 // indirect
-	github.com/openziti/runzmd v1.0.0 // indirect
 	github.com/openziti/storage v0.1.25 // indirect
 	github.com/openziti/transport/v2 v2.0.36 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.0.2 // indirect
-	github.com/openziti/ziti v0.26.8 // indirect
+	github.com/openziti/ziti v0.26.10 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect

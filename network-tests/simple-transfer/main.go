@@ -184,7 +184,7 @@ var m = &model.Model{
 		),
 		config.Component(),
 		zitilab.DefaultZitiBinaries(),
-		devkit.DevKitF(zitilab.ZitiDistBinaries, []string{"ziti-echo"}),
+		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti-echo"}),
 	},
 
 	Distribution: model.DistributionStages{
