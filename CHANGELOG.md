@@ -1,3 +1,18 @@
+# Release 0.26.11
+
+## What's New
+- Edge
+- Fabric
+- Ziti CLI
+  - Bug Fixes
+- SDK Golang
+- Identity
+
+## Ziti CLI
+### Bug Fixes
+
+* [Issue 882](https://github.com/openziti/ziti/issues/882): `ZITI_EDGE_ROUTER_RAWNAME` not stored in quickstart .env file
+
 # Release 0.26.10
 
 ## What's New
