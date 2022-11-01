@@ -445,6 +445,7 @@ function ziti_expressConfiguration {
   if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERRIDDEN: $ZITI_ZAC_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERRIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"; fi
 
   echo " "
   echo " "
@@ -498,11 +499,6 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcAllRouters > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcAllRouters --edge-router-roles '#all' --service-roles '#all' > /dev/null
 
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
-    echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
-  else
-    ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"
-  fi
   echo "USING ZITI_EDGE_ROUTER_RAWNAME: $ZITI_EDGE_ROUTER_RAWNAME"
 
   createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
@@ -1056,6 +1052,8 @@ function ziti_createEnvFile {
 
   if [[ "${ZITI_SIGNING_CERT}" == "" ]]; then export export ZITI_SIGNING_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
   if [[ "${ZITI_SIGNING_KEY}" == "" ]]; then export export ZITI_SIGNING_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
+
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"; fi
 
   mkdir -p "${ZITI_BIN_ROOT}"
   mkdir -p "${ZITI_HOME}/db"
