@@ -29,9 +29,8 @@ import (
 	clientApiAuthentication "github.com/openziti/edge/rest_client_api_server/operations/authentication"
 	managementApiAuthentication "github.com/openziti/edge/rest_management_api_server/operations/authentication"
 	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/metrics"
 	"github.com/openziti/foundation/v2/errorz"
-	nfpem "github.com/openziti/foundation/v2/pem"
+	"github.com/openziti/metrics"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"net"
 	"net/http"
@@ -167,10 +166,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 	var sessionCerts []*model.ApiSessionCertificate
 
 	for _, cert := range authResult.SessionCerts() {
-		sessionCert := &model.ApiSessionCertificate{
-			PEM:         nfpem.EncodeToString(cert),
-			Fingerprint: ae.GetFingerprintGenerator().FromCert(cert),
-		}
+		sessionCert := model.NewApiSessionCertificate(cert)
 		sessionCerts = append(sessionCerts, sessionCert)
 	}
 
