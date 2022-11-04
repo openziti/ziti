@@ -107,7 +107,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 		const commonName = "TEST_COMMON_NAME"
 
 		clientKey1, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		clientPrivateDer1, err := x509.MarshalECPrivateKey(clientKey1)
+		clientPrivateDer1, _ := x509.MarshalECPrivateKey(clientKey1)
 		clientKeyPem1 := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: clientPrivateDer1})
 
 		var clientTemplate1 = &x509.Certificate{
@@ -135,7 +135,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 
 		//create child cert 2
 		clientKey2, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		clientPrivateDer2, err := x509.MarshalECPrivateKey(clientKey2)
+		clientPrivateDer2, _ := x509.MarshalECPrivateKey(clientKey2)
 		clientKeyPem2 := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: clientPrivateDer2})
 
 		var clientTemplate2 = &x509.Certificate{
@@ -232,10 +232,8 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 				}()
 
 				go func() {
-					select {
-					case <-done:
-						_ = listener.Close()
-					}
+					<-done
+					_ = listener.Close()
 				}()
 
 				for {
