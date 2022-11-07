@@ -37,12 +37,6 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 		r.Edge.IPOverride = edgeRouterIPOverride
 	}
 
-	// Egde Router Lan Interface
-	edgeRouterLanInterface := os.Getenv(constants.ZitiEdgeRouterLanInterfaceVarName)
-	if edgeRouterLanInterface != "" {
-		r.Edge.LanInterface = edgeRouterLanInterface
-	}
-
 	externalDNS := os.Getenv(constants.ExternalDNSVarName)
 	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
 	if externalDNS != "" {
@@ -56,10 +50,10 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
 	}
 
-	advertisedHost := os.Getenv(constants.ZitiRouterAdvertisedHostVarName)
+	advertisedHost := os.Getenv(constants.ZitiEdgeRouterAdvertisedHostVarName)
 	if advertisedHost != "" {
 		if advertisedHost != edgeRouterIPOverride && advertisedHost != r.Edge.AdvertisedHost {
-			log.Panicf("if %s[%s] is supplied, it *MUST* match the %s[%s] or resolved hostname[%s]", constants.ZitiRouterAdvertisedHostVarName, advertisedHost, constants.ZitiEdgeRouterIPOverrideVarName, edgeRouterIPOverride, r.Edge.Hostname)
+			log.Panicf("if %s[%s] is supplied, it *MUST* match the %s[%s] or resolved hostname[%s]", constants.ZitiEdgeRouterAdvertisedHostVarName, advertisedHost, constants.ZitiEdgeRouterIPOverrideVarName, edgeRouterIPOverride, r.Edge.Hostname)
 		}
 		r.Edge.AdvertisedHost = advertisedHost //finally override AdvertisedHost if provided
 	} else {

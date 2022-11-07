@@ -38,7 +38,8 @@ type CreateConfigRouterOptions struct {
 	WssEnabled       bool
 	IsPrivate        bool
 	TunnelerDisabled bool
-	Tproxy           bool
+	TunnelerMode     string
+	LanInterface     string
 }
 
 var routerOptions = CreateConfigRouterOptions{}
