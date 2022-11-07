@@ -22389,7 +22389,7 @@ func init() {
           }
         },
         "encryptionRequired": {
-          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection.",
           "type": "boolean"
         },
         "name": {
@@ -45708,7 +45708,7 @@ func init() {
           }
         },
         "encryptionRequired": {
-          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection.",
           "type": "boolean"
         },
         "name": {

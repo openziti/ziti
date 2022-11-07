@@ -46,7 +46,7 @@ type ServiceCreate struct {
 	// configs
 	Configs []string `json:"configs"`
 
-	// Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.
+	// Describes whether connections must support end-to-end encryption on both sides of the connection.
 	// Required: true
 	EncryptionRequired *bool `json:"encryptionRequired"`
 
