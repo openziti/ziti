@@ -75,9 +75,6 @@ func TestTunnelerEnabledByDefault(t *testing.T) {
 	// Create and run the CLI command without the tunnel flag
 	config := createRouterConfig([]string{"edge", "--routerName", "myRouter"})
 
-	// Expect disabled flag to be false
-	assert.False(t, data.Router.TunnelerDisabled, "Expected tunneler disabled flag to be false")
-
 	// Confirm tunneler is enabled in config output
 	foundTunnel := false
 	for i := 0; i < len(config.Listeners); i++ {
