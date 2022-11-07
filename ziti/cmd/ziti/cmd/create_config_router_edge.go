@@ -74,7 +74,6 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.Router.IsWss = routerOptions.WssEnabled
 			data.Router.IsPrivate = routerOptions.IsPrivate
-			data.Router.TunnelerDisabled = routerOptions.TunnelerDisabled
 			data.Router.TunnelerMode = routerOptions.TunnelerMode
 			data.Router.Edge.LanInterface = routerOptions.LanInterface
 		},
