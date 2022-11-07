@@ -5605,6 +5605,7 @@ func init() {
               }
             },
             "encryptionRequired": {
+              "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
               "type": "boolean"
             },
             "name": {
@@ -5645,6 +5646,7 @@ func init() {
           }
         },
         "encryptionRequired": {
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
           "type": "boolean"
         },
         "name": {
@@ -5677,6 +5679,7 @@ func init() {
           }
         },
         "encryptionRequired": {
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
           "type": "boolean"
         },
         "name": {
@@ -11600,6 +11603,7 @@ func init() {
               }
             },
             "encryptionRequired": {
+              "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
               "type": "boolean"
             },
             "name": {
@@ -11640,6 +11644,7 @@ func init() {
           }
         },
         "encryptionRequired": {
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
           "type": "boolean"
         },
         "name": {
@@ -11672,6 +11677,7 @@ func init() {
           }
         },
         "encryptionRequired": {
+          "description": "Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.",
           "type": "boolean"
         },
         "name": {

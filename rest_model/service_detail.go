@@ -53,7 +53,7 @@ type ServiceDetail struct {
 	// Required: true
 	Configs []string `json:"configs"`
 
-	// encryption required
+	// Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.
 	// Required: true
 	EncryptionRequired *bool `json:"encryptionRequired"`
 

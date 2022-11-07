@@ -418,4 +418,29 @@ func Test_ServiceRoleAttributes(t *testing.T) {
 		ctx.Req.True(stringz.ContainsAll(list, role1, role2, role3, role4))
 		ctx.Req.False(stringz.Contains(list, role5))
 	})
+
+	t.Run("cannot update encryptionRequired", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		now := time.Now()
+
+		newService := ctx.AdminManagementSession.requireNewService(nil, nil)
+		newService.permissions = []string{"Dial", "Bind"}
+
+		entityJson := ctx.AdminManagementSession.validateEntityWithQuery(newService)
+
+		createdAt := ctx.validateDateFieldsForCreate(now, entityJson)
+
+		//flip for update
+		newService.encryptionRequired = !newService.encryptionRequired
+
+		ctx.AdminManagementSession.requireUpdateEntity(newService)
+
+		//flip back for verify
+		newService.encryptionRequired = !newService.encryptionRequired
+
+		entityJson = ctx.AdminManagementSession.validateEntityWithQuery(newService)
+
+		newService.validate(ctx, entityJson)
+		ctx.validateDateFieldsForUpdate(now, createdAt, entityJson)
+	})
 }

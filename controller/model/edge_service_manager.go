@@ -65,6 +65,9 @@ func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Se
 }
 
 func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFields) error {
+	if checker != nil {
+		checker = checker.RemoveFields("encryptionRequired")
+	}
 	return network.DispatchUpdate[*Service](self, entity, checker)
 }
 
