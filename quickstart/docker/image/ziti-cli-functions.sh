@@ -495,8 +495,8 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' > /dev/null
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcAllRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcAllRouters --edge-router-roles '#all' --service-roles '#all' > /dev/null
 
   if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
     echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
@@ -979,7 +979,8 @@ function ziti_createEnvFile {
 
   export ZITI_HOME="${ZITI_HOME}"
   if [[ "${ZITI_OSTYPE}" == "windows" ]]; then
-    export ZITI_HOME_OS_SPECIFIC="$(cygpath -m "${ZITI_HOME}")"
+    ZITI_HOME_OS_SPECIFIC="$(cygpath -m "${ZITI_HOME}")"
+    export ZITI_HOME_OS_SPECIFIC
   else
     export ZITI_HOME_OS_SPECIFIC="${ZITI_HOME}"
   fi
@@ -1016,7 +1017,8 @@ function ziti_createEnvFile {
 
   export ZITI_PKI="${ZITI_SHARED}/pki"
   if [[ "${ZITI_OSTYPE}" == "windows" ]]; then
-    export ZITI_PKI_OS_SPECIFIC="$(cygpath -m "${ZITI_PKI}")"
+    ZITI_PKI_OS_SPECIFIC="$(cygpath -m "${ZITI_PKI}")"
+    export ZITI_PKI_OS_SPECIFIC
   else
     export ZITI_PKI_OS_SPECIFIC="${ZITI_PKI}"
   fi
@@ -1382,7 +1384,7 @@ function createZacSystemdFile {
 
   if which node >/dev/null; then
     # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
-    NODE_BIN=$(readlink -f $(which node))
+    NODE_BIN=$(readlink -f "$(which node)")
   else
     echo "ERROR: missing executable 'node'" >&2
     return 1
@@ -1439,6 +1441,7 @@ function checkEnvVariable() {
   do
     # Parameter expansion is different between shells
     if [[ -n "$ZSH_VERSION" ]]; then
+      # shellcheck disable=SC2296
       if [[ -z "${(P)arg}" ]]; then
         echo -e "  * ERROR: $(RED "${arg} is not set") "
         return 1

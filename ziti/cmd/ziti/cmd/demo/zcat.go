@@ -30,34 +30,34 @@ import (
 	"time"
 )
 
-type zcat struct {
+type zcatAction struct {
 	verbose      bool
 	logFormatter string
 	configFile   string
 }
 
 func newZcatCmd() *cobra.Command {
-	server := &zcat{}
+	action := &zcatAction{}
 
 	cmd := &cobra.Command{
 		Use:     "zcat <destination>",
 		Example: "ziti demo zcat tcp:localhost:1234 or ziti demo zcat -i zcat.json ziti:echo",
 		Short:   "A simple network cat facility which can run over tcp or ziti",
 		Args:    cobra.ExactArgs(1),
-		Run:     server.run,
+		Run:     action.run,
 	}
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().BoolVarP(&server.verbose, "verbose", "v", false, "Enable verbose logging")
-	cmd.Flags().StringVar(&server.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
-	cmd.Flags().StringVarP(&server.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
+	cmd.Flags().BoolVarP(&action.verbose, "verbose", "v", false, "Enable verbose logging")
+	cmd.Flags().StringVar(&action.logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.Flags().StringVarP(&action.configFile, "identity", "i", "", "Specify the Ziti identity to use. If not specified the Ziti listener won't be started")
 	cmd.Flags().SetInterspersed(true)
 
 	return cmd
 }
 
-func (self *zcat) initLogging() {
+func (self *zcatAction) initLogging() {
 	logLevel := logrus.InfoLevel
 	if self.verbose {
 		logLevel = logrus.DebugLevel
@@ -78,7 +78,7 @@ func (self *zcat) initLogging() {
 	}
 }
 
-func (self *zcat) run(_ *cobra.Command, args []string) {
+func (self *zcatAction) run(_ *cobra.Command, args []string) {
 	self.initLogging()
 
 	log := pfxlog.Logger()
@@ -128,7 +128,7 @@ func (self *zcat) run(_ *cobra.Command, args []string) {
 	self.copy(os.Stdout, conn)
 }
 
-func (self *zcat) copy(writer io.Writer, reader io.Reader) {
+func (self *zcatAction) copy(writer io.Writer, reader io.Reader) {
 	buf := make([]byte, info.MaxUdpPacketSize)
 	bytesCopied, err := io.CopyBuffer(writer, reader, buf)
 	pfxlog.Logger().Debugf("Copied %v bytes", bytesCopied)
