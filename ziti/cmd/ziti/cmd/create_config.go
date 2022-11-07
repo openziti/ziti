@@ -121,7 +121,7 @@ type RouterTemplateValues struct {
 	IsFabric           bool
 	IsWss              bool
 	TunnelerDisabled   bool
-	Tproxy             bool
+	TunnelerMode       string
 	IdentityCert       string
 	IdentityServerCert string
 	IdentityKey        string

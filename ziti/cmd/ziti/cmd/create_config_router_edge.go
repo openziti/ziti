@@ -31,12 +31,23 @@ import (
 )
 
 const (
-	optionWSS          = "wss"
-	defaultWSS         = false
-	wssDescription     = "Create an edge router config with wss enabled"
-	optionPrivate      = "private"
-	defaultPrivate     = false
-	privateDescription = "Create a private router config"
+	optionWSS                   = "wss"
+	defaultWSS                  = false
+	wssDescription              = "Create an edge router config with wss enabled"
+	optionPrivate               = "private"
+	defaultPrivate              = false
+	privateDescription          = "Create a private router config"
+	optionTunnelerDisabled      = "disableTunneler"
+	defaultTunnelerDisabled     = false
+	tunnelerDisabledDescription = "Disable Router tunnel capabilities"
+	tproxyMode                  = "tproxy"
+	hostMode                    = "host"
+	optionTunnelerMode          = "tunnelerMode"
+	defaultTunnelerMode         = hostMode
+	tunnelerModeDescription     = "Specify tunneler mode (host or tproxy); tunnelerMode must be enabled"
+	optionLanInterface          = "lanInterface"
+	defaultLanInterface         = ""
+	lanInterfaceDescription     = "The interface on host of the router to insert iptables ingress filter rules"
 )
 
 var (
@@ -66,7 +77,8 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 			data.Router.IsWss = routerOptions.WssEnabled
 			data.Router.IsPrivate = routerOptions.IsPrivate
 			data.Router.TunnelerDisabled = routerOptions.TunnelerDisabled
-			data.Router.Tproxy = routerOptions.Tproxy
+			data.Router.TunnelerMode = routerOptions.TunnelerMode
+			data.Router.Edge.LanInterface = routerOptions.LanInterface
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			routerOptions.Cmd = cmd
@@ -85,8 +97,9 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
-	cmd.PersistentFlags().BoolVarP(&options.TunnelerDisabled, "disableTunneler", "t", false, "whether the router has tunneling disabled")
-	cmd.PersistentFlags().BoolVarP(&options.Tproxy, "Tproxy", "x", false, "enable tproxy if disableTunneler")
+	cmd.PersistentFlags().BoolVarP(&options.TunnelerDisabled, optionTunnelerDisabled, "t", defaultTunnelerDisabled, tunnelerDisabledDescription)
+	cmd.PersistentFlags().StringVarP(&options.TunnelerMode, optionTunnelerMode, "", defaultTunnelerMode, tunnelerModeDescription)
+	cmd.PersistentFlags().StringVarP(&options.LanInterface, optionLanInterface, "", defaultLanInterface, lanInterfaceDescription)
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -101,9 +114,11 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 		return errors.New("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
 	}
 
-	// Ensure disableTunneler and Tproxy are not both used
-	if options.TunnelerDisabled && options.Tproxy {
-		return errors.New("Flags for TunnelerDisabled and Tproxy are mutually exclusive. You must choose one, but not both")
+	// Make sure the tunneler mode is valid
+	if !options.TunnelerDisabled {
+		if options.TunnelerMode != hostMode && options.TunnelerMode != tproxyMode {
+			return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be [" + hostMode + "] or [" + tproxyMode + "]")
+		}
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
