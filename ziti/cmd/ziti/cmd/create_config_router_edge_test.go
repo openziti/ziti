@@ -88,18 +88,18 @@ func TestTunnelerEnabledByDefault(t *testing.T) {
 	assert.True(t, foundTunnel, "Expected to find tunnel listener binding but it was not found")
 }
 
-func TestTunnelerDisabledFlag(t *testing.T) {
+func TestTunnelerNoneMode(t *testing.T) {
 	// Setup options
 	clearOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command with the disable tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--disableTunneler"})
+	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", "none"})
 
-	// Expect disabled flag to be true
-	assert.True(t, data.Router.TunnelerDisabled, "Expected tunneler disabled flag to be true")
+	// Expect tunneler mode to be "none" mode
+	assert.Equal(t, noneTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", noneTunMode, data.Router.TunnelerMode)
 
-	// Confirm tunneler is enabled in config output
+	// Confirm tunneler is disabled in config output
 	foundTunnel := false
 	for i := 0; i < len(config.Listeners); i++ {
 		if config.Listeners[i].Binding == "tunnel" {
@@ -118,12 +118,12 @@ func TestTunnelerHostModeIsDefault(t *testing.T) {
 	config := createRouterConfig([]string{"edge", "--routerName", "myRouter"})
 
 	// Expect tunneler mode to be "host" mode
-	assert.Equal(t, hostMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", hostMode, data.Router.TunnelerMode)
+	assert.Equal(t, hostTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", hostTunMode, data.Router.TunnelerMode)
 
 	// Confirm tunneler mode in config is set to host mode
 	for i := 0; i < len(config.Listeners); i++ {
 		if config.Listeners[i].Binding == "tunnel" {
-			assert.Equal(t, hostMode, config.Listeners[i].Options.Mode, "Expected tunneler mode to be %s but found %s in config output", hostMode, data.Router.TunnelerMode)
+			assert.Equal(t, hostTunMode, config.Listeners[i].Options.Mode, "Expected tunneler mode to be %s but found %s in config output", hostTunMode, data.Router.TunnelerMode)
 		}
 	}
 }
@@ -134,15 +134,15 @@ func TestTunnelerTproxyMode(t *testing.T) {
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
-	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", tproxyMode})
+	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--tunnelerMode", tproxyTunMode})
 
 	// Expect tunneler mode to be "host" mode
-	assert.Equal(t, tproxyMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", tproxyMode, data.Router.TunnelerMode)
+	assert.Equal(t, tproxyTunMode, data.Router.TunnelerMode, "Expected tunneler mode to be %s but found %s", tproxyTunMode, data.Router.TunnelerMode)
 
 	// Confirm tunneler mode in config is set to host mode
 	for i := 0; i < len(config.Listeners); i++ {
 		if config.Listeners[i].Binding == "tunnel" {
-			assert.Equal(t, tproxyMode, config.Listeners[i].Options.Mode, "Expected tunneler mode to be %s but found %s in config output", tproxyMode, data.Router.TunnelerMode)
+			assert.Equal(t, tproxyTunMode, config.Listeners[i].Options.Mode, "Expected tunneler mode to be %s but found %s in config output", tproxyTunMode, data.Router.TunnelerMode)
 		}
 	}
 }
@@ -150,7 +150,7 @@ func TestTunnelerTproxyMode(t *testing.T) {
 func TestTunnelerInvalidMode(t *testing.T) {
 	invalidMode := "invalidMode"
 
-	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be [host] or [tproxy]"
+	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
 
 	// Create the options with both flags set to true
 	clearOptionsAndTemplateData()
@@ -211,7 +211,7 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 
 	// Set the router options
 	clearOptionsAndTemplateData()
-	routerOptions.TunnelerDisabled = true
+	routerOptions.TunnelerMode = defaultTunnelerMode
 	routerOptions.RouterName = "MyEdgeRouter"
 	routerOptions.Output = "/IDoNotExist/MyEdgeRouter.yaml"
 

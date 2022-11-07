@@ -31,23 +31,21 @@ import (
 )
 
 const (
-	optionWSS                   = "wss"
-	defaultWSS                  = false
-	wssDescription              = "Create an edge router config with wss enabled"
-	optionPrivate               = "private"
-	defaultPrivate              = false
-	privateDescription          = "Create a private router config"
-	optionTunnelerDisabled      = "disableTunneler"
-	defaultTunnelerDisabled     = false
-	tunnelerDisabledDescription = "Disable Router tunnel capabilities"
-	tproxyMode                  = "tproxy"
-	hostMode                    = "host"
-	optionTunnelerMode          = "tunnelerMode"
-	defaultTunnelerMode         = hostMode
-	tunnelerModeDescription     = "Specify tunneler mode (host or tproxy); tunnelerMode must be enabled"
-	optionLanInterface          = "lanInterface"
-	defaultLanInterface         = ""
-	lanInterfaceDescription     = "The interface on host of the router to insert iptables ingress filter rules"
+	optionWSS               = "wss"
+	defaultWSS              = false
+	wssDescription          = "Create an edge router config with wss enabled"
+	optionPrivate           = "private"
+	defaultPrivate          = false
+	privateDescription      = "Create a private router config"
+	tproxyTunMode           = "tproxy"
+	hostTunMode             = "host"
+	noneTunMode             = "none"
+	optionTunnelerMode      = "tunnelerMode"
+	defaultTunnelerMode     = hostTunMode
+	tunnelerModeDescription = "Specify tunneler mode \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
+	optionLanInterface      = "lanInterface"
+	defaultLanInterface     = ""
+	lanInterfaceDescription = "The interface on host of the router to insert iptables ingress filter rules"
 )
 
 var (
@@ -97,7 +95,6 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
-	cmd.PersistentFlags().BoolVarP(&options.TunnelerDisabled, optionTunnelerDisabled, "t", defaultTunnelerDisabled, tunnelerDisabledDescription)
 	cmd.PersistentFlags().StringVarP(&options.TunnelerMode, optionTunnelerMode, "", defaultTunnelerMode, tunnelerModeDescription)
 	cmd.PersistentFlags().StringVarP(&options.LanInterface, optionLanInterface, "", defaultLanInterface, lanInterfaceDescription)
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
@@ -115,10 +112,8 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 	}
 
 	// Make sure the tunneler mode is valid
-	if !options.TunnelerDisabled {
-		if options.TunnelerMode != hostMode && options.TunnelerMode != tproxyMode {
-			return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be [" + hostMode + "] or [" + tproxyMode + "]")
-		}
+	if options.TunnelerMode != hostTunMode && options.TunnelerMode != tproxyTunMode && options.TunnelerMode != noneTunMode {
+		return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\"")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)

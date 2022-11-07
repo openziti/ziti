@@ -7,22 +7,16 @@
 
 ## Ziti CLI
 ### Added CLI flags for setting router tunneler capability
-Ziti CLI `ziti create config router edge` now has three new flags
-#### --disableTunneler
-The tunneler capability for routers is enabled by default, the `disableTunneler` flag can now be used to disable the 
-tunneler capability in the router config.
-
-Example:
-```shell
-ziti create config router edge --routerName myRouter --disableTunneler
-```
+Ziti CLI `ziti create config router edge` now has two new flags; `--tunnelerMode` and `--lanInterface`
 #### --tunnelerMode
-If tunneler capability is enabled, the `--tunnelerMode` flag can be used to set the tunneler mode. Currently there is 
-`host` and `tproxy` mode. The default tunneler mode is `host` mode.
+The `--tunnelerMode` flag enables tunneling and sets the tunneler mode. Currently, there are `none`, `host` and `tproxy` 
+modes. The default tunneler mode is `host` mode, choosing `none` will disable tunnel capabilities for the router.
 
-Example:
+Examples:
 ```shell
 ziti create config router edge --routerName myRouter --tunnelerMode tproxy
+
+ziti create config router edge --routerName myRouter --tunnelerMode none
 ```
 #### --lanInterface
 If using the `tproxy` tunneler mode, there is an optional `lanIf` section in the config to identify an interface to use.
