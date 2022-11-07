@@ -17,9 +17,11 @@
 package model
 
 import (
+	"crypto/x509"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
+	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -36,6 +38,19 @@ type ApiSessionCertificate struct {
 	ValidAfter   *time.Time
 	ValidBefore  *time.Time
 	PEM          string
+}
+
+func NewApiSessionCertificate(cert *x509.Certificate) *ApiSessionCertificate {
+	ret := &ApiSessionCertificate{
+		Subject:     cert.Subject.String(),
+		ValidAfter:  &cert.NotBefore,
+		ValidBefore: &cert.NotAfter,
+	}
+
+	ret.Fingerprint = nfpem.FingerprintFromCertificate(cert)
+	ret.PEM = nfpem.EncodeToString(cert)
+
+	return ret
 }
 
 func (entity *ApiSessionCertificate) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {

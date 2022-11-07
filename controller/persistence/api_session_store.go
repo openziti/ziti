@@ -159,7 +159,7 @@ func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 	if err == nil {
 		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
 			if !apiSession.MfaRequired || apiSession.MfaComplete {
-				store.Emit(EventFullyAuthenticated, apiSession)
+				ctx.AddEvent(store, EventFullyAuthenticated, apiSession)
 			}
 		}
 	}
@@ -172,7 +172,7 @@ func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity boltz.E
 	if err == nil {
 		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
 			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete {
-				store.Emit(EventFullyAuthenticated, apiSession)
+				ctx.AddEvent(store, EventFullyAuthenticated, apiSession)
 			}
 		}
 	}

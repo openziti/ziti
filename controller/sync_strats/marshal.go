@@ -17,6 +17,7 @@
 package sync_strats
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"go.etcd.io/bbolt"
@@ -51,6 +52,7 @@ func getFingerprints(tx *bbolt.Tx, ae *env.AppEnv, identityId, apiSessionId stri
 		prints[fingerprint] = struct{}{}
 		return false
 	})
+	
 	if err != nil {
 		return nil, err
 	}
@@ -58,5 +60,8 @@ func getFingerprints(tx *bbolt.Tx, ae *env.AppEnv, identityId, apiSessionId stri
 	for k := range prints {
 		result = append(result, k)
 	}
+
+	pfxlog.Logger().WithField("apiSessionId", apiSessionId).WithField("fingerprints", result).Debug("resolving fingerprints for apiSession")
+
 	return result, nil
 }

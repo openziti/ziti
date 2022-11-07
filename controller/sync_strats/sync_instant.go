@@ -205,6 +205,8 @@ func (strategy *InstantStrategy) ApiSessionAdded(apiSession *persistence.ApiSess
 		return
 	}
 
+	logger.WithField("apiSessionId", apiSession.Id).WithField("fingerprints", apiSessionProto.CertFingerprints).Debug("adding apiSession")
+
 	state := &InstantSyncState{
 		Id:       cuid.New(),
 		IsLast:   true,
@@ -226,6 +228,8 @@ func (strategy *InstantStrategy) ApiSessionUpdated(apiSession *persistence.ApiSe
 			Errorf("error for individual api session added, could not convert to proto: %v", err)
 		return
 	}
+
+	logger.WithField("apiSessionId", apiSession.Id).WithField("fingerprints", apiSessionProto.CertFingerprints).Debug("updating apiSession")
 
 	apiSessionAdded := &edge_ctrl_pb.ApiSessionUpdated{
 		ApiSessions: []*edge_ctrl_pb.ApiSession{apiSessionProto},

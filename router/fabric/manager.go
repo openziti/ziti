@@ -123,7 +123,7 @@ func (sm *StateManagerImpl) AddApiSession(apiSession *edge_ctrl_pb.ApiSession) {
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
-		Debugf("adding apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
+		Debug("adding apiSession")
 	sm.apiSessionsByToken.Set(apiSession.Token, apiSession)
 	sm.Emit(EventAddedApiSession, apiSession)
 }
@@ -133,21 +133,21 @@ func (sm *StateManagerImpl) UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession
 		WithField("apiSessionId", apiSession.Id).
 		WithField("apiSessionToken", apiSession.Token).
 		WithField("apiSessionCertFingerprints", apiSession.CertFingerprints).
-		Debugf("updating apiSession [id: %s] [token: %s] fingerprints [%s]", apiSession.Id, apiSession.Token, apiSession.CertFingerprints)
+		Debug("updating apiSession")
 	sm.apiSessionsByToken.Set(apiSession.Token, apiSession)
 	sm.Emit(EventUpdatedApiSession, apiSession)
 }
 
 func (sm *StateManagerImpl) RemoveApiSession(token string) {
 	if ns, ok := sm.apiSessionsByToken.Get(token); ok {
-		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("removing api session [token: %s]", token)
+		pfxlog.Logger().WithField("apiSessionToken", token).Debug("removing api session")
 		sm.apiSessionsByToken.Remove(token)
 		eventName := sm.getApiSessionRemovedEventName(token)
 		sm.Emit(eventName)
 		sm.RemoveAllListeners(eventName)
 		sm.Emit(EventRemovedApiSession, ns)
 	} else {
-		pfxlog.Logger().WithField("apiSessionToken", token).Debugf("could not remove api session [token: %s]; not found", token)
+		pfxlog.Logger().WithField("apiSessionToken", token).Debug("could not remove api session")
 	}
 }
 
@@ -173,7 +173,7 @@ func (sm *StateManagerImpl) RemoveMissingApiSessions(knownApiSessions []*edge_ct
 }
 
 func (sm *StateManagerImpl) RemoveEdgeSession(token string) {
-	pfxlog.Logger().Debugf("removing network session [%s]", token)
+	pfxlog.Logger().WithField("sessionToken", token).Debug("removing network session")
 	eventName := sm.getEdgeSessionRemovedEventName(token)
 	sm.Emit(eventName)
 
