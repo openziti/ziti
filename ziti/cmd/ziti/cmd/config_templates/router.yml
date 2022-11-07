@@ -35,10 +35,10 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}  - binding: tunnel
 {{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}    options:
-{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}      mode: {{ .Router.TunnelerMode }} #tproxy|host
-{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ else if (eq .Router.TunnelerMode "tproxy") }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ end }}
-{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ else if (eq .Router.TunnelerMode "tproxy") }}      lanIf: {{ .Router.Edge.LanInterface }}{{ end }}
-{{ if .Router.IsFabric }}
+{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#      mode: host #tproxy|host{{ else }}      mode: {{ .Router.TunnelerMode }} #tproxy|host{{ end }}
+{{- if (eq .Router.TunnelerMode "tproxy") }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ end }}
+{{- if (eq .Router.TunnelerMode "tproxy") }}      lanIf: {{ .Router.Edge.LanInterface }}{{ end }}
+{{ if .Router.IsFabric -}}
 csr:
   country: US
   province: NC
