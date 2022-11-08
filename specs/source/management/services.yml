@@ -291,6 +291,7 @@ definitions:
           type: string
       encryptionRequired:
         type: boolean
+        description: Describes whether connections must support end-to-end encryption on both sides of the connection.
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   serviceUpdate:
@@ -312,6 +313,7 @@ definitions:
           type: string
       encryptionRequired:
         type: boolean
+        description: Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
   servicePatch:
@@ -331,5 +333,6 @@ definitions:
           type: string
       encryptionRequired:
         type: boolean
+        description: Describes whether connections must support end-to-end encryption on both sides of the connection. Read-only property, set at create.
       tags:
         $ref: '../shared/base-entity.yml#/definitions/tags'
