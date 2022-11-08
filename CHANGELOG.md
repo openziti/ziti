@@ -1,3 +1,35 @@
+# Release 0.26.12
+
+## What's New
+
+- Ziti CLI
+  - Bug Fixes 
+  - Added CLI flags for setting router tunneler capability
+
+## Ziti CLI
+### Bug Fixes
+* [Issue 868](https://github.com/openziti/ziti/issues/868): `ZITI_EDGE_ROUTER_IP_OVERRIDE` does not override the edge router advertise hostname
+
+### Added CLI flags for setting router tunneler capability
+Ziti CLI `ziti create config router edge` now has two new flags; `--tunnelerMode` and `--lanInterface`
+#### --tunnelerMode
+The `--tunnelerMode` flag enables tunneling and sets the tunneler mode. Currently, there are `none`, `host` and `tproxy` 
+modes. The default tunneler mode is `host` mode, choosing `none` will disable tunnel capabilities for the router.
+
+Examples:
+```shell
+ziti create config router edge --routerName myRouter --tunnelerMode tproxy
+
+ziti create config router edge --routerName myRouter --tunnelerMode none
+```
+#### --lanInterface
+If using the `tproxy` tunneler mode, there is an optional `lanIf` section in the config to identify an interface to use.
+
+Example:
+```shell
+ziti create config router edge --routerName myRouter --tunnelerMode tproxy --lanInterface tun0
+```
+
 # Release 0.26.11
 
 ## What's New

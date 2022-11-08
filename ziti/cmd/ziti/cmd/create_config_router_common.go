@@ -18,9 +18,11 @@ package cmd
 
 import (
 	_ "embed"
+	"log"
+	"os"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
-	"os"
 )
 
 func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
@@ -29,20 +31,39 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityKey(r, routerName)
 	SetZitiRouterIdentityCA(r, routerName)
 
-	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
-	externalDNS := os.Getenv(constants.ExternalDNSVarName)
-	if externalDNS != "" {
-		r.Edge.Hostname = externalDNS
-	} else if edgeRouterRawName != "" {
-		r.Edge.Hostname = edgeRouterRawName
-	} else {
-		r.Edge.Hostname, _ = os.Hostname()
-	}
-
 	// Edge router IP override
 	edgeRouterIPOverride := os.Getenv(constants.ZitiEdgeRouterIPOverrideVarName)
 	if edgeRouterIPOverride != "" {
 		r.Edge.IPOverride = edgeRouterIPOverride
+	}
+
+	externalDNS := os.Getenv(constants.ExternalDNSVarName)
+	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
+	if externalDNS != "" {
+		r.Edge.Hostname = externalDNS
+		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
+	} else if edgeRouterRawName != "" {
+		r.Edge.Hostname = edgeRouterRawName
+		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
+	} else {
+		r.Edge.Hostname, _ = os.Hostname()
+		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
+	}
+
+	advertisedHost := os.Getenv(constants.ZitiEdgeRouterAdvertisedHostVarName)
+	if advertisedHost != "" {
+		if advertisedHost != edgeRouterIPOverride && advertisedHost != r.Edge.AdvertisedHost {
+			log.Panicf("if %s[%s] is supplied, it *MUST* match the %s[%s] or resolved hostname[%s]", constants.ZitiEdgeRouterAdvertisedHostVarName, advertisedHost, constants.ZitiEdgeRouterIPOverrideVarName, edgeRouterIPOverride, r.Edge.Hostname)
+		}
+		r.Edge.AdvertisedHost = advertisedHost //finally override AdvertisedHost if provided
+	} else {
+		if externalDNS != "" || edgeRouterRawName != "" {
+			r.Edge.AdvertisedHost = r.Edge.Hostname
+		} else if edgeRouterIPOverride != "" {
+			r.Edge.AdvertisedHost = edgeRouterIPOverride
+		} else {
+			r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
+		}
 	}
 }
 func SetZitiRouterIdentityCert(r *RouterTemplateValues, routerName string) {
