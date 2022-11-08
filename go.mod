@@ -20,13 +20,13 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.5
-	github.com/openziti/channel/v2 v2.0.11
-	github.com/openziti/edge v0.24.27
-	github.com/openziti/fabric v0.21.16
+	github.com/openziti/channel/v2 v2.0.12
+	github.com/openziti/edge v0.24.36
+	github.com/openziti/fabric v0.21.17
 	github.com/openziti/foundation/v2 v2.0.7
 	github.com/openziti/identity v1.0.20
 	github.com/openziti/runzmd v1.0.0
-	github.com/openziti/sdk-golang v0.16.142
+	github.com/openziti/sdk-golang v0.16.146
 	github.com/openziti/storage v0.1.26
 	github.com/openziti/transport/v2 v2.0.38
 	github.com/openziti/xweb/v2 v2.0.2
@@ -37,7 +37,7 @@ require (
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.22.9
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.6.0
+	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.1
