@@ -105,8 +105,6 @@ const (
 	ExternalDNSVarName                               = "EXTERNAL_DNS"
 	ZitiEdgeRouterIPOverrideVarName                  = "ZITI_EDGE_ROUTER_IP_OVERRIDE"
 	ZitiEdgeRouterIPOverrideVarDescription           = "Override the default edge router IP with a custom IP, this IP will also be added to the PKI"
-	ZitiRouterAdvertisedHostVarName                  = "ZITI_ROUTER_ADVERTISED_HOST"
-	ZitiRouterAdvertisedHostVarDescription           = "The advertised host of the router"
-	ZitiEdgeRouterLanInterfaceVarName                = "ZITI_EDGE_ROUTER_LAN_INTERFACE"
-	ZitiEdgeRouterLanInterfaceVarDescription         = "The inteface on host of the router to insert iptables ingress filter rules"
+	ZitiEdgeRouterAdvertisedHostVarName              = "ZITI_EDGE_ROUTER_ADVERTISED_HOST"
+	ZitiEdgeRouterAdvertisedHostVarDescription       = "The advertised host of the router"
 )
