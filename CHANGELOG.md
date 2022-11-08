@@ -3,9 +3,13 @@
 ## What's New
 
 - Ziti CLI
+  - Bug Fixes 
   - Added CLI flags for setting router tunneler capability
 
 ## Ziti CLI
+### Bug Fixes
+* [Issue 868](https://github.com/openziti/ziti/issues/868): `ZITI_EDGE_ROUTER_IP_OVERRIDE` does not override the edge router advertise hostname
+
 ### Added CLI flags for setting router tunneler capability
 Ziti CLI `ziti create config router edge` now has two new flags; `--tunnelerMode` and `--lanInterface`
 #### --tunnelerMode
