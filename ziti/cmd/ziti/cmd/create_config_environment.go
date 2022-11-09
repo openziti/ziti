@@ -19,17 +19,18 @@ package cmd
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"text/template"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"text/template"
 )
 
 type EnvVariableTemplateData struct {
@@ -112,6 +113,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 				{constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey},
 				{constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA},
 				{constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride},
+				{constants.ZitiEdgeRouterAdvertisedHostVarName, constants.ZitiEdgeRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost},
 				{constants.ZitiCtrlListenerAddressVarName, constants.ZitiCtrlListenerAddressVarDescription, data.Controller.ListenerAddress},
 				{constants.ZitiCtrlAdvertisedAddressVarName, constants.ZitiCtrlAdvertisedAddressVarDescription, data.Controller.AdvertisedAddress},
 				{constants.ZitiEdgeCtrlListenerHostPortVarName, constants.ZitiEdgeCtrlListenerHostPortVarDescription, data.Controller.Edge.ListenerHostPort},
@@ -182,6 +184,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s\n"+
+		"%-40s %-50s %s\n"+
 		"%-40s %-50s %s",
 		constants.ZitiHomeVarName, constants.ZitiHomeVarDescription, data.ZitiHome,
 		constants.ZitiCtrlPortVarName, constants.ZitiCtrlPortVarDescription, data.Controller.Port,
@@ -198,6 +201,7 @@ func NewCmdCreateConfigEnvironment() *cobra.Command {
 		constants.ZitiRouterIdentityKeyVarName, constants.ZitiRouterIdentityKeyVarDescription, data.Router.IdentityKey,
 		constants.ZitiRouterIdentityCAVarName, constants.ZitiRouterIdentityCAVarDescription, data.Router.IdentityCA,
 		constants.ZitiEdgeRouterIPOverrideVarName, constants.ZitiEdgeRouterIPOverrideVarDescription, data.Router.Edge.IPOverride,
+		constants.ZitiEdgeRouterAdvertisedHostVarName, constants.ZitiEdgeRouterAdvertisedHostVarDescription, data.Router.Edge.AdvertisedHost,
 		constants.ZitiCtrlIdentityCertVarName, constants.ZitiCtrlIdentityCertVarDescription, data.Controller.IdentityCert,
 		constants.ZitiCtrlIdentityServerCertVarName, constants.ZitiCtrlIdentityServerCertVarDescription, data.Controller.IdentityServerCert,
 		constants.ZitiCtrlIdentityKeyVarName, constants.ZitiCtrlIdentityKeyVarDescription, data.Controller.IdentityKey,
