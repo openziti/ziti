@@ -1,14 +1,3 @@
-# Release 0.26.12
-
-## What's New
-- Ziti CLI
-  - Bug Fixes
-
-## Ziti CLI
-### Bug Fixes
-
-* [Issue 882](https://github.com/openziti/ziti/issues/882): `ZITI_EDGE_ROUTER_RAWNAME` not stored in quickstart .env file
-
 # Release 0.26.11
 
 ## What's New
@@ -60,7 +49,8 @@ ziti create config router edge --routerName myRouter --tunnelerMode tproxy --lan
 * github.com/openziti/transport/v2: [v2.0.36 -> v2.0.38](https://github.com/openziti/transport/compare/v2.0.36...v2.0.38)
 * github.com/openziti/metrics: [v1.1.4 -> v1.1.5](https://github.com/openziti/metrics/compare/v1.1.4...v1.1.5)
 * github.com/openziti/ziti: [v0.26.10 -> v0.26.11](https://github.com/openziti/ziti/compare/v0.26.10...v0.26.11)
-* * [Issue 868](https://github.com/openziti/ziti/issues/868): `ZITI_EDGE_ROUTER_IP_OVERRIDE` does not override the edge router advertise hostname
+    * [Issue 868](https://github.com/openziti/ziti/issues/868): `ZITI_EDGE_ROUTER_IP_OVERRIDE` does not override the edge router advertise hostname
+    * [Issue 882](https://github.com/openziti/ziti/issues/882): `ZITI_EDGE_ROUTER_RAWNAME` not stored in quickstart .env file
 
 # Release 0.26.10
 
