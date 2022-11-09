@@ -362,15 +362,93 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 		ctx.NotEmpty(enrollmentDetailEnvelope.Data.JWT)
 
 		t.Run("can re-enroll with a new password", func(t *testing.T) {
+			ctx.testContextChanged(t)
 			newCertAuthenticator := ctx.completeOttEnrollment(identityId)
 
 			t.Run("can authenticate with new certificate", func(t *testing.T) {
+				ctx.testContextChanged(t)
 				session, err := newCertAuthenticator.AuthenticateClientApi(ctx)
 
 				ctx.NoError(err)
 				ctx.NotNil(session)
 				ctx.NotEmpty(session.token)
 			})
+		})
+	})
+
+	t.Run("re-enrolling removes api sessions", func(t *testing.T) {
+		ctx.testContextChanged(t)
+		updbIdentity, updbAuthenticator := ctx.AdminManagementSession.requireCreateIdentityWithUpdbEnrollment(eid.New(), eid.New(), false)
+		certIdentityId, certAuthenticator := ctx.AdminManagementSession.requireCreateIdentityOttEnrollment(eid.New(), false)
+
+		//create api sessions
+		updbSession, err := updbAuthenticator.AuthenticateManagementApi(ctx)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(updbSession)
+
+		certSession, err := certAuthenticator.AuthenticateManagementApi(ctx)
+		ctx.Req.NoError(err)
+		ctx.Req.NotNil(certSession)
+
+		//find authenticator ids
+		updbAuthenticatorList := &rest_model.ListAuthenticatorsEnvelope{}
+
+		resp, err := updbSession.NewRequest().SetResult(updbAuthenticatorList).Get("/current-identity/authenticators")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.Len(updbAuthenticatorList.Data, 1, string(resp.Body()))
+
+		certAuthenticatorList := &rest_model.ListAuthenticatorsEnvelope{}
+
+		resp, err = certSession.NewRequest().SetResult(certAuthenticatorList).Get("/current-identity/authenticators")
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusOK, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.Len(certAuthenticatorList.Data, 1, string(resp.Body()))
+
+		//start re-enrollment
+		reEnroll := rest_model.ReEnroll{
+			ExpiresAt: ST(time.Now().Add(24 * time.Hour)),
+		}
+
+		newUpdbAuthCreated := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.NewRequest().SetBody(reEnroll).SetResult(newUpdbAuthCreated).Post(fmt.Sprintf("/authenticators/%s/re-enroll", *updbAuthenticatorList.Data[0].ID))
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.NotEmpty(newUpdbAuthCreated.Data.ID)
+
+		newCertAuthCreated := &rest_model.CreateEnvelope{}
+		resp, err = ctx.AdminManagementSession.NewRequest().SetBody(reEnroll).SetResult(newCertAuthCreated).Post(fmt.Sprintf("/authenticators/%s/re-enroll", *certAuthenticatorList.Data[0].ID))
+		ctx.Req.NoError(err)
+		ctx.Req.Equal(http.StatusCreated, resp.StatusCode(), string(resp.Body()))
+		ctx.Req.NotEmpty(newCertAuthCreated.Data.ID)
+
+		//complete re-enrollments
+		ctx.completeUpdbEnrollment(updbIdentity.Id, "whatever")
+		ctx.completeOttEnrollment(certIdentityId)
+
+		iter, err := ctx.EdgeController.AppEnv.GetStores().EventualEventer.Trigger()
+		ctx.Req.NoError(err)
+		select {
+		case <-iter:
+		//iteration finished
+		case <-time.After(10 * time.Second):
+			ctx.Fail("failed to wait for eventual eventer iteration after 10s")
+		}
+
+		t.Run("cert api session is removed", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			resp, err := certSession.NewRequest().Get("/current-api-session")
+			ctx.NoError(err)
+			ctx.Equal(http.StatusUnauthorized, resp.StatusCode(), string(resp.Body()))
+		})
+
+		t.Run("updb api session is removed", func(t *testing.T) {
+			ctx.testContextChanged(t)
+
+			resp, err := updbSession.NewRequest().Get("/current-api-session")
+			ctx.NoError(err)
+			ctx.Equal(http.StatusUnauthorized, resp.StatusCode(), string(resp.Body()))
 		})
 	})
 }

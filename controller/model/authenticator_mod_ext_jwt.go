@@ -240,6 +240,10 @@ func (a *AuthResultJwt) IsSuccessful() bool {
 	return a.externalJwtSignerId != "" && a.AuthResultBase.identityId != ""
 }
 
+func (a *AuthResultJwt) AuthenticatorId() string {
+	return "extJwtId:" + a.externalJwtSignerId
+}
+
 func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthResult, error) {
 	logger := pfxlog.Logger().WithField("authMethod", AuthMethodExtJwt)
 
