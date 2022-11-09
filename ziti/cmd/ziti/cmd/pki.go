@@ -60,6 +60,7 @@ type PKIFlags struct {
 	IP                    []string
 	Email                 []string
 	PKI                   *pki.ZitiPKI
+	SpiffeID              string
 }
 
 var (
