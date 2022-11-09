@@ -1,3 +1,14 @@
+# Release 0.26.12
+
+## What's New
+- Ziti CLI
+  - Bug Fixes
+
+## Ziti CLI
+### Bug Fixes
+
+* [Issue 882](https://github.com/openziti/ziti/issues/882): `ZITI_EDGE_ROUTER_RAWNAME` not stored in quickstart .env file
+
 # Release 0.26.11
 
 ## What's New
