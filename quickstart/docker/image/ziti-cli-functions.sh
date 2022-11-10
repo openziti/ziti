@@ -445,6 +445,7 @@ function ziti_expressConfiguration {
   if [[ "${ZITI_ZAC_HOSTNAME-}" != "" ]]; then echo "ZITI_ZAC_HOSTNAME OVERRIDDEN: $ZITI_ZAC_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_HOSTNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_HOSTNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_HOSTNAME"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_PORT OVERRIDDEN: $ZITI_EDGE_ROUTER_PORT"; fi
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"; fi
 
   echo " "
   echo " "
@@ -495,14 +496,9 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti" edge create edge-router-policy allEdgeRouters --edge-router-roles '#public' --identity-roles '#all' > /dev/null
 
   echo -e "----------  Creating a service edge router policy allowing all services to use $(GREEN "#public") edge routers"
-  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcPublicRouters > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcPublicRouters --edge-router-roles '#public' --service-roles '#all' > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge delete service-edge-router-policy allSvcAllRouters > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-edge-router-policy allSvcAllRouters --edge-router-roles '#all' --service-roles '#all' > /dev/null
 
-  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" != "" ]]; then
-    echo "ZITI_EDGE_ROUTER_RAWNAME OVERRIDDEN: $ZITI_EDGE_ROUTER_RAWNAME"
-  else
-    ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"
-  fi
   echo "USING ZITI_EDGE_ROUTER_RAWNAME: $ZITI_EDGE_ROUTER_RAWNAME"
 
   createRouterPki "${ZITI_EDGE_ROUTER_RAWNAME}"
@@ -979,7 +975,8 @@ function ziti_createEnvFile {
 
   export ZITI_HOME="${ZITI_HOME}"
   if [[ "${ZITI_OSTYPE}" == "windows" ]]; then
-    export ZITI_HOME_OS_SPECIFIC="$(cygpath -m "${ZITI_HOME}")"
+    ZITI_HOME_OS_SPECIFIC="$(cygpath -m "${ZITI_HOME}")"
+    export ZITI_HOME_OS_SPECIFIC
   else
     export ZITI_HOME_OS_SPECIFIC="${ZITI_HOME}"
   fi
@@ -1016,7 +1013,8 @@ function ziti_createEnvFile {
 
   export ZITI_PKI="${ZITI_SHARED}/pki"
   if [[ "${ZITI_OSTYPE}" == "windows" ]]; then
-    export ZITI_PKI_OS_SPECIFIC="$(cygpath -m "${ZITI_PKI}")"
+    ZITI_PKI_OS_SPECIFIC="$(cygpath -m "${ZITI_PKI}")"
+    export ZITI_PKI_OS_SPECIFIC
   else
     export ZITI_PKI_OS_SPECIFIC="${ZITI_PKI}"
   fi
@@ -1054,6 +1052,8 @@ function ziti_createEnvFile {
 
   if [[ "${ZITI_SIGNING_CERT}" == "" ]]; then export export ZITI_SIGNING_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
   if [[ "${ZITI_SIGNING_KEY}" == "" ]]; then export export ZITI_SIGNING_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
+
+  if [[ "${ZITI_EDGE_ROUTER_RAWNAME-}" == "" ]]; then ZITI_EDGE_ROUTER_RAWNAME="${ZITI_NETWORK}-edge-router"; fi
 
   mkdir -p "${ZITI_BIN_ROOT}"
   mkdir -p "${ZITI_HOME}/db"
@@ -1382,7 +1382,7 @@ function createZacSystemdFile {
 
   if which node >/dev/null; then
     # store the absolute path to the node executable because it's required by systemd on Amazon Linux, at least
-    NODE_BIN=$(readlink -f $(which node))
+    NODE_BIN=$(readlink -f "$(which node)")
   else
     echo "ERROR: missing executable 'node'" >&2
     return 1
@@ -1439,6 +1439,7 @@ function checkEnvVariable() {
   do
     # Parameter expansion is different between shells
     if [[ -n "$ZSH_VERSION" ]]; then
+      # shellcheck disable=SC2296
       if [[ -z "${(P)arg}" ]]; then
         echo -e "  * ERROR: $(RED "${arg} is not set") "
         return 1

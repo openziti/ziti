@@ -1,0 +1,28 @@
+FROM ubuntu:20.04
+
+RUN apt update && \
+    apt install jq curl vim psmisc -y
+
+RUN useradd -ms /bin/bash ziti && \
+    mkdir /openziti && chown ziti:ziti /openziti && \
+    mkdir /openziti/scripts && chown ziti:ziti /openziti/scripts && \
+    mkdir /openziti/shared && chown ziti:ziti /openziti/shared
+
+USER ziti
+WORKDIR /openziti
+
+ENV ZITI_HOME=/openziti
+ENV ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
+ENV ZITI_SCRIPTS="${ZITI_HOME}/scripts"
+ENV ENV_FILE="${ZITI_HOME}/ziti.env"
+ENV ZITI_NETWORK=localhost
+
+RUN mkdir -p "${ZITI_SCRIPTS}"
+
+COPY --chown=ziti ziti.ignore "${ZITI_BIN_DIR}"
+COPY --chown=ziti ziti-cli-functions.sh "${ZITI_SCRIPTS}/"
+COPY --chown=ziti dockerTestEntrypoint.sh "${ZITI_SCRIPTS}/"
+
+ENTRYPOINT /bin/bash -c '${ZITI_SCRIPTS}/dockerTestEntrypoint.sh'
+# && while :; do sleep 1; done'
+

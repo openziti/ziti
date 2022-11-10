@@ -18,24 +18,34 @@ package cmd
 
 import (
 	_ "embed"
+	"os"
+	"path/filepath"
+	"strings"
+	"text/template"
+
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/templates"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"path/filepath"
-	"strings"
-	"text/template"
 )
 
 const (
-	optionWSS          = "wss"
-	defaultWSS         = false
-	wssDescription     = "Create an edge router config with wss enabled"
-	optionPrivate      = "private"
-	defaultPrivate     = false
-	privateDescription = "Create a private router config"
+	optionWSS               = "wss"
+	defaultWSS              = false
+	wssDescription          = "Create an edge router config with wss enabled"
+	optionPrivate           = "private"
+	defaultPrivate          = false
+	privateDescription      = "Create a private router config"
+	tproxyTunMode           = "tproxy"
+	hostTunMode             = "host"
+	noneTunMode             = "none"
+	optionTunnelerMode      = "tunnelerMode"
+	defaultTunnelerMode     = hostTunMode
+	tunnelerModeDescription = "Specify tunneler mode \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
+	optionLanInterface      = "lanInterface"
+	defaultLanInterface     = ""
+	lanInterfaceDescription = "The interface on host of the router to insert iptables ingress filter rules"
 )
 
 var (
@@ -64,6 +74,8 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 		PreRun: func(cmd *cobra.Command, args []string) {
 			data.Router.IsWss = routerOptions.WssEnabled
 			data.Router.IsPrivate = routerOptions.IsPrivate
+			data.Router.TunnelerMode = routerOptions.TunnelerMode
+			data.Router.Edge.LanInterface = routerOptions.LanInterface
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			routerOptions.Cmd = cmd
@@ -82,6 +94,8 @@ func NewCmdCreateConfigRouterEdge() *cobra.Command {
 func (options *CreateConfigRouterOptions) addEdgeFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&options.WssEnabled, optionWSS, defaultWSS, wssDescription)
 	cmd.Flags().BoolVar(&options.IsPrivate, optionPrivate, defaultPrivate, privateDescription)
+	cmd.PersistentFlags().StringVarP(&options.TunnelerMode, optionTunnelerMode, "", defaultTunnelerMode, tunnelerModeDescription)
+	cmd.PersistentFlags().StringVarP(&options.LanInterface, optionLanInterface, "", defaultLanInterface, lanInterfaceDescription)
 	cmd.PersistentFlags().StringVarP(&options.RouterName, optionRouterName, "n", "", "name of the router")
 	err := cmd.MarkPersistentFlagRequired(optionRouterName)
 	if err != nil {
@@ -94,6 +108,11 @@ func (options *CreateConfigRouterOptions) runEdgeRouter(data *ConfigTemplateValu
 	// Ensure private and wss are not both used
 	if options.IsPrivate && options.WssEnabled {
 		return errors.New("Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both")
+	}
+
+	// Make sure the tunneler mode is valid
+	if options.TunnelerMode != hostTunMode && options.TunnelerMode != tproxyTunMode && options.TunnelerMode != noneTunMode {
+		return errors.New("Unknown tunneler mode [" + options.TunnelerMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\"")
 	}
 
 	tmpl, err := template.New("edge-router-config").Parse(routerConfigEdgeTemplate)
