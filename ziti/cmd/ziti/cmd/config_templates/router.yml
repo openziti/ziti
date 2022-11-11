@@ -21,7 +21,7 @@ link:
 {{ if .Router.IsPrivate }}#{{ end }}  listeners:
 {{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
 {{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
-{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.Hostname }}:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:{{ .Router.Listener.BindPort }}
 {{ if .Router.IsPrivate }}#{{ end }}      options:
 {{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
 
@@ -30,14 +30,15 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
 {{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.Hostname }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
+{{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}
-{{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}s
-{{ if .Router.IsFabric }}#{{ end }}  - binding: tunnel
-{{ if .Router.IsFabric }}#{{ end }}    options:
-{{ if .Router.IsFabric }}#{{ end }}      mode: host #tproxy|host
-
-{{ if or .Router.IsFabric }}
+{{ if .Router.IsFabric }}#{{ end }}      getSessionTimeout: {{ .Router.Listener.GetSessionTimeout.Seconds }}
+{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}  - binding: tunnel
+{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#{{ end }}    options:
+{{ if or .Router.IsFabric (eq .Router.TunnelerMode "none") }}#      mode: host #tproxy|host{{ else }}      mode: {{ .Router.TunnelerMode }} #tproxy|host{{ end }}
+{{ if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") }}      resolver: udp://{{ .Router.Edge.AdvertisedHost }}:53{{ end }}
+{{ if and (not .Router.IsFabric) (eq .Router.TunnelerMode "tproxy") }}      lanIf: {{ .Router.Edge.LanInterface }}{{ end }}
+{{ if .Router.IsFabric -}}
 csr:
   country: US
   province: NC
@@ -87,3 +88,4 @@ forwarder:
   xgressDialWorkerCount: {{ .Router.Forwarder.XgressDialWorkerCount }}
   linkDialQueueLength: {{ .Router.Forwarder.LinkDialQueueLength }}
   linkDialWorkerCount: {{ .Router.Forwarder.LinkDialWorkerCount }}
+  

@@ -18,10 +18,10 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/agent"
 	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
@@ -33,7 +33,8 @@ import (
 
 type AgentCtrlRaftJoinOptions struct {
 	agentcli.AgentOptions
-	Voter bool
+	Voter    bool
+	MemberId string
 }
 
 func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
@@ -44,8 +45,8 @@ func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(2, 3),
-		Use:  "raft-join <optional-target> <id> <addr>",
+		Args: cobra.RangeArgs(1, 2),
+		Use:  "raft-join <optional-target> <addr>",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -55,6 +56,7 @@ func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd.Flags().BoolVar(&options.Voter, "voter", true, "Is this member a voting member")
+	cmd.Flags().StringVar(&options.MemberId, "id", "", "The member id. If not provided, it will be looked up")
 
 	return cmd
 }
@@ -64,7 +66,7 @@ func (o *AgentCtrlRaftJoinOptions) Run() error {
 	var addr string
 	var err error
 
-	if len(o.Args) == 3 {
+	if len(o.Args) == 2 {
 		addr, err = agent.ParseGopsAddress(o.Args)
 		if err != nil {
 			return err
@@ -84,14 +86,17 @@ func (o *AgentCtrlRaftJoinOptions) makeRequest(conn net.Conn) error {
 	}
 
 	offset := 0
-	if len(o.Args) == 3 {
+	if len(o.Args) == 2 {
 		offset = 1
 	}
 
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftJoinRequestType), nil)
-	msg.PutStringHeader(controller.AgentIdHeader, o.Args[offset])
-	msg.PutStringHeader(controller.AgentAddrHeader, o.Args[offset+1])
+	msg.PutStringHeader(controller.AgentAddrHeader, o.Args[offset])
 	msg.PutBoolHeader(controller.AgentIsVoterHeader, o.Voter)
+
+	if o.MemberId != "" {
+		msg.PutStringHeader(controller.AgentIdHeader, o.MemberId)
+	}
 
 	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
 	if err != nil {
@@ -99,7 +104,7 @@ func (o *AgentCtrlRaftJoinOptions) makeRequest(conn net.Conn) error {
 	}
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
-		fmt.Println("success")
+		fmt.Println(result.Message)
 	} else {
 		fmt.Printf("error: %v\n", result.Message)
 	}

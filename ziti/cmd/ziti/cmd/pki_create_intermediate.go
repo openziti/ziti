@@ -17,7 +17,7 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
 
@@ -74,10 +74,9 @@ func (o *PKICreateIntermediateOptions) addPKICreateIntermediateFlags(cmd *cobra.
 
 // Run implements this command
 func (o *PKICreateIntermediateOptions) Run() error {
-
 	pkiroot, err := o.ObtainPKIRoot()
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
@@ -86,7 +85,7 @@ func (o *PKICreateIntermediateOptions) Run() error {
 
 	intermediatefile, err := o.ObtainIntermediateCAFile()
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return err
 	}
 
 	commonName := o.Flags.IntermediateName
@@ -100,12 +99,18 @@ func (o *PKICreateIntermediateOptions) Run() error {
 
 	caname, err := o.ObtainCAName(pkiroot)
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return err
 	}
 
 	signer, err = o.Flags.PKI.GetCA(caname)
 	if err != nil {
-		return fmt.Errorf("Cannot locate signer: %v", err)
+		return errors.Wrap(err, "cannot locate signer")
+	}
+
+	for _, uri := range signer.Cert.URIs {
+		if uri.Scheme == "spiffe" {
+			template.URIs = append(template.URIs, uri)
+		}
 	}
 
 	req := &pki.Request{
@@ -116,7 +121,7 @@ func (o *PKICreateIntermediateOptions) Run() error {
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {
-		return fmt.Errorf("Cannot Sign: %v", err)
+		return errors.Wrap(err, "cannot sign")
 	}
 
 	log.Infoln("Success")

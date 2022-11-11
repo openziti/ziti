@@ -17,6 +17,9 @@
 package cmd
 
 import (
+	"os"
+	"time"
+
 	"github.com/openziti/channel/v2"
 	edge "github.com/openziti/edge/controller/config"
 	fabCtrl "github.com/openziti/fabric/controller"
@@ -28,8 +31,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
-	"time"
 )
 
 const (
@@ -119,6 +120,7 @@ type RouterTemplateValues struct {
 	IsPrivate          bool
 	IsFabric           bool
 	IsWss              bool
+	TunnelerMode       string
 	IdentityCert       string
 	IdentityServerCert string
 	IdentityKey        string
@@ -130,9 +132,11 @@ type RouterTemplateValues struct {
 }
 
 type EdgeRouterTemplateValues struct {
-	Hostname   string
-	Port       string
-	IPOverride string
+	Hostname       string
+	Port           string
+	IPOverride     string
+	AdvertisedHost string
+	LanInterface   string
 }
 
 type WSSRouterTemplateValues struct {

@@ -17,9 +17,11 @@
 package cmd
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
+	"net/url"
+	"strings"
 
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
@@ -68,14 +70,14 @@ func (o *PKICreateCAOptions) addPKICreateCAFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
+	cmd.Flags().StringVar(&o.Flags.SpiffeID, "trust-domain", "", "An optional spiffe trust domain. spiffe:// will be automatically prefixed, if not provided")
 }
 
 // Run implements this command
 func (o *PKICreateCAOptions) Run() error {
-
 	pkiroot, err := o.ObtainPKIRoot()
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return err
 	}
 
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
@@ -84,7 +86,7 @@ func (o *PKICreateCAOptions) Run() error {
 
 	cafile, err := o.ObtainCAFile()
 	if err != nil {
-		return fmt.Errorf("%s", err)
+		return err
 	}
 
 	commonName := o.Flags.CAName
@@ -93,6 +95,17 @@ func (o *PKICreateCAOptions) Run() error {
 	template := o.ObtainPKIRequestTemplate(commonName)
 
 	template.IsCA = true
+
+	if o.Flags.SpiffeID != "" {
+		if !strings.HasPrefix(o.Flags.SpiffeID, "spiffe://") {
+			o.Flags.SpiffeID = "spiffe://" + o.Flags.SpiffeID
+		}
+		spiffeId, err := url.Parse(o.Flags.SpiffeID)
+		if err != nil {
+			return errors.Wrapf(err, "unable to parse spiffe id [%v]", o.Flags.SpiffeID)
+		}
+		template.URIs = append(template.URIs, spiffeId)
+	}
 
 	var signer *certificate.Bundle
 
@@ -103,8 +116,8 @@ func (o *PKICreateCAOptions) Run() error {
 		PrivateKeySize:      o.Flags.CAPrivateKeySize,
 	}
 
-	if err := o.Flags.PKI.Sign(signer, req); err != nil {
-		return fmt.Errorf("Cannot Sign: %v", err)
+	if err = o.Flags.PKI.Sign(signer, req); err != nil {
+		return errors.Wrap(err, "cannot sign")
 	}
 
 	log.Infoln("Success")
