@@ -17,9 +17,7 @@
 package model
 
 import (
-	"crypto/x509"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/rest_model"
@@ -115,18 +113,15 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 		return nil, err
 	}
 
+	module.env.GetApiServerCsrSigner()
+
 	clientCertPemStr := string(clientCertPem)
 
 	clientCertFingerprint := module.fingerprintGenerator.FromRaw(clientCertRaw)
 
-	clientCert, err := x509.ParseCertificate(clientCertRaw)
-
+	clientChainPem, err := module.env.GetManagers().Enrollment.GetClientCertChain(clientCertRaw)
 	if err != nil {
-		pfxlog.Logger().Infof("error parsing client cert raw during enrollment: %v", err)
-	} else {
-		fp := module.fingerprintGenerator.FromCert(clientCert)
-
-		pfxlog.Logger().Debugf("client cert fp: %s - %v", fp, clientCert)
+		return nil, err
 	}
 
 	edgeRouter.CertPem = &clientCertPemStr
@@ -142,7 +137,7 @@ func (module *EnrollModuleEr) Process(context EnrollmentContext) (*EnrollmentRes
 
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().CaPems()),
-		Cert:       string(clientCertPem),
+		Cert:       clientChainPem,
 		ServerCert: string(serverCertPem),
 	}
 

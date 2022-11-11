@@ -400,10 +400,14 @@ var _ identity.Identity = &SimpleTestIdentity{}
 type SimpleTestIdentity struct {
 	TlsCert             *tls.Certificate
 	TlsServerCert       []*tls.Certificate
-	CaPool              *x509.CertPool
+	CertPool            *x509.CertPool
 	reloadCalled        bool
 	setCertCalled       bool
 	setServerCertCalled bool
+}
+
+func (s *SimpleTestIdentity) CaPool() *identity.CaPool {
+	return nil
 }
 
 func (s *SimpleTestIdentity) WatchFiles() error {
@@ -423,7 +427,7 @@ func (s *SimpleTestIdentity) ServerCert() []*tls.Certificate {
 }
 
 func (s *SimpleTestIdentity) CA() *x509.CertPool {
-	return s.CaPool
+	return s.CertPool
 }
 
 func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
@@ -435,7 +439,7 @@ func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 
 	return &tls.Config{
 		Certificates: certs,
-		RootCAs:      s.CaPool,
+		RootCAs:      s.CertPool,
 		ClientAuth:   tls.RequireAnyClientCert,
 		MinVersion:   tlz.GetMinTlsVersion(),
 		CipherSuites: tlz.GetCipherSuites(),
@@ -444,7 +448,7 @@ func (s *SimpleTestIdentity) ServerTLSConfig() *tls.Config {
 
 func (s *SimpleTestIdentity) ClientTLSConfig() *tls.Config {
 	return &tls.Config{
-		RootCAs:      s.CaPool,
+		RootCAs:      s.CertPool,
 		Certificates: []tls.Certificate{*s.TlsCert},
 	}
 }
@@ -526,7 +530,7 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 	testIdentity := &SimpleTestIdentity{
 		TlsCert:             tlsClient,
 		TlsServerCert:       []*tls.Certificate{tlsServer},
-		CaPool:              caPool,
+		CertPool:            caPool,
 		reloadCalled:        false,
 		setCertCalled:       false,
 		setServerCertCalled: false,
