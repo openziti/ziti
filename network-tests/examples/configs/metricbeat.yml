@@ -1,0 +1,53 @@
+fields_under_root: true
+fields:
+  build_number: ${build_number}
+  ziti_version: ${ziti_version}
+
+processors:
+  - add_cloud_metadata: ~
+
+metricbeat.modules:
+- module: system
+  metricsets:
+    - cpu             # CPU usage
+    - load            # CPU load averages
+    - memory          # Memory usage
+    - network         # Network IO
+  enabled: true
+  period: 30s
+  cpu.metrics:  ["percentages"]  # The other available options are normalized_percentages and ticks.
+  core.metrics: ["percentages"]  # The other available option is ticks.
+#- module: docker
+#  metricsets:
+#    - "container"
+#    - "cpu"
+#    - "diskio"
+#    - "healthcheck"
+#    - "info"
+#    - "image"
+#    - "memory"
+#    - "network"
+#  hosts: ["unix:///var/run/docker.sock"]
+#  period: 30s
+#  enabled: true
+#  # If set to true, replace dots in labels with `_`.
+#  labels.dedot: true
+
+
+output.elasticsearch:
+  # Array of hosts to connect to.
+  hosts: ["${host}"]
+
+  # Optional protocol and basic auth credentials.
+  protocol: "https"
+  username: "${user}"
+  password: "${password}"
+  index: 'zt-%{[agent.version]}-%{+yyyy.MM.dd}'
+
+setup.template.enabled: true
+setup.template.name: 'zt-%{[agent.version]}'
+setup.template.pattern: 'zt-%{[agent.version]}-*'
+setup.template.fields: "/etc/metricbeat/fields.yml"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.codec: best_compression
