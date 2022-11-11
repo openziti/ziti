@@ -19,7 +19,6 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 	"reflect"
@@ -28,7 +27,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
 	"github.com/michaelquigley/pfxlog"
@@ -72,7 +70,6 @@ func NewController(id *identity.TokenId, version string, config *Config, metrics
 // Controller manages RAFT related state and operations
 type Controller struct {
 	Id              *identity.TokenId
-	tempId          string
 	Config          *Config
 	Mesh            mesh.Mesh
 	Raft            *raft.Raft
@@ -306,18 +303,12 @@ func (self *Controller) Init() error {
 		return err
 	}
 
-	if err := self.initializeId(); err != nil {
-		return err
-	}
-
 	hclLogger := NewHcLogrusLogger()
 
 	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress)
 	conf := raft.DefaultConfig()
 	conf.SnapshotThreshold = 10
-	// TODO: sort out server identity generation
-	// conf.LocalID = raft.ServerID(self.Id.Token)
-	conf.LocalID = raft.ServerID(self.tempId)
+	conf.LocalID = raft.ServerID(self.Id.Token)
 	conf.NoSnapshotRestoreOnStart = false
 	conf.Logger = hclLogger
 
@@ -329,12 +320,14 @@ func (self *Controller) Init() error {
 		return err
 	}
 
-	snapshotsDir := path.Join(raftConfig.DataDir, "snapshots")
-	if err = os.MkdirAll(snapshotsDir, 0700); err != nil {
-		logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize snapshots directory: '%v'", snapshotsDir)
-		return err
-	}
-
+	/*
+		snapshotsDir := path.Join(raftConfig.DataDir, "snapshots")
+		if err = os.MkdirAll(snapshotsDir, 0700); err != nil {
+			logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize snapshots directory: '%v'", snapshotsDir)
+			return err
+		}
+	*/
+	snapshotsDir := raftConfig.DataDir
 	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, hclLogger)
 	if err != nil {
 		logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize raft snapshot store in: '%v'", snapshotsDir)
@@ -349,14 +342,13 @@ func (self *Controller) Init() error {
 	}
 
 	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
-
-	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
-
 	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker)
 
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
 	}
+
+	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
 	if raftConfig.Recover {
 		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, transport, raft.Configuration{
@@ -449,27 +441,4 @@ func (self *Controller) RemoveServer(id string) error {
 	}
 
 	return self.HandleRemove(req)
-}
-
-func (self *Controller) initializeId() error {
-	idFile := path.Join(self.Config.DataDir, "id")
-	_, err := os.Stat(idFile)
-	if errors.Is(err, fs.ErrNotExist) {
-		if self.tempId == "" {
-			self.tempId = uuid.NewString()
-		}
-		return os.WriteFile(idFile, []byte(self.tempId), 0600)
-	}
-
-	b, err := os.ReadFile(idFile)
-	if err != nil {
-		return err
-	}
-	id := string(b)
-	if self.tempId != "" && self.tempId != id {
-		return errors.Errorf("instance already initialized with id %v. specified id %v does not match", id, self.tempId)
-	}
-	self.tempId = id
-	pfxlog.Logger().WithField("id", self.tempId).Info("application raft id")
-	return nil
 }

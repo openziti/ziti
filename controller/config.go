@@ -18,6 +18,8 @@ package controller
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -118,6 +120,11 @@ func LoadConfig(path string) (*Config, error) {
 
 		if err != nil {
 			return nil, fmt.Errorf("could not parse root identity: %v", err)
+		}
+
+		if identityConfig.ServerCert == "" && identityConfig.ServerKey == "" {
+			identityConfig.ServerCert = identityConfig.Cert
+			identityConfig.ServerKey = identityConfig.Key
 		}
 	} else {
 		return nil, fmt.Errorf("identity section not found")
@@ -388,5 +395,50 @@ func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Addr
 		return fmt.Errorf("could not find newListener [%s] host value [%s] in first certificate for controller identity", addr.String(), host)
 	}
 
+	return nil
+}
+
+type CertValidatingIdentity struct {
+	identity.Identity
+}
+
+func (self *CertValidatingIdentity) ClientTLSConfig() *tls.Config {
+	cfg := self.Identity.ClientTLSConfig()
+	cfg.VerifyConnection = self.VerifyConnection
+	return cfg
+}
+
+func (self *CertValidatingIdentity) ServerTLSConfig() *tls.Config {
+	cfg := self.Identity.ServerTLSConfig()
+	cfg.VerifyConnection = self.VerifyConnection
+	return cfg
+}
+
+func (self *CertValidatingIdentity) VerifyConnection(state tls.ConnectionState) error {
+	if len(state.PeerCertificates) == 0 {
+		return errors.New("no peer certificates provided")
+	}
+	log := pfxlog.Logger()
+	for _, cert := range state.PeerCertificates {
+		log.Infof("cert provided: CN: %v IsCA: %v", cert.Subject.CommonName, cert.IsCA)
+	}
+
+	options := x509.VerifyOptions{
+		Roots:         self.Identity.CA(),
+		Intermediates: x509.NewCertPool(),
+	}
+
+	for _, cert := range state.PeerCertificates[1:] {
+		options.Intermediates.AddCert(cert)
+	}
+
+	result, err := state.PeerCertificates[0].Verify(options)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("got error validating cert")
+		return err
+	}
+
+	log.Infof("got result: %v", result)
 	return nil
 }

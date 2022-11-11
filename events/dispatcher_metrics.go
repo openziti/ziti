@@ -248,5 +248,8 @@ type filteringMetricsMessageAdapter struct {
 }
 
 func (self *filteringMetricsMessageAdapter) AcceptMetricsMsg(msg *metrics_pb.MetricsMessage) {
+	if msg.DoNotPropagate {
+		return
+	}
 	self.dispatcher.convertMetricsMsgToEvents(msg, self.sourceFilter, self.metricFilter, self.handler)
 }

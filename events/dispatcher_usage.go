@@ -93,6 +93,10 @@ type usageEventAdapter struct {
 }
 
 func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessage) {
+	if message.DoNotPropagate {
+		return
+	}
+
 	if len(self.dispatcher.usageEventHandlers.Value()) > 0 {
 		for name, interval := range message.IntervalCounters {
 			for _, bucket := range interval.Buckets {

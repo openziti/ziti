@@ -67,14 +67,22 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 	var validFingerPrints []string
 	var errorList errorz.MultipleErrors
 
+	for _, cert := range certificates {
+		if cert.IsCA {
+			opts.Intermediates.AddCert(cert)
+		}
+	}
+
 	for i, cert := range certificates {
-		if _, err := cert.Verify(opts); err == nil {
-			fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
-			validFingerPrints = append(validFingerPrints, fingerprint)
-			log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
-			log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)
-		} else {
-			errorList = append(errorList, err)
+		if !cert.IsCA {
+			if _, err := cert.Verify(opts); err == nil {
+				fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+				validFingerPrints = append(validFingerPrints, fingerprint)
+				log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
+				log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)
+			} else {
+				errorList = append(errorList, err)
+			}
 		}
 	}
 

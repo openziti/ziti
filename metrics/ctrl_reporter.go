@@ -31,33 +31,44 @@ type controllersReporter struct {
 }
 
 func (reporter *controllersReporter) AcceptMetrics(message *metrics_pb.MetricsMessage) {
-	log := pfxlog.Logger()
-
 	reporter.msgs = append(reporter.msgs, message)
 
-	ch := reporter.ctrls.AnyCtrlChannel()
-	if ch != nil {
-		for len(reporter.msgs) > 0 {
-			message = reporter.msgs[0]
+	for len(reporter.msgs) > 0 {
+		message = reporter.msgs[0]
+
+		successfulSend := false
+
+		for ctrlId, ctrl := range reporter.ctrls.GetAll() {
+			log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+
+			// once we've had a successful send, tell other controllers not to propagate the event
+			message.DoNotPropagate = successfulSend
+
 			bytes, err := proto.Marshal(message)
 			if err != nil {
-				log.Errorf("Failed to encode metrics message: %v", err)
-				return
+				log.WithError(err).Error("Failed to encode metrics message")
+
+				// drop message, since it's invalid somehow
+				reporter.msgs[0] = nil
+				reporter.msgs = reporter.msgs[1:]
+				break
 			}
 
 			chMsg := channel.NewMessage(int32(metrics_pb.ContentType_MetricsType), bytes)
 
-			if err = ch.Send(chMsg); err != nil {
+			if err = chMsg.WithTimeout(reporter.ctrls.DefaultRequestTimeout()).SendAndWaitForWire(ctrl.Channel()); err != nil {
 				log.WithError(err).Error("failed to send metrics message")
-				return
-			}
+			} else {
+				log.Trace("reported metrics to fabric controller")
 
-			reporter.msgs[0] = nil
-			reporter.msgs = reporter.msgs[1:]
-			log.Trace("reported metrics to fabric controller")
+				// after first successful send, remove the message from the queue
+				if !successfulSend {
+					reporter.msgs[0] = nil
+					reporter.msgs = reporter.msgs[1:]
+					successfulSend = true
+				}
+			}
 		}
-	} else {
-		log.Error("no controllers available to submit metrics to")
 	}
 }
 

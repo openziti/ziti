@@ -32,18 +32,18 @@ func NewHcLogrusLogger() hclog.Logger {
 	log := logrus.New()
 	log.SetFormatter(pfxlog.Logger().Entry.Logger.Formatter)
 
-	return &logger{
+	return &hclogAdapter{
 		log: logrus.NewEntry(log),
 	}
 }
 
-type logger struct {
+type hclogAdapter struct {
 	log *logrus.Entry
 	sync.Mutex
 	name string
 }
 
-func (self *logger) Log(level hclog.Level, msg string, args ...interface{}) {
+func (self *hclogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
 	switch level {
 	case hclog.Trace:
 		self.Trace(msg, args...)
@@ -59,7 +59,7 @@ func (self *logger) Log(level hclog.Level, msg string, args ...interface{}) {
 	}
 }
 
-func (self *logger) ImpliedArgs() []interface{} {
+func (self *hclogAdapter) ImpliedArgs() []interface{} {
 	var fields []interface{}
 	for k, v := range self.log.Data {
 		fields = append(fields, k)
@@ -68,31 +68,31 @@ func (self *logger) ImpliedArgs() []interface{} {
 	return fields
 }
 
-func (self *logger) Name() string {
+func (self *hclogAdapter) Name() string {
 	return self.name
 }
 
-func (self *logger) Trace(msg string, args ...interface{}) {
+func (self *hclogAdapter) Trace(msg string, args ...interface{}) {
 	self.logToLogrus(logrus.TraceLevel, msg, args...)
 }
 
-func (self *logger) Debug(msg string, args ...interface{}) {
+func (self *hclogAdapter) Debug(msg string, args ...interface{}) {
 	self.logToLogrus(logrus.DebugLevel, msg, args...)
 }
 
-func (self *logger) Info(msg string, args ...interface{}) {
+func (self *hclogAdapter) Info(msg string, args ...interface{}) {
 	self.logToLogrus(logrus.InfoLevel, msg, args...)
 }
 
-func (self *logger) Warn(msg string, args ...interface{}) {
+func (self *hclogAdapter) Warn(msg string, args ...interface{}) {
 	self.logToLogrus(logrus.WarnLevel, msg, args...)
 }
 
-func (self *logger) Error(msg string, args ...interface{}) {
+func (self *hclogAdapter) Error(msg string, args ...interface{}) {
 	self.logToLogrus(logrus.ErrorLevel, msg, args...)
 }
 
-func (self *logger) logToLogrus(level logrus.Level, msg string, args ...interface{}) {
+func (self *hclogAdapter) logToLogrus(level logrus.Level, msg string, args ...interface{}) {
 	log := self.log
 	if len(args) > 0 {
 		log = self.LoggerWith(args)
@@ -102,33 +102,33 @@ func (self *logger) logToLogrus(level logrus.Level, msg string, args ...interfac
 	log.Log(level, self.name+msg)
 }
 
-func (self *logger) IsTrace() bool {
+func (self *hclogAdapter) IsTrace() bool {
 	return self.log.Logger.IsLevelEnabled(logrus.TraceLevel)
 }
 
-func (self *logger) IsDebug() bool {
+func (self *hclogAdapter) IsDebug() bool {
 	return self.log.Logger.IsLevelEnabled(logrus.DebugLevel)
 }
 
-func (self *logger) IsInfo() bool {
+func (self *hclogAdapter) IsInfo() bool {
 	return self.log.Logger.IsLevelEnabled(logrus.InfoLevel)
 }
 
-func (self *logger) IsWarn() bool {
+func (self *hclogAdapter) IsWarn() bool {
 	return self.log.Logger.IsLevelEnabled(logrus.WarnLevel)
 }
 
-func (self *logger) IsError() bool {
+func (self *hclogAdapter) IsError() bool {
 	return self.log.Logger.IsLevelEnabled(logrus.ErrorLevel)
 }
 
-func (self *logger) With(args ...interface{}) hclog.Logger {
-	return &logger{
+func (self *hclogAdapter) With(args ...interface{}) hclog.Logger {
+	return &hclogAdapter{
 		log: self.LoggerWith(args),
 	}
 }
 
-func (self *logger) LoggerWith(args []interface{}) *logrus.Entry {
+func (self *hclogAdapter) LoggerWith(args []interface{}) *logrus.Entry {
 	l := self.log
 	ml := len(args)
 	var key string
@@ -148,26 +148,26 @@ func (self *logger) LoggerWith(args []interface{}) *logrus.Entry {
 	return l
 }
 
-func (self *logger) Named(name string) hclog.Logger {
+func (self *hclogAdapter) Named(name string) hclog.Logger {
 	return self.ResetNamed(name + self.name)
 }
 
-func (self *logger) ResetNamed(name string) hclog.Logger {
-	return &logger{
+func (self *hclogAdapter) ResetNamed(name string) hclog.Logger {
+	return &hclogAdapter{
 		name: name,
 		log:  self.log,
 	}
 }
 
-func (self *logger) SetLevel(level hclog.Level) {
+func (self *hclogAdapter) SetLevel(level hclog.Level) {
 	panic("implement me")
 }
 
-func (self *logger) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
+func (self *hclogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
 	panic("implement me")
 }
 
-func (self *logger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (self *hclogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
 	panic("implement me")
 }
 
@@ -189,7 +189,7 @@ const (
 
 // getCaller retrieves the name of the first non-logrus calling function
 // derived from logrus code
-func (self *logger) getCaller() *runtime.Frame {
+func (self *hclogAdapter) getCaller() *runtime.Frame {
 	// cache this package's fully-qualified name
 	callerInitOnce.Do(func() {
 		pcs := make([]uintptr, maximumCallerDepth)
@@ -232,7 +232,7 @@ func (self *logger) getCaller() *runtime.Frame {
 // derived from logrus code
 // getPackageName reduces a fully qualified function name to the package name
 // There really ought to be a better way...
-func (self *logger) getPackageName(f string) string {
+func (self *hclogAdapter) getPackageName(f string) string {
 	for {
 		lastPeriod := strings.LastIndex(f, ".")
 		lastSlash := strings.LastIndex(f, "/")

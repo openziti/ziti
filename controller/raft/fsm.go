@@ -26,21 +26,20 @@ import (
 	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+	"path"
 	"sync/atomic"
 )
 
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker) *BoltDbFsm {
 	return &BoltDbFsm{
-		dataDir:      dataDir,
 		decoders:     decoders,
-		dbPath:       dataDir + "ctrl.db",
+		dbPath:       path.Join(dataDir, "ctrl.db"),
 		indexTracker: indexTracker,
 	}
 }
 
 type BoltDbFsm struct {
 	db           boltz.Db
-	dataDir      string
 	dbPath       string
 	decoders     command.Decoders
 	initialized  atomic.Bool
@@ -48,6 +47,18 @@ type BoltDbFsm struct {
 }
 
 func (self *BoltDbFsm) Init() error {
+	log := pfxlog.Logger()
+	log.Info("initializing fsm")
+
+	if _, err := os.Stat(self.dbPath); err == nil {
+		backup := self.dbPath + ".previous"
+		log.Infof("moving previous db to %v", backup)
+		err := os.Rename(self.dbPath, backup)
+		if err != nil {
+			return err
+		}
+	}
+
 	var err error
 	self.db, err = db.Open(self.dbPath)
 	if err != nil {
@@ -140,7 +151,8 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		os.Exit(0)
 	}
 
-	return self.Init()
+	self.db, err = db.Open(self.dbPath)
+	return err
 }
 
 type boltSnapshot struct {

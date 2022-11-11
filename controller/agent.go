@@ -2,6 +2,7 @@ package controller
 
 import (
 	"bufio"
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -135,8 +136,13 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
-		handler_common.SendOpResult(m, ch, "raft.join", "id not supplied", false)
-		return
+		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
+		if err != nil {
+			errMsg := fmt.Sprintf("id not supplied and unable to retrieve [%v]", err.Error())
+			handler_common.SendOpResult(m, ch, "raft.join", errMsg, false)
+			return
+		}
+		id = peerId
 	}
 
 	isVoter, found := m.GetBoolHeader(AgentIsVoterHeader)
@@ -154,7 +160,7 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 		handler_common.SendOpResult(m, ch, "raft.join", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "raft.join", "success", true)
+	handler_common.SendOpResult(m, ch, "raft.join", fmt.Sprintf("success, added %v at %v to cluster", id, addr), true)
 }
 
 func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel) {

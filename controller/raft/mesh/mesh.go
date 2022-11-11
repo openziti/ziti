@@ -18,6 +18,7 @@ package mesh
 
 import (
 	"net"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -59,7 +60,7 @@ func (self *Peer) ContentType() int32 {
 	return RaftConnectType
 }
 
-func (self *Peer) HandleReceive(m *channel.Message, ch channel.Channel) {
+func (self *Peer) HandleReceive(m *channel.Message, _ channel.Channel) {
 	go func() {
 		response := channel.NewMessage(channel.ContentTypeResultType, nil)
 		response.Headers[PeerIdHeader] = []byte(self.mesh.raftId)
@@ -116,6 +117,8 @@ type Mesh interface {
 	// it will be returned, otherwise a new connection will be established
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
 	IsReadOnly() bool
+
+	GetPeerId(address string, timeout time.Duration) (string, error)
 }
 
 func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
@@ -237,6 +240,42 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 
 	self.AddPeer(peer)
 	return peer, nil
+}
+
+func (self *impl) GetPeerId(address string, timeout time.Duration) (string, error) {
+	log := pfxlog.Logger().WithField("address", address)
+	addr, err := transport.ParseAddress(address)
+	if err != nil {
+		log.WithError(err).Error("failed to parse address")
+		return "", err
+	}
+
+	c, err := addr.Dial("test", self.id, timeout, nil)
+	if err != nil {
+		log.WithError(err).Error("failed to dial address")
+		return "", err
+	}
+
+	defer func() {
+		if err = c.Close(); err != nil {
+			log.WithError(err).Error("failed to close peer connection while getting peer id")
+		}
+	}()
+
+	certs := c.PeerCertificates()
+	if len(certs) == 0 {
+		return "", errors.Errorf("no certificates for peer at %v", address)
+	}
+
+	leaf := certs[0]
+	for _, uri := range leaf.URIs {
+		if uri.Scheme == "spiffe" {
+			// TODO: add controller/ prefix
+			return strings.TrimPrefix(uri.Path, "/"), nil
+		}
+	}
+
+	return "", errors.New("no controller SPIFFE ID found in peer certificates")
 }
 
 func (self *impl) AddPeer(peer *Peer) {
