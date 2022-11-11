@@ -17,9 +17,12 @@
 package model
 
 import (
+	"crypto/x509"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
@@ -200,6 +203,26 @@ func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, aut
 		enrollmentId:  enrollmentId,
 		authenticator: authenticator,
 	})
+}
+
+func (self *EnrollmentManager) GetClientCertChain(certRaw []byte) (string, error) {
+	clientCert, err := x509.ParseCertificate(certRaw)
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("error parsing client cert raw during enrollment")
+		return "", err
+	}
+
+	var clientChainPem []byte
+	clientChain := self.env.GetHostController().Identity().CaPool().GetChainMinusRoot(clientCert)
+	for _, c := range clientChain {
+		pemData, err := cert.RawToPem(c.Raw)
+		if err != nil {
+			return "", err
+		}
+		clientChainPem = append(clientChainPem, pemData...)
+	}
+
+	return string(clientChainPem), nil
 }
 
 func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd) error {

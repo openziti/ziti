@@ -452,8 +452,8 @@ github.com/openziti/fabric v0.21.17 h1:oT32L0Lu64Jd7CkHrQZdOwG0Mew8bMBEUowtRyhER
 github.com/openziti/fabric v0.21.17/go.mod h1:VsRUi2wdA3k4bOXxfrohaoUuhcjf8ZdpPPN0NzD8my4=
 github.com/openziti/foundation/v2 v2.0.7 h1:QtpP0ntUhr/7uLR1iM7eEkrusQ2b2ZqTblgdq8cac9Y=
 github.com/openziti/foundation/v2 v2.0.7/go.mod h1:Z0gnQsGJb/H/B+pixLtmCIpw1dBllD4QoT6LeD35WzA=
-github.com/openziti/identity v1.0.20 h1:8nsQFHpqKS1ByD8QuPDxQWfS8CQEidyn5jFXWnXguX0=
-github.com/openziti/identity v1.0.20/go.mod h1:X0WLWEgnM1iL8asNbuu7vUW0kZq8nnWKepMW214C9Mk=
+github.com/openziti/identity v1.0.22-0.20221111192645-0f7a28dded6d h1:D0TLLy8SHeArciN231+axqZwFj4lL9vIV7veG3ZC90w=
+github.com/openziti/identity v1.0.22-0.20221111192645-0f7a28dded6d/go.mod h1:uVqZEC4Lr7pEud9b5g0h/cH0Ir5K0egCjUrEVup4ERc=
 github.com/openziti/jwks v1.0.2 h1:32BGXIAnefS+v7uXKPb1x8/cQ7srek6Ai06dsrMTY4E=
 github.com/openziti/jwks v1.0.2/go.mod h1:KwO0x9FBG0aoJS5f6nH5xeHoplyR1H143SMI9kF0mC8=
 github.com/openziti/metrics v1.1.5 h1:qhsGsYWdp7LxPCYi9WMGHGbjiHvsT1DtjM44JNHLZWk=

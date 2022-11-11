@@ -229,8 +229,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		clientPem, err := cert2.RawToPem(certs.RawClientCert)
-
+		clientChainPem, err := ae.Managers.Enrollment.GetClientCertChain(certs.RawClientCert)
 		if err != nil {
 			rc.RespondWithError(err)
 			return
@@ -244,7 +243,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 		}
 
 		rc.RespondWithOk(&rest_model.EnrollmentCerts{
-			Cert:       string(clientPem),
+			Cert:       clientChainPem,
 			ServerCert: string(serverPem),
 		}, &rest_model.Meta{})
 
@@ -259,7 +258,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 			return
 		}
 
-		clientPem, err := cert2.RawToPem(certs.RawClientCert)
+		clientChainPem, err := ae.Managers.Enrollment.GetClientCertChain(certs.RawClientCert)
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -274,7 +273,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 		}
 
 		rc.RespondWithOk(&rest_model.EnrollmentCerts{
-			Cert:       string(clientPem),
+			Cert:       clientChainPem,
 			ServerCert: string(serverPem),
 		}, &rest_model.Meta{})
 

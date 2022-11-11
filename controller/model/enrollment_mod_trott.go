@@ -123,6 +123,11 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 		return nil, apierror.NewCouldNotProcessCsr()
 	}
 
+	clientChainPem, err := module.env.GetManagers().Enrollment.GetClientCertChain(cltCert)
+	if err != nil {
+		return nil, err
+	}
+
 	cltFp := module.fingerprintGenerator.FromPem(cltPem)
 
 	txRouter.IsVerified = true
@@ -138,7 +143,7 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 
 	content := &rest_model.EnrollmentCerts{
 		Ca:         string(module.env.GetConfig().CaPems()),
-		Cert:       string(cltPem),
+		Cert:       clientChainPem,
 		ServerCert: string(srvPem),
 	}
 

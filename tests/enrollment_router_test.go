@@ -79,7 +79,7 @@ func Test_RouterEnrollment(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(caCerts)
 
-			id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
+			id := identity2.NewClientTokenIdentity(sliceOf(cert), pk, caCerts)
 			ctx.Req.NotNil(id)
 
 			ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -103,7 +103,7 @@ func Test_RouterEnrollment(t *testing.T) {
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(caCerts)
 
-			id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
+			id := identity2.NewClientTokenIdentity(sliceOf(cert), pk, caCerts)
 			ctx.Req.NotNil(id)
 
 			ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -288,7 +288,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				certPem := enrollmentContainer.Path("data.cert").Data().(string)
 				certs, err := parsePEMBundle([]byte(certPem))
 				ctx.Req.NoError(err)
-				ctx.Req.Len(certs, 1)
+				ctx.Req.Len(certs, 2)
 				cert := certs[0]
 
 				ctx.Req.True(enrollmentContainer.ExistsP("data.serverCert"))
@@ -330,7 +330,7 @@ func Test_RouterEnrollment(t *testing.T) {
 					ctx.Req.NoError(err)
 					ctx.Req.NotNil(caCerts)
 
-					id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
+					id := identity2.NewClientTokenIdentity(sliceOf(cert), pk, caCerts)
 					ctx.Req.NotNil(id)
 
 					ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -354,7 +354,7 @@ func Test_RouterEnrollment(t *testing.T) {
 					ctx.Req.NoError(err)
 					ctx.Req.NotNil(caCerts)
 
-					id := identity2.NewClientTokenIdentity(cert, pk, caCerts)
+					id := identity2.NewClientTokenIdentity(sliceOf(cert), pk, caCerts)
 					ctx.Req.NotNil(id)
 
 					ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -365,7 +365,7 @@ func Test_RouterEnrollment(t *testing.T) {
 				t.Run("connecting to the control channel with the enrollment client cert and ca pool succeeds", func(t *testing.T) {
 					ctx.testContextChanged(t)
 
-					id := identity2.NewClientTokenIdentity(cert, privateKey, caCerts)
+					id := identity2.NewClientTokenIdentity(certs, privateKey, caCerts)
 					ctx.Req.NotNil(id)
 
 					ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -514,8 +514,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						extensionClientCertPem := extensionContainer.Path("data.cert").Data().(string)
 						extensionClientCerts, err := parsePEMBundle([]byte(extensionClientCertPem))
 						ctx.Req.NoError(err)
-						ctx.Req.Len(extensionClientCerts, 1)
-						extensionCert := extensionClientCerts[0]
+						ctx.Req.Len(extensionClientCerts, 2)
 
 						ctx.Req.True(extensionContainer.ExistsP("data.serverCert"))
 						extensionServerCertPem := extensionContainer.Path("data.serverCert").Data().(string)
@@ -546,7 +545,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						t.Run("connecting to the control channel with the old client cert fails", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
-							id := identity2.NewClientTokenIdentity(cert, privateKey, caCerts)
+							id := identity2.NewClientTokenIdentity(certs, privateKey, caCerts)
 							ctx.Req.NotNil(id)
 
 							ch, err := channel.NewChannel("apitest", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -563,7 +562,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						t.Run("connecting to the control channel with the new client cert succeeds", func(t *testing.T) {
 							ctx.testContextChanged(t)
 
-							id := identity2.NewClientTokenIdentity(extensionCert, extensionPrivateKey, caCerts)
+							id := identity2.NewClientTokenIdentity(extensionClientCerts, extensionPrivateKey, caCerts)
 							ctx.Req.NotNil(id)
 
 							ch, err := channel.NewChannel("apitestextension", channel.NewClassicDialer(id, ctx.ControllerConfig.Ctrl.Listener, nil), nil, nil)
@@ -574,8 +573,8 @@ func Test_RouterEnrollment(t *testing.T) {
 								}
 							}()
 
-							ctx.Req.NotNil(ch)
 							ctx.Req.NoError(err)
+							ctx.Req.NotNil(ch)
 						})
 					})
 				})
@@ -701,4 +700,8 @@ func generateEcKey() crypto.PrivateKey {
 	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 
 	return key
+}
+
+func sliceOf[T any](vals ...T) []T {
+	return vals
 }

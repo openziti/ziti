@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"testing"
 	"time"
@@ -36,6 +37,10 @@ var _ HostController = &testHostController{}
 type testHostController struct {
 	closeNotify chan struct{}
 	ctx         *persistence.TestContext
+}
+
+func (self *testHostController) Identity() identity.Identity {
+	return &identity.TokenId{Token: "test"}
 }
 
 func (self *testHostController) GetNetwork() *network.Network {

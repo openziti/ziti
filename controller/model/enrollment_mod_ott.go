@@ -91,6 +91,11 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 		Bytes: certRaw,
 	})
 
+	clientChainPem, err := module.env.GetManagers().Enrollment.GetClientCertChain(certRaw)
+	if err != nil {
+		return nil, err
+	}
+
 	newAuthenticator := &Authenticator{
 		BaseEntity: models.BaseEntity{
 			Id: eid.New(),
@@ -110,7 +115,7 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 	}
 
 	content := &rest_model.EnrollmentCerts{
-		Cert: string(certPem),
+		Cert: clientChainPem,
 	}
 
 	return &EnrollmentResult{

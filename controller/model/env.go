@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/xeipuuv/gojsonschema"
 )
@@ -49,6 +50,7 @@ type HostController interface {
 	Shutdown()
 	GetCloseNotifyChannel() <-chan struct{}
 	IsRaftEnabled() bool
+	Identity() identity.Identity
 }
 
 type Schemas interface {
