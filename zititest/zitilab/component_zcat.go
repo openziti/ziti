@@ -16,6 +16,12 @@ type ZCatType struct {
 	LocalPath string
 }
 
+func (self *ZCatType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
+}
+
 func (self *ZCatType) Dump() any {
 	return map[string]string{
 		"type_id":    "zcat",

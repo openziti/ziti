@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/pkg/errors"
 	"io/fs"
+	"strings"
 )
 
 var _ model.ComponentType = (*ControllerType)(nil)
@@ -43,6 +44,12 @@ type ControllerType struct {
 	Version        string
 	LocalPath      string
 	DNSNames       []string
+}
+
+func (self *ControllerType) InitType(*model.Component) {
+	if self.Version != "" && !strings.HasPrefix(self.Version, "v") {
+		self.Version = "v" + self.Version
+	}
 }
 
 func (self *ControllerType) GetActions() map[string]model.ComponentAction {
