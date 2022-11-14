@@ -26,6 +26,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func init() {
+	hostSpecificCmds = append(hostSpecificCmds, NewRunCmd())
+}
+
 func NewRunCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "run <config>",

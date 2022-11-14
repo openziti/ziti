@@ -44,9 +44,15 @@ const (
 	dnsSvcIpRangeFlag = "dnsSvcIpRange"
 )
 
-func NewTunnelCmd() *cobra.Command {
+var hostSpecificCmds []*cobra.Command
+
+func NewTunnelCmd(standalone bool) *cobra.Command {
+	use := "tunnel "
+	if standalone {
+		use = filepath.Base(os.Args[0])
+	}
 	var root = &cobra.Command{
-		Use:              filepath.Base(os.Args[0]),
+		Use:              use,
 		Short:            "Ziti Tunnel",
 		PersistentPreRun: rootPreRun,
 		Hidden:           true,
@@ -66,8 +72,7 @@ func NewTunnelCmd() *cobra.Command {
 	root.AddCommand(enrollment.NewEnrollCommand(p))
 	root.AddCommand(NewHostCmd())
 	root.AddCommand(NewProxyCmd())
-	root.AddCommand(NewRunCmd())
-	root.AddCommand(NewTProxyCmd())
+	root.AddCommand(hostSpecificCmds...)
 	root.AddCommand(NewVersionCmd())
 
 	return root
@@ -79,7 +84,7 @@ var cliAgentEnabled bool
 var cliAgentAddr string
 
 func Execute() {
-	if err := NewTunnelCmd().Execute(); err != nil {
+	if err := NewTunnelCmd(true).Execute(); err != nil {
 		pfxlog.Logger().Errorf("error: %s", err)
 		os.Exit(1)
 	}

@@ -25,6 +25,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func init() {
+	hostSpecificCmds = append(hostSpecificCmds, NewTProxyCmd())
+}
+
 func NewTProxyCmd() *cobra.Command {
 	var runTProxyCmd = &cobra.Command{
 		Use:     "tproxy",
