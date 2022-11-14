@@ -64,16 +64,6 @@ func NewCmdInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 		SuggestFor: []string{"up"},
 	}
 
-	cmd.AddCommand(NewCmdInstallZitiALL(out, errOut))
-
-	cmd.AddCommand(NewCmdInstallZitiController(out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiRouter(out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiTunnel(out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(out, errOut))
-	cmd.AddCommand(NewCmdInstallZitiProxC(out, errOut))
-
-	// cmd.AddCommand(NewCmdInstallAnsible(out, errOut))		// Disable/hide this for now
-
 	cmd.AddCommand(NewCmdInstallTerraformProviderEdgeController(out, errOut))
 
 	options.AddCommonFlags(cmd)

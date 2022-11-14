@@ -139,8 +139,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	installCommands := []*cobra.Command{
 		NewCmdInstall(out, err),
-		NewCmdUnInstall(out, err),
-		NewCmdUpgrade(out, err),
 	}
 
 	groups := templates.CommandGroups{
@@ -191,11 +189,9 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	groups.Add(cmd)
 
-	cmd.AddCommand(NewCmdVersion(out, err))
 	cmd.Version = version.GetVersion()
 	cmd.SetVersionTemplate("{{printf .Version}}\n")
 	cmd.AddCommand(NewCmdArt(out, err))
-	cmd.AddCommand(NewCmdUse(out, err))
 
 	return cmd
 }

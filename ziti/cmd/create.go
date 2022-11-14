@@ -42,7 +42,6 @@ func NewCmdCreate(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(NewCmdCreateConfig())
-	cmd.AddCommand(NewCmdCreateEnvironment(out, errOut))
 
 	cmd.AddCommand(NewCmdPKICreateCA(out, errOut))
 	cmd.AddCommand(NewCmdPKICreateIntermediate(out, errOut))
