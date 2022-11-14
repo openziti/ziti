@@ -19,16 +19,16 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/identity/certtools"
 	"github.com/openziti/foundation/v2/term"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"

@@ -17,24 +17,24 @@
 package subcmd
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/ziti/util"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/agent"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
-	"github.com/openziti/agent"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
-	"github.com/openziti/ziti/ziti/cmd/ziti/constants"
-	"github.com/openziti/ziti/ziti/cmd/ziti/util"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

@@ -26,7 +26,7 @@ import (
 	"github.com/openziti/transport/v2/transwarptls"
 	"github.com/openziti/transport/v2/wss"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/ziti-controller/subcmd"
+	"github.com/openziti/ziti/ziti/controller"
 	"github.com/sirupsen/logrus"
 )
 
@@ -44,5 +44,5 @@ func init() {
 }
 
 func main() {
-	subcmd.Execute()
+	controller.Execute()
 }

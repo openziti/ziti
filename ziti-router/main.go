@@ -28,7 +28,7 @@ import (
 	"github.com/openziti/transport/v2/ws"
 	"github.com/openziti/transport/v2/wss"
 	"github.com/openziti/ziti/common/version"
-	"github.com/openziti/ziti/ziti-router/subcmd"
+	"github.com/openziti/ziti/ziti/router"
 	"github.com/sirupsen/logrus"
 )
 
@@ -48,5 +48,5 @@ func init() {
 }
 
 func main() {
-	subcmd.Execute()
+	router.Execute()
 }

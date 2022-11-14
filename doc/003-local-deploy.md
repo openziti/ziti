@@ -1,6 +1,8 @@
 # Overview
 
-This local deployment README guides you to set up a running local Ziti stack. If you have not already built the apps in this repo you may go back to [the previous tutorial about getting set up for local development](./002-local-dev.md) for build instructions. The remainder of the tutorial will assume you have installed all the apps so they can be found in your shell's executable search `PATH`.
+This local deployment README guides you to set up a running local Ziti stack. If you have not already built the apps in this repo you may go back
+to [the previous tutorial about getting set up for local development](./002-local-dev.md) for build instructions. The remainder of the tutorial will assume you have installed all the apps so they can
+be found in your shell's executable search `PATH`.
 
 You will configure and run:
 
@@ -9,13 +11,15 @@ You will configure and run:
 
 ## A Note About Windows
 
-These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
+These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest
+thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
 Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the example commands.
 
 ## Initialize the Environment
 
-The remainder of this local development tutorital will instruct you to run terminal commands with current working directory of the top-level of this checked-out repo. The generated configuration files will use filesystem paths that are relative to this directory.
+The remainder of this local development tutorital will instruct you to run terminal commands with current working directory of the top-level of this checked-out repo. The generated configuration files
+will use filesystem paths that are relative to this directory.
 
 Go ahead and create a `./db` directory. Git is configured to ignore this directory and it will house the tutorial files. You may delete this directory to reset the tutorial.
 
@@ -93,7 +97,8 @@ ziti-router enroll --jwt /tmp/router01.jwt ./db/router01-config.yml
 
 ## Run the Edge Router
 
-Edge SDKs will connect to the running edge router to connect to services. Leave the router process running in a terminal so you can monitor the log messages while you continue the tutorial in a new terminal.
+Edge SDKs will connect to the running edge router to connect to services. Leave the router process running in a terminal so you can monitor the log messages while you continue the tutorial in a new
+terminal.
 
 ```bash
 ziti-router run ./db/router01-config.yml
@@ -109,7 +114,7 @@ When prompted, select your running edge router `router01`.
 ziti edge tutorial first-service
 ```
 
-If you prefer, you may read [the first-service tutorial as a web site](../ziti/cmd/ziti/cmd/tutorial/tutorials/first-service.md)
+If you prefer, you may read [the first-service tutorial as a web site](../ziti/cmd/tutorial/tutorials/first-service.md)
 
 ## Further Exploration
 
