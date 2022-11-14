@@ -14,16 +14,15 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/controller"
-	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/edge/pb/edge_mgmt_pb"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
@@ -31,22 +30,20 @@ import (
 	"time"
 )
 
-type AgentCtrlRaftJoinOptions struct {
-	agentcli.AgentOptions
-	Voter    bool
-	MemberId string
+type AgentCtrlInitOptions struct {
+	AgentOptions
 }
 
-func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
-	options := &AgentCtrlRaftJoinOptions{
-		AgentOptions: agentcli.AgentOptions{
+func NewAgentCtrlInit(p common.OptionsProvider) *cobra.Command {
+	options := &AgentCtrlInitOptions{
+		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(1, 2),
-		Use:  "raft-join <optional-target> <addr>",
+		Args: cobra.RangeArgs(3, 4),
+		Use:  "init <optional-target> <username> <password> <name>",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -55,18 +52,15 @@ func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&options.Voter, "voter", true, "Is this member a voting member")
-	cmd.Flags().StringVar(&options.MemberId, "id", "", "The member id. If not provided, it will be looked up")
-
 	return cmd
 }
 
 // Run implements the command
-func (o *AgentCtrlRaftJoinOptions) Run() error {
+func (o *AgentCtrlInitOptions) Run() error {
 	var addr string
 	var err error
 
-	if len(o.Args) == 2 {
+	if len(o.Args) == 4 {
 		addr, err = agent.ParseGopsAddress(o.Args)
 		if err != nil {
 			return err
@@ -76,7 +70,7 @@ func (o *AgentCtrlRaftJoinOptions) Run() error {
 	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(AgentAppController)}, o.makeRequest)
 }
 
-func (o *AgentCtrlRaftJoinOptions) makeRequest(conn net.Conn) error {
+func (o *AgentCtrlInitOptions) makeRequest(conn net.Conn) error {
 	options := channel.DefaultOptions()
 	options.ConnectTimeout = time.Second
 	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
@@ -86,25 +80,23 @@ func (o *AgentCtrlRaftJoinOptions) makeRequest(conn net.Conn) error {
 	}
 
 	offset := 0
-	if len(o.Args) == 2 {
+	if len(o.Args) == 4 {
 		offset = 1
 	}
 
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftJoinRequestType), nil)
-	msg.PutStringHeader(controller.AgentAddrHeader, o.Args[offset])
-	msg.PutBoolHeader(controller.AgentIsVoterHeader, o.Voter)
-
-	if o.MemberId != "" {
-		msg.PutStringHeader(controller.AgentIdHeader, o.MemberId)
+	initEdgeRequest := &edge_mgmt_pb.InitEdgeRequest{
+		Username: o.Args[offset],
+		Password: o.Args[offset+1],
+		Name:     o.Args[offset+2],
 	}
 
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := protobufs.MarshalTyped(initEdgeRequest).WithTimeout(5 * time.Second).SendForReply(ch)
 	if err != nil {
 		return err
 	}
 	result := channel.UnmarshalResult(reply)
 	if result.Success {
-		fmt.Println(result.Message)
+		fmt.Println("success")
 	} else {
 		fmt.Printf("error: %v\n", result.Message)
 	}

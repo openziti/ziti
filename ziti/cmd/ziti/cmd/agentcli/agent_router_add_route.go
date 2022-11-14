@@ -14,29 +14,28 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"encoding/binary"
-	"google.golang.org/protobuf/proto"
+	"github.com/openziti/agent"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router"
-	"github.com/openziti/agent"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
+	"google.golang.org/protobuf/proto"
 	"os"
 )
 
 type AgentRouteAction struct {
-	agentcli.AgentOptions
+	AgentOptions
 	CtrlListener string
 }
 
 func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
 	options := &AgentRouteAction{
-		AgentOptions: agentcli.AgentOptions{
+		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}

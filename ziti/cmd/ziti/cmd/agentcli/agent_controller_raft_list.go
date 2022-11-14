@@ -14,16 +14,15 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"fmt"
+	"github.com/golang/protobuf/proto"
+	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/fabric/router"
-	"github.com/openziti/agent"
 	"github.com/openziti/identity"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
@@ -31,20 +30,20 @@ import (
 	"time"
 )
 
-type ForgetLinkAgentAction struct {
-	agentcli.AgentOptions
+type AgentCtrlRaftListOptions struct {
+	AgentOptions
 }
 
-func NewForgetLinkAgentCmd(p common.OptionsProvider) *cobra.Command {
-	options := &ForgetLinkAgentAction{
-		AgentOptions: agentcli.AgentOptions{
+func NewAgentCtrlRaftList(p common.OptionsProvider) *cobra.Command {
+	options := &AgentCtrlRaftListOptions{
+		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(1, 2),
-		Use:  "forget-link <optional-target> <link-id>",
+		Args: cobra.RangeArgs(0, 1),
+		Use:  "raft-list <optional-target>",
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
@@ -57,20 +56,21 @@ func NewForgetLinkAgentCmd(p common.OptionsProvider) *cobra.Command {
 }
 
 // Run implements the command
-func (self *ForgetLinkAgentAction) Run() error {
+func (o *AgentCtrlRaftListOptions) Run() error {
 	var addr string
 	var err error
-	if len(self.Args) == 2 {
-		addr, err = agent.ParseGopsAddress(self.Args)
+
+	if len(o.Args) == 1 {
+		addr, err = agent.ParseGopsAddress(o.Args)
 		if err != nil {
 			return err
 		}
 	}
 
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{router.AgentAppId}, self.makeRequest)
+	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(AgentAppController)}, o.makeRequest)
 }
 
-func (self *ForgetLinkAgentAction) makeRequest(conn net.Conn) error {
+func (o *AgentCtrlRaftListOptions) makeRequest(conn net.Conn) error {
 	options := channel.DefaultOptions()
 	options.ConnectTimeout = time.Second
 	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
@@ -79,12 +79,7 @@ func (self *ForgetLinkAgentAction) makeRequest(conn net.Conn) error {
 		return err
 	}
 
-	linkId := self.Args[0]
-	if len(self.Args) == 2 {
-		linkId = self.Args[1]
-	}
-
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugForgetLinkRequestType), []byte(linkId))
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftListMembersRequestType), nil)
 	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
 	if err != nil {
 		return err
@@ -92,16 +87,18 @@ func (self *ForgetLinkAgentAction) makeRequest(conn net.Conn) error {
 	if reply.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(reply)
 		if result.Success {
-			if len(result.Message) > 0 {
-				fmt.Printf("success: %v\n", result.Message)
-			} else {
-				fmt.Println("success")
-			}
+			fmt.Println("success")
 		} else {
 			fmt.Printf("error: %v\n", result.Message)
 		}
-	} else {
-		fmt.Printf("unexpected response type %v\n", reply.ContentType)
+	} else if reply.ContentType == int32(mgmt_pb.ContentType_RaftListMembersResponseType) {
+		resp := &mgmt_pb.RaftMemberListResponse{}
+		if err = proto.Unmarshal(reply.Body, resp); err != nil {
+			return err
+		}
+		for _, m := range resp.Members {
+			fmt.Printf("id: %v, addr: %v, voter: %v, leader: %v\n", m.Id, m.Addr, m.IsVoter, m.IsLeader)
+		}
 	}
 	return nil
 }

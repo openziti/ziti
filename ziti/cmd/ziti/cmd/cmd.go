@@ -19,6 +19,7 @@ package cmd
 import (
 	goflag "flag"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"io"
 	"os"
 	"path/filepath"
@@ -124,8 +125,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
 	executeCommands := NewCmdExecute(out, err)
-	agentCommands := NewAgentCmd(p)
-	psCommands := NewCmdPs(p)
+	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
 	edgeCommand := edge.NewCmdEdge(out, err)
@@ -158,7 +158,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 			Commands: []*cobra.Command{
 				executeCommands,
 				agentCommands,
-				psCommands,
 				pkiCommands,
 				unwrapIdentityFileCommand,
 			},

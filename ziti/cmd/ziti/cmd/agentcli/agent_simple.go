@@ -14,11 +14,10 @@
 	limitations under the License.
 */
 
-package cmd
+package agentcli
 
 import (
 	"github.com/openziti/agent"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/agentcli"
 	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
@@ -26,12 +25,12 @@ import (
 )
 
 type SimpleAgentAction struct {
-	agentcli.AgentOptions
+	AgentOptions
 }
 
 func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.OptionsProvider) *cobra.Command {
 	action := &SimpleAgentAction{
-		AgentOptions: agentcli.AgentOptions{
+		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
