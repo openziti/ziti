@@ -40,8 +40,9 @@ func NewCmdArt(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "art",
-		Short: "Print the Ziti logo as ascii art :)",
+		Use:    "art",
+		Short:  "Print the Ziti logo as ascii art :)",
+		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			options.Cmd = cmd
 			options.Args = args
