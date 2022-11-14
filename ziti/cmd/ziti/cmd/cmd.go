@@ -192,9 +192,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	cmd.Version = version.GetVersion()
 	cmd.SetVersionTemplate("{{printf .Version}}\n")
 	cmd.AddCommand(NewCmdArt(out, err))
-	cmd.AddCommand(NewCmdPlaybook(out, err))
-	cmd.AddCommand(NewCmdPing(out, err))
-	cmd.AddCommand(NewCmdAdhoc(out, err))
 	cmd.AddCommand(NewCmdUse(out, err))
 
 	return cmd

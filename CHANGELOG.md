@@ -8,6 +8,7 @@
 ## Ziti CLI
 
 * The update command has been removed. It was non-functional, so this should not affect anyone 
+* The adhoc, ping and playbook commands have been removed. These were ansible and vagrant commands that were not widely used.
 
 # Release 0.26.11
 

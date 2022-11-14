@@ -19,7 +19,6 @@ package cmd
 import (
 	"fmt"
 	"github.com/blang/semver"
-	"github.com/openziti/ziti/ziti/ansible"
 	c "github.com/openziti/ziti/ziti/cmd/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/cmd/ziti/util"
@@ -131,13 +130,6 @@ func (o *CommonOptions) doInstallMissingDependencies(install []string) error {
 		switch i {
 		case "aws":
 			err = o.installAWSCli()
-		case "ansible":
-			opts := &ansible.InstallOptions{
-				RequirementsTXT: "",
-				VirtualEnv:      "",
-				Path:            "",
-			}
-			err = ansible.InstallViaPip(opts)
 		default:
 			return fmt.Errorf("unknown dependency to install %s", i)
 		}
