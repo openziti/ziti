@@ -39,19 +39,18 @@ import (
 	"syscall"
 )
 
-var forceEnrollmentExtension *bool
+func NewRunCmd() *cobra.Command {
+	var runCmd = &cobra.Command{
+		Use:   "run <config>",
+		Short: "Run router configuration",
+		Args:  cobra.ExactArgs(1),
+		Run:   run,
+	}
 
-func init() {
 	//flags are added to an internal map and read later on, see getFlags()
 	runCmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
-	root.AddCommand(runCmd)
-}
 
-var runCmd = &cobra.Command{
-	Use:   "run <config>",
-	Short: "Run router configuration",
-	Args:  cobra.ExactArgs(1),
-	Run:   run,
+	return runCmd
 }
 
 func run(cmd *cobra.Command, args []string) {

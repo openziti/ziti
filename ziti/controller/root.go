@@ -27,37 +27,43 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	root.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
-	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
-	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
-	root.PersistentFlags().BoolVar(&syncRaftToDb, "sync-raft-to-db", false, "Sync the current database state to raft as a snapshot. Use when moving an existing controller to run in HA/Raft")
+func NewControllerCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "ziti-controller",
+		Short: "Ziti Fabric Controller",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+			}
 
-	edgeSubCmd.AddCommands(root, version.GetCmdBuildInfo())
-}
+			switch logFormatter {
+			case "pfxlog":
+				pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
+			case "json":
+				pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
+			case "text":
+				pfxlog.SetFormatter(&logrus.TextFormatter{})
+			default:
+				// let logrus do its own thing
+			}
+			util.LogReleaseVersionCheck(constants.ZITI_CONTROLLER)
 
-var root = &cobra.Command{
-	Use:   "ziti-controller",
-	Short: "Ziti Fabric Controller",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if verbose {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
+		},
+	}
 
-		switch logFormatter {
-		case "pfxlog":
-			pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
-		case "json":
-			pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
-		case "text":
-			pfxlog.SetFormatter(&logrus.TextFormatter{})
-		default:
-			// let logrus do its own thing
-		}
-		util.LogReleaseVersionCheck(constants.ZITI_CONTROLLER)
+	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
+	cmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	cmd.PersistentFlags().BoolVar(&syncRaftToDb, "sync-raft-to-db", false, "Sync the current database state to raft as a snapshot. Use when moving an existing controller to run in HA/Raft")
 
-	},
+	cmd.AddCommand(NewRunCmd())
+	cmd.AddCommand(NewDeleteSessionsCmd())
+	cmd.AddCommand(NewVersionCmd())
+
+	edgeSubCmd.AddCommands(cmd, version.GetCmdBuildInfo())
+
+	return cmd
 }
 
 var verbose bool
@@ -67,7 +73,7 @@ var logFormatter string
 var syncRaftToDb bool
 
 func Execute() {
-	if err := root.Execute(); err != nil {
+	if err := NewControllerCmd().Execute(); err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 }

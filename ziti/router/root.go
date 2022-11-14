@@ -25,35 +25,41 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	root.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
-	root.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
-	root.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
-	root.PersistentFlags().BoolVar(&enableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
-}
+func NewRouterCmd() *cobra.Command {
+	var routerCmd = &cobra.Command{
+		Use:   "ziti-router",
+		Short: "Ziti Fabric Router",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if verbose {
+				logrus.SetLevel(logrus.DebugLevel)
+			}
 
-var root = &cobra.Command{
-	Use:   "ziti-router",
-	Short: "Ziti Fabric Router",
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		if verbose {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
+			switch logFormatter {
+			case "pfxlog":
+				pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
+			case "json":
+				pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
+			case "text":
+				pfxlog.SetFormatter(&logrus.TextFormatter{})
+			default:
+				// let logrus do its own thing
+			}
+			util.LogReleaseVersionCheck(constants.ZITI_ROUTER)
 
-		switch logFormatter {
-		case "pfxlog":
-			pfxlog.SetFormatter(pfxlog.NewFormatter(pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/").StartingToday()))
-		case "json":
-			pfxlog.SetFormatter(&logrus.JSONFormatter{TimestampFormat: "2006-01-02T15:04:05.000Z"})
-		case "text":
-			pfxlog.SetFormatter(&logrus.TextFormatter{})
-		default:
-			// let logrus do its own thing
-		}
-		util.LogReleaseVersionCheck(constants.ZITI_ROUTER)
+		},
+	}
 
-	},
+	routerCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	routerCmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
+	routerCmd.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
+	routerCmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	routerCmd.PersistentFlags().BoolVar(&enableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
+
+	routerCmd.AddCommand(NewRunCmd())
+	routerCmd.AddCommand(NewEnrollGwCmd())
+	routerCmd.AddCommand(NewVersionCmd())
+
+	return routerCmd
 }
 
 var verbose bool
@@ -63,7 +69,7 @@ var enableDebugOps bool
 var cliAgentAddr string
 
 func Execute() {
-	if err := root.Execute(); err != nil {
+	if err := NewRouterCmd().Execute(); err != nil {
 		fmt.Printf("error: %s\n", err)
 	}
 }

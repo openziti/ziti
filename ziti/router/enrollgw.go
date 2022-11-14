@@ -29,19 +29,20 @@ var jwtPath *string
 var engine *string
 var keyAlg config.KeyAlgVar
 
-func init() {
+func NewEnrollGwCmd() *cobra.Command {
+	var enrollEdgeRouterCmd = &cobra.Command{
+		Use:   "enroll <config>",
+		Short: "Enroll a router as an edge router",
+		Args:  cobra.ExactArgs(1),
+		Run:   enrollGw,
+	}
+
 	jwtPath = enrollEdgeRouterCmd.Flags().StringP("jwt", "j", "", "The path to a JWT file")
 	engine = enrollEdgeRouterCmd.Flags().StringP("engine", "e", "", "An engine")
 	keyAlg.Set("RSA") // set default
 	enrollEdgeRouterCmd.Flags().VarP(&keyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
-	root.AddCommand(enrollEdgeRouterCmd)
-}
 
-var enrollEdgeRouterCmd = &cobra.Command{
-	Use:   "enroll <config>",
-	Short: "Enroll a router as an edge router",
-	Args:  cobra.ExactArgs(1),
-	Run:   enrollGw,
+	return enrollEdgeRouterCmd
 }
 
 func enrollGw(cmd *cobra.Command, args []string) {

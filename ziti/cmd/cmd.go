@@ -28,7 +28,9 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/tutorial"
 	c "github.com/openziti/ziti/ziti/constants"
+	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
+	"github.com/openziti/ziti/ziti/router"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"os"
@@ -121,7 +123,8 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
-	executeCommands := NewCmdExecute(out, err)
+	controllerCmd := controller.NewRunCmd()
+	routerCmd := router.NewRunCmd()
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)
@@ -153,8 +156,9 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Executing Ziti components:",
 			Commands: []*cobra.Command{
-				executeCommands,
 				agentCommands,
+				controllerCmd,
+				routerCmd,
 				pkiCommands,
 				unwrapIdentityFileCommand,
 			},

@@ -11,6 +11,9 @@
 * The adhoc, ping and playbook commands have been removed. These were ansible and vagrant commands that were not widely used.
 * Make the art command hidden, doesn't need to be removed, leave it as an easter egg
 * Move ziti ps command under ziti agent. Remove all ziti ps subcommands, as they already exist as ziti agent subcommands
+* Add `ziti controller` and `ziti router` commands
+    * They should work exactly the same as `ziti-controller` and `ziti router` 
+    * The standalone binaries for `ziti-controller` and `ziti-router` are deprecated and will be removed in a future release
 
 # Release 0.26.11
 

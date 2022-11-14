@@ -26,15 +26,13 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func init() {
-	root.AddCommand(deleteSessionsCmd)
-}
-
-var deleteSessionsCmd = &cobra.Command{
-	Use:   "delete-sessions <config>",
-	Short: "Delete all API Sessions and Edge Sessions, controller must be shutdown",
-	Args:  cobra.ExactArgs(1),
-	Run:   deleteSessions,
+func NewDeleteSessionsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete-sessions <config>",
+		Short: "Delete all API Sessions and Edge Sessions, controller must be shutdown",
+		Args:  cobra.ExactArgs(1),
+		Run:   deleteSessions,
+	}
 }
 
 const (
