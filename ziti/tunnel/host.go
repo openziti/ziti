@@ -14,27 +14,26 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
 	"github.com/openziti/edge/tunnel/intercept/host"
 	"github.com/spf13/cobra"
 )
 
-var runHostCmd = &cobra.Command{
-	Use:     "host",
-	Short:   "Run in 'host' mode",
-	Long:    "The 'host' mode will only host services",
-	Args:    cobra.ExactArgs(0),
-	RunE:    runHost,
-	PostRun: rootPostRun,
+func NewHostCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "host",
+		Short:   "Run in 'host' mode",
+		Long:    "The 'host' mode will only host services",
+		Args:    cobra.ExactArgs(0),
+		RunE:    runHost,
+		PostRun: rootPostRun,
+	}
 }
 
-func init() {
-	root.AddCommand(runHostCmd)
-}
-
-func runHost(_ *cobra.Command, args []string) error {
+func runHost(cmd *cobra.Command, args []string) error {
+	root := cmd.Root()
 	if !root.Flag(resolverCfgFlag).Changed {
 		_ = root.PersistentFlags().Set(resolverCfgFlag, "")
 	}

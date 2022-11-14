@@ -14,22 +14,20 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
-	"github.com/openziti/ziti/common/version"
 	"fmt"
+	"github.com/openziti/ziti/common/version"
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	root.AddCommand(versionCmd)
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Show component version",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(version.GetVersion())
-	},
+func NewVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show component version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(version.GetVersion())
+		},
+	}
 }

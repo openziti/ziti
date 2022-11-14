@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -16,7 +17,7 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
 	"github.com/michaelquigley/pfxlog"
@@ -25,17 +26,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var runCmd = &cobra.Command{
-	Use:     "run <config>",
-	Short:   "Auto-select interceptor",
-	Long:    "Provided for backwards compatibility with scripts that were coded around older ziti-tunnel versions.",
-	Args:    cobra.MaximumNArgs(1),
-	Run:     run,
-	PostRun: rootPostRun,
-}
-
-func init() {
-	root.AddCommand(runCmd)
+func NewRunCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "run <config>",
+		Short:   "Auto-select interceptor",
+		Long:    "Provided for backwards compatibility with scripts that were coded around older ziti-tunnel versions.",
+		Args:    cobra.MaximumNArgs(1),
+		Run:     run,
+		PostRun: rootPostRun,
+	}
 }
 
 func run(cmd *cobra.Command, args []string) {

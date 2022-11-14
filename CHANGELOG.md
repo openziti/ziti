@@ -14,6 +14,10 @@
 * Add `ziti controller` and `ziti router` commands
     * They should work exactly the same as `ziti-controller` and `ziti router` 
     * The standalone binaries for `ziti-controller` and `ziti-router` are deprecated and will be removed in a future release
+* Add hidden `ziti tunnel` command
+    * Should work exactly the same as `ziti-tunnel`
+    * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
+    * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
 
 # Release 0.26.11
 

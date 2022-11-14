@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
 	"github.com/openziti/edge/tunnel/intercept/proxy"
@@ -25,20 +25,19 @@ import (
 	"strconv"
 )
 
-var runProxyCmd = &cobra.Command{
-	Use:     "proxy <service-name:port> [sevice-name:port]",
-	Short:   "Run in 'proxy' mode",
-	Long:    "The 'proxy' intercept mode creates a network listener for each service that is intercepted.",
-	Args:    cobra.MinimumNArgs(1),
-	RunE:    runProxy,
-	PostRun: rootPostRun,
+func NewProxyCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:     "proxy <service-name:port> [sevice-name:port]",
+		Short:   "Run in 'proxy' mode",
+		Long:    "The 'proxy' intercept mode creates a network listener for each service that is intercepted.",
+		Args:    cobra.MinimumNArgs(1),
+		RunE:    runProxy,
+		PostRun: rootPostRun,
+	}
 }
 
-func init() {
-	root.AddCommand(runProxyCmd)
-}
-
-func runProxy(_ *cobra.Command, args []string) error {
+func runProxy(cmd *cobra.Command, args []string) error {
+	root := cmd.Root()
 	// Fiddle with the poll rate and resolver settings if the user didn't wan't anything special.
 	if !root.Flag(svcPollRateFlag).Changed {
 		_ = root.PersistentFlags().Set(svcPollRateFlag, strconv.FormatUint(math.MaxUint32, 10))

@@ -14,13 +14,12 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -45,7 +44,14 @@ const (
 	dnsSvcIpRangeFlag = "dnsSvcIpRange"
 )
 
-func init() {
+func NewTunnelCmd() *cobra.Command {
+	var root = &cobra.Command{
+		Use:              filepath.Base(os.Args[0]),
+		Short:            "Ziti Tunnel",
+		PersistentPreRun: rootPreRun,
+		Hidden:           true,
+	}
+
 	root.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose mode")
 	root.PersistentFlags().StringP("identity", "i", "", "Path to JSON file that contains an enrolled identity")
 	root.PersistentFlags().String("identity-dir", "", "Path to directory file that contains one or more enrolled identities")
@@ -58,12 +64,13 @@ func init() {
 
 	p := common.NewOptionsProvider(os.Stdout, os.Stderr)
 	root.AddCommand(enrollment.NewEnrollCommand(p))
-}
+	root.AddCommand(NewHostCmd())
+	root.AddCommand(NewProxyCmd())
+	root.AddCommand(NewRunCmd())
+	root.AddCommand(NewTProxyCmd())
+	root.AddCommand(NewVersionCmd())
 
-var root = &cobra.Command{
-	Use:              filepath.Base(os.Args[0]),
-	Short:            "Ziti Tunnel",
-	PersistentPreRun: rootPreRun,
+	return root
 }
 
 var interceptor intercept.Interceptor
@@ -72,7 +79,7 @@ var cliAgentEnabled bool
 var cliAgentAddr string
 
 func Execute() {
-	if err := root.Execute(); err != nil {
+	if err := NewTunnelCmd().Execute(); err != nil {
 		pfxlog.Logger().Errorf("error: %s", err)
 		os.Exit(1)
 	}
@@ -125,7 +132,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 	}
 
 	if idDir := cmd.Flag("identity-dir").Value.String(); idDir != "" {
-		files, err := ioutil.ReadDir(idDir)
+		files, err := os.ReadDir(idDir)
 		if err != nil {
 			log.Fatalf("failed to scan directory %s: %v", idDir, err)
 		}

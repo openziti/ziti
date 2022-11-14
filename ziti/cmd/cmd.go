@@ -31,6 +31,7 @@ import (
 	"github.com/openziti/ziti/ziti/controller"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/router"
+	"github.com/openziti/ziti/ziti/tunnel"
 	"github.com/openziti/ziti/ziti/util"
 	"io"
 	"os"
@@ -124,6 +125,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
 	controllerCmd := controller.NewRunCmd()
+	tunnelCmd := tunnel.NewTunnelCmd()
 	routerCmd := router.NewRunCmd()
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := NewCmdPKI(out, err)
@@ -159,6 +161,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 				agentCommands,
 				controllerCmd,
 				routerCmd,
+				tunnelCmd,
 				pkiCommands,
 				unwrapIdentityFileCommand,
 			},

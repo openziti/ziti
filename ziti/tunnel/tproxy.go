@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 /*
@@ -16,7 +17,7 @@
 	limitations under the License.
 */
 
-package subcmd
+package tunnel
 
 import (
 	"fmt"
@@ -24,17 +25,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var runTProxyCmd = &cobra.Command{
-	Use:     "tproxy",
-	Short:   "Use the 'tproxy' interceptor",
-	Long:    "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
-	RunE:    runTProxy,
-	PostRun: rootPostRun,
-}
-
-func init() {
+func NewTProxyCmd() *cobra.Command {
+	var runTProxyCmd = &cobra.Command{
+		Use:     "tproxy",
+		Short:   "Use the 'tproxy' interceptor",
+		Long:    "The 'tproxy' interceptor captures packets by using the TPROXY iptables target.",
+		RunE:    runTProxy,
+		PostRun: rootPostRun,
+	}
 	runTProxyCmd.PersistentFlags().String("lanIf", "", "if specified, INPUT rules for intercepted service addresses are assigned to this interface ")
-	root.AddCommand(runTProxyCmd)
+	return runTProxyCmd
 }
 
 func runTProxy(cmd *cobra.Command, args []string) error {
