@@ -29,7 +29,7 @@ var ExtraEdgeCommands []func(p common.OptionsProvider) *cobra.Command
 
 // NewCmdEdge creates a command object for the "controller" command
 func NewCmdEdge(out io.Writer, errOut io.Writer) *cobra.Command {
-	cmd := util.NewEmptyParentCmd("edge", "Interact with Ziti Edge Components")
+	cmd := util.NewEmptyParentCmd("edge", "Manage the Edge components of a Ziti network using the Ziti Edge REST API")
 	populateEdgeCommands(out, errOut, cmd)
 	return cmd
 }

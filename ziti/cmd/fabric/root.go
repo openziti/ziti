@@ -28,7 +28,7 @@ import (
 
 // NewFabricCmd creates a command object for the fabric command
 func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
-	fabricCmd := util.NewEmptyParentCmd("fabric", "Interact with Ziti Fabric Components")
+	fabricCmd := util.NewEmptyParentCmd("fabric", "Manage the Fabric components of a Ziti network using the Ziti Fabric REST and WebSocket APIs")
 
 	fabricCmd.AddCommand(newAddIdentityCmd(p), newRemoveIdentityCmd(p))
 	fabricCmd.AddCommand(newCreateCommand(p), newListCmd(p), newUpdateCommand(p), newDeleteCmd(p))
