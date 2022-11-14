@@ -1,3 +1,14 @@
+# Release 0.27.0
+
+## What's New
+
+* Ziti CLI
+    * The CLI has been cleaned up and unused, unusable and underused components have been removed
+
+## Ziti CLI
+
+* The update command has been removed. It was non-functional, so this should not affect anyone 
+
 # Release 0.26.11
 
 ## What's New

@@ -123,7 +123,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
-	updateCommands := NewCmdUpdate(out, err)
 	executeCommands := NewCmdExecute(out, err)
 	agentCommands := NewAgentCmd(p)
 	psCommands := NewCmdPs(p)
@@ -152,7 +151,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 			Commands: []*cobra.Command{
 				initCommands,
 				createCommands,
-				updateCommands,
 			},
 		},
 		{
