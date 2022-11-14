@@ -18,6 +18,7 @@
     * Should work exactly the same as `ziti-tunnel`
     * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
     * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
+* The db, log-format and unwrap commands have been moved under a new ops command
 
 # Release 0.26.11
 

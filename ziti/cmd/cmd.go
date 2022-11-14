@@ -133,9 +133,15 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	edgeCommand := edge.NewCmdEdge(out, err)
 	tutorialCmd := tutorial.NewTutorialCmd(p)
 	demoCmd := demo.NewDemoCmd(p)
-	logFilter := NewCmdLogFormat(out, err)
-	unwrapIdentityFileCommand := NewUnwrapIdentityFileCommand(out, err)
-	dbCommand := database.NewCmdDb(out, err)
+
+	opsCommands := &cobra.Command{
+		Use:   "ops ",
+		Short: "Various utilities useful when operating a Ziti network",
+	}
+
+	opsCommands.AddCommand(database.NewCmdDb(out, err))
+	opsCommands.AddCommand(NewCmdLogFormat(out, err))
+	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 
 	installCommands := []*cobra.Command{
 		NewCmdInstall(out, err),
@@ -161,7 +167,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 				routerCmd,
 				tunnelCmd,
 				pkiCommands,
-				unwrapIdentityFileCommand,
 			},
 		},
 		{
@@ -174,8 +179,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Utilities",
 			Commands: []*cobra.Command{
-				logFilter,
-				dbCommand,
+				opsCommands,
 			},
 		},
 		{
