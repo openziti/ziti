@@ -29,8 +29,8 @@ import (
 
 func NewControllerCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "ziti-controller",
-		Short: "Ziti Fabric Controller",
+		Use:   "controller",
+		Short: "Ziti Controller",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
@@ -46,8 +46,8 @@ func NewControllerCmd() *cobra.Command {
 			default:
 				// let logrus do its own thing
 			}
-			util.LogReleaseVersionCheck(constants.ZITI_CONTROLLER)
 
+			util.LogReleaseVersionCheck(constants.ZITI_CONTROLLER)
 		},
 	}
 

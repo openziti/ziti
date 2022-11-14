@@ -124,9 +124,9 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
-	controllerCmd := controller.NewRunCmd()
+	controllerCmd := controller.NewControllerCmd()
 	tunnelCmd := tunnel.NewTunnelCmd()
-	routerCmd := router.NewRunCmd()
+	routerCmd := router.NewRouterCmd()
 	agentCommands := agentcli.NewAgentCmd(p)
 	pkiCommands := NewCmdPKI(out, err)
 	fabricCommand := fabric.NewFabricCmd(p)

@@ -27,8 +27,8 @@ import (
 
 func NewRouterCmd() *cobra.Command {
 	var routerCmd = &cobra.Command{
-		Use:   "ziti-router",
-		Short: "Ziti Fabric Router",
+		Use:   "router",
+		Short: "Ziti Router",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if verbose {
 				logrus.SetLevel(logrus.DebugLevel)
@@ -44,8 +44,8 @@ func NewRouterCmd() *cobra.Command {
 			default:
 				// let logrus do its own thing
 			}
-			util.LogReleaseVersionCheck(constants.ZITI_ROUTER)
 
+			util.LogReleaseVersionCheck(constants.ZITI_ROUTER)
 		},
 	}
 
