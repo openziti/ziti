@@ -122,7 +122,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 
 	p := common.NewOptionsProvider(out, err)
 
-	initCommands := NewCmdInit(out, err)
 	createCommands := NewCmdCreate(out, err)
 	controllerCmd := controller.NewControllerCmd()
 	tunnelCmd := tunnel.NewTunnelCmd()
@@ -143,6 +142,14 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	opsCommands.AddCommand(NewCmdLogFormat(out, err))
 	opsCommands.AddCommand(NewUnwrapIdentityFileCommand(out, err))
 
+	learnCommands := &cobra.Command{
+		Use:   "learn ",
+		Short: "Tutorials and demos to help you learn about Ziti",
+	}
+
+	learnCommands.AddCommand(demoCmd)
+	learnCommands.AddCommand(tutorialCmd)
+
 	installCommands := []*cobra.Command{
 		NewCmdInstall(out, err),
 	}
@@ -155,7 +162,6 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Working with Ziti resources:",
 			Commands: []*cobra.Command{
-				initCommands,
 				createCommands,
 			},
 		},
@@ -185,8 +191,7 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 		{
 			Message: "Learning Ziti",
 			Commands: []*cobra.Command{
-				demoCmd,
-				tutorialCmd,
+				learnCommands,
 			},
 		},
 	}

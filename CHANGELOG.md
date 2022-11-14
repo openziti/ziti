@@ -19,6 +19,9 @@
     * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
     * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
 * The db, log-format and unwrap commands have been moved under a new ops command
+* The init, install, upgrade, uninstall, use and version commands have been removed
+    * These were used mange downloads of ziti executables and were not widely used
+* The demo and tutorial commands have been moved under the new learn subcommand
 
 # Release 0.26.11
 
