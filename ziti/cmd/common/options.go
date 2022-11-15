@@ -54,6 +54,15 @@ type CommonOptions struct {
 	Identity       string
 }
 
+func (options *CommonOptions) AddCommonFlags(cmd *cobra.Command) {
+	cmd.Flags().BoolVarP(&options.BatchMode, "batch-mode", "b", false, "In batch mode the command never prompts for user input")
+	cmd.Flags().BoolVarP(&options.Verbose, "verbose", "", false, "Enable verbose logging")
+	cmd.Flags().BoolVarP(&options.Staging, "staging", "", false, "Install/Upgrade components from the ziti-staging repo")
+	cmd.Flags().StringVarP(&options.ConfigIdentity, "configIdentity", "i", "", "Which configIdentity to use")
+	cmd.Flags().IntVarP(&options.Timeout, "timeout", "t", 5, "Timeout for REST operations (specified in seconds)")
+	options.Cmd = cmd
+}
+
 func (options *CommonOptions) TimeoutContext() (context.Context, context.CancelFunc) {
 	timeout := time.Duration(options.Timeout) * time.Second
 

@@ -14,9 +14,10 @@
 	limitations under the License.
 */
 
-package cmd
+package install
 
 import (
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
@@ -50,7 +51,7 @@ type InstallTerraformProviderEdgeControllerOptions struct {
 func NewCmdInstallTerraformProviderEdgeController(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallTerraformProviderEdgeControllerOptions{
 		InstallOptions: InstallOptions{
-			CommonOptions: CommonOptions{
+			CommonOptions: common.CommonOptions{
 				Out: out,
 				Err: errOut,
 			},

@@ -3,7 +3,7 @@
 ## What's New
 
 * Ziti CLI
-    * The CLI has been cleaned up and unused, unusable and underused components have been removed
+    * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
 
 ## Ziti CLI
 
@@ -19,8 +19,9 @@
     * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
     * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
 * The db, log-format and unwrap commands have been moved under a new ops command
-* The init, install, upgrade, uninstall, use and version commands have been removed
-    * These were used mange downloads of ziti executables and were not widely used
+* ziti executable download management has been deprecated
+    * The init and uninstall commands have been removed
+    * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
 * The demo and tutorial commands have been moved under the new learn subcommand
 
 # Release 0.26.11

@@ -14,19 +14,25 @@
 	limitations under the License.
 */
 
-package cmd
+package install
 
 import (
+	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
+	"github.com/openziti/ziti/ziti/util"
 	"io"
+	"os"
+	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
 
 // InstallOptions are the flags for delete commands
 type InstallOptions struct {
-	CommonOptions
+	common.CommonOptions
 }
 
 var (
@@ -40,10 +46,26 @@ var (
 	`)
 )
 
+// GetCommandOutput evaluates the given command and returns the trimmed output
+func (options *InstallOptions) GetCommandOutput(dir string, name string, args ...string) (string, error) {
+	os.Setenv("PATH", util.PathWithBinary())
+	e := exec.Command(name, args...)
+	if dir != "" {
+		e.Dir = dir
+	}
+	data, err := e.CombinedOutput()
+	text := string(data)
+	text = strings.TrimSpace(text)
+	if err != nil {
+		return "", fmt.Errorf("command failed '%s %s': %s %s", name, strings.Join(args, " "), text, err)
+	}
+	return text, err
+}
+
 // NewCmdInstall creates the command
 func NewCmdInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &InstallOptions{
-		CommonOptions{
+		common.CommonOptions{
 			Out: out,
 			Err: errOut,
 		},
@@ -62,7 +84,16 @@ func NewCmdInstall(out io.Writer, errOut io.Writer) *cobra.Command {
 			cmdhelper.CheckErr(err)
 		},
 		SuggestFor: []string{"up"},
+		Hidden:     true,
 	}
+
+	cmd.AddCommand(NewCmdInstallZitiALL(out, errOut))
+
+	cmd.AddCommand(NewCmdInstallZitiController(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiRouter(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiTunnel(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiEdgeTunnel(out, errOut))
+	cmd.AddCommand(NewCmdInstallZitiProxC(out, errOut))
 
 	cmd.AddCommand(NewCmdInstallTerraformProviderEdgeController(out, errOut))
 

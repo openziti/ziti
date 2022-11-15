@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package cmd
+package install
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ import (
 )
 
 // installRequirements installs any requirements needed to run the ziti CLI
-func (o *CommonOptions) installRequirements(extraDependencies ...string) error {
+func (o *InstallOptions) installRequirements(extraDependencies ...string) error {
 	var deps []string
 
 	for _, dep := range extraDependencies {
@@ -42,7 +42,7 @@ func (o *CommonOptions) installRequirements(extraDependencies ...string) error {
 	return o.installMissingDependencies(deps)
 }
 
-func (o *CommonOptions) addRequiredBinary(binName string, deps []string) []string {
+func (o *InstallOptions) addRequiredBinary(binName string, deps []string) []string {
 	d := binaryShouldBeInstalled(binName)
 	if d != "" && util.StringArrayIndex(deps, d) < 0 {
 		deps = append(deps, d)
@@ -87,7 +87,7 @@ func isBinaryInstalled(d string) bool {
 	return false
 }
 
-func (o *CommonOptions) deleteInstalledBinary(d string) bool {
+func (o *InstallOptions) deleteInstalledBinary(d string) bool {
 	binDir, err := util.BinaryLocation()
 	if err == nil {
 		exists, err := util.FileExists(filepath.Join(binDir, d))
@@ -103,7 +103,7 @@ func (o *CommonOptions) deleteInstalledBinary(d string) bool {
 	return false
 }
 
-func (o *CommonOptions) installMissingDependencies(deps []string) error {
+func (o *InstallOptions) installMissingDependencies(deps []string) error {
 
 	if len(deps) == 0 {
 		return nil
@@ -123,7 +123,7 @@ func (o *CommonOptions) installMissingDependencies(deps []string) error {
 	return o.doInstallMissingDependencies(install)
 }
 
-func (o *CommonOptions) doInstallMissingDependencies(install []string) error {
+func (o *InstallOptions) doInstallMissingDependencies(install []string) error {
 
 	for _, i := range install {
 		var err error
@@ -140,11 +140,11 @@ func (o *CommonOptions) doInstallMissingDependencies(install []string) error {
 	return nil
 }
 
-func (o *CommonOptions) installAWSCli() error {
+func (o *InstallOptions) installAWSCli() error {
 	return fmt.Errorf("Ziti's ability to auto-install the AWS CLI is curently un-implemented; For now, you must manually install the AWS CLI")
 }
 
-func (o *CommonOptions) shouldInstallBinary(binDir string, name string) (fileName string, download bool, err error) {
+func (o *InstallOptions) shouldInstallBinary(binDir string, name string) (fileName string, download bool, err error) {
 	fileName = name
 	download = false
 	if runtime.GOOS == "windows" {
@@ -169,7 +169,7 @@ func (o *CommonOptions) shouldInstallBinary(binDir string, name string) (fileNam
 	return
 }
 
-func (o *CommonOptions) downloadFile(clientURL string, fullPath string) error {
+func (o *InstallOptions) downloadFile(clientURL string, fullPath string) error {
 	log.Infof("Downloading %s to %s...\n", util.ColorInfo(clientURL), util.ColorInfo(fullPath))
 	err := util.DownloadFile(fullPath, clientURL)
 	if err != nil {
@@ -179,23 +179,23 @@ func (o *CommonOptions) downloadFile(clientURL string, fullPath string) error {
 	return nil
 }
 
-func (o *CommonOptions) getLatestZitiVersion(branch string) (semver.Version, error) {
+func (o *InstallOptions) getLatestZitiVersion(branch string) (semver.Version, error) {
 	return util.GetLatestVersionFromArtifactory(o.Verbose, o.Staging, branch, c.ZITI)
 }
 
-func (o *CommonOptions) getLatestZitiAppVersion(branch string, zitiApp string) (semver.Version, error) {
+func (o *InstallOptions) getLatestZitiAppVersion(branch string, zitiApp string) (semver.Version, error) {
 	return util.GetLatestVersionFromArtifactory(o.Verbose, o.Staging, branch, zitiApp)
 }
 
-func (o *CommonOptions) getLatestZitiAppVersionForBranch(branch string, zitiApp string) (semver.Version, error) {
+func (o *InstallOptions) getLatestZitiAppVersionForBranch(branch string, zitiApp string) (semver.Version, error) {
 	return util.GetLatestVersionFromArtifactory(o.Verbose, o.Staging, branch, zitiApp)
 }
 
-func (o *CommonOptions) getLatestTerraformProviderVersion(branch string, provider string) (semver.Version, error) {
+func (o *InstallOptions) getLatestTerraformProviderVersion(branch string, provider string) (semver.Version, error) {
 	return util.GetLatestTerraformProviderVersionFromArtifactory(branch, provider)
 }
 
-func (o *CommonOptions) getLatestGitHubReleaseVersion(zitiApp string) (semver.Version, error) {
+func (o *InstallOptions) getLatestGitHubReleaseVersion(zitiApp string) (semver.Version, error) {
 	var result semver.Version
 	release, err := util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
 	if release != nil {
@@ -204,11 +204,11 @@ func (o *CommonOptions) getLatestGitHubReleaseVersion(zitiApp string) (semver.Ve
 	return result, err
 }
 
-func (o *CommonOptions) getHighestVersionGitHubReleaseInfo(zitiApp string) (*util.GitHubReleasesData, error) {
+func (o *InstallOptions) getHighestVersionGitHubReleaseInfo(zitiApp string) (*util.GitHubReleasesData, error) {
 	return util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
 }
 
-func (o *CommonOptions) getCurrentZitiSnapshotList() ([]string, error) {
+func (o *InstallOptions) getCurrentZitiSnapshotList() ([]string, error) {
 	children, err := util.GetCurrentSnapshotListFromArtifactory(o.Verbose)
 
 	list := make([]string, 0)
@@ -222,7 +222,7 @@ func (o *CommonOptions) getCurrentZitiSnapshotList() ([]string, error) {
 	return list, err
 }
 
-func (o *CommonOptions) installZitiApp(branch string, zitiApp string, upgrade bool, version string) error {
+func (o *InstallOptions) installZitiApp(branch string, zitiApp string, upgrade bool, version string) error {
 	binDir, err := util.BinaryLocation()
 	if err != nil {
 		return err
@@ -280,7 +280,7 @@ func (o *CommonOptions) installZitiApp(branch string, zitiApp string, upgrade bo
 	return os.Chmod(fullPath, 0755)
 }
 
-func (o *CommonOptions) installTerraformProvider(branch string, provider string, upgrade bool, version string) error {
+func (o *InstallOptions) installTerraformProvider(branch string, provider string, upgrade bool, version string) error {
 	resty.SetDebug(o.Verbose)
 	binDir, err := util.TerraformProviderBinaryLocation()
 	if err != nil {
@@ -330,7 +330,7 @@ func (o *CommonOptions) installTerraformProvider(branch string, provider string,
 	return os.Chmod(fileToChmod, 0755)
 }
 
-func (o *CommonOptions) findVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, upgrade bool, version string) error {
+func (o *InstallOptions) findVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, upgrade bool, version string) error {
 	var latestVersion semver.Version
 	var err error
 	if version != "" {
@@ -356,7 +356,7 @@ func (o *CommonOptions) findVersionAndInstallGitHubRelease(zitiApp string, zitiA
 	return o.installGitHubRelease(zitiApp, upgrade, release)
 }
 
-func (o *CommonOptions) installGitHubRelease(zitiApp string, upgrade bool, release *util.GitHubReleasesData) error {
+func (o *InstallOptions) installGitHubRelease(zitiApp string, upgrade bool, release *util.GitHubReleasesData) error {
 	binDir, err := util.BinaryLocation()
 	if err != nil {
 		return err

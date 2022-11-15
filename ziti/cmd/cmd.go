@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/demo"
 	"github.com/openziti/ziti/ziti/cmd/edge"
 	"github.com/openziti/ziti/ziti/cmd/fabric"
+	"github.com/openziti/ziti/ziti/cmd/install"
 	"github.com/openziti/ziti/ziti/cmd/templates"
 	"github.com/openziti/ziti/ziti/cmd/tutorial"
 	c "github.com/openziti/ziti/ziti/constants"
@@ -151,7 +152,10 @@ func NewCmdRoot(in io.Reader, out, err io.Writer, cmd *cobra.Command) *cobra.Com
 	learnCommands.AddCommand(tutorialCmd)
 
 	installCommands := []*cobra.Command{
-		NewCmdInstall(out, err),
+		install.NewCmdInstall(out, err),
+		install.NewCmdUpgrade(out, err),
+		install.NewCmdUse(out, err),
+		install.NewCmdVersion(out, err),
 	}
 
 	groups := templates.CommandGroups{
