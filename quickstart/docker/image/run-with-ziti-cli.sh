@@ -29,7 +29,7 @@ if [[ -f "${initFile}" ]]; then
 fi
 
 # give the controller scripts time to start and create the ziti environment file if running in docker compose 
-until $(test -f "${ZITI_HOME}/ziti.env"); do echo "waiting for ziti.env..."; sleep 1; done
+until $(test -f "${ZITI_HOME}/ziti.env"); do echo "waiting for ziti.env..."; sleep 2; done
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 

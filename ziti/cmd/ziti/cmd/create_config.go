@@ -132,11 +132,12 @@ type RouterTemplateValues struct {
 }
 
 type EdgeRouterTemplateValues struct {
-	Hostname       string
-	Port           string
-	IPOverride     string
-	AdvertisedHost string
-	LanInterface   string
+	Hostname         string
+	Port             string
+	IPOverride       string
+	AdvertisedHost   string
+	LanInterface     string
+	ListenerBindPort string
 }
 
 type WSSRouterTemplateValues struct {
@@ -162,7 +163,6 @@ type RouterForwarderTemplateValues struct {
 type RouterListenerTemplateValues struct {
 	ConnectTimeout    time.Duration
 	GetSessionTimeout time.Duration
-	BindPort          int
 	OutQueueSize      int
 }
 
@@ -256,6 +256,9 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	zitiEdgeRouterEnrollmentDuration, err := cmdhelper.GetZitiEdgeRouterEnrollmentDuration()
 	handleVariableError(err, constants.ZitiEdgeRouterEnrollmentDurationVarName)
 
+	zitiEdgeRouterListenerBindPort, err := cmdhelper.GetZitiEdgeRouterListenerBindPort()
+	handleVariableError(err, constants.ZitiEdgeRouterListenerBindPortVarName)
+
 	data.ZitiHome = zitiHome
 	data.Hostname = hostname
 	data.Controller.Name = zitiCtrlHostname
@@ -265,6 +268,7 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	data.Controller.Edge.ListenerHostPort = zitiEdgeCtrlListenerHostPort
 	data.Controller.Edge.AdvertisedHostPort = zitiEdgeCtrlAdvertisedHostPort
 	data.Router.Edge.Port = zitiEdgeRouterPort
+	data.Router.Edge.ListenerBindPort = zitiEdgeRouterListenerBindPort
 	data.Controller.Edge.AdvertisedPort = zitiEdgeCtrlAdvertisedPort
 	data.Controller.EdgeIdentityDuration = zitiEdgeIdentityEnrollmentDuration
 	data.Controller.EdgeRouterDuration = zitiEdgeRouterEnrollmentDuration
@@ -273,7 +277,6 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 }
 
 func (data *ConfigTemplateValues) populateDefaults() {
-	data.Router.Listener.BindPort = constants.DefaultListenerBindPort
 	data.Router.Listener.GetSessionTimeout = constants.DefaultGetSessionTimeout
 
 	data.Controller.MinQueuedConnects = channel.MinQueuedConnects

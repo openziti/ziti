@@ -78,6 +78,7 @@ func buildDockerQuickstartTestImage() {
 	defer tw.Close()
 
 	dockerFile := "TestDockerfile"
+	imageNameAndTag := "openziti/quickstart:test"
 
 	filePaths := iterateDir(dir)
 
@@ -99,13 +100,27 @@ func buildDockerQuickstartTestImage() {
 		Context:    dockerFileTarReader,
 		Dockerfile: dockerFile,
 		Remove:     true,
-		Tags:       []string{"openziti/quickstart:test"},
+		Tags:       []string{imageNameAndTag},
 	})
 	if err != nil {
 		fmt.Println(err)
 		log.Fatal("Failed to build dockerfile")
 	}
 	defer imageBuildResponse.Body.Close()
+
+	// Wait until the image finishes building (builds in a background thread)
+	for {
+		fmt.Println("Waiting for image build...")
+		output, err := exec.Command("docker", "images", "-q", imageNameAndTag).Output()
+		if err != nil {
+			fmt.Println(err)
+		}
+		if string(output) != "" {
+			fmt.Println("Build complete, continuing with test")
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
 
 	danglers := filters.NewArgs()
 	danglers.Add("dangling", "true")
@@ -224,7 +239,7 @@ func TestQuickStartEnvFile(t *testing.T) {
 
 	// Wait until it finishes
 	for {
-		time.Sleep(1)
+		time.Sleep(1 * time.Second)
 		output, _ := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerId).Output()
 		if string(output) == "false\n" {
 			break
@@ -299,6 +314,7 @@ func TestSimpleWebService(t *testing.T) {
 	bindHostAddress := "web-test-blue"
 	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
+	wd, _ := os.Getwd()
 	waitForController(ctrlAddress)
 	// Give routers time to enroll themselves
 	time.Sleep(5 * time.Second)
@@ -376,7 +392,7 @@ func TestSimpleWebService(t *testing.T) {
 		fmt.Println("Unable to detect a terminator for the edge router")
 	}
 	helloUrl := fmt.Sprintf("http://%s:%d", serviceName, dialPort)
-	httpClient := createZitifiedHttpClient("/Users/geoffberl/git/NetFoundry/ziti/quickstart/" + testerUsername + ".json")
+	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
 		panic(e)

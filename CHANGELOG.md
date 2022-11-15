@@ -1,3 +1,11 @@
+# Release 0.26.12
+
+## What's New
+
+- Ziti CLI
+  - Enhancements:
+    - [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+
 # Release 0.26.11
 
 ## What's New

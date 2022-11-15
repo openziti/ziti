@@ -105,6 +105,10 @@ func GetZitiEdgeRouterPort() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterPortVarName, constants.DefaultZitiEdgeRouterPort)
 }
 
+func GetZitiEdgeRouterListenerBindPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterListenerBindPortVarName, constants.DefaultZitiEdgeRouterListenerBindPort)
+}
+
 func GetZitiEdgeCtrlListenerHostPort() (string, error) {
 	// Get the edge controller port to use as the default
 	edgeCtrlPort, err := GetZitiEdgeCtrlAdvertisedPort()
