@@ -52,12 +52,15 @@ type IdentityLinkFactoryImpl struct {
 
 func (factory *IdentityLinkFactoryImpl) Links(entity models.Entity) rest_model.Links {
 	links := factory.BasicLinkFactory.Links(entity)
-	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
+	links[EntityNameEdgeRouterPolicy] = factory.NewNestedLink(entity, EntityNameEdgeRouterPolicy)
+	links[EntityNameEdgeRouter] = factory.NewNestedLink(entity, EntityNameEdgeRouter)
 	links[EntityNameServicePolicy] = factory.NewNestedLink(entity, EntityNameServicePolicy)
+	links[EntityNameService] = factory.NewNestedLink(entity, EntityNameService)
 	links[EntityNamePostureData] = factory.NewNestedLink(entity, EntityNamePostureData)
 	links[EntityNameFailedServiceRequest] = factory.NewNestedLink(entity, EntityNameFailedServiceRequest)
 	links[EntityNameAuthenticator] = factory.NewNestedLink(entity, EntityNameAuthenticator)
 	links[EntityNameEnrollment] = factory.NewNestedLink(entity, EntityNameEnrollment)
+	links["service-configs"] = factory.NewNestedLink(entity, "service-configs")
 
 	if identity, ok := entity.(*model.Identity); ok && identity != nil {
 		links[EntityNameAuthPolicy] = AuthPolicyLinkFactory.SelfLinkFromId(identity.AuthPolicyId)
