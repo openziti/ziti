@@ -54,7 +54,7 @@ if [ -d "${ZITI_DOCKER_ROOT}/image/ziti.ignore" ]; then
   rm -rf "${ZITI_DOCKER_ROOT}/image/ziti.ignore"
 fi
 
-docker run --rm -it openziti/quickstart:dev /openziti/ziti-bin/ziti version
+echo "Ziti Version: $(docker run --rm -it openziti/quickstart:dev /openziti/ziti-bin/ziti --version)"
 
 vers="$(echo "${ZITI_BINARIES_VERSION}" | cut -c 2-100)"
 docker tag "openziti/quickstart:dev" "openziti/quickstart:dev"
