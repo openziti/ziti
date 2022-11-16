@@ -508,9 +508,9 @@ function ziti_expressConfiguration {
   returnCnt=$((returnCnt + $?))
   _portCheck "ZITI_EDGE_CONTROLLER_PORT" "Edge Controller"
   returnCnt=$((returnCnt + $?))
-  _portcheck "ZITI_CTRL_MGMT_PORT" "Controller Management Plane"
+  _portCheck "ZITI_CTRL_MGMT_PORT" "Controller Management Plane"
   returnCnt=$((returnCnt + $?))
-  _portcheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
+  _portCheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
   returnCnt=$((returnCnt + $?))
   if [[ "returnCnt" -gt "0" ]]; then return 1; fi
 
