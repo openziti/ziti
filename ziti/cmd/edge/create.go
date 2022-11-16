@@ -43,13 +43,14 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateConfigTypeCmd(out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterCmd(out, errOut))
 	cmd.AddCommand(newCreateEdgeRouterPolicyCmd(out, errOut))
-	cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
+	cmd.AddCommand(newCreateEnrollmentCmd(out, errOut))
 	cmd.AddCommand(newCreateIdentityCmd(out, errOut))
+	cmd.AddCommand(newCreatePostureCheckCmd(out, errOut))
 	cmd.AddCommand(newCreateServiceCmd(out, errOut))
 	cmd.AddCommand(newCreateServiceEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateServicePolicyCmd(out, errOut))
-	cmd.AddCommand(newCreatePostureCheckCmd(out, errOut))
-	cmd.AddCommand(newCreateEnrollmentCmd(out, errOut))
+	cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
+	cmd.AddCommand(newCreateTransitRouterCmd(out, errOut))
 
 	return cmd
 }

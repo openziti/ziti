@@ -4,6 +4,7 @@
 
 * Ziti CLI
     * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
+    * Add create/delete transit-router CLI commands
 
 ## Ziti CLI
 
@@ -24,6 +25,7 @@
     * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
 * The demo and tutorial commands have been moved under the new learn subcommand
 * `ziti edge enroll` now has a verbose option for additional debugging
+* The `ziti edge` CLI now support create/delete transit-router. This allows transit/fabric routers to be provisioned using an enrollment process, rather than requiring certs to be created externally. Note that this requires that the fabric router config file has a `csr` section.
 
 # Release 0.26.11
 
