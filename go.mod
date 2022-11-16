@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.19
+go 1.18
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -38,7 +38,7 @@ require (
 	github.com/openziti/identity v1.0.22
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.1.6
-	github.com/openziti/sdk-golang v0.16.150
+	github.com/openziti/sdk-golang v0.16.151
 	github.com/openziti/storage v0.1.26
 	github.com/openziti/transport/v2 v2.0.40
 	github.com/openziti/x509-claims v1.0.3
@@ -108,7 +108,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.9 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.10 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
