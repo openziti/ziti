@@ -21,6 +21,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"github.com/openziti/ziti/ziti/pki/certificate"
 	"io"
 	"io/ioutil"
 	"math/big"
@@ -31,8 +32,6 @@ import (
 	"time"
 
 	"crypto/x509"
-
-	"github.com/openziti/ziti/ziti/pki/certificate"
 )
 
 // Predifined directory names.
@@ -424,16 +423,16 @@ func (l *Local) Revoked(caName string) ([]pkix.RevokedCertificate, error) {
 
 // InitCADir creates the basic structure of a CA subdirectory.
 //
-//   |- crlnumber
-//   |- index.txt
-//   |- index.txt.attr
-//   |- serial
-//   |- certs/
-//     |- ca.cert
-//     |- name.cert
-//   |- keys/
-//     |- ca.key
-//     |- name.key
+//	|- crlnumber
+//	|- index.txt
+//	|- index.txt.attr
+//	|- serial
+//	|- certs/
+//	  |- ca.cert
+//	  |- name.cert
+//	|- keys/
+//	  |- ca.key
+//	  |- name.key
 func InitCADir(path string) error {
 	if _, err := os.Stat(path); err == nil {
 		return nil

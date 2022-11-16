@@ -1,3 +1,29 @@
+# Release 0.27.0
+
+## What's New
+
+* Ziti CLI
+    * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
+
+## Ziti CLI
+
+* The update command has been removed. It was non-functional, so this should not affect anyone 
+* The adhoc, ping and playbook commands have been removed. These were ansible and vagrant commands that were not widely used.
+* Make the art command hidden, doesn't need to be removed, leave it as an easter egg
+* Move ziti ps command under ziti agent. Remove all ziti ps subcommands, as they already exist as ziti agent subcommands
+* Add `ziti controller` and `ziti router` commands
+    * They should work exactly the same as `ziti-controller` and `ziti router` 
+    * The standalone binaries for `ziti-controller` and `ziti-router` are deprecated and will be removed in a future release
+* Add hidden `ziti tunnel` command
+    * Should work exactly the same as `ziti-tunnel`
+    * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
+    * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
+* The db, log-format and unwrap commands have been moved under a new ops command
+* ziti executable download management has been deprecated
+    * The init and uninstall commands have been removed
+    * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
+* The demo and tutorial commands have been moved under the new learn subcommand
+
 # Release 0.26.11
 
 ## What's New

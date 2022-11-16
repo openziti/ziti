@@ -19,9 +19,8 @@ package store
 
 import (
 	"crypto/x509/pkix"
-	"math/big"
-
 	"github.com/openziti/ziti/ziti/pki/certificate"
+	"math/big"
 )
 
 // Store reprents a way to store a Certificate Authority.

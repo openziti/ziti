@@ -17,7 +17,7 @@ Build Docker Image For Publication
 1. issue this function to pull the latest ziti binaries: `getLatestZiti`
 1. move the ziti binaries: `mv ziti-bin/ziti image/ziti.ignore/`
 1. build the docker image: `docker build image -t openziti/quickstart`
-1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti version`
+1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti --version`
 1. cleanup: `rm ziti-*tar.gz; rm -rf ziti-bin`
 2. 
 Push Docker Image to dockerhub
