@@ -265,8 +265,7 @@ func runPolicyAdvisorForIdentity(identityId string, o *policyAdvisorOptions) err
 	skip := 0
 	done := false
 	for !done {
-		filter := "true limit 2"
-		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
+		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterSubEntitiesOfType("identities", "services", identityId, filter, &o.Options)
 		if err != nil {
 			return err
@@ -300,8 +299,7 @@ func runPolicyAdvisorForService(serviceId string, o *policyAdvisorOptions) error
 	skip := 0
 	done := false
 	for !done {
-		filter := "true limit 2"
-		filter = fmt.Sprintf(`true skip %v limit 2`, skip)
+		filter := fmt.Sprintf(`true skip %v limit 2`, skip)
 		children, _, err := filterSubEntitiesOfType("services", "identities", serviceId, filter, &o.Options)
 		if err != nil {
 			return err
