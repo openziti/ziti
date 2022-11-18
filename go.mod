@@ -38,7 +38,7 @@ require (
 	github.com/openziti/identity v1.0.22
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.1.6
-	github.com/openziti/sdk-golang v0.16.151
+	github.com/openziti/sdk-golang v0.17.0
 	github.com/openziti/storage v0.1.26
 	github.com/openziti/transport/v2 v2.0.40
 	github.com/openziti/x509-claims v1.0.3
@@ -54,7 +54,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2
+	golang.org/x/crypto v0.1.0
 	golang.org/x/net v0.2.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.2.0
@@ -117,8 +117,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	golang.org/x/mod v0.5.1 // indirect
+	golang.org/x/exp v0.0.0-20221031165847-c99f073a8326 // indirect
+	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/tools v0.1.7 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	golang.org/x/tools v0.2.0 // indirect
 )
