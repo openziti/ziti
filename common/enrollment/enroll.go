@@ -111,6 +111,7 @@ func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&action.Username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
 	enrollSubCmd.Flags().StringVarP(&action.Password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
 	enrollSubCmd.Flags().BoolVar(&action.RemoveJwt, "rm", false, "Remove the JWT on success")
+	enrollSubCmd.Flags().BoolVarP(&action.Verbose, "verbose", "v", false, "Enable verbose logging")
 
 	action.KeyAlg.Set("RSA") // set default
 	enrollSubCmd.Flags().VarP(&action.KeyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
@@ -170,6 +171,7 @@ func (e *EnrollAction) Run() error {
 		AdditionalCAs: e.CaOverride,
 		Username:      e.Username,
 		Password:      e.Password,
+		Verbose:       e.Verbose,
 	}
 
 	if tkn.EnrollmentMethod == "updb" {

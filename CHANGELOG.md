@@ -23,6 +23,7 @@
     * The init and uninstall commands have been removed
     * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
 * The demo and tutorial commands have been moved under the new learn subcommand
+* `ziti edge enroll` now has a verbose option for additional debugging
 
 # Release 0.26.11
 
