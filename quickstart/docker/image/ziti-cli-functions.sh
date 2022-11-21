@@ -2,8 +2,10 @@
 
 set -uo pipefail
 
+ZITI_HOSTNAME="$(hostname -s)"
+
 # shellcheck disable=SC2155
-export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/$(hostname)"
+export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${ZITI_HOSTNAME}"
 
 export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
@@ -69,7 +71,7 @@ function startZitiController {
 }
 
 function stopZitiController {
-  killall ziti-controller
+  pkill ziti-controller
   # shellcheck disable=SC2181
   if [[ $? == 0 ]]; then echo "Controller stopped."; fi
 }
@@ -83,7 +85,7 @@ function startExpressEdgeRouter {
 }
 
 function stopAllEdgeRouters {
-  killall ziti-router
+  pkill ziti-router
   # shellcheck disable=SC2181
   if [[ $? == 0 ]]; then echo "Router(s) stopped."; fi
 }
@@ -138,7 +140,7 @@ function verifyZitiVersionExists {
 
   unset ZITI_BINARIES_VERSION
 
-  ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
+  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
   # shellcheck disable=SC2155
   export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
   # shellcheck disable=SC2155
@@ -146,6 +148,7 @@ function verifyZitiVersionExists {
 
   # Check if there was an error while trying to get the requested version
   if [[ "${ZITI_BINARIES_VERSION-}" == "null" ]]; then
+    echo "ERROR: response missing '.tag_name': ${ziticurl}" >&2
     return 1
   fi
 
@@ -178,7 +181,7 @@ function getLatestZitiVersion {
   unset ZITI_BINARIES_VERSION
 
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
-    zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
+    zitilatest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
     # shellcheck disable=SC2155
     export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
@@ -323,15 +326,15 @@ function setupZitiNetwork {
     echo "Creating a controller is effectively creating a network. The name of the network will be used when writing"
     echo "configuration files locally. Choose the name of your network now. The format of the network name should resemble"
     echo -n "what a hostname looks like. A good choice is to actually use your system's hostname: "
-    echo -e "$(BLUE "$(hostname)")"
+    echo -e "$(BLUE "${ZITI_HOSTNAME}")"
     echo " "
-    echo -en "$(echo -ne "Network Name [$(BLUE "$(hostname)")]: ")"
+    echo -en "$(echo -ne "Network Name [$(BLUE "${ZITI_HOSTNAME}")]: ")"
     read -r ZITI_NETWORK
     echo " "
     if checkControllerName; then
       : #clear to continue
       if [[ "${ZITI_NETWORK-}" == "" ]]; then
-        ZITI_NETWORK="$(hostname)"
+        ZITI_NETWORK="${ZITI_HOSTNAME}"
       fi
       echo "name: ${ZITI_NETWORK-}"
     else
@@ -451,7 +454,7 @@ function ziti_expressConfiguration {
   echo " "
   echo -e "******** Setting Up Environment ********"
   if [[ "${1-}" == "" ]]; then
-    nw="$(hostname)"
+    nw="${ZITI_HOSTNAME}"
   else
     nw="${1-}"
   fi
@@ -718,7 +721,7 @@ function createRouterPki {
   export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
   export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
   export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
-  pki_client_server "${router_name},localhost,127.0.0.1,$(hostname)" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
+  pki_client_server "${router_name},localhost,127.0.0.1,${ZITI_HOSTNAME}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
 }
 
 function createPrivateRouterConfig {
@@ -781,7 +784,7 @@ function createPki {
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,$(hostname)"
+  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,${ZITI_HOSTNAME}"
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
   if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
   pki_allow_list_ip="127.0.0.1"
@@ -966,7 +969,7 @@ function ziti_createEnvFile {
   if [[ "${retVal}" != 0 ]]; then
     if decideToUseDefaultZitiHome; then
       # shellcheck disable=SC2155
-      export ZITI_NETWORK="$(hostname)"
+      export ZITI_NETWORK="${ZITI_HOSTNAME}"
       ZITI_HOME="${DEFAULT_ZITI_HOME_LOCATION}"
     else
       return 1
@@ -998,16 +1001,16 @@ function ziti_createEnvFile {
       export ZITI_NETWORK="${1-}"
     fi
     if [[ "${ZITI_NETWORK-}" = "" ]]; then
-      echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)")"
+      echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: ${ZITI_HOSTNAME}")"
       # shellcheck disable=SC2155
-      export ZITI_NETWORK="$(hostname)"
+      export ZITI_NETWORK="${ZITI_HOSTNAME}"
     fi
   fi
 
   echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
 
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
-  if [[ "${ZITI_PWD-}" == "" ]]; then export ZITI_PWD="admin"; fi
+  if [[ "${ZITI_PWD-}" == "" ]]; then export ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c${1:-32})"; fi
   if [[ "${ZITI_DOMAIN_SUFFIX-}" == "" ]]; then export ZITI_DOMAIN_SUFFIX=""; fi
   if [[ "${ZITI_ID-}" == "" ]]; then export ZITI_ID="${ZITI_HOME}/identities.yaml"; fi
 
