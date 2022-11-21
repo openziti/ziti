@@ -447,8 +447,8 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel/v2 v2.0.15 h1:y1YwewnZTPTPtE3YVjaVpOWGoqJ3+I8+7KqQB4D3poQ=
 github.com/openziti/channel/v2 v2.0.15/go.mod h1:LdoKRnefknW4WllUyHJtvKDtKK716lYdHqApKbBy3rk=
-github.com/openziti/fabric v0.21.20 h1:weLMZKripHqoRK9/9yeJK23nh0XdaglYOxhcWXERd1M=
-github.com/openziti/fabric v0.21.20/go.mod h1:46yKyWLsfzRkRycnKMWi/xFsPUnutE9pOzs4byk8+f0=
+github.com/openziti/fabric v0.21.21 h1:vswdjm4xvZuCps62S4JjZZyA43YYLgc0uOCx6tdXWUY=
+github.com/openziti/fabric v0.21.21/go.mod h1:F6L8c4AnNOACdx2IJqSW2JLG6J3Gm798BLL58sBYtZY=
 github.com/openziti/foundation/v2 v2.0.7 h1:QtpP0ntUhr/7uLR1iM7eEkrusQ2b2ZqTblgdq8cac9Y=
 github.com/openziti/foundation/v2 v2.0.7/go.mod h1:Z0gnQsGJb/H/B+pixLtmCIpw1dBllD4QoT6LeD35WzA=
 github.com/openziti/identity v1.0.23 h1:SJ2UN3qCiUKwuwFc0dr3nuHyKvhOr5aN5bEJa2wY9Sw=
@@ -469,8 +469,8 @@ github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0c
 github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
 github.com/orcaman/concurrent-map/v2 v2.0.0 h1:iSMwuBQvQ1nX5i9gYuGMiSy0fjWHmazdjF+NdSO9JzI=
 github.com/orcaman/concurrent-map/v2 v2.0.0/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
-github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 h1:CUvH4JL/8OVy023LMER3dB/MerNQ6OIz4QV3E/JQ3UY=
-github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373/go.mod h1:gLH27qo/dvMhLTVVyMELpe3Tut7sOfkiDg7ZpeqKwsw=
+github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 h1:mOvehYivJ4Aqu2CPe3D3lv8jhqOI9/1o0THxJHBE0qw=
+github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9/go.mod h1:gLH27qo/dvMhLTVVyMELpe3Tut7sOfkiDg7ZpeqKwsw=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0 h1:cBOtyMzM9HTpWjXfbbunk26uA6nG3a8n06Wieeh0MwY=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
