@@ -7,7 +7,7 @@ require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.6.1
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/cenkalti/backoff/v4 v4.1.3
+	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/coreos/go-iptables v0.6.0
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
