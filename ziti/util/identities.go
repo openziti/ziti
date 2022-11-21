@@ -13,7 +13,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -81,7 +81,7 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 	rootCaPool := x509.NewCertPool()
 
-	rootPemData, err := ioutil.ReadFile(self.CaCert)
+	rootPemData, err := os.ReadFile(self.CaCert)
 	if err != nil {
 		return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
 	}
@@ -255,7 +255,7 @@ func LoadRestClientConfig() (*RestClientConfig, string, error) {
 		}
 		return nil, "", errors.Wrapf(err, "error while statting config file %v", configFile)
 	}
-	result, err := ioutil.ReadFile(configFile)
+	result, err := os.ReadFile(configFile)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "error while reading config file %v", configFile)
 	}
@@ -295,7 +295,7 @@ func PersistRestClientConfig(config *RestClientConfig) error {
 		return errors.Wrap(err, "error while marshalling config to JSON")
 	}
 
-	err = ioutil.WriteFile(configFile, data, 0600)
+	err = os.WriteFile(configFile, data, 0600)
 	if err != nil {
 		return errors.Wrapf(err, "error while writing config file %v", configFile)
 	}
@@ -379,8 +379,8 @@ func newRestClientResponseF(clientOpts ClientOpts) func(*http.Response, error) {
 				return
 			}
 
-			resp.Body = ioutil.NopCloser(resp.Body)
-			bodyContent, err := ioutil.ReadAll(resp.Body)
+			resp.Body = io.NopCloser(resp.Body)
+			bodyContent, err := io.ReadAll(resp.Body)
 			if err != nil {
 				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not read response body: %v", err)
 				return
@@ -407,7 +407,7 @@ func newRestClientRequestF(clientOpts ClientOpts, readOnly bool) func(*http.Requ
 				_, _ = fmt.Fprintf(clientOpts.ErrOutputWriter(), "could not copy request body: %v", err)
 				return nil
 			}
-			bodyContent, err := ioutil.ReadAll(body)
+			bodyContent, err := io.ReadAll(body)
 			if err != nil {
 				bodyStr := string(bodyContent)
 				_, _ = fmt.Fprint(clientOpts.OutputWriter(), bodyStr, "\n")
