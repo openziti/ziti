@@ -710,8 +710,8 @@ github.com/openziti/metrics v1.1.6 h1:fc4t5JEuYYr4gr+tF3qNpbvQ55QhoLyeOG+hiDfKLF
 github.com/openziti/metrics v1.1.6/go.mod h1:07aMMS1VNzZvz0246fX73SFfuuoRz2nKcvDJumrVlZ0=
 github.com/openziti/runzmd v1.0.3 h1:g+JyJS66ykMIidLTzroKBLwbsSF9S1hDvolj2PpD8lE=
 github.com/openziti/runzmd v1.0.3/go.mod h1:2YuoQl5zZ6edfb+k1MjglW2cwfZvXwug2WldvBIUNrU=
-github.com/openziti/sdk-golang v0.18.1 h1:/Ge1PiTvGG99Qm1Ry5T50ay7QCMuy5Rz7HbqMP2mcEQ=
-github.com/openziti/sdk-golang v0.18.1/go.mod h1:k/QRh6WA2zFsALuWC6X6+exmzbC/ddXFpRcx5FRDvQM=
+github.com/openziti/sdk-golang v0.18.2 h1:RA+47vGtPwzqrgWlgTyqKurttvzhG25bu9qnhEU1Ghw=
+github.com/openziti/sdk-golang v0.18.2/go.mod h1:79XTAIkizuRq5NpAex3Yg7oDH/fcNSlcrVeSiYEf2q0=
 github.com/openziti/storage v0.1.26 h1:1tV4czY/TNmzX3raUZjbR8jVl5L92pdD0SjmdzCzUmE=
 github.com/openziti/storage v0.1.26/go.mod h1:Zkm+4d2gckkIbuuCw/sKFWKKhPROZak3gLFzdII0KWQ=
 github.com/openziti/transport/v2 v2.0.41 h1:T9RPXsJ0wbDgIx6mjKY1YDOg6ncRDmLPq8xU52B0mvU=
@@ -1016,8 +1016,8 @@ golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20221114191408-850992195362 h1:NoHlPRbyl1VFI6FjwHtPQCN7wAMXI6cKcqrmXhOOfBQ=
-golang.org/x/exp v0.0.0-20221114191408-850992195362/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 h1:yZNXmy+j/JpX19vZkVktWqAo7Gny4PBWYYK3zskGpx4=
+golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
 golang.org/x/image v0.0.0-20191009234506-e7c1f5e7dbb8/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=

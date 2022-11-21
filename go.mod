@@ -27,7 +27,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.7
 	github.com/openziti/identity v1.0.23
 	github.com/openziti/runzmd v1.0.3
-	github.com/openziti/sdk-golang v0.18.1
+	github.com/openziti/sdk-golang v0.18.2
 	github.com/openziti/storage v0.1.26
 	github.com/openziti/transport/v2 v2.0.41
 	github.com/openziti/xweb/v2 v2.0.2
@@ -168,7 +168,7 @@ require (
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20221114191408-850992195362 // indirect
+	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
 	golang.org/x/image v0.1.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.0.0-20220929204114-8fcdb60fdcc0 // indirect

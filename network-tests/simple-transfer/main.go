@@ -3,14 +3,11 @@ package main
 import (
 	"embed"
 	"fmt"
-	"os"
-	"time"
-
 	"github.com/openziti/fablab"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
-	semaphore_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
+	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
 	"github.com/openziti/fablab/kernel/lib/runlevel/1_configuration/config"
 	"github.com/openziti/fablab/kernel/lib/runlevel/2_kitting/devkit"
@@ -21,11 +18,12 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/network-tests/simple-transfer/actions"
-	runlevel_0_infrastructure "github.com/openziti/ziti/network-tests/simple-transfer/stages/0_infrastructure"
+	"github.com/openziti/ziti/network-tests/test_resources"
 	"github.com/openziti/zitilab"
-	zitilib_runlevel_0_infrastructure "github.com/openziti/zitilab/runlevel/0_infrastructure"
 	zitilib_runlevel_1_configuration "github.com/openziti/zitilab/runlevel/1_configuration"
 	"github.com/sirupsen/logrus"
+	"os"
+	"time"
 )
 
 //go:embed configs
@@ -79,7 +77,7 @@ var m = &model.Model{
 
 	Resources: model.Resources{
 		resources.Configs:   resources.SubFolder(configResource, "configs"),
-		resources.Terraform: resources.DefaultTerraformResources(),
+		resources.Terraform: test_resources.TerraformResources(),
 	},
 
 	Regions: model.Regions{
@@ -92,7 +90,7 @@ var m = &model.Model{
 					Components: model.Components{
 						"ctrl": {
 							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
-							BinaryName:     "ziti-controller",
+							BinaryName:     "ziti controller",
 							ConfigSrc:      "ctrl.yml",
 							ConfigName:     "ctrl.yml",
 							PublicIdentity: "ctrl",
@@ -107,14 +105,14 @@ var m = &model.Model{
 					Components: model.Components{
 						"router-east": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
-							BinaryName:     "ziti-router",
+							BinaryName:     "ziti router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-east.yml",
 							PublicIdentity: "router-east",
-							RunWithSudo:    true,
 						},
 						"echo-server": {
 							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "service"}},
+							BinaryName:     "echo-server",
 							PublicIdentity: "echo-server",
 						},
 						"consul": {
@@ -134,14 +132,14 @@ var m = &model.Model{
 					Components: model.Components{
 						"router-west": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
-							BinaryName:     "ziti-router",
+							BinaryName:     "ziti router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-west.yml",
 							PublicIdentity: "router-west",
-							RunWithSudo:    true,
 						},
 						"echo-client": {
 							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							BinaryName:     "echo-client",
 							PublicIdentity: "echo-client",
 						},
 						"consul": {
@@ -172,9 +170,7 @@ var m = &model.Model{
 	Infrastructure: model.InfrastructureStages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
-		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallMetricbeat("*", zitilib_runlevel_0_infrastructure.RECCOMENDED_METRICBEAT_VERSION), 5),
-		runlevel_0_infrastructure.RetryInfra(zitilib_runlevel_0_infrastructure.InstallConsul("*"), 5),
-		semaphore_0.Restart(90 * time.Second),
+		semaphore0.Ready(time.Minute),
 	},
 
 	Configuration: model.ConfigurationStages{
@@ -183,8 +179,7 @@ var m = &model.Model{
 			zitilib_runlevel_1_configuration.DotZiti(),
 		),
 		config.Component(),
-		zitilab.DefaultZitiBinaries(),
-		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti-echo"}),
+		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti", "ziti-echo"}),
 	},
 
 	Distribution: model.DistributionStages{
