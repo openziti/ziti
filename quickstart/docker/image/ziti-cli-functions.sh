@@ -1045,7 +1045,18 @@ function ziti_createEnvFile {
   echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
 
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
-  if [[ "${ZITI_PWD-}" == "" ]]; then export ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c${1:-32})"; fi
+  if [[ "${ZITI_PWD-}" == "" ]]; then 
+    ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
+    echo -e "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
+    # shellcheck disable=SC2162
+    read ZITI_PWD_REPLY
+    if [[ -z "${ZITI_PWD_REPLY}" || ${ZITI_PWD_REPLY} =~ [yY] ]]; then
+      echo "INFO: using ZITI_PWD=${ZITI_PWD}"
+    else
+      echo "Type the preferred admin password and press <enter>"
+      read -r ZITI_PWD
+    fi
+  fi
   if [[ "${ZITI_DOMAIN_SUFFIX-}" == "" ]]; then export ZITI_DOMAIN_SUFFIX=""; fi
   if [[ "${ZITI_ID-}" == "" ]]; then export ZITI_ID="${ZITI_HOME}/identities.yaml"; fi
 
