@@ -47,7 +47,7 @@ func MapIdentityTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, iden
 
 func MapIdentityTypeToRestModel(identityType *model.IdentityType) *rest_model.IdentityTypeDetail {
 	ret := &rest_model.IdentityTypeDetail{
-		BaseEntity: BaseEntityToRestModel(identityType, IdentityLinkFactory),
+		BaseEntity: BaseEntityToRestModel(identityType, IdentityTypeLinkFactory),
 		Name:       identityType.Name,
 	}
 	return ret
