@@ -458,7 +458,7 @@ function ziti_expressConfiguration {
 
       # Stop any devices currently running to avoid port collisions
       stopAllEdgeRouters
-      stopZitiController
+      stopZitiController "${ZITI_EXPRESS_CONTROLLER_PID}"
     else
       echo -e "$(RED "  --- Exiting express install ---")"
       return 1
