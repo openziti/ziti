@@ -66,7 +66,6 @@ function startZitiController {
   # shellcheck disable=SC2034
   ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${log_file}" 2>&1 &)
   pid=$!
-  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${log_file}")"
   echo $pid  # for capture by caller
 }
 
@@ -520,6 +519,7 @@ function ziti_expressConfiguration {
   #createControllerSystemdFile
   initializeController
   ZITI_EXPRESS_CONTROLLER_PID=$(startZitiController)
+  echo "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
   echo "waiting for the controller to come online to allow the edge router to enroll"
 
   waitForController
