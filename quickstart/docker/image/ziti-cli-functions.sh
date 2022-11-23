@@ -64,21 +64,37 @@ function initializeController {
 function startZitiController {
   log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log"
   # shellcheck disable=SC2034
-  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${log_file}" 2>&1 &)
-  pid=$!
-  echo $pid  # for capture by caller
+  "${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" &> "${log_file}" &
+  ZITI_EXPRESS_CONTROLLER_PID=$!
+  echo "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
 }
 
 function stopZitiController {
-  if (( ${#} )); then
-    kill "$1"
+  if [[ -n ${ZITI_EXPRESS_CONTROLLER_PID:-} ]]; then
+    kill "$ZITI_EXPRESS_CONTROLLER_PID"
     # shellcheck disable=SC2181
     if [[ $? == 0 ]]; then 
       echo "Controller stopped."
       return 0
     fi
+  elif which pkill &>/dev/null; then
+    # shellcheck disable=SC2015
+    pkill ziti-controller && {
+      echo "Controller stopped."
+    } || {
+      echo "ERROR: something went wrong with stopping the controller" >&2
+      return 1
+    }
+  elif which killall &>/dev/null; then
+    # shellcheck disable=SC2015
+    killall ziti-controller && {
+      echo "Controller stopped."
+    } || {
+      echo "ERROR: something went wrong with stopping the controller" >&2
+      return 1
+    }
   else
-    echo "ERROR: need controller PID to kill" >&2
+    echo "ERROR: need 'pkill' or 'killall' command to kill controller that was not started with startZitiController" >&2
     return 1
   fi
 }
@@ -86,9 +102,9 @@ function stopZitiController {
 function startExpressEdgeRouter {
   log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log"
   "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
-  pid=$!
-  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${log_file}")"
-  ZITI_EXPRESS_EDGE_ROUTER_PID="$pid"
+  ZITI_EXPRESS_EDGE_ROUTER_PID=$!
+  echo -e "Express Edge Router started as process id: $ZITI_EXPRESS_EDGE_ROUTER_PID. log located at: $(BLUE "${log_file}")"
+  
 }
 
 function stopAllEdgeRouters {
@@ -100,27 +116,25 @@ function stopAllEdgeRouters {
       echo "ERROR: something went wrong with stopping the router(s)" >&2
       return 1
     }
-  else
-    if which pkill &>/dev/null; then
-      # shellcheck disable=SC2015
-      pkill ziti-router && {
-        echo "Router(s) stopped."
-      } || {
-        echo "ERROR: something went wrong with stopping the router(s)" >&2
-        return 1
-      }
-    elif which killall &>/dev/null; then
-      # shellcheck disable=SC2015
-      killall ziti-router && {
-        echo "Router(s) stopped."
-      } || {
-        echo "ERROR: something went wrong with stopping the router(s)" >&2
-        return 1
-      }
-    else
-      echo "ERROR: need 'pkill' or 'killall' command to kill routers that were not started with startExpressEdgeRouter" >&2
+  elif which pkill &>/dev/null; then
+    # shellcheck disable=SC2015
+    pkill ziti-router && {
+      echo "Router(s) stopped."
+    } || {
+      echo "ERROR: something went wrong with stopping the router(s)" >&2
       return 1
-    fi
+    }
+  elif which killall &>/dev/null; then
+    # shellcheck disable=SC2015
+    killall ziti-router && {
+      echo "Router(s) stopped."
+    } || {
+      echo "ERROR: something went wrong with stopping the router(s)" >&2
+      return 1
+    }
+  else
+    echo "ERROR: need 'pkill' or 'killall' command to kill routers that were not started with startExpressEdgeRouter" >&2
+    return 1
   fi
 }
 
@@ -518,8 +532,7 @@ function ziti_expressConfiguration {
   createControllerConfig
   #createControllerSystemdFile
   initializeController
-  ZITI_EXPRESS_CONTROLLER_PID=$(startZitiController)
-  echo "ziti-controller started as process id: $pid. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
+  startZitiController
   echo "waiting for the controller to come online to allow the edge router to enroll"
 
   waitForController
