@@ -86,7 +86,7 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl": {
-					InstanceType: "c5.large",
+					InstanceType: "t2.micro",
 					Components: model.Components{
 						"ctrl": {
 							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
@@ -99,7 +99,7 @@ var m = &model.Model{
 					},
 				},
 				"router-east": {
-					InstanceType: "c5.large",
+					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-east": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
@@ -119,7 +119,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-west": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-west": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator"}},
