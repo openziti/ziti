@@ -77,24 +77,8 @@ function stopZitiController {
       echo "Controller stopped."
       return 0
     fi
-  elif which pkill &>/dev/null; then
-    # shellcheck disable=SC2015
-    pkill ziti-controller && {
-      echo "Controller stopped."
-    } || {
-      echo "ERROR: something went wrong with stopping the controller" >&2
-      return 1
-    }
-  elif which killall &>/dev/null; then
-    # shellcheck disable=SC2015
-    killall ziti-controller && {
-      echo "Controller stopped."
-    } || {
-      echo "ERROR: something went wrong with stopping the controller" >&2
-      return 1
-    }
   else
-    echo "ERROR: need 'pkill' or 'killall' command to kill controller that was not started with startZitiController" >&2
+    echo "ERROR: you can only stop a controller process that was started with startZitiController" >&2
     return 1
   fi
 }
@@ -116,24 +100,8 @@ function stopAllEdgeRouters {
       echo "ERROR: something went wrong with stopping the router(s)" >&2
       return 1
     }
-  elif which pkill &>/dev/null; then
-    # shellcheck disable=SC2015
-    pkill ziti-router && {
-      echo "Router(s) stopped."
-    } || {
-      echo "ERROR: something went wrong with stopping the router(s)" >&2
-      return 1
-    }
-  elif which killall &>/dev/null; then
-    # shellcheck disable=SC2015
-    killall ziti-router && {
-      echo "Router(s) stopped."
-    } || {
-      echo "ERROR: something went wrong with stopping the router(s)" >&2
-      return 1
-    }
   else
-    echo "ERROR: need 'pkill' or 'killall' command to kill routers that were not started with startExpressEdgeRouter" >&2
+    echo "ERROR: you can only stop a router process that was started with startExpressEdgeRouter" >&2
     return 1
   fi
 }
@@ -471,7 +439,7 @@ function ziti_expressConfiguration {
 
       # Stop any devices currently running to avoid port collisions
       stopAllEdgeRouters
-      stopZitiController "${ZITI_EXPRESS_CONTROLLER_PID}"
+      stopZitiController
     else
       echo -e "$(RED "  --- Exiting express install ---")"
       return 1
@@ -566,7 +534,7 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
 
-  [[ -n ${ZITI_EXPRESS_CONTROLLER_PID:-} ]] && stopZitiController "${ZITI_EXPRESS_CONTROLLER_PID}"
+  stopZitiController
   echo "Edge Router enrolled. Controller stopped."
 
   echo ""
