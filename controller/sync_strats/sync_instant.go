@@ -34,7 +34,6 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
-	"strings"
 	"sync/atomic"
 	"time"
 )
@@ -406,10 +405,12 @@ func (strategy *InstantStrategy) ReceiveClientHello(r *network.Router, respHello
 			protocols[listener.Advertise.Protocol] = fmt.Sprintf("%s://%s:%d", listener.Advertise.Protocol, listener.Advertise.Hostname, listener.Advertise.Port)
 		}
 	} else {
-		for _, p := range respHello.ProtocolPorts {
-			parts := strings.Split(p, ":")
-			ingressUrl := fmt.Sprintf("%s://%s:%s", parts[0], respHello.Hostname, parts[1])
-			protocols[parts[0]] = ingressUrl
+		for idx, protocol := range respHello.Protocols {
+			if len(respHello.ProtocolPorts) > idx {
+				port := respHello.ProtocolPorts[idx]
+				ingressUrl := fmt.Sprintf("%s://%s:%s", protocol, respHello.Hostname, port)
+				protocols[protocol] = ingressUrl
+			}
 		}
 	}
 
