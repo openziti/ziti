@@ -66,7 +66,7 @@ function startZitiController {
   # shellcheck disable=SC2034
   "${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" &> "${log_file}" &
   ZITI_EXPRESS_CONTROLLER_PID=$!
-  echo "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log")"
+  echo -e "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${log_file}")"
 }
 
 function stopZitiController {
@@ -1028,13 +1028,13 @@ function ziti_createEnvFile {
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
   if [[ "${ZITI_PWD-}" == "" ]]; then 
     ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
-    echo -e "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
+    echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
     # shellcheck disable=SC2162
-    read ZITI_PWD_REPLY
-    if [[ -z "${ZITI_PWD_REPLY}" || ${ZITI_PWD_REPLY} =~ [yY] ]]; then
+    read -r pwd_reply
+    if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
       echo "INFO: using ZITI_PWD=${ZITI_PWD}"
     else
-      echo "Type the preferred admin password and press <enter>"
+      echo -en "Type the preferred admin password and press <enter>"
       read -r ZITI_PWD
     fi
   fi
