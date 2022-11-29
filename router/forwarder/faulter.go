@@ -31,7 +31,7 @@ import (
 type Faulter struct {
 	ctrls       env.NetworkControllers
 	interval    time.Duration
-	circuitIds  cmap.ConcurrentMap[string]
+	circuitIds  cmap.ConcurrentMap[string, string]
 	closeNotify chan struct{}
 }
 

@@ -92,8 +92,8 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 
 type RouterManager struct {
 	baseEntityManager[*Router]
-	cache     cmap.ConcurrentMap[*Router]
-	connected cmap.ConcurrentMap[*Router]
+	cache     cmap.ConcurrentMap[string, *Router]
+	connected cmap.ConcurrentMap[string, *Router]
 	store     db.RouterStore
 }
 

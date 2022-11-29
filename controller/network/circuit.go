@@ -62,7 +62,7 @@ func (self *Circuit) HasRouter(routerId string) bool {
 }
 
 type circuitController struct {
-	circuits    cmap.ConcurrentMap[*Circuit]
+	circuits    cmap.ConcurrentMap[string, *Circuit]
 	idGenerator idgen.Generator
 }
 

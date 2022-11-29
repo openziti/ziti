@@ -78,7 +78,7 @@ func newServiceManager(managers *Managers) *ServiceManager {
 
 type ServiceManager struct {
 	baseEntityManager[*Service]
-	cache cmap.ConcurrentMap[*Service]
+	cache cmap.ConcurrentMap[string, *Service]
 	store db.ServiceStore
 }
 

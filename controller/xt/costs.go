@@ -132,7 +132,7 @@ func GetPrecedenceForName(name string) Precedence {
 }
 
 type costs struct {
-	costMap                 cmap.ConcurrentMap[uint16]
+	costMap                 cmap.ConcurrentMap[string, uint16]
 	precedenceChangeHandler func(terminatorId string, precedence Precedence)
 }
 

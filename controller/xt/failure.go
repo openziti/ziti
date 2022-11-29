@@ -6,7 +6,7 @@ import (
 )
 
 type failureCosts struct {
-	costMap        cmap.ConcurrentMap[uint16]
+	costMap        cmap.ConcurrentMap[string, uint16]
 	maxFailureCost uint32
 	failureCost    uint16
 	successCredit  uint16
