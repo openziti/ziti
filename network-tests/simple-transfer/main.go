@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/ziti/network-tests/simple-transfer/actions"
 	"github.com/openziti/ziti/network-tests/test_resources"
 	"github.com/openziti/zitilab"
+	"github.com/openziti/zitilab/actions/edge"
 	zitilib_runlevel_1_configuration "github.com/openziti/zitilab/runlevel/1_configuration"
 	"github.com/sirupsen/logrus"
 	"os"
@@ -164,7 +165,8 @@ var m = &model.Model{
 				DataPath:   "consul/data",
 				LogPath:    "consul/log.out",
 			}),
-		"stop": model.Bind(component.StopInParallel("*", 15)),
+		"stop":  model.Bind(component.StopInParallel("*", 15)),
+		"login": model.Bind(edge.Login("#ctrl")),
 	},
 
 	Infrastructure: model.InfrastructureStages{
