@@ -1,10 +1,32 @@
-# Release 0.26.12
+# Release 0.27.0
 
 ## What's New
 
-- Ziti CLI
-  - Enhancements:
-    - [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+* Ziti CLI
+    * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
+    * Add create/delete transit-router CLI commands
+    * [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+
+## Ziti CLI
+
+* The update command has been removed. It was non-functional, so this should not affect anyone 
+* The adhoc, ping and playbook commands have been removed. These were ansible and vagrant commands that were not widely used.
+* Make the art command hidden, doesn't need to be removed, leave it as an easter egg
+* Move ziti ps command under ziti agent. Remove all ziti ps subcommands, as they already exist as ziti agent subcommands
+* Add `ziti controller` and `ziti router` commands
+    * They should work exactly the same as `ziti-controller` and `ziti router` 
+    * The standalone binaries for `ziti-controller` and `ziti-router` are deprecated and will be removed in a future release
+* Add hidden `ziti tunnel` command
+    * Should work exactly the same as `ziti-tunnel`
+    * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
+    * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
+* The db, log-format and unwrap commands have been moved under a new ops command
+* ziti executable download management has been deprecated
+    * The init and uninstall commands have been removed
+    * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
+* The demo and tutorial commands have been moved under the new learn subcommand
+* `ziti edge enroll` now has a verbose option for additional debugging
+* The `ziti edge` CLI now support create/delete transit-router. This allows transit/fabric routers to be provisioned using an enrollment process, rather than requiring certs to be created externally. Note that this requires that the fabric router config file has a `csr` section.
 
 # Release 0.26.11
 
@@ -41,14 +63,16 @@ ziti create config router edge --routerName myRouter --tunnelerMode tproxy --lan
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.4 -> v1.0.5](https://github.com/openziti/agent/compare/v1.0.4...v1.0.5)
-* github.com/openziti/channel/v2: [v2.0.9 -> v2.0.11](https://github.com/openziti/channel/compare/v2.0.9...v2.0.11)
-* github.com/openziti/edge: [v0.24.12 -> v0.24.27](https://github.com/openziti/edge/compare/v0.24.12...v0.24.27)
+* github.com/openziti/channel/v2: [v2.0.9 -> v2.0.12](https://github.com/openziti/channel/compare/v2.0.9...v2.0.12)
+* github.com/openziti/edge: [v0.24.12 -> v0.24.36](https://github.com/openziti/edge/compare/v0.24.12...v0.24.36)
     * [Issue #1217](https://github.com/openziti/edge/issues/1217) - Ziti Edge lists the edge router to be offline after recovering from an internet fluctuation
 
-* github.com/openziti/fabric: [v0.21.9 -> v0.21.16](https://github.com/openziti/fabric/compare/v0.21.9...v0.21.16)
+* github.com/openziti/fabric: [v0.21.9 -> v0.21.17](https://github.com/openziti/fabric/compare/v0.21.9...v0.21.17)
 * github.com/openziti/foundation/v2: [v2.0.6 -> v2.0.7](https://github.com/openziti/foundation/compare/v2.0.6...v2.0.7)
 * github.com/openziti/identity: [v1.0.18 -> v1.0.20](https://github.com/openziti/identity/compare/v1.0.18...v1.0.20)
-* github.com/openziti/sdk-golang: [v0.16.135 -> v0.16.142](https://github.com/openziti/sdk-golang/compare/v0.16.135...v0.16.142)
+* github.com/openziti/runzmd: v1.0.3 (new)
+* github.com/openziti/sdk-golang: [v0.16.135 -> v0.16.146](https://github.com/openziti/sdk-golang/compare/v0.16.135...v0.16.146)
+    * [Issue #328](https://github.com/openziti/sdk-golang/issues/328) - enrollment has no 'verbose' option for debugging
     * [Issue #314](https://github.com/openziti/sdk-golang/issues/314) - Incorrect documentation for grpc-example
     * [Issue #317](https://github.com/openziti/sdk-golang/issues/317) - No documenation for call example
     * [Issue #311](https://github.com/openziti/sdk-golang/issues/311) - Chat Client and Server needs documentation

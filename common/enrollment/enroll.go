@@ -19,16 +19,16 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/ziti/ziti/cmd/common"
 	"io/ioutil"
 	"os"
 	"strings"
 
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/identity/certtools"
 	"github.com/openziti/foundation/v2/term"
+	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
-	"github.com/openziti/ziti/ziti/cmd/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -111,6 +111,7 @@ func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
 	enrollSubCmd.Flags().StringVarP(&action.Username, "username", "u", "", "Username for updb enrollment, prompted if not provided and necessary")
 	enrollSubCmd.Flags().StringVarP(&action.Password, "password", "p", "", "Password for updb enrollment, prompted if not provided and necessary")
 	enrollSubCmd.Flags().BoolVar(&action.RemoveJwt, "rm", false, "Remove the JWT on success")
+	enrollSubCmd.Flags().BoolVarP(&action.Verbose, "verbose", "v", false, "Enable verbose logging")
 
 	action.KeyAlg.Set("RSA") // set default
 	enrollSubCmd.Flags().VarP(&action.KeyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
@@ -170,6 +171,7 @@ func (e *EnrollAction) Run() error {
 		AdditionalCAs: e.CaOverride,
 		Username:      e.Username,
 		Password:      e.Password,
+		Verbose:       e.Verbose,
 	}
 
 	if tkn.EnrollmentMethod == "updb" {

@@ -7,6 +7,9 @@ Build Docker Image for Local Dev (probably for docker-compose testing)
 2. run the script `./buildLocalDev.sh` which will create a `openziti/quickstart:dev` tag
 3. update `.env` and change the value for `ZITI_VERSION` to `dev`
 4. run `docker-compose` as normal
+5. If you encounter any strange errors, it's probably best to prune docker
+   and try again. Issue `docker system prune -a` and allow it to clear/cleanup
+   the entire docker world
 
 Build Docker Image For Publication
 ------------------
@@ -17,7 +20,7 @@ Build Docker Image For Publication
 1. issue this function to pull the latest ziti binaries: `getLatestZiti`
 1. move the ziti binaries: `mv ziti-bin/ziti image/ziti.ignore/`
 1. build the docker image: `docker build image -t openziti/quickstart`
-1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti version`
+1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti --version`
 1. cleanup: `rm ziti-*tar.gz; rm -rf ziti-bin`
 2. 
 Push Docker Image to dockerhub
