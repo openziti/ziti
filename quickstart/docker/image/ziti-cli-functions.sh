@@ -1480,7 +1480,7 @@ function getFileOverwritePermission() {
 function createAPIService {
   zitiLogin
   # Create the bind and dial configs
-  "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.dial intercept.v1 '{"protocols":["tcp"],"addresses":["ziti.rest.api"], "portRanges":[{"low":80, "high":80}]}' > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.dial intercept.v1 '{"protocols":["tcp"],"addresses":["ziti.rest.api"], "portRanges":[{"low":443, "high":443}]}' > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.bind host.v1 '{"protocol":"tcp", "address":"'${ZITI_EDGE_CONTROLLER_HOSTNAME}'","port":'"${ZITI_EDGE_CONTROLLER_PORT}"'}' > /dev/null
 
   # Create the service, applying the configs
@@ -1489,9 +1489,6 @@ function createAPIService {
   # Create the service policies allowing dial and bind access
   "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.bind Bind --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.host" > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.dial Dial --service-roles "@ziti.rest.service" --identity-roles "#quickstart.rest.user" > /dev/null
-
-  # Update the router attribute giving it access to our new service
-  "${ZITI_BIN_DIR-}/ziti" edge update identity "${ZITI_EDGE_ROUTER_RAWNAME}" -a 'ziti.rest.host' > /dev/null
 
   # Create a new identity for the quickstart user
   "${ZITI_BIN_DIR-}/ziti" edge create identity user quickstart.user -a quickstart.rest.user -o "${ZITI_HOME_OS_SPECIFIC}/quickstart.user.jwt"
