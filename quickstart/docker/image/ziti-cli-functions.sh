@@ -291,10 +291,11 @@ function _portCheck {
   elif [[ -n "$BASH_VERSION" ]]; then
     envVarValue="${!envVar}"
   else
-    echo -e "Unknown/Unsupported shell, cannot check port status"
-    return 1
+    echo -e "$(YELLOW "Unknown/Unsupported shell, cannot verify availability of ${2-}'s intended port, proceed with caution")"
+    return 0
   fi
 
+  echo -e "Checking if ${2-}'s port (${envVarValue}) is available"
   portCheckResult=$(lsof -w -i :"${envVarValue}" 2> /dev/null)
   if [[ "${portCheckResult}" != "" ]]; then # Controller management plane
       echo -e "$(RED " ")"
@@ -510,8 +511,11 @@ function ziti_expressConfiguration {
   returnCnt=$((returnCnt + $?))
   _portCheck "ZITI_CTRL_MGMT_PORT" "Controller Management Plane"
   returnCnt=$((returnCnt + $?))
-  _portCheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
-  returnCnt=$((returnCnt + $?))
+  if [[ "${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT-}" != "" ]]; then
+    # This port can be explicitly set but is not always, only check if set
+    _portCheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
+    returnCnt=$((returnCnt + $?))
+  fi
   if [[ "returnCnt" -gt "0" ]]; then return 1; fi
 
   #checkHostsFile

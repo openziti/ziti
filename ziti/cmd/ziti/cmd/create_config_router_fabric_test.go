@@ -9,6 +9,8 @@ import (
 	"time"
 )
 
+var TEST_ROUTER_LISTENER_PORT = 10080
+
 func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) {
 	routerName := "MyFabricRouter"
 	expectedNonEmptyStringFields := []string{".Router.Listener.BindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Hostname", ".Router.Edge.Port"}
@@ -112,7 +114,7 @@ func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
 }
 
 func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
-	expectedDefaultPort := "10080"
+	expectedDefaultPort := TEST_ROUTER_LISTENER_PORT
 
 	// Make sure the related env vars are unset
 	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
