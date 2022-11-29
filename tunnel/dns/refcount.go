@@ -13,7 +13,7 @@ func NewRefCountingResolver(resolver Resolver) Resolver {
 }
 
 type RefCountingResolver struct {
-	names   cmap.ConcurrentMap[int]
+	names   cmap.ConcurrentMap[string, int]
 	wrapped Resolver
 }
 

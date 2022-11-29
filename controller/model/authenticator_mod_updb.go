@@ -32,7 +32,7 @@ var _ AuthProcessor = &AuthModuleUpdb{}
 type AuthModuleUpdb struct {
 	env                       Env
 	method                    string
-	attemptsByAuthenticatorId cmap.ConcurrentMap[int64]
+	attemptsByAuthenticatorId cmap.ConcurrentMap[string, int64]
 }
 
 func NewAuthModuleUpdb(env Env) *AuthModuleUpdb {

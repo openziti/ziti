@@ -26,7 +26,7 @@ func (self *TraceSpec) String() string {
 }
 
 type TraceManager struct {
-	traceIdentities cmap.ConcurrentMap[*TraceSpec]
+	traceIdentities cmap.ConcurrentMap[string, *TraceSpec]
 	shutdownNotify  <-chan struct{}
 }
 

@@ -4,20 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"github.com/google/uuid"
-	lru "github.com/hashicorp/golang-lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 func NewTunnelState() *TunnelState {
-	sessionCache, _ := lru.New(256)
+	sessionCache, _ := lru.New[string, string](256)
 	return &TunnelState{
 		sessionCache: sessionCache,
 	}
@@ -25,17 +25,13 @@ func NewTunnelState() *TunnelState {
 
 type TunnelState struct {
 	configTypes          []string
-	currentApiSessionId  atomic.Value
+	currentApiSessionId  concurrenz.AtomicValue[string]
 	createApiSessionLock sync.Mutex
-	sessionCache         *lru.Cache
+	sessionCache         *lru.Cache[string, string]
 }
 
 func (self *TunnelState) getCurrentApiSessionId() string {
-	val := self.currentApiSessionId.Load()
-	if val != nil {
-		return val.(string)
-	}
-	return ""
+	return self.currentApiSessionId.Load()
 }
 
 func (self *TunnelState) clearCurrentApiSessionId() {
@@ -230,8 +226,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 
 		cacheKey := self.service.Id + "." + sessionType
 
-		if val, found := self.getTunnelState().sessionCache.Get(cacheKey); found {
-			sessionId = val.(string)
+		if sessionId, found := self.getTunnelState().sessionCache.Get(cacheKey); found {
 			if self.isSessionValid(sessionId, sessionType) {
 				logger.WithField("sessionId", sessionId).Debug("found valid cached session")
 				self.newSession = true

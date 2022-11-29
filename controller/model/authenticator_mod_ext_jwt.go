@@ -45,7 +45,7 @@ const (
 type AuthModuleExtJwt struct {
 	env     Env
 	method  string
-	signers cmap.ConcurrentMap[*signerRecord]
+	signers cmap.ConcurrentMap[string, *signerRecord]
 }
 
 func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {

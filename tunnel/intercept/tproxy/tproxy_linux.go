@@ -91,7 +91,7 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 
 type interceptor struct {
 	lanIf          string
-	serviceProxies cmap.ConcurrentMap[*tProxy]
+	serviceProxies cmap.ConcurrentMap[string, *tProxy]
 	ipt            *iptables.IPTables
 }
 

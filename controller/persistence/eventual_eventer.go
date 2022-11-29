@@ -277,7 +277,7 @@ const (
 //	     data - []byte - a string array of arguments
 type EventualEventerBbolt struct {
 	events.EventEmmiter
-	handlerMap        cmap.ConcurrentMap[[]EventListenerFunc] //eventName -> handlers
+	handlerMap        cmap.ConcurrentMap[string, []EventListenerFunc] //eventName -> handlers
 	Interval          time.Duration
 	closeNotify       <-chan struct{}
 	stopNotify        chan struct{}

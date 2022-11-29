@@ -45,7 +45,7 @@ type AuthModuleCert struct {
 	method               string
 	fingerprintGenerator cert.FingerprintGenerator
 	staticCaCerts        []*x509.Certificate
-	dynamicCaCache       cmap.ConcurrentMap[[]*x509.Certificate]
+	dynamicCaCache       cmap.ConcurrentMap[string, []*x509.Certificate]
 }
 
 func NewAuthModuleCert(env Env, caChain []byte) *AuthModuleCert {

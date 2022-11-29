@@ -26,7 +26,7 @@ import (
 )
 
 type HeartbeatCollector struct {
-	apiSessionLastAccessedAtMap cmap.ConcurrentMap[*HeartbeatStatus]
+	apiSessionLastAccessedAtMap cmap.ConcurrentMap[string, *HeartbeatStatus]
 	updateInterval              time.Duration
 	closeNotify                 chan struct{}
 	isFlushing                  atomic.Bool
