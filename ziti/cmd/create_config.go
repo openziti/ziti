@@ -18,7 +18,7 @@ package cmd
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/common"
-	helpers2 "github.com/openziti/ziti/ziti/cmd/helpers"
+	cmdHelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
 	"os"
 	"time"
@@ -179,7 +179,7 @@ func init() {
 		}
 	}
 
-	workingDir = helpers2.NormalizePath(zh)
+	workingDir = cmdHelper.NormalizePath(zh)
 }
 
 // NewCmdCreateConfig creates a command object for the "config" command
@@ -189,7 +189,7 @@ func NewCmdCreateConfig() *cobra.Command {
 		Short:   "Creates a config file for specified Ziti component using environment variables",
 		Aliases: []string{"cfg"},
 		Run: func(cmd *cobra.Command, args []string) {
-			helpers2.CheckErr(cmd.Help())
+			cmdHelper.CheckErr(cmd.Help())
 		},
 	}
 
@@ -213,50 +213,50 @@ func (data *ConfigTemplateValues) populateEnvVars() {
 	handleVariableError(err, "hostname")
 
 	// Get and add ziti home to the params
-	zitiHome, err := helpers2.GetZitiHome()
+	zitiHome, err := cmdHelper.GetZitiHome()
 	handleVariableError(err, constants.ZitiHomeVarName)
 
 	// Get Ziti Controller Name
-	zitiCtrlHostname, err := helpers2.GetZitiCtrlName()
+	zitiCtrlHostname, err := cmdHelper.GetZitiCtrlName()
 	handleVariableError(err, constants.ZitiCtrlNameVarName)
 
 	// Get Ziti Edge Router Port
-	zitiEdgeRouterPort, err := helpers2.GetZitiEdgeRouterPort()
+	zitiEdgeRouterPort, err := cmdHelper.GetZitiEdgeRouterPort()
 	handleVariableError(err, constants.ZitiEdgeRouterPortVarName)
 
 	// Get Ziti Controller Listener Address
-	zitiCtrlListenerAddress, err := helpers2.GetZitiCtrlListenerAddress()
+	zitiCtrlListenerAddress, err := cmdHelper.GetZitiCtrlListenerAddress()
 	handleVariableError(err, constants.ZitiCtrlListenerAddressVarName)
 
 	// Get Ziti Controller Advertised Address
-	zitiCtrlAdvertisedAddress, err := helpers2.GetZitiCtrlAdvertisedAddress()
+	zitiCtrlAdvertisedAddress, err := cmdHelper.GetZitiCtrlAdvertisedAddress()
 	handleVariableError(err, constants.ZitiCtrlAdvertisedAddressVarName)
 
 	// Get Ziti Controller Port
-	zitiCtrlPort, err := helpers2.GetZitiCtrlPort()
+	zitiCtrlPort, err := cmdHelper.GetZitiCtrlPort()
 	handleVariableError(err, constants.ZitiCtrlPortVarName)
 
 	// Get Ziti Edge Controller Listener Host and Port
-	zitiEdgeCtrlListenerHostPort, err := helpers2.GetZitiEdgeCtrlListenerHostPort()
+	zitiEdgeCtrlListenerHostPort, err := cmdHelper.GetZitiEdgeCtrlListenerHostPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlListenerHostPortVarName)
 
 	// Get Ziti Edge Controller Advertised Host and Port
-	zitiEdgeCtrlAdvertisedHostPort, err := helpers2.GetZitiEdgeCtrlAdvertisedHostPort()
+	zitiEdgeCtrlAdvertisedHostPort, err := cmdHelper.GetZitiEdgeCtrlAdvertisedHostPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlAdvertisedHostPortVarName)
 
 	// Get Ziti Edge Controller Advertised Port
-	zitiEdgeCtrlAdvertisedPort, err := helpers2.GetZitiEdgeCtrlAdvertisedPort()
+	zitiEdgeCtrlAdvertisedPort, err := cmdHelper.GetZitiEdgeCtrlAdvertisedPort()
 	handleVariableError(err, constants.ZitiEdgeCtrlAdvertisedPortVarName)
 
 	// Get Ziti edge Identity enrollment duration
-	zitiEdgeIdentityEnrollmentDuration, err := helpers2.GetZitiEdgeIdentityEnrollmentDuration()
+	zitiEdgeIdentityEnrollmentDuration, err := cmdHelper.GetZitiEdgeIdentityEnrollmentDuration()
 	handleVariableError(err, constants.ZitiEdgeIdentityEnrollmentDurationVarName)
 
 	// Get Ziti edge Router enrollment duration
-	zitiEdgeRouterEnrollmentDuration, err := helpers2.GetZitiEdgeRouterEnrollmentDuration()
+	zitiEdgeRouterEnrollmentDuration, err := cmdHelper.GetZitiEdgeRouterEnrollmentDuration()
 	handleVariableError(err, constants.ZitiEdgeRouterEnrollmentDurationVarName)
 
-	zitiEdgeRouterListenerBindPort, err := cmdhelper.GetZitiEdgeRouterListenerBindPort()
+	zitiEdgeRouterListenerBindPort, err := cmdHelper.GetZitiEdgeRouterListenerBindPort()
 	handleVariableError(err, constants.ZitiEdgeRouterListenerBindPortVarName)
 
 	data.ZitiHome = zitiHome
