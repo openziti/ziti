@@ -74,7 +74,7 @@ function stopController {
   if [[ -n ${ZITI_EXPRESS_CONTROLLER_PID:-} ]]; then
     kill "$ZITI_EXPRESS_CONTROLLER_PID"
     # shellcheck disable=SC2181
-    if [[ $? == 0 ]]; then 
+    if [[ $? == 0 ]]; then
       echo "Controller stopped."
       return 0
     fi
@@ -89,7 +89,7 @@ function startRouter {
   "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
   ZITI_EXPRESS_EDGE_ROUTER_PID=$!
   echo -e "Express Edge Router started as process id: $ZITI_EXPRESS_EDGE_ROUTER_PID. log located at: $(BLUE "${log_file}")"
-  
+
 }
 
 function stopRouter {
@@ -585,6 +585,11 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
 
+  echo -e "******** Setting Up Default Service ********"
+
+  echo "----------  Creating a REST API service ziti.rest.api:80...."
+  createAPIService
+
   stopController
   echo "Edge Router enrolled. Controller stopped."
 
@@ -1075,7 +1080,7 @@ function ziti_createEnvFile {
   echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
 
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
-  if [[ "${ZITI_PWD-}" == "" ]]; then 
+  if [[ "${ZITI_PWD-}" == "" ]]; then
     ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
     echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
     # shellcheck disable=SC2162
@@ -1548,6 +1553,26 @@ function getFileOverwritePermission() {
 
     return 0
   fi
+}
+
+function createAPIService {
+  zitiLogin
+  # Create the bind and dial configs
+  "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.dial intercept.v1 '{"protocols":["tcp"],"addresses":["ziti.rest.api"], "portRanges":[{"low":80, "high":80}]}' > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.bind host.v1 '{"protocol":"tcp", "address":"'${ZITI_EDGE_CONTROLLER_HOSTNAME}'","port":'"${ZITI_EDGE_CONTROLLER_PORT}"'}' > /dev/null
+
+  # Create the service, applying the configs
+  "${ZITI_BIN_DIR-}/ziti" edge create service ziti.rest.service --configs "ziti.rest.bind,ziti.rest.dial" > /dev/null
+
+  # Create the service policies allowing dial and bind access
+  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.bind Bind --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.host" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.dial Dial --service-roles "@ziti.rest.service" --identity-roles "#quickstart.rest.user" > /dev/null
+
+  # Update the router attribute giving it access to our new service
+  "${ZITI_BIN_DIR-}/ziti" edge update identity "${ZITI_EDGE_ROUTER_RAWNAME}" -a 'ziti.rest.host' > /dev/null
+
+  # Create a new identity for the quickstart user
+  "${ZITI_BIN_DIR-}/ziti" edge create identity user quickstart.user -a quickstart.rest.user -o "${ZITI_HOME_OS_SPECIFIC}/quickstart.user.jwt"
 }
 
 set +uo pipefail
