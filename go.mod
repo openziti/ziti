@@ -32,8 +32,8 @@ require (
 	github.com/miekg/dns v1.1.50
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
-	github.com/openziti/channel/v2 v2.0.18
-	github.com/openziti/fabric v0.21.25
+	github.com/openziti/channel/v2 v2.0.19
+	github.com/openziti/fabric v0.21.26
 	github.com/openziti/foundation/v2 v2.0.8
 	github.com/openziti/identity v1.0.25
 	github.com/openziti/jwks v1.0.2
