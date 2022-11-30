@@ -63,8 +63,8 @@ type fabricProvider struct {
 	apiSessionTokens map[string]string
 	currentIdentity  *edge.CurrentIdentity
 
-	dialSessions cmap.ConcurrentMap[string]
-	bindSessions cmap.ConcurrentMap[string]
+	dialSessions cmap.ConcurrentMap[string, string]
+	bindSessions cmap.ConcurrentMap[string, string]
 }
 
 func (self *fabricProvider) getDialSession(serviceName string) string {

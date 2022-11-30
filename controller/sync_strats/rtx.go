@@ -116,7 +116,7 @@ func (rtx *RouterSender) Send(msg *channel.Message) error {
 
 // Map used make working with internal RouterSender easier as sync.Map accepts and returns interface{}
 type routerTxMap struct {
-	internalMap cmap.ConcurrentMap[*RouterSender] //id -> RouterSender
+	internalMap cmap.ConcurrentMap[string, *RouterSender] //id -> RouterSender
 }
 
 func (m *routerTxMap) Add(id string, routerMessageTxer *RouterSender) {

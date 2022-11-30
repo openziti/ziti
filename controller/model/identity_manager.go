@@ -745,7 +745,7 @@ func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.C
 }
 
 type identityStatusMap struct {
-	identityIdToStatus cmap.ConcurrentMap[*status]
+	identityIdToStatus cmap.ConcurrentMap[string, *status]
 	initOnce           sync.Once
 	activeDuration     time.Duration
 }

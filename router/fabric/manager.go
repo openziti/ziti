@@ -72,10 +72,10 @@ type StateManager interface {
 }
 
 type StateManagerImpl struct {
-	apiSessionsByToken      cmap.ConcurrentMap[*edge_ctrl_pb.ApiSession]
-	activeApiSessions       cmap.ConcurrentMap[*MapWithMutex]
-	sessions                cmap.ConcurrentMap[uint32]
-	recentlyRemovedSessions cmap.ConcurrentMap[time.Time]
+	apiSessionsByToken      cmap.ConcurrentMap[string, *edge_ctrl_pb.ApiSession]
+	activeApiSessions       cmap.ConcurrentMap[string, *MapWithMutex]
+	sessions                cmap.ConcurrentMap[string, uint32]
+	recentlyRemovedSessions cmap.ConcurrentMap[string, time.Time]
 
 	Hostname       string
 	ControllerAddr string

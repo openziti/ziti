@@ -40,7 +40,7 @@ type tunneler struct {
 	interceptor    intercept.Interceptor
 	servicePoller  *servicePoller
 	fabricProvider *fabricProvider
-	terminators    cmap.ConcurrentMap[*tunnelTerminator]
+	terminators    cmap.ConcurrentMap[string, *tunnelTerminator]
 }
 
 func newTunneler(factory *Factory, stateManager fabric.StateManager) *tunneler {

@@ -37,8 +37,8 @@ const (
 )
 
 type PostureCache struct {
-	identityToPostureData    cmap.ConcurrentMap[*PostureData]
-	apiSessionIdToIdentityId cmap.ConcurrentMap[string]
+	identityToPostureData    cmap.ConcurrentMap[string, *PostureData]
+	apiSessionIdToIdentityId cmap.ConcurrentMap[string, string]
 	ticker                   *time.Ticker
 	isRunning                atomic.Bool
 	events.EventEmmiter

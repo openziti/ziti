@@ -82,7 +82,7 @@ type AppEnv struct {
 	HostController       HostController
 	ManagementApi        *managementOperations.ZitiEdgeManagementAPI
 	ClientApi            *clientOperations.ZitiEdgeClientAPI
-	IdentityRefreshMap   cmap.ConcurrentMap[time.Time]
+	IdentityRefreshMap   cmap.ConcurrentMap[string, time.Time]
 	identityRefreshMeter metrics.Meter
 	StartupTime          time.Time
 	InstanceId           string

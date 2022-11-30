@@ -39,9 +39,9 @@ func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
 }
 
 type servicePoller struct {
-	services                cmap.ConcurrentMap[*edge.Service]
+	services                cmap.ConcurrentMap[string, *edge.Service]
 	serviceListener         *intercept.ServiceListener
-	servicesLastUpdateToken cmap.ConcurrentMap[[]byte]
+	servicesLastUpdateToken cmap.ConcurrentMap[string, []byte]
 	serviceListenerLock     sync.Mutex
 
 	fabricProvider *fabricProvider
