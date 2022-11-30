@@ -1,0 +1,27 @@
+name: mattermost-ziti-webhook
+on: 
+  create:
+  delete:
+  issues:
+  issue_comment:
+  pull_request_review:
+  pull_request_review_comment:
+  pull_request:
+  push:
+  fork:
+  release:
+
+jobs:
+  mattermost-ziti-webhook:
+    runs-on: ubuntu-latest
+    name: POST Webhook
+    env:
+      ZITI_LOG: 99
+      ZITI_NODEJS_LOG: 99
+    steps:
+    - uses: openziti/ziti-webhook-action@main
+      with:
+        ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+        webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
+        webhook-secret: ${{ secrets.ZITI_MATTERMOSTI_WEBHOOK_SECRET }}
+

@@ -31,7 +31,7 @@ import (
 )
 
 type routeSenderController struct {
-	senders cmap.ConcurrentMap[*routeSender]
+	senders cmap.ConcurrentMap[string, *routeSender]
 }
 
 func newRouteSenderController() *routeSenderController {

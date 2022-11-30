@@ -205,7 +205,7 @@ func (linkController *linkController) linksInMode(mode LinkMode) []*Link {
  */
 
 type linkTable struct {
-	links cmap.ConcurrentMap[*Link]
+	links cmap.ConcurrentMap[string, *Link]
 }
 
 func newLinkTable() *linkTable {
