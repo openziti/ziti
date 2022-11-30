@@ -1,7 +1,7 @@
 FROM ubuntu:rolling
 
 RUN apt update && \
-    apt install jq curl netcat-openbsd vim inetutils-ping net-tools -y
+    apt install jq curl netcat-openbsd vim inetutils-ping net-tools lsof -y
 
 RUN useradd -ms /bin/bash ziti && \
     mkdir /openziti && chown ziti:ziti /openziti && \
