@@ -36,8 +36,8 @@ const (
 
 // Config Template Constants
 const (
-	DefaultListenerBindPort  = 10080
-	DefaultGetSessionTimeout = 60 * time.Second
+	DefaultZitiEdgeRouterListenerBindPort = "10080"
+	DefaultGetSessionTimeout              = 60 * time.Second
 
 	DefaultZitiEdgeRouterPort = "3022"
 
@@ -107,4 +107,6 @@ const (
 	ZitiEdgeRouterIPOverrideVarDescription           = "Override the default edge router IP with a custom IP, this IP will also be added to the PKI"
 	ZitiEdgeRouterAdvertisedHostVarName              = "ZITI_EDGE_ROUTER_ADVERTISED_HOST"
 	ZitiEdgeRouterAdvertisedHostVarDescription       = "The advertised host of the router"
+	ZitiEdgeRouterListenerBindPortVarName            = "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT"
+	ZitiEdgeRouterListenerBindPortVarDescription     = "The port a public router will advertise on"
 )

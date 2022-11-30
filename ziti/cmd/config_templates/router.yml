@@ -20,8 +20,8 @@ link:
     - binding: transport
 {{ if .Router.IsPrivate }}#{{ end }}  listeners:
 {{ if .Router.IsPrivate }}#{{ end }}    - binding:          transport
-{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Listener.BindPort }}
-{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:{{ .Router.Listener.BindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      bind:             tls:0.0.0.0:{{ .Router.Edge.ListenerBindPort }}
+{{ if .Router.IsPrivate }}#{{ end }}      advertise:        tls:{{ .Router.Edge.AdvertisedHost }}:{{ .Router.Edge.ListenerBindPort }}
 {{ if .Router.IsPrivate }}#{{ end }}      options:
 {{ if .Router.IsPrivate }}#{{ end }}        outQueueSize:   {{ .Router.Listener.OutQueueSize }}
 
