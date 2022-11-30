@@ -4,16 +4,19 @@ import (
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strings"
 	"testing"
 	"time"
 )
 
+var TEST_ROUTER_LISTENER_PORT = 10080
+
 func TestExecuteCreateConfigRouterFabricHasNonBlankTemplateValues(t *testing.T) {
 	routerName := "MyFabricRouter"
-	expectedNonEmptyStringFields := []string{".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Hostname", ".Router.Edge.Port"}
-	expectedNonEmptyStringValues := []*string{&data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Hostname, &data.Router.Edge.Port}
-	expectedNonEmptyIntFields := []string{".Router.Listener.BindPort", ".Router.Listener.OutQueueSize", ".Router.Wss.ReadBufferSize", ".Router.Wss.WriteBufferSize", ".Router.Forwarder.XgressDialQueueLength", ".Router.Forwarder.XgressDialWorkerCount", ".Router.Forwarder.LinkDialQueueLength", ".Router.Forwarder.LinkDialWorkerCount"}
-	expectedNonEmptyIntValues := []*int{&data.Router.Listener.BindPort, &data.Router.Listener.OutQueueSize, &data.Router.Wss.ReadBufferSize, &data.Router.Wss.WriteBufferSize, &data.Router.Forwarder.XgressDialQueueLength, &data.Router.Forwarder.XgressDialWorkerCount, &data.Router.Forwarder.LinkDialQueueLength, &data.Router.Forwarder.LinkDialWorkerCount}
+	expectedNonEmptyStringFields := []string{".Router.Listener.BindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Hostname", ".Router.Edge.Port"}
+	expectedNonEmptyStringValues := []*string{&data.Router.Edge.ListenerBindPort, &data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Hostname, &data.Router.Edge.Port}
+	expectedNonEmptyIntFields := []string{".Router.Listener.OutQueueSize", ".Router.Wss.ReadBufferSize", ".Router.Wss.WriteBufferSize", ".Router.Forwarder.XgressDialQueueLength", ".Router.Forwarder.XgressDialWorkerCount", ".Router.Forwarder.LinkDialQueueLength", ".Router.Forwarder.LinkDialWorkerCount"}
+	expectedNonEmptyIntValues := []*int{&data.Router.Listener.OutQueueSize, &data.Router.Wss.ReadBufferSize, &data.Router.Wss.WriteBufferSize, &data.Router.Forwarder.XgressDialQueueLength, &data.Router.Forwarder.XgressDialWorkerCount, &data.Router.Forwarder.LinkDialQueueLength, &data.Router.Forwarder.LinkDialWorkerCount}
 	expectedNonEmptyTimeFields := []string{".Router.Listener.ConnectTimeout", "Router.Listener.GetSessionTimeout", ".Router.Wss.WriteTimeout", ".Router.Wss.ReadTimeout", ".Router.Wss.IdleTimeout", ".Router.Wss.PongTimeout", ".Router.Wss.PingInterval", ".Router.Wss.HandshakeTimeout", ".Router.Forwarder.LatencyProbeInterval"}
 	expectedNonEmptyTimeValues := []*time.Duration{&data.Router.Listener.ConnectTimeout, &data.Router.Listener.GetSessionTimeout, &data.Router.Wss.WriteTimeout, &data.Router.Wss.ReadTimeout, &data.Router.Wss.IdleTimeout, &data.Router.Wss.PongTimeout, &data.Router.Wss.PingInterval, &data.Router.Wss.HandshakeTimeout, &data.Router.Forwarder.LatencyProbeInterval}
 
@@ -108,4 +111,49 @@ func TestFabricRouterOutputPathDoesNotExist(t *testing.T) {
 	err := routerOptions.runFabricRouter(&ConfigTemplateValues{})
 
 	assert.EqualError(t, err, expectedErrorMsg, "Error does not match, expected %s but got %s", expectedErrorMsg, err)
+}
+
+func TestDefaultZitiFabricRouterListenerBindPort(t *testing.T) {
+	expectedDefaultPort := TEST_ROUTER_LISTENER_PORT
+
+	// Make sure the related env vars are unset
+	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
+
+	// Create and run the CLI command
+	config := createRouterConfig([]string{"fabric", "--routerName", "testRouter"})
+
+	// Check that the template data has been updated as expected
+	assert.Equal(t, expectedDefaultPort, data.Router.Edge.ListenerBindPort)
+
+	// Check that the actual config output has the correct port
+	for i := 1; i < len(config.Link.Listeners); i++ {
+		if config.Link.Listeners[i].Binding == "transport" {
+			// Assert Bind and Advertise use Bind port value
+			assert.Equal(t, expectedDefaultPort, strings.Split(config.Link.Listeners[i].Bind, ":")[1])
+			assert.Equal(t, expectedDefaultPort, strings.Split(config.Link.Listeners[i].Address, ":")[1])
+			break
+		}
+	}
+}
+
+func TestSetZitiFabricRouterListenerBindPort(t *testing.T) {
+	myPortValue := "1234"
+
+	// Set the port manually
+	_ = os.Setenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT", myPortValue)
+
+	// Create and run the CLI command
+	config := createRouterConfig([]string{"fabric", "--routerName", "testRouter"})
+
+	assert.Equal(t, myPortValue, data.Router.Edge.ListenerBindPort)
+
+	// Check that the actual config output has the correct port
+	for i := 1; i < len(config.Link.Listeners); i++ {
+		if config.Link.Listeners[i].Binding == "transport" {
+			// Assert Bind and Advertise use Bind port value
+			assert.Equal(t, myPortValue, strings.Split(config.Link.Listeners[i].Bind, ":")[1])
+			assert.Equal(t, myPortValue, strings.Split(config.Link.Listeners[i].Address, ":")[1])
+			break
+		}
+	}
 }

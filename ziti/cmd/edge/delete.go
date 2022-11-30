@@ -60,12 +60,13 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router", newOptions(), "er", "ers"))
 	cmd.AddCommand(newDeleteCmdForEntityType("edge-router-policy", newOptions(), "erp", "erps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("identity", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("posture-check", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("service", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("service-edge-router-policy", newOptions(), "serp", "serps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("service-policy", newOptions(), "sp", "sps"))
 	cmd.AddCommand(newDeleteCmdForEntityType("session", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions()))
-	cmd.AddCommand(newDeleteCmdForEntityType("posture-check", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("transit-router", newOptions()))
 
 	return cmd
 }
