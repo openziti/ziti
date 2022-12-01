@@ -8,6 +8,8 @@ on:
   pull_request:
     types: [ opened, reopened, ready_for_review, closed ]
   fork:
+  push:
+    tags:
   release:
     types: [ released ]
   workflow_dispatch:
