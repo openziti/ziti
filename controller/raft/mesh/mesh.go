@@ -270,8 +270,7 @@ func (self *impl) GetPeerId(address string, timeout time.Duration) (string, erro
 	leaf := certs[0]
 	for _, uri := range leaf.URIs {
 		if uri.Scheme == "spiffe" {
-			// TODO: add controller/ prefix
-			return strings.TrimPrefix(uri.Path, "/"), nil
+			return strings.TrimPrefix(uri.Path, "/controller/"), nil
 		}
 	}
 
