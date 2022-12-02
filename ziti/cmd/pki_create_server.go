@@ -157,7 +157,7 @@ func (o *PKICreateServerOptions) Run() error {
 
 	// Concat the newly-created server cert with the intermediate cert to create a server.chain.pem file
 	if err := o.Flags.PKI.Chain(signer, req); err != nil {
-		return errors.Wrap(err, "cannot sign")
+		return errors.Wrap(err, "unable to generate cert chain")
 	}
 
 	log.Infoln("Success")
