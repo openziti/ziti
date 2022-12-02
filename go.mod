@@ -38,7 +38,7 @@ require (
 	github.com/openziti/identity v1.0.26
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.2.0
-	github.com/openziti/sdk-golang v0.18.10
+	github.com/openziti/sdk-golang v0.18.11
 	github.com/openziti/storage v0.1.28
 	github.com/openziti/transport/v2 v2.0.45
 	github.com/openziti/x509-claims v1.0.3
@@ -111,7 +111,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.10 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.11 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
