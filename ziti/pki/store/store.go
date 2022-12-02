@@ -23,7 +23,7 @@ import (
 	"math/big"
 )
 
-// Store reprents a way to store a Certificate Authority.
+// Store represents a way to store a Certificate Authority.
 type Store interface {
 	// Add adds a newly signed certificate bundle to the store.
 	//
@@ -37,7 +37,7 @@ type Store interface {
 	// Returns an error if it failed to store the bundle.
 	Add(string, string, bool, []byte, []byte) error
 
-	// Chain concats an signing cert and a newly signed certificate bundle and adds the chained cert to the store.
+	// Chain concats a signing cert and a newly signed certificate bundle and adds the chained cert to the store.
 	//
 	// Args:
 	//  The signing CA name.
@@ -59,7 +59,7 @@ type Store interface {
 	// Returns an error if it failed to store the bundle.
 	AddCSR(string, string, bool, []byte, []byte) error
 
-	// Add adds a new private key to the store.
+	// AddKey adds a new private key to the store.
 	//
 	// Args:
 	//  The intermediate CA name
