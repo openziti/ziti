@@ -5,7 +5,38 @@ OpenZiti in non-HA mode.
 
 ## Distributed Model
 
-The OpenZiti controller uses RAFT to distribute the data model. Specifically it uses the
+When looking at how to make the OpenZiti controller model distributed, we first looked at
+what characteristics we needed for the model data.
+
+* All data required on every controller
+* Read characteristics
+    * Reads happen all the time, from every client and as well as admins
+    * Speed is very important. They affect how every client perceives the system.
+    * Availability is very important. Without reading definitions, can’t create new connections
+    * Can be against stale data, if we get consistency within a reasonable timeframe (seconds to minutes)
+* Write characteristics
+    * Writes only happen from administrators
+    * Speed needs to be reasonable, but doesn't need to be blazing fast
+    * Write availability can be interrupted, since it primarily affects management operations
+    * Must be consistent. Write validation can’t happen with stale data. Don’t want to have to deal with reconciling concurrent, contradictory write operations.
+* Generally involves controller to controller coordination
+
+Of the distribution mechanisms we looked at, RAFT had the best fit.
+
+### RAFT Characteristics
+
+* Writes
+    * Consistency over availability
+    * Good but not stellar performance
+* Reads
+    * Every node has full state
+    * Local state is always internally consistent, but maybe slightly behind the leader
+    * No coordination required for reads
+    * Fast reads
+    * Reads work even when other nodes are unavailable
+    * If latest data is desired, reads can be forwarded to the current leader
+
+So the OpenZiti controller uses RAFT to distribute the data model. Specifically it uses the
 [HashiCorp Raft Library](https://github.com/hashicorp/raft/).
 
 ### Updates
@@ -43,7 +74,7 @@ An HA setup will have:
 
 When an HA controller starts up, it will first apply the newest snapshot, then any newer journal entries
 that aren't yet contained in a snapshot. This means that an HA controller should start with a
-blank DB that can be overwritten by snapshot and/or have journal entries applied to it. It is for this
-reason that the controller
+blank DB that can be overwritten by snapshot and/or have journal entries applied to it. So an HA
+controller will delete or rename the existing controller database and start with a fresh bolt db.
 
-##       
+##               
