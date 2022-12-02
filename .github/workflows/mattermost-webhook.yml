@@ -1,5 +1,5 @@
 name: mattermost-ziti-webhook
-on: 
+on:
   create:
   delete:
   issues:
@@ -15,13 +15,14 @@ jobs:
   mattermost-ziti-webhook:
     runs-on: ubuntu-latest
     name: POST Webhook
+    if: github.actor != 'dependabot[bot]'
     env:
       ZITI_LOG: 99
       ZITI_NODEJS_LOG: 99
     steps:
-    - uses: openziti/ziti-webhook-action@main
-      with:
-        ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
-        webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
-        webhook-secret: ${{ secrets.ZITI_MATTERMOSTI_WEBHOOK_SECRET }}
+      - uses: openziti/ziti-webhook-action@main
+        with:
+          ziti-id: ${{ secrets.ZITI_MATTERMOST_IDENTITY }}
+          webhook-url: ${{ secrets.ZITI_MATTERMOST_WEBHOOK_URL }}
+          webhook-secret: ${{ secrets.ZITI_MATTERMOSTI_WEBHOOK_SECRET }}
 
