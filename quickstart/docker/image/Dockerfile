@@ -6,17 +6,20 @@ RUN apt update && \
 RUN useradd -ms /bin/bash ziti && \
     mkdir /openziti && chown ziti:ziti /openziti && \
     mkdir /openziti/scripts && chown ziti:ziti /openziti/scripts && \
-    mkdir /openziti/shared && chown ziti:ziti /openziti/shared
+    mkdir /openziti/shared && chown ziti:ziti /openziti/shared && \
+    mkdir /mutable-ziti && chown ziti:ziti /mutable-ziti
 
 USER ziti
 WORKDIR /openziti
 
 ENV ZITI_HOME=/openziti
-ENV ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin"
 ENV ZITI_SHARED="${ZITI_HOME}/shared"
-ENV ZITI_SCRIPTS="${ZITI_HOME}/scripts"
 ENV ENV_FILE="${ZITI_HOME}/ziti.env"
 ENV ZITI_NETWORK=ziti
+# Don't put these paths on volume shared in docker-compose deployment (https://github.com/openziti/ziti/issues/912)
+ENV MUTABLE_HOME=/mutable-ziti
+ENV ZITI_BIN_DIR="${MUTABLE_HOME}/ziti-bin"
+ENV ZITI_SCRIPTS="${MUTABLE_HOME}/scripts"
 
 RUN mkdir -p "${ZITI_SCRIPTS}"
 

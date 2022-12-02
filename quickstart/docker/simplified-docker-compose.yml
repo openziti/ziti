@@ -16,7 +16,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - "/openziti/scripts/run-controller.sh"
+      - "/mutable-ziti/scripts/run-controller.sh"
 
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -37,9 +37,9 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - "/openziti/scripts/run-with-ziti-cli.sh"
+      - "/mutable-ziti/scripts/run-with-ziti-cli.sh"
     command:
-      - "/openziti/scripts/access-control.sh"
+      - "/mutable-ziti/scripts/access-control.sh"
       
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -56,7 +56,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh edge"
+    command: "/mutable-ziti/scripts/run-router.sh edge"
 
   ziti-console:
     image: openziti/zac

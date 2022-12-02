@@ -19,7 +19,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - "/openziti/scripts/run-controller.sh"
+      - "/mutable-ziti/scripts/run-controller.sh"
 
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -40,9 +40,9 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint:
-      - "/openziti/scripts/run-with-ziti-cli.sh"
+      - "/mutable-ziti/scripts/run-with-ziti-cli.sh"
     command:
-      - "/openziti/scripts/access-control.sh"
+      - "/mutable-ziti/scripts/access-control.sh"
 
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -61,7 +61,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh edge"
+    command: "/mutable-ziti/scripts/run-router.sh edge"
 
   ziti-edge-router-wss:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -81,7 +81,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh wss"
+    command: "/mutable-ziti/scripts/run-router.sh wss"
 
   ziti-fabric-router-br:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -99,7 +99,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh fabric"
+    command: "/mutable-ziti/scripts/run-router.sh fabric"
 
   ziti-private-red:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -116,7 +116,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh private"
+    command: "/mutable-ziti/scripts/run-router.sh private"
 
   ziti-private-blue:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -133,7 +133,7 @@ services:
     volumes:
       - ziti-fs:/openziti
     entrypoint: /bin/bash
-    command: "/openziti/scripts/run-router.sh private"
+    command: "/mutable-ziti/scripts/run-router.sh private"
 
   web-test-blue:
     image: crccheck/hello-world
