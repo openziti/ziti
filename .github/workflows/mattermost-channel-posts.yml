@@ -10,9 +10,12 @@ on:
   fork:
   push:
     tags:
+      - '*'
   release:
     types: [ released ]
   workflow_dispatch:
+  watch:
+    types: [ started ]
 
 jobs:
   send-notifications:
