@@ -135,12 +135,12 @@ func (l *Local) Add(caName, name string, isCa bool, key, cert []byte) error {
 }
 
 // Chain concats an intermediate cert and a newly signed certificate bundle and adds the chained cert to the store.
-func (l *Local) Chain(caName, name string) error {
+func (l *Local) Chain(caName, destCaName, name string) error {
 	chainName := name + ".chain.pem"
-	if l.Exists(caName, chainName) {
-		return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, caName)
+	if l.Exists(destCaName, chainName) {
+		return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, destCaName)
 	}
-	if err := l.writeChainBundle(caName, name, chainName); err != nil {
+	if err := l.writeChainBundle(caName, destCaName, name, chainName); err != nil {
 		return fmt.Errorf("failed writing chain %v to the local filesystem: %v", chainName, err)
 	}
 	return nil
@@ -217,7 +217,7 @@ func (l *Local) writeBundle(caName, name string, isCa bool, key, cert []byte) er
 }
 
 // writeChainBundle concats...
-func (l *Local) writeChainBundle(caName, name string, chainName string) error {
+func (l *Local) writeChainBundle(caName, destCaName, name string, chainName string) error {
 	caDir := filepath.Join(l.Root, caName)
 	if _, err := os.Stat(caDir); err != nil {
 		if err := InitCADir(caDir); err != nil {
@@ -225,10 +225,15 @@ func (l *Local) writeChainBundle(caName, name string, chainName string) error {
 		}
 	}
 
-	caPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".cert")
-	caIn, err := os.Open(caPath)
+	caChainPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".chain.pem")
+	caIn, err := os.Open(caChainPath)
 	if err != nil {
-		return fmt.Errorf("failed to open CA: %v: %v", caPath, err)
+		// no chain path, likely means we're using the root as the CA, so fallback to the cert
+		caPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".cert")
+		caIn, err = os.Open(caPath)
+		if err != nil {
+			return fmt.Errorf("failed to open CA: %v: %v", caPath, err)
+		}
 	}
 	defer caIn.Close()
 
@@ -239,7 +244,7 @@ func (l *Local) writeChainBundle(caName, name string, chainName string) error {
 	}
 	defer serverCertIn.Close()
 
-	chainCertPath := filepath.Join(l.Root, caName, LocalCertsDir, chainName)
+	chainCertPath := filepath.Join(l.Root, destCaName, LocalCertsDir, chainName)
 	out, err := os.OpenFile(chainCertPath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open chain file: %v: %v", chainCertPath, err)

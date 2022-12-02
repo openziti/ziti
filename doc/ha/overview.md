@@ -1,42 +1,49 @@
-# HA Setup for Development
+# OpenZiti HA
 
-**NOTE: HA is a work in progress and not yet usable for anything other than developing HA**
+This document gives a brief overview of how OpenZiti HA works and how it differs from running
+OpenZiti in non-HA mode.
 
-To set up a local three node HA cluster, do the following.
+## Distributed Model
 
-1. Ensure ZITI_SOURCE is set to the directory under which you have ziti checked out
-    1. Ex: if you have ziti checked out to ~/work/ziti, then set ZITI_SOURCE to ~/work
-1. Create a directory where you want to store controller databases and raft data. 
-1. Set ZITI_DATA to this directory
-1. Run `ziti-controller run ctrl1.yml` with the ctrl1.yml in this directory.
-    1. This first controller is going to start a 1 node cluster, because raft/minClusterSize is set to 1
-1. Initialize the edge by doing `ziti agent controller init admin admin 'Default Admin'` 
-    1. You can of course use different values if you desire
-1. Start the second and third controllers
-    1. These are both configured with `minClusterSize` of 3, so they will wait to be joined to a raft cluster
-1. Find the pid of the first ziti-controller instance
-1. Add the first controller
-    1. `ziti agent controller raft-join <pid of first controller> $(cat $ZITI_DATA/ctrl1/id) tls:localhost:6363`
-1. Join the second controller
-    1. `ziti agent controller raft-join <pid of first controller> $(cat $ZITI_DATA/ctrl2/id) tls:localhost:6464`
+The OpenZiti controller uses RAFT to distribute the data model. Specifically it uses the
+[HashiCorp Raft Library](https://github.com/hashicorp/raft/).
 
-You should now have a three node cluster running. You can log into each controller individually.
+### Updates
 
-1. `ziti edge login localhost:1280`
-1. `ziti edge -i ctrl2 login localhost:1380`
-1. `ziti edge -i ctrl3 login localhost:1480`
+The basic flow for model updates is as follows:
 
-You could then create some model data on any controller:
+1. A client requests a model update via the REST API.
+2. The controller checks if it is the raft cluster leader. If it is not, it forwards the request to the leader.
+3. Once the request is on the leader, it applies the model update to the raft log. This involves getting a quorum of the controllers to accept the update.
+4. One the update has been accepted, it will be executed on each node of the cluster. This will generate create one or more changes to the bolt database.
+5. The results of the operation (success or failure) are returned to the controller which received the original REST request.
+6. The result is returned to the REST client.
 
-```
-ziti demo setup echo client 
-ziti demo setup echo single-sdk-hosted
-```
+### Reads
 
-Any view the results on any controller
+Reads are always done to the local bolt database for performance. The assumption is that if something
+like a policy change is delayed, it may temporarily allow a circuit to be created, but as soon as
+the policy update is applied, it will make changes to circuits as necessary.
 
-```
-ziti edge ls services
-ziti edge -i ctrl2 ls services
-ziti edge -i ctrl3 ls services
-```
+### System of Record
+
+In controller that's not configured for HA, the bolt database is the system of record. In an HA
+setup, the raft journal is the system of record. The raft journal is stored in two places,
+a snapshot directory and a bolt database of raft journal entries.
+
+So a non-HA setup will have:
+
+* ctrl.db
+
+An HA setup will have:
+
+* raft.db - the bolt database containing raft journal entries
+* snapshots/ - a directory containing raft snapshots. Each snapshot is snapshot of the controller bolt db
+* ctrl.db - the controller bolt db, with the current state of the model
+
+When an HA controller starts up, it will first apply the newest snapshot, then any newer journal entries
+that aren't yet contained in a snapshot. This means that an HA controller should start with a
+blank DB that can be overwritten by snapshot and/or have journal entries applied to it. It is for this
+reason that the controller
+
+##       
