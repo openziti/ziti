@@ -22,7 +22,7 @@ Build Docker Image For Publication
 1. build the docker image: `docker build image -t openziti/quickstart`
 1. exec into a container and make sure it's the version you expect: `docker run --rm -it openziti/quickstart ziti --version`
 1. cleanup: `rm ziti-*tar.gz; rm -rf ziti-bin`
-2. 
+
 Push Docker Image to dockerhub
 ------------------
 1. `source ./image/ziti-cli-functions.sh`

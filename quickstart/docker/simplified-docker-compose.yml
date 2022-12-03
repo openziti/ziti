@@ -14,9 +14,9 @@ services:
         aliases:
           - ziti-edge-controller
     volumes:
-      - ziti-fs:/openziti
+      - ziti-fs:/persistent
     entrypoint:
-      - "/mutable-ziti/scripts/run-controller.sh"
+      - "/var/openziti/scripts/run-controller.sh"
 
   ziti-controller-init-container:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -35,11 +35,11 @@ services:
         aliases:
           - ziti-edge-controller-init-container
     volumes:
-      - ziti-fs:/openziti
+      - ziti-fs:/persistent
     entrypoint:
-      - "/mutable-ziti/scripts/run-with-ziti-cli.sh"
+      - "/var/openziti/scripts/run-with-ziti-cli.sh"
     command:
-      - "/mutable-ziti/scripts/access-control.sh"
+      - "/var/openziti/scripts/access-control.sh"
       
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
@@ -54,22 +54,22 @@ services:
       - zitiblue
       - zitired
     volumes:
-      - ziti-fs:/openziti
+      - ziti-fs:/persistent
     entrypoint: /bin/bash
-    command: "/mutable-ziti/scripts/run-router.sh edge"
+    command: "/var/openziti/scripts/run-router.sh edge"
 
   ziti-console:
     image: openziti/zac
     environment:
-      - ZAC_SERVER_CERT_CHAIN=/openziti/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
-      - ZAC_SERVER_KEY=/openziti/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
+      - ZAC_SERVER_CERT_CHAIN=/persistent/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
+      - ZAC_SERVER_KEY=/persistent/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
     depends_on:
       - ziti-controller
     ports:
       - "1408:1408"
       - "8443:8443"
     volumes:
-      - ziti-fs:/openziti
+      - ziti-fs:/persistent
 
     networks:
       - zitiblue
