@@ -47,50 +47,38 @@ or cert being compromised.
 
 ### Create the Controller 1 signing and server certs
 
-```
+```shell
+# Create the controller 1 intermediate/signing cert
 ziti pki create intermediate --pki-root ./pki --ca-name ca --intermediate-file ctrl1 --intermediate-name 'Controller One Signing Cert'
-```
 
-```
-ziti pki create server --pki-root ./pki --ca-name ctrl1 --dns localhost --ip 127.0.0.1 --spiffe-id 'controller/ctrl1'
-```
+# Create the controller 1 server cert
+ziti pki create server --pki-root ./pki --ca-name ctrl1 --dns localhost --ip 127.0.0.1 --server-name ctrl1 --spiffe-id 'controller/ctrl1'
 
-### Create the Controller 2 signing and server cert
-
-```
+# Create the controller 2 intermediate/signing cert
 ziti pki create intermediate --pki-root ./pki --ca-name ca --intermediate-file ctrl2 --intermediate-name 'Controller Two Signing Cert'
-```
 
-```
-ziti pki create server --pki-root ./pki --ca-name ctrl2 --dns localhost --ip 127.0.0.1 --spiffe-id 'controller/ctrl2'
-```
+# Create the controller 2 server cert
+ziti pki create server --pki-root ./pki --ca-name ctrl2 --dns localhost --ip 127.0.0.1 --server-name ctrl2 --spiffe-id 'controller/ctrl2'
 
-### Create the Controller 3 signing and server cert
-
-```
+# Create the controller 3 intermediate/signing cert
 ziti pki create intermediate --pki-root ./pki --ca-name ca --intermediate-file ctrl3 --intermediate-name 'Controller Three Signing Cert'
-```
 
-```
-ziti pki create server --pki-root ./pki --ca-name ctrl3 --dns localhost --ip 127.0.0.1 --spiffe-id 'controller/ctrl3'
+# Create the controller 3 server cert
+ziti pki create server --pki-root ./pki --ca-name ctrl3 --dns localhost --ip 127.0.0.1 --server-name ctrl3 --spiffe-id 'controller/ctrl3'
 ```
 
 ## Running the Controllers
 
 1. The controller configuration files have relative paths, so make sure you're running things from this directory.
-2. Run `ziti controller run ctrl1.yml` in this directory
-    1. This first controller is going to start a 1 node cluster, because raft/minClusterSize is set to 1
-3. Initialize the edge by doing `ziti agent controller init admin admin 'Default Admin'`
-    1. You can of course use different values if you desire
-4. Start the second and third controllers
-    1. `ziti controller run ctrl2.yml`
-    2. `ziti controller run ctrl3.yml`
-    3. These are both configured with `minClusterSize` of 3, so they will wait to be joined to a raft cluster
-5. Find the pid of the first ziti-controller instance
-6. Add the first controller
-    1. `ziti agent controller raft-join <pid of first controller> tls:localhost:6363`
-7. Join the second controller
-    1. `ziti agent controller raft-join <pid of first controller> tls:localhost:6464`
+2. Start all three controllers
+    1. `ziti controller run ctrl1.yml`
+    2. `ziti controller run ctrl2.yml`
+    3. `ziti controller run ctrl3.yml`
+    4. All three are configured with `minClusterSize` of 3, so they will wait to be joined to a raft cluster
+    5. The ctrl1.yml config file has the other two controllers as bootstrap members, so when it starts the first controller will start trying form the raft cluster.
+3. Initialize the edge using the agent
+    1. `ziti agent controller init <pid of any controller> admin admin 'Default Admin'`
+    2. You can of course use different values if you desire
 
 You should now have a three node cluster running. You can log into each controller individually.
 
@@ -101,8 +89,8 @@ You should now have a three node cluster running. You can log into each controll
 You could then create some model data on any controller:
 
 ```
-ziti demo setup echo client 
-ziti demo setup echo single-sdk-hosted
+ziti learn demo setup echo client 
+ziti learn demo setup echo single-sdk-hosted
 ```
 
 Any view the results on any controller

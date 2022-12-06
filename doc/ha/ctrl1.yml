@@ -1,9 +1,12 @@
 v: 3
 
 raft:
-  minClusterSize: 1
+  minClusterSize: 3
   advertiseAddress: tls:localhost:6262
   dataDir: ./data/ctrl1
+  bootstrapMembers:
+    - tls:127.0.0.1:6363
+    - tls:127.0.0.1:6464
 
 identity:
   cert: ./pki/ctrl1/certs/server.cert
