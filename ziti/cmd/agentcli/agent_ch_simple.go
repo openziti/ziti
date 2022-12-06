@@ -31,6 +31,7 @@ import (
 type SimpleChAgentCmdOptions struct {
 	AgentOptions
 	requestType int32
+	timeout     time.Duration
 }
 
 func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common.OptionsProvider) *cobra.Command {
@@ -51,6 +52,8 @@ func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common
 			cmdhelper.CheckErr(err)
 		},
 	}
+
+	cmd.Flags().DurationVarP(&options.timeout, "timeout", "t", 5*time.Second, "How long to wait for operation to complete")
 
 	return cmd
 }
@@ -75,7 +78,7 @@ func (o *SimpleChAgentCmdOptions) makeRequest(conn net.Conn) error {
 	}
 
 	msg := channel.NewMessage(o.requestType, nil)
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := msg.WithTimeout(o.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}
