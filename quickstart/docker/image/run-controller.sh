@@ -1,6 +1,6 @@
 #!/bin/bash
 
-ziti_controller_cfg='/openziti/ziti-edge-controller.yaml'
+ziti_controller_cfg="${ZITI_HOME}/ziti-edge-controller.yaml"
 
 export ZITI_CONTROLLER_RAWNAME=ziti-controller
 export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
