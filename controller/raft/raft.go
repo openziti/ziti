@@ -19,6 +19,7 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/transport/v2"
 	"os"
 	"path"
 	"reflect"
@@ -415,6 +416,35 @@ func (self *Controller) Join(req *JoinRequest) error {
 		Address:  raft.ServerAddress(req.Addr),
 		Suffrage: suffrage,
 	})
+
+	bootstrapMembers := map[string]struct{}{}
+	for _, bootstrapMember := range self.Config.BootstrapMembers {
+		_, err := transport.ParseAddress(bootstrapMember)
+		if err != nil {
+			panic(errors.Wrapf(err, "unable to parse address for bootstrap member [%v]", bootstrapMember))
+		}
+		bootstrapMembers[bootstrapMember] = struct{}{}
+	}
+
+	for len(bootstrapMembers) > 0 {
+		hasErrs := false
+		for bootstrapMember := range bootstrapMembers {
+			if id, err := self.Mesh.GetPeerId(bootstrapMember, time.Second*5); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
+				hasErrs = true
+			} else {
+				self.servers = append(self.servers, raft.Server{
+					Suffrage: raft.Voter,
+					ID:       raft.ServerID(id),
+					Address:  raft.ServerAddress(bootstrapMember),
+				})
+				delete(bootstrapMembers, bootstrapMember)
+			}
+		}
+		if hasErrs {
+			time.Sleep(time.Second * 5)
+		}
+	}
 
 	votingCount := uint32(0)
 	for _, server := range self.servers {
