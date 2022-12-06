@@ -6,4 +6,4 @@ fi
 touch runonce
 
 source "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
-expressInstall "${ZITI_NETWORK}"
+expressInstall "localhost"
