@@ -3,8 +3,8 @@ module github.com/openziti/ziti/network-tests
 go 1.19
 
 require (
-	github.com/openziti/fablab v0.4.14
-	github.com/openziti/sdk-golang v0.16.146
+	github.com/openziti/fablab v0.4.15
+	github.com/openziti/sdk-golang v0.18.2
 	github.com/openziti/zitilab v0.1.9
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
@@ -27,12 +27,12 @@ require (
 	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
-	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3 // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
-	github.com/dlclark/regexp2 v1.4.0 // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
 	github.com/eliukblau/pixterm/pkg/ansimage v0.0.0-20191210081756-9fb6cf8c2f75 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20191123064959-2c17d62f5098 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20221013030248-663e2500819c // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
@@ -80,8 +80,8 @@ require (
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19 // indirect
 	github.com/kr/fs v0.1.0 // indirect
-	github.com/kyokomi/emoji/v2 v2.2.8 // indirect
-	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
+	github.com/kyokomi/emoji/v2 v2.2.10 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lucsky/cuid v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
@@ -104,18 +104,19 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/agent v1.0.5 // indirect
-	github.com/openziti/channel/v2 v2.0.12 // indirect
-	github.com/openziti/edge v0.24.36 // indirect
-	github.com/openziti/fabric v0.21.17 // indirect
+	github.com/openziti/channel/v2 v2.0.15 // indirect
+	github.com/openziti/edge v0.24.50 // indirect
+	github.com/openziti/fabric v0.21.21 // indirect
 	github.com/openziti/foundation/v2 v2.0.7 // indirect
-	github.com/openziti/identity v1.0.20 // indirect
+	github.com/openziti/identity v1.0.23 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/metrics v1.1.5 // indirect
+	github.com/openziti/metrics v1.1.6 // indirect
+	github.com/openziti/runzmd v1.0.3 // indirect
 	github.com/openziti/storage v0.1.26 // indirect
-	github.com/openziti/transport/v2 v2.0.38 // indirect
+	github.com/openziti/transport/v2 v2.0.41 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/openziti/xweb/v2 v2.0.2 // indirect
-	github.com/openziti/ziti v0.26.10 // indirect
+	github.com/openziti/ziti v0.26.11 // indirect
 	github.com/openziti/ziti-db-explorer v1.1.1 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
@@ -140,7 +141,7 @@ require (
 	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 // indirect
-	github.com/tklauser/go-sysconf v0.3.10 // indirect
+	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
@@ -151,15 +152,16 @@ require (
 	go.etcd.io/bbolt v1.3.6 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	golang.org/x/crypto v0.1.0 // indirect
-	golang.org/x/image v0.0.0-20191206065243-da761ea9ff43 // indirect
-	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/net v0.1.0 // indirect
+	golang.org/x/crypto v0.3.0 // indirect
+	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
+	golang.org/x/image v0.1.0 // indirect
+	golang.org/x/mod v0.6.0 // indirect
+	golang.org/x/net v0.2.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/term v0.2.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/tools v0.1.12 // indirect
+	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect

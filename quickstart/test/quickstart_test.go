@@ -220,13 +220,13 @@ func TestQuickStartEnvFile(t *testing.T) {
 	expectedValues := []string{
 		"export ZITI_EDGE_ROUTER_RAWNAME=\"localhost-edge-router\"",
 		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"localhost\"",
-		"export ZITI_HOME_OS_SPECIFIC=\"/openziti\"",
-		"export ZITI_HOME=\"/openziti\"",
-		"export ZITI_BIN_DIR=\"/openziti/ziti-bin\"",
+		"export ZITI_HOME_OS_SPECIFIC=\"/persistent\"",
+		"export ZITI_HOME=\"/persistent\"",
+		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
 		"export ZITI_EDGE_CTRL_ADVERTISED=\"localhost:1280\"",
 		"export ZITI_USER=\"admin\"",
 		"export ZITI_PWD=\"admin\"",
-		"export ZITI_PKI_OS_SPECIFIC=\"/openziti/pki\"",
+		"export ZITI_PKI_OS_SPECIFIC=\"/persistent/pki\"",
 		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"localhost-root-ca\"",
 		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"localhost-intermediate\"",
 	}
@@ -251,7 +251,7 @@ func TestQuickStartEnvFile(t *testing.T) {
 	if err != nil {
 		fmt.Printf("Error: %s\n", output)
 	}
-	cpString := containerId + ":/openziti/localhost.env"
+	cpString := containerId + ":/persistent/localhost.env"
 	cmd := exec.Command("docker", "cp", cpString, ".")
 	err = cmd.Run()
 	if err != nil {
