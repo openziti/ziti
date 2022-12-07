@@ -16,6 +16,7 @@ ENV ENV_FILE="${ZITI_HOME}/ziti.env"
 ENV ZITI_NETWORK=ziti
 # Don't put these paths on shared volume in docker-compose deployment (https://github.com/openziti/ziti/issues/912)
 ENV ZITI_BIN_DIR=/var/openziti/ziti-bin
+ENV ZITI_BIN_ROOT="${ZITI_BIN_DIR}"
 ENV ZITI_SCRIPTS=/var/openziti/scripts
 
 # copy the ziti binaries to a directory already on the path
