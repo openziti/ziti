@@ -300,12 +300,15 @@ func TestQuickStartEnvFile(t *testing.T) {
 }
 
 /*
-This is a manually run test that will, with the default values, confirm the docker-compose ziti network is running as
-expected. The values can be edited to confirm other ziti networks but will require an http server on the back end.
+This is a manually run test that will, with the default values except the admin password, confirm the docker-compose
+ziti network is running as expected. The values can be edited to confirm other ziti networks but will require an http
+server on the back end.
 */
 func TestSimpleWebService(t *testing.T) {
 
 	// Wait for the controller to become available
+	zitiAdminUsername := "admin"
+	zitiAdminPassword := "admin"
 	testerUsername := "gotester"
 	ctrlAddress := "https://ziti-edge-controller:1280"
 	hostingRouterName := "ziti-edge-router"
@@ -328,7 +331,7 @@ func TestSimpleWebService(t *testing.T) {
 	for _, ca := range caCerts {
 		caPool.AddCert(ca)
 	}
-	client, err := rest_util.NewEdgeManagementClientWithUpdb("admin", "admin", ctrlAddress, caPool)
+	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
 	if err != nil {
 		log.Fatal(err)
 	}
