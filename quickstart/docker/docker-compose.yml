@@ -9,6 +9,7 @@ services:
     environment:
       - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
       - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
+      - ZITI_PWD=${ZITI_PWD}
     networks:
       zitiblue:
         aliases:
