@@ -6,6 +6,7 @@
     * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
     * Add create/delete transit-router CLI commands
     * [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+    * [Issue-912](https://github.com/openziti/ziti/issues/912) - Upgrade ziti with docker pull
 
 ## Ziti CLI
 

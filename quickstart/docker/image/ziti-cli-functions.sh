@@ -1568,8 +1568,8 @@ function createAPIService {
   "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.bind Bind --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.host" > /dev/null
   "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.dial Dial --service-roles "@ziti.rest.service" --identity-roles "#quickstart.rest.user" > /dev/null
 
-  # Create a new identity for the quickstart user
-  "${ZITI_BIN_DIR-}/ziti" edge create identity user quickstart.user -a quickstart.rest.user -o "${ZITI_HOME_OS_SPECIFIC}/quickstart.user.jwt"
+  # Allow the express edge router to bind
+  "${ZITI_BIN_DIR-}/ziti" edge update identity "${ZITI_EDGE_ROUTER_RAWNAME}" -a ziti.rest.host > /dev/null
 }
 
 set +uo pipefail

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Source scripts and environment values
-. "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
-. ${ZITI_HOME}/ziti.env
+. "${ZITI_SCRIPTS}/ziti-cli-functions.sh" > /dev/null
+. "${ZITI_HOME}/ziti.env" > /dev/null
 
 echo "*****************************************************"
 #### Add service policies
