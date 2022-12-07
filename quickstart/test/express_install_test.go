@@ -21,18 +21,18 @@ import (
 	"os"
 	"os/exec"
 	"testing"
-	"time"
 )
 
 // Adjust these values as needed if not using the default test environment
 var IdentityPrefix = "@"
 var AttributePrefix = "#"
-var ExpressCtrlAddress = "https://ziti-edge-controller:1280"
-var ExpressAdminUsername = "admin"
-var ExpressAdminPassword = "kvqzGyUj2oJ3Jmql_1YgM4ao61tVg-vw"
-var ExpressCtrlTimeout = 10 * time.Second
-var ExpressEdgeRouterName = "ziti-edge-router"
-var ExpressControllerName = "ziti-edge-controller"
+
+//var ExpressCtrlAddress = "https://ziti-edge-controller:1280"
+//var ExpressAdminUsername = "admin"
+//var ExpressAdminPassword = "kvqzGyUj2oJ3Jmql_1YgM4ao61tVg-vw"
+//var ExpressCtrlTimeout = 10 * time.Second
+//var ExpressEdgeRouterName = "ziti-edge-router"
+//var ExpressControllerName = "ziti-edge-controller"
 
 /*
 Test that the controller is live and responding
@@ -71,16 +71,16 @@ func TestEnvFileContents(t *testing.T) {
 	envFileName := "localhost.env"
 	expectedValues := []string{
 		"export ZITI_EDGE_ROUTER_RAWNAME=\"" + ExpressEdgeRouterName + "\"",
-		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"" + ExpressControllerName + "\"",
+		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"" + ExpressEdgeControllerName + "\"",
 		"export ZITI_HOME_OS_SPECIFIC=\"/persistent\"",
 		"export ZITI_HOME=\"/persistent\"",
 		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
-		"export ZITI_EDGE_CTRL_ADVERTISED=\"" + ExpressControllerName + ":1280\"",
+		"export ZITI_EDGE_CTRL_ADVERTISED=\"" + ExpressEdgeControllerName + ":1280\"",
 		"export ZITI_USER=\"" + ExpressAdminUsername + "\"",
 		"export ZITI_PWD=\"" + ExpressAdminPassword + "\"",
 		"export ZITI_PKI_OS_SPECIFIC=\"/persistent/pki\"",
-		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"" + ExpressControllerName + "-root-ca\"",
-		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"" + ExpressControllerName + "-intermediate\"",
+		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"" + ExpressEdgeControllerName + "-root-ca\"",
+		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"" + ExpressEdgeControllerName + "-intermediate\"",
 	}
 
 	cpString := containerName + ":/persistent/" + envFileName
