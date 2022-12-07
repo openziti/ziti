@@ -1116,8 +1116,6 @@ function ziti_createEnvFile {
   export ZITI_SIGNING_ROOTCA_NAME="${ZITI_SIGNING_CERT_NAME}-root-ca"
   export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_SIGNING_CERT_NAME}-intermediate"
 
-  export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
-
   if [[ "${ZITI_CTRL_MGMT_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_PORT="10000"; fi
   if [[ "${ZITI_CTRL_MGMT_HOST_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:${ZITI_CTRL_MGMT_PORT}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"; fi
