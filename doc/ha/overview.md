@@ -7,8 +7,8 @@ OpenZiti in non-HA mode.
 
 ### System of Record
 
-In controller that's not configured for HA, the bolt database is the system of record. In an HA
-setup, the raft journal is the system of record. The raft journal is stored in two places,
+In controller that's not configured for HA, the bolt database is the system of record. In
+an HA setup, the raft journal is the system of record. The raft journal is stored in two places,
 a snapshot directory and a bolt database of raft journal entries.
 
 So a non-HA setup will have:
@@ -105,6 +105,21 @@ will then be set to true. So the first controller to get the metrics message is 
 to deliver the metrics message to the events system for external integrators. The other
 controllers will have `doNotPropage` set to true, and will only use the metrics message
 internally, to update routing data.
+
+### Certificates
+
+There are many ways to set up certificates, so this will just cover a recommended configuration.
+
+The primary thing to ensure is that controllers have a shared root of trust. A configuration
+that works would be as follows:
+
+1. Create a self-signed root CA
+2. Create an intermediate signing cert for each controller
+3. Create a server cert using the signing cert for each controller
+4. Make sure that the CA bundle for each server includes both the root CA and the intermediate CA for that server
+
+See [Developer Setup](./dev-setup.md) for the commands to make this happen and a bit more discussion
+of certs.
 
 ## Distributed Model
 
