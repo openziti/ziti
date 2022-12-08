@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/openziti/edge/rest_management_api_client"
 	api_client_config "github.com/openziti/edge/rest_management_api_client/config"
 	"github.com/openziti/edge/rest_management_api_client/edge_router"
@@ -28,16 +29,46 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
 
 var zitiContext ziti.Context
-var DockerAdminUsername = "admin"
-var DockerAdminPassword = "admin"
+var ExpressCtrlAddress string
+var ExpressZitiHome string
+var ExpressAdminUsername string
+var ExpressAdminPassword string
+var ExpressCtrlTimeout = 10 * time.Second
+var ExpressEdgeRouterName string
+var ExpressEdgeControllerName string
+var ExpressEdgeControllerPort string
+var DockerContainerName string
+var ExpressEnvFilePath string
+var ServerAddress string
+var ServerPort int
 
-//"kvqzGyUj2oJ3Jmql_1YgM4ao61tVg-vw"
+func LoadTestEnvironmentFile() {
+	testEnvFile := "test.env"
+
+	err := godotenv.Load(testEnvFile)
+	if err != nil {
+		log.Errorf("An error occurred loading %s: %s", testEnvFile, err)
+	}
+
+	ExpressAdminUsername = os.Getenv("ZITI_USER")
+	ExpressAdminPassword = os.Getenv("ZITI_PWD")
+	ExpressZitiHome = os.Getenv("ZITI_HOME")
+	ExpressCtrlAddress = os.Getenv("ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT")
+	ExpressEdgeRouterName = os.Getenv("ZITI_EDGE_ROUTER_RAWNAME")
+	ExpressEdgeControllerName = os.Getenv("ZITI_EDGE_CONTROLLER_RAWNAME")
+	ExpressEdgeControllerPort = os.Getenv("ZITI_EDGE_CONTROLLER_PORT")
+	DockerContainerName = os.Getenv("DOCKER_CONTAINER_NAME")
+	ExpressEnvFilePath = os.Getenv("ENV_FILE_PATH")
+	ServerAddress = os.Getenv("SERVER_ADDRESS")
+	ServerPort, _ = strconv.Atoi(os.Getenv("SERVER_PORT"))
+}
 
 /*
 This is a manually run test that will, with the default values except the admin password, confirm the docker-compose
@@ -46,20 +77,23 @@ server on the back end.
 */
 func TestSimpleWebService(t *testing.T) {
 
+	LoadTestEnvironmentFile()
+
+	// If no address or port, skip this test
+	if ServerAddress == "" || ServerPort == 0 {
+		t.Skip("Server address and server port not set, skipping test")
+	}
+
 	testerUsername := "gotester"
-	ctrlAddress := "https://ziti-edge-controller:1280"
-	hostingRouterName := "ziti-edge-router"
 	dialAddress := "simple.web.smoke.test"
 	dialPort := 80
-	bindHostAddress := "web-test-blue"
-	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
 	wd, _ := os.Getwd()
 
 	// Wait for the controller to become available
-	waitForController(ctrlAddress, 10*time.Second)
+	waitForController("https://"+ExpressCtrlAddress, 10*time.Second)
 
-	client, err := connectToController(ctrlAddress, DockerAdminUsername, DockerAdminPassword)
+	client, err := connectToController("https://"+ExpressCtrlAddress, ExpressAdminUsername, ExpressAdminPassword)
 	require.Nilf(t, err, "An error occurred attempting to connect with the controller.\n%s", err)
 
 	// Create the tester identity
@@ -96,14 +130,14 @@ func TestSimpleWebService(t *testing.T) {
 	defer func() { _ = deleteServiceConfigByID(client, dialSvcConfig.ID) }()
 
 	// Provide host config for the hostname
-	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", bindHostAddress, bindHostPort)
+	bindSvcConfig := createHostV1ServiceConfig(client, "basic.smoke.bind", "tcp", ServerAddress, ServerPort)
 	defer func() { _ = deleteServiceConfigByID(client, bindSvcConfig.ID) }()
 
 	// Create a service that "links" the dial and bind configs
 	createService(client, serviceName, []string{bindSvcConfig.ID, dialSvcConfig.ID})
 
 	// Create a service policy to allow the router to host the web test service
-	hostRouterIdent := getIdentityByName(client, hostingRouterName)
+	hostRouterIdent := getIdentityByName(client, ExpressEdgeRouterName)
 	webTestService := getServiceByName(client, serviceName)
 	defer func() { _ = deleteServiceByID(client, *webTestService.ID) }()
 	bindSP := createServicePolicy(client, "basic.web.smoke.test.service.bind", rest_model.DialBindBind, rest_model.Roles{"@" + *hostRouterIdent.ID}, rest_model.Roles{"@" + *webTestService.ID})
@@ -115,8 +149,8 @@ func TestSimpleWebService(t *testing.T) {
 	defer func() { _ = deleteServicePolicyByID(client, dialSP.ID) }()
 
 	// Test connectivity with private edge router, wait some time for the terminator to be created
-	currentCount := getTerminatorCountByRouterName(client, hostingRouterName)
-	termCntReached := waitForTerminatorCountByRouterName(client, hostingRouterName, currentCount+1, 30*time.Second)
+	currentCount := getTerminatorCountByRouterName(client, ExpressEdgeRouterName)
+	termCntReached := waitForTerminatorCountByRouterName(client, ExpressEdgeRouterName, currentCount+1, 30*time.Second)
 	if !termCntReached {
 		fmt.Println("Unable to detect a terminator for the edge router")
 	}
@@ -572,7 +606,7 @@ func waitForController(hostport string, timeout time.Duration) bool {
 			break
 		}
 		time.Sleep(1 * time.Second)
-		fmt.Println("Waiting for controller...")
+		fmt.Printf("Waiting for controller at %s...\n", hostport)
 	}
 	return false
 }
