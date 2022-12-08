@@ -20,39 +20,35 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 )
 
-// Adjust these values as needed if not using the default test environment
 var IdentityPrefix = "@"
 var AttributePrefix = "#"
-
-//var ExpressCtrlAddress = "https://ziti-edge-controller:1280"
-//var ExpressAdminUsername = "admin"
-//var ExpressAdminPassword = "kvqzGyUj2oJ3Jmql_1YgM4ao61tVg-vw"
-//var ExpressCtrlTimeout = 10 * time.Second
-//var ExpressEdgeRouterName = "ziti-edge-router"
-//var ExpressControllerName = "ziti-edge-controller"
 
 /*
 Test that the controller is live and responding
 */
 func TestController(t *testing.T) {
-	assert.True(t, waitForController(ExpressCtrlAddress, ExpressCtrlTimeout), "The controller could not be reached")
+	LoadTestEnvironmentFile()
+	// Wait for the controller to become available
+	assert.True(t, waitForController("https://"+ExpressCtrlAddress, ExpressCtrlTimeout), "The controller could not be reached")
 }
 
 /*
 Test that the expected router is present and online
 */
 func TestRouter(t *testing.T) {
+	LoadTestEnvironmentFile()
 	// Wait for the controller to be available
-	result := waitForController(ExpressCtrlAddress, ExpressCtrlTimeout)
+	result := waitForController("https://"+ExpressCtrlAddress, ExpressCtrlTimeout)
 	if !result {
 		log.Errorf("Controller cannot be reached")
 	}
 
 	// Log into the controller
-	client, err := connectToController(ExpressCtrlAddress, ExpressAdminUsername, ExpressAdminPassword)
+	client, err := connectToController("https://"+ExpressCtrlAddress, ExpressAdminUsername, ExpressAdminPassword)
 	require.Nilf(t, err, "An error occurred attempting to connect with the controller.\n%s", err)
 
 	// Query routers
@@ -67,34 +63,45 @@ This is a manually run test to confirm expected values are appearing in the .env
 quickstart script is run.
 */
 func TestEnvFileContents(t *testing.T) {
-	containerName := "quickstart-test"
-	envFileName := "localhost.env"
+	LoadTestEnvironmentFile()
+
+	// If no address or port, skip this test
+	if ExpressEnvFilePath == "" {
+		t.Skip("Environment file path not set, skipping test")
+	}
+
 	expectedValues := []string{
 		"export ZITI_EDGE_ROUTER_RAWNAME=\"" + ExpressEdgeRouterName + "\"",
 		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"" + ExpressEdgeControllerName + "\"",
-		"export ZITI_HOME_OS_SPECIFIC=\"/persistent\"",
-		"export ZITI_HOME=\"/persistent\"",
-		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
-		"export ZITI_EDGE_CTRL_ADVERTISED=\"" + ExpressEdgeControllerName + ":1280\"",
+		"export ZITI_EDGE_CTRL_ADVERTISED=\"" + ExpressEdgeControllerName + ":" + ExpressEdgeControllerPort + "\"",
+		"export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT=\"" + ExpressCtrlAddress + "\"",
 		"export ZITI_USER=\"" + ExpressAdminUsername + "\"",
 		"export ZITI_PWD=\"" + ExpressAdminPassword + "\"",
-		"export ZITI_PKI_OS_SPECIFIC=\"/persistent/pki\"",
 		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"" + ExpressEdgeControllerName + "-root-ca\"",
 		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"" + ExpressEdgeControllerName + "-intermediate\"",
 	}
 
-	cpString := containerName + ":/persistent/" + envFileName
-	cmd := exec.Command("docker", "cp", cpString, ".")
-	err := cmd.Run()
-	if err != nil {
-		fmt.Printf("Error copying env file: %s\n", err)
+	filenameStart := strings.LastIndex(ExpressEnvFilePath, "/") + 1
+	require.GreaterOrEqual(t, filenameStart, 0, "Could not obtain the environment filename from the path provided (%s)", ExpressEnvFilePath)
+	envFileName := ExpressEnvFilePath[filenameStart:]
+	if DockerContainerName != "" {
+		cpString := DockerContainerName + ":" + ExpressEnvFilePath
+		cmd := exec.Command("docker", "cp", cpString, ".")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("Error copying env file: %s\n", err)
+		}
+	} else {
+		cmd := exec.Command("cp", ExpressEnvFilePath, ".")
+		err := cmd.Run()
+		if err != nil {
+			fmt.Printf("Error copying env file: %s\n", err)
+		}
 	}
 
 	// Check env file for expected values
 	file, err := os.Open(envFileName)
-	if err != nil {
-		log.Error(err)
-	}
+	require.Nilf(t, err, "Failed to open .env file (%s): %s", envFileName, err)
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -133,7 +140,7 @@ func TestEnvFileContents(t *testing.T) {
 Test that the REST API service is configured properly
 */
 func TestRestAPIService(t *testing.T) {
-
+	LoadTestEnvironmentFile()
 	RestServiceBindConfigName := "ziti.rest.bind"
 	RestServiceDialConfigName := "ziti.rest.dial"
 	RestServiceDialPort := 443
@@ -144,13 +151,13 @@ func TestRestAPIService(t *testing.T) {
 	RestServiceDialPolicyName := "ziti.rest.service.dial"
 
 	// Wait for the controller to be available
-	result := waitForController(ExpressCtrlAddress, ExpressCtrlTimeout)
+	result := waitForController("https://"+ExpressCtrlAddress, ExpressCtrlTimeout)
 	if !result {
 		log.Errorf("Controller cannot be reached")
 	}
 
 	// Log into the controller
-	client, err := connectToController(ExpressCtrlAddress, ExpressAdminUsername, ExpressAdminPassword)
+	client, err := connectToController("https://"+ExpressCtrlAddress, ExpressAdminUsername, ExpressAdminPassword)
 	require.Nilf(t, err, "An error occurred attempting to connect with the controller.\n%s", err)
 
 	/* ----Test Router Identity Attributes---- */
@@ -297,7 +304,7 @@ func TestRestAPIService(t *testing.T) {
 				assert.Failf(t, "Query to service failed", "An error occurred while trying to reach the service <%s>", RestServiceName)
 			}
 			assert.Equal(t, http.StatusOK, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
-			assert.Containsf(t, string(body), "https://ziti-edge-controller:1280/edge/management/v1", "Expected message not found in response body")
+			assert.Containsf(t, string(body), "https://"+ExpressCtrlAddress+"/edge/management/v1", "Expected message not found in response body")
 		}
 	})
 }
