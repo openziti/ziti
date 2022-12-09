@@ -29,3 +29,5 @@ linux-build
 go.work
 go.work.sum
 .github/workflows/localtest.yml
+doc/ha/pki
+doc/ha/data
