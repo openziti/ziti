@@ -29,18 +29,36 @@ import (
 )
 
 func NewHcLogrusLogger() hclog.Logger {
-	log := logrus.New()
-	log.SetFormatter(pfxlog.Logger().Entry.Logger.Formatter)
+	logger := logrus.New()
+	logger.SetFormatter(pfxlog.Logger().Entry.Logger.Formatter)
 
 	return &hclogAdapter{
-		log: logrus.NewEntry(log),
+		entry: logrus.NewEntry(logger),
 	}
 }
 
 type hclogAdapter struct {
-	log *logrus.Entry
+	entry *logrus.Entry
 	sync.Mutex
 	name string
+}
+
+func (self *hclogAdapter) GetLevel() hclog.Level {
+	switch self.entry.Logger.Level {
+	case logrus.TraceLevel:
+		return hclog.Trace
+	case logrus.DebugLevel:
+		return hclog.Debug
+	case logrus.InfoLevel:
+		return hclog.Info
+	case logrus.WarnLevel:
+		return hclog.Warn
+	case logrus.ErrorLevel:
+		return hclog.Error
+	case logrus.FatalLevel:
+		return hclog.Error
+	}
+	return hclog.DefaultLevel
 }
 
 func (self *hclogAdapter) Log(level hclog.Level, msg string, args ...interface{}) {
@@ -61,7 +79,7 @@ func (self *hclogAdapter) Log(level hclog.Level, msg string, args ...interface{}
 
 func (self *hclogAdapter) ImpliedArgs() []interface{} {
 	var fields []interface{}
-	for k, v := range self.log.Data {
+	for k, v := range self.entry.Data {
 		fields = append(fields, k)
 		fields = append(fields, v)
 	}
@@ -93,43 +111,43 @@ func (self *hclogAdapter) Error(msg string, args ...interface{}) {
 }
 
 func (self *hclogAdapter) logToLogrus(level logrus.Level, msg string, args ...interface{}) {
-	log := self.log
+	logger := self.entry
 	if len(args) > 0 {
-		log = self.LoggerWith(args)
+		logger = self.LoggerWith(args)
 	}
 	frame := self.getCaller()
-	log = log.WithField("file", frame.File).WithField("func", frame.Function)
-	log.Log(level, self.name+msg)
+	logger = logger.WithField("file", frame.File).WithField("func", frame.Function)
+	logger.Log(level, self.name+msg)
 }
 
 func (self *hclogAdapter) IsTrace() bool {
-	return self.log.Logger.IsLevelEnabled(logrus.TraceLevel)
+	return self.entry.Logger.IsLevelEnabled(logrus.TraceLevel)
 }
 
 func (self *hclogAdapter) IsDebug() bool {
-	return self.log.Logger.IsLevelEnabled(logrus.DebugLevel)
+	return self.entry.Logger.IsLevelEnabled(logrus.DebugLevel)
 }
 
 func (self *hclogAdapter) IsInfo() bool {
-	return self.log.Logger.IsLevelEnabled(logrus.InfoLevel)
+	return self.entry.Logger.IsLevelEnabled(logrus.InfoLevel)
 }
 
 func (self *hclogAdapter) IsWarn() bool {
-	return self.log.Logger.IsLevelEnabled(logrus.WarnLevel)
+	return self.entry.Logger.IsLevelEnabled(logrus.WarnLevel)
 }
 
 func (self *hclogAdapter) IsError() bool {
-	return self.log.Logger.IsLevelEnabled(logrus.ErrorLevel)
+	return self.entry.Logger.IsLevelEnabled(logrus.ErrorLevel)
 }
 
 func (self *hclogAdapter) With(args ...interface{}) hclog.Logger {
 	return &hclogAdapter{
-		log: self.LoggerWith(args),
+		entry: self.LoggerWith(args),
 	}
 }
 
 func (self *hclogAdapter) LoggerWith(args []interface{}) *logrus.Entry {
-	l := self.log
+	l := self.entry
 	ml := len(args)
 	var key string
 	for i := 0; i < ml-1; i += 2 {
@@ -154,20 +172,20 @@ func (self *hclogAdapter) Named(name string) hclog.Logger {
 
 func (self *hclogAdapter) ResetNamed(name string) hclog.Logger {
 	return &hclogAdapter{
-		name: name,
-		log:  self.log,
+		name:  name,
+		entry: self.entry,
 	}
 }
 
-func (self *hclogAdapter) SetLevel(level hclog.Level) {
+func (self *hclogAdapter) SetLevel(hclog.Level) {
 	panic("implement me")
 }
 
-func (self *hclogAdapter) StandardLogger(opts *hclog.StandardLoggerOptions) *log.Logger {
+func (self *hclogAdapter) StandardLogger(*hclog.StandardLoggerOptions) *log.Logger {
 	panic("implement me")
 }
 
-func (self *hclogAdapter) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer {
+func (self *hclogAdapter) StandardWriter(*hclog.StandardLoggerOptions) io.Writer {
 	panic("implement me")
 }
 
