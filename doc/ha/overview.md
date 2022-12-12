@@ -118,8 +118,44 @@ that works would be as follows:
 3. Create a server cert using the signing cert for each controller
 4. Make sure that the CA bundle for each server includes both the root CA and the intermediate CA for that server
 
+Note that controller server certs must contain a SPIFFE id of the form
+
+```
+spiffe://<trust domain>/controller/<controller id>
+```
+
+So if your trust domain is `example.com` and your controller id is `ctrl1`, then your SPIFFE id
+would be:
+
+```
+spiffe://example.com/controller/ctrl1
+```
+
+**SPIFFE ID Notes:**
+
+* This ID must be set as the only URI in the `X509v3 Subject Alternative Name` field in the certificate.
+* These IDs are used to allow the controllers to identify each during the mTLS negotiation.
+* The OpenZiti CLI supports creating SPIFFE IDs in your certs
+    * Use the `--trust-domain` flag when creating CAs
+    * Use the `--spiffe-id` flag when creating server or client certificates
+
 See [Developer Setup](./dev-setup.md) for the commands to make this happen and a bit more discussion
 of certs.
+
+### Open Ports
+
+Controllers now establish connections with each other, for two purposes.
+
+1. Forwarding model updates to the leader, so they can be applied to the raft cluster
+2. raft communication
+
+Both kinds of traffic flow over the same connection.
+
+These connections do not require any extra open ports as we are using the control
+channel listener to listen to both router and controller connections. As part of
+the connection process the connection type is provided and the appropriate
+authentication and connection setup happens based on the connection type. If no
+connection type is provided, it's assumed to be a router.
 
 ## Distributed Model
 

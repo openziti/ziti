@@ -20,16 +20,16 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/agent v1.0.6
-	github.com/openziti/channel/v2 v2.0.20
-	github.com/openziti/edge v0.24.61
-	github.com/openziti/fabric v0.21.28
-	github.com/openziti/foundation/v2 v2.0.8
-	github.com/openziti/identity v1.0.26
-	github.com/openziti/runzmd v1.0.5
-	github.com/openziti/sdk-golang v0.18.10
-	github.com/openziti/storage v0.1.28
-	github.com/openziti/transport/v2 v2.0.45
+	github.com/openziti/agent v1.0.7
+	github.com/openziti/channel/v2 v2.0.24
+	github.com/openziti/edge v0.24.75
+	github.com/openziti/fabric v0.21.36
+	github.com/openziti/foundation/v2 v2.0.9
+	github.com/openziti/identity v1.0.28
+	github.com/openziti/runzmd v1.0.7
+	github.com/openziti/sdk-golang v0.18.19
+	github.com/openziti/storage v0.1.30
+	github.com/openziti/transport/v2 v2.0.48
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
@@ -43,7 +43,7 @@ require (
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.1
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/net v0.2.0
+	golang.org/x/net v0.4.0
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
@@ -116,7 +116,7 @@ require (
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
-	github.com/kyokomi/emoji/v2 v2.2.10 // indirect
+	github.com/kyokomi/emoji/v2 v2.2.11 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lucsky/cuid v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
@@ -143,7 +143,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/metrics v1.2.0 // indirect
+	github.com/openziti/metrics v1.2.2 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
@@ -172,14 +172,14 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
-	golang.org/x/image v0.1.0 // indirect
+	golang.org/x/crypto v0.4.0 // indirect
+	golang.org/x/exp v0.0.0-20221211140036-ad323defaf05 // indirect
+	golang.org/x/image v0.2.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/term v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
