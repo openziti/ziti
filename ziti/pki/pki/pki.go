@@ -25,10 +25,10 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"time"
-
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"github.com/openziti/ziti/ziti/pki/store"
+	"time"
+
 	"github.com/openziti/identity/certtools"
 )
 
@@ -154,7 +154,11 @@ func (e *ZitiPKI) Sign(signer *certificate.Bundle, req *Request) error {
 
 // Chain will...
 func (e *ZitiPKI) Chain(signer *certificate.Bundle, req *Request) error {
-	if err := e.Store.Chain(signer.Name, req.Name); err != nil {
+	destCA := signer.Name
+	if req.Template.IsCA {
+		destCA = req.Name
+	}
+	if err := e.Store.Chain(signer.Name, destCA, req.Name); err != nil {
 		return fmt.Errorf("failed saving generated chain: %v", err)
 	}
 	return nil

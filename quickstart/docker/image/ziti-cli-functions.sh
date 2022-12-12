@@ -2,8 +2,11 @@
 
 set -uo pipefail
 
+# the default ZITI_NETWORK (network name) is the short hostname
+: "${DEFAULT_ZITI_NETWORK:="$(hostname -s)"}"
+
 # shellcheck disable=SC2155
-export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/$(hostname)"
+export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWORK}"
 
 export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
@@ -59,33 +62,49 @@ function initializeController {
   "${ZITI_BIN_DIR-}/ziti-controller" edge init "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
   echo -e "ziti-controller initialized. see $(BLUE "${log_file}") for details"
 }
-function startZitiController {
+function startController {
   log_file="${ZITI_HOME-}/${ZITI_EDGE_CONTROLLER_RAWNAME}.log"
   # shellcheck disable=SC2034
-  ("${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" > "${log_file}" 2>&1 &)
-  pid=$!
-  echo -e "ziti-controller started as process id: $pid. log located at: $(BLUE "${log_file}")"
-  return $pid
+  "${ZITI_BIN_DIR-}/ziti-controller" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_RAWNAME}.yaml" &> "${log_file}" &
+  ZITI_EXPRESS_CONTROLLER_PID=$!
+  echo -e "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${log_file}")"
 }
 
-function stopZitiController {
-  killall ziti-controller
-  # shellcheck disable=SC2181
-  if [[ $? == 0 ]]; then echo "Controller stopped."; fi
+function stopController {
+  if [[ -n ${ZITI_EXPRESS_CONTROLLER_PID:-} ]]; then
+    kill "$ZITI_EXPRESS_CONTROLLER_PID"
+    # shellcheck disable=SC2181
+    if [[ $? == 0 ]]; then 
+      echo "Controller stopped."
+      return 0
+    fi
+  else
+    echo "ERROR: you can only stop a controller process that was started with startController" >&2
+    return 1
+  fi
 }
 
-function startExpressEdgeRouter {
+function startRouter {
   log_file="${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.log"
   "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${log_file}" 2>&1 &
-  pid=$!
-  echo -e "Express Edge Router started as process id: $pid. log located at: $(BLUE "${log_file}")"
-  return $pid
+  ZITI_EXPRESS_EDGE_ROUTER_PID=$!
+  echo -e "Express Edge Router started as process id: $ZITI_EXPRESS_EDGE_ROUTER_PID. log located at: $(BLUE "${log_file}")"
+  
 }
 
-function stopAllEdgeRouters {
-  killall ziti-router
-  # shellcheck disable=SC2181
-  if [[ $? == 0 ]]; then echo "Router(s) stopped."; fi
+function stopRouter {
+  if [[ -n ${ZITI_EXPRESS_EDGE_ROUTER_PID:-} ]]; then
+    # shellcheck disable=SC2015
+    kill "${ZITI_EXPRESS_EDGE_ROUTER_PID}" && {
+      echo "INFO: stopped router"
+    } || {
+      echo "ERROR: something went wrong with stopping the router(s)" >&2
+      return 1
+    }
+  else
+    echo "ERROR: you can only stop a router process that was started with startRouter" >&2
+    return 1
+  fi
 }
 
 function checkHostsFile {
@@ -138,7 +157,7 @@ function verifyZitiVersionExists {
 
   unset ZITI_BINARIES_VERSION
 
-  ziticurl="$(curl -s https://api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
+  ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
   # shellcheck disable=SC2155
   export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
   # shellcheck disable=SC2155
@@ -146,6 +165,7 @@ function verifyZitiVersionExists {
 
   # Check if there was an error while trying to get the requested version
   if [[ "${ZITI_BINARIES_VERSION-}" == "null" ]]; then
+    echo "ERROR: response missing '.tag_name': ${ziticurl}" >&2
     return 1
   fi
 
@@ -178,7 +198,7 @@ function getLatestZitiVersion {
   unset ZITI_BINARIES_VERSION
 
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
-    zitilatest=$(curl -s https://api.github.com/repos/openziti/ziti/releases/latest)
+    zitilatest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
     # shellcheck disable=SC2155
     export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
     # shellcheck disable=SC2155
@@ -279,6 +299,37 @@ function checkPrereqs {
   fi
 }
 
+function _portCheck {
+  if [[ "${1-}" == "" ]] || [[ "${2-}" == "" ]]; then
+    echo -e "_portCheck Usage: _portCheck <port> <portName>"
+    return 0
+  fi
+
+  envVar="${1-}"
+  if [[ -n "$ZSH_VERSION" ]]; then
+    envVarValue="${(P)envVar}"
+  elif [[ -n "$BASH_VERSION" ]]; then
+    envVarValue="${!envVar}"
+  else
+    echo -e "$(YELLOW "Unknown/Unsupported shell, cannot verify availability of ${2-}'s intended port, proceed with caution")"
+    return 0
+  fi
+
+  echo -e "Checking if ${2-}'s port (${envVarValue}) is available"
+  portCheckResult=$(lsof -w -i :"${envVarValue}" 2> /dev/null)
+  if [[ "${portCheckResult}" != "" ]]; then # Controller management plane
+      echo -e "$(RED " ")"
+      echo -e "$(RED "The intended ${2-} port (${envVarValue}) is currently being used, the process using this port should be closed or the port value should be changed.")"
+      echo -e "$(RED "To use a different port, set the port value in ${envVar}")"
+      echo -e "$(RED " ")"
+      echo -e "$(RED "Example:")"
+      echo -e "$(RED "export ${envVar}=1234")"
+      echo -e "$(RED " ")"
+      return 1
+  fi
+  return 0
+}
+
 function checkControllerName {
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" == *['!'@#\$%^\&*\(\)_+]* ]]; then
     echo -e "$(RED "  - The provided Network name contains an invalid character: '!'@#\$%^\&*()_+")"
@@ -323,15 +374,15 @@ function setupZitiNetwork {
     echo "Creating a controller is effectively creating a network. The name of the network will be used when writing"
     echo "configuration files locally. Choose the name of your network now. The format of the network name should resemble"
     echo -n "what a hostname looks like. A good choice is to actually use your system's hostname: "
-    echo -e "$(BLUE "$(hostname)")"
+    echo -e "$(BLUE "${DEFAULT_ZITI_NETWORK}")"
     echo " "
-    echo -en "$(echo -ne "Network Name [$(BLUE "$(hostname)")]: ")"
+    echo -en "$(echo -ne "Network Name [$(BLUE "${DEFAULT_ZITI_NETWORK}")]: ")"
     read -r ZITI_NETWORK
     echo " "
     if checkControllerName; then
       : #clear to continue
       if [[ "${ZITI_NETWORK-}" == "" ]]; then
-        ZITI_NETWORK="$(hostname)"
+        ZITI_NETWORK="${DEFAULT_ZITI_NETWORK}"
       fi
       echo "name: ${ZITI_NETWORK-}"
     else
@@ -359,6 +410,7 @@ function generateEnvFile {
   if [[ "${ZITI_CONTROLLER_RAWNAME-}" == "" ]]; then export ZITI_CONTROLLER_RAWNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_CONTROLLER_HOSTNAME="${ZITI_CONTROLLER_RAWNAME}"; fi
   if [[ "${ZITI_CTRL_PORT-}" == "" ]]; then export ZITI_CTRL_PORT="6262"; fi
+  if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; fi
 
   if [[ "${ZITI_EDGE_CONTROLLER_RAWNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_NETWORK-}"; fi
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME-}" == "" ]]; then export export ZITI_EDGE_CONTROLLER_HOSTNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"; fi
@@ -419,8 +471,8 @@ function ziti_expressConfiguration {
       fi
 
       # Stop any devices currently running to avoid port collisions
-      stopAllEdgeRouters
-      stopZitiController
+      stopRouter
+      stopController
     else
       echo -e "$(RED "  --- Exiting express install ---")"
       return 1
@@ -451,7 +503,7 @@ function ziti_expressConfiguration {
   echo " "
   echo -e "******** Setting Up Environment ********"
   if [[ "${1-}" == "" ]]; then
-    nw="$(hostname)"
+    nw="${DEFAULT_ZITI_NETWORK}"
   else
     nw="${1-}"
   fi
@@ -468,6 +520,24 @@ function ziti_expressConfiguration {
     echo "Exiting as env file was not generated"
     return 1
   fi
+
+  # Check Ports
+  returnCnt=0
+  _portCheck "ZITI_CTRL_PORT" "Controller"
+  returnCnt=$((returnCnt + $?))
+  _portCheck "ZITI_EDGE_ROUTER_PORT" "Edge Router"
+  returnCnt=$((returnCnt + $?))
+  _portCheck "ZITI_EDGE_CONTROLLER_PORT" "Edge Controller"
+  returnCnt=$((returnCnt + $?))
+  _portCheck "ZITI_CTRL_MGMT_PORT" "Controller Management Plane"
+  returnCnt=$((returnCnt + $?))
+  if [[ "${ZITI_EDGE_ROUTER_LISTENER_BIND_PORT-}" != "" ]]; then
+    # This port can be explicitly set but is not always, only check if set
+    _portCheck "ZITI_EDGE_ROUTER_LISTENER_BIND_PORT" "Router Listener Bind Port"
+    returnCnt=$((returnCnt + $?))
+  fi
+  if [[ "returnCnt" -gt "0" ]]; then return 1; fi
+
   #checkHostsFile
 
   echo " "
@@ -481,7 +551,7 @@ function ziti_expressConfiguration {
   createControllerConfig
   #createControllerSystemdFile
   initializeController
-  startZitiController
+  startController
   echo "waiting for the controller to come online to allow the edge router to enroll"
 
   waitForController
@@ -515,13 +585,13 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
 
-  stopZitiController
+  stopController
   echo "Edge Router enrolled. Controller stopped."
 
   echo ""
   echo -e "$(GREEN "Congratulations. Express setup complete!")"
-  echo -e "Start your Ziti Controller by running the function: $(BLUE "startZitiController")"
-  echo -e "Start your Ziti Edge Router by running : $(BLUE 'startExpressEdgeRouter')"
+  echo -e "Start your Ziti Controller by running the function: $(BLUE "startController")"
+  echo -e "Start your Ziti Edge Router by running : $(BLUE 'startRouter')"
   echo ""
 }
 
@@ -718,7 +788,7 @@ function createRouterPki {
   export ZITI_ROUTER_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.cert"
   export ZITI_ROUTER_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/server.key"
   export ZITI_ROUTER_IDENTITY_CA="${ZITI_PKI_OS_SPECIFIC}/routers/${router_name}/cas.cert"
-  pki_client_server "${router_name},localhost,127.0.0.1,$(hostname)" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
+  pki_client_server "${router_name},localhost,127.0.0.1,${ZITI_NETWORK}" "${ZITI_CONTROLLER_INTERMEDIATE_NAME}" "${ZITI_EDGE_ROUTER_IP_OVERRIDE-}" "${router_name}"
 }
 
 function createPrivateRouterConfig {
@@ -781,7 +851,7 @@ function createPki {
   pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
   echo " "
-  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,$(hostname)"
+  pki_allow_list_dns="${ZITI_CONTROLLER_HOSTNAME},localhost,${ZITI_NETWORK}"
   if [[ "${ZITI_EDGE_CONTROLLER_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_EDGE_CONTROLLER_HOSTNAME}"; fi
   if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
   pki_allow_list_ip="127.0.0.1"
@@ -965,8 +1035,6 @@ function ziti_createEnvFile {
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     if decideToUseDefaultZitiHome; then
-      # shellcheck disable=SC2155
-      export ZITI_NETWORK="$(hostname)"
       ZITI_HOME="${DEFAULT_ZITI_HOME_LOCATION}"
     else
       return 1
@@ -998,16 +1066,27 @@ function ziti_createEnvFile {
       export ZITI_NETWORK="${1-}"
     fi
     if [[ "${ZITI_NETWORK-}" = "" ]]; then
-      echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: $(hostname)")"
+      echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: ${DEFAULT_ZITI_NETWORK}")"
       # shellcheck disable=SC2155
-      export ZITI_NETWORK="$(hostname)"
+      export ZITI_NETWORK="${DEFAULT_ZITI_NETWORK}"
     fi
   fi
 
   echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
 
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
-  if [[ "${ZITI_PWD-}" == "" ]]; then export ZITI_PWD="admin"; fi
+  if [[ "${ZITI_PWD-}" == "" ]]; then 
+    ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
+    echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
+    # shellcheck disable=SC2162
+    read -r pwd_reply
+    if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
+      echo "INFO: using ZITI_PWD=${ZITI_PWD}"
+    else
+      echo -en "Type the preferred admin password and press <enter>"
+      read -r ZITI_PWD
+    fi
+  fi
   if [[ "${ZITI_DOMAIN_SUFFIX-}" == "" ]]; then export ZITI_DOMAIN_SUFFIX=""; fi
   if [[ "${ZITI_ID-}" == "" ]]; then export ZITI_ID="${ZITI_HOME}/identities.yaml"; fi
 
@@ -1037,9 +1116,8 @@ function ziti_createEnvFile {
   export ZITI_SIGNING_ROOTCA_NAME="${ZITI_SIGNING_CERT_NAME}-root-ca"
   export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_SIGNING_CERT_NAME}-intermediate"
 
-  export ZITI_BIN_ROOT="${ZITI_HOME}/ziti-bin"
-
-  if [[ "${ZITI_CTRL_MGMT_HOST_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:10000"; fi
+  if [[ "${ZITI_CTRL_MGMT_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_PORT="10000"; fi
+  if [[ "${ZITI_CTRL_MGMT_HOST_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_HOST_PORT="${ZITI_CONTROLLER_HOSTNAME}:${ZITI_CTRL_MGMT_PORT}"; fi
   if [[ "${ZITI_CTRL_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-client.cert"; fi
   if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/certs/${ZITI_CONTROLLER_HOSTNAME}-server.chain.pem"; fi
   if [[ "${ZITI_CTRL_IDENTITY_KEY-}" == "" ]]; then export ZITI_CTRL_IDENTITY_KEY="${ZITI_PKI_OS_SPECIFIC}/${ZITI_CONTROLLER_INTERMEDIATE_NAME}/keys/${ZITI_CONTROLLER_HOSTNAME}-server.key"; fi

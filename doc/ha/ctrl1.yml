@@ -1,15 +1,17 @@
 v: 3
 
 raft:
-  minClusterSize: 1
+  minClusterSize: 3
   advertiseAddress: tls:localhost:6262
-  dataDir: ${ZITI_DATA}/ctrl1
+  dataDir: ./data/ctrl1
+  bootstrapMembers:
+    - tls:127.0.0.1:6363
+    - tls:127.0.0.1:6464
 
 identity:
-  cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
-  ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
+  cert: ./pki/ctrl1/certs/server.cert
+  key: ./pki/ctrl1/keys/server.key
+  ca: ./pki/ctrl1/certs/server.chain.pem
 
 ctrl:
   listener: tls:127.0.0.1:6262
@@ -22,8 +24,8 @@ edge:
     address: 127.0.0.1:1280
   enrollment:
     signingCert:
-      cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: ./pki/ctrl1/certs/ctrl1.cert
+      key: ./pki/ctrl1/keys/ctrl1.key
     edgeIdentity:
       duration: 5m
     edgeRouter:

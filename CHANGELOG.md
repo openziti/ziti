@@ -1,3 +1,60 @@
+# Release 0.27.0
+
+## What's New
+
+* Ziti CLI
+    * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
+    * Add create/delete transit-router CLI commands
+    * [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+
+## Ziti CLI
+
+* The update command has been removed. It was non-functional, so this should not affect anyone 
+* The adhoc, ping and playbook commands have been removed. These were ansible and vagrant commands that were not widely used.
+* Make the art command hidden, doesn't need to be removed, leave it as an easter egg
+* Move ziti ps command under ziti agent. Remove all ziti ps subcommands, as they already exist as ziti agent subcommands
+* Add `ziti controller` and `ziti router` commands
+    * They should work exactly the same as `ziti-controller` and `ziti router` 
+    * The standalone binaries for `ziti-controller` and `ziti-router` are deprecated and will be removed in a future release
+* Add hidden `ziti tunnel` command
+    * Should work exactly the same as `ziti-tunnel`
+    * Is hidden as `ziti-edge-tunnel` is the preferred tunnelling application
+    * The standalone binary `ziti-tunnel` is deprecated and will be removed in a future release
+* The db, log-format and unwrap commands have been moved under a new ops command
+* ziti executable download management has been deprecated
+    * The init and uninstall commands have been removed
+    * The install, upgrade, use and version commands have been hidden and will be hidden once tests using them are updated or replaced
+* The demo and tutorial commands have been moved under the new learn subcommand
+* `ziti edge enroll` now has a verbose option for additional debugging
+* The `ziti edge` CLI now support create/delete transit-router. This allows transit/fabric routers to be provisioned using an enrollment process, rather than requiring certs to be created externally. Note that this requires that the fabric router config file has a `csr` section.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.5 -> v1.0.7](https://github.com/openziti/agent/compare/v1.0.5...v1.0.7)
+* github.com/openziti/channel/v2: [v2.0.12 -> v2.0.24](https://github.com/openziti/channel/compare/v2.0.12...v2.0.24)
+* github.com/openziti/edge: [v0.24.36 -> v0.24.75](https://github.com/openziti/edge/compare/v0.24.36...v0.24.75)
+    * [Issue #1253](https://github.com/openziti/edge/issues/1253) - Panic in controller getting hello from edge router
+    * [Issue #1233](https://github.com/openziti/edge/issues/1233) - edge-routers ref link in identities endpoint is incorrectly keyed
+    * [Issue #1234](https://github.com/openziti/edge/issues/1234) - identities missing service-config link ref
+    * [Issue #1232](https://github.com/openziti/edge/issues/1232) - edge management api identity-types endpoint produces incorrect links
+
+* github.com/openziti/fabric: [v0.21.17 -> v0.21.36](https://github.com/openziti/fabric/compare/v0.21.17...v0.21.36)
+    * [Issue #525](https://github.com/openziti/fabric/issues/525) - Update metrics message propagation from router to controller for HA
+
+* github.com/openziti/foundation/v2: [v2.0.7 -> v2.0.9](https://github.com/openziti/foundation/compare/v2.0.7...v2.0.9)
+* github.com/openziti/identity: [v1.0.20 -> v1.0.28](https://github.com/openziti/identity/compare/v1.0.20...v1.0.28)
+* github.com/openziti/runzmd: [v1.0.3 -> v1.0.7](https://github.com/openziti/runzmd/compare/v1.0.3...v1.0.7)
+* github.com/openziti/sdk-golang: [v0.16.146 -> v0.18.19](https://github.com/openziti/sdk-golang/compare/v0.16.146...v0.18.19)
+* github.com/openziti/storage: [v0.1.26 -> v0.1.30](https://github.com/openziti/storage/compare/v0.1.26...v0.1.30)
+* github.com/openziti/transport/v2: [v2.0.38 -> v2.0.48](https://github.com/openziti/transport/compare/v2.0.38...v2.0.48)
+* github.com/openziti/metrics: [v1.1.5 -> v1.2.2](https://github.com/openziti/metrics/compare/v1.1.5...v1.2.2)
+* github.com/openziti/ziti: [v0.26.11 -> v0.26.12](https://github.com/openziti/ziti/compare/v0.26.11...v0.26.12)
+    * [Issue #892](https://github.com/openziti/ziti/issues/892) - Add timeout to ziti agent controller snapshot-db command
+    * [Issue #917](https://github.com/openziti/ziti/issues/917) - ZITI_BIN_ROOT is incorrect in docker env
+    * [Issue #912](https://github.com/openziti/ziti/issues/912) - Binaries not updated in docker-compose env with new image
+    * [Issue #897](https://github.com/openziti/ziti/issues/897) - Add CLI options to manage  /edge/v1/transit-routers
+    * [Issue #706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
+
 # Release 0.26.11
 
 ## What's New

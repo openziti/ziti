@@ -1,0 +1,2 @@
+Binary::apt::APT::Color "0";
+Binary::apt::DPkg::Progress-Fancy "0";

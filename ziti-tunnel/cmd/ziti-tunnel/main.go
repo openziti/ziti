@@ -19,7 +19,7 @@ package main
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/debugz"
-	"github.com/openziti/ziti/ziti-tunnel/cmd/ziti-tunnel/subcmd"
+	"github.com/openziti/ziti/ziti/tunnel"
 	"github.com/sirupsen/logrus"
 )
 
@@ -29,5 +29,5 @@ func init() {
 
 func main() {
 	debugz.AddStackDumpHandler()
-	subcmd.Execute()
+	tunnel.Execute()
 }
