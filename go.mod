@@ -27,7 +27,7 @@ require (
 	github.com/jinzhu/copier v0.3.5
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
 	github.com/lucsky/cuid v1.2.1
-	github.com/mdlayher/netlink v1.7.0
+	github.com/mdlayher/netlink v1.7.1
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/miekg/dns v1.1.50
 	github.com/mitchellh/mapstructure v1.5.0
