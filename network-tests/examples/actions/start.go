@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"fmt"
+	"github.com/openziti/fablab/kernel/lib"
 	"time"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -10,11 +12,8 @@ import (
 	"github.com/openziti/zitilab/models"
 )
 
-func NewStartAction(metricbeat MetricbeatConfig, consul ConsulConfig) model.ActionBinder {
-	action := &startAction{
-		Metricbeat: metricbeat,
-		Consul:     consul,
-	}
+func NewStartAction() model.ActionBinder {
+	action := &startAction{}
 	return action.bind
 }
 
@@ -29,24 +28,35 @@ func (a *startAction) bind(m *model.Model) model.Action {
 	//workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	//workflow.AddAction(util_actions.StartEchoServers("#echo-server"))
 	//workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(model.ActionFunc(func(m *model.Model) error {
+		return m.ForEachComponent(".sdk-app", 5, func(c *model.Component) error {
+			factory := lib.NewSshConfigFactory(c.GetHost())
 
+			serviceCmd := fmt.Sprintf("nohup sudo /home/%s/fablab/bin/%s run -i /home/%s/fablab/cfg/%s > logs/%s.log 2>&1 &",
+				factory.User(), c.BinaryName, factory.User(), c.PublicIdentity+".json", c.PublicIdentity)
+
+			_, err := lib.RemoteExec(factory, serviceCmd)
+			return err
+		})
+	}))
 	return workflow
 }
 
 type startAction struct {
-	Metricbeat MetricbeatConfig
-	Consul     ConsulConfig
+	//Metricbeat MetricbeatConfig
+	//Consul     ConsulConfig
+
 }
 
-type MetricbeatConfig struct {
-	ConfigPath string
-	DataPath   string
-	LogPath    string
-}
-
-type ConsulConfig struct {
-	ConfigDir  string
-	ServerAddr string
-	DataPath   string
-	LogPath    string
-}
+//type MetricbeatConfig struct {
+//	ConfigPath string
+//	DataPath   string
+//	LogPath    string
+//}
+//
+//type ConsulConfig struct {
+//	ConfigDir  string
+//	ServerAddr string
+//	DataPath   string
+//	LogPath    string
+//}

@@ -1,7 +1,6 @@
 package main
 
 import (
-	fablib_5_operation "github.com/openziti/fablab/kernel/lib/runlevel/5_operation"
 	"github.com/openziti/fablab/kernel/model"
 )
 
@@ -12,13 +11,14 @@ func newStageFactory() model.Factory {
 }
 
 func (sf *stageFactory) Build(m *model.Model) error {
-	runPhase := fablib_5_operation.NewPhase()
+	//runPhase := fablib_5_operation.NewPhase()
 
 	//generate 10k random bytes
 	//data := make([]byte, 10000)
 	//rand.Read(data)
 	//
-	//m.AddOperatingStage(runlevel_5_operation.AssertEcho("#echo-client", url.QueryEscape(string(data))))
-	m.AddOperatingStage(runPhase)
+	//m.AddOperatingStage(fablib_5_operation.Iperf("test", "localhost:5432", ".iperf-server", ".iperf-client", 30))
+	//m.AddOperatingStage(runPhase)
+	//m.AddOperatingStage(fablib_5_operation.Persist())
 	return nil
 }
