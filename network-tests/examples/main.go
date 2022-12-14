@@ -119,19 +119,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-east-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-east-client.yml",
 							PublicIdentity: "router-east-client",
 							RunWithSudo:    true,
 						},
-						"tun-east-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-east-client",
-							RunWithSudo:    true,
-						},
+						//"tun-east-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-east-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -145,19 +145,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-west-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-west-client.yml",
 							PublicIdentity: "router-west-client",
 							RunWithSudo:    true,
 						},
-						"tun-west-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-west-client",
-							RunWithSudo:    true,
-						},
+						//"tun-west-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-west-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -171,19 +171,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-canada-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-canada-client.yml",
 							PublicIdentity: "router-canada-client",
 							RunWithSudo:    true,
 						},
-						"tun-canada-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-canada-client",
-							RunWithSudo:    true,
-						},
+						//"tun-canada-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-canada-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -197,19 +197,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-tokyo-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-tokyo-client.yml",
 							PublicIdentity: "router-tokyo-client",
 							RunWithSudo:    true,
 						},
-						"tun-tokyo-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-tokyo-client",
-							RunWithSudo:    true,
-						},
+						//"tun-tokyo-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-tokyo-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -223,19 +223,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-sydney-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-sydney-client.yml",
 							PublicIdentity: "router-sydney-client",
 							RunWithSudo:    true,
 						},
-						"tun-sydney-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-sydney-client",
-							RunWithSudo:    true,
-						},
+						//"tun-sydney-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-sydney-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -249,19 +249,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-brazil-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-brazil-client.yml",
 							PublicIdentity: "router-brazil-client",
 							RunWithSudo:    true,
 						},
-						"tun-brazil-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-brazil-client",
-							RunWithSudo:    true,
-						},
+						//"tun-brazil-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-brazil-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -275,19 +275,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-frankfurt-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-frankfurt-client.yml",
 							PublicIdentity: "router-frankfurt-client",
 							RunWithSudo:    true,
 						},
-						"tun-frankfurt-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-frankfurt-client",
-							RunWithSudo:    true,
-						},
+						//"tun-frankfurt-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-frankfurt-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -301,19 +301,19 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-cape_town-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client"}},
+							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
 							ConfigName:     "router-cape_town-client.yml",
 							PublicIdentity: "router-cape_town-client",
 							RunWithSudo:    true,
 						},
-						"tun-cape_town-client": {
-							Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "tun-cape_town-client",
-							RunWithSudo:    true,
-						},
+						//"tun-cape_town-client": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//	BinaryName:     "ziti-edge-tunnel",
+						//	PublicIdentity: "tun-cape_town-client",
+						//	RunWithSudo:    true,
+						//},
 					},
 				},
 			},
@@ -378,18 +378,15 @@ func main() {
 	model.AddBootstrapExtension(binding.AwsCredentialsLoader)
 	model.AddBootstrapExtension(aws_ssh_key.KeyManager)
 
-	underlayEndpoint := func(m *model.Model) string {
+	endpoint := func(m *model.Model) string {
 		return m.MustSelectHost("component.iperf-server").PublicIp
 	}
 
-	overlayEndpoint := func(m *model.Model) string {
-		return m.MustSelectHost("component.iperf-server").PrivateIp
-	}
+	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", endpoint, "component.iperf-server", "component.iperf-client", 60, true))
+	m.AddOperatingStage(fablib_5_operation.Persist())
+	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Underlay_Only", endpoint, "component.iperf-server", "component.iperf-client", 60, false))
+	m.AddOperatingStage(fablib_5_operation.Persist())
 
-	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Underlay_Only", underlayEndpoint, "component.iperf-server", "component.iperf-client", 5, false))
-	m.AddOperatingStage(fablib_5_operation.Persist())
-	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", overlayEndpoint, "component.iperf-server", "component.iperf-client", 5, true))
-	m.AddOperatingStage(fablib_5_operation.Persist())
 	fablab.InitModel(m)
 	fablab.Run()
 

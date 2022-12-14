@@ -33,7 +33,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
-	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
+	//workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 
 	//workflow.AddAction(zitilib_actions.Edge("create", "service", "echo"))
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-server", "host.v1", `		 
