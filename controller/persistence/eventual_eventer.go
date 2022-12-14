@@ -298,7 +298,8 @@ var _ EventualEventer = &EventualEventerBbolt{}
 // or when triggered. On each interval/trigger, the number of events processed is determined by batchSize.
 func NewEventualEventerBbolt(dbProvider DbProvider, store EventualEventStore, interval time.Duration, batchSize int) *EventualEventerBbolt {
 	outstanding := int64(0)
-	return &EventualEventerBbolt{
+
+	result := &EventualEventerBbolt{
 		EventEmmiter:      events.New(),
 		Interval:          interval,
 		dbProvider:        dbProvider,
@@ -307,6 +308,22 @@ func NewEventualEventerBbolt(dbProvider DbProvider, store EventualEventStore, in
 		trigger:           make(chan struct{}, 1),
 		handlerMap:        cmap.New[[]EventListenerFunc](),
 		outstandingEvents: &outstanding,
+	}
+	result.initOutstandingEventCount()
+	return result
+}
+
+func (a *EventualEventerBbolt) initOutstandingEventCount() {
+	err := a.dbProvider.GetDb().View(func(tx *bbolt.Tx) error {
+		_, count, err := a.store.QueryIds(tx, "true limit 1")
+		if err != nil {
+			return err
+		}
+		atomic.StoreInt64(a.outstandingEvents, count)
+		return nil
+	})
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to initialize eventual eventer outstanding events from bbolt")
 	}
 }
 
@@ -387,7 +404,7 @@ func (a *EventualEventerBbolt) run() {
 		case <-a.trigger:
 			a.process()
 		case <-time.After(a.Interval):
-			a.trigger <- struct{}{}
+			a.process()
 		}
 	}
 }
@@ -507,7 +524,9 @@ func (a *EventualEventerBbolt) resolveEventualEvents() (int, []string, []*Eventu
 	var eventualEvents []*EventualEvent
 
 	// if we know we have outstanding events query for them up to 5 times then give up
-	numEvents := atomic.LoadInt64(a.outstandingEvents)
+	// always query the first time, just to be safe. If there no events, this will be
+	// a quick query. Only query multiple times if the counter says there should be something
+	numEvents := int64(1)
 
 	for attempt := 0; attempt < 5 && numEvents > 0; attempt++ {
 		var err error
@@ -532,7 +551,6 @@ func (a *EventualEventerBbolt) resolveEventualEvents() (int, []string, []*Eventu
 // process is the main execution look for dealing with batches of eventual events, triggering listeners for
 // the eventual events and emitting normal processing events
 func (a *EventualEventerBbolt) process() {
-
 	info := &runInfo{
 		processId: cuid.New(),
 	}
@@ -610,7 +628,7 @@ func (a *EventualEventerBbolt) processBatch(info *runInfo, eventualEvents []*Eve
 					"id":   eventualEvent.Id,
 					"type": eventualEvent.Type,
 				}).
-				Debugf("event id %s with type %s has no handlers", eventualEvent.Id, eventualEvent.Type)
+				Warn("event has no handlers")
 		}
 	}
 
@@ -629,7 +647,7 @@ func (a *EventualEventerBbolt) deleteEvents(ids []string) {
 		if err := a.deleteEventualEvent(id); err != nil {
 			pfxlog.Logger().WithError(err).
 				WithField("id", id).
-				Errorf("could not delete event id %s", id)
+				Error("could not delete event")
 		}
 	}
 }
