@@ -66,9 +66,9 @@ type ClientService interface {
 }
 
 /*
-  DeleteLink deletes a link
+DeleteLink deletes a link
 
-  Delete a link by id. Requires admin access.
+Delete a link by id. Requires admin access.
 */
 func (a *Client) DeleteLink(params *DeleteLinkParams, opts ...ClientOption) (*DeleteLinkOK, error) {
 	// TODO: Validate the params before sending
@@ -106,9 +106,9 @@ func (a *Client) DeleteLink(params *DeleteLinkParams, opts ...ClientOption) (*De
 }
 
 /*
-  DetailLink retrieves a single link
+DetailLink retrieves a single link
 
-  Retrieves a single link by id. Requires admin access.
+Retrieves a single link by id. Requires admin access.
 */
 func (a *Client) DetailLink(params *DetailLinkParams, opts ...ClientOption) (*DetailLinkOK, error) {
 	// TODO: Validate the params before sending
@@ -146,10 +146,9 @@ func (a *Client) DetailLink(params *DetailLinkParams, opts ...ClientOption) (*De
 }
 
 /*
-  ListLinks lists links
+ListLinks lists links
 
-  Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
-
+Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
 */
 func (a *Client) ListLinks(params *ListLinksParams, opts ...ClientOption) (*ListLinksOK, error) {
 	// TODO: Validate the params before sending
@@ -187,9 +186,9 @@ func (a *Client) ListLinks(params *ListLinksParams, opts ...ClientOption) (*List
 }
 
 /*
-  PatchLink updates the supplied fields on a link
+PatchLink updates the supplied fields on a link
 
-  Update the supplied fields on a link. Requires admin access.
+Update the supplied fields on a link. Requires admin access.
 */
 func (a *Client) PatchLink(params *PatchLinkParams, opts ...ClientOption) (*PatchLinkOK, error) {
 	// TODO: Validate the params before sending

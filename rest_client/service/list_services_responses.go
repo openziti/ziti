@@ -69,7 +69,8 @@ func NewListServicesOK() *ListServicesOK {
 	return &ListServicesOK{}
 }
 
-/* ListServicesOK describes a response with status code 200, with default header values.
+/*
+ListServicesOK describes a response with status code 200, with default header values.
 
 A list of services
 */
@@ -77,9 +78,39 @@ type ListServicesOK struct {
 	Payload *rest_model.ListServicesEnvelope
 }
 
+// IsSuccess returns true when this list services o k response has a 2xx status code
+func (o *ListServicesOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this list services o k response has a 3xx status code
+func (o *ListServicesOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list services o k response has a 4xx status code
+func (o *ListServicesOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list services o k response has a 5xx status code
+func (o *ListServicesOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list services o k response a status code equal to that given
+func (o *ListServicesOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *ListServicesOK) Error() string {
 	return fmt.Sprintf("[GET /services][%d] listServicesOK  %+v", 200, o.Payload)
 }
+
+func (o *ListServicesOK) String() string {
+	return fmt.Sprintf("[GET /services][%d] listServicesOK  %+v", 200, o.Payload)
+}
+
 func (o *ListServicesOK) GetPayload() *rest_model.ListServicesEnvelope {
 	return o.Payload
 }
@@ -101,7 +132,8 @@ func NewListServicesUnauthorized() *ListServicesUnauthorized {
 	return &ListServicesUnauthorized{}
 }
 
-/* ListServicesUnauthorized describes a response with status code 401, with default header values.
+/*
+ListServicesUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -109,9 +141,39 @@ type ListServicesUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list services unauthorized response has a 2xx status code
+func (o *ListServicesUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list services unauthorized response has a 3xx status code
+func (o *ListServicesUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list services unauthorized response has a 4xx status code
+func (o *ListServicesUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list services unauthorized response has a 5xx status code
+func (o *ListServicesUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list services unauthorized response a status code equal to that given
+func (o *ListServicesUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *ListServicesUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /services][%d] listServicesUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *ListServicesUnauthorized) String() string {
+	return fmt.Sprintf("[GET /services][%d] listServicesUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *ListServicesUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

@@ -53,13 +53,12 @@ func NewListTerminators(ctx *middleware.Context, handler ListTerminatorsHandler)
 	return &ListTerminators{Context: ctx, Handler: handler}
 }
 
-/* ListTerminators swagger:route GET /terminators Terminator listTerminators
+/*
+	ListTerminators swagger:route GET /terminators Terminator listTerminators
 
-List terminators
+# List terminators
 
 Retrieves a list of terminator resources; supports filtering, sorting, and pagination. Requires admin access.
-
-
 */
 type ListTerminators struct {
 	Context *middleware.Context

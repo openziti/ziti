@@ -40,7 +40,8 @@ import (
 // DetailServiceOKCode is the HTTP code returned for type DetailServiceOK
 const DetailServiceOKCode int = 200
 
-/*DetailServiceOK A single service
+/*
+DetailServiceOK A single service
 
 swagger:response detailServiceOK
 */
@@ -84,7 +85,8 @@ func (o *DetailServiceOK) WriteResponse(rw http.ResponseWriter, producer runtime
 // DetailServiceUnauthorizedCode is the HTTP code returned for type DetailServiceUnauthorized
 const DetailServiceUnauthorizedCode int = 401
 
-/*DetailServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DetailServiceUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response detailServiceUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *DetailServiceUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // DetailServiceNotFoundCode is the HTTP code returned for type DetailServiceNotFound
 const DetailServiceNotFoundCode int = 404
 
-/*DetailServiceNotFound The requested resource does not exist
+/*
+DetailServiceNotFound The requested resource does not exist
 
 swagger:response detailServiceNotFound
 */

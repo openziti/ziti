@@ -40,7 +40,8 @@ import (
 // InspectOKCode is the HTTP code returned for type InspectOK
 const InspectOKCode int = 200
 
-/*InspectOK A response to an inspect request
+/*
+InspectOK A response to an inspect request
 
 swagger:response inspectOK
 */
@@ -84,7 +85,8 @@ func (o *InspectOK) WriteResponse(rw http.ResponseWriter, producer runtime.Produ
 // InspectUnauthorizedCode is the HTTP code returned for type InspectUnauthorized
 const InspectUnauthorizedCode int = 401
 
-/*InspectUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+InspectUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response inspectUnauthorized
 */

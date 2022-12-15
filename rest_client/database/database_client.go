@@ -66,9 +66,9 @@ type ClientService interface {
 }
 
 /*
-  CheckDataIntegrity starts a data integrity scan on the datastore
+CheckDataIntegrity starts a data integrity scan on the datastore
 
-  Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
+Starts a data integrity scan on the datastore. Requires admin access. Only once instance may run at a time, including runs of fixDataIntegrity.
 */
 func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CheckDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending
@@ -107,9 +107,9 @@ func (a *Client) CheckDataIntegrity(params *CheckDataIntegrityParams, authInfo r
 }
 
 /*
-  CreateDatabaseSnapshot creates a new database snapshot
+CreateDatabaseSnapshot creates a new database snapshot
 
-  Create a new database snapshot. Requires admin access.
+Create a new database snapshot. Requires admin access.
 */
 func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*CreateDatabaseSnapshotOK, error) {
 	// TODO: Validate the params before sending
@@ -148,9 +148,9 @@ func (a *Client) CreateDatabaseSnapshot(params *CreateDatabaseSnapshotParams, au
 }
 
 /*
-  DataIntegrityResults returns any results found from in progress integrity checks
+DataIntegrityResults returns any results found from in progress integrity checks
 
-  Returns any results found from in-progress integrity checks. Requires admin access.
+Returns any results found from in-progress integrity checks. Requires admin access.
 */
 func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*DataIntegrityResultsOK, error) {
 	// TODO: Validate the params before sending
@@ -189,9 +189,9 @@ func (a *Client) DataIntegrityResults(params *DataIntegrityResultsParams, authIn
 }
 
 /*
-  FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
+FixDataIntegrity runs a data integrity scan on the datastore attempts to fix any issues it can and returns any found issues
 
-  Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
+Runs a data integrity scan on the datastore, attempts to fix any issues it can, and returns any found issues. Requires admin access. Only once instance may run at a time, including runs of checkDataIntegrity.
 */
 func (a *Client) FixDataIntegrity(params *FixDataIntegrityParams, authInfo runtime.ClientAuthInfoWriter, opts ...ClientOption) (*FixDataIntegrityAccepted, error) {
 	// TODO: Validate the params before sending

@@ -76,10 +76,12 @@ func NewListCircuitsParamsWithHTTPClient(client *http.Client) *ListCircuitsParam
 	}
 }
 
-/* ListCircuitsParams contains all the parameters to send to the API endpoint
-   for the list circuits operation.
+/*
+ListCircuitsParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the list circuits operation.
+
+	Typically these are written to a http.Request.
 */
 type ListCircuitsParams struct {
 	timeout    time.Duration

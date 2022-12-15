@@ -53,12 +53,12 @@ func NewDataIntegrityResults(ctx *middleware.Context, handler DataIntegrityResul
 	return &DataIntegrityResults{Context: ctx, Handler: handler}
 }
 
-/* DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
+/*
+	DataIntegrityResults swagger:route GET /database/data-integrity-results Database dataIntegrityResults
 
-Returns any results found from in-progress integrity checks
+# Returns any results found from in-progress integrity checks
 
 Returns any results found from in-progress integrity checks. Requires admin access.
-
 */
 type DataIntegrityResults struct {
 	Context *middleware.Context

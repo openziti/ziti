@@ -53,12 +53,12 @@ func NewDeleteTerminator(ctx *middleware.Context, handler DeleteTerminatorHandle
 	return &DeleteTerminator{Context: ctx, Handler: handler}
 }
 
-/* DeleteTerminator swagger:route DELETE /terminators/{id} Terminator deleteTerminator
+/*
+	DeleteTerminator swagger:route DELETE /terminators/{id} Terminator deleteTerminator
 
-Delete a terminator
+# Delete a terminator
 
 Delete a terminator by id. Requires admin access.
-
 */
 type DeleteTerminator struct {
 	Context *middleware.Context

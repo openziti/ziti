@@ -53,12 +53,12 @@ func NewDetailService(ctx *middleware.Context, handler DetailServiceHandler) *De
 	return &DetailService{Context: ctx, Handler: handler}
 }
 
-/* DetailService swagger:route GET /services/{id} Service detailService
+/*
+	DetailService swagger:route GET /services/{id} Service detailService
 
-Retrieves a single service
+# Retrieves a single service
 
 Retrieves a single service by id. Requires admin access.
-
 */
 type DetailService struct {
 	Context *middleware.Context

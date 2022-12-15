@@ -75,7 +75,8 @@ func NewDetailServiceOK() *DetailServiceOK {
 	return &DetailServiceOK{}
 }
 
-/* DetailServiceOK describes a response with status code 200, with default header values.
+/*
+DetailServiceOK describes a response with status code 200, with default header values.
 
 A single service
 */
@@ -83,9 +84,39 @@ type DetailServiceOK struct {
 	Payload *rest_model.DetailServiceEnvelope
 }
 
+// IsSuccess returns true when this detail service o k response has a 2xx status code
+func (o *DetailServiceOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this detail service o k response has a 3xx status code
+func (o *DetailServiceOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail service o k response has a 4xx status code
+func (o *DetailServiceOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this detail service o k response has a 5xx status code
+func (o *DetailServiceOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail service o k response a status code equal to that given
+func (o *DetailServiceOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *DetailServiceOK) Error() string {
 	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceOK  %+v", 200, o.Payload)
 }
+
+func (o *DetailServiceOK) String() string {
+	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceOK  %+v", 200, o.Payload)
+}
+
 func (o *DetailServiceOK) GetPayload() *rest_model.DetailServiceEnvelope {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewDetailServiceUnauthorized() *DetailServiceUnauthorized {
 	return &DetailServiceUnauthorized{}
 }
 
-/* DetailServiceUnauthorized describes a response with status code 401, with default header values.
+/*
+DetailServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -115,9 +147,39 @@ type DetailServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this detail service unauthorized response has a 2xx status code
+func (o *DetailServiceUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this detail service unauthorized response has a 3xx status code
+func (o *DetailServiceUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail service unauthorized response has a 4xx status code
+func (o *DetailServiceUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail service unauthorized response has a 5xx status code
+func (o *DetailServiceUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail service unauthorized response a status code equal to that given
+func (o *DetailServiceUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *DetailServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *DetailServiceUnauthorized) String() string {
+	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *DetailServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewDetailServiceNotFound() *DetailServiceNotFound {
 	return &DetailServiceNotFound{}
 }
 
-/* DetailServiceNotFound describes a response with status code 404, with default header values.
+/*
+DetailServiceNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -147,9 +210,39 @@ type DetailServiceNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this detail service not found response has a 2xx status code
+func (o *DetailServiceNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this detail service not found response has a 3xx status code
+func (o *DetailServiceNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail service not found response has a 4xx status code
+func (o *DetailServiceNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail service not found response has a 5xx status code
+func (o *DetailServiceNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail service not found response a status code equal to that given
+func (o *DetailServiceNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
 func (o *DetailServiceNotFound) Error() string {
 	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceNotFound  %+v", 404, o.Payload)
 }
+
+func (o *DetailServiceNotFound) String() string {
+	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceNotFound  %+v", 404, o.Payload)
+}
+
 func (o *DetailServiceNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

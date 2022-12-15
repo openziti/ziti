@@ -76,10 +76,12 @@ func NewDataIntegrityResultsParamsWithHTTPClient(client *http.Client) *DataInteg
 	}
 }
 
-/* DataIntegrityResultsParams contains all the parameters to send to the API endpoint
-   for the data integrity results operation.
+/*
+DataIntegrityResultsParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the data integrity results operation.
+
+	Typically these are written to a http.Request.
 */
 type DataIntegrityResultsParams struct {
 	timeout    time.Duration

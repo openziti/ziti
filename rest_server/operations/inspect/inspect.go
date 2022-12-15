@@ -53,13 +53,12 @@ func NewInspect(ctx *middleware.Context, handler InspectHandler) *Inspect {
 	return &Inspect{Context: ctx, Handler: handler}
 }
 
-/* Inspect swagger:route POST /inspections Inspect inspect
+/*
+	Inspect swagger:route POST /inspections Inspect inspect
 
-Inspect system values
+# Inspect system values
 
 Requests system information, such as stack dumps or information about capabilities. Requires admin access.
-
-
 */
 type Inspect struct {
 	Context *middleware.Context

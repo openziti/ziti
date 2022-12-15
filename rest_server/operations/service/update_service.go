@@ -53,12 +53,12 @@ func NewUpdateService(ctx *middleware.Context, handler UpdateServiceHandler) *Up
 	return &UpdateService{Context: ctx, Handler: handler}
 }
 
-/* UpdateService swagger:route PUT /services/{id} Service updateService
+/*
+	UpdateService swagger:route PUT /services/{id} Service updateService
 
-Update all fields on a service
+# Update all fields on a service
 
 Update all fields on a service by id. Requires admin access.
-
 */
 type UpdateService struct {
 	Context *middleware.Context

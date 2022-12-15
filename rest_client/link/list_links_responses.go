@@ -69,7 +69,8 @@ func NewListLinksOK() *ListLinksOK {
 	return &ListLinksOK{}
 }
 
-/* ListLinksOK describes a response with status code 200, with default header values.
+/*
+ListLinksOK describes a response with status code 200, with default header values.
 
 A list of links
 */
@@ -77,9 +78,39 @@ type ListLinksOK struct {
 	Payload *rest_model.ListLinksEnvelope
 }
 
+// IsSuccess returns true when this list links o k response has a 2xx status code
+func (o *ListLinksOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this list links o k response has a 3xx status code
+func (o *ListLinksOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list links o k response has a 4xx status code
+func (o *ListLinksOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list links o k response has a 5xx status code
+func (o *ListLinksOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list links o k response a status code equal to that given
+func (o *ListLinksOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *ListLinksOK) Error() string {
 	return fmt.Sprintf("[GET /links][%d] listLinksOK  %+v", 200, o.Payload)
 }
+
+func (o *ListLinksOK) String() string {
+	return fmt.Sprintf("[GET /links][%d] listLinksOK  %+v", 200, o.Payload)
+}
+
 func (o *ListLinksOK) GetPayload() *rest_model.ListLinksEnvelope {
 	return o.Payload
 }
@@ -101,7 +132,8 @@ func NewListLinksUnauthorized() *ListLinksUnauthorized {
 	return &ListLinksUnauthorized{}
 }
 
-/* ListLinksUnauthorized describes a response with status code 401, with default header values.
+/*
+ListLinksUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -109,9 +141,39 @@ type ListLinksUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list links unauthorized response has a 2xx status code
+func (o *ListLinksUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list links unauthorized response has a 3xx status code
+func (o *ListLinksUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list links unauthorized response has a 4xx status code
+func (o *ListLinksUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list links unauthorized response has a 5xx status code
+func (o *ListLinksUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list links unauthorized response a status code equal to that given
+func (o *ListLinksUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *ListLinksUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /links][%d] listLinksUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *ListLinksUnauthorized) String() string {
+	return fmt.Sprintf("[GET /links][%d] listLinksUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *ListLinksUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

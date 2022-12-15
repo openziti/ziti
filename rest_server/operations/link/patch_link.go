@@ -53,12 +53,12 @@ func NewPatchLink(ctx *middleware.Context, handler PatchLinkHandler) *PatchLink 
 	return &PatchLink{Context: ctx, Handler: handler}
 }
 
-/* PatchLink swagger:route PATCH /links/{id} Link patchLink
+/*
+	PatchLink swagger:route PATCH /links/{id} Link patchLink
 
-Update the supplied fields on a link
+# Update the supplied fields on a link
 
 Update the supplied fields on a link. Requires admin access.
-
 */
 type PatchLink struct {
 	Context *middleware.Context

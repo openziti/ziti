@@ -64,9 +64,9 @@ type ClientService interface {
 }
 
 /*
-  DeleteCircuit deletes a circuit
+DeleteCircuit deletes a circuit
 
-  Delete a circuit by id. Requires admin access.
+Delete a circuit by id. Requires admin access.
 */
 func (a *Client) DeleteCircuit(params *DeleteCircuitParams, opts ...ClientOption) (*DeleteCircuitOK, error) {
 	// TODO: Validate the params before sending
@@ -104,9 +104,9 @@ func (a *Client) DeleteCircuit(params *DeleteCircuitParams, opts ...ClientOption
 }
 
 /*
-  DetailCircuit retrieves a single circuit
+DetailCircuit retrieves a single circuit
 
-  Retrieves a single circuit by id. Requires admin access.
+Retrieves a single circuit by id. Requires admin access.
 */
 func (a *Client) DetailCircuit(params *DetailCircuitParams, opts ...ClientOption) (*DetailCircuitOK, error) {
 	// TODO: Validate the params before sending
@@ -144,10 +144,9 @@ func (a *Client) DetailCircuit(params *DetailCircuitParams, opts ...ClientOption
 }
 
 /*
-  ListCircuits lists circuits
+ListCircuits lists circuits
 
-  Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
-
+Retrieves a list of circuit resources; does not supports filtering, sorting, or pagination. Requires admin access.
 */
 func (a *Client) ListCircuits(params *ListCircuitsParams, opts ...ClientOption) (*ListCircuitsOK, error) {
 	// TODO: Validate the params before sending

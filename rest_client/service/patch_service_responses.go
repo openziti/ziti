@@ -81,7 +81,8 @@ func NewPatchServiceOK() *PatchServiceOK {
 	return &PatchServiceOK{}
 }
 
-/* PatchServiceOK describes a response with status code 200, with default header values.
+/*
+PatchServiceOK describes a response with status code 200, with default header values.
 
 The patch request was successful and the resource has been altered
 */
@@ -89,9 +90,39 @@ type PatchServiceOK struct {
 	Payload *rest_model.Empty
 }
 
+// IsSuccess returns true when this patch service o k response has a 2xx status code
+func (o *PatchServiceOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this patch service o k response has a 3xx status code
+func (o *PatchServiceOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch service o k response has a 4xx status code
+func (o *PatchServiceOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this patch service o k response has a 5xx status code
+func (o *PatchServiceOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch service o k response a status code equal to that given
+func (o *PatchServiceOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *PatchServiceOK) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceOK  %+v", 200, o.Payload)
 }
+
+func (o *PatchServiceOK) String() string {
+	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceOK  %+v", 200, o.Payload)
+}
+
 func (o *PatchServiceOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -113,7 +144,8 @@ func NewPatchServiceBadRequest() *PatchServiceBadRequest {
 	return &PatchServiceBadRequest{}
 }
 
-/* PatchServiceBadRequest describes a response with status code 400, with default header values.
+/*
+PatchServiceBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -121,9 +153,39 @@ type PatchServiceBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this patch service bad request response has a 2xx status code
+func (o *PatchServiceBadRequest) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this patch service bad request response has a 3xx status code
+func (o *PatchServiceBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch service bad request response has a 4xx status code
+func (o *PatchServiceBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch service bad request response has a 5xx status code
+func (o *PatchServiceBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch service bad request response a status code equal to that given
+func (o *PatchServiceBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
 func (o *PatchServiceBadRequest) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceBadRequest  %+v", 400, o.Payload)
 }
+
+func (o *PatchServiceBadRequest) String() string {
+	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceBadRequest  %+v", 400, o.Payload)
+}
+
 func (o *PatchServiceBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -145,7 +207,8 @@ func NewPatchServiceUnauthorized() *PatchServiceUnauthorized {
 	return &PatchServiceUnauthorized{}
 }
 
-/* PatchServiceUnauthorized describes a response with status code 401, with default header values.
+/*
+PatchServiceUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -153,9 +216,39 @@ type PatchServiceUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this patch service unauthorized response has a 2xx status code
+func (o *PatchServiceUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this patch service unauthorized response has a 3xx status code
+func (o *PatchServiceUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch service unauthorized response has a 4xx status code
+func (o *PatchServiceUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch service unauthorized response has a 5xx status code
+func (o *PatchServiceUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch service unauthorized response a status code equal to that given
+func (o *PatchServiceUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *PatchServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *PatchServiceUnauthorized) String() string {
+	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *PatchServiceUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -177,7 +270,8 @@ func NewPatchServiceNotFound() *PatchServiceNotFound {
 	return &PatchServiceNotFound{}
 }
 
-/* PatchServiceNotFound describes a response with status code 404, with default header values.
+/*
+PatchServiceNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -185,9 +279,39 @@ type PatchServiceNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this patch service not found response has a 2xx status code
+func (o *PatchServiceNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this patch service not found response has a 3xx status code
+func (o *PatchServiceNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this patch service not found response has a 4xx status code
+func (o *PatchServiceNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this patch service not found response has a 5xx status code
+func (o *PatchServiceNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this patch service not found response a status code equal to that given
+func (o *PatchServiceNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
 func (o *PatchServiceNotFound) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceNotFound  %+v", 404, o.Payload)
 }
+
+func (o *PatchServiceNotFound) String() string {
+	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceNotFound  %+v", 404, o.Payload)
+}
+
 func (o *PatchServiceNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

@@ -75,7 +75,8 @@ func NewDeleteLinkOK() *DeleteLinkOK {
 	return &DeleteLinkOK{}
 }
 
-/* DeleteLinkOK describes a response with status code 200, with default header values.
+/*
+DeleteLinkOK describes a response with status code 200, with default header values.
 
 The delete request was successful and the resource has been removed
 */
@@ -83,9 +84,39 @@ type DeleteLinkOK struct {
 	Payload *rest_model.Empty
 }
 
+// IsSuccess returns true when this delete link o k response has a 2xx status code
+func (o *DeleteLinkOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this delete link o k response has a 3xx status code
+func (o *DeleteLinkOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link o k response has a 4xx status code
+func (o *DeleteLinkOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this delete link o k response has a 5xx status code
+func (o *DeleteLinkOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link o k response a status code equal to that given
+func (o *DeleteLinkOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *DeleteLinkOK) Error() string {
 	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK  %+v", 200, o.Payload)
 }
+
+func (o *DeleteLinkOK) String() string {
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK  %+v", 200, o.Payload)
+}
+
 func (o *DeleteLinkOK) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewDeleteLinkBadRequest() *DeleteLinkBadRequest {
 	return &DeleteLinkBadRequest{}
 }
 
-/* DeleteLinkBadRequest describes a response with status code 400, with default header values.
+/*
+DeleteLinkBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -115,9 +147,39 @@ type DeleteLinkBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this delete link bad request response has a 2xx status code
+func (o *DeleteLinkBadRequest) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this delete link bad request response has a 3xx status code
+func (o *DeleteLinkBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link bad request response has a 4xx status code
+func (o *DeleteLinkBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete link bad request response has a 5xx status code
+func (o *DeleteLinkBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link bad request response a status code equal to that given
+func (o *DeleteLinkBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
 func (o *DeleteLinkBadRequest) Error() string {
 	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest  %+v", 400, o.Payload)
 }
+
+func (o *DeleteLinkBadRequest) String() string {
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest  %+v", 400, o.Payload)
+}
+
 func (o *DeleteLinkBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewDeleteLinkUnauthorized() *DeleteLinkUnauthorized {
 	return &DeleteLinkUnauthorized{}
 }
 
-/* DeleteLinkUnauthorized describes a response with status code 401, with default header values.
+/*
+DeleteLinkUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -147,9 +210,39 @@ type DeleteLinkUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this delete link unauthorized response has a 2xx status code
+func (o *DeleteLinkUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this delete link unauthorized response has a 3xx status code
+func (o *DeleteLinkUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this delete link unauthorized response has a 4xx status code
+func (o *DeleteLinkUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this delete link unauthorized response has a 5xx status code
+func (o *DeleteLinkUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this delete link unauthorized response a status code equal to that given
+func (o *DeleteLinkUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *DeleteLinkUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *DeleteLinkUnauthorized) String() string {
+	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *DeleteLinkUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

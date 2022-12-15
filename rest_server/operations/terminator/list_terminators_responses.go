@@ -40,7 +40,8 @@ import (
 // ListTerminatorsOKCode is the HTTP code returned for type ListTerminatorsOK
 const ListTerminatorsOKCode int = 200
 
-/*ListTerminatorsOK A list of terminators
+/*
+ListTerminatorsOK A list of terminators
 
 swagger:response listTerminatorsOK
 */
@@ -84,7 +85,8 @@ func (o *ListTerminatorsOK) WriteResponse(rw http.ResponseWriter, producer runti
 // ListTerminatorsBadRequestCode is the HTTP code returned for type ListTerminatorsBadRequest
 const ListTerminatorsBadRequestCode int = 400
 
-/*ListTerminatorsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+ListTerminatorsBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response listTerminatorsBadRequest
 */
@@ -128,7 +130,8 @@ func (o *ListTerminatorsBadRequest) WriteResponse(rw http.ResponseWriter, produc
 // ListTerminatorsUnauthorizedCode is the HTTP code returned for type ListTerminatorsUnauthorized
 const ListTerminatorsUnauthorizedCode int = 401
 
-/*ListTerminatorsUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+ListTerminatorsUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response listTerminatorsUnauthorized
 */

@@ -40,7 +40,8 @@ import (
 // DeleteRouterOKCode is the HTTP code returned for type DeleteRouterOK
 const DeleteRouterOKCode int = 200
 
-/*DeleteRouterOK The delete request was successful and the resource has been removed
+/*
+DeleteRouterOK The delete request was successful and the resource has been removed
 
 swagger:response deleteRouterOK
 */
@@ -84,7 +85,8 @@ func (o *DeleteRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // DeleteRouterBadRequestCode is the HTTP code returned for type DeleteRouterBadRequest
 const DeleteRouterBadRequestCode int = 400
 
-/*DeleteRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+DeleteRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response deleteRouterBadRequest
 */
@@ -128,7 +130,8 @@ func (o *DeleteRouterBadRequest) WriteResponse(rw http.ResponseWriter, producer 
 // DeleteRouterUnauthorizedCode is the HTTP code returned for type DeleteRouterUnauthorized
 const DeleteRouterUnauthorizedCode int = 401
 
-/*DeleteRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DeleteRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response deleteRouterUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *DeleteRouterUnauthorized) WriteResponse(rw http.ResponseWriter, produce
 // DeleteRouterConflictCode is the HTTP code returned for type DeleteRouterConflict
 const DeleteRouterConflictCode int = 409
 
-/*DeleteRouterConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
+/*
+DeleteRouterConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
 
 swagger:response deleteRouterConflict
 */

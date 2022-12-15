@@ -75,7 +75,8 @@ func NewDetailCircuitOK() *DetailCircuitOK {
 	return &DetailCircuitOK{}
 }
 
-/* DetailCircuitOK describes a response with status code 200, with default header values.
+/*
+DetailCircuitOK describes a response with status code 200, with default header values.
 
 A single circuit
 */
@@ -83,9 +84,39 @@ type DetailCircuitOK struct {
 	Payload *rest_model.DetailCircuitEnvelope
 }
 
+// IsSuccess returns true when this detail circuit o k response has a 2xx status code
+func (o *DetailCircuitOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this detail circuit o k response has a 3xx status code
+func (o *DetailCircuitOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit o k response has a 4xx status code
+func (o *DetailCircuitOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this detail circuit o k response has a 5xx status code
+func (o *DetailCircuitOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit o k response a status code equal to that given
+func (o *DetailCircuitOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *DetailCircuitOK) Error() string {
 	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK  %+v", 200, o.Payload)
 }
+
+func (o *DetailCircuitOK) String() string {
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK  %+v", 200, o.Payload)
+}
+
 func (o *DetailCircuitOK) GetPayload() *rest_model.DetailCircuitEnvelope {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewDetailCircuitUnauthorized() *DetailCircuitUnauthorized {
 	return &DetailCircuitUnauthorized{}
 }
 
-/* DetailCircuitUnauthorized describes a response with status code 401, with default header values.
+/*
+DetailCircuitUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -115,9 +147,39 @@ type DetailCircuitUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this detail circuit unauthorized response has a 2xx status code
+func (o *DetailCircuitUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this detail circuit unauthorized response has a 3xx status code
+func (o *DetailCircuitUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit unauthorized response has a 4xx status code
+func (o *DetailCircuitUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail circuit unauthorized response has a 5xx status code
+func (o *DetailCircuitUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit unauthorized response a status code equal to that given
+func (o *DetailCircuitUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *DetailCircuitUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *DetailCircuitUnauthorized) String() string {
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *DetailCircuitUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewDetailCircuitNotFound() *DetailCircuitNotFound {
 	return &DetailCircuitNotFound{}
 }
 
-/* DetailCircuitNotFound describes a response with status code 404, with default header values.
+/*
+DetailCircuitNotFound describes a response with status code 404, with default header values.
 
 The requested resource does not exist
 */
@@ -147,9 +210,39 @@ type DetailCircuitNotFound struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this detail circuit not found response has a 2xx status code
+func (o *DetailCircuitNotFound) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this detail circuit not found response has a 3xx status code
+func (o *DetailCircuitNotFound) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this detail circuit not found response has a 4xx status code
+func (o *DetailCircuitNotFound) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this detail circuit not found response has a 5xx status code
+func (o *DetailCircuitNotFound) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this detail circuit not found response a status code equal to that given
+func (o *DetailCircuitNotFound) IsCode(code int) bool {
+	return code == 404
+}
+
 func (o *DetailCircuitNotFound) Error() string {
 	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitNotFound  %+v", 404, o.Payload)
 }
+
+func (o *DetailCircuitNotFound) String() string {
+	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitNotFound  %+v", 404, o.Payload)
+}
+
 func (o *DetailCircuitNotFound) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

@@ -40,7 +40,8 @@ import (
 // DeleteCircuitOKCode is the HTTP code returned for type DeleteCircuitOK
 const DeleteCircuitOKCode int = 200
 
-/*DeleteCircuitOK The delete request was successful and the resource has been removed
+/*
+DeleteCircuitOK The delete request was successful and the resource has been removed
 
 swagger:response deleteCircuitOK
 */
@@ -84,7 +85,8 @@ func (o *DeleteCircuitOK) WriteResponse(rw http.ResponseWriter, producer runtime
 // DeleteCircuitBadRequestCode is the HTTP code returned for type DeleteCircuitBadRequest
 const DeleteCircuitBadRequestCode int = 400
 
-/*DeleteCircuitBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+DeleteCircuitBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response deleteCircuitBadRequest
 */
@@ -128,7 +130,8 @@ func (o *DeleteCircuitBadRequest) WriteResponse(rw http.ResponseWriter, producer
 // DeleteCircuitUnauthorizedCode is the HTTP code returned for type DeleteCircuitUnauthorized
 const DeleteCircuitUnauthorizedCode int = 401
 
-/*DeleteCircuitUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DeleteCircuitUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response deleteCircuitUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *DeleteCircuitUnauthorized) WriteResponse(rw http.ResponseWriter, produc
 // DeleteCircuitConflictCode is the HTTP code returned for type DeleteCircuitConflict
 const DeleteCircuitConflictCode int = 409
 
-/*DeleteCircuitConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
+/*
+DeleteCircuitConflict The resource requested to be removed/altered cannot be as it is referenced by another object.
 
 swagger:response deleteCircuitConflict
 */

@@ -75,7 +75,8 @@ func NewFixDataIntegrityAccepted() *FixDataIntegrityAccepted {
 	return &FixDataIntegrityAccepted{}
 }
 
-/* FixDataIntegrityAccepted describes a response with status code 202, with default header values.
+/*
+FixDataIntegrityAccepted describes a response with status code 202, with default header values.
 
 Base empty response
 */
@@ -83,9 +84,39 @@ type FixDataIntegrityAccepted struct {
 	Payload *rest_model.Empty
 }
 
+// IsSuccess returns true when this fix data integrity accepted response has a 2xx status code
+func (o *FixDataIntegrityAccepted) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this fix data integrity accepted response has a 3xx status code
+func (o *FixDataIntegrityAccepted) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this fix data integrity accepted response has a 4xx status code
+func (o *FixDataIntegrityAccepted) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this fix data integrity accepted response has a 5xx status code
+func (o *FixDataIntegrityAccepted) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this fix data integrity accepted response a status code equal to that given
+func (o *FixDataIntegrityAccepted) IsCode(code int) bool {
+	return code == 202
+}
+
 func (o *FixDataIntegrityAccepted) Error() string {
 	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityAccepted  %+v", 202, o.Payload)
 }
+
+func (o *FixDataIntegrityAccepted) String() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityAccepted  %+v", 202, o.Payload)
+}
+
 func (o *FixDataIntegrityAccepted) GetPayload() *rest_model.Empty {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewFixDataIntegrityUnauthorized() *FixDataIntegrityUnauthorized {
 	return &FixDataIntegrityUnauthorized{}
 }
 
-/* FixDataIntegrityUnauthorized describes a response with status code 401, with default header values.
+/*
+FixDataIntegrityUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -115,9 +147,39 @@ type FixDataIntegrityUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this fix data integrity unauthorized response has a 2xx status code
+func (o *FixDataIntegrityUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this fix data integrity unauthorized response has a 3xx status code
+func (o *FixDataIntegrityUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this fix data integrity unauthorized response has a 4xx status code
+func (o *FixDataIntegrityUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this fix data integrity unauthorized response has a 5xx status code
+func (o *FixDataIntegrityUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this fix data integrity unauthorized response a status code equal to that given
+func (o *FixDataIntegrityUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *FixDataIntegrityUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *FixDataIntegrityUnauthorized) String() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *FixDataIntegrityUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewFixDataIntegrityTooManyRequests() *FixDataIntegrityTooManyRequests {
 	return &FixDataIntegrityTooManyRequests{}
 }
 
-/* FixDataIntegrityTooManyRequests describes a response with status code 429, with default header values.
+/*
+FixDataIntegrityTooManyRequests describes a response with status code 429, with default header values.
 
 The resource requested is rate limited and the rate limit has been exceeded
 */
@@ -147,9 +210,39 @@ type FixDataIntegrityTooManyRequests struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this fix data integrity too many requests response has a 2xx status code
+func (o *FixDataIntegrityTooManyRequests) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this fix data integrity too many requests response has a 3xx status code
+func (o *FixDataIntegrityTooManyRequests) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this fix data integrity too many requests response has a 4xx status code
+func (o *FixDataIntegrityTooManyRequests) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this fix data integrity too many requests response has a 5xx status code
+func (o *FixDataIntegrityTooManyRequests) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this fix data integrity too many requests response a status code equal to that given
+func (o *FixDataIntegrityTooManyRequests) IsCode(code int) bool {
+	return code == 429
+}
+
 func (o *FixDataIntegrityTooManyRequests) Error() string {
 	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityTooManyRequests  %+v", 429, o.Payload)
 }
+
+func (o *FixDataIntegrityTooManyRequests) String() string {
+	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityTooManyRequests  %+v", 429, o.Payload)
+}
+
 func (o *FixDataIntegrityTooManyRequests) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

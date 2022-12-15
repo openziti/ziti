@@ -40,7 +40,8 @@ import (
 // DetailRouterOKCode is the HTTP code returned for type DetailRouterOK
 const DetailRouterOKCode int = 200
 
-/*DetailRouterOK A single router
+/*
+DetailRouterOK A single router
 
 swagger:response detailRouterOK
 */
@@ -84,7 +85,8 @@ func (o *DetailRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // DetailRouterUnauthorizedCode is the HTTP code returned for type DetailRouterUnauthorized
 const DetailRouterUnauthorizedCode int = 401
 
-/*DetailRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+DetailRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response detailRouterUnauthorized
 */
@@ -128,7 +130,8 @@ func (o *DetailRouterUnauthorized) WriteResponse(rw http.ResponseWriter, produce
 // DetailRouterNotFoundCode is the HTTP code returned for type DetailRouterNotFound
 const DetailRouterNotFoundCode int = 404
 
-/*DetailRouterNotFound The requested resource does not exist
+/*
+DetailRouterNotFound The requested resource does not exist
 
 swagger:response detailRouterNotFound
 */

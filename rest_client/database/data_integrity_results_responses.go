@@ -69,7 +69,8 @@ func NewDataIntegrityResultsOK() *DataIntegrityResultsOK {
 	return &DataIntegrityResultsOK{}
 }
 
-/* DataIntegrityResultsOK describes a response with status code 200, with default header values.
+/*
+DataIntegrityResultsOK describes a response with status code 200, with default header values.
 
 A list of data integrity issues found
 */
@@ -77,9 +78,39 @@ type DataIntegrityResultsOK struct {
 	Payload *rest_model.DataIntegrityCheckResultEnvelope
 }
 
+// IsSuccess returns true when this data integrity results o k response has a 2xx status code
+func (o *DataIntegrityResultsOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this data integrity results o k response has a 3xx status code
+func (o *DataIntegrityResultsOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this data integrity results o k response has a 4xx status code
+func (o *DataIntegrityResultsOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this data integrity results o k response has a 5xx status code
+func (o *DataIntegrityResultsOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this data integrity results o k response a status code equal to that given
+func (o *DataIntegrityResultsOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *DataIntegrityResultsOK) Error() string {
 	return fmt.Sprintf("[GET /database/data-integrity-results][%d] dataIntegrityResultsOK  %+v", 200, o.Payload)
 }
+
+func (o *DataIntegrityResultsOK) String() string {
+	return fmt.Sprintf("[GET /database/data-integrity-results][%d] dataIntegrityResultsOK  %+v", 200, o.Payload)
+}
+
 func (o *DataIntegrityResultsOK) GetPayload() *rest_model.DataIntegrityCheckResultEnvelope {
 	return o.Payload
 }
@@ -101,7 +132,8 @@ func NewDataIntegrityResultsUnauthorized() *DataIntegrityResultsUnauthorized {
 	return &DataIntegrityResultsUnauthorized{}
 }
 
-/* DataIntegrityResultsUnauthorized describes a response with status code 401, with default header values.
+/*
+DataIntegrityResultsUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -109,9 +141,39 @@ type DataIntegrityResultsUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this data integrity results unauthorized response has a 2xx status code
+func (o *DataIntegrityResultsUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this data integrity results unauthorized response has a 3xx status code
+func (o *DataIntegrityResultsUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this data integrity results unauthorized response has a 4xx status code
+func (o *DataIntegrityResultsUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this data integrity results unauthorized response has a 5xx status code
+func (o *DataIntegrityResultsUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this data integrity results unauthorized response a status code equal to that given
+func (o *DataIntegrityResultsUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *DataIntegrityResultsUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /database/data-integrity-results][%d] dataIntegrityResultsUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *DataIntegrityResultsUnauthorized) String() string {
+	return fmt.Sprintf("[GET /database/data-integrity-results][%d] dataIntegrityResultsUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *DataIntegrityResultsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

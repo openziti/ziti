@@ -69,7 +69,8 @@ func NewListRoutersOK() *ListRoutersOK {
 	return &ListRoutersOK{}
 }
 
-/* ListRoutersOK describes a response with status code 200, with default header values.
+/*
+ListRoutersOK describes a response with status code 200, with default header values.
 
 A list of routers
 */
@@ -77,9 +78,39 @@ type ListRoutersOK struct {
 	Payload *rest_model.ListRoutersEnvelope
 }
 
+// IsSuccess returns true when this list routers o k response has a 2xx status code
+func (o *ListRoutersOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this list routers o k response has a 3xx status code
+func (o *ListRoutersOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list routers o k response has a 4xx status code
+func (o *ListRoutersOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list routers o k response has a 5xx status code
+func (o *ListRoutersOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list routers o k response a status code equal to that given
+func (o *ListRoutersOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *ListRoutersOK) Error() string {
 	return fmt.Sprintf("[GET /routers][%d] listRoutersOK  %+v", 200, o.Payload)
 }
+
+func (o *ListRoutersOK) String() string {
+	return fmt.Sprintf("[GET /routers][%d] listRoutersOK  %+v", 200, o.Payload)
+}
+
 func (o *ListRoutersOK) GetPayload() *rest_model.ListRoutersEnvelope {
 	return o.Payload
 }
@@ -101,7 +132,8 @@ func NewListRoutersUnauthorized() *ListRoutersUnauthorized {
 	return &ListRoutersUnauthorized{}
 }
 
-/* ListRoutersUnauthorized describes a response with status code 401, with default header values.
+/*
+ListRoutersUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -109,9 +141,39 @@ type ListRoutersUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list routers unauthorized response has a 2xx status code
+func (o *ListRoutersUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list routers unauthorized response has a 3xx status code
+func (o *ListRoutersUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list routers unauthorized response has a 4xx status code
+func (o *ListRoutersUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list routers unauthorized response has a 5xx status code
+func (o *ListRoutersUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list routers unauthorized response a status code equal to that given
+func (o *ListRoutersUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *ListRoutersUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /routers][%d] listRoutersUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *ListRoutersUnauthorized) String() string {
+	return fmt.Sprintf("[GET /routers][%d] listRoutersUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *ListRoutersUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

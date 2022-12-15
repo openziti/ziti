@@ -40,7 +40,8 @@ import (
 // CreateTerminatorCreatedCode is the HTTP code returned for type CreateTerminatorCreated
 const CreateTerminatorCreatedCode int = 201
 
-/*CreateTerminatorCreated The create request was successful and the resource has been added at the following location
+/*
+CreateTerminatorCreated The create request was successful and the resource has been added at the following location
 
 swagger:response createTerminatorCreated
 */
@@ -84,7 +85,8 @@ func (o *CreateTerminatorCreated) WriteResponse(rw http.ResponseWriter, producer
 // CreateTerminatorBadRequestCode is the HTTP code returned for type CreateTerminatorBadRequest
 const CreateTerminatorBadRequestCode int = 400
 
-/*CreateTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+CreateTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response createTerminatorBadRequest
 */
@@ -128,7 +130,8 @@ func (o *CreateTerminatorBadRequest) WriteResponse(rw http.ResponseWriter, produ
 // CreateTerminatorUnauthorizedCode is the HTTP code returned for type CreateTerminatorUnauthorized
 const CreateTerminatorUnauthorizedCode int = 401
 
-/*CreateTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+CreateTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response createTerminatorUnauthorized
 */

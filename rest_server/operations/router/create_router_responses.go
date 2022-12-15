@@ -40,7 +40,8 @@ import (
 // CreateRouterCreatedCode is the HTTP code returned for type CreateRouterCreated
 const CreateRouterCreatedCode int = 201
 
-/*CreateRouterCreated The create request was successful and the resource has been added at the following location
+/*
+CreateRouterCreated The create request was successful and the resource has been added at the following location
 
 swagger:response createRouterCreated
 */
@@ -84,7 +85,8 @@ func (o *CreateRouterCreated) WriteResponse(rw http.ResponseWriter, producer run
 // CreateRouterBadRequestCode is the HTTP code returned for type CreateRouterBadRequest
 const CreateRouterBadRequestCode int = 400
 
-/*CreateRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+CreateRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response createRouterBadRequest
 */
@@ -128,7 +130,8 @@ func (o *CreateRouterBadRequest) WriteResponse(rw http.ResponseWriter, producer 
 // CreateRouterUnauthorizedCode is the HTTP code returned for type CreateRouterUnauthorized
 const CreateRouterUnauthorizedCode int = 401
 
-/*CreateRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+CreateRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response createRouterUnauthorized
 */

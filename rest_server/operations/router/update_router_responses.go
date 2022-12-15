@@ -40,7 +40,8 @@ import (
 // UpdateRouterOKCode is the HTTP code returned for type UpdateRouterOK
 const UpdateRouterOKCode int = 200
 
-/*UpdateRouterOK The update request was successful and the resource has been altered
+/*
+UpdateRouterOK The update request was successful and the resource has been altered
 
 swagger:response updateRouterOK
 */
@@ -84,7 +85,8 @@ func (o *UpdateRouterOK) WriteResponse(rw http.ResponseWriter, producer runtime.
 // UpdateRouterBadRequestCode is the HTTP code returned for type UpdateRouterBadRequest
 const UpdateRouterBadRequestCode int = 400
 
-/*UpdateRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+UpdateRouterBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response updateRouterBadRequest
 */
@@ -128,7 +130,8 @@ func (o *UpdateRouterBadRequest) WriteResponse(rw http.ResponseWriter, producer 
 // UpdateRouterUnauthorizedCode is the HTTP code returned for type UpdateRouterUnauthorized
 const UpdateRouterUnauthorizedCode int = 401
 
-/*UpdateRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+UpdateRouterUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response updateRouterUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *UpdateRouterUnauthorized) WriteResponse(rw http.ResponseWriter, produce
 // UpdateRouterNotFoundCode is the HTTP code returned for type UpdateRouterNotFound
 const UpdateRouterNotFoundCode int = 404
 
-/*UpdateRouterNotFound The requested resource does not exist
+/*
+UpdateRouterNotFound The requested resource does not exist
 
 swagger:response updateRouterNotFound
 */

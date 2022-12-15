@@ -60,10 +60,9 @@ type ClientService interface {
 }
 
 /*
-  Inspect inspects system values
+Inspect inspects system values
 
-  Requests system information, such as stack dumps or information about capabilities. Requires admin access.
-
+Requests system information, such as stack dumps or information about capabilities. Requires admin access.
 */
 func (a *Client) Inspect(params *InspectParams, opts ...ClientOption) (*InspectOK, error) {
 	// TODO: Validate the params before sending

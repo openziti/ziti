@@ -25,18 +25,18 @@
 
 // Package rest_server Ziti Fabric
 //
-//  Schemes:
-//    https
-//  Host: demo.ziti.dev
-//  BasePath: /fabric/v1
-//  Version: 0.16.54
-//  Contact:
+//	Schemes:
+//	  https
+//	Host: demo.ziti.dev
+//	BasePath: /fabric/v1
+//	Version: 0.16.54
+//	Contact:
 //
-//  Consumes:
-//    - application/json
+//	Consumes:
+//	  - application/json
 //
-//  Produces:
-//    - application/json
+//	Produces:
+//	  - application/json
 //
 // swagger:meta
 package rest_server

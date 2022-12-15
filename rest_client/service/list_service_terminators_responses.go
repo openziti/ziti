@@ -75,7 +75,8 @@ func NewListServiceTerminatorsOK() *ListServiceTerminatorsOK {
 	return &ListServiceTerminatorsOK{}
 }
 
-/* ListServiceTerminatorsOK describes a response with status code 200, with default header values.
+/*
+ListServiceTerminatorsOK describes a response with status code 200, with default header values.
 
 A list of terminators
 */
@@ -83,9 +84,39 @@ type ListServiceTerminatorsOK struct {
 	Payload *rest_model.ListTerminatorsEnvelope
 }
 
+// IsSuccess returns true when this list service terminators o k response has a 2xx status code
+func (o *ListServiceTerminatorsOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this list service terminators o k response has a 3xx status code
+func (o *ListServiceTerminatorsOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list service terminators o k response has a 4xx status code
+func (o *ListServiceTerminatorsOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list service terminators o k response has a 5xx status code
+func (o *ListServiceTerminatorsOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list service terminators o k response a status code equal to that given
+func (o *ListServiceTerminatorsOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *ListServiceTerminatorsOK) Error() string {
 	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsOK  %+v", 200, o.Payload)
 }
+
+func (o *ListServiceTerminatorsOK) String() string {
+	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsOK  %+v", 200, o.Payload)
+}
+
 func (o *ListServiceTerminatorsOK) GetPayload() *rest_model.ListTerminatorsEnvelope {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewListServiceTerminatorsBadRequest() *ListServiceTerminatorsBadRequest {
 	return &ListServiceTerminatorsBadRequest{}
 }
 
-/* ListServiceTerminatorsBadRequest describes a response with status code 400, with default header values.
+/*
+ListServiceTerminatorsBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -115,9 +147,39 @@ type ListServiceTerminatorsBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list service terminators bad request response has a 2xx status code
+func (o *ListServiceTerminatorsBadRequest) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list service terminators bad request response has a 3xx status code
+func (o *ListServiceTerminatorsBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list service terminators bad request response has a 4xx status code
+func (o *ListServiceTerminatorsBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list service terminators bad request response has a 5xx status code
+func (o *ListServiceTerminatorsBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list service terminators bad request response a status code equal to that given
+func (o *ListServiceTerminatorsBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
 func (o *ListServiceTerminatorsBadRequest) Error() string {
 	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsBadRequest  %+v", 400, o.Payload)
 }
+
+func (o *ListServiceTerminatorsBadRequest) String() string {
+	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsBadRequest  %+v", 400, o.Payload)
+}
+
 func (o *ListServiceTerminatorsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewListServiceTerminatorsUnauthorized() *ListServiceTerminatorsUnauthorized
 	return &ListServiceTerminatorsUnauthorized{}
 }
 
-/* ListServiceTerminatorsUnauthorized describes a response with status code 401, with default header values.
+/*
+ListServiceTerminatorsUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -147,9 +210,39 @@ type ListServiceTerminatorsUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list service terminators unauthorized response has a 2xx status code
+func (o *ListServiceTerminatorsUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list service terminators unauthorized response has a 3xx status code
+func (o *ListServiceTerminatorsUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list service terminators unauthorized response has a 4xx status code
+func (o *ListServiceTerminatorsUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list service terminators unauthorized response has a 5xx status code
+func (o *ListServiceTerminatorsUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list service terminators unauthorized response a status code equal to that given
+func (o *ListServiceTerminatorsUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *ListServiceTerminatorsUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *ListServiceTerminatorsUnauthorized) String() string {
+	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *ListServiceTerminatorsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }

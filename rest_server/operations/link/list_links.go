@@ -53,13 +53,12 @@ func NewListLinks(ctx *middleware.Context, handler ListLinksHandler) *ListLinks 
 	return &ListLinks{Context: ctx, Handler: handler}
 }
 
-/* ListLinks swagger:route GET /links Link listLinks
+/*
+	ListLinks swagger:route GET /links Link listLinks
 
-List links
+# List links
 
 Retrieves a list of link resources; does not supports filtering, sorting, or pagination. Requires admin access.
-
-
 */
 type ListLinks struct {
 	Context *middleware.Context

@@ -78,10 +78,12 @@ func NewUpdateRouterParamsWithHTTPClient(client *http.Client) *UpdateRouterParam
 	}
 }
 
-/* UpdateRouterParams contains all the parameters to send to the API endpoint
-   for the update router operation.
+/*
+UpdateRouterParams contains all the parameters to send to the API endpoint
 
-   Typically these are written to a http.Request.
+	for the update router operation.
+
+	Typically these are written to a http.Request.
 */
 type UpdateRouterParams struct {
 

@@ -40,7 +40,8 @@ import (
 // PatchTerminatorOKCode is the HTTP code returned for type PatchTerminatorOK
 const PatchTerminatorOKCode int = 200
 
-/*PatchTerminatorOK The patch request was successful and the resource has been altered
+/*
+PatchTerminatorOK The patch request was successful and the resource has been altered
 
 swagger:response patchTerminatorOK
 */
@@ -84,7 +85,8 @@ func (o *PatchTerminatorOK) WriteResponse(rw http.ResponseWriter, producer runti
 // PatchTerminatorBadRequestCode is the HTTP code returned for type PatchTerminatorBadRequest
 const PatchTerminatorBadRequestCode int = 400
 
-/*PatchTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
+/*
+PatchTerminatorBadRequest The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 
 swagger:response patchTerminatorBadRequest
 */
@@ -128,7 +130,8 @@ func (o *PatchTerminatorBadRequest) WriteResponse(rw http.ResponseWriter, produc
 // PatchTerminatorUnauthorizedCode is the HTTP code returned for type PatchTerminatorUnauthorized
 const PatchTerminatorUnauthorizedCode int = 401
 
-/*PatchTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
+/*
+PatchTerminatorUnauthorized The currently supplied session does not have the correct access rights to request this resource
 
 swagger:response patchTerminatorUnauthorized
 */
@@ -172,7 +175,8 @@ func (o *PatchTerminatorUnauthorized) WriteResponse(rw http.ResponseWriter, prod
 // PatchTerminatorNotFoundCode is the HTTP code returned for type PatchTerminatorNotFound
 const PatchTerminatorNotFoundCode int = 404
 
-/*PatchTerminatorNotFound The requested resource does not exist
+/*
+PatchTerminatorNotFound The requested resource does not exist
 
 swagger:response patchTerminatorNotFound
 */

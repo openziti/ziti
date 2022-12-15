@@ -75,7 +75,8 @@ func NewListTerminatorsOK() *ListTerminatorsOK {
 	return &ListTerminatorsOK{}
 }
 
-/* ListTerminatorsOK describes a response with status code 200, with default header values.
+/*
+ListTerminatorsOK describes a response with status code 200, with default header values.
 
 A list of terminators
 */
@@ -83,9 +84,39 @@ type ListTerminatorsOK struct {
 	Payload *rest_model.ListTerminatorsEnvelope
 }
 
+// IsSuccess returns true when this list terminators o k response has a 2xx status code
+func (o *ListTerminatorsOK) IsSuccess() bool {
+	return true
+}
+
+// IsRedirect returns true when this list terminators o k response has a 3xx status code
+func (o *ListTerminatorsOK) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list terminators o k response has a 4xx status code
+func (o *ListTerminatorsOK) IsClientError() bool {
+	return false
+}
+
+// IsServerError returns true when this list terminators o k response has a 5xx status code
+func (o *ListTerminatorsOK) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list terminators o k response a status code equal to that given
+func (o *ListTerminatorsOK) IsCode(code int) bool {
+	return code == 200
+}
+
 func (o *ListTerminatorsOK) Error() string {
 	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsOK  %+v", 200, o.Payload)
 }
+
+func (o *ListTerminatorsOK) String() string {
+	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsOK  %+v", 200, o.Payload)
+}
+
 func (o *ListTerminatorsOK) GetPayload() *rest_model.ListTerminatorsEnvelope {
 	return o.Payload
 }
@@ -107,7 +138,8 @@ func NewListTerminatorsBadRequest() *ListTerminatorsBadRequest {
 	return &ListTerminatorsBadRequest{}
 }
 
-/* ListTerminatorsBadRequest describes a response with status code 400, with default header values.
+/*
+ListTerminatorsBadRequest describes a response with status code 400, with default header values.
 
 The supplied request contains invalid fields or could not be parsed (json and non-json bodies). The error's code, message, and cause fields can be inspected for further information
 */
@@ -115,9 +147,39 @@ type ListTerminatorsBadRequest struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list terminators bad request response has a 2xx status code
+func (o *ListTerminatorsBadRequest) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list terminators bad request response has a 3xx status code
+func (o *ListTerminatorsBadRequest) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list terminators bad request response has a 4xx status code
+func (o *ListTerminatorsBadRequest) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list terminators bad request response has a 5xx status code
+func (o *ListTerminatorsBadRequest) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list terminators bad request response a status code equal to that given
+func (o *ListTerminatorsBadRequest) IsCode(code int) bool {
+	return code == 400
+}
+
 func (o *ListTerminatorsBadRequest) Error() string {
 	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsBadRequest  %+v", 400, o.Payload)
 }
+
+func (o *ListTerminatorsBadRequest) String() string {
+	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsBadRequest  %+v", 400, o.Payload)
+}
+
 func (o *ListTerminatorsBadRequest) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
@@ -139,7 +201,8 @@ func NewListTerminatorsUnauthorized() *ListTerminatorsUnauthorized {
 	return &ListTerminatorsUnauthorized{}
 }
 
-/* ListTerminatorsUnauthorized describes a response with status code 401, with default header values.
+/*
+ListTerminatorsUnauthorized describes a response with status code 401, with default header values.
 
 The currently supplied session does not have the correct access rights to request this resource
 */
@@ -147,9 +210,39 @@ type ListTerminatorsUnauthorized struct {
 	Payload *rest_model.APIErrorEnvelope
 }
 
+// IsSuccess returns true when this list terminators unauthorized response has a 2xx status code
+func (o *ListTerminatorsUnauthorized) IsSuccess() bool {
+	return false
+}
+
+// IsRedirect returns true when this list terminators unauthorized response has a 3xx status code
+func (o *ListTerminatorsUnauthorized) IsRedirect() bool {
+	return false
+}
+
+// IsClientError returns true when this list terminators unauthorized response has a 4xx status code
+func (o *ListTerminatorsUnauthorized) IsClientError() bool {
+	return true
+}
+
+// IsServerError returns true when this list terminators unauthorized response has a 5xx status code
+func (o *ListTerminatorsUnauthorized) IsServerError() bool {
+	return false
+}
+
+// IsCode returns true when this list terminators unauthorized response a status code equal to that given
+func (o *ListTerminatorsUnauthorized) IsCode(code int) bool {
+	return code == 401
+}
+
 func (o *ListTerminatorsUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsUnauthorized  %+v", 401, o.Payload)
 }
+
+func (o *ListTerminatorsUnauthorized) String() string {
+	return fmt.Sprintf("[GET /terminators][%d] listTerminatorsUnauthorized  %+v", 401, o.Payload)
+}
+
 func (o *ListTerminatorsUnauthorized) GetPayload() *rest_model.APIErrorEnvelope {
 	return o.Payload
 }
