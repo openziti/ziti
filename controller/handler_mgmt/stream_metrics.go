@@ -199,6 +199,23 @@ func (handler *MetricsStreamHandler) filter(filters []*metricsFilter, msg *metri
 		}
 	}
 
+	for _, interval := range msg.UsageCounters {
+		if nameMatches("usage", filters) {
+			for _, bucket := range interval.Buckets {
+				intervalMetric := &mgmt_pb.StreamMetricsEvent_IntervalMetric{
+					Name: "usage",
+				}
+				intervalMetric.Values = bucket.Values
+				intervalStart := time.UnixMilli(interval.IntervalStartUTC * 1000)
+				intervalMetric.IntervalStartUTC = timestamppb.New(intervalStart)
+				intervalEnd := intervalStart.Add(time.Second * time.Duration(interval.IntervalLength))
+				intervalMetric.IntervalEndUTC = timestamppb.New(intervalEnd)
+
+				event.IntervalMetrics = append(event.IntervalMetrics, intervalMetric)
+			}
+		}
+	}
+
 	if len(event.IntMetrics) > 0 || len(event.FloatMetrics) > 0 || len(event.IntervalMetrics) > 0 {
 		handler.send(event)
 	}
