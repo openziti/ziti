@@ -107,10 +107,11 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 				return false
 			}
 
-			if !boltz.IsErrNotFoundErr(err) {
+			if err != nil && !boltz.IsErrNotFoundErr(err) {
 				self.err = internalError(err)
 				return false
 			}
+
 			logger.WithField("apiSessionId", apiSessionId).Info("api session not found, creating new api session")
 			state.clearCurrentApiSessionId()
 		}
@@ -188,7 +189,8 @@ func (self *baseTunnelRequestContext) loadServiceForName(name string) {
 func (self *baseTunnelRequestContext) isSessionValid(sessionId, sessionType string) bool {
 	logger := logrus.
 		WithField("operation", self.handler.Label()).
-		WithField("router", self.sourceRouter.Name)
+		WithField("router", self.sourceRouter.Name).
+		WithField("routerId", self.sourceRouter.Id)
 
 	if sessionId != "" {
 		session, err := self.handler.getAppEnv().Managers.Session.Read(sessionId)
@@ -203,7 +205,7 @@ func (self *baseTunnelRequestContext) isSessionValid(sessionId, sessionType stri
 				self.session = session
 				return true
 			}
-			logger.Errorf("required session did not match service or api session. "+
+			logger.Infof("required session did not match service or api session. "+
 				"session.id=%v session.type=%v session.serviceId=%v session.apiSessionId=%v "+
 				"requested type=%v serviceId=%v apiSessionId=%v",
 				session.Id, session.Type, session.ServiceId, session.ApiSessionId, sessionType, self.service.Id, self.apiSession.Id)
@@ -217,6 +219,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 		logger := logrus.
 			WithField("operation", self.handler.Label()).
 			WithField("router", self.sourceRouter.Name).
+			WithField("routerId", self.sourceRouter.Id).
 			WithField("sessionType", sessionType)
 
 		if self.isSessionValid(sessionId, sessionType) {

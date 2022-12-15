@@ -288,12 +288,14 @@ message CreateTunnelTerminatorRequest {
   TerminatorPrecedence precedence = 6;
   string instanceId = 7;
   bytes instanceSecret = 8;
+  int64 startTime = 9;
 }
 
 message CreateTunnelTerminatorResponse {
   CreateApiSessionResponse apiSession = 1;
   CreateSessionResponse session = 2;
   string terminatorId = 3;
+  int64 startTime = 4;
 }
 
 message UpdateTunnelTerminatorRequest {

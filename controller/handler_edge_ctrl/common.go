@@ -86,6 +86,7 @@ func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 	}
 
 	if err != nil {
+		ctx.CleanupOnError()
 		logger.WithError(err).Error("operation failed")
 	} else {
 		logger.Debug("operation success")

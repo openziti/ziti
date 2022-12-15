@@ -24,10 +24,12 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math"
+	"time"
 )
 
 type createTunnelTerminatorHandler struct {
@@ -55,6 +57,8 @@ func (self *createTunnelTerminatorHandler) Label() string {
 }
 
 func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	startTime := time.Now()
+
 	req := &edge_ctrl_pb.CreateTunnelTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, req); err != nil {
 		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("could not unmarshal CreateTerminatorRequest")
@@ -70,11 +74,13 @@ func (self *createTunnelTerminatorHandler) HandleReceive(msg *channel.Message, c
 		req: req,
 	}
 
-	go self.CreateTerminator(ctx)
+	go self.CreateTerminator(ctx, startTime)
 }
 
-func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTerminatorRequestContext) {
-	logger := logrus.WithField("routerId", self.ch.Id())
+func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTerminatorRequestContext, startTime time.Time) {
+	logger := logrus.
+		WithField("routerId", self.ch.Id()).
+		WithField("terminatorId", ctx.req.Address)
 
 	if !ctx.loadRouter() {
 		return
@@ -86,7 +92,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	ctx.verifyEdgeRouterAccess()
 
 	if ctx.err != nil {
-		self.returnError(ctx, ctx.err)
+		self.logResult(ctx, ctx.err)
 		return
 	}
 
@@ -97,33 +103,39 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		return
 	}
 
-	terminator := &network.Terminator{
-		Service:        ctx.session.ServiceId,
-		Router:         ctx.sourceRouter.Id,
-		Binding:        edge_common.TunnelBinding,
-		Address:        ctx.req.Address,
-		InstanceId:     ctx.req.InstanceId,
-		InstanceSecret: ctx.req.InstanceSecret,
-		PeerData:       ctx.req.PeerData,
-		Precedence:     ctx.req.GetXtPrecedence(),
-		Cost:           uint16(ctx.req.Cost),
-		HostId:         ctx.session.IdentityId,
-	}
+	terminator, _ := self.getNetwork().Terminators.Read(ctx.req.Address)
+	if terminator != nil {
+		logger.Info("terminator already exists")
+	} else {
+		terminator = &network.Terminator{
+			BaseEntity: models.BaseEntity{
+				Id: ctx.req.Address,
+			},
+			Service:        ctx.session.ServiceId,
+			Router:         ctx.sourceRouter.Id,
+			Binding:        edge_common.TunnelBinding,
+			Address:        ctx.req.Address,
+			InstanceId:     ctx.req.InstanceId,
+			InstanceSecret: ctx.req.InstanceSecret,
+			PeerData:       ctx.req.PeerData,
+			Precedence:     ctx.req.GetXtPrecedence(),
+			Cost:           uint16(ctx.req.Cost),
+			HostId:         ctx.session.IdentityId,
+		}
 
-	n := self.appEnv.GetHostController().GetNetwork()
-	err := n.Terminators.Create(terminator)
-	if err != nil {
-		self.returnError(ctx, internalError(err))
-		return
+		n := self.appEnv.GetHostController().GetNetwork()
+		err := n.Terminators.Create(terminator)
+		if err != nil {
+			self.returnError(ctx, internalError(err))
+			return
+		}
+		logger.Info("created terminator")
 	}
-	id := terminator.Id
-
-	logger = logger.WithField("terminator", id)
-	logger.Info("created terminator")
 
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{
 		Session:      ctx.getCreateSessionResponse(),
-		TerminatorId: id,
+		TerminatorId: ctx.req.Address,
+		StartTime:    ctx.req.StartTime,
 	}
 
 	if newApiSession {
@@ -146,6 +158,8 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	if err = self.ch.Send(responseMsg); err != nil {
 		logger.WithError(err).Error("failed to send CreateTunnelTerminatorResponse")
 	}
+
+	logger.WithField("elapsedTime", time.Since(startTime)).Info("completed create tunnel terminator operation")
 }
 
 type CreateTunnelTerminatorRequestContext struct {
