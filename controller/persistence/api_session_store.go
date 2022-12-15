@@ -136,20 +136,18 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, data []byte) {
 	}
 
 	for _, id := range ids {
-		_ = store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
+		err := store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
 			ctx := boltz.NewMutateContext(tx)
-			err := store.stores.session.DeleteById(ctx, id)
-
-			if err != nil {
-				pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
-					"eventName":    name,
-					"apiSessionId": string(data),
-					"sessionId":    id,
-				}).Error("error deleting for session associated to an api session during onEventualDelete")
-			}
-
-			return nil
+			return store.stores.session.DeleteById(ctx, id)
 		})
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
+				"eventName":    name,
+				"apiSessionId": string(data),
+				"sessionId":    id,
+			}).Error("error deleting for session associated to an api session during onEventualDelete")
+		}
 	}
 }
 
