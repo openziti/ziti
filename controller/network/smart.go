@@ -17,6 +17,7 @@
 package network
 
 import (
+	log "github.com/sirupsen/logrus"
 	"sort"
 	"time"
 
@@ -27,6 +28,16 @@ func (network *Network) smart() {
 	log := pfxlog.Logger()
 	log.Trace("smart network processing")
 
+	candidates := network.getRerouteCandidates()
+
+	for _, update := range candidates {
+		if retry := network.smartReroute(update.circuit, update.path, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); retry {
+			go network.rerouteCircuitWithTries(update.circuit, DefaultNetworkOptionsCreateCircuitRetries)
+		}
+	}
+}
+
+func (network *Network) getRerouteCandidates() []*newCircuitPath {
 	/*
 	 * Order circuits in decreasing overall latency order
 	 */
@@ -37,10 +48,12 @@ func (network *Network) smart() {
 		log.Tracef("observing [%d] circuits", len(circuits))
 	}
 
+	minRouterCost := network.options.MinRouterCost
+
 	circuitLatencies := make(map[string]int64)
 	var orderedCircuits []string
 	for _, s := range circuits {
-		circuitLatencies[s.Id] = s.cost()
+		circuitLatencies[s.Id] = s.cost(minRouterCost)
 		orderedCircuits = append(orderedCircuits, s.Id)
 	}
 
@@ -54,8 +67,7 @@ func (network *Network) smart() {
 	/*
 	 * Develop candidates for rerouting.
 	 */
-	newPaths := make(map[*Circuit]*Path)
-	var candidates []*Circuit
+	var candidates []*newCircuitPath
 	count := 0
 	ceiling := int(float32(len(circuits)) * network.options.Smart.RerouteFraction)
 	if ceiling < 1 {
@@ -68,26 +80,27 @@ func (network *Network) smart() {
 	for _, sId := range orderedCircuits {
 		if circuit, found := network.GetCircuit(sId); found {
 			if updatedPath, err := network.UpdatePath(circuit.Path); err == nil {
-				if !updatedPath.EqualPath(circuit.Path) {
-					if count < ceiling {
-						count++
-						candidates = append(candidates, circuit)
-						newPaths[circuit] = updatedPath
-						log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", circuit.Id, circuitLatencies[circuit.Id], circuit.Path.String(), updatedPath.String())
-					}
+				pathChanged := !updatedPath.EqualPath(circuit.Path)
+				oldCost := circuit.Path.cost(minRouterCost)
+				newCost := updatedPath.cost(minRouterCost)
+				costDelta := oldCost - newCost
+				log.Tracef("old cost: %v, new cost: %v, delta: %v", oldCost, newCost, costDelta)
+				if count < ceiling && pathChanged && costDelta >= int64(network.options.Smart.MinCostDelta) {
+					count++
+					candidates = append(candidates, &newCircuitPath{
+						circuit: circuit,
+						path:    updatedPath,
+					})
+					log.Debugf("rerouting [s/%s] [l:%d] %s ==> %s", circuit.Id, circuitLatencies[circuit.Id], circuit.Path.String(), updatedPath.String())
 				}
 			}
 		}
 	}
-	/* */
 
-	/*
-	 * Reroute.
-	 */
-	for _, circuit := range candidates {
-		if retry := network.smartReroute(circuit, newPaths[circuit], time.Now().Add(DefaultNetworkOptionsRouteTimeout)); retry {
-			go network.rerouteCircuitWithTries(circuit, DefaultNetworkOptionsCreateCircuitRetries)
-		}
-	}
-	/* */
+	return candidates
+}
+
+type newCircuitPath struct {
+	circuit *Circuit
+	path    *Path
 }

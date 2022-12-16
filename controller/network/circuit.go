@@ -38,15 +38,8 @@ type Circuit struct {
 	CreatedAt  time.Time
 }
 
-func (self *Circuit) cost() int64 {
-	var cost int64
-	for _, l := range self.Path.Links {
-		cost += l.GetCost()
-	}
-	for _, r := range self.Path.Nodes {
-		cost += int64(r.Cost)
-	}
-	return cost
+func (self *Circuit) cost(minRouterCost uint16) int64 {
+	return self.Path.cost(minRouterCost)
 }
 
 func (self *Circuit) HasRouter(routerId string) bool {
