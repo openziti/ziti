@@ -109,7 +109,8 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 	} else {
 		terminator = &network.Terminator{
 			BaseEntity: models.BaseEntity{
-				Id: ctx.req.Address,
+				Id:       ctx.req.Address,
+				IsSystem: true,
 			},
 			Service:        ctx.session.ServiceId,
 			Router:         ctx.sourceRouter.Id,
