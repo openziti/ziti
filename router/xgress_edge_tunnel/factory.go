@@ -19,6 +19,7 @@ package xgress_edge_tunnel
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/edge/router/handler_edge_ctrl"
 	"github.com/openziti/fabric/router"
@@ -26,6 +27,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
 	"time"
 )
@@ -38,12 +40,13 @@ const (
 )
 
 type Factory struct {
-	id                 identity.Identity
+	id                 *identity.TokenId
 	ctrls              env.NetworkControllers
 	routerConfig       *router.Config
 	stateManager       fabric.StateManager
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
 	tunneler           *tunneler
+	metricsRegistry    metrics.UsageRegistry
 }
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
@@ -62,6 +65,7 @@ func (self *Factory) Enabled() bool {
 func (self *Factory) BindChannel(binding channel.Binding) error {
 	self.serviceListHandler = handler_edge_ctrl.NewServiceListHandler(self.tunneler.servicePoller.handleServiceListUpdate)
 	binding.AddTypedReceiveHandler(self.serviceListHandler)
+	binding.AddReceiveHandlerF(int32(edge_ctrl_pb.ContentType_CreateTunnelTerminatorResponseType), self.tunneler.fabricProvider.HandleTunnelResponse)
 	return nil
 }
 
@@ -82,11 +86,12 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(routerConfig *router.Config, stateManager fabric.StateManager) *Factory {
+func NewFactory(routerConfig *router.Config, stateManager fabric.StateManager, metricsRegistry metrics.UsageRegistry) *Factory {
 	factory := &Factory{
-		id:           routerConfig.Id,
-		routerConfig: routerConfig,
-		stateManager: stateManager,
+		id:              routerConfig.Id,
+		routerConfig:    routerConfig,
+		stateManager:    stateManager,
+		metricsRegistry: metricsRegistry,
 	}
 	factory.tunneler = newTunneler(factory, stateManager)
 	return factory
