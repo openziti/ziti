@@ -75,13 +75,13 @@ func newUpdateTerminatorCmd(p common.OptionsProvider) *cobra.Command {
 func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 	entityData := gabs.New()
 
-	router, err := api.MapNameToID(util.FabricAPI, "routers", &o.Options, o.router)
-	if err != nil {
-		return err
-	}
-
 	change := false
 	if o.Cmd.Flags().Changed("router") {
+		router, err := api.MapNameToID(util.FabricAPI, "routers", &o.Options, o.router)
+		if err != nil {
+			return err
+		}
+
 		api.SetJSONValue(entityData, router, "router")
 		change = true
 	}
