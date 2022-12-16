@@ -104,6 +104,24 @@ func (entity *BaseEntity) FillCommon(boltEntity boltz.ExtEntity) {
 	entity.IsSystem = boltEntity.IsSystemEntity()
 }
 
+func (entity *BaseEntity) ToBoltBaseExtEntity() *boltz.BaseExtEntity {
+	return &boltz.BaseExtEntity{
+		Id:        entity.Id,
+		CreatedAt: entity.CreatedAt,
+		UpdatedAt: entity.UpdatedAt,
+		Tags:      entity.Tags,
+		IsSystem:  entity.IsSystem,
+	}
+}
+
+func (entity *BaseEntity) NewMutateContext(tx *bbolt.Tx) boltz.MutateContext {
+	ctx := boltz.NewMutateContext(tx)
+	if entity.IsSystem {
+		return ctx.GetSystemContext()
+	}
+	return ctx
+}
+
 type EntityListResult[T Entity] struct {
 	Loader   EntityRetriever[T]
 	Entities []T

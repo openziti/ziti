@@ -72,4 +72,5 @@ message Terminator {
   map<uint32, bytes> peerData = 10;
   map<string, TagValue> tags = 11;
   string hostId = 12;
+  bool isSystem = 13;
 }

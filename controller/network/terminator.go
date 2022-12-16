@@ -89,7 +89,7 @@ func (entity *Terminator) toBolt() *db.Terminator {
 		precedence = entity.Precedence.String()
 	}
 	return &db.Terminator{
-		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
+		BaseExtEntity:  *entity.ToBoltBaseExtEntity(),
 		Service:        entity.Service,
 		Router:         entity.Router,
 		Binding:        entity.Binding,
@@ -138,7 +138,7 @@ func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ter
 	return self.db.Update(func(tx *bbolt.Tx) error {
 		self.checkBinding(cmd.Entity)
 		boltTerminator := cmd.Entity.toBolt()
-		err := self.GetStore().Create(boltz.NewMutateContext(tx), boltTerminator)
+		err := self.GetStore().Create(cmd.Entity.NewMutateContext(tx), boltTerminator)
 		if err != nil {
 			return err
 		}
@@ -185,7 +185,7 @@ func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ter
 	terminator := cmd.Entity
 	return self.db.Update(func(tx *bbolt.Tx) error {
 		self.checkBinding(terminator)
-		return self.GetStore().Update(boltz.NewMutateContext(tx), terminator.toBolt(), cmd.UpdatedFields)
+		return self.GetStore().Update(terminator.NewMutateContext(tx), terminator.toBolt(), cmd.UpdatedFields)
 	})
 }
 
@@ -264,6 +264,7 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 		PeerData:       entity.PeerData,
 		Tags:           tags,
 		HostId:         entity.HostId,
+		IsSystem:       entity.IsSystem,
 	}
 
 	return proto.Marshal(msg)
@@ -284,8 +285,9 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 
 	result := &Terminator{
 		BaseEntity: models.BaseEntity{
-			Id:   msg.Id,
-			Tags: cmd_pb.DecodeTags(msg.Tags),
+			Id:       msg.Id,
+			Tags:     cmd_pb.DecodeTags(msg.Tags),
+			IsSystem: msg.IsSystem,
 		},
 		Service:        msg.ServiceId,
 		Router:         msg.RouterId,

@@ -231,6 +231,8 @@ func (store *terminatorStoreImpl) initializeLocal() {
 
 	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
+
+	store.AddConstraint(boltz.NewSystemEntityEnforcementConstraint(store))
 }
 
 func (store *terminatorStoreImpl) initializeLinked() {
@@ -262,6 +264,7 @@ func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 }
 
 func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	ctx = ctx.GetSystemContext()
 	if terminator, err := store.LoadOneById(ctx.Tx(), id); terminator != nil {
 		if service, err := store.stores.service.LoadOneById(ctx.Tx(), terminator.Service); service != nil {
 			if strategy, err := xt.GlobalRegistry().GetStrategy(service.TerminatorStrategy); strategy != nil {
