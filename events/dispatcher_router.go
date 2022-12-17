@@ -47,7 +47,7 @@ func (self *Dispatcher) initRouterEvents(n *network.Network) {
 	n.AddRouterPresenceHandler(routerEvtAdapter)
 }
 
-func (self *Dispatcher) registerRouterEventHandler(val interface{}, _ map[interface{}]interface{}) error {
+func (self *Dispatcher) registerRouterEventHandler(val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.RouterEventHandler)
 
 	if !ok {
@@ -57,6 +57,12 @@ func (self *Dispatcher) registerRouterEventHandler(val interface{}, _ map[interf
 	self.AddRouterEventHandler(handler)
 
 	return nil
+}
+
+func (self *Dispatcher) unregisterRouterEventHandler(val interface{}) {
+	if handler, ok := val.(event.RouterEventHandler); ok {
+		self.RemoveRouterEventHandler(handler)
+	}
 }
 
 // routerEventAdapter converts network router presence events to event.RouterEvent

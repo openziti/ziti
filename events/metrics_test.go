@@ -17,7 +17,6 @@
 package events
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/event"
@@ -151,12 +150,12 @@ func Test_MetricsFormat(t *testing.T) {
 	req.NotNil(evt.Metrics["m5_rate"])
 	req.NotNil(evt.Metrics["m15_rate"])
 
-	buf := &bytes.Buffer{}
 	jsonEvent := (*JsonMetricsEvent)(evt)
-	req.NoError(jsonEvent.WriteTo(buf))
+	buf, err := jsonEvent.Format()
+	req.NoError(err)
 
 	jsonData := map[string]any{}
-	req.NoError(json.Unmarshal(buf.Bytes(), &jsonData))
+	req.NoError(json.Unmarshal(buf, &jsonData))
 
 	req.Equal("metrics", jsonData["namespace"])
 	req.Equal(float64(event.MetricsEventsVersion), jsonData["version"])

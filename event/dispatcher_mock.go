@@ -25,7 +25,22 @@ var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
 
-func (d DispatcherMock) RegisterEventType(string, RegistrationHandler) {}
+func (d DispatcherMock) GetFormatterFactory(formatterType string) FormatterFactory {
+	return nil
+}
+
+func (d DispatcherMock) RegisterFormatterFactory(string, FormatterFactory) {}
+
+func (d DispatcherMock) RegisterEventTypeFunctions(string, RegistrationHandler, UnregistrationHandler) {
+}
+
+func (d DispatcherMock) ProcessSubscriptions(interface{}, []*Subscription) error {
+	return nil
+}
+
+func (d DispatcherMock) RemoveAllSubscriptions(interface{}) {}
+
+func (d DispatcherMock) RegisterEventType(string, TypeRegistrar) {}
 
 func (d DispatcherMock) RegisterEventHandlerFactory(string, HandlerFactory) {}
 

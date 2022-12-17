@@ -29,15 +29,7 @@ type fabricFormatterFactory struct{}
 
 func (f fabricFormatterFactory) NewLoggingHandler(format string, buffer int, out io.WriteCloser) (interface{}, error) {
 	if strings.EqualFold(format, "json") {
-		result := NewJsonFormatter(buffer, out)
-		go result.Run()
-		return result, nil
-	}
-
-	if strings.EqualFold(format, "plain") {
-		result := NewPlainTextFormatter(buffer, out)
-		go result.Run()
-		return result, nil
+		return NewJsonFormatter(buffer, NewWriterEventSink(out)), nil
 	}
 
 	return nil, errors.Errorf("invalid 'format' for event log output file: %v", format)

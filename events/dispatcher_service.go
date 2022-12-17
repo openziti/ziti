@@ -41,7 +41,7 @@ func (self *Dispatcher) AcceptServiceEvent(event *event.ServiceEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerServiceEventHandler(val interface{}, _ map[interface{}]interface{}) error {
+func (self *Dispatcher) registerServiceEventHandler(val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.ServiceEventHandler)
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/ServiceEventHandler interface.", reflect.TypeOf(val))
@@ -49,6 +49,12 @@ func (self *Dispatcher) registerServiceEventHandler(val interface{}, _ map[inter
 
 	self.AddServiceEventHandler(handler)
 	return nil
+}
+
+func (self *Dispatcher) unregisterServiceEventHandler(val interface{}) {
+	if handler, ok := val.(event.ServiceEventHandler); ok {
+		self.RemoveServiceEventHandler(handler)
+	}
 }
 
 func (self *Dispatcher) initServiceEvents(n *network.Network) {

@@ -39,7 +39,7 @@ func (self *Dispatcher) AcceptCircuitEvent(event *event.CircuitEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerCircuitEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerCircuitEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.CircuitEventHandler)
 
 	if !ok {
@@ -84,6 +84,12 @@ func (self *Dispatcher) registerCircuitEventHandler(val interface{}, config map[
 	}
 	self.AddCircuitEventHandler(result)
 	return nil
+}
+
+func (self *Dispatcher) unregisterCircuitEventHandler(val interface{}) {
+	if handler, ok := val.(event.CircuitEventHandler); ok {
+		self.RemoveCircuitEventHandler(handler)
+	}
 }
 
 type filteredCircuitEventHandler struct {

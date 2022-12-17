@@ -38,7 +38,7 @@ func (self *Dispatcher) AcceptLinkEvent(event *event.LinkEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerLinkEventHandler(val interface{}, _ map[interface{}]interface{}) error {
+func (self *Dispatcher) registerLinkEventHandler(val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.LinkEventHandler)
 
 	if !ok {
@@ -48,4 +48,10 @@ func (self *Dispatcher) registerLinkEventHandler(val interface{}, _ map[interfac
 	self.linkEventHandlers.Append(handler)
 
 	return nil
+}
+
+func (self *Dispatcher) unregisterLinkEventHandler(val interface{}) {
+	if handler, ok := val.(event.LinkEventHandler); ok {
+		self.RemoveLinkEventHandler(handler)
+	}
 }

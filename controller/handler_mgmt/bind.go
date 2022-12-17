@@ -35,17 +35,13 @@ func NewBindHandler(network *network.Network, xmgmts []xmgmt.Xmgmt) channel.Bind
 func (bindHandler *BindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(bindHandler.network))
 
-	streamMetricHandler := newStreamMetricsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(streamMetricHandler)
-	binding.AddCloseHandler(streamMetricHandler)
+	tracesHandler := newStreamTracesHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(tracesHandler)
+	binding.AddCloseHandler(tracesHandler)
 
-	streamCircuitsHandler := newStreamCircuitsHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(streamCircuitsHandler)
-	binding.AddCloseHandler(streamCircuitsHandler)
-
-	streamTracesHandler := newStreamTracesHandler(bindHandler.network)
-	binding.AddTypedReceiveHandler(streamTracesHandler)
-	binding.AddCloseHandler(streamTracesHandler)
+	eventsHandler := newStreamEventsHandler(bindHandler.network)
+	binding.AddTypedReceiveHandler(eventsHandler)
+	binding.AddCloseHandler(eventsHandler)
 
 	binding.AddTypedReceiveHandler(newTogglePipeTracesHandler(bindHandler.network))
 

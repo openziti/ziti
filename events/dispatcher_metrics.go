@@ -69,7 +69,7 @@ func (self *Dispatcher) relayMessagesToEventsUnfiltered(msg *metrics_pb.MetricsM
 	}
 }
 
-func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.MetricsEventHandler)
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/MetricsEventHandler interface.", reflect.TypeOf(val))
@@ -109,6 +109,12 @@ func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[
 	adapter := self.NewFilteredMetricsAdapter(sourceFilter, metricFilter, handler)
 	self.AddMetricsMessageHandler(adapter)
 	return nil
+}
+
+func (self *Dispatcher) unregisterMetricsEventHandler(val interface{}) {
+	if handler, ok := val.(event.MetricsEventHandler); ok {
+		self.RemoveMetricsEventHandler(handler)
+	}
 }
 
 func (self *Dispatcher) newMetricEvent(msg *metrics_pb.MetricsMessage, metricType string, name string, id string) *event.MetricsEvent {
