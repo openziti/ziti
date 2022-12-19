@@ -99,7 +99,10 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 	}
 
 	terminator := &network.Terminator{
-		BaseEntity:     models.BaseEntity{Id: id},
+		BaseEntity: models.BaseEntity{
+			Id:       id,
+			IsSystem: true,
+		},
 		Service:        ctx.session.ServiceId,
 		Router:         ctx.sourceRouter.Id,
 		Binding:        edge_common.EdgeBinding,
