@@ -35,6 +35,17 @@ type Path struct {
 	TerminatorRemoteAddr string
 }
 
+func (self *Path) cost(minRouterCost uint16) int64 {
+	var cost int64
+	for _, l := range self.Links {
+		cost += l.GetCost()
+	}
+	for _, r := range self.Nodes {
+		cost += int64(maxUint16(r.Cost, minRouterCost))
+	}
+	return cost
+}
+
 func (self *Path) String() string {
 	if len(self.Nodes) < 1 {
 		return "{}"

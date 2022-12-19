@@ -25,17 +25,18 @@ import (
 )
 
 const (
-	DefaultNetworkOptionsCycleSeconds            = 60
-	DefaultNetworkOptionsRouteTimeout            = 10 * time.Second
-	DefaultNetworkOptionsCreateCircuitRetries    = 2
-	DefaultNetworkOptionsCtrlChanLatencyInterval = 10 * time.Second
-	DefaultNetworkOptionsPendingLinkTimeout      = 10 * time.Second
-	DefaultNetworkOptionsMinRouterCost           = 10
-	DefaultNetworkOptionsRouterConnectChurnLimit = time.Minute
-	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
-	DefaultNetworkOptionsSmartRerouteCap         = 4
-	DefaultNetworkOptionsInitialLinkLatency      = 65 * time.Second
-	DefaultNetworkOptionsMetricsReportInterval   = time.Minute
+	DefaultNetworkOptionsCycleSeconds             = 60
+	DefaultNetworkOptionsRouteTimeout             = 10 * time.Second
+	DefaultNetworkOptionsCreateCircuitRetries     = 2
+	DefaultNetworkOptionsCtrlChanLatencyInterval  = 10 * time.Second
+	DefaultNetworkOptionsPendingLinkTimeout       = 10 * time.Second
+	DefaultNetworkOptionsMinRouterCost            = 10
+	DefaultNetworkOptionsSmartRerouteMinCostDelta = 15
+	DefaultNetworkOptionsRouterConnectChurnLimit  = time.Minute
+	DefaultNetworkOptionsSmartRerouteFraction     = 0.02
+	DefaultNetworkOptionsSmartRerouteCap          = 4
+	DefaultNetworkOptionsInitialLinkLatency       = 65 * time.Second
+	DefaultNetworkOptionsMetricsReportInterval    = time.Minute
 )
 
 type Options struct {
@@ -43,6 +44,7 @@ type Options struct {
 	Smart        struct {
 		RerouteFraction float32
 		RerouteCap      uint32
+		MinCostDelta    uint32
 	}
 	RouteTimeout            time.Duration
 	CreateCircuitRetries    uint32
@@ -56,6 +58,15 @@ type Options struct {
 
 func DefaultOptions() *Options {
 	options := &Options{
+		Smart: struct {
+			RerouteFraction float32
+			RerouteCap      uint32
+			MinCostDelta    uint32
+		}{
+			RerouteFraction: DefaultNetworkOptionsSmartRerouteFraction,
+			RerouteCap:      DefaultNetworkOptionsSmartRerouteCap,
+			MinCostDelta:    DefaultNetworkOptionsSmartRerouteMinCostDelta,
+		},
 		CycleSeconds:            DefaultNetworkOptionsCycleSeconds,
 		RouteTimeout:            DefaultNetworkOptionsRouteTimeout,
 		CreateCircuitRetries:    DefaultNetworkOptionsCreateCircuitRetries,
@@ -66,8 +77,6 @@ func DefaultOptions() *Options {
 		InitialLinkLatency:      DefaultNetworkOptionsInitialLinkLatency,
 		MetricsReportInterval:   DefaultNetworkOptionsMetricsReportInterval,
 	}
-	options.Smart.RerouteFraction = DefaultNetworkOptionsSmartRerouteFraction
-	options.Smart.RerouteCap = DefaultNetworkOptionsSmartRerouteCap
 	return options
 }
 
@@ -115,7 +124,7 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteFraction, ok := value.(float64); ok {
 					options.Smart.RerouteFraction = float32(rerouteFraction)
 				} else {
-					logrus.Errorf("%p", value)
+					return nil, errors.New("invalid value for 'rerouteFraction'")
 				}
 			}
 
@@ -123,7 +132,15 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 				if rerouteCap, ok := value.(int); ok {
 					options.Smart.RerouteCap = uint32(rerouteCap)
 				} else {
-					logrus.Errorf("%p", value)
+					return nil, errors.New("invalid value for 'rerouteCap'")
+				}
+			}
+
+			if value, found := submap["minCostDelta"]; found {
+				if minCostDelta, ok := value.(int); ok {
+					options.Smart.MinCostDelta = uint32(minCostDelta)
+				} else {
+					return nil, errors.New("invalid value for 'minCostDelta'")
 				}
 			}
 		} else {
