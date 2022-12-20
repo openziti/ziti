@@ -20,7 +20,9 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/event"
+	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"io"
 )
 
 func NewDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores *persistence.Stores, closeNotify <-chan struct{}) *Dispatcher {
@@ -34,9 +36,15 @@ func NewDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores
 
 	fabricDispatcher := n.GetEventDispatcher()
 
-	fabricDispatcher.RegisterEventType(ApiSessionEventNS, result.registerApiSessionEventHandler)
-	fabricDispatcher.RegisterEventType(EntityCountEventNS, result.registerEntityCountEventHandler)
-	fabricDispatcher.RegisterEventType(SessionEventNS, result.registerSessionEventHandler)
+	fabricDispatcher.RegisterEventTypeFunctions(ApiSessionEventNS, result.registerApiSessionEventHandler, result.unregisterApiSessionEventHandler)
+	fabricDispatcher.RegisterEventTypeFunctions(EntityCountEventNS, result.registerEntityCountEventHandler, result.unregisterEntityCountEventHandler)
+	fabricDispatcher.RegisterEventTypeFunctions(SessionEventNS, result.registerSessionEventHandler, result.unregisterSessionEventHandler)
+
+	fabricDispatcher.RegisterFormatterFactory("json", event.FormatterFactoryF(func(sink event.FormattedEventSink) io.Closer {
+		return &EdgeJsonFormatter{
+			JsonFormatter: *events.NewJsonFormatter(16, sink),
+		}
+	}))
 
 	fabricDispatcher.RegisterEventHandlerFactory("file", edgeFileEventLoggerFactory{})
 	fabricDispatcher.RegisterEventHandlerFactory("stdout", edgeStdOutLoggerFactory{})
@@ -47,8 +55,9 @@ func NewDispatcher(n *network.Network, dbProvider persistence.DbProvider, stores
 }
 
 type Dispatcher struct {
-	apiSessionEventHandlers concurrenz.CopyOnWriteSlice[ApiSessionEventHandler]
-	sessionEventHandlers    concurrenz.CopyOnWriteSlice[SessionEventHandler]
+	apiSessionEventHandlers  concurrenz.CopyOnWriteSlice[ApiSessionEventHandler]
+	entityCountEventHandlers concurrenz.CopyOnWriteSlice[*entityCountState]
+	sessionEventHandlers     concurrenz.CopyOnWriteSlice[SessionEventHandler]
 
 	network          *network.Network
 	fabricDispatcher event.Dispatcher
@@ -60,4 +69,6 @@ type Dispatcher struct {
 func (self *Dispatcher) InitializeEvents() {
 	self.initApiSessionEvents(self.stores)
 	self.initSessionEvents(self.stores)
+	self.initEntityEvents()
+
 }

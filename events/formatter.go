@@ -17,7 +17,6 @@
 package events
 
 import (
-	"encoding/json"
 	"github.com/openziti/fabric/events"
 	"github.com/pkg/errors"
 	"io"
@@ -29,15 +28,7 @@ type edgeFormatterFactory struct{}
 func (f edgeFormatterFactory) NewLoggingHandler(format string, buffer int, out io.WriteCloser) (interface{}, error) {
 	if strings.EqualFold(format, "json") {
 		result := &EdgeJsonFormatter{
-			JsonFormatter: *events.NewJsonFormatter(buffer, out),
-		}
-		go result.Run()
-		return result, nil
-	}
-
-	if strings.EqualFold(format, "plain") {
-		result := &EdgePlainTextFormatter{
-			PlainTextFormatter: *events.NewPlainTextFormatter(buffer, out),
+			JsonFormatter: *events.NewJsonFormatter(buffer, events.NewWriterEventSink(out)),
 		}
 		go result.Run()
 		return result, nil
@@ -76,64 +67,30 @@ func (formatter *EdgeJsonFormatter) AcceptEntityCountEvent(event *EntityCountEve
 
 type JsonSessionEvent SessionEvent
 
-func (event *JsonSessionEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonSessionEvent) GetEventType() string {
+	return "session"
+}
+
+func (event *JsonSessionEvent) Format() ([]byte, error) {
+	return events.MarshalJson(event)
 }
 
 type JsonApiSessionEvent ApiSessionEvent
 
-func (event *JsonApiSessionEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonApiSessionEvent) GetEventType() string {
+	return "apiSession"
+}
+
+func (event *JsonApiSessionEvent) Format() ([]byte, error) {
+	return events.MarshalJson(event)
 }
 
 type JsonEntityCountEvent EntityCountEvent
 
-func (event *JsonEntityCountEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonEntityCountEvent) GetEventType() string {
+	return "entityCount"
 }
 
-func marshalJson(v interface{}, output io.Writer) error {
-	buf, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-	_, err = output.Write(buf)
-	return err
-}
-
-type EdgePlainTextFormatter struct {
-	events.PlainTextFormatter
-}
-
-func (formatter *EdgePlainTextFormatter) AcceptApiSessionEvent(event *ApiSessionEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextApiSessionEvent)(event))
-}
-
-func (formatter *EdgePlainTextFormatter) AcceptSessionEvent(event *SessionEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextSessionEvent)(event))
-}
-
-func (formatter *EdgePlainTextFormatter) AcceptEntityCountEvent(event *EntityCountEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextEntityCountEvent)(event))
-}
-
-type PlainTextApiSessionEvent ApiSessionEvent
-
-func (event *PlainTextApiSessionEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*ApiSessionEvent)(event).String() + "\n"))
-	return err
-}
-
-type PlainTextSessionEvent SessionEvent
-
-func (event *PlainTextSessionEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*SessionEvent)(event).String() + "\n"))
-	return err
-}
-
-type PlainTextEntityCountEvent EntityCountEvent
-
-func (event *PlainTextEntityCountEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*EntityCountEvent)(event).String() + "\n"))
-	return err
+func (event *JsonEntityCountEvent) Format() ([]byte, error) {
+	return events.MarshalJson(event)
 }
