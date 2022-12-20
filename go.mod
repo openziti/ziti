@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel/v2 v2.0.24
-	github.com/openziti/fabric v0.21.40
+	github.com/openziti/fabric v0.22.0
 	github.com/openziti/foundation/v2 v2.0.9
 	github.com/openziti/identity v1.0.28
 	github.com/openziti/jwks v1.0.2
@@ -110,7 +110,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/power-devops/perfstat v0.0.0-20220216144756-c35f1ee13d7c // indirect
+	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/shirou/gopsutil/v3 v3.22.11 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
@@ -122,7 +122,7 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
-	golang.org/x/exp v0.0.0-20221126150942-6ab00d035af9 // indirect
+	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/term v0.3.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect

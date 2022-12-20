@@ -94,7 +94,7 @@ func (self *Dispatcher) apiSessionDeleted(args ...interface{}) {
 	}
 }
 
-func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(ApiSessionEventHandler)
 
 	if !ok {
@@ -130,6 +130,12 @@ func (self *Dispatcher) registerApiSessionEventHandler(val interface{}, config m
 	}
 
 	return nil
+}
+
+func (self *Dispatcher) unregisterApiSessionEventHandler(val interface{}) {
+	if handler, ok := val.(ApiSessionEventHandler); ok {
+		self.RemoveApiSessionEventHandler(handler)
+	}
 }
 
 type apiSessionEventAdapter struct {

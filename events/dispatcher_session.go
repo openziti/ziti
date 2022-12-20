@@ -97,7 +97,7 @@ func (self *Dispatcher) sessionDeleted(args ...interface{}) {
 	}
 }
 
-func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(SessionEventHandler)
 
 	if !ok {
@@ -133,6 +133,12 @@ func (self *Dispatcher) registerSessionEventHandler(val interface{}, config map[
 	}
 
 	return nil
+}
+
+func (self *Dispatcher) unregisterSessionEventHandler(val interface{}) {
+	if handler, ok := val.(SessionEventHandler); ok {
+		self.RemoveSessionEventHandler(handler)
+	}
 }
 
 type sessionEventAdapter struct {
