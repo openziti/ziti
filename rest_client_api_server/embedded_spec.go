@@ -53,8 +53,17 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
+    "description": "OpenZiti Edge Client API",
     "title": "Ziti Edge Client",
-    "contact": {},
+    "contact": {
+      "name": "OpenZiti",
+      "url": "https://openziti.discourse.group",
+      "email": "help@openziti.org"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
     "version": "0.25.5"
   },
   "host": "demo.ziti.dev",
@@ -5968,8 +5977,17 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
+    "description": "OpenZiti Edge Client API",
     "title": "Ziti Edge Client",
-    "contact": {},
+    "contact": {
+      "name": "OpenZiti",
+      "url": "https://openziti.discourse.group",
+      "email": "help@openziti.org"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
     "version": "0.25.5"
   },
   "host": "demo.ziti.dev",
