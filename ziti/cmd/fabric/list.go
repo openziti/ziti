@@ -241,9 +241,9 @@ func outputTerminators(o *api.Options, children []*gabs.Container, pagingInfo *a
 		binding := api.GetJsonString(entity, "binding")
 		address := api.GetJsonString(entity, "address")
 		instanceId := api.GetJsonString(entity, "instanceId")
-		staticCost := api.GetJsonString(entity, "cost")
+		staticCost := api.GetJsonValue(entity, "cost")
 		precedence := api.GetJsonString(entity, "precedence")
-		dynamicCost := api.GetJsonString(entity, "dynamicCost")
+		dynamicCost := api.GetJsonValue(entity, "dynamicCost")
 		hostId := api.GetJsonString(entity, "hostId")
 
 		t.AppendRow(table.Row{id, service, router, binding, address, instanceId, staticCost, precedence, dynamicCost, hostId})
