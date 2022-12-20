@@ -17,7 +17,6 @@
 package api
 
 import (
-	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -43,7 +42,6 @@ func NewWsMgmtChannel(bindHandler channel.BindHandler) (channel.Channel, error) 
 	}
 
 	wsUrl := strings.ReplaceAll(baseUrl, "http", "ws") + "/ws-api"
-	fmt.Println(wsUrl)
 	tlsConfig, err := restClientIdentity.NewTlsClientConfig()
 	if err != nil {
 		return nil, err

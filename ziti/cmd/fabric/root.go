@@ -80,8 +80,7 @@ func newStreamCommand(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	streamCmd.AddCommand(NewStreamMetricsCmd(p))
-	streamCmd.AddCommand(NewStreamCircuitsCmd(p))
+	streamCmd.AddCommand(NewStreamEventsCmd(p))
 	streamTracesCmd := NewStreamTracesCmd(p)
 	streamCmd.AddCommand(streamTracesCmd)
 

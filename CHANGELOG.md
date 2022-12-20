@@ -1,3 +1,33 @@
+# Release 0.27.1
+
+## What's New
+
+* Event streaming over websocket
+    * `ziti fabric stream events`
+    * Events use same JSON formatting as the file based streaming
+    * Plain Text formatting removed
+    * Individual streaming of metrics/circuits removed in favor of unified events streaming
+* Improvements to router/tunneler terminator creation
+    * Create terminator requests are now idempotent, so repeated requests will not result in multiple terminators
+    * Create terminator requests are now asynchronous, so responses will no longer get timed out
+    * There is new timer metric from routers, timing how long terminator creates take: `xgress_edge_tunnel.terminator.create_timer`
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.75 -> v0.24.86](https://github.com/openziti/edge/compare/v0.24.75...v0.24.86)
+    * [Issue #1272](https://github.com/openziti/edge/issues/1272) - Mark xgress_edge and xgress_edge_tunnel created terminators as system entity
+    * [Issue #1270](https://github.com/openziti/edge/issues/1270) - Make xgress_edge_tunnel service hosting more scalabe
+    * [Issue #1268](https://github.com/openziti/edge/issues/1268) - session deletion can get stalled by restarts
+
+* github.com/openziti/fabric: [v0.21.36 -> v0.22.1](https://github.com/openziti/fabric/compare/v0.21.36...v0.22.1)
+    * [Issue #563](https://github.com/openziti/fabric/issues/563) - Allow streaming events over webscocket, replacing stream circuits and stream metrics
+    * [Issue #552](https://github.com/openziti/fabric/issues/552) - Add minimum cost delta for smart routing
+    * [Issue #558](https://github.com/openziti/fabric/issues/558) - Allow terminators to be marked as system entities
+
+* github.com/openziti/ziti: [v0.27.0 -> v0.27.1](https://github.com/openziti/ziti/compare/v0.27.0...v0.27.1)
+    * [Issue #928](https://github.com/openziti/ziti/issues/928) - ziti fabric update terminator should not require setting router
+    * [Issue #929](https://github.com/openziti/ziti/issues/929) - zit fabric list terminators isn't showing cost or dynamic cost 
+
 # Release 0.27.0
 
 ## What's New
