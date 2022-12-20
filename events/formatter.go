@@ -21,103 +21,170 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/event"
-	"github.com/openziti/foundation/v2/iomonad"
 	"github.com/pkg/errors"
 	"io"
 	"reflect"
 	"strings"
+	"sync/atomic"
 )
 
 type LoggingHandlerFactory interface {
 	NewLoggingHandler(format string, buffer int, out io.WriteCloser) (interface{}, error)
 }
 
-type LoggingEvent interface {
-	WriteTo(output io.Writer) error
+func NewWriterEventSink(out io.Writer) event.FormattedEventSink {
+	return WriterEventSink{out: out}
+}
+
+type WriterEventSink struct {
+	out io.Writer
+}
+
+func (self WriterEventSink) AcceptFormattedEvent(_ string, formattedEvent []byte) {
+	if _, err := fmt.Fprint(self.out, string(formattedEvent)); err != nil {
+		pfxlog.Logger().WithError(err).Error("failed to output event")
+	}
+}
+
+type FormatterEvent interface {
+	GetEventType() string
+	Format() ([]byte, error)
 }
 
 type BaseFormatter struct {
-	events chan LoggingEvent
-	output io.Writer
+	closed      atomic.Bool
+	closeNotify chan struct{}
+	events      chan FormatterEvent
+	sink        event.FormattedEventSink
 }
 
 func (f *BaseFormatter) Run() {
-	for evt := range f.events {
-		if err := evt.WriteTo(f.output); err != nil {
-			pfxlog.Logger().WithError(err).Errorf("failed to output event of type %v", reflect.TypeOf(evt))
+	for {
+		select {
+		case evt := <-f.events:
+			if formattedEvent, err := evt.Format(); err != nil {
+				pfxlog.Logger().WithError(err).Errorf("failed to output event of type %v", reflect.TypeOf(evt))
+			} else {
+				f.sink.AcceptFormattedEvent(evt.GetEventType(), formattedEvent)
+			}
+		case <-f.closeNotify:
+			return
 		}
-		_, _ = f.output.Write([]byte("\n"))
 	}
 }
 
-func (f *BaseFormatter) AcceptLoggingEvent(event LoggingEvent) {
-	f.events <- event
+func (f *BaseFormatter) Close() error {
+	if f.closed.CompareAndSwap(false, true) {
+		close(f.closeNotify)
+	}
+	return nil
 }
 
-func marshalJson(v interface{}, output io.Writer) error {
+func (f *BaseFormatter) AcceptLoggingEvent(event FormatterEvent) {
+	select {
+	case f.events <- event:
+	case <-f.closeNotify:
+	}
+}
+
+func MarshalJson(v interface{}) ([]byte, error) {
 	buf, err := json.Marshal(v)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = output.Write(buf)
-	return err
+	return buf, nil
 }
 
 type JsonCircuitEvent event.CircuitEvent
 
-func (event *JsonCircuitEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonCircuitEvent) GetEventType() string {
+	return "circuit"
+}
+
+func (event *JsonCircuitEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonLinkEvent event.LinkEvent
 
-func (event *JsonLinkEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonLinkEvent) GetEventType() string {
+	return "link"
+}
+
+func (event *JsonLinkEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonMetricsEvent event.MetricsEvent
 
-func (event *JsonMetricsEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonMetricsEvent) GetEventType() string {
+	return "metrics"
+}
+
+func (event *JsonMetricsEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonRouterEvent event.RouterEvent
 
-func (event *JsonRouterEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonRouterEvent) GetEventType() string {
+	return "router"
+}
+
+func (event *JsonRouterEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonServiceEvent event.ServiceEvent
 
-func (event *JsonServiceEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonServiceEvent) GetEventType() string {
+	return "service"
+}
+
+func (event *JsonServiceEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonTerminatorEvent event.TerminatorEvent
 
-func (event *JsonTerminatorEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonTerminatorEvent) GetEventType() string {
+	return "terminator"
+}
+
+func (event *JsonTerminatorEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
 type JsonUsageEvent event.UsageEvent
 
-func (event *JsonUsageEvent) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonUsageEvent) GetEventType() string {
+	return "usage"
+}
+
+func (event *JsonUsageEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
+func (event *JsonUsageEventV3) GetEventType() string {
+	return "usage.v3"
 }
 
 type JsonUsageEventV3 event.UsageEventV3
 
-func (event *JsonUsageEventV3) WriteTo(output io.Writer) error {
-	return marshalJson(event, output)
+func (event *JsonUsageEventV3) Format() ([]byte, error) {
+	return MarshalJson(event)
 }
 
-func NewJsonFormatter(queueDepth int, output io.Writer) *JsonFormatter {
-	return &JsonFormatter{
+func NewJsonFormatter(queueDepth int, sink event.FormattedEventSink) *JsonFormatter {
+	result := &JsonFormatter{
 		BaseFormatter: BaseFormatter{
-			events: make(chan LoggingEvent, queueDepth),
-			output: output,
+			events:      make(chan FormatterEvent, queueDepth),
+			closeNotify: make(chan struct{}),
+			sink:        sink,
 		},
 	}
+	go result.Run()
+	return result
 }
 
 type JsonFormatter struct {
@@ -154,115 +221,6 @@ func (formatter *JsonFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
 
 func (formatter *JsonFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
 	formatter.AcceptLoggingEvent((*JsonUsageEventV3)(evt))
-}
-
-type PlainTextCircuitEvent event.CircuitEvent
-
-func (self *PlainTextCircuitEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.CircuitEvent)(self).String()))
-	return err
-}
-
-type PlainTextLinkEvent event.LinkEvent
-
-func (self *PlainTextLinkEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.LinkEvent)(self).String()))
-	return err
-}
-
-type PlainTextMetricsEvent event.MetricsEvent
-
-func (event *PlainTextMetricsEvent) WriteTo(output io.Writer) error {
-	w := iomonad.Wrap(output)
-	for name, val := range event.Metrics {
-		if intVal, ok := val.(int64); ok {
-			w.Printf("%v: %9d\n", name, intVal)
-		} else {
-			w.Printf("%s: %v\n", name, val)
-		}
-	}
-
-	return w.GetError()
-}
-
-type PlainTextUsageEvent event.UsageEvent
-
-func (self *PlainTextUsageEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.UsageEvent)(self).String()))
-	return err
-}
-
-type PlainTextUsageEventV3 event.UsageEventV3
-
-func (self *PlainTextUsageEventV3) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.UsageEventV3)(self).String()))
-	return err
-}
-
-type PlainTextServiceEvent event.ServiceEvent
-
-func (self *PlainTextServiceEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.ServiceEvent)(self).String()))
-	return err
-}
-
-type PlainTextTerminatorEvent event.TerminatorEvent
-
-func (self *PlainTextTerminatorEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.TerminatorEvent)(self).String()))
-	return err
-}
-
-type PlainTextRouterEvent event.RouterEvent
-
-func (self *PlainTextRouterEvent) WriteTo(output io.Writer) error {
-	_, err := output.Write([]byte((*event.RouterEvent)(self).String()))
-	return err
-}
-
-func NewPlainTextFormatter(queueDepth int, output io.Writer) *PlainTextFormatter {
-	return &PlainTextFormatter{
-		BaseFormatter: BaseFormatter{
-			events: make(chan LoggingEvent, queueDepth),
-			output: output,
-		},
-	}
-}
-
-type PlainTextFormatter struct {
-	BaseFormatter
-}
-
-func (formatter *PlainTextFormatter) AcceptCircuitEvent(evt *event.CircuitEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextCircuitEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptLinkEvent(evt *event.LinkEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextLinkEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptMetricsEvent(evt *event.MetricsEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextMetricsEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptRouterEvent(evt *event.RouterEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextRouterEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptServiceEvent(evt *event.ServiceEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextServiceEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptTerminatorEvent(evt *event.TerminatorEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextTerminatorEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptUsageEvent(evt *event.UsageEvent) {
-	formatter.AcceptLoggingEvent((*PlainTextUsageEvent)(evt))
-}
-
-func (formatter *PlainTextFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
-	formatter.AcceptLoggingEvent((*PlainTextUsageEventV3)(evt))
 }
 
 var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}

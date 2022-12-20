@@ -29,15 +29,19 @@ const DECODER = "mgmt"
 
 func (d Decoder) Decode(msg *channel.Message) ([]byte, bool) {
 	switch msg.ContentType {
-	case int32(ContentType_StreamCircuitsRequestType):
-		data, err := channel.NewTraceMessageDecode(DECODER, "Stream Circuits Request").MarshalTraceMessageDecode()
+	case int32(ContentType_StreamEventsRequestType):
+		meta := channel.NewTraceMessageDecode(DECODER, "Stream Events Request")
+		meta["request"] = string(msg.Body)
+		data, err := meta.MarshalTraceMessageDecode()
 		if err != nil {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 			return nil, true
 		}
 		return data, true
-	case int32(ContentType_StreamMetricsRequestType):
-		data, err := channel.NewTraceMessageDecode(DECODER, "Stream Metrics Request").MarshalTraceMessageDecode()
+	case int32(ContentType_StreamEventsEventType):
+		meta := channel.NewTraceMessageDecode(DECODER, "Stream Events Event")
+		meta["event"] = string(msg.Body)
+		data, err := meta.MarshalTraceMessageDecode()
 		if err != nil {
 			pfxlog.Logger().Errorf("unexpected error (%s)", err)
 			return nil, true

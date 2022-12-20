@@ -23,8 +23,22 @@ import (
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
+	"io"
 	"strings"
 )
+
+type delegatingRegistrar struct {
+	RegistrationHandler   event.RegistrationHandler
+	UnregistrationHandler event.UnregistrationHandler
+}
+
+func (self *delegatingRegistrar) Register(handler interface{}, config map[string]interface{}) error {
+	return self.RegistrationHandler(handler, config)
+}
+
+func (self *delegatingRegistrar) Unregister(handler interface{}) {
+	self.UnregistrationHandler(handler)
+}
 
 func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result := &Dispatcher{
@@ -32,13 +46,17 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 		eventC:      make(chan event.Event, 25),
 	}
 
-	result.RegisterEventType(event.CircuitEventsNs, result.registerCircuitEventHandler)
-	result.RegisterEventType(event.LinkEventsNs, result.registerLinkEventHandler)
-	result.RegisterEventType(event.MetricsEventsNs, result.registerMetricsEventHandler)
-	result.RegisterEventType(event.RouterEventsNs, result.registerRouterEventHandler)
-	result.RegisterEventType(event.ServiceEventsNs, result.registerServiceEventHandler)
-	result.RegisterEventType(event.TerminatorEventsNs, result.registerTerminatorEventHandler)
-	result.RegisterEventType(event.UsageEventsNs, result.registerUsageEventHandler)
+	result.RegisterEventTypeFunctions(event.CircuitEventsNs, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
+	result.RegisterEventTypeFunctions(event.LinkEventsNs, result.registerLinkEventHandler, result.unregisterLinkEventHandler)
+	result.RegisterEventTypeFunctions(event.MetricsEventsNs, result.registerMetricsEventHandler, result.unregisterMetricsEventHandler)
+	result.RegisterEventTypeFunctions(event.RouterEventsNs, result.registerRouterEventHandler, result.unregisterRouterEventHandler)
+	result.RegisterEventTypeFunctions(event.ServiceEventsNs, result.registerServiceEventHandler, result.unregisterServiceEventHandler)
+	result.RegisterEventTypeFunctions(event.TerminatorEventsNs, result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
+	result.RegisterEventTypeFunctions(event.UsageEventsNs, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
+
+	result.RegisterFormatterFactory("json", event.FormatterFactoryF(func(sink event.FormattedEventSink) io.Closer {
+		return NewJsonFormatter(16, sink)
+	}))
 
 	result.RegisterEventHandlerFactory("file", FileEventLoggerFactory{})
 	result.RegisterEventHandlerFactory("stdout", StdOutLoggerFactory{})
@@ -47,6 +65,8 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 
 	return result
 }
+
+var _ event.Dispatcher = (*Dispatcher)(nil)
 
 type Dispatcher struct {
 	circuitEventHandlers    concurrenz.CopyOnWriteSlice[event.CircuitEventHandler]
@@ -61,8 +81,9 @@ type Dispatcher struct {
 
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 
-	registrationHandlers  concurrenz.CopyOnWriteMap[string, event.RegistrationHandler]
+	registrationHandlers  concurrenz.CopyOnWriteMap[string, event.TypeRegistrar]
 	eventHandlerFactories concurrenz.CopyOnWriteMap[string, event.HandlerFactory]
+	formatterFactories    concurrenz.CopyOnWriteMap[string, event.FormatterFactory]
 
 	closeNotify <-chan struct{}
 	eventC      chan event.Event
@@ -104,12 +125,29 @@ func (self *Dispatcher) Dispatch(event event.Event) {
 	}
 }
 
-func (self *Dispatcher) RegisterEventType(eventType string, registrationHandler event.RegistrationHandler) {
-	self.registrationHandlers.Put(eventType, registrationHandler)
+func (self *Dispatcher) RegisterEventType(eventType string, typeRegistrar event.TypeRegistrar) {
+	self.registrationHandlers.Put(eventType, typeRegistrar)
+}
+
+func (self *Dispatcher) RegisterEventTypeFunctions(eventType string,
+	registrationHandler event.RegistrationHandler,
+	unregistrationHandler event.UnregistrationHandler) {
+	self.RegisterEventType(eventType, &delegatingRegistrar{
+		RegistrationHandler:   registrationHandler,
+		UnregistrationHandler: unregistrationHandler,
+	})
 }
 
 func (self *Dispatcher) RegisterEventHandlerFactory(eventHandlerType string, factory event.HandlerFactory) {
 	self.eventHandlerFactories.Put(eventHandlerType, factory)
+}
+
+func (self *Dispatcher) GetFormatterFactory(formatType string) event.FormatterFactory {
+	return self.formatterFactories.Get(formatType)
+}
+
+func (self *Dispatcher) RegisterFormatterFactory(formatType string, factory event.FormatterFactory) {
+	self.formatterFactories.Put(formatType, factory)
 }
 
 // WireEventHandlers takes the given handler configs and creates handlers and subscriptions for each of them.
@@ -177,8 +215,6 @@ func (self *Dispatcher) createHandler(id interface{}, config map[interface{}]int
 }
 
 func (self *Dispatcher) processSubscriptions(handler interface{}, eventHandlerConfig *EventHandlerConfig) error {
-	logger := pfxlog.Logger()
-
 	subs, ok := eventHandlerConfig.Config["subscriptions"]
 
 	if !ok {
@@ -190,36 +226,67 @@ func (self *Dispatcher) processSubscriptions(handler interface{}, eventHandlerCo
 		return errors.Errorf("event handler %v subscriptions is not a list", eventHandlerConfig.Id)
 	}
 
-	eventTypes := self.registrationHandlers.AsMap()
+	var subscriptions []*event.Subscription
 
 	for idx, sub := range subscriptionList {
 		subMap, ok := sub.(map[interface{}]interface{})
 		if !ok {
 			return errors.Errorf("The subscription at index %v for event handler %v is not a map", idx, eventHandlerConfig.Id)
 		}
-		eventTypeVal, ok := subMap["type"]
 
-		if !ok {
+		var eventType string
+		var options map[string]interface{}
+
+		for k, v := range subMap {
+			if k == "type" {
+				eventType = fmt.Sprintf("%v", v)
+			} else {
+				if options == nil {
+					options = map[string]interface{}{}
+				}
+				options[fmt.Sprintf("%v", k)] = v
+			}
+		}
+
+		if eventType == "" {
 			return errors.Errorf("The subscription at index %v for event handler %v has no type", idx, eventHandlerConfig.Id)
 		}
 
-		logger.Infof("Processing subscriptions for event type: %s", eventTypeVal)
-		eventType := fmt.Sprintf("%v", eventTypeVal)
+		subscriptions = append(subscriptions, &event.Subscription{
+			Type:    eventType,
+			Options: options,
+		})
+	}
+	return self.ProcessSubscriptions(handler, subscriptions)
+}
 
-		if regHandler, ok := eventTypes[eventType]; ok {
-			if err := regHandler(handler, subMap); err != nil {
+func (self *Dispatcher) ProcessSubscriptions(handler interface{}, subscriptions []*event.Subscription) error {
+	logger := pfxlog.Logger()
+	eventTypes := self.registrationHandlers.AsMap()
+
+	for _, sub := range subscriptions {
+		logger.WithField("type", sub.Type).Info("Processing subscriptions for event type")
+
+		if registrar, ok := eventTypes[sub.Type]; ok {
+			if err := registrar.Register(handler, sub.Options); err != nil {
 				return err
 			}
-			logger.Infof("Registration of event handler %s succeeded", eventTypeVal)
+			logger.WithField("type", sub.Type).Info("Registration of event handler succeeded")
 		} else {
 			var validTypes []string
 			for k := range eventTypes {
 				validTypes = append(validTypes, k)
 			}
-			logger.Warnf("invalid event type %v. valid types are %v", eventType, strings.Join(validTypes, ","))
+			logger.WithField("type", sub.Type).Warnf("invalid event type. valid types are %v", strings.Join(validTypes, ","))
 		}
 	}
 	return nil
+}
+
+func (self *Dispatcher) RemoveAllSubscriptions(handler interface{}) {
+	for _, registrar := range self.registrationHandlers.AsMap() {
+		registrar.Unregister(handler)
+	}
 }
 
 type EventHandlerConfig struct {

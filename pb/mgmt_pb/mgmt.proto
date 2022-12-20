@@ -10,15 +10,14 @@ enum ContentType {
   Zero = 0;
 
   // Streams
-  StreamMetricsRequestType = 10040;
-  StreamMetricsEventType = 10041;
-  StreamCircuitsRequestType = 10042;
-  StreamCircuitsEventType = 10043;
+  StreamEventsRequestType = 10040;
+  StreamEventsEventType = 10041;
 
   TogglePipeTracesRequestType = 10044;
   ToggleCircuitTracesRequestType = 10045;
   StreamTracesRequestType = 10046;
   StreamTracesEventType = 10047;
+
 
   // Inspect
   InspectRequestType = 10048;
@@ -35,6 +34,12 @@ enum ContentType {
   RaftListMembersResponseType = 10081;
   RaftJoinRequestType = 10082;
   RaftRemoveRequestType = 10083;
+}
+
+enum Header {
+  NoneHeader = 0;
+
+  EventTypeHeader = 10;
 }
 
 //

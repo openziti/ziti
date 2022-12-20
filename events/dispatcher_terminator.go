@@ -45,7 +45,7 @@ func (self *Dispatcher) AcceptTerminatorEvent(event *event.TerminatorEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, _ map[interface{}]interface{}) error {
+func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, _ map[string]interface{}) error {
 	handler, ok := val.(event.TerminatorEventHandler)
 
 	if !ok {
@@ -55,6 +55,12 @@ func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, _ map[in
 	self.AddTerminatorEventHandler(handler)
 
 	return nil
+}
+
+func (self *Dispatcher) unregisterTerminatorEventHandler(val interface{}) {
+	if handler, ok := val.(event.TerminatorEventHandler); ok {
+		self.RemoveTerminatorEventHandler(handler)
+	}
 }
 
 func (self *Dispatcher) initTerminatorEvents(n *network.Network) {

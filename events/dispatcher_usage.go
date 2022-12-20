@@ -17,6 +17,7 @@
 package events
 
 import (
+	"fmt"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/metrics/metrics_pb"
 	"github.com/pkg/errors"
@@ -55,12 +56,17 @@ func (self *Dispatcher) AcceptUsageEventV3(event *event.UsageEventV3) {
 	}()
 }
 
-func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[string]interface{}) error {
 	version := 2
 
 	if configVal, found := config["version"]; found {
-		if intVal, ok := configVal.(int); ok {
-			version = intVal
+		strVal := fmt.Sprintf("%v", configVal)
+		if strVal == "2" {
+			version = 2
+		} else if strVal == "3" {
+			version = 3
+		} else {
+			return errors.Errorf("unsupported usage version: %v", version)
 		}
 	}
 
@@ -80,6 +86,16 @@ func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[in
 		return errors.Errorf("unsupported usage version: %v", version)
 	}
 	return nil
+}
+
+func (self *Dispatcher) unregisterUsageEventHandler(val interface{}) {
+	if handler, ok := val.(event.UsageEventHandler); ok {
+		self.RemoveUsageEventHandler(handler)
+	}
+
+	if handler, ok := val.(event.UsageEventV3Handler); ok {
+		self.RemoveUsageEventV3Handler(handler)
+	}
 }
 
 func (self *Dispatcher) initUsageEvents() {
