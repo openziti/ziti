@@ -261,7 +261,7 @@ func NewZitiEdgeClientAPI(spec *loads.Document) *ZitiEdgeClientAPI {
 	}
 }
 
-/*ZitiEdgeClientAPI the ziti edge client API */
+/*ZitiEdgeClientAPI OpenZiti Edge Client API */
 type ZitiEdgeClientAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context

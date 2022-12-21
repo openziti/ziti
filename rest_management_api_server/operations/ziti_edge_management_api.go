@@ -652,7 +652,7 @@ func NewZitiEdgeManagementAPI(spec *loads.Document) *ZitiEdgeManagementAPI {
 	}
 }
 
-/*ZitiEdgeManagementAPI the ziti edge management API */
+/*ZitiEdgeManagementAPI OpenZiti Edge Management API */
 type ZitiEdgeManagementAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context
