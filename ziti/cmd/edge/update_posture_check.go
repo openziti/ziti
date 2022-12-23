@@ -19,7 +19,6 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
@@ -45,9 +44,8 @@ func newUpdatePostureCheckCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 }
 
 type updatePostureCheckOptions struct {
-	api.Options
+	api.EntityOptions
 	name           string
-	tags           map[string]string
 	roleAttributes []string
 }
 
@@ -85,9 +83,7 @@ type updatePostureCheckOsOptions struct {
 func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckMacOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		},
 		addresses: nil,
 	}
@@ -113,7 +109,6 @@ func newUpdatePostureCheckMacCmd(out io.Writer, errOut io.Writer) *cobra.Command
 		"Set role attributes of the posture check. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringSliceVarP(&options.addresses, "mac-addresses", "m", nil,
 		"Set MAC addresses of the posture check")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	return cmd
 }
@@ -142,8 +137,8 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 
@@ -160,9 +155,7 @@ func runUpdatePostureCheckMac(o *updatePostureCheckMacOptions) error {
 func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckDomainOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		},
 		domains: nil,
 	}
@@ -194,9 +187,7 @@ func newUpdatePostureCheckDomainCmd(out io.Writer, errOut io.Writer) *cobra.Comm
 func newUpdatePostureCheckMfaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckMfaOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		},
 		timeoutSeconds:        -1,
 		promptOnWake:          false,
@@ -289,6 +280,11 @@ func runUpdatePostureCheckMfa(o *updatePostureCheckMfaOptions) error {
 		change = true
 	}
 
+	if o.TagsProvided() {
+		o.SetTags(entityData)
+		change = true
+	}
+
 	if !change {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
@@ -327,6 +323,11 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 		change = true
 	}
 
+	if o.TagsProvided() {
+		o.SetTags(entityData)
+		change = true
+	}
+
 	if !change {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
@@ -342,9 +343,7 @@ func runUpdatePostureCheckDomain(o *updatePostureCheckDomainOptions) error {
 func newUpdatePostureCheckProcessCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckProcessOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		},
 		hashes: nil,
 		signer: "",
@@ -435,6 +434,11 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 		change = true
 	}
 
+	if o.TagsProvided() {
+		o.SetTags(entityData)
+		change = true
+	}
+
 	if !change {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
@@ -449,9 +453,7 @@ func runUpdatePostureCheckProcess(o *updatePostureCheckProcessOptions) error {
 func newUpdatePostureCheckOsCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updatePostureCheckOsOptions{
 		updatePostureCheckOptions: updatePostureCheckOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		},
 		os: nil,
 	}
@@ -509,6 +511,11 @@ func runUpdatePostureCheckOs(o *updatePostureCheckOsOptions) error {
 			}
 		}
 		api.SetJSONValue(entityData, oses, "operatingSystems")
+		change = true
+	}
+
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 

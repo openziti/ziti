@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"os"
@@ -32,18 +31,15 @@ import (
 )
 
 type updateConfigTypeAction struct {
-	api.Options
+	api.EntityOptions
 	name     string
 	data     string
 	jsonFile string
-	tags     map[string]string
 }
 
 func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	action := &updateConfigTypeAction{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -64,7 +60,6 @@ func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&action.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&action.data, "data", "d", "", "Set the data of the config")
 	cmd.Flags().StringVarP(&action.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
-	cmd.Flags().StringToStringVar(&action.tags, "tags", nil, "Custom management tags")
 
 	action.AddCommonFlags(cmd)
 
@@ -101,8 +96,8 @@ func (self *updateConfigTypeAction) run() error {
 		}
 	}
 
-	if self.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, self.tags, "tags")
+	if self.TagsProvided() {
+		self.SetTags(entityData)
 		change = true
 	}
 

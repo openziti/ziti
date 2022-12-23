@@ -19,12 +19,11 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"io"
-	"io/ioutil"
 	"math"
+	"os"
 	"reflect"
 	"strings"
 
@@ -33,7 +32,7 @@ import (
 )
 
 type createIdentityOptions struct {
-	api.Options
+	api.EntityOptions
 	isAdmin                  bool
 	roleAttributes           []string
 	jwtOutputFile            string
@@ -42,7 +41,6 @@ type createIdentityOptions struct {
 	defaultHostingCost       uint16
 	serviceCosts             map[string]int
 	servicePrecedences       map[string]string
-	tags                     map[string]string
 	appData                  map[string]string
 	externalId               string
 }
@@ -51,9 +49,7 @@ type createIdentityOptions struct {
 func newCreateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	newOptions := func() *createIdentityOptions {
 		return &createIdentityOptions{
-			Options: api.Options{
-				CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-			},
+			EntityOptions: api.NewEntityOptions(out, errOut),
 		}
 	}
 
@@ -96,7 +92,6 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 
 	options.AddCommonFlags(cmd)
@@ -117,7 +112,6 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 	}
 	api.SetJSONValue(entityData, o.isAdmin, "isAdmin")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.appData, "appData")
 
 	if o.externalId != "" {
@@ -163,6 +157,7 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 		o.servicePrecedences[id] = prec
 	}
 	api.SetJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
+	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("identities", entityData.String(), &o.Options)
 	if err := o.LogCreateResult("identity", result, err); err != nil {
@@ -207,7 +202,7 @@ func getIdentityJwt(o *createIdentityOptions, id string, timeout int, verbose bo
 		return fmt.Errorf("enrollment JWT not present for new identity")
 	}
 
-	if err := ioutil.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
+	if err := os.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
 		fmt.Printf("Failed to write JWT to file(%v)\n", o.jwtOutputFile)
 		return err
 	}

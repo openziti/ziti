@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"math"
@@ -33,23 +32,20 @@ import (
 )
 
 type updateIdentityOptions struct {
-	api.Options
+	api.EntityOptions
 	name                     string
 	roleAttributes           []string
 	defaultHostingPrecedence string
 	defaultHostingCost       uint16
 	serviceCosts             map[string]int
 	servicePrecedences       map[string]string
-	tags                     map[string]string
 	appData                  map[string]string
 	externalId               string
 }
 
 func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateIdentityOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -77,7 +73,6 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().Uint16VarP(&options.defaultHostingCost, "default-hosting-cost", "c", 0, "Default cost to use when hosting services using this identity")
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 
 	return cmd
@@ -156,8 +151,8 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 
