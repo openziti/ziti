@@ -172,7 +172,7 @@ func (buffer *LinkSendBuffer) isBlocked() bool {
 	}
 
 	if blocked {
-		pfxlog.ContextLogger(buffer.x.Label()).Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkRecvBufferSize, buffer.linkSendBufferSize)
+		pfxlog.ContextLogger(buffer.x.Label()).Debugf("blocked=%v win_size=%v tx_buffer_size=%v rx_buffer_size=%v", blocked, buffer.windowsSize, buffer.linkSendBufferSize, buffer.linkRecvBufferSize)
 	}
 
 	return blocked
