@@ -65,6 +65,7 @@ func (self *impl) SendControl(msg *xgress.Control) error {
 }
 
 func (self *impl) Close() error {
+	self.droppedMsgMeter.Dispose()
 	return self.ch.Close()
 }
 

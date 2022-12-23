@@ -20,7 +20,7 @@ func (t testUnderlay) Rx() (*channel.Message, error) {
 	return nil, nil
 }
 
-func (t testUnderlay) Tx(m *channel.Message) error {
+func (t testUnderlay) Tx(*channel.Message) error {
 	time.Sleep(10 * time.Microsecond)
 	return nil
 }
@@ -57,7 +57,7 @@ func (t testUnderlay) Headers() map[int32][]byte {
 	return nil
 }
 
-func (t testUnderlay) SetWriteTimeout(duration time.Duration) error {
+func (t testUnderlay) SetWriteTimeout(time.Duration) error {
 	return nil
 }
 
@@ -73,7 +73,7 @@ type testUnderlayFactory struct {
 	underlay testUnderlay
 }
 
-func (t testUnderlayFactory) Create(timeout time.Duration, tcfg transport.Configuration) (channel.Underlay, error) {
+func (t testUnderlayFactory) Create(time.Duration, transport.Configuration) (channel.Underlay, error) {
 	return t.underlay, nil
 }
 
@@ -81,6 +81,9 @@ func Test_Throughput(t *testing.T) {
 	factory := testUnderlayFactory{
 		underlay: testUnderlay{},
 	}
+
+	t.SkipNow()
+
 	options := channel.DefaultOptions()
 	options.OutQueueSize = 64
 	ch, err := channel.NewChannel("test", factory, nil, options)
@@ -94,14 +97,11 @@ func Test_Throughput(t *testing.T) {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
-		for {
-			select {
-			case <-ticker.C:
-				v := registry.Poll().Meters["drops"]
-				fmt.Printf("drops - m1: %v, count: %v\n", v.M1Rate, v.Count)
-				v = registry.Poll().Meters["msgs"]
-				fmt.Printf("msgs  - m1: %v, count: %v\n", v.M1Rate, v.Count)
-			}
+		for range ticker.C {
+			v := registry.Poll().Meters["drops"]
+			fmt.Printf("drops - m1: %v, count: %v\n", v.M1Rate, v.Count)
+			v = registry.Poll().Meters["msgs"]
+			fmt.Printf("msgs  - m1: %v, count: %v\n", v.M1Rate, v.Count)
 		}
 	}()
 
