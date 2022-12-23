@@ -22,8 +22,8 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.7
 	github.com/openziti/channel/v2 v2.0.24
-	github.com/openziti/edge v0.24.86
-	github.com/openziti/fabric v0.22.1
+	github.com/openziti/edge v0.24.87
+	github.com/openziti/fabric v0.22.2
 	github.com/openziti/foundation/v2 v2.0.9
 	github.com/openziti/identity v1.0.28
 	github.com/openziti/runzmd v1.0.7

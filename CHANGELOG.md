@@ -1,3 +1,18 @@
+# Release 0.27.2
+
+# What's New
+
+* Bug fixes
+
+## Component Updastes and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.86 -> v0.24.87](https://github.com/openziti/edge/compare/v0.24.86...v0.24.87)
+* github.com/openziti/fabric: [v0.22.1 -> v0.22.2](https://github.com/openziti/fabric/compare/v0.22.1...v0.22.2)
+    * [Issue #567](https://github.com/openziti/fabric/issues/567) - Remove link dropped_msg metrics for closed links
+    * [Issue #566](https://github.com/openziti/fabric/issues/566) - Link listeners aren't properly configuring channel out queue size 
+
+* github.com/openziti/ziti: [v0.27.1 -> v0.27.2](https://github.com/openziti/ziti/compare/v0.27.1...v0.27.2)
+
 # Release 0.27.1
 
 ## What's New

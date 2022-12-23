@@ -698,10 +698,10 @@ github.com/openziti/channel/v2 v2.0.24 h1:mg9/+VMyXKXfbTZ06quwjRcTQAqU/MEMm+KxAb
 github.com/openziti/channel/v2 v2.0.24/go.mod h1:Y75U/q7l2U+Iib+rfSXO0IscYvksfwWjgdGDXcM/WwY=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.24.86 h1:41TxCaFridKp9T5LDwiULsfIUDVrB7SMyykvEzriTGk=
-github.com/openziti/edge v0.24.86/go.mod h1:qAF4uLkcmX8Y+t3yzuocq10Wz2D6rXkRRYLGO5AgRd4=
-github.com/openziti/fabric v0.22.1 h1:kwHib2kfoVXRExhA4RhmybByE42ov1Lu/P86ZJ0GufE=
-github.com/openziti/fabric v0.22.1/go.mod h1:i17oyfaF24Kenvh5nEq0qkBIL4AUAoh08D6WQW1dVbE=
+github.com/openziti/edge v0.24.87 h1:L7PpaJaL8cl4S5Yo/VdPPnxDWRNp1yfD0+uqiF6IVXE=
+github.com/openziti/edge v0.24.87/go.mod h1:qAF4uLkcmX8Y+t3yzuocq10Wz2D6rXkRRYLGO5AgRd4=
+github.com/openziti/fabric v0.22.2 h1:Tk6AxC6tPp9JBD/L8PU2nN3D5QmHNnhwpp5NcVyQYRw=
+github.com/openziti/fabric v0.22.2/go.mod h1:i17oyfaF24Kenvh5nEq0qkBIL4AUAoh08D6WQW1dVbE=
 github.com/openziti/foundation/v2 v2.0.9 h1:4Z53AzfCcI8XK46eeoSDabroVk1GS2An04WDjNfwmio=
 github.com/openziti/foundation/v2 v2.0.9/go.mod h1:Z0gnQsGJb/H/B+pixLtmCIpw1dBllD4QoT6LeD35WzA=
 github.com/openziti/identity v1.0.28 h1:0Rjss3aBT4a2iC8IEXxzj2kfld5LTSD3eEUQkx8Uy+E=
