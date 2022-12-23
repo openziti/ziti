@@ -63,9 +63,19 @@ func NewFactory(accepter xlink.Acceptor,
 
 func (self *factory) CreateListener(id *identity.TokenId, _ xlink.Forwarder, configData transport.Configuration) (xlink.Listener, error) {
 	config, err := loadListenerConfig(configData)
+
 	if err != nil {
 		return nil, fmt.Errorf("error loading listener configuration (%w)", err)
 	}
+
+	if config.options == nil {
+		config.options = channel.DefaultOptions()
+	}
+
+	if config.options.OutQueueSize == channel.DefaultOutQueueSize {
+		config.options.OutQueueSize = 64
+	}
+
 	return &listener{
 		id:                 id,
 		config:             config,
