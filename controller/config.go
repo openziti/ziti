@@ -78,8 +78,7 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 	}
-	SyncRaftToDb bool
-	src          map[interface{}]interface{}
+	src map[interface{}]interface{}
 }
 
 // CtrlOptions extends channel.Options to include support for additional, non-channel specific options

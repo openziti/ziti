@@ -95,7 +95,7 @@ func (self *CommandManager) decodeSyncSnapshotCommand(_ int32, data []byte) (com
 	cmd := &command.SyncSnapshotCommand{
 		SnapshotId:   msg.SnapshotId,
 		Snapshot:     msg.Snapshot,
-		SnapshotSink: self.network.restoreSnapshot,
+		SnapshotSink: self.network.RestoreSnapshot,
 	}
 
 	return cmd, nil

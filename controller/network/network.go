@@ -1131,7 +1131,7 @@ func (network *Network) SnapshotDatabase() error {
 	return err
 }
 
-func (network *Network) restoreSnapshot(cmd *command.SyncSnapshotCommand) error {
+func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error {
 	log := pfxlog.Logger()
 	currentSnapshotId, err := network.getDb().GetSnapshotId()
 	if err != nil {
@@ -1155,7 +1155,7 @@ func (network *Network) SnapshotToRaft() error {
 	cmd := &command.SyncSnapshotCommand{
 		SnapshotId:   snapshotId,
 		Snapshot:     snapshot,
-		SnapshotSink: network.restoreSnapshot,
+		SnapshotSink: network.RestoreSnapshot,
 	}
 
 	return network.Dispatch(cmd)
