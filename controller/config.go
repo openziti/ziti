@@ -86,7 +86,8 @@ type Config struct {
 // (e.g. NewListener)
 type CtrlOptions struct {
 	*channel.Options
-	NewListener *transport.Address
+	NewListener      *transport.Address
+	AdvertiseAddress *transport.Address
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -166,9 +167,6 @@ func LoadConfig(path string) (*Config, error) {
 			}
 			if value, found := submap["minClusterSize"]; found {
 				controllerConfig.Raft.MinClusterSize = uint32(value.(int))
-			}
-			if value, found := submap["advertiseAddress"]; found {
-				controllerConfig.Raft.AdvertiseAddress = value.(string)
 			}
 			if value, found := submap["bootstrapMembers"]; found {
 				if lst, ok := value.([]interface{}); ok {
@@ -289,6 +287,23 @@ func LoadConfig(path string) (*Config, error) {
 							}
 						} else {
 							return nil, errors.New("error loading newAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
+					if val, found := submap["advertiseAddress"]; found {
+						if advertiseAddr, ok := val.(string); ok {
+							if advertiseAddr != "" {
+								if addr, err := transport.ParseAddress(advertiseAddr); err == nil {
+									controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
+								} else {
+									return nil, fmt.Errorf("error loading advertiseAddress for [ctrl/options] (%v)", err)
+								}
+								if controllerConfig.Raft != nil {
+									controllerConfig.Raft.AdvertiseAddress = advertiseAddr
+								}
+							}
+						} else {
+							return nil, errors.New("error loading advertiseAddress for [ctrl/options] (must be a string)")
 						}
 					}
 
