@@ -52,6 +52,9 @@ func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
 		if _, err := entity.GetCompiledSchema(); err != nil {
 			return nil, errorz.NewFieldError(fmt.Sprintf("invalid schema %v", err), "schema", entity.Schema)
 		}
+		if entity.Schema["type"] != "object" {
+			return nil, errorz.NewFieldError("invalid config type schema, root type must be object", "schema", entity.Schema)
+		}
 	}
 	return &persistence.ConfigType{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
