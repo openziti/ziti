@@ -401,13 +401,13 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 
 	log.Info("waiting for raft cluster to settle before syncing raft to database")
 	start := time.Now()
-	for !c.raftController.IsLeader() {
-		time.Sleep(time.Second)
+	for c.raftController.GetLeaderAddr() == "" {
 		if time.Since(start) > time.Second*30 {
-			log.Panic("cannot sync raft to database, as current node is not the leader")
+			log.Panic("cannot sync raft to database as cluster has not settled within timeout")
 		} else {
-			log.Info("waiting for raft controller to become leader to allow syncing db to raft")
+			log.Info("waiting for raft cluster to elect a leader, to allow syncing db to raft")
 		}
+		time.Sleep(time.Second)
 	}
 
 	if _, err := os.Stat(sourceDbPath); err != nil {
