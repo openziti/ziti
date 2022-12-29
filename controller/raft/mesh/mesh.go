@@ -119,6 +119,7 @@ type Mesh interface {
 	IsReadOnly() bool
 
 	GetPeerId(address string, timeout time.Duration) (string, error)
+	GetAdvertiseAddr() raft.ServerAddress
 }
 
 func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
@@ -152,6 +153,10 @@ type impl struct {
 	bindHandler channel.BindHandler
 	version     string
 	readonly    atomic.Bool
+}
+
+func (self *impl) GetAdvertiseAddr() raft.ServerAddress {
+	return self.raftAddr
 }
 
 func (self *impl) Close() error {

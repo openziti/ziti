@@ -37,6 +37,7 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftListMembersRequestType), self.agentOpRaftList)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftJoinRequestType), self.agentOpRaftJoin)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemoveRequestType), self.agentOpRaftRemove)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInitFromDb), self.agentOpInitFromDb)
 
 	for _, bh := range self.agentBindHandlers {
 		if err := binding.Bind(bh); err != nil {
@@ -172,4 +173,18 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	//}
 	// _, err := c.WriteString("success\n")
 	handler_common.SendOpResult(m, ch, "raft.remove", "no yet implemented", false)
+}
+
+func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {
+	sourceDbPath := string(m.Body)
+	if len(sourceDbPath) == 0 {
+		handler_common.SendOpResult(m, ch, "raft.initFromDb", "source db not supplied", false)
+		return
+	}
+
+	if err := self.InitializeRaftFromBoltDb(sourceDbPath); err != nil {
+		handler_common.SendOpResult(m, ch, "raft.initFromDb", err.Error(), false)
+		return
+	}
+	handler_common.SendOpResult(m, ch, "raft.initFromDb", fmt.Sprintf("success, initialized from [%v]", sourceDbPath), true)
 }
