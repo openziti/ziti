@@ -49,9 +49,19 @@ func (self MetricsEventHandlerF) AcceptMetricsEvent(event *MetricsEvent) {
 	self(event)
 }
 
+type MetricsEventHandlerWrapper interface {
+	MetricsEventHandler
+	IsWrapping(value MetricsEventHandler) bool
+}
+
 type MetricsMessageHandler interface {
 	// AcceptMetricsMsg is called when new metrics become available
 	AcceptMetricsMsg(message *metrics_pb.MetricsMessage)
+}
+
+type MetricsMessageHandlerWrapper interface {
+	MetricsMessageHandler
+	IsWrapping(value MetricsEventHandler) bool
 }
 
 type MetricsMessageHandlerF func(msg *metrics_pb.MetricsMessage)

@@ -103,6 +103,10 @@ func (self *Controller) IsLeader() bool {
 	return self.Raft.State() == raft.Leader
 }
 
+func (self *Controller) IsLeaderOrLeaderless() bool {
+	return self.IsLeader() || self.GetLeaderAddr() == ""
+}
+
 // GetLeaderAddr returns the current leader address, which may be blank if there is no leader currently
 func (self *Controller) GetLeaderAddr() string {
 	addr, _ := self.Raft.LeaderWithID()

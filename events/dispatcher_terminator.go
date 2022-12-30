@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -34,7 +35,15 @@ func (self *Dispatcher) AddTerminatorEventHandler(handler event.TerminatorEventH
 }
 
 func (self *Dispatcher) RemoveTerminatorEventHandler(handler event.TerminatorEventHandler) {
-	self.terminatorEventHandlers.Delete(handler)
+	self.terminatorEventHandlers.DeleteIf(func(val event.TerminatorEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.TerminatorEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptTerminatorEvent(event *event.TerminatorEvent) {
@@ -45,14 +54,29 @@ func (self *Dispatcher) AcceptTerminatorEvent(event *event.TerminatorEvent) {
 	}()
 }
 
-func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, _ map[string]interface{}) error {
+func (self *Dispatcher) registerTerminatorEventHandler(val interface{}, options map[string]interface{}) error {
 	handler, ok := val.(event.TerminatorEventHandler)
 
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/TerminatorEventHandler interface.", reflect.TypeOf(val))
 	}
 
-	self.AddTerminatorEventHandler(handler)
+	propagateAlways := false
+	if val, found := options["propagateAlways"]; found {
+		if b, ok := val.(bool); ok {
+			propagateAlways = b
+		} else if s, ok := val.(string); ok {
+			propagateAlways = strings.EqualFold(s, "true")
+		} else {
+			return errors.New("invalid value for propagateAlways, must be boolean or string")
+		}
+	}
+
+	if propagateAlways {
+		self.AddTerminatorEventHandler(handler)
+	} else {
+		self.AddTerminatorEventHandler(&terminatorEventFilter{TerminatorEventHandler: handler})
+	}
 
 	return nil
 }
@@ -74,6 +98,26 @@ func (self *Dispatcher) initTerminatorEvents(n *network.Network) {
 	n.GetStores().Terminator.AddListener(boltz.EventDelete, terminatorEvtAdapter.terminatorDeleted)
 
 	n.AddRouterPresenceHandler(terminatorEvtAdapter)
+}
+
+type terminatorEventFilter struct {
+	event.TerminatorEventHandler
+}
+
+func (self *terminatorEventFilter) IsWrapping(value event.TerminatorEventHandler) bool {
+	if self.TerminatorEventHandler == value {
+		return true
+	}
+	if w, ok := self.TerminatorEventHandler.(event.TerminatorEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
+}
+
+func (self *terminatorEventFilter) AcceptTerminatorEvent(evt *event.TerminatorEvent) {
+	if !evt.IsModelEvent() || evt.PropagateIndicator {
+		self.TerminatorEventHandler.AcceptTerminatorEvent(evt)
+	}
 }
 
 // terminatorEventAdapter converts router presence online/offline events and terminator entity change events to
@@ -182,6 +226,7 @@ func (self *terminatorEventAdapter) createTerminatorEvent(eventType event.Termin
 		TotalTerminators:          totalTerminators,
 		UsableDefaultTerminators:  usableDefaultTerminators,
 		UsableRequiredTerminators: usableRequiredTerminators,
+		PropagateIndicator:        self.Network.Dispatcher.IsLeaderOrLeaderless(),
 	}
 
 	self.Dispatcher.AcceptTerminatorEvent(evt)
