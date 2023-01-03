@@ -1077,7 +1077,7 @@ function ziti_createEnvFile {
   if [[ "${ZITI_USER-}" == "" ]]; then export ZITI_USER="admin"; fi
   if [[ "${ZITI_PWD-}" == "" ]]; then 
     ZITI_PWD="$(tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
-    echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n)"
+    echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n) "
     # shellcheck disable=SC2162
     read -r pwd_reply
     if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
