@@ -21,29 +21,29 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.7
-	github.com/openziti/channel/v2 v2.0.24
-	github.com/openziti/edge v0.24.87
-	github.com/openziti/fabric v0.22.2
-	github.com/openziti/foundation/v2 v2.0.9
-	github.com/openziti/identity v1.0.28
+	github.com/openziti/channel/v2 v2.0.25
+	github.com/openziti/edge v0.24.95
+	github.com/openziti/fabric v0.22.7
+	github.com/openziti/foundation/v2 v2.0.10
+	github.com/openziti/identity v1.0.29
 	github.com/openziti/runzmd v1.0.7
-	github.com/openziti/sdk-golang v0.18.19
-	github.com/openziti/storage v0.1.30
-	github.com/openziti/transport/v2 v2.0.48
+	github.com/openziti/sdk-golang v0.18.21
+	github.com/openziti/storage v0.1.31
+	github.com/openziti/transport/v2 v2.0.49
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.22.11
+	github.com/shirou/gopsutil/v3 v3.22.12
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.1
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/net v0.4.0
+	golang.org/x/net v0.5.0
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
@@ -123,7 +123,7 @@ require (
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mdlayher/netlink v1.7.1 // indirect
@@ -143,7 +143,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.2 // indirect
-	github.com/openziti/metrics v1.2.2 // indirect
+	github.com/openziti/metrics v1.2.3 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
@@ -173,13 +173,13 @@ require (
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15 // indirect
-	golang.org/x/image v0.2.0 // indirect
+	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30 // indirect
+	golang.org/x/image v0.3.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
-	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect

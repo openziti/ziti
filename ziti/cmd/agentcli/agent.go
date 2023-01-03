@@ -59,6 +59,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	ctrlCmd.AddCommand(NewAgentCtrlRaftJoin(p))
 	ctrlCmd.AddCommand(NewAgentCtrlRaftList(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
+	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",
