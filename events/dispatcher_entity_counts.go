@@ -19,14 +19,16 @@ package events
 import (
 	"github.com/pkg/errors"
 	"reflect"
+	"strings"
 	"time"
 )
 
-func (self *Dispatcher) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration) {
+func (self *Dispatcher) AddEntityCountEventHandler(handler EntityCountEventHandler, interval time.Duration, onlyLeaderEvents bool) {
 	self.entityCountEventHandlers.Append(&entityCountState{
-		handler:  handler,
-		interval: interval,
-		nextRun:  time.Now(),
+		handler:          handler,
+		onlyLeaderEvents: onlyLeaderEvents,
+		interval:         interval,
+		nextRun:          time.Now(),
 	})
 }
 
@@ -50,13 +52,16 @@ func (self *Dispatcher) generateEntityEvents() {
 		select {
 		case t := <-ticker.C:
 			var event *EntityCountEvent
+			leader := self.network.Dispatcher.IsLeaderOrLeaderless()
 			for _, state := range self.entityCountEventHandlers.Value() {
-				if t.After(state.nextRun) {
-					if event == nil {
-						event = self.generateEntityCountEvent()
+				if !state.onlyLeaderEvents || leader {
+					if t.After(state.nextRun) {
+						if event == nil {
+							event = self.generateEntityCountEvent()
+						}
+						state.handler.AcceptEntityCountEvent(event)
+						state.nextRun = state.nextRun.Add(state.interval)
 					}
-					state.handler.AcceptEntityCountEvent(event)
-					state.nextRun = state.nextRun.Add(state.interval)
 				}
 			}
 		case <-self.closeNotify:
@@ -102,7 +107,18 @@ func (self *Dispatcher) registerEntityCountEventHandler(val interface{}, config 
 		}
 	}
 
-	self.AddEntityCountEventHandler(handler, interval)
+	propagateAlways := false
+	if val, found := config["propagateAlways"]; found {
+		if b, ok := val.(bool); ok {
+			propagateAlways = b
+		} else if s, ok := val.(string); ok {
+			propagateAlways = strings.EqualFold(s, "true")
+		} else {
+			return errors.New("invalid value for propagateAlways, must be boolean or string")
+		}
+	}
+
+	self.AddEntityCountEventHandler(handler, interval, !propagateAlways)
 
 	return nil
 }
@@ -114,7 +130,8 @@ func (self *Dispatcher) unregisterEntityCountEventHandler(val interface{}) {
 }
 
 type entityCountState struct {
-	handler  EntityCountEventHandler
-	interval time.Duration
-	nextRun  time.Time
+	handler          EntityCountEventHandler
+	onlyLeaderEvents bool
+	interval         time.Duration
+	nextRun          time.Time
 }

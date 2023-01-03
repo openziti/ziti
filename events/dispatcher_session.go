@@ -32,7 +32,15 @@ func (self *Dispatcher) AddSessionEventHandler(handler SessionEventHandler) {
 }
 
 func (self *Dispatcher) RemoveSessionEventHandler(handler SessionEventHandler) {
-	self.sessionEventHandlers.Delete(handler)
+	self.sessionEventHandlers.DeleteIf(func(val SessionEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(SessionEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) initSessionEvents(stores *persistence.Stores) {
@@ -150,4 +158,14 @@ func (adapter *sessionEventAdapter) AcceptSessionEvent(event *SessionEvent) {
 	if stringz.Contains(adapter.includeList, event.EventType) {
 		adapter.wrapped.AcceptSessionEvent(event)
 	}
+}
+
+func (self *sessionEventAdapter) IsWrapping(value SessionEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(SessionEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }

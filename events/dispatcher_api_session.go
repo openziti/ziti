@@ -32,7 +32,15 @@ func (self *Dispatcher) AddApiSessionEventHandler(handler ApiSessionEventHandler
 }
 
 func (self *Dispatcher) RemoveApiSessionEventHandler(handler ApiSessionEventHandler) {
-	self.apiSessionEventHandlers.Delete(handler)
+	self.apiSessionEventHandlers.DeleteIf(func(val ApiSessionEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(ApiSessionEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) initApiSessionEvents(stores *persistence.Stores) {
@@ -147,4 +155,14 @@ func (adapter *apiSessionEventAdapter) AcceptApiSessionEvent(event *ApiSessionEv
 	if stringz.Contains(adapter.includeList, event.EventType) {
 		adapter.wrapped.AcceptApiSessionEvent(event)
 	}
+}
+
+func (self *apiSessionEventAdapter) IsWrapping(value ApiSessionEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(ApiSessionEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
