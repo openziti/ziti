@@ -17,9 +17,11 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	gabs2 "github.com/Jeffail/gabs/v2"
+	"github.com/pkg/errors"
 	"strings"
 )
 
@@ -45,6 +47,20 @@ func GetJsonString(container *gabs.Container, path string) string {
 		return s
 	}
 	return ""
+}
+
+func SetTags(container *gabs.Container, tags map[string]string, tagsJson string, path ...string) {
+	result := map[string]interface{}{}
+	if err := json.Unmarshal([]byte(tagsJson), &result); err != nil {
+		panic(errors.Wrap(err, "invalid tags JSON"))
+	}
+	for k, v := range tags {
+		result[k] = v
+	}
+
+	if _, err := container.Set(result, path...); err != nil {
+		panic(err)
+	}
 }
 
 func Wrap(c *gabs.Container) *GabsWrapper {

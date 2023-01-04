@@ -18,7 +18,6 @@ package edge
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
@@ -27,7 +26,7 @@ import (
 )
 
 type createServiceEdgeRouterPolicyOptions struct {
-	api.Options
+	api.EntityOptions
 	edgeRouterRoles []string
 	serviceRoles    []string
 	semantic        string
@@ -36,9 +35,7 @@ type createServiceEdgeRouterPolicyOptions struct {
 // newCreateServiceEdgeRouterPolicyCmd creates the 'edge controller create service-edge-router-policy' command
 func newCreateServiceEdgeRouterPolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServiceEdgeRouterPolicyOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -84,6 +81,7 @@ func runCreateServiceEdgeRouterPolicy(o *createServiceEdgeRouterPolicyOptions) e
 	if o.semantic != "" {
 		api.SetJSONValue(entityData, o.semantic, "semantic")
 	}
+	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("service-edge-router-policies", entityData.String(), &o.Options)
 	return o.LogCreateResult("service edge router policy", result, err)

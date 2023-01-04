@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -28,11 +27,10 @@ import (
 )
 
 type createEdgeRouterOptions struct {
-	api.Options
+	api.EntityOptions
 	isTunnelerEnabled bool
 	roleAttributes    []string
 	jwtOutputFile     string
-	tags              map[string]string
 	appData           map[string]string
 	cost              uint16
 	noTraversal       bool
@@ -40,9 +38,7 @@ type createEdgeRouterOptions struct {
 
 func newCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createEdgeRouterOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -65,7 +61,6 @@ func newCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil, "Role attributes of the new edge router")
 	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-Data", nil, "Custom application data")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
@@ -81,10 +76,10 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	api.SetJSONValue(entityData, o.Args[0], "name")
 	api.SetJSONValue(entityData, o.isTunnelerEnabled, "isTunnelerEnabled")
 	api.SetJSONValue(entityData, o.roleAttributes, "roleAttributes")
-	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.appData, "appData")
 	api.SetJSONValue(entityData, o.cost, "cost")
 	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
+	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("edge-routers", entityData.String(), &o.Options)
 	if err := o.LogCreateResult("edge router", result, err); err != nil {

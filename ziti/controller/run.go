@@ -55,7 +55,6 @@ func run(cmd *cobra.Command, args []string) {
 		startLogger.WithError(err).Error("error starting ziti-controller")
 		panic(err)
 	}
-	config.SyncRaftToDb = syncRaftToDb
 
 	startLogger = startLogger.WithField("nodeId", config.Id.Token)
 	startLogger.Info("starting ziti-controller")

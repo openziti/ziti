@@ -19,7 +19,6 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
@@ -30,20 +29,17 @@ import (
 )
 
 type updateServiceOptions struct {
-	api.Options
+	api.EntityOptions
 	name               string
 	terminatorStrategy string
 	roleAttributes     []string
 	encryption         encryptionVar
 	configs            []string
-	tags               map[string]string
 }
 
 func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServiceOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -69,7 +65,6 @@ func newUpdateServiceCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options.encryption.Set("ON")
 	cmd.Flags().VarP(&options.encryption, "encryption", "e", "Controls end-to-end encryption for the service")
 	cmd.Flags().StringSliceVarP(&options.configs, "configs", "c", nil, "Configuration id or names to be associated with the new service")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 
@@ -114,8 +109,8 @@ func runUpdateService(o *updateServiceOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 

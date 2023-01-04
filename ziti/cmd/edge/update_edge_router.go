@@ -19,7 +19,6 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
@@ -30,11 +29,10 @@ import (
 )
 
 type updateEdgeRouterOptions struct {
-	api.Options
+	api.EntityOptions
 	name              string
 	isTunnelerEnabled bool
 	roleAttributes    []string
-	tags              map[string]string
 	appData           map[string]string
 	usePut            bool
 	cost              uint16
@@ -43,9 +41,7 @@ type updateEdgeRouterOptions struct {
 
 func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateEdgeRouterOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -69,7 +65,6 @@ func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.isTunnelerEnabled, "tunneler-enabled", "t", false, "Can this edge router be used as a tunneler")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the edge router. Use --role-attributes '' to set an empty list")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
 	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
@@ -104,8 +99,8 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 

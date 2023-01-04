@@ -1,3 +1,34 @@
+# Release 0.27.2
+
+# What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.24 -> v2.0.25](https://github.com/openziti/channel/compare/v2.0.24...v2.0.25)
+* github.com/openziti/edge: [v0.24.86 -> v0.24.95](https://github.com/openziti/edge/compare/v0.24.86...v0.24.95)
+    * [Issue #1282](https://github.com/openziti/edge/issues/1282) - Ensure entity count events can be configured to only be emitted on the leader
+    * [Issue #1279](https://github.com/openziti/edge/issues/1279) - Constrain config-type schema to accept only object types
+
+* github.com/openziti/fabric: [v0.22.1 -> v0.22.7](https://github.com/openziti/fabric/compare/v0.22.1...v0.22.7)
+    * [Issue #573](https://github.com/openziti/fabric/issues/573) - Ensure specific events aren't duplicated in raft cluster
+    * [Issue #577](https://github.com/openziti/fabric/issues/577) - JSON Event formatter isn't putting events on their own line
+    * [Issue #571](https://github.com/openziti/fabric/issues/571) - Move raft.advertiseAddress to ctrl for consistency
+    * [Issue #569](https://github.com/openziti/fabric/issues/569) - Support automatic migration and agent based migration
+    * [Issue #567](https://github.com/openziti/fabric/issues/567) - Remove link dropped_msg metrics for closed links
+    * [Issue #566](https://github.com/openziti/fabric/issues/566) - Link listeners aren't properly configuring channel out queue size 
+
+* github.com/openziti/foundation/v2: [v2.0.9 -> v2.0.10](https://github.com/openziti/foundation/compare/v2.0.9...v2.0.10)
+* github.com/openziti/identity: [v1.0.28 -> v1.0.29](https://github.com/openziti/identity/compare/v1.0.28...v1.0.29)
+* github.com/openziti/sdk-golang: [v0.18.19 -> v0.18.21](https://github.com/openziti/sdk-golang/compare/v0.18.19...v0.18.21)
+* github.com/openziti/storage: [v0.1.30 -> v0.1.31](https://github.com/openziti/storage/compare/v0.1.30...v0.1.31)
+* github.com/openziti/transport/v2: [v2.0.48 -> v2.0.49](https://github.com/openziti/transport/compare/v2.0.48...v2.0.49)
+* github.com/openziti/metrics: [v1.2.2 -> v1.2.3](https://github.com/openziti/metrics/compare/v1.2.2...v1.2.3)
+* github.com/openziti/ziti: [v0.27.1 -> v0.27.2](https://github.com/openziti/ziti/compare/v0.27.1...v0.27.2)
+    * [Issue #916](https://github.com/openziti/ziti/issues/916) - Allow defining resource tags via json in the cli
+
+
 # Release 0.27.1
 
 ## What's New
