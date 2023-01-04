@@ -19,63 +19,59 @@ package agentcli
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"google.golang.org/protobuf/proto"
 )
 
-type AgentRouteAction struct {
+type ToggleCtrlChannelAgentAction struct {
 	AgentOptions
+	enable bool
 }
 
-func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
-	action := &AgentRouteAction{
+func NewToggleCtrlChannelAgentCmd(p common.OptionsProvider, name string, enable bool) *cobra.Command {
+	options := &ToggleCtrlChannelAgentAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
+		enable: enable,
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(3, 4),
-		Use:  "route <controller id> <circuit id> <source-address> <destination-address>",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			action.Cmd = cmd
-			action.Args = args
-			return action.MakeChannelRequest(router.AgentAppId, action.makeRequest)
+		Args: cobra.RangeArgs(0, 1),
+		Use:  name + " <ctrl-id>",
+		Run: func(cmd *cobra.Command, args []string) {
+			options.Cmd = cmd
+			options.Args = args
+			err := options.Run()
+			cmdhelper.CheckErr(err)
 		},
 	}
 
-	action.AddAgentOptions(cmd)
+	options.AddAgentOptions(cmd)
 
 	return cmd
 }
 
-func (self *AgentRouteAction) makeRequest(ch channel.Channel) error {
-	route := &ctrl_pb.Route{
-		CircuitId: self.Args[1],
-		Forwards: []*ctrl_pb.Route_Forward{
-			{
-				SrcAddress: self.Args[2],
-				DstAddress: self.Args[3],
-			},
-		},
+// Run implements the command
+func (self *ToggleCtrlChannelAgentAction) Run() error {
+	return self.MakeChannelRequest(router.AgentAppId, self.makeRequest)
+}
+
+func (self *ToggleCtrlChannelAgentAction) makeRequest(ch channel.Channel) error {
+	var ctrlId string
+	if len(self.Args) > 0 {
+		ctrlId = self.Args[0]
 	}
 
-	buf, err := proto.Marshal(route)
-	if err != nil {
-		return err
-	}
-
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), buf)
-	msg.PutStringHeader(int32(mgmt_pb.Header_ControllerId), self.Args[0])
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugToggleCtrlChannelRequestType), []byte(ctrlId))
+	msg.PutBoolHeader(int32(mgmt_pb.Header_CtrlChanToggle), self.enable)
 	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}
-
 	if reply.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(reply)
 		if result.Success {

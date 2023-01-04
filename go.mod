@@ -20,14 +20,14 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
-	github.com/openziti/agent v1.0.7
+	github.com/openziti/agent v1.0.8
 	github.com/openziti/channel/v2 v2.0.25
-	github.com/openziti/edge v0.24.101
-	github.com/openziti/fabric v0.22.7
+	github.com/openziti/edge v0.24.100
+	github.com/openziti/fabric v0.22.9
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.29
-	github.com/openziti/runzmd v1.0.7
-	github.com/openziti/sdk-golang v0.18.21
+	github.com/openziti/runzmd v1.0.8
+	github.com/openziti/sdk-golang v0.18.24
 	github.com/openziti/storage v0.1.31
 	github.com/openziti/transport/v2 v2.0.49
 	github.com/openziti/xweb/v2 v2.0.2
@@ -119,7 +119,7 @@ require (
 	github.com/kyokomi/emoji/v2 v2.2.11 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lucsky/cuid v1.2.1 // indirect
-	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
+	github.com/lufia/plan9stats v0.0.0-20230110061619-bbe2e5e100de // indirect
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -172,8 +172,8 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
-	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/exp v0.0.0-20221230185412-738e83a70c30 // indirect
+	golang.org/x/crypto v0.5.0 // indirect
+	golang.org/x/exp v0.0.0-20230111222715-75897c7a292a // indirect
 	golang.org/x/image v0.3.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect

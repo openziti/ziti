@@ -19,6 +19,7 @@ package agentcli
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -27,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
+	"time"
 )
 
 type AgentSetChannelLogLevelAction struct {
@@ -52,27 +54,28 @@ func NewSetChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	action.AddAgentOptions(cmd)
+
 	return cmd
 }
 
 // Run implements the command
 func (self *AgentSetChannelLogLevelAction) Run() error {
-	var addr string
-	var err error
+	if self.Cmd.Flags().Changed("timeout") {
+		time.AfterFunc(self.timeout, func() {
+			fmt.Println("operation timed out")
+			os.Exit(-1)
+		})
+	}
+
 	var channelArg string
 	var levelArg string
 	if len(self.Args) == 2 {
-		addr, err = agent.ParseGopsAddress(nil)
 		channelArg = self.Args[0]
 		levelArg = self.Args[1]
 	} else {
-		addr, err = agent.ParseGopsAddress(self.Args)
 		channelArg = self.Args[1]
 		levelArg = self.Args[2]
-	}
-
-	if err != nil {
-		return err
 	}
 
 	var level logrus.Level
@@ -95,5 +98,13 @@ func (self *AgentSetChannelLogLevelAction) Run() error {
 	buf.Write([]byte(channelArg))
 	buf.WriteByte(byte(level))
 
+	if len(self.Args) == 2 {
+		return self.MakeRequest(agent.SetChannelLogLevel, buf.Bytes(), self.CopyToWriter(os.Stdout))
+	}
+
+	addr, err := agent.ParseGopsAddress(self.Args)
+	if err != nil {
+		return err
+	}
 	return agent.MakeRequest(addr, agent.SetChannelLogLevel, buf.Bytes(), os.Stdout)
 }

@@ -19,11 +19,13 @@ package agentcli
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"os"
+	"time"
 )
 
 type AgentClearChannelLogLevelAction struct {
@@ -31,7 +33,7 @@ type AgentClearChannelLogLevelAction struct {
 }
 
 func NewClearChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
-	options := &AgentClearChannelLogLevelAction{
+	action := &AgentClearChannelLogLevelAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
@@ -42,31 +44,33 @@ func NewClearChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 		Short: "Clears a channel-specific log level in the target application",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
 // Run implements the command
 func (self *AgentClearChannelLogLevelAction) Run() error {
-	var addr string
-	var err error
-	var channelArg string
-	if len(self.Args) == 1 {
-		addr, err = agent.ParseGopsAddress(nil)
-		channelArg = self.Args[0]
-	} else {
-		addr, err = agent.ParseGopsAddress(self.Args)
-		channelArg = self.Args[1]
+	if self.Cmd.Flags().Changed("timeout") {
+		time.AfterFunc(self.timeout, func() {
+			fmt.Println("operation timed out")
+			os.Exit(-1)
+		})
 	}
 
-	if err != nil {
-		return err
+	var channelArg string
+
+	if len(self.Args) == 1 {
+		channelArg = self.Args[0]
+	} else {
+		channelArg = self.Args[1]
 	}
 
 	lenBuf := make([]byte, 8)
@@ -75,5 +79,13 @@ func (self *AgentClearChannelLogLevelAction) Run() error {
 	buf.Write(lenBuf[:lenLen])
 	buf.Write([]byte(channelArg))
 
+	if len(self.Args) == 1 {
+		return self.MakeRequest(agent.ClearChannelLogLevel, buf.Bytes(), self.CopyToWriter(os.Stdout))
+	}
+
+	addr, err := agent.ParseGopsAddress(self.Args)
+	if err != nil {
+		return err
+	}
 	return agent.MakeRequest(addr, agent.ClearChannelLogLevel, buf.Bytes(), os.Stdout)
 }
