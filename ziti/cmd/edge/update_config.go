@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"io/ioutil"
@@ -32,19 +31,16 @@ import (
 )
 
 type updateConfigOptions struct {
-	api.Options
+	api.EntityOptions
 	name     string
 	data     string
 	jsonFile string
-	tags     map[string]string
 }
 
 // newUpdateConfigCmd updates the 'edge controller update service-policy' command
 func newUpdateConfigCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateConfigOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -66,7 +62,6 @@ func newUpdateConfigCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the config")
 	cmd.Flags().StringVarP(&options.data, "data", "d", "", "Set the data of the config")
 	cmd.Flags().StringVarP(&options.jsonFile, "json-file", "f", "", "Read config JSON from a file instead of the command line")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 
@@ -103,8 +98,8 @@ func runUpdateConfig(o *updateConfigOptions) error {
 		}
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 

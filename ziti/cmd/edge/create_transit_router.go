@@ -19,7 +19,6 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"os"
@@ -29,19 +28,15 @@ import (
 )
 
 type createTransitRouterOptions struct {
-	api.Options
+	api.EntityOptions
 	jwtOutputFile string
-	tags          map[string]string
 	cost          uint16
 	noTraversal   bool
 }
 
 func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createTransitRouterOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
-	}
+		EntityOptions: api.NewEntityOptions(out, errOut)}
 
 	cmd := &cobra.Command{
 		Use:   "transit-router <name>",
@@ -60,7 +55,6 @@ func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
 
@@ -73,9 +67,9 @@ func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 func runCreateTransitRouter(o *createTransitRouterOptions) error {
 	entityData := gabs.New()
 	api.SetJSONValue(entityData, o.Args[0], "name")
-	api.SetJSONValue(entityData, o.tags, "tags")
 	api.SetJSONValue(entityData, o.cost, "cost")
 	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
+	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("transit-routers", entityData.String(), &o.Options)
 	if err := o.LogCreateResult("transit router", result, err); err != nil {

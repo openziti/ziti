@@ -21,7 +21,6 @@ import (
 	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
 	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/spf13/cobra"
@@ -30,21 +29,15 @@ import (
 )
 
 type createCaOptions struct {
-	api.Options
+	api.EntityOptions
 	Ca                     rest_model.CaCreate
-	TagsFromFlags          map[string]string
 	IdentityRolesFromFlags []string
 }
 
 // newCreateCaCmd creates the 'edge controller create ca local' command for the given entity type
 func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createCaOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 		Ca: rest_model.CaCreate{
 			CertPem: S(""),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
@@ -65,7 +58,6 @@ func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				SubTags: map[string]interface{}{},
 			},
 		},
-		TagsFromFlags: map[string]string{},
 	}
 
 	cmd := &cobra.Command{
@@ -103,7 +95,6 @@ func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
-	cmd.Flags().StringToStringVarP(&options.TagsFromFlags, "tags", "t", nil, "Add tags to service definition")
 	cmd.Flags().BoolVarP(options.Ca.IsAuthEnabled, "auth", "e", false, "Whether the CA can be used for authentication or not")
 	cmd.Flags().BoolVarP(options.Ca.IsOttCaEnrollmentEnabled, "ottca", "o", false, "Whether the CA can be used for one-time-token CA enrollment")
 	cmd.Flags().BoolVarP(options.Ca.IsAutoCaEnrollmentEnabled, "autoca", "u", false, "Whether the CA can be used for auto CA enrollment")
@@ -149,7 +140,7 @@ func runCreateCa(options *createCaOptions) (err error) {
 		params.Ca.IdentityRoles = append(params.Ca.IdentityRoles, attr)
 	}
 
-	for k, v := range options.TagsFromFlags {
+	for k, v := range options.GetTags() {
 		params.Ca.Tags.SubTags[k] = v
 	}
 

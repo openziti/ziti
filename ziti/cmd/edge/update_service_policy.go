@@ -19,7 +19,6 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 
@@ -30,19 +29,16 @@ import (
 )
 
 type updateServicePolicyOptions struct {
-	api.Options
+	api.EntityOptions
 	name              string
 	serviceRoles      []string
 	identityRoles     []string
 	postureCheckRoles []string
-	tags              map[string]string
 }
 
 func newUpdateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateServicePolicyOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -66,7 +62,6 @@ func newUpdateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringSliceVar(&options.serviceRoles, "service-roles", nil, "Service roles of the service policy")
 	cmd.Flags().StringSliceVar(&options.identityRoles, "identity-roles", nil, "Identity roles of the service policy")
 	cmd.Flags().StringSliceVarP(&options.postureCheckRoles, "posture-check-roles", "p", nil, "Posture Check roles of the service policy")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 
@@ -117,8 +112,8 @@ func runUpdateServicePolicy(o *updateServicePolicyOptions) error {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 
