@@ -43,11 +43,16 @@ type Validatable interface {
 // system is the leader, apply it locally
 type Dispatcher interface {
 	Dispatch(command Command) error
+	IsLeaderOrLeaderless() bool
 }
 
 // LocalDispatcher should be used when running a non-clustered system
 type LocalDispatcher struct {
 	EncodeDecodeCommands bool
+}
+
+func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
+	return true
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {

@@ -31,7 +31,22 @@ func (self *Dispatcher) AddMetricsEventHandler(handler event.MetricsEventHandler
 }
 
 func (self *Dispatcher) RemoveMetricsEventHandler(handler event.MetricsEventHandler) {
-	self.metricsEventHandlers.Delete(handler)
+	self.metricsEventHandlers.DeleteIf(func(val event.MetricsEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.MetricsEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
+
+	self.metricsMsgEventHandlers.DeleteIf(func(val event.MetricsMessageHandler) bool {
+		if w, ok := val.(event.MetricsEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AddMetricsMessageHandler(handler event.MetricsMessageHandler) {
@@ -251,6 +266,16 @@ type filteringMetricsMessageAdapter struct {
 	sourceFilter *regexp.Regexp
 	metricFilter *regexp.Regexp
 	handler      event.MetricsEventHandler
+}
+
+func (self *filteringMetricsMessageAdapter) IsWrapping(value event.MetricsEventHandler) bool {
+	if self.handler == value {
+		return true
+	}
+	if w, ok := self.handler.(event.MetricsEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 func (self *filteringMetricsMessageAdapter) AcceptMetricsMsg(msg *metrics_pb.MetricsMessage) {

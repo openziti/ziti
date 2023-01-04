@@ -48,6 +48,13 @@ type TerminatorEvent struct {
 	TotalTerminators          int                 `json:"total_terminators"`
 	UsableDefaultTerminators  int                 `json:"usable_default_terminators"`
 	UsableRequiredTerminators int                 `json:"usable_required_terminators"`
+	PropagateIndicator        bool                `json:"-"`
+}
+
+func (event *TerminatorEvent) IsModelEvent() bool {
+	return event.EventType == TerminatorCreated ||
+		event.EventType == TerminatorUpdated ||
+		event.EventType == TerminatorDeleted
 }
 
 func (event *TerminatorEvent) String() string {
@@ -60,4 +67,9 @@ func (event *TerminatorEvent) String() string {
 
 type TerminatorEventHandler interface {
 	AcceptTerminatorEvent(event *TerminatorEvent)
+}
+
+type TerminatorEventHandlerWrapper interface {
+	TerminatorEventHandler
+	IsWrapping(value TerminatorEventHandler) bool
 }

@@ -28,7 +28,15 @@ func (self *Dispatcher) AddCircuitEventHandler(handler event.CircuitEventHandler
 }
 
 func (self *Dispatcher) RemoveCircuitEventHandler(handler event.CircuitEventHandler) {
-	self.circuitEventHandlers.Delete(handler)
+	self.circuitEventHandlers.DeleteIf(func(val event.CircuitEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.CircuitEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptCircuitEvent(event *event.CircuitEvent) {
@@ -95,6 +103,16 @@ func (self *Dispatcher) unregisterCircuitEventHandler(val interface{}) {
 type filteredCircuitEventHandler struct {
 	accepted map[event.CircuitEventType]struct{}
 	wrapped  event.CircuitEventHandler
+}
+
+func (self *filteredCircuitEventHandler) IsWrapping(value event.CircuitEventHandler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.CircuitEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 func (self *filteredCircuitEventHandler) AcceptCircuitEvent(event *event.CircuitEvent) {

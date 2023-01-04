@@ -91,3 +91,8 @@ func (event *CircuitEvent) String() string {
 type CircuitEventHandler interface {
 	AcceptCircuitEvent(event *CircuitEvent)
 }
+
+type CircuitEventHandlerWrapper interface {
+	CircuitEventHandler
+	IsWrapping(value CircuitEventHandler) bool
+}
