@@ -45,3 +45,8 @@ func (event *SessionEvent) String() string {
 type SessionEventHandler interface {
 	AcceptSessionEvent(event *SessionEvent)
 }
+
+type SessionEventHandlerWrapper interface {
+	SessionEventHandler
+	IsWrapping(value SessionEventHandler) bool
+}

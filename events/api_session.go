@@ -43,3 +43,8 @@ func (event *ApiSessionEvent) String() string {
 type ApiSessionEventHandler interface {
 	AcceptApiSessionEvent(event *ApiSessionEvent)
 }
+
+type ApiSessionEventHandlerWrapper interface {
+	ApiSessionEventHandler
+	IsWrapping(value ApiSessionEventHandler) bool
+}
