@@ -2,7 +2,7 @@ package router
 
 import (
 	"bufio"
-	"encoding/binary"
+	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -19,12 +19,6 @@ import (
 
 const (
 	AgentAppId byte = 2
-
-	DumpForwarderTables byte = 1
-	UpdateRoute         byte = 2
-	CloseControlChannel byte = 3
-	OpenControlChannel  byte = 4
-	DumpLinks           byte = 5
 )
 
 func (self *Router) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
@@ -32,18 +26,14 @@ func (self *Router) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
 }
 
 func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
-	self.debugOperations[DumpForwarderTables] = self.debugOpWriteForwarderTables
-	self.debugOperations[DumpLinks] = self.debugOpWriteLinks
-
-	if debugEnabled {
-		self.debugOperations[UpdateRoute] = self.debugOpUpdateRouter
-		self.debugOperations[CloseControlChannel] = self.debugOpCloseControlChannel
-		self.debugOperations[OpenControlChannel] = self.debugOpOpenControlChannel
-	}
-
 	self.agentBindHandlers = append(self.agentBindHandlers, channel.BindHandlerF(func(binding channel.Binding) error {
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), self.agentOpDumpForwarderTables)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), self.agentOpsDumpLinks)
+
 		if debugEnabled {
+			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), self.agentOpUpdateRoute)
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugForgetLinkRequestType), self.agentOpForgetLink)
+			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugToggleCtrlChannelRequestType), self.agentOpToggleCtrlChan)
 		}
 		return nil
 	}))
@@ -99,97 +89,105 @@ func (self *Router) agentOpForgetLink(m *channel.Message, ch channel.Channel) {
 	handler_common.SendOpResult(m, ch, "link.remove", result, true)
 }
 
-func (self *Router) debugOpWriteForwarderTables(c *bufio.ReadWriter) error {
-	tables := self.forwarder.Debug()
-	_, err := c.Write([]byte(tables))
-	return err
+func (self *Router) agentOpToggleCtrlChan(m *channel.Message, ch channel.Channel) {
+	ctrlId := string(m.Body)
+
+	results := &bytes.Buffer{}
+	toggleOn, _ := m.GetBoolHeader(int32(mgmt_pb.Header_CtrlChanToggle))
+
+	success := true
+	count := 0
+	self.ctrls.ForEach(func(controllerId string, ch channel.Channel) {
+		if ctrlId == "" || controllerId == ctrlId {
+			log := pfxlog.Logger().WithField("ctrlId", controllerId)
+			if toggleable, ok := ch.Underlay().(connectionToggle); ok {
+				if toggleOn {
+					if err := toggleable.Reconnect(); err != nil {
+						log.WithError(err).Error("control channel: failed to reconnect")
+						_, _ = fmt.Fprintf(results, "control channel: failed to reconnect (%v)\n", err)
+						success = false
+					} else {
+						log.Warn("control channel: reconnected")
+						_, _ = fmt.Fprint(results, "control channel: reconnected")
+						count++
+					}
+				} else {
+					if err := toggleable.Disconnect(); err != nil {
+						log.WithError(err).Error("control channel: failed to close")
+						_, _ = fmt.Fprintf(results, "control channel: failed to close (%v)\n", err)
+						success = false
+					} else {
+						log.Warn("control channel: closed")
+						_, _ = fmt.Fprint(results, "control channel: closed")
+						count++
+					}
+				}
+			} else {
+				log.Warn("control channel: not toggleable")
+				_, _ = fmt.Fprint(results, "control channel: not toggleable")
+				success = false
+			}
+		}
+	})
+
+	if count == 0 {
+		_, _ = fmt.Fprintf(results, "control channel: no controllers matched id [%v]", ctrlId)
+		success = false
+	}
+
+	handler_common.SendOpResult(m, ch, "ctrl.toggle", results.String(), success)
 }
 
-func (self *Router) debugOpWriteLinks(c *bufio.ReadWriter) error {
-	noLinks := true
+func (self *Router) agentOpDumpForwarderTables(m *channel.Message, ch channel.Channel) {
+	tables := self.forwarder.Debug()
+	handler_common.SendOpResult(m, ch, "dump.forwarder_tables", tables, true)
+}
+
+func (self *Router) agentOpsDumpLinks(m *channel.Message, ch channel.Channel) {
+	result := &bytes.Buffer{}
 	for link := range self.xlinkRegistry.Iter() {
 		line := fmt.Sprintf("id: %v dest: %v protocol: %v\n", link.Id(), link.DestinationId(), link.LinkProtocol())
-		_, err := c.WriteString(line)
+		_, err := result.WriteString(line)
 		if err != nil {
-			return err
+			handler_common.SendOpResult(m, ch, "dump.links", err.Error(), false)
+			return
 		}
-		noLinks = false
 	}
-	if noLinks {
-		_, err := c.WriteString("no links\n")
-		return err
+
+	output := result.String()
+	if len(output) == 0 {
+		output = "no links\n"
 	}
-	return nil
+	handler_common.SendOpResult(m, ch, "dump.links", output, true)
 }
 
-func (self *Router) debugOpUpdateRouter(c *bufio.ReadWriter) error {
-	logrus.Error("received debug operation to update routes")
-	sizeBuf := make([]byte, 4)
-	if _, err := c.Read(sizeBuf); err != nil {
-		return err
+func (self *Router) agentOpUpdateRoute(m *channel.Message, ch channel.Channel) {
+	logrus.Warn("received debug operation to update routes")
+	ctrlId, _ := m.GetStringHeader(int32(mgmt_pb.Header_ControllerId))
+	if ctrlId == "" {
+		handler_common.SendOpResult(m, ch, "update.route", "no controller id provided", false)
+		return
 	}
-	size := binary.LittleEndian.Uint32(sizeBuf)
-	messageBuf := make([]byte, size)
 
-	if _, err := c.Read(messageBuf); err != nil {
-		return err
+	ctrl := self.ctrls.GetCtrlChannel(ctrlId)
+	if ctrl == nil {
+		handler_common.SendOpResult(m, ch, "update.route", fmt.Sprintf("no control channel found for [%v]", ctrlId), false)
+		return
 	}
 
 	route := &ctrl_pb.Route{}
-	if err := proto.Unmarshal(messageBuf, route); err != nil {
-		return err
+	if err := proto.Unmarshal(m.Body, route); err != nil {
+		handler_common.SendOpResult(m, ch, "update.route", err.Error(), false)
+		return
 	}
 
-	logrus.Errorf("updating with route: %+v", route)
-	logrus.Errorf("updating with route: %v", route)
-
-	// TODO: Fix. See fabric#508
-	if err := self.forwarder.Route(self.ctrls.AnyCtrlChannel().Id(), route); err != nil {
-		return err
+	if err := self.forwarder.Route(ctrlId, route); err != nil {
+		handler_common.SendOpResult(m, ch, "update.route", errors.Wrap(err, "error adding route").Error(), false)
+		return
 	}
-	_, _ = c.WriteString("route added")
-	return nil
-}
 
-func (self *Router) debugOpCloseControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: closing")
-	_, _ = c.WriteString("control channel: closing\n")
-	self.ctrls.ForEach(func(controllerId string, ch channel.Channel) {
-		log := pfxlog.Logger().WithField("ctrlId", controllerId)
-		if toggleable, ok := ch.Underlay().(connectionToggle); ok {
-			if err := toggleable.Disconnect(); err != nil {
-				log.WithError(err).Error("control channel: failed to close")
-				_, _ = c.WriteString(fmt.Sprintf("control channel: failed to close (%v)\n", err))
-			} else {
-				log.Warn("control channel: closed")
-				_, _ = c.WriteString("control channel: closed")
-			}
-		} else {
-			log.Warn("control channel: error not toggleable")
-			_, _ = c.WriteString("control channel: error not toggleable")
-		}
-	})
-	return nil
-}
-
-func (self *Router) debugOpOpenControlChannel(c *bufio.ReadWriter) error {
-	logrus.Warn("control channel: reconnecting")
-	self.ctrls.ForEach(func(controllerId string, ch channel.Channel) {
-		log := pfxlog.Logger().WithField("ctrlId", controllerId)
-		if togglable, ok := ch.(connectionToggle); ok {
-			if err := togglable.Reconnect(); err != nil {
-				log.WithError(err).Error("control channel: failed to reconnect")
-				_, _ = c.WriteString(fmt.Sprintf("control channel: failed to reconnect (%v)\n", err))
-			} else {
-				log.Warn("control channel: reconnected")
-				_, _ = c.WriteString("control channel: reconnected")
-			}
-		} else {
-			log.Warn("control channel: error not toggleable")
-			_, _ = c.WriteString("control channel: error not toggleable")
-		}
-	})
-	return nil
+	logrus.Warnf("route added: %+v", route)
+	handler_common.SendOpResult(m, ch, "update.route", "route added", true)
 }
 
 func (self *Router) HandleAgentOp(conn net.Conn) error {

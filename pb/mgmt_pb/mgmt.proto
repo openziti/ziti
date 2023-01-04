@@ -28,6 +28,10 @@ enum ContentType {
 
   // Router Mgmt
   RouterDebugForgetLinkRequestType = 10071;
+  RouterDebugToggleCtrlChannelRequestType = 10072;
+  RouterDebugUpdateRouteRequestType = 10073;
+  RouterDebugDumpForwarderTablesRequestType = 10074;
+  RouterDebugDumpLinksRequestType = 10075;
 
   // Raft
   RaftListMembersRequestType = 10080;
@@ -41,6 +45,8 @@ enum Header {
   NoneHeader = 0;
 
   EventTypeHeader = 10;
+  CtrlChanToggle = 11;
+  ControllerId = 12;
 }
 
 //

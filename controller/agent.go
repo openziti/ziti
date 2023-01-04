@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"bufio"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
@@ -24,16 +23,12 @@ const (
 	AgentIsVoterHeader = 12
 )
 
-func (self *Controller) RegisterAgentOpHandler(opId byte, f func(c *bufio.ReadWriter) error) {
-	self.agentHandlers[opId] = f
-}
-
 func (self *Controller) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
 	self.agentBindHandlers = append(self.agentBindHandlers, bindHandler)
 }
 
 func (self *Controller) bindAgentChannel(binding channel.Binding) error {
-	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpAsyncSnapshotDb)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpSnapshotDb)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftListMembersRequestType), self.agentOpRaftList)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftJoinRequestType), self.agentOpRaftJoin)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemoveRequestType), self.agentOpRaftRemove)
@@ -45,34 +40,6 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 		}
 	}
 	return nil
-}
-
-func (self *Controller) HandleCustomAgentOp(conn net.Conn) error {
-	logrus.Debug("received agent operation request")
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	appId, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if appId != AgentAppId {
-		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
-		return errors.New("invalid operation for controller")
-	}
-
-	op, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if opF, ok := self.agentHandlers[op]; ok {
-		if err := opF(bconn); err != nil {
-			return err
-		}
-		return bconn.Flush()
-	}
-	return errors.Errorf("invalid operation %v", op)
 }
 
 func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
@@ -97,13 +64,13 @@ func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 	return err
 }
 
-func (self *Controller) agentOpAsyncSnapshotDb(m *channel.Message, ch channel.Channel) {
+func (self *Controller) agentOpSnapshotDb(m *channel.Message, ch channel.Channel) {
 	log := pfxlog.Logger()
 	if err := self.network.SnapshotDatabase(); err != nil {
 		log.WithError(err).Error("failed to snapshot db")
 		handler_common.SendOpResult(m, ch, "db.snapshot", err.Error(), false)
 	} else {
-		handler_common.SendOpResult(m, ch, "db.snapshot", "success", true)
+		handler_common.SendOpResult(m, ch, "db.snapshot", "", true)
 	}
 }
 

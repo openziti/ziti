@@ -17,7 +17,6 @@
 package controller
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/controller/db"
@@ -70,7 +69,6 @@ type Controller struct {
 
 	shutdownC         chan struct{}
 	isShutdown        atomic.Bool
-	agentHandlers     map[byte]func(conn *bufio.ReadWriter) error
 	agentBindHandlers []channel.BindHandler
 	metricsRegistry   metrics.Registry
 	versionProvider   versions.VersionProvider
