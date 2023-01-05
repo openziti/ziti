@@ -1,6 +1,9 @@
 package agentcli
 
 import (
+	"net"
+	"time"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/router/debugops"
@@ -11,8 +14,6 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"net"
-	"time"
 )
 
 type AgentAppId byte
@@ -58,6 +59,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
 	ctrlCmd.AddCommand(NewAgentCtrlRaftJoin(p))
 	ctrlCmd.AddCommand(NewAgentCtrlRaftList(p))
+	ctrlCmd.AddCommand(NewAgentCtrlRaftLeave(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
 
