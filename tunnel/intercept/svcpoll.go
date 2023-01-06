@@ -169,7 +169,7 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 }
 
 func (self *ServiceListener) addService(svc *entities.Service) {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("serviceId", svc.Id).WithField("serviceName", svc.Name)
 
 	svc.DialTimeout = 5 * time.Second
 
@@ -201,7 +201,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 
 		if err := self.configureSourceAddrProvider(svc); err != nil {
-			log.WithError(err).Error("failed intepreting source ip")
+			log.WithError(err).Error("failed interpreting source ip")
 		}
 		if err := self.configureDialIdentityProvider(svc); err != nil {
 			log.WithError(err).Error("error interpreting dialOptions.identity")
@@ -215,33 +215,37 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 	}
 
 	if stringz.Contains(svc.Permissions, "Bind") {
+		configType := entities.HostConfigV2
 		hostV2config := &entities.HostV2Config{}
-		found, err := svc.GetConfigOfType(entities.HostConfigV2, hostV2config)
+		found, err := svc.GetConfigOfType(configType, hostV2config)
 		if found {
 			svc.HostV2Config = hostV2config
 		}
 
 		if !found {
+			configType = entities.HostConfigV1
 			hostV1config := &entities.HostV1Config{}
-			if found, err = svc.GetConfigOfType(entities.HostConfigV1, hostV1config); found {
+			if found, err = svc.GetConfigOfType(configType, hostV1config); found {
 				svc.HostV2Config = hostV1config.ToHostV2Config()
 			}
 		}
 
 		if !found {
+			configType = entities.ServerConfigV1
 			serverConfig := &entities.ServiceConfig{}
-			if found, err = svc.GetConfigOfType(entities.ServerConfigV1, serverConfig); found {
+			if found, err = svc.GetConfigOfType(configType, serverConfig); found {
 				svc.HostV2Config = serverConfig.ToHostV2Config()
 			}
 		}
 
 		if found && err == nil {
-			log.Infof("Hosting newly available service %s", svc.Name)
+			log.Info("Hosting newly available service")
 			go self.host(svc, self.addrTracker)
 		} else if !found {
-			log.WithError(err).Warnf("service %v is hostable but no server config of type %v is available", svc.Name, entities.ServerConfigV1)
+			log.WithError(err).Warnf("service is hostable but no compatible host config found. supported types: [%v, %v, %v]",
+				entities.HostConfigV2, entities.HostConfigV1, entities.ServerConfigV1)
 		} else if err != nil {
-			log.WithError(err).Errorf("service %v is hostable but unable to decode server config of type %v", svc.Name, entities.ServerConfigV1)
+			log.WithError(err).Errorf("service is hostable but unable to decode server config of type %v", configType)
 		}
 	}
 

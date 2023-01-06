@@ -228,6 +228,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 		}
 
 		cacheKey := self.service.Id + "." + sessionType
+		logger = logger.WithField("cacheKey", cacheKey)
 
 		if sessionId, found := self.getTunnelState().sessionCache.Get(cacheKey); found {
 			if self.isSessionValid(sessionId, sessionType) {
