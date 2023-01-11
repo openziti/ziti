@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/pkg/errors"
+	"strings"
 	"time"
 )
 
@@ -171,7 +172,8 @@ func (options *Options) load(data xgress.OptionsData) error {
 		}
 
 		if value, found := data["mode"]; found {
-			if strVal, ok := value.(string); ok && stringz.Contains([]string{"tproxy", "host", "proxy"}, strVal) {
+			if strVal, ok := value.(string); ok && stringz.Contains([]string{"tproxy", "host", "proxy"}, strVal) ||
+				strings.HasPrefix(strVal, "tproxy:") {
 				options.mode = strVal
 			} else {
 				return errors.Errorf(`invalid value '%v' for mode, must be one of ["tproxy", "host", "proxy"']`, value)

@@ -28,6 +28,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"net"
+	"strings"
 	"time"
 )
 
@@ -67,6 +68,11 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	if self.listenOptions.mode == "tproxy" {
 		if self.interceptor, err = tproxy.New(self.listenOptions.lanIf); err != nil {
 			return errors.Wrap(err, "failed to initialize tproxy interceptor")
+		}
+	} else if strings.HasPrefix(self.listenOptions.mode, "tproxy:") {
+		diverter := strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
+		if self.interceptor, err = tproxy.NewWithDiverter(self.listenOptions.lanIf, diverter); err != nil {
+			return errors.Wrapf(err, "failed to initialize tproxy interceptor with diverter %s", diverter)
 		}
 	} else if self.listenOptions.mode == "host" {
 		self.listenOptions.resolver = ""

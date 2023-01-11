@@ -36,6 +36,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 	"net"
+	"os/exec"
+	"strings"
 	"syscall"
 )
 
@@ -69,16 +71,52 @@ var listenConfig = net.ListenConfig{
 }
 
 func New(lanIf string) (intercept.Interceptor, error) {
+	return NewWithDiverter(lanIf, "")
+}
+
+func NewWithDiverter(lanIf, diverter string) (intercept.Interceptor, error) {
+	self := &interceptor{
+		lanIf:          lanIf,
+		diverter:       diverter,
+		serviceProxies: cmap.New[*tProxy](),
+		ipt:            nil,
+	}
+
+	if diverter != "" {
+		cmd := exec.Command(diverter, "-V")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			logrus.Errorf("failed to launch external tproxy diverter %s: %v", cmd.String(), out)
+			return nil, err
+		} else {
+			logrus.Infof("using external tproxy diverter %s, version info %s", diverter, out)
+		}
+		return self, nil
+	}
+
 	ipt, err := iptables.New()
 	if err != nil {
 		return nil, errors.Wrap(err, "tproxy: failed to initialize iptables handle")
 	}
+	self.ipt = ipt
+	if err := self.addIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain); err != nil {
+		return nil, err
+	}
 
-	return &interceptor{
-		lanIf:          lanIf,
-		serviceProxies: cmap.New[*tProxy](),
-		ipt:            ipt,
-	}, nil
+	if self.lanIf != "" {
+		_, err := net.InterfaceByName(self.lanIf)
+		if err != nil {
+			return nil, fmt.Errorf("invalid lanIf '%s'", self.lanIf)
+		}
+		err = self.addIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
+	}
+
+	return self, nil
 }
 
 type alwaysRemoveAddressTracker struct{}
@@ -91,6 +129,7 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 
 type interceptor struct {
 	lanIf          string
+	diverter       string // external tproxy configuration utility. use internal iptables implementation if not specified.
 	serviceProxies cmap.ConcurrentMap[string, *tProxy]
 	ipt            *iptables.IPTables
 }
@@ -127,6 +166,9 @@ func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.
 }
 
 func (self *interceptor) cleanupChains() {
+	if self.diverter != "" {
+		return
+	}
 	if self.serviceProxies.IsEmpty() {
 		deleteIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain)
 		if self.lanIf != "" {
@@ -173,23 +215,6 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 
 	if t.tcpLn == nil && t.udpLn == nil {
 		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", service.Name, config.Protocols)
-	}
-
-	if err := self.addIptablesChain(self.ipt, mangleTable, "PREROUTING", dstChain); err != nil {
-		return nil, err
-	}
-
-	if self.lanIf != "" {
-		_, err := net.InterfaceByName(self.lanIf)
-		if err != nil {
-			return nil, fmt.Errorf("invalid lanIf '%s'", self.lanIf)
-		}
-		err = self.addIptablesChain(self.ipt, filterTable, "INPUT", dstChain)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		logrus.Infof("no lan interface specified with '-lanIf'. please ensure firewall accepts intercepted service addresses")
 	}
 
 	if t.tcpLn != nil {
@@ -467,34 +492,53 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 	tracker.AddAddress(ipNet.String())
 	self.addresses = append(self.addresses, interceptAddr)
 
-	interceptAddr.TproxySpec = []string{
-		"-m", "comment", "--comment", service.Name,
-		"-d", ipNet.String(),
-		"-p", interceptAddr.Proto(),
-		"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
-		"-j", "TPROXY",
-		"--tproxy-mark", "0x1/0x1",
-		fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
-		fmt.Sprintf("--on-port=%d", port.GetPort()),
-	}
-
-	pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, interceptAddr.TproxySpec)
-	if err := self.interceptor.ipt.Insert(mangleTable, dstChain, 1, interceptAddr.TproxySpec...); err != nil {
-		return errors.Wrap(err, "failed to insert rule")
-	}
-
-	if self.interceptor.lanIf != "" {
-		interceptAddr.AcceptSpec = []string{
-			"-i", self.interceptor.lanIf,
+	if self.interceptor.diverter != "" {
+		cidr := strings.Split(ipNet.String(), "/")
+		if len(cidr) != 2 {
+			return errors.Errorf("failed parsing '%s' as cidr", ipNet.String())
+		}
+		cmd := exec.Command(self.interceptor.diverter, "-I",
+			"-c", cidr[0], "-m", cidr[1], "-p", interceptAddr.Proto(),
+			"-l", fmt.Sprintf("%d", interceptAddr.LowPort()), "-h", fmt.Sprintf("%d", interceptAddr.HighPort()),
+			"-t", fmt.Sprintf("%d", port.GetPort()))
+		cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
+		cmdLogger.Debug("running external diverter")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return errors.Errorf("diverter command failed. output: %s", out)
+		} else {
+			cmdLogger.Infof("diverter command succeeded. output: %s", out)
+		}
+	} else {
+		interceptAddr.TproxySpec = []string{
 			"-m", "comment", "--comment", service.Name,
 			"-d", ipNet.String(),
 			"-p", interceptAddr.Proto(),
 			"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
-			"-j", "ACCEPT",
+			"-j", "TPROXY",
+			"--tproxy-mark", "0x1/0x1",
+			fmt.Sprintf("--on-ip=%s", port.GetIP().String()),
+			fmt.Sprintf("--on-port=%d", port.GetPort()),
 		}
-		pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, interceptAddr.AcceptSpec)
-		if err := self.interceptor.ipt.Insert(filterTable, dstChain, 1, interceptAddr.AcceptSpec...); err != nil {
+
+		pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", mangleTable, dstChain, interceptAddr.TproxySpec)
+		if err := self.interceptor.ipt.Insert(mangleTable, dstChain, 1, interceptAddr.TproxySpec...); err != nil {
 			return errors.Wrap(err, "failed to insert rule")
+		}
+
+		if self.interceptor.lanIf != "" {
+			interceptAddr.AcceptSpec = []string{
+				"-i", self.interceptor.lanIf,
+				"-m", "comment", "--comment", service.Name,
+				"-d", ipNet.String(),
+				"-p", interceptAddr.Proto(),
+				"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
+				"-j", "ACCEPT",
+			}
+			pfxlog.Logger().Infof("Adding rule iptables -t %v -A %v %v", filterTable, dstChain, interceptAddr.AcceptSpec)
+			if err := self.interceptor.ipt.Insert(filterTable, dstChain, 1, interceptAddr.AcceptSpec...); err != nil {
+				return errors.Wrap(err, "failed to insert rule")
+			}
 		}
 	}
 
@@ -504,24 +548,43 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 	var errorList []error
 
-	log := pfxlog.Logger().WithField("sevice", self.service.Name)
+	log := pfxlog.Logger().WithField("service", self.service.Name)
 
 	for _, addr := range self.addresses {
 		log := log.WithField("route", addr.IpNet())
 		log.Infof("removing intercepted low-port: %v, high-port: %v", addr.LowPort(), addr.HighPort())
 
-		log.Infof("Removing rule iptables -t %v -A %v %v", mangleTable, dstChain, addr.TproxySpec)
-		err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
-		if err != nil {
-			errorList = append(errorList, err)
-			log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
-		}
-		if self.interceptor.lanIf != "" {
-			pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, addr.TproxySpec)
-			err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
+		if self.interceptor.diverter != "" {
+			cidr := strings.Split(addr.IpNet().String(), "/")
+			if len(cidr) != 2 {
+				return errors.Errorf("failed parsing '%s' as cidr", addr.IpNet().String())
+			}
+			cmd := exec.Command(self.interceptor.diverter, "-D",
+				"-c", cidr[0], "-m", cidr[1], "-p", addr.Proto(),
+				"-l", fmt.Sprintf("%d", addr.LowPort()), "-h", fmt.Sprintf("%d", addr.HighPort()))
+			cmdLogger := pfxlog.Logger().WithField("command", cmd.String())
+			cmdLogger.Debug("running external diverter")
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				errorList = append(errorList, err)
+				cmdLogger.Errorf("diverter command failed. output: %s", out)
+			} else {
+				cmdLogger.Infof("diverter command succeeded. output: %s", out)
+			}
+		} else {
+			log.Infof("Removing rule iptables -t %v -A %v %v", mangleTable, dstChain, addr.TproxySpec)
+			err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
 			if err != nil {
 				errorList = append(errorList, err)
 				log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
+			}
+			if self.interceptor.lanIf != "" {
+				pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, addr.TproxySpec)
+				err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
+				if err != nil {
+					errorList = append(errorList, err)
+					log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
+				}
 			}
 		}
 
