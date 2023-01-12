@@ -493,8 +493,6 @@ github.com/inconshreveable/mousetrap v1.0.1 h1:U3uMjPSQEBMNp1lFxmllqCPM6P5u/Xq7P
 github.com/inconshreveable/mousetrap v1.0.1/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/influxdata/influxdb-client-go/v2 v2.2.2/go.mod h1:fa/d1lAdUHxuc1jedx30ZfNG573oQTQmUni3N6pcW+0=
 github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839/go.mod h1:xaLFMmpvUxqXtVkUJfg9QmT88cDaCJ3ZKgdZ78oO8Qo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible h1:CGs8AVhEKg/n9YbUenWmNStRW2PHJzaeDodcfvRAbIo=
-github.com/jedib0t/go-pretty v4.3.0+incompatible/go.mod h1:XemHduiw8R651AF9Pt4FwCTKeG3oo7hrHJAoznj9nag=
 github.com/jedib0t/go-pretty/v6 v6.4.0 h1:YlI/2zYDrweA4MThiYMKtGRfT+2qZOO65ulej8GTcVI=
 github.com/jedib0t/go-pretty/v6 v6.4.0/go.mod h1:MgmISkTWDSFu0xOqiZ0mKNntMQ2mDgOcwOkwBEkMDJI=
 github.com/jellevandenhooff/dkim v0.0.0-20150330215556-f50fe3d243e1/go.mod h1:E0B/fFc00Y+Rasa88328GlI/XbtyysCtTHZS8h7IrBU=
@@ -703,8 +701,8 @@ github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAP
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
 github.com/openziti/edge v0.24.100 h1:sBoG0GtyFCyodukuG1IDCoXm2PjLyjt8jxKhVQjc0ww=
 github.com/openziti/edge v0.24.100/go.mod h1:Yn3eOldLoe6BZyJvOQbgY02LDOpo9oW48v1ZKhTwqZs=
-github.com/openziti/fabric v0.22.9 h1:8bI+yeWMBwBYwpteg8A2fxI4rYB65B6UBkIkLSsdh8s=
-github.com/openziti/fabric v0.22.9/go.mod h1:8i3qG7UJbqWHH3V6nZlhzaaGyqiecn4cCsj9qGf4Rec=
+github.com/openziti/fabric v0.22.10 h1:h4wpH9yON4vZHQ1PPyWl8cJfbMC2LpsUC6UT/zM1TSs=
+github.com/openziti/fabric v0.22.10/go.mod h1:8i3qG7UJbqWHH3V6nZlhzaaGyqiecn4cCsj9qGf4Rec=
 github.com/openziti/foundation/v2 v2.0.10 h1:IeOkcPbgBpBTw4JrWz8s9Z76vO/m+i2uIE0cMZ0C2DM=
 github.com/openziti/foundation/v2 v2.0.10/go.mod h1:Z0gnQsGJb/H/B+pixLtmCIpw1dBllD4QoT6LeD35WzA=
 github.com/openziti/identity v1.0.29 h1:FkY/Hzpfh2/U2cUzYR2X3380/IKGIQYpJaKWqXpOIAg=

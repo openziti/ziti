@@ -79,7 +79,7 @@ func (self *AgentCtrlRaftListAction) makeRequest(ch channel.Channel) error {
 			t.AppendRow(table.Row{m.Id, m.Addr, m.IsVoter, m.IsLeader, m.Version, m.IsConnected})
 		}
 		api.RenderTable(&api.Options{
-			CommonOptions: o.CommonOptions,
+			CommonOptions: self.CommonOptions,
 		}, t, nil)
 	}
 	return nil
