@@ -28,6 +28,29 @@ type SimpleAgentAction struct {
 	AgentOptions
 }
 
+func NewSimpleAgentCmd(name string, op byte, p common.OptionsProvider, desc string) *cobra.Command {
+	action := &SimpleAgentAction{
+		AgentOptions: AgentOptions{
+			CommonOptions: p(),
+		},
+	}
+
+	cmd := &cobra.Command{
+		Args:  cobra.MaximumNArgs(1),
+		Use:   name + " <optional-target> ",
+		Short: desc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action.Cmd = cmd
+			action.Args = args
+			return action.RunCopyOut(op, nil, os.Stdout)
+		},
+	}
+
+	action.AddAgentOptions(cmd)
+
+	return cmd
+}
+
 func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.OptionsProvider) *cobra.Command {
 	action := &SimpleAgentAction{
 		AgentOptions: AgentOptions{
@@ -46,17 +69,13 @@ func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.Op
 		},
 	}
 
+	action.AddAgentOptions(cmd)
+
 	return cmd
 }
 
 // Run implements the command
 func (self *SimpleAgentAction) Run(appId AgentAppId, op byte) error {
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-
 	buf := []byte{byte(appId), op}
-
-	return agent.MakeRequest(addr, agent.CustomOp, buf, os.Stdout)
+	return self.RunCopyOut(agent.CustomOpAsync, buf, os.Stdout)
 }

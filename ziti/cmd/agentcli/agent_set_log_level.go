@@ -17,6 +17,7 @@
 package agentcli
 
 import (
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -25,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
+	"time"
 )
 
 type AgentSetLogLevelAction struct {
@@ -50,24 +52,25 @@ func NewSetLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	action.AddAgentOptions(cmd)
+
 	return cmd
 }
 
 // Run implements the command
 func (self *AgentSetLogLevelAction) Run() error {
-	var addr string
-	var err error
-	var levelArg string
-	if len(self.Args) == 1 {
-		addr, err = agent.ParseGopsAddress(nil)
-		levelArg = self.Args[0]
-	} else {
-		addr, err = agent.ParseGopsAddress(self.Args)
-		levelArg = self.Args[1]
+	if self.Cmd.Flags().Changed("timeout") {
+		time.AfterFunc(self.timeout, func() {
+			fmt.Println("operation timed out")
+			os.Exit(-1)
+		})
 	}
 
-	if err != nil {
-		return err
+	var levelArg string
+	if len(self.Args) == 1 {
+		levelArg = self.Args[0]
+	} else {
+		levelArg = self.Args[1]
 	}
 
 	var level logrus.Level
@@ -84,5 +87,14 @@ func (self *AgentSetLogLevelAction) Run() error {
 	}
 
 	buf := []byte{byte(level)}
+
+	if len(self.Args) == 1 {
+		return self.MakeRequest(agent.SetLogLevel, buf, self.CopyToWriter(os.Stdout))
+	}
+
+	addr, err := agent.ParseGopsAddress(self.Args)
+	if err != nil {
+		return err
+	}
 	return agent.MakeRequest(addr, agent.SetLogLevel, buf, os.Stdout)
 }
