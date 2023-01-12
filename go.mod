@@ -2,6 +2,9 @@ module github.com/openziti/ziti
 
 go 1.19
 
+// todo remove this when 0.22.9 changes (HandleCustomAgentOp removal) are incorporated
+replace github.com/openziti/fabric v0.22.9 => github.com/openziti/fabric v0.22.8
+
 require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.6.1
