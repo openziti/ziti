@@ -18,16 +18,11 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge/pb/edge_mgmt_pb"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"net"
-	"time"
 )
 
 type AgentCtrlInitOptions struct {
@@ -35,62 +30,35 @@ type AgentCtrlInitOptions struct {
 }
 
 func NewAgentCtrlInit(p common.OptionsProvider) *cobra.Command {
-	options := &AgentCtrlInitOptions{
+	action := &AgentCtrlInitOptions{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(3, 4),
-		Use:  "init <optional-target> <username> <password> <name>",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+		Args: cobra.ExactArgs(3),
+		Use:  "init <username> <password> <name>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action.Cmd = cmd
+			action.Args = args
+			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
-// Run implements the command
-func (o *AgentCtrlInitOptions) Run() error {
-	var addr string
-	var err error
-
-	if len(o.Args) == 4 {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		if err != nil {
-			return err
-		}
-	}
-
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(AgentAppController)}, o.makeRequest)
-}
-
-func (o *AgentCtrlInitOptions) makeRequest(conn net.Conn) error {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	ch, err := channel.NewChannel("agent", dialer, nil, options)
-	if err != nil {
-		return err
-	}
-
-	offset := 0
-	if len(o.Args) == 4 {
-		offset = 1
-	}
-
+func (self *AgentCtrlInitOptions) makeRequest(ch channel.Channel) error {
 	initEdgeRequest := &edge_mgmt_pb.InitEdgeRequest{
-		Username: o.Args[offset],
-		Password: o.Args[offset+1],
-		Name:     o.Args[offset+2],
+		Username: self.Args[0],
+		Password: self.Args[1],
+		Name:     self.Args[2],
 	}
 
-	reply, err := protobufs.MarshalTyped(initEdgeRequest).WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := protobufs.MarshalTyped(initEdgeRequest).WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}

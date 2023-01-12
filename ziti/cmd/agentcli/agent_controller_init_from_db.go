@@ -18,76 +18,44 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"net"
-	"time"
 )
 
-type AgentCtrlInitFromDbOptions struct {
+type AgentCtrlInitFromDbAction struct {
 	AgentOptions
 	Voter    bool
 	MemberId string
 }
 
 func NewAgentCtrlInitFromDb(p common.OptionsProvider) *cobra.Command {
-	options := &AgentCtrlInitFromDbOptions{
+	action := &AgentCtrlInitFromDbAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(1, 2),
-		Use:  "init-from-db <optional-target> path/to/source.db",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+		Args: cobra.ExactArgs(1),
+		Use:  "init-from-db path/to/source.db",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action.Cmd = cmd
+			action.Args = args
+			return action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
-// Run implements the command
-func (o *AgentCtrlInitFromDbOptions) Run() error {
-	var addr string
-	var err error
+func (self *AgentCtrlInitFromDbAction) makeRequest(ch channel.Channel) error {
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftInitFromDb), []byte(self.Args[0]))
 
-	if len(o.Args) == 2 {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		if err != nil {
-			return err
-		}
-	}
-
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(AgentAppController)}, o.makeRequest)
-}
-
-func (o *AgentCtrlInitFromDbOptions) makeRequest(conn net.Conn) error {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	ch, err := channel.NewChannel("agent", dialer, nil, options)
-	if err != nil {
-		return err
-	}
-
-	offset := 0
-	if len(o.Args) == 2 {
-		offset = 1
-	}
-
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftInitFromDb), []byte(o.Args[offset]))
-
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}

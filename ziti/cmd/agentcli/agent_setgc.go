@@ -18,12 +18,14 @@ package agentcli
 
 import (
 	"encoding/binary"
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"os"
 	"strconv"
+	"time"
 )
 
 type AgentSetGcAction struct {
@@ -49,24 +51,25 @@ func NewSetGcCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	action.AddAgentOptions(cmd)
+
 	return cmd
 }
 
 // Run implements the command
-func (o *AgentSetGcAction) Run() error {
-	var addr string
-	var err error
-	var pctArg string
-	if len(o.Args) == 1 {
-		addr, err = agent.ParseGopsAddress(nil)
-		pctArg = o.Args[0]
-	} else {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		pctArg = o.Args[1]
+func (self *AgentSetGcAction) Run() error {
+	if self.Cmd.Flags().Changed("timeout") {
+		time.AfterFunc(self.timeout, func() {
+			fmt.Println("operation timed out")
+			os.Exit(-1)
+		})
 	}
 
-	if err != nil {
-		return err
+	var pctArg string
+	if len(self.Args) == 1 {
+		pctArg = self.Args[0]
+	} else {
+		pctArg = self.Args[1]
 	}
 
 	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)
@@ -75,6 +78,15 @@ func (o *AgentSetGcAction) Run() error {
 	}
 	buf := make([]byte, binary.MaxVarintLen64)
 	binary.PutVarint(buf, perc)
+
+	if len(self.Args) == 1 {
+		return self.MakeRequest(agent.SetGCPercent, buf, self.CopyToWriter(os.Stdout))
+	}
+
+	addr, err := agent.ParseGopsAddress(self.Args)
+	if err != nil {
+		return err
+	}
 
 	return agent.MakeRequest(addr, agent.SetGCPercent, buf, os.Stdout)
 }
