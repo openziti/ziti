@@ -587,7 +587,6 @@ function ziti_expressConfiguration {
 
   echo -e "******** Setting Up Default Service ********"
 
-  echo "----------  Creating a REST API service ziti.rest.api:80...."
   createAPIService
 
   stopController
@@ -1556,6 +1555,8 @@ function getFileOverwritePermission() {
 }
 
 function createAPIService {
+  echo "----------  Creating a REST API service ziti.rest.api:80...."
+
   zitiLogin
   # Create the bind and dial configs
   "${ZITI_BIN_DIR-}/ziti" edge create config ziti.rest.dial intercept.v1 '{"protocols":["tcp"],"addresses":["ziti.rest.api"], "portRanges":[{"low":443, "high":443}]}' > /dev/null
@@ -1565,11 +1566,11 @@ function createAPIService {
   "${ZITI_BIN_DIR-}/ziti" edge create service ziti.rest.service --configs "ziti.rest.bind,ziti.rest.dial" > /dev/null
 
   # Create the service policies allowing dial and bind access
-  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.bind Bind --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.host" > /dev/null
-  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.dial Dial --service-roles "@ziti.rest.service" --identity-roles "#quickstart.rest.user" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.bind Bind --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.binders" > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge create service-policy ziti.rest.service.dial Dial --service-roles "@ziti.rest.service" --identity-roles "#ziti.rest.dialers" > /dev/null
 
   # Allow the express edge router to bind
-  "${ZITI_BIN_DIR-}/ziti" edge update identity "${ZITI_EDGE_ROUTER_RAWNAME}" -a ziti.rest.host > /dev/null
+  "${ZITI_BIN_DIR-}/ziti" edge update identity "${ZITI_EDGE_ROUTER_RAWNAME}" -a ziti.rest.binders > /dev/null
 }
 
 set +uo pipefail

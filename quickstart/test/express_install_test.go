@@ -145,8 +145,8 @@ func TestRestAPIService(t *testing.T) {
 	RestServiceDialConfigName := "ziti.rest.dial"
 	RestServiceDialPort := 443
 	RestServiceName := "ziti.rest.service"
-	RestServiceDialAttribute := "quickstart.rest.user"
-	RestServiceBindAttribute := "ziti.rest.host"
+	RestServiceDialAttribute := "ziti.rest.dialers"
+	RestServiceBindAttribute := "ziti.rest.binders"
 	RestServiceBindPolicyName := "ziti.rest.service.bind"
 	RestServiceDialPolicyName := "ziti.rest.service.dial"
 

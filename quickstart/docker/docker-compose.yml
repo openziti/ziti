@@ -54,7 +54,7 @@ services:
       - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
       - ZITI_EDGE_ROUTER_ROLES=public
-      - ZITI_EDGE_ROUTER_IDENTITY_ROLES=ziti.rest.host
+      - ZITI_EDGE_ROUTER_IDENTITY_ROLES=ziti.rest.binders
     ports:
       - "3022:3022"
     networks:
