@@ -24,3 +24,7 @@ import (
 func New(lanIf string) (intercept.Interceptor, error) {
 	return nil, errors.New("tproxy not supported on windows")
 }
+
+func NewWithDiverter(lanIf, diverter string) (intercept.Interceptor, error) {
+	return nil, errors.New("tproxy not supported on windows")
+}
