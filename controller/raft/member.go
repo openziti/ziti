@@ -17,17 +17,20 @@
 package raft
 
 import (
+	"time"
+
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type Member struct {
-	Id     string
-	Addr   string
-	Voter  bool
-	Leader bool
+	Id        string
+	Addr      string
+	Voter     bool
+	Leader    bool
+	Version   string
+	Connected bool
 }
 
 // MemberModel presents information about and operations on RAFT membership
@@ -50,14 +53,44 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 
 	leaderAddr := self.GetRaft().Leader()
 
+	peers := self.GetMesh().GetPeers()
+
+	memberSet := make(map[string]bool)
+
 	for _, srv := range configFuture.Configuration().Servers {
+		memberSet[string(srv.Address)] = true
 		result = append(result, &Member{
 			Id:     string(srv.ID),
 			Addr:   string(srv.Address),
 			Voter:  srv.Suffrage == raft.Voter,
 			Leader: srv.Address == leaderAddr,
+			Version: func() string {
+				if srv.Address == leaderAddr {
+					return self.version
+				}
+				if peer, exists := peers[string(srv.Address)]; exists {
+					return peer.Version
+				}
+				return "N/A"
+			}(),
+			Connected: true,
 		})
 	}
+
+	for addr, peer := range peers {
+		if _, exists := memberSet[addr]; exists {
+			continue
+		}
+		result = append(result, &Member{
+			Id:        string(peer.Id),
+			Addr:      peer.Address,
+			Voter:     false,
+			Leader:    peer.Address == string(leaderAddr),
+			Version:   peer.Version,
+			Connected: true,
+		})
+	}
+
 	return result, nil
 }
 

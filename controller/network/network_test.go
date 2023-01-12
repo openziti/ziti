@@ -1,6 +1,10 @@
 package network
 
 import (
+	"runtime"
+	"testing"
+	"time"
+
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -14,9 +18,6 @@ import (
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"runtime"
-	"testing"
-	"time"
 )
 
 type testConfig struct {

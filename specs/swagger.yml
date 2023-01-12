@@ -633,6 +633,22 @@ paths:
         '401':
           $ref: '#/responses/unauthorizedResponse'
 
+  ###################################################################
+  # Raft
+  ##################################################################
+  '/raft/list-members':
+    get:
+      summary: Returns all members of a cluster and their current status
+      description: Returns all members of a cluster and their current status
+      tags:
+        - Raft
+      operationId: raftListMembers
+      responses:
+        '200':
+          $ref: '#/responses/raftListMembersResponse'
+        '401':
+          $ref: '#/responses/unauthorizedResponse'
+
 #######################################################################################################################
 #
 # Parameters - Reusable parameters
@@ -880,6 +896,14 @@ responses:
     description: A list of data integrity issues found
     schema:
       $ref: '#/definitions/dataIntegrityCheckResultEnvelope'
+
+  ###################################################################
+  # Raft
+  ##################################################################
+  raftListMembersResponse:
+    description: A response to a raft list-members request
+    schema:
+      $ref: '#/definitions/raftMemberListResponse'
 
 #######################################################################################################################
 #
@@ -1673,8 +1697,40 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/inspectResponseValue'
-
-
+  ###################################################################
+  # Raft
+  ##################################################################
+  raftMemberListRequest:
+    type: object
+  raftMemberListValue:
+    type: object
+    required:
+      - id
+      - address
+      - voter
+      - leader
+      - version
+      - connected
+    properties:
+      id:
+        type: string
+      address:
+        type: string
+      voter:
+        type: boolean
+      leader:
+        type: boolean
+      version:
+        type: string
+      connected:
+        type: boolean
+  raftMemberListResponse:
+    type: object
+    properties:
+      values:
+        type: array
+        items:
+          $ref: '#/definitions/raftMemberListValue'
 
 
 

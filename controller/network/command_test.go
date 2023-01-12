@@ -1,12 +1,13 @@
 package network
 
 import (
+	"testing"
+
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestProtobufFactory(t *testing.T) {

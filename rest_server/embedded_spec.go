@@ -53,8 +53,17 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
+    "description": "OpenZiti Fabric API",
     "title": "Ziti Fabric",
-    "contact": {},
+    "contact": {
+      "name": "OpenZiti",
+      "url": "https://openziti.discourse.group",
+      "email": "help@openziti.org"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
     "version": "0.16.54"
   },
   "host": "demo.ziti.dev",
@@ -361,6 +370,24 @@ func init() {
           "$ref": "#/parameters/id"
         }
       ]
+    },
+    "/raft/list-members": {
+      "get": {
+        "description": "Returns all members of a cluster and their current status",
+        "tags": [
+          "Raft"
+        ],
+        "summary": "Returns all members of a cluster and their current status",
+        "operationId": "raftListMembers",
+        "responses": {
+          "200": {
+            "$ref": "#/responses/raftListMembersResponse"
+          },
+          "401": {
+            "$ref": "#/responses/unauthorizedResponse"
+          }
+        }
+      }
     },
     "/routers": {
       "get": {
@@ -1604,6 +1631,51 @@ func init() {
         }
       }
     },
+    "raftMemberListRequest": {
+      "type": "object"
+    },
+    "raftMemberListResponse": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/raftMemberListValue"
+          }
+        }
+      }
+    },
+    "raftMemberListValue": {
+      "type": "object",
+      "required": [
+        "id",
+        "address",
+        "voter",
+        "leader",
+        "version",
+        "connected"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "leader": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string"
+        },
+        "voter": {
+          "type": "boolean"
+        }
+      }
+    },
     "routerCreate": {
       "type": "object",
       "required": [
@@ -2294,6 +2366,12 @@ func init() {
         "$ref": "#/definitions/empty"
       }
     },
+    "raftListMembersResponse": {
+      "description": "A response to a raft list-members request",
+      "schema": {
+        "$ref": "#/definitions/raftMemberListResponse"
+      }
+    },
     "rateLimitedResponse": {
       "description": "The resource requested is rate limited and the rate limit has been exceeded",
       "schema": {
@@ -2361,8 +2439,17 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
+    "description": "OpenZiti Fabric API",
     "title": "Ziti Fabric",
-    "contact": {},
+    "contact": {
+      "name": "OpenZiti",
+      "url": "https://openziti.discourse.group",
+      "email": "help@openziti.org"
+    },
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
     "version": "0.16.54"
   },
   "host": "demo.ziti.dev",
@@ -3218,6 +3305,48 @@ func init() {
           "required": true
         }
       ]
+    },
+    "/raft/list-members": {
+      "get": {
+        "description": "Returns all members of a cluster and their current status",
+        "tags": [
+          "Raft"
+        ],
+        "summary": "Returns all members of a cluster and their current status",
+        "operationId": "raftListMembers",
+        "responses": {
+          "200": {
+            "description": "A response to a raft list-members request",
+            "schema": {
+              "$ref": "#/definitions/raftMemberListResponse"
+            }
+          },
+          "401": {
+            "description": "The currently supplied session does not have the correct access rights to request this resource",
+            "schema": {
+              "$ref": "#/definitions/apiErrorEnvelope"
+            },
+            "examples": {
+              "application/json": {
+                "error": {
+                  "args": {
+                    "urlVars": {}
+                  },
+                  "cause": "",
+                  "causeMessage": "",
+                  "code": "UNAUTHORIZED",
+                  "message": "The request could not be completed. The session is not authorized or the credentials are invalid",
+                  "requestId": "0bfe7a04-9229-4b7a-812c-9eb3cc0eac0f"
+                },
+                "meta": {
+                  "apiEnrollmentVersion": "0.0.1",
+                  "apiVersion": "0.0.1"
+                }
+              }
+            }
+          }
+        }
+      }
     },
     "/routers": {
       "get": {
@@ -5791,6 +5920,51 @@ func init() {
         }
       }
     },
+    "raftMemberListRequest": {
+      "type": "object"
+    },
+    "raftMemberListResponse": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/raftMemberListValue"
+          }
+        }
+      }
+    },
+    "raftMemberListValue": {
+      "type": "object",
+      "required": [
+        "id",
+        "address",
+        "voter",
+        "leader",
+        "version",
+        "connected"
+      ],
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "connected": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "leader": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "string"
+        },
+        "voter": {
+          "type": "boolean"
+        }
+      }
+    },
     "routerCreate": {
       "type": "object",
       "required": [
@@ -6484,6 +6658,12 @@ func init() {
       "description": "The patch request was successful and the resource has been altered",
       "schema": {
         "$ref": "#/definitions/empty"
+      }
+    },
+    "raftListMembersResponse": {
+      "description": "A response to a raft list-members request",
+      "schema": {
+        "$ref": "#/definitions/raftMemberListResponse"
       }
     },
     "rateLimitedResponse": {

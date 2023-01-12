@@ -18,11 +18,12 @@ package network
 
 import (
 	"fmt"
+	"math/rand"
+	"testing"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/sirupsen/logrus"
-	"math/rand"
-	"testing"
 )
 
 func TestShortestPathAgainstEstablished(t *testing.T) {

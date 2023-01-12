@@ -120,6 +120,7 @@ type Mesh interface {
 
 	GetPeerId(address string, timeout time.Duration) (string, error)
 	GetAdvertiseAddr() raft.ServerAddress
+	GetPeers() map[string]*Peer
 }
 
 func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
@@ -355,6 +356,10 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 	logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
 
 	return nil
+}
+
+func (self *impl) GetPeers() map[string]*Peer {
+	return self.Peers
 }
 
 func (self *impl) checkState() {

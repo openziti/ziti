@@ -38,6 +38,7 @@ import (
 	"github.com/openziti/fabric/rest_client/database"
 	"github.com/openziti/fabric/rest_client/inspect"
 	"github.com/openziti/fabric/rest_client/link"
+	"github.com/openziti/fabric/rest_client/raft"
 	"github.com/openziti/fabric/rest_client/router"
 	"github.com/openziti/fabric/rest_client/service"
 	"github.com/openziti/fabric/rest_client/terminator"
@@ -89,6 +90,7 @@ func New(transport runtime.ClientTransport, formats strfmt.Registry) *ZitiFabric
 	cli.Database = database.New(transport, formats)
 	cli.Inspect = inspect.New(transport, formats)
 	cli.Link = link.New(transport, formats)
+	cli.Raft = raft.New(transport, formats)
 	cli.Router = router.New(transport, formats)
 	cli.Service = service.New(transport, formats)
 	cli.Terminator = terminator.New(transport, formats)
@@ -144,6 +146,8 @@ type ZitiFabric struct {
 
 	Link link.ClientService
 
+	Raft raft.ClientService
+
 	Router router.ClientService
 
 	Service service.ClientService
@@ -160,6 +164,7 @@ func (c *ZitiFabric) SetTransport(transport runtime.ClientTransport) {
 	c.Database.SetTransport(transport)
 	c.Inspect.SetTransport(transport)
 	c.Link.SetTransport(transport)
+	c.Raft.SetTransport(transport)
 	c.Router.SetTransport(transport)
 	c.Service.SetTransport(transport)
 	c.Terminator.SetTransport(transport)

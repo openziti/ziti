@@ -19,13 +19,14 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/event"
-	"github.com/openziti/foundation/v2/versions"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/openziti/fabric/controller/command"
+	"github.com/openziti/fabric/event"
+	"github.com/openziti/foundation/v2/versions"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2/protobufs"

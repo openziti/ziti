@@ -19,11 +19,12 @@ package controller
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/pkg/errors"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/fabric/controller/db"
+	"github.com/pkg/errors"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"

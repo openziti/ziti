@@ -47,6 +47,7 @@ import (
 	"github.com/openziti/fabric/rest_server/operations/database"
 	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
+	"github.com/openziti/fabric/rest_server/operations/raft"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
 	"github.com/openziti/fabric/rest_server/operations/terminator"
@@ -161,6 +162,9 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 		TerminatorPatchTerminatorHandler: terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
 		}),
+		RaftRaftListMembersHandler: raft.RaftListMembersHandlerFunc(func(params raft.RaftListMembersParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
+		}),
 		RouterUpdateRouterHandler: router.UpdateRouterHandlerFunc(func(params router.UpdateRouterParams) middleware.Responder {
 			return middleware.NotImplemented("operation router.UpdateRouter has not yet been implemented")
 		}),
@@ -173,7 +177,7 @@ func NewZitiFabricAPI(spec *loads.Document) *ZitiFabricAPI {
 	}
 }
 
-/*ZitiFabricAPI the ziti fabric API */
+/*ZitiFabricAPI OpenZiti Fabric API */
 type ZitiFabricAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context
@@ -264,6 +268,8 @@ type ZitiFabricAPI struct {
 	ServicePatchServiceHandler service.PatchServiceHandler
 	// TerminatorPatchTerminatorHandler sets the operation handler for the patch terminator operation
 	TerminatorPatchTerminatorHandler terminator.PatchTerminatorHandler
+	// RaftRaftListMembersHandler sets the operation handler for the raft list members operation
+	RaftRaftListMembersHandler raft.RaftListMembersHandler
 	// RouterUpdateRouterHandler sets the operation handler for the update router operation
 	RouterUpdateRouterHandler router.UpdateRouterHandler
 	// ServiceUpdateServiceHandler sets the operation handler for the update service operation
@@ -433,6 +439,9 @@ func (o *ZitiFabricAPI) Validate() error {
 	}
 	if o.TerminatorPatchTerminatorHandler == nil {
 		unregistered = append(unregistered, "terminator.PatchTerminatorHandler")
+	}
+	if o.RaftRaftListMembersHandler == nil {
+		unregistered = append(unregistered, "raft.RaftListMembersHandler")
 	}
 	if o.RouterUpdateRouterHandler == nil {
 		unregistered = append(unregistered, "router.UpdateRouterHandler")
@@ -647,6 +656,10 @@ func (o *ZitiFabricAPI) initHandlerCache() {
 		o.handlers["PATCH"] = make(map[string]http.Handler)
 	}
 	o.handlers["PATCH"]["/terminators/{id}"] = terminator.NewPatchTerminator(o.context, o.TerminatorPatchTerminatorHandler)
+	if o.handlers["GET"] == nil {
+		o.handlers["GET"] = make(map[string]http.Handler)
+	}
+	o.handlers["GET"]["/raft/list-members"] = raft.NewRaftListMembers(o.context, o.RaftRaftListMembersHandler)
 	if o.handlers["PUT"] == nil {
 		o.handlers["PUT"] = make(map[string]http.Handler)
 	}

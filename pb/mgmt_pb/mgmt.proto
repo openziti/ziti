@@ -146,6 +146,8 @@ message RaftMember  {
   string Addr = 2;
   bool IsVoter = 3;
   bool IsLeader = 4;
+  string Version = 5;
+  bool IsConnected = 6;
 }
 
 message RaftMemberListResponse {

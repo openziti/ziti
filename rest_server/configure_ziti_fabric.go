@@ -39,6 +39,7 @@ import (
 	"github.com/openziti/fabric/rest_server/operations/database"
 	"github.com/openziti/fabric/rest_server/operations/inspect"
 	"github.com/openziti/fabric/rest_server/operations/link"
+	"github.com/openziti/fabric/rest_server/operations/raft"
 	"github.com/openziti/fabric/rest_server/operations/router"
 	"github.com/openziti/fabric/rest_server/operations/service"
 	"github.com/openziti/fabric/rest_server/operations/terminator"
@@ -211,6 +212,11 @@ func configureAPI(api *operations.ZitiFabricAPI) http.Handler {
 	if api.TerminatorPatchTerminatorHandler == nil {
 		api.TerminatorPatchTerminatorHandler = terminator.PatchTerminatorHandlerFunc(func(params terminator.PatchTerminatorParams) middleware.Responder {
 			return middleware.NotImplemented("operation terminator.PatchTerminator has not yet been implemented")
+		})
+	}
+	if api.RaftRaftListMembersHandler == nil {
+		api.RaftRaftListMembersHandler = raft.RaftListMembersHandlerFunc(func(params raft.RaftListMembersParams) middleware.Responder {
+			return middleware.NotImplemented("operation raft.RaftListMembers has not yet been implemented")
 		})
 	}
 	if api.RouterUpdateRouterHandler == nil {
