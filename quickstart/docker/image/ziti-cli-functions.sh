@@ -173,6 +173,7 @@ function verifyZitiVersionExists {
 }
 
 function detectArchitecture {
+    if [ -n "${ZITI_ARCH}" ]; then return; fi
     ZITI_ARCH="amd64"
     detected_arch="$(uname -m)"
     # Apple M1 silicon
@@ -238,7 +239,7 @@ function getZiti {
 
   if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"; else echo "Using ZITI_BIN_DIR: ${ZITI_BIN_DIR}"; fi
 
-  ZITI_BINARIES_FILE_ABSPATH="${ZITI_HOME-}/ziti-bin/${ZITI_BINARIES_FILE}"
+  ZITI_BINARIES_FILE_ABSPATH="${ziti_bin_root}/${ZITI_BINARIES_FILE}"
   if ! test -f "${ZITI_BINARIES_FILE_ABSPATH}"; then
     zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
     echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ZITI_BINARIES_FILE_ABSPATH}")"
@@ -1487,6 +1488,7 @@ HeredocForSystemd
 }
 
 function setOs {
+  if [ -n "${ZITI_OSTYPE}" ]; then return; fi
   if [[ "$OSTYPE" == "linux-gnu"* ]]; then
           export ZITI_OSTYPE="linux"
   elif [[ "$OSTYPE" == "darwin"* ]]; then
