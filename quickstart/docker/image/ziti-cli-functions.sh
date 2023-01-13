@@ -222,7 +222,7 @@ function getZiti {
   fi
   export ZITI_BIN_ROOT="${ziti_bin_root}/ziti-bin"
 
-  mkdir -p "${ZITI_BIN_ROOT}"
+  mkdir -p "${ziti_bin_root}"
 
   # Get the latest version unless a specific version is specified
   if [[ "${ZITI_VERSION_OVERRIDE-}" == "" ]]; then
@@ -239,7 +239,7 @@ function getZiti {
 
   if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ziti_bin_root}/ziti-${ZITI_BINARIES_VERSION}"; else echo "Using ZITI_BIN_DIR: ${ZITI_BIN_DIR}"; fi
 
-  ZITI_BINARIES_FILE_ABSPATH="${ZITI_BIN_ROOT}/${ZITI_BINARIES_FILE}"
+  ZITI_BINARIES_FILE_ABSPATH="${ziti_bin_root}/${ZITI_BINARIES_FILE}"
   if ! test -f "${ZITI_BINARIES_FILE_ABSPATH}"; then
     zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
     echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ZITI_BINARIES_FILE_ABSPATH}")"

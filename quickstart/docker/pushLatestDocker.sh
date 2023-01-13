@@ -22,8 +22,8 @@ for arch in amd64 arm64; do
      rm -rf "${ZITI_BIN_ROOT}/image/ziti.ignore"
    fi
 
-   if [ -d "${ZITI_BIN_ROOT}/ziti-bin" ]; then
-     rm -rf "${ZITI_BIN_ROOT}/ziti-bin"
+   if [ -d "${ZITI_BIN_ROOT}/ziti.ignore" ]; then
+     rm -rf "${ZITI_BIN_ROOT}/ziti.ignore"
    fi
 
    vers="$(echo "${ZITI_BINARIES_VERSION}" | cut -c 2-100)"
@@ -32,7 +32,7 @@ for arch in amd64 arm64; do
    echo DOCKERTAG: docker tag openziti/quickstart "openziti/quickstart:latest"
    docker tag openziti/quickstart "openziti/quickstart:latest"
    echo DOCKERPUSH: docker push "openziti/quickstart:${vers}"
-   docker push "openziti/quickstart:${vers}"
+   echo docker push "openziti/quickstart:${vers}"
    echo DOCKERPUSH: docker push "openziti/quickstart:latest"
-   docker push "openziti/quickstart:latest")
+   echo docker push "openziti/quickstart:latest")
 done
