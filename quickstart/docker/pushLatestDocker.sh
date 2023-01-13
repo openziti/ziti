@@ -32,7 +32,7 @@ for arch in amd64 arm64; do
    echo DOCKERTAG: docker tag openziti/quickstart "openziti/quickstart:latest"
    docker tag openziti/quickstart "openziti/quickstart:latest"
    echo DOCKERPUSH: docker push "openziti/quickstart:${vers}"
-   echo docker push "openziti/quickstart:${vers}"
+   docker push "openziti/quickstart:${vers}"
    echo DOCKERPUSH: docker push "openziti/quickstart:latest"
-   echo docker push "openziti/quickstart:latest")
+   docker push "openziti/quickstart:latest")
 done
