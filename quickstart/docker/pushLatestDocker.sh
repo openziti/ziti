@@ -14,6 +14,7 @@ if [ -z "${ZITI_VERSION}" ]; then
   exit 1
 fi
 
+docker buildx create --use --name=ziti-builder
 docker buildx build --platform linux/amd64,linux/arm64 "${SCRIPT_DIR}/image" \
   --build-arg ZITI_VERSION="${ZITI_VERSION}" \
   --tag "openziti/quickstart:${ZITI_VERSION}" \
