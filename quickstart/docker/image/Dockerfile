@@ -1,3 +1,15 @@
+FROM ubuntu:rolling as fetch-ziti-bins
+
+# optional arg to specify which version to fetch when local "ziti-bin" directory is not present
+ARG ZITI_VERSION_OVERRIDE
+
+COPY . /docker.build.context
+RUN apt update && apt install jq curl -y && \
+    # get local ziti build in "ziti-bin", if present.
+    # otherwise fetch from releases (respecting ZITI_VERSION_OVERRIDE, if set).
+    # put the result in /ziti-bin
+    /bin/bash /docker.build.context/fetch-ziti-bins.sh /ziti-bin
+
 FROM ubuntu:rolling
 
 RUN apt update && \
@@ -20,7 +32,7 @@ ENV ZITI_BIN_ROOT="${ZITI_BIN_DIR}"
 ENV ZITI_SCRIPTS=/var/openziti/scripts
 
 # copy the ziti binaries to a directory already on the path
-COPY --chown=ziti ziti.ignore "${ZITI_BIN_DIR}"
+COPY --chown=ziti --from=fetch-ziti-bins /ziti-bin "${ZITI_BIN_DIR}"
 COPY --chown=ziti ziti-cli-functions.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-controller.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router.sh "${ZITI_SCRIPTS}/"
