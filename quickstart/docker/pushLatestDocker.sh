@@ -9,8 +9,8 @@ ZITI_BIN_ROOT="${ZITI_QUICKSTART_ROOT}/docker"
 for arch in amd64 arm64; do
   (export ZITI_OSTYPE=linux; export ZITI_ARCH="${arch}"
    source "${ZITI_QUICKSTART_ROOT}/ziti-cli-functions.sh"
-   if [ -d "${ZITI_BIN_ROOT}/image/ziti.ignore" ]; then
-     rm -rf "${ZITI_BIN_ROOT}/image/ziti.ignore"
+   if [ -d "${SCRIPT_DIR}/image/ziti.ignore" ]; then
+     rm -rf "${SCRIPT_DIR}/image/ziti.ignore"
    fi
 
    getZiti
@@ -18,12 +18,8 @@ for arch in amd64 arm64; do
    mv "${ZITI_BIN_DIR}" "${SCRIPT_DIR}/image/ziti.ignore/"
    docker build --platform linux/${arch} "${SCRIPT_DIR}/image" -t openziti/quickstart
 
-   if [ -d "${ZITI_BIN_ROOT}/image/ziti.ignore" ]; then
-     rm -rf "${ZITI_BIN_ROOT}/image/ziti.ignore"
-   fi
-
-   if [ -d "${ZITI_BIN_ROOT}/ziti.ignore" ]; then
-     rm -rf "${ZITI_BIN_ROOT}/ziti.ignore"
+   if [ -d "${SCRIPT_DIR}/image/ziti.ignore" ]; then
+     rm -rf "${SCRIPT_DIR}/image/ziti.ignore"
    fi
 
    vers="$(echo "${ZITI_BINARIES_VERSION}" | cut -c 2-100)"
