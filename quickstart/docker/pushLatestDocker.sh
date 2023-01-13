@@ -16,7 +16,7 @@ fi
 
 docker buildx create --use --name=ziti-builder
 docker buildx build --platform linux/amd64,linux/arm64 "${SCRIPT_DIR}/image" \
-  --build-arg ZITI_VERSION="${ZITI_VERSION}" \
+  --build-arg ZITI_VERSION_OVERRIDE="${ZITI_VERSION}" \
   --tag "openziti/quickstart:${ZITI_VERSION}" \
   --tag "openziti/quickstart:latest" \
   --push
