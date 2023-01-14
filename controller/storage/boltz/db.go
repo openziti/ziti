@@ -50,6 +50,11 @@ type Db interface {
 	// The snapshot id and snapshot are returned
 	SnapshotToMemory() (string, []byte, error)
 
+	// SnapshotToWriter writes a snapshot of the database state to the given writer
+	// The snapshot has a UUID generated and stored at rootBucket/snapshotId
+	// The snapshot id and snapshot are returned
+	SnapshotToWriter(w io.Writer) (string, error)
+
 	// GetSnapshotId returns the id of the last snapshot created/restored
 	GetSnapshotId() (*string, error)
 
@@ -226,6 +231,11 @@ func (self *DbImpl) AddRestoreListener(f func()) {
 
 func (self *DbImpl) SnapshotToMemory() (string, []byte, error) {
 	buf := &bytes.Buffer{}
+	id, err := self.SnapshotToWriter(buf)
+	return id, buf.Bytes(), err
+}
+
+func (self *DbImpl) SnapshotToWriter(w io.Writer) (string, error) {
 	snapshotId := uuid.NewString()
 	err := self.Update(func(tx *bbolt.Tx) error {
 		b := GetOrCreatePath(tx, Metadata)
@@ -233,13 +243,13 @@ func (self *DbImpl) SnapshotToMemory() (string, []byte, error) {
 		if b.HasError() {
 			return b.GetError()
 		}
-		_, err := tx.WriteTo(buf)
+		_, err := tx.WriteTo(w)
 		return err
 	})
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
-	return snapshotId, buf.Bytes(), nil
+	return snapshotId, nil
 }
 
 func (self *DbImpl) GetSnapshotId() (*string, error) {
