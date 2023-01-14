@@ -17,6 +17,7 @@ type MigrationStep struct {
 type Migrator func(step *MigrationStep) int
 
 type MigrationManager interface {
+	GetComponentVersion(component string) (int, error)
 	Migrate(component string, targetVersion int, migrator Migrator) error
 }
 
@@ -29,6 +30,29 @@ func NewMigratorManager(db Db) MigrationManager {
 
 type migrationManager struct {
 	db Db
+}
+
+func (m *migrationManager) GetComponentVersion(component string) (int, error) {
+	version := 0
+	err := m.db.Update(func(tx *bbolt.Tx) error {
+		rootBucket, err := m.db.RootBucket(tx)
+		if err != nil {
+			return err
+		}
+		typedBucket := newRootTypedBucket(rootBucket)
+		versionsBucket := typedBucket.GetOrCreateBucket("versions")
+		if versionsBucket.HasError() {
+			return versionsBucket.GetError()
+		}
+		versionP := versionsBucket.GetInt64(component)
+		if versionP != nil {
+			version = int(*versionP)
+		}
+
+		return nil
+	})
+
+	return version, err
 }
 
 func (m *migrationManager) Migrate(component string, targetVersion int, migrator Migrator) error {
