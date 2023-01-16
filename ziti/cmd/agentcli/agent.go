@@ -94,7 +94,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 // AgentOptions contains the command line options
 type AgentOptions struct {
 	common.CommonOptions
-	pid         uint16
+	pid         uint32
 	processName string
 	appId       string
 	appType     string
@@ -104,12 +104,14 @@ type AgentOptions struct {
 }
 
 func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint16VarP(&self.pid, "pid", "p", 0, "Process ID of host application to talk to")
+	cmd.Flags().Uint32VarP(&self.pid, "pid", "p", 0, "Process ID of host application to talk to")
 	cmd.Flags().StringVarP(&self.processName, "process-name", "n", "", "Process name of host application to talk to")
 	cmd.Flags().StringVarP(&self.appId, "app-id", "i", "", "Id of host application to talk to (like controller or router id)")
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
 	cmd.Flags().StringVarP(&self.appType, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
 	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Type of host application to talk to (like controller or router)")
+	cmd.Flags().DurationVar(&self.timeout, "to", time.Minute, "Type of host application to talk to (like controller or router)")
+
 }
 
 func (self *AgentOptions) GetProcess() (*agent.Process, error) {

@@ -18,84 +18,59 @@ package agentcli
 
 import (
 	"fmt"
-	"net"
 	"time"
 
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlRaftLeaveOptions struct {
+type AgentCtrlRaftLeaveAction struct {
 	AgentOptions
-	MemberId string
+	MemberId   string
+	MemberAddr string
 }
 
 func NewAgentCtrlRaftLeave(p common.OptionsProvider) *cobra.Command {
-	options := AgentCtrlRaftLeaveOptions{
+	action := AgentCtrlRaftLeaveAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(1, 2),
-		Use:  "raft-leave <optional-target> <addr>",
+		Args: cobra.RangeArgs(0, 1),
+		Use:  "raft-leave",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.MakeChannelRequest(byte(AgentAppController), action.makeRequest)
 			cmdhelper.CheckErr(err)
 		},
 	}
-
-	cmd.Flags().StringVar(&options.MemberId, "id", "", "The member id. If not provided, it will be looked up")
+	action.AddAgentOptions(cmd)
+	cmd.Flags().StringVar(&action.MemberId, "id", "", "The member id. If not provided, it will be looked up by the provided address")
+	cmd.Flags().StringVar(&action.MemberAddr, "address", "", "The member address")
 
 	return cmd
 }
 
-// Run implements the command
-func (o *AgentCtrlRaftLeaveOptions) Run() error {
-	var addr string
-	var err error
-
-	if len(o.Args) == 2 {
-		addr, err = agent.ParseGopsAddress(o.Args)
-		if err != nil {
-			return err
-		}
-	}
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(AgentAppController)}, o.makeRequest)
-}
-
-func (o *AgentCtrlRaftLeaveOptions) makeRequest(conn net.Conn) error {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	ch, err := channel.NewChannel("agent", dialer, nil, options)
-	if err != nil {
-		return err
-	}
-
-	offset := 0
-	if len(o.Args) == 2 {
-		offset = 1
-	}
-
+func (o *AgentCtrlRaftLeaveAction) makeRequest(ch channel.Channel) error {
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftRemoveRequestType), nil)
-	msg.PutStringHeader(controller.AgentAddrHeader, o.Args[offset])
 
 	if o.MemberId != "" {
 		msg.PutStringHeader(controller.AgentIdHeader, o.MemberId)
 	}
 
+	if o.MemberAddr != "" {
+		msg.PutStringHeader(controller.AgentAddrHeader, o.MemberAddr)
+	}
+
 	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
-	fmt.Println("Sent for reply!")
+
 	if err != nil {
 		return err
 	}
@@ -105,6 +80,5 @@ func (o *AgentCtrlRaftLeaveOptions) makeRequest(conn net.Conn) error {
 	} else {
 		fmt.Printf("error: %v\n", result.Message)
 	}
-	fmt.Println("After request!")
 	return nil
 }

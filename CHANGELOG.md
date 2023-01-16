@@ -2,6 +2,11 @@
 
 # What's New
 
+* New Raft interaction commands
+    * `raft-leave` allows removal of controllers from the raft cluster
+    * `raft-list` lists all connected controllers and their version/connected status
+    * `fabric raft list-members` same info as the agent command, but over rest
+
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/edge: [v0.24.95 -> v0.24.101](https://github.com/openziti/edge/compare/v0.24.95...v0.24.101)
