@@ -2,7 +2,6 @@ v: 3
 
 raft:
   minClusterSize: 3
-  advertiseAddress: tls:localhost:6464
   dataDir: ./data/ctrl3
 
 identity:
@@ -12,6 +11,8 @@ identity:
 
 ctrl:
   listener: tls:127.0.0.1:6464
+  options:
+    advertiseAddress: tls:localhost:6464
 
 healthChecks:
   boltCheck:

@@ -1,8 +1,6 @@
 v: 3
-
 raft:
   minClusterSize: 3
-  advertiseAddress: tls:localhost:6262
   dataDir: ./data/ctrl1
   bootstrapMembers:
     - tls:127.0.0.1:6363
@@ -15,6 +13,8 @@ identity:
 
 ctrl:
   listener: tls:127.0.0.1:6262
+  options:
+    advertiseAddress: tls:localhost:6262
 
 healthChecks:
   boltCheck:

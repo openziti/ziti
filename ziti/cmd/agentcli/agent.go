@@ -110,8 +110,7 @@ func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
 	cmd.Flags().StringVarP(&self.appType, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
 	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Type of host application to talk to (like controller or router)")
-	cmd.Flags().DurationVar(&self.timeout, "to", time.Minute, "Type of host application to talk to (like controller or router)")
-
+	cmd.Flags().DurationVar(&self.timeout, "timeout", 5*time.Second, "Operation timeout")
 }
 
 func (self *AgentOptions) GetProcess() (*agent.Process, error) {
