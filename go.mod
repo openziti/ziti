@@ -14,7 +14,7 @@ require (
 	github.com/go-openapi/errors v0.20.3
 	github.com/go-openapi/loads v0.21.2
 	github.com/go-openapi/runtime v0.25.0
-	github.com/go-openapi/spec v0.20.7
+	github.com/go-openapi/spec v0.20.8
 	github.com/go-openapi/strfmt v0.21.3
 	github.com/go-openapi/swag v0.22.3
 	github.com/go-openapi/validate v0.22.1
@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.2
 	github.com/openziti/channel/v2 v2.0.25
-	github.com/openziti/fabric v0.22.12
+	github.com/openziti/fabric v0.22.13
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.29
 	github.com/openziti/jwks v1.0.2
