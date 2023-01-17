@@ -1,6 +1,6 @@
-![OpenZiti Logo](https://raw.githubusercontent.com/openziti/ziti-doc/main/docusaurus/static/img/ziti-logo-dark.svg)
-[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yaml/badge.svg)](https://github.com/openziti/ziti/actions/workflows/main.yaml)
+[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yml/badge.svg)](https://github.com/openziti/ziti/actions/workflows/main.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/openziti/ziti)](https://goreportcard.com/report/github.com/openziti/ziti)
+![OpenZiti Logo](https://raw.githubusercontent.com/openziti/ziti-doc/main/docusaurus/static/img/ziti-logo-dark.svg)
 
 # Ziti
 
