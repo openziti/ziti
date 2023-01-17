@@ -4,7 +4,7 @@
 
 ## Component Updates and Bug Fixes
 
-* github.com/openziti/edge: [v0.24.95 -> v0.24.101](https://github.com/openziti/edge/compare/v0.24.95...v0.24.101)
+* github.com/openziti/edge: [v0.24.95 -> v0.24.104](https://github.com/openziti/edge/compare/v0.24.95...v0.24.104)
     * [Issue #1292](https://github.com/openziti/edge/issues/1292) - Support alternative tproxy configuration methods
 
 
