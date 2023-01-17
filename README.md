@@ -1,3 +1,7 @@
+![OpenZiti Logo](https://raw.githubusercontent.com/openziti/ziti-doc/main/docusaurus/static/img/ziti-logo-dark.svg)
+[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yaml/badge.svg)](https://github.com/openziti/ziti/actions/workflows/main.yaml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openziti/ziti)](https://goreportcard.com/report/github.com/openziti/ziti)
+
 # Ziti
 
 Ziti represents the next generation of secure, open-source networking for your applications. Ziti has several components.
