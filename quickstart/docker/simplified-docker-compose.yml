@@ -5,8 +5,8 @@ services:
     env_file:
       - ./.env
     ports:
-      - "${ZITI_EDGE_CONTROLLER_PORT}:${ZITI_EDGE_CONTROLLER_PORT}"
-      - "${ZITI_CTRL_PORT}:${ZITI_CTRL_PORT}"
+      - ${ZITI_EDGE_CONTROLLER_PORT:-1280}:${ZITI_EDGE_CONTROLLER_PORT:-1280}
+      - ${ZITI_CTRL_PORT:-6262}:${ZITI_CTRL_PORT:-6262}
     environment:
       - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
       - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
@@ -44,18 +44,18 @@ services:
       - "/var/openziti/scripts/run-with-ziti-cli.sh"
     command:
       - "/var/openziti/scripts/access-control.sh"
-      
+
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
     depends_on:
       - ziti-controller
     environment:
-      - ZITI_CONTROLLER_RAWNAME=${ZITI_CONTROLLER_RAWNAME}
-      - ZITI_EDGE_CONTROLLER_RAWNAME=${ZITI_EDGE_CONTROLLER_RAWNAME}
+      - ZITI_CONTROLLER_RAWNAME="${ZITI_CONTROLLER_RAWNAME}"
+      - ZITI_EDGE_CONTROLLER_RAWNAME="${ZITI_EDGE_CONTROLLER_RAWNAME}"
       - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
       - ZITI_EDGE_ROUTER_ROLES=public
     ports:
-      - ${ZITI_EDGE_ROUTER_PORT}:${ZITI_EDGE_ROUTER_PORT}
+      - ${ZITI_EDGE_ROUTER_PORT:-3022}:${ZITI_EDGE_ROUTER_PORT:-3022}
     networks:
       - zitiblue
       - zitired
@@ -66,9 +66,11 @@ services:
 
   ziti-console:
     image: openziti/zac
+    working_dir: /usr/src/app
     environment:
       - ZAC_SERVER_CERT_CHAIN=/persistent/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
       - ZAC_SERVER_KEY=/persistent/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
+      - PORTTLS=8443
     depends_on:
       - ziti-controller
     ports:
