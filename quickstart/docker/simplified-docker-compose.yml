@@ -5,7 +5,11 @@ services:
     env_file:
       - ./.env
     ports:
-      - "1280:1280"
+      - "${ZITI_EDGE_CONTROLLER_PORT}:${ZITI_EDGE_CONTROLLER_PORT}"
+      - "${ZITI_CTRL_PORT}:${ZITI_CTRL_PORT}"
+    environment:
+      - ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION=${ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION}
+      - ZITI_EDGE_ROUTER_ENROLLMENT_DURATION=${ZITI_EDGE_ROUTER_ENROLLMENT_DURATION}
     networks:
       zitiblue:
         aliases:
@@ -43,13 +47,15 @@ services:
       
   ziti-edge-router:
     image: "${ZITI_IMAGE}:${ZITI_VERSION}"
-    environment:
-      - ZITI_EDGE_ROUTER_RAWNAME=ziti-edge-router
-      - ZITI_EDGE_ROUTER_ROLES=public
     depends_on:
       - ziti-controller
+    environment:
+      - ZITI_CONTROLLER_RAWNAME=${ZITI_CONTROLLER_RAWNAME}
+      - ZITI_EDGE_CONTROLLER_RAWNAME=${ZITI_EDGE_CONTROLLER_RAWNAME}
+      - ZITI_EDGE_ROUTER_RAWNAME=${ZITI_EDGE_ROUTER_RAWNAME}
+      - ZITI_EDGE_ROUTER_ROLES=public
     ports:
-      - "3022:3022"
+      - ${ZITI_EDGE_ROUTER_PORT}:${ZITI_EDGE_ROUTER_PORT}
     networks:
       - zitiblue
       - zitired
@@ -66,8 +72,8 @@ services:
     depends_on:
       - ziti-controller
     ports:
-      - "1408:1408"
-      - "8443:8443"
+      - 1408:1408
+      - 8443:8443
     volumes:
       - ziti-fs:/persistent
 
