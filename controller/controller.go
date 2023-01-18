@@ -26,8 +26,10 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/pkg/errors"
 
+	hcraft "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
@@ -128,7 +130,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		c.raftController = raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c)
+		c.raftController = raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c, c.routerDispatchCallback)
 		if err := c.raftController.Init(); err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
@@ -160,6 +162,11 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 			},
 		})
 	}
+
+	logrus.Info("Adding router presence handler to send out ctrl addresses")
+	c.network.AddRouterPresenceHandler(
+		NewOnConnectCtrlAddressesUpdateHandler(c.config.Ctrl.Listener.String(), c.raftController),
+	)
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -376,6 +383,27 @@ func (c *Controller) Identity() identity.Identity {
 
 func (c *Controller) GetEventDispatcher() event.Dispatcher {
 	return c.eventDispatcher
+}
+
+func (c *Controller) routerDispatchCallback(cfg *hcraft.Configuration) error {
+	if c.raftController != nil {
+		data := make([]string, 0)
+		for _, srvr := range cfg.Servers {
+			data = append(data, string(srvr.Address))
+		}
+		updMsg := &ctrl_pb.UpdateCtrlAddresses{
+			Addresses: data,
+			IsLeader:  c.raftController.IsLeader(),
+			Index:     c.raftController.GetRaft().LastIndex(),
+		}
+
+		for _, r := range c.network.AllConnectedRouters() {
+			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Controller) TryInitializeRaftFromBoltDb() error {

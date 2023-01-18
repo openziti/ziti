@@ -91,3 +91,7 @@ func (request *CreateTerminatorRequest) GetXtPrecedence() xt.Precedence {
 	}
 	return xt.Precedences.Default
 }
+
+func (request *UpdateCtrlAddresses) GetContentType() int32 {
+	return int32(ContentType_UpdateCtrlAddressesType)
+}

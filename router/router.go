@@ -21,8 +21,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"math/rand"
+	"os"
+	"path"
+	"plugin"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/health"
@@ -47,14 +58,13 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/xweb/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"plugin"
-	"sync/atomic"
-	"time"
+	"gopkg.in/yaml.v3"
 )
 
 type Router struct {
@@ -77,6 +87,12 @@ type Router struct {
 	metricsReporter metrics.Handler
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
+
+	ctrlEndpoints        ctrlEndpoints
+	controllersToConnect struct {
+		controllers map[*UpdatableAddress]bool
+		mtx         sync.Mutex
+	}
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -155,10 +171,18 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		xlinkRegistry:       NewLinkRegistry(ctrls),
+		ctrlEndpoints:       newCtrlEndpoints(),
+		controllersToConnect: struct {
+			controllers map[*UpdatableAddress]bool
+			mtx         sync.Mutex
+		}{
+			controllers: make(map[*UpdatableAddress]bool),
+			mtx:         sync.Mutex{},
+		},
 	}
 
 	var err error
-	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config)
+	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config, router)
 	if err != nil {
 		panic(err)
 	}
@@ -186,6 +210,15 @@ func (self *Router) GetConfig() *Config {
 
 func (self *Router) Start() error {
 	rand.Seed(info.NowInMilliseconds())
+
+	if err := os.MkdirAll(self.config.Ctrl.DataDir, 0700); err != nil {
+		logrus.WithField("dir", self.config.Ctrl.DataDir).WithError(err).Error("failed to initialize data directory")
+		return err
+	}
+
+	if err := self.initializeCtrlEndpoints(); err != nil {
+		return err
+	}
 
 	self.showOptions()
 
@@ -409,7 +442,7 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	for _, endpoint := range self.config.Ctrl.Endpoints {
+	for _, endpoint := range self.ctrlEndpoints.Items() {
 		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
 			return err
 		}
@@ -482,6 +515,65 @@ func (self *Router) connectToController(addr *UpdatableAddress, localBinding str
 	return nil
 }
 
+func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, localBinding string, maxTimeout *time.Duration) error {
+	self.controllersToConnect.mtx.Lock()
+	log := pfxlog.Logger()
+	defer func() {
+		self.controllersToConnect.mtx.Unlock()
+	}()
+	if _, exists := self.controllersToConnect.controllers[addr]; exists {
+		log.WithField("Controller Addr", addr).Info("Already attempting to connect")
+		return nil
+	}
+
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = 50 * time.Millisecond
+	expBackoff.MaxInterval = 5 * time.Minute
+	expBackoff.MaxElapsedTime = 365 * 24 * time.Hour
+	if maxTimeout != nil {
+		expBackoff.MaxElapsedTime = *maxTimeout
+	}
+
+	operation := func() error {
+		self.controllersToConnect.mtx.Lock()
+		defer self.controllersToConnect.mtx.Unlock()
+		if _, exists := self.controllersToConnect.controllers[addr]; !exists {
+			return backoff.Permanent(errors.New("controller removed before connection established"))
+		}
+		err := self.connectToController(addr, localBinding)
+		if err != nil {
+			log.
+				WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				WithError(err).
+				Error("Unable to connect controller")
+		}
+		return err
+	}
+
+	self.controllersToConnect.controllers[addr] = true
+	log.WithField("Controller Addr", addr).Info("Starting connection attempts")
+
+	go func() {
+		if err := backoff.Retry(operation, expBackoff); err != nil {
+			log.
+				WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				WithError(err).
+				Error("Unable to connect controller. Stopping Retries.")
+		} else {
+			log.WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				Info("Successfully connected to controller")
+		}
+		self.controllersToConnect.mtx.Lock()
+		delete(self.controllersToConnect.controllers, addr)
+		self.controllersToConnect.mtx.Unlock()
+	}()
+
+	return nil
+}
+
 func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	checkConfig := self.config.HealthChecks
 	logrus.Infof("starting health check with ctrl ping initially after %v, then every %v, timing out after %v",
@@ -524,6 +616,92 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 	return self.xwebFactoryRegistry.Add(x)
 }
 
+func (self *Router) initializeCtrlEndpoints() error {
+	if self.config.Ctrl.DataDir == "" {
+		return errors.New("ctrl DataDir not configured")
+	}
+	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
+	_, err := os.Stat(endpointsFile)
+	if errors.Is(err, fs.ErrNotExist) {
+		for _, ep := range self.config.Ctrl.InitialEndpoints {
+			self.ctrlEndpoints.Set(ep.String(), ep)
+		}
+		data, err := self.ctrlEndpoints.MarshalYAML()
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(endpointsFile, data.([]byte), 0600)
+	}
+
+	b, err := os.ReadFile(endpointsFile)
+	if err != nil {
+		return nil
+	}
+
+	if err := yaml.Unmarshal(b, &self.ctrlEndpoints); err != nil {
+		return err
+	}
+	//TODO: Handle mismatches
+	return nil
+}
+
+func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
+	log := pfxlog.Logger()
+	save := false
+	newEps := make(map[string]bool)
+	for _, ep := range endpoints {
+		newEps[ep] = true
+	}
+	for knownep := range self.ctrlEndpoints.Items() {
+		if _, ok := newEps[knownep]; !ok {
+			log.WithField("endpoint", knownep).Info("Removing old ctrl endpoint")
+			save = true
+			parsed, err := transport.ParseAddress(knownep)
+			if err != nil {
+				return err
+			}
+			_, parsedAddr, _ := strings.Cut(parsed.String(), ":")
+
+			self.ctrlEndpoints.Remove(knownep)
+			self.controllersToConnect.mtx.Lock()
+			delete(self.controllersToConnect.controllers, NewUpdatableAddress(parsed))
+			self.controllersToConnect.mtx.Unlock()
+
+			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
+				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
+				return err
+			}
+		}
+	}
+	for _, ep := range endpoints {
+		if !self.ctrlEndpoints.Has(ep) {
+			log.WithField("endpoint", ep).Info("Adding new ctrl endpoint")
+			save = true
+			parsed, err := transport.ParseAddress(ep)
+			if err != nil {
+				return err
+			}
+			upAddr := NewUpdatableAddress(parsed)
+			if err := self.connectToControllerWithBackoff(upAddr, self.config.Ctrl.LocalBinding, nil); err != nil {
+				log.WithError(err).Error("Unable to connect controller")
+				return err
+			}
+			self.ctrlEndpoints.Set(ep, upAddr)
+		}
+	}
+
+	if save {
+		log.WithField("filepath", self.config.Ctrl.DataDir).Info("Attempting to save file")
+		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
+		data, err := self.ctrlEndpoints.MarshalYAML()
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(endpointsFile, data.([]byte), 0600)
+	}
+	return nil
+}
+
 type connectionToggle interface {
 	Disconnect() error
 	Reconnect() error
@@ -552,4 +730,39 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 		return nil
 	}
 	return errors.New("control channels are slow")
+}
+
+type ctrlEndpoints struct {
+	cmap.ConcurrentMap[string, *UpdatableAddress] `yaml:"Endpoints"`
+}
+
+func newCtrlEndpoints() ctrlEndpoints {
+	return ctrlEndpoints{cmap.New[*UpdatableAddress]()}
+}
+
+// MarshalYAML handles serialization for the YAML format
+func (c *ctrlEndpoints) MarshalYAML() (interface{}, error) {
+	data := make([]*UpdatableAddress, 0)
+	for _, ep := range c.Items() {
+		data = append(data, ep)
+	}
+	dat, err := yaml.Marshal(&struct {
+		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
+	}{
+		Endpoints: data,
+	})
+	return dat, err
+}
+
+func (c *ctrlEndpoints) UnmarshalYAML(value *yaml.Node) error {
+	var endpoints struct {
+		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
+	}
+	if err := value.Decode(&endpoints); err != nil {
+		return err
+	}
+	for _, ep := range endpoints.Endpoints {
+		c.ConcurrentMap.Set(ep.String(), ep)
+	}
+	return nil
 }

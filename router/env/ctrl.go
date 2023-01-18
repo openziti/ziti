@@ -17,11 +17,13 @@
 package env
 
 import (
+	"fmt"
+	"sync/atomic"
+	"time"
+
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
-	"sync/atomic"
-	"time"
 )
 
 type CtrlChannel interface {
@@ -38,13 +40,15 @@ type NetworkController interface {
 }
 
 type NetworkControllers interface {
-	Add(ch channel.Channel) NetworkController
+	Add(ch channel.Channel) (NetworkController, error)
 	GetAll() map[string]NetworkController
 	AnyCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
+	GetCtrlChannelByAddress(address string) (ctrlId string, ch channel.Channel)
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
 	Close() error
+	CloseAndRemoveByAddress(address string) error
 }
 
 type networkCtrl struct {
@@ -122,12 +126,15 @@ type networkControllers struct {
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 }
 
-func (self *networkControllers) Add(ch channel.Channel) NetworkController {
+func (self *networkControllers) Add(ch channel.Channel) (NetworkController, error) {
 	ctrl := &networkCtrl{
 		ch: ch,
 	}
+	if existing := self.ctrls.Get(ctrl.Channel().Id()); existing != nil {
+		return nil, fmt.Errorf("Duplicate channel with id %v", ctrl.Channel().Id())
+	}
 	self.ctrls.Put(ctrl.Channel().Id(), ctrl)
-	return ctrl
+	return ctrl, nil
 }
 
 func (self *networkControllers) GetAll() map[string]NetworkController {
@@ -154,6 +161,15 @@ func (self *networkControllers) GetCtrlChannel(controllerId string) channel.Chan
 	return nil
 }
 
+func (self *networkControllers) GetCtrlChannelByAddress(address string) (string, channel.Channel) {
+	for k, v := range self.ctrls.AsMap() {
+		if v.Channel().Underlay().GetLocalAddr().String() == address || v.Channel().Underlay().GetRemoteAddr().String() == address {
+			return k, v.Channel()
+		}
+	}
+	return "", nil
+}
+
 func (self *networkControllers) DefaultRequestTimeout() time.Duration {
 	return self.defaultRequestTimeout
 }
@@ -172,4 +188,15 @@ func (self *networkControllers) Close() error {
 		}
 	})
 	return errors.ToError()
+}
+
+func (self *networkControllers) CloseAndRemoveByAddress(address string) error {
+	ctrlId, ch := self.GetCtrlChannelByAddress(address)
+	if ch != nil {
+		delete(self.ctrls.AsMap(), ctrlId)
+		if err := ch.Close(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

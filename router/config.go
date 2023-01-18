@@ -19,6 +19,11 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/config"
@@ -31,9 +36,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
-	"io"
-	"os"
-	"time"
+	yaml3 "gopkg.in/yaml.v3"
 )
 
 const (
@@ -103,10 +106,11 @@ type Config struct {
 		}
 	}
 	Ctrl struct {
-		Endpoints             []*UpdatableAddress
+		InitialEndpoints      []*UpdatableAddress
 		LocalBinding          string
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
+		DataDir               string
 	}
 	Link struct {
 		Listeners []map[interface{}]interface{}
@@ -132,7 +136,7 @@ type Config struct {
 }
 
 func (config *Config) CurrentCtrlAddress() string {
-	return config.Ctrl.Endpoints[0].String()
+	return config.Ctrl.InitialEndpoints[0].String()
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -236,7 +240,7 @@ func (config *Config) Save() error {
 // internal map configuration.
 func (config *Config) UpdateControllerEndpoint(address string) error {
 	if parsedAddress, err := transport.ParseAddress(address); parsedAddress != nil && err == nil {
-		if config.Ctrl.Endpoints[0].String() != address {
+		if config.Ctrl.InitialEndpoints[0].String() != address {
 			//config file update
 			if ctrlVal, ok := config.src[CtrlMapKey]; ok {
 				if ctrlMap, ok := ctrlVal.(map[interface{}]interface{}); ok {
@@ -249,7 +253,7 @@ func (config *Config) UpdateControllerEndpoint(address string) error {
 			}
 
 			//runtime update
-			config.Ctrl.Endpoints[0].Store(parsedAddress)
+			config.Ctrl.InitialEndpoints[0].Store(parsedAddress)
 		}
 	} else {
 		return fmt.Errorf("could not parse address: %v", err)
@@ -312,6 +316,28 @@ func (c *UpdatableAddress) getWrapped() transport.Address {
 // Store updates the address currently used by this configuration instance
 func (c *UpdatableAddress) Store(address transport.Address) {
 	c.wrapped.Store(address)
+}
+
+// MarshalYAML handles serialization for the YAML format
+func (c *UpdatableAddress) MarshalYAML() (interface{}, error) {
+	return c.String(), nil
+}
+
+// UnmarshalYAML handled deserialization for the YAML format
+func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
+	var yamlAddress string
+	err := value.Decode(&yamlAddress)
+	if err != nil {
+		return err
+	}
+
+	addr, err := transport.ParseAddress(yamlAddress)
+	if err != nil {
+		return err
+	}
+	c.Store(addr)
+
+	return nil
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -421,7 +447,7 @@ func LoadConfig(path string) (*Config, error) {
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
 				}
-				cfg.Ctrl.Endpoints = append(cfg.Ctrl.Endpoints, NewUpdatableAddress(address))
+				cfg.Ctrl.InitialEndpoints = append(cfg.Ctrl.InitialEndpoints, NewUpdatableAddress(address))
 			} else if value, found := submap[CtrlEndpointsMapKey]; found {
 				if addresses, ok := value.([]interface{}); ok {
 					for idx, value := range addresses {
@@ -433,7 +459,7 @@ func LoadConfig(path string) (*Config, error) {
 						if err != nil {
 							return nil, errors.Wrapf(err, "cannot parse [ctrl/endpoints] value at position %v", idx+1)
 						}
-						cfg.Ctrl.Endpoints = append(cfg.Ctrl.Endpoints, NewUpdatableAddress(address))
+						cfg.Ctrl.InitialEndpoints = append(cfg.Ctrl.InitialEndpoints, NewUpdatableAddress(address))
 					}
 				} else {
 					return nil, errors.New("cannot parse [ctrl/endpoints], must be list")
@@ -457,6 +483,11 @@ func LoadConfig(path string) (*Config, error) {
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
 				}
+			}
+			if value, found := submap["dataDir"]; found {
+				cfg.Ctrl.DataDir = value.(string)
+			} else {
+				cfg.Ctrl.DataDir = filepath.Dir(cfg.path)
 			}
 		}
 	}

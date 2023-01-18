@@ -3,7 +3,9 @@ package controller
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -46,4 +48,46 @@ func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 			"channel":  r.Control.LogicalName(),
 		}).Info("no on connect settings to send")
 	}
+}
+
+type OnConnectCtrlAddressesUpdateHandler struct {
+	ctrlAddress string
+	raft        *raft.Controller
+}
+
+func NewOnConnectCtrlAddressesUpdateHandler(ctrlAddress string, raft *raft.Controller) *OnConnectCtrlAddressesUpdateHandler {
+	return &OnConnectCtrlAddressesUpdateHandler{
+		ctrlAddress: ctrlAddress,
+		raft:        raft,
+	}
+}
+
+func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *network.Router) {
+	//do nothing, satisfy interface
+}
+
+func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) {
+	log := pfxlog.Logger().WithFields(map[string]interface{}{
+		"routerId": r.Id,
+		"channel":  r.Control.LogicalName(),
+	})
+	log.Info("Router connected... syncing crtl addresses")
+	index, data := o.getAddresses()
+	log.Info(data)
+
+	updMsg := &ctrl_pb.UpdateCtrlAddresses{
+		Addresses: data,
+		Index:     index,
+	}
+
+	if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
+		log.WithError(err).Error("error sending UpdateCtrlAddresses on router connect")
+	}
+}
+
+func (o *OnConnectCtrlAddressesUpdateHandler) getAddresses() (uint64, []string) {
+	if o.raft != nil {
+		return o.raft.CtrlAddresses()
+	}
+	return 1, []string{o.ctrlAddress}
 }

@@ -19,7 +19,6 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/transport/v2"
 	"os"
 	"path"
 	"reflect"
@@ -27,6 +26,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/transport/v2"
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -54,33 +55,37 @@ type Config struct {
 	}
 }
 
-func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager) *Controller {
+type RouterDispatchCallback func(*raft.Configuration) error
+
+func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager, routerDispatchCallback RouterDispatchCallback) *Controller {
 	result := &Controller{
-		Id:              id,
-		Config:          config,
-		metricsRegistry: metricsRegistry,
-		indexTracker:    NewIndexTracker(),
-		version:         version,
-		migrationMgr:    migrationMgr,
+		Id:                     id,
+		Config:                 config,
+		metricsRegistry:        metricsRegistry,
+		indexTracker:           NewIndexTracker(),
+		version:                version,
+		migrationMgr:           migrationMgr,
+		routerDispatchCallback: routerDispatchCallback,
 	}
 	return result
 }
 
 // Controller manages RAFT related state and operations
 type Controller struct {
-	Id              *identity.TokenId
-	Config          *Config
-	Mesh            mesh.Mesh
-	Raft            *raft.Raft
-	Fsm             *BoltDbFsm
-	bootstrapped    atomic.Bool
-	clusterLock     sync.Mutex
-	servers         []raft.Server
-	metricsRegistry metrics.Registry
-	closeNotify     <-chan struct{}
-	indexTracker    IndexTracker
-	version         string
-	migrationMgr    MigrationManager
+	Id                     *identity.TokenId
+	Config                 *Config
+	Mesh                   mesh.Mesh
+	Raft                   *raft.Raft
+	Fsm                    *BoltDbFsm
+	bootstrapped           atomic.Bool
+	clusterLock            sync.Mutex
+	servers                []raft.Server
+	metricsRegistry        metrics.Registry
+	closeNotify            <-chan struct{}
+	indexTracker           IndexTracker
+	version                string
+	migrationMgr           MigrationManager
+	routerDispatchCallback RouterDispatchCallback
 }
 
 // GetRaft returns the managed raft instance
@@ -339,13 +344,14 @@ func (self *Controller) Init() error {
 	}
 
 	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
-	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker)
+
+	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
+
+	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.routerDispatchCallback)
 
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
 	}
-
-	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
 	if raftConfig.Recover {
 		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, transport, raft.Configuration{
@@ -477,6 +483,15 @@ func (self *Controller) RemoveServer(id string) error {
 	}
 
 	return self.HandleRemove(req)
+}
+
+func (self *Controller) CtrlAddresses() (uint64, []string) {
+	ret := make([]string, 0)
+	index, cfg := self.Fsm.GetCurrentState(self.Raft)
+	for _, srvr := range cfg.Servers {
+		ret = append(ret, string(srvr.Address))
+	}
+	return index, ret
 }
 
 type MigrationManager interface {

@@ -17,6 +17,9 @@
 package handler_ctrl
 
 import (
+	"runtime/debug"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/latency"
@@ -27,8 +30,6 @@ import (
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"runtime/debug"
-	"time"
 )
 
 type bindHandler struct {
@@ -37,9 +38,10 @@ type bindHandler struct {
 	ctrlAddressChanger CtrlAddressChanger
 	xgDialerPool       goroutines.Pool
 	linkDialerPool     goroutines.Pool
+	ctrlAddressUpdater CtrlAddressUpdater
 }
 
-func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger) (channel.BindHandler, error) {
+func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
 	linkDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.LinkDial.QueueLength),
 		MinWorkers:  0,
@@ -82,6 +84,7 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctr
 		ctrlAddressChanger: ctrlAddressChanger,
 		xgDialerPool:       xgDialerPool,
 		linkDialerPool:     linkDialerPool,
+		ctrlAddressUpdater: ctrlAddressUpdater,
 	}, nil
 }
 
@@ -94,11 +97,15 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env.GetRouterId(), self.env.GetXlinkRegistry(), self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
+	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 	latency.AddLatencyProbeResponder(binding)
 
-	ctrl := self.env.GetNetworkControllers().Add(binding.GetChannel())
+	ctrl, err := self.env.GetNetworkControllers().Add(binding.GetChannel())
+	if err != nil {
+		return err
+	}
 
 	// make configurable. see fabric#507
 	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, ctrl.HeartbeatCallback())

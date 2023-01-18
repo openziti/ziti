@@ -17,6 +17,11 @@
 package raft
 
 import (
+	"io"
+	"os"
+	"path"
+	"sync/atomic"
+
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
@@ -24,17 +29,14 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
-	"os"
-	"path"
-	"sync/atomic"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker) *BoltDbFsm {
+func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback RouterDispatchCallback) *BoltDbFsm {
 	return &BoltDbFsm{
-		decoders:     decoders,
-		dbPath:       path.Join(dataDir, "ctrl-ha.db"),
-		indexTracker: indexTracker,
+		decoders:               decoders,
+		dbPath:                 path.Join(dataDir, "ctrl-ha.db"),
+		indexTracker:           indexTracker,
+		routerDispatchCallback: routerDispatchCallback,
 	}
 }
 
@@ -44,6 +46,9 @@ type BoltDbFsm struct {
 	decoders     command.Decoders
 	initialized  atomic.Bool
 	indexTracker IndexTracker
+
+	currentState           *raft.Configuration
+	routerDispatchCallback RouterDispatchCallback
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -74,6 +79,25 @@ func (self *BoltDbFsm) RaftInitialized() {
 
 func (self *BoltDbFsm) GetDb() boltz.Db {
 	return self.db
+}
+
+func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
+	if self.currentState == nil {
+		if err := raft.GetConfiguration().Error(); err != nil {
+			pfxlog.Logger().WithError(err).Error("error getting configuration future")
+		}
+		cfg := raft.GetConfiguration().Configuration()
+		self.currentState = &cfg
+	}
+	return self.indexTracker.Index(), self.currentState
+}
+
+func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
+	log := pfxlog.Logger()
+	self.currentState = &configuration
+	if err := self.routerDispatchCallback(&configuration); err != nil {
+		log.Errorf("Unable to dispatch router callback: %v", err)
+	}
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {

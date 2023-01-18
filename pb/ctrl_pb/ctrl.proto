@@ -30,6 +30,7 @@ enum ContentType {
   CircuitConfirmationType = 1034;
   RouterLinksType = 1035;
   VerifyRouterType = 1036;
+  UpdateCtrlAddressesType = 1037;
 
   ListenersHeader = 10;
 }
@@ -210,4 +211,10 @@ message Listener {
 
 message Listeners {
   repeated Listener listeners = 1;
+}
+
+message UpdateCtrlAddresses {
+  repeated string addresses = 1;
+  uint64 index = 2;
+  bool isLeader = 3;
 }

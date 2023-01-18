@@ -293,6 +293,7 @@ func (self *impl) AddPeer(peer *Peer) {
 			self.readonly.Store(true)
 		}
 	}
+
 	logrus.Infof("added peer at %v", peer.Address)
 }
 
