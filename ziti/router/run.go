@@ -49,7 +49,6 @@ func NewRunCmd() *cobra.Command {
 
 	//flags are added to an internal map and read later on, see getFlags()
 	runCmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
-
 	return runCmd
 }
 
@@ -94,7 +93,13 @@ func run(cmd *cobra.Command, args []string) {
 	}
 
 	if cliAgentEnabled {
-		options := agent.Options{Addr: cliAgentAddr}
+		options := agent.Options{
+			Addr:       cliAgentAddr,
+			AppId:      config.Id.Token,
+			AppType:    "router",
+			AppVersion: version.GetVersion(),
+			AppAlias:   cliAgentAlias,
+		}
 		if config.EnableDebugOps {
 			enableDebugOps = true
 		}

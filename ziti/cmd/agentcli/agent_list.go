@@ -17,6 +17,8 @@
 package agentcli
 
 import (
+	"fmt"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -24,22 +26,22 @@ import (
 	"os"
 )
 
-type AgentMemstatsAction struct {
+type AgentListAction struct {
 	AgentOptions
-	CtrlListener string
 }
 
-func NewMemstatsCmd(p common.OptionsProvider) *cobra.Command {
-	action := &AgentMemstatsAction{
+// NewListCmd Pss a command object for the "list" command
+func NewListCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentListAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Use:   "memstats <optional-target>",
-		Short: "Returns memory use summary of the target application",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "list",
+		Short: "List ziti processes",
+		Long:  "Show information about currently running Ziti processes",
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -51,11 +53,22 @@ func NewMemstatsCmd(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-// Run implements the command
-func (o *AgentMemstatsAction) Run() error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *AgentListAction) Run() error {
+	processes, err := agent.GetGopsProcesses()
 	if err != nil {
 		return err
 	}
-	return agent.MakeRequest(addr, agent.MemStats, nil, os.Stdout)
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"PID", "Executable", "App ID", "Unix Socket", "App Type", "App Version", "App Alias"})
+
+	for _, p := range processes {
+		t.AppendRow(table.Row{p.Pid, p.Executable, p.AppId, p.UnixSocket, p.AppType, p.AppVersion, p.AppAlias})
+	}
+
+	if _, err = fmt.Fprintln(os.Stdout, t.Render()); err != nil {
+		panic(err)
+	}
+	return nil
 }

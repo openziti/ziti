@@ -17,6 +17,7 @@
 package agentcli
 
 import (
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -49,7 +50,8 @@ func NewStackCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().DurationVar(&action.StackTimeout, "stack-timeout", 5*time.Second, "Timeout for stack operation")
+	action.AddAgentOptions(cmd)
+	cmd.Flags().DurationVar(&action.StackTimeout, "stack-timeout", 5*time.Second, "Timeout for stack operation (deprecated, use --timeout instead)")
 
 	return cmd
 }
@@ -57,11 +59,8 @@ func NewStackCmd(p common.OptionsProvider) *cobra.Command {
 // Run implements the command
 func (o *AgentStackAction) Run() error {
 	time.AfterFunc(o.StackTimeout, func() {
+		fmt.Println("operation timed out")
 		os.Exit(-1)
 	})
-	addr, err := agent.ParseGopsAddress(o.Args)
-	if err != nil {
-		return err
-	}
-	return agent.MakeRequest(addr, agent.StackTrace, nil, os.Stdout)
+	return o.RunCopyOut(agent.Stats, nil, os.Stdout)
 }

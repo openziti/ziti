@@ -17,16 +17,19 @@
 package agentcli
 
 import (
+	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"time"
 )
 
 type AgentPprofHeapAction struct {
 	AgentOptions
+	outputFile string
 }
 
 func NewPprofHeapCmd(p common.OptionsProvider) *cobra.Command {
@@ -47,11 +50,34 @@ func NewPprofHeapCmd(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
+	action.AddAgentOptions(cmd)
+	cmd.Flags().StringVarP(&action.outputFile, "output-file", "o", "", "Output file for pprof")
+
 	return cmd
 }
 
 // Run implements the command
 func (self *AgentPprofHeapAction) Run() error {
+	if self.Cmd.Flags().Changed("timeout") {
+		time.AfterFunc(self.timeout, func() {
+			fmt.Println("operation timed out")
+			os.Exit(-1)
+		})
+	}
+
+	if len(self.Args) == 0 {
+		var out io.WriteCloser = os.Stdout
+		var err error
+		if self.outputFile != "" {
+			out, err = os.Create(self.outputFile)
+			if err != nil {
+				return err
+			}
+			defer out.Close()
+		}
+		return self.RunCopyOut(agent.HeapProfile, nil, out)
+	}
+
 	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
