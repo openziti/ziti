@@ -150,8 +150,8 @@ services:
   ziti-console:
     image: openziti/zac
     environment:
-      - ZAC_SERVER_CERT_CHAIN=/persistent/pki/ziti-controller-intermediate/certs/ziti-controller-server.cert
-      - ZAC_SERVER_KEY=/persistent/pki/ziti-controller-intermediate/keys/ziti-controller-server.key
+      - ZAC_SERVER_CERT_CHAIN=/persistent/pki/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-intermediate/certs/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-server.cert
+      - ZAC_SERVER_KEY=/persistent/pki/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-intermediate/keys/${ZITI_EDGE_CONTROLLER_HOSTNAME:-ziti-controller}-server.key
       - PORTTLS=8443
     ports:
       - 1408:1408
