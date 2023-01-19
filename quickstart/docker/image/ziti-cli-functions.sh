@@ -45,7 +45,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y 2>&1
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
@@ -398,9 +398,18 @@ function setupZitiNetwork {
 }
 
 function setupZitiHome {
+  _setDefaultZitiNetwork
   if [[ "${ZITI_HOME-}" == "" ]]; then
     export ZITI_HOME="${HOME}/.ziti/quickstart/${ZITI_NETWORK-}"
     echo -e "using default ZITI_HOME: $(BLUE "${ZITI_HOME}")"
+  fi
+}
+
+function _setDefaultZitiNetwork {
+  if [[ "${ZITI_NETWORK-}" = "" ]]; then
+    echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: ${DEFAULT_ZITI_NETWORK}")"
+    # shellcheck disable=SC2155
+    export ZITI_NETWORK="${DEFAULT_ZITI_NETWORK}"
   fi
 }
 
@@ -1066,11 +1075,7 @@ function ziti_createEnvFile {
     if [[ "${1-}" != "" ]]; then
       export ZITI_NETWORK="${1-}"
     fi
-    if [[ "${ZITI_NETWORK-}" = "" ]]; then
-      echo -e "$(YELLOW "WARN: ZITI_NETWORK HAS NOT BEEN DECLARED! USING hostname: ${DEFAULT_ZITI_NETWORK}")"
-      # shellcheck disable=SC2155
-      export ZITI_NETWORK="${DEFAULT_ZITI_NETWORK}"
-    fi
+    _setDefaultZitiNetwork
   fi
 
   echo "ZITI_NETWORK set to: ${ZITI_NETWORK}"
@@ -1514,7 +1519,7 @@ function setOs {
 }
 
 function checkEnvVariable() {
-
+  _error=false
   for arg
   do
     # Parameter expansion is different between shells
@@ -1522,19 +1527,24 @@ function checkEnvVariable() {
       # shellcheck disable=SC2296
       if [[ -z "${(P)arg}" ]]; then
         echo -e "  * ERROR: $(RED "${arg} is not set") "
-        return 1
+        _error=true
       fi
     elif [[ -n "$BASH_VERSION" ]]; then
       if [[ -z "${!arg}" ]]; then
         echo -e "  * ERROR: $(RED "${arg} is not set") "
-        return 1
+        _error=true
       fi
     else
       echo -e " * $(RED "Unsupported shell, supply a PR or log an issue on https://github.com/openziti/ziti") "
       return 1
     fi
   done
-  return 0
+
+  if [[ "true" == "${_error}" ]]; then
+    return 1
+  else
+    return 0
+  fi
 }
 
 function getFileOverwritePermission() {
@@ -1550,6 +1560,34 @@ function getFileOverwritePermission() {
 
     return 0
   fi
+}
+
+function addRouter {
+  router_name="${1-}"
+  if [[ "${router_name}" == "" ]]; then
+        echo -e "addRouter Usage: addRouter <router_name> "
+        return 0
+  fi
+
+  # Check expected and set up environment variables
+  checkEnvVariable ZITI_USER ZITI_PWD ZITI_CTRL_ADVERTISED_ADDRESS ZITI_EDGE_CONTROLLER_PORT
+  retVal=$?
+  if [[ "${retVal}" != 0 ]]; then
+    return 1
+  fi
+  export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT="${ZITI_CTRL_ADVERTISED_ADDRESS}":"${ZITI_EDGE_CONTROLLER_PORT}"
+  if [[ "${ROUTER_TYPE-}" == "" ]]; then export ROUTER_TYPE="public"; fi
+
+  # Create router
+  zitiLogin
+  "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${router_name}"
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${ROUTER_TYPE}"
+
+  # Create router config
+  createEdgeRouterConfig "${router_name}"
+
+  # Enroll the router
+  "${ZITI_BIN_DIR-}/ziti" router enroll "${ZITI_HOME}/${router_name}.yaml" --jwt "${ZITI_HOME}/${router_name}.jwt" &> "${ZITI_HOME}/${router_name}.enrollment.log"
 }
 
 set +uo pipefail
