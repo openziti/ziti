@@ -99,7 +99,7 @@ attendance:
 			if err != nil {
 				return nil, cleanups, err
 			}
-			if status.Router.Id == terminator.GetRouterId() {
+			if tmpPeerData != nil && status.Attempt == attempt && status.Router.Id == terminator.GetRouterId() {
 				peerData = tmpPeerData
 			}
 
@@ -147,39 +147,39 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 		return peerData, nil, nil
 	}
 
-	failureCause := CircuitFailureRouterErrGeneric
-
-	var errorCode byte
-	if status.ErrorCode != nil {
-		errorCode = *status.ErrorCode
-	}
-
-	switch errorCode {
-	case ctrl_msg.ErrorTypeGeneric:
-		self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
-	case ctrl_msg.ErrorTypeInvalidTerminator:
-		if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
-			self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
-			if err := self.terminators.Delete(terminator.GetId()); err != nil {
-				logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
-			}
-			failureCause = CircuitFailureRouterErrInvalidTerminator
-		} else {
-			self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
-			self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
-			failureCause = CircuitFailureRouterErrMisconfiguredTerminator
-		}
-	case ctrl_msg.ErrorTypeDialTimedOut:
-		self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
-		failureCause = CircuitFailureRouterErrDialTimedOut
-	case ctrl_msg.ErrorTypeConnectionRefused:
-		self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
-		failureCause = CircuitFailureRouterErrDialConnRefused
-	default:
-		logger.WithField("errorCode", status.ErrorCode).Error("unhandled error code")
-	}
-
 	if status.Attempt == attempt {
+		failureCause := CircuitFailureRouterErrGeneric
+
+		var errorCode byte
+		if status.ErrorCode != nil {
+			errorCode = *status.ErrorCode
+		}
+
+		switch errorCode {
+		case ctrl_msg.ErrorTypeGeneric:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+		case ctrl_msg.ErrorTypeInvalidTerminator:
+			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
+				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+				if err := self.terminators.Delete(terminator.GetId()); err != nil {
+					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
+				}
+				failureCause = CircuitFailureRouterErrInvalidTerminator
+			} else {
+				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
+				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+				failureCause = CircuitFailureRouterErrMisconfiguredTerminator
+			}
+		case ctrl_msg.ErrorTypeDialTimedOut:
+			self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+			failureCause = CircuitFailureRouterErrDialTimedOut
+		case ctrl_msg.ErrorTypeConnectionRefused:
+			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+			failureCause = CircuitFailureRouterErrDialConnRefused
+		default:
+			logger.WithField("errorCode", status.ErrorCode).Error("unhandled error code")
+		}
+
 		logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
 
 		if status.Router.Id == terminator.GetRouterId() {
