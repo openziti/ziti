@@ -42,9 +42,13 @@ func (network *Network) fillCircuitPath(e *event.CircuitEvent, path *Path) {
 
 func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *Circuit, creationTimespan *time.Duration) {
 	var cost *uint32
+	var duration *time.Duration
 	if eventType == event.CircuitCreated {
 		c := circuit.Terminator.GetRouteCost()
 		cost = &c
+	} else {
+		circuitDuration := time.Since(circuit.CreatedAt)
+		duration = &circuitDuration
 	}
 
 	circuitEvent := &event.CircuitEvent{
@@ -59,7 +63,9 @@ func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *
 		InstanceId:       circuit.Terminator.GetInstanceId(),
 		CreationTimespan: creationTimespan,
 		Cost:             cost,
+		Duration:         duration,
 	}
+
 	network.fillCircuitPath(circuitEvent, circuit.Path)
 	network.eventDispatcher.AcceptCircuitEvent(circuitEvent)
 }

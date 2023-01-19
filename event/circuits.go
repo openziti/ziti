@@ -73,6 +73,7 @@ type CircuitEvent struct {
 	LinkCount        int              `json:"link_count"`
 	Cost             *uint32          `json:"path_cost,omitempty"`
 	FailureCause     *string          `json:"failure_cause,omitempty"`
+	Duration         *time.Duration   `json:"duration,omitempty"`
 }
 
 func (event *CircuitEvent) String() string {
