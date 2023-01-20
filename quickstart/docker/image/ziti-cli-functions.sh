@@ -1519,7 +1519,7 @@ function setOs {
 }
 
 function checkEnvVariable() {
-  _error=false
+  local _error=false
   for arg
   do
     # Parameter expansion is different between shells
@@ -1563,8 +1563,8 @@ function getFileOverwritePermission() {
 }
 
 function addRouter {
-  router_name="${1-}"
-  router_type="${2-}"
+  local router_name="${1-}"
+  local router_type="${2-}"
   if [[ "${router_name}" == "" ]]; then
     echo -e "addRouter Usage: addRouter <router_name> <router_type>"
     return 0
