@@ -1564,9 +1564,15 @@ function getFileOverwritePermission() {
 
 function addRouter {
   router_name="${1-}"
+  router_type="${2-}"
   if [[ "${router_name}" == "" ]]; then
-        echo -e "addRouter Usage: addRouter <router_name> "
-        return 0
+    echo -e "addRouter Usage: addRouter <router_name> <router_type>"
+    return 0
+  fi
+  if [[ "${router_type}" == "" ]]; then
+    router_type="private"
+  elif [[ "private" != "${router_type}" ]] && [[ "public" != "${router_type}" ]]; then
+    echo -e "Unknown router type parameter provided, use either 'private' or 'public'"
   fi
 
   # Check expected and set up environment variables
@@ -1576,18 +1582,29 @@ function addRouter {
     return 1
   fi
   export ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT="${ZITI_CTRL_ADVERTISED_ADDRESS}":"${ZITI_EDGE_CONTROLLER_PORT}"
-  if [[ "${ROUTER_TYPE-}" == "" ]]; then export ROUTER_TYPE="public"; fi
+  if [[ "${router_type-}" == "" ]]; then export router_type="public"; fi
 
   # Create router
   zitiLogin
   "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${router_name}"
-  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${ROUTER_TYPE}"
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${router_type}"
 
   # Create router config
-  createEdgeRouterConfig "${router_name}"
+  if [[ "private" == "${router_type}" ]]; then
+    createPrivateRouterConfig "${router_name}"
+  else
+    createEdgeRouterConfig "${router_name}"
+  fi
 
   # Enroll the router
   "${ZITI_BIN_DIR-}/ziti" router enroll "${ZITI_HOME}/${router_name}.yaml" --jwt "${ZITI_HOME}/${router_name}.jwt" &> "${ZITI_HOME}/${router_name}.enrollment.log"
+    retVal=$?
+    if [[ "${retVal}" != 0 ]]; then
+      echo -e "$(RED "  --- There was an error during router enrollment ---")"
+      return 1
+    else
+      echo -e "$(GREEN "Enrollment successful")"
+    fi
 }
 
 set +uo pipefail
