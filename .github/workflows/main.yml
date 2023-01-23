@@ -213,6 +213,9 @@ jobs:
           path: release/
 
       - name: Install Jfrog CLI
+        if: env.JFROG_API_KEY != null && github.repository_owner == 'openziti'
+        env:
+          JFROG_API_KEY: ${{ secrets.JFROG_API_KEY }}
         uses: jfrog/setup-jfrog-cli@v2
         with:
           version: 1.51.1
@@ -255,7 +258,7 @@ jobs:
           fi
 
       - name: Publish to Artifactory
-        if: ${{ env.JFROG_API_KEY != null && github.repository == 'openziti/ziti' }}
+        if: ${{ env.JFROG_API_KEY != null && github.repository_owner == 'openziti' }}
         run: |
           $(go env GOPATH)/bin/ziti-ci publish-to-artifactory
         env:
