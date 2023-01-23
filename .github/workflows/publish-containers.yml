@@ -1,0 +1,61 @@
+name: CI build
+
+on:
+  workflow_call:
+    inputs:
+      ziti-version:
+        description: 'Ziti Release Version'
+        type: string
+        required: true
+
+jobs:
+  publish-containers:
+    runs-on: ubuntu-latest
+    env:
+      ZITI_VERSION: ${{ inputs.ziti-version || github.event.inputs.ziti-version }}
+    steps:
+      - name: Checkout Workspace
+        uses: actions/checkout@v3
+
+      - name: Download darwin release artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: amd64,arm64
+
+      - name: Set up Docker BuildKit
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_API_USER }}
+          password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
+
+      - name: Set up Docker image tags for base CLI container
+        env:
+          RELEASE_REPO: openziti/ziti-cli
+        id: tagprep_run
+        run: |
+          DOCKER_TAGS=""
+          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Multi-Platform Container Image to Hub
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/
+          file: ${{ github.workspace }}/container-images/Dockerfile.cli-base
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_run.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_VERSION=${{ env.ZITI_VERSION }}
+          push: true

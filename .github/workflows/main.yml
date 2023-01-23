@@ -89,9 +89,8 @@ jobs:
 
   fablab-smoketest:
     name: Fablab Smoketest
+    if: github.repository_owner == 'openziti'
     runs-on: ubuntu-20.04
-    outputs:
-      ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
       - name: Git Checkout
         uses: actions/checkout@v3
@@ -193,6 +192,14 @@ jobs:
           CC=arm-linux-gnueabihf-gcc $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm -output=$GOX_OUTPUT ./...
           CC=aarch64-linux-gnu-gcc   $(go env GOPATH)/bin/gox -cgo -os=linux -arch=arm64 -output=$GOX_OUTPUT ./...
 
+      # upload Linux artifacts so we can copy them into a container image in another workflow
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-release-${{ github.run_id }}
+          path: release/
+          retention-days: 5
+
       - name: Download darwin release artifact
         uses: actions/download-artifact@v3
         with:
@@ -210,9 +217,9 @@ jobs:
         with:
           version: 1.51.1
 
-      # remaining steps in job only run on the upstream repo, not forks
-      - name: Publish
-        if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
+      - name: Publish GitHub Release
+        # forks need to run this step with their own GPG key because ziti-ci creates the GH release 
+        if: env.ziti_ci_gpg_key_id != null && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-v'))
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
@@ -311,7 +318,18 @@ jobs:
     #
     needs: publish
     name: Call the On-Demand Smoketest Workflow
+    # not applicable to forks
+    if: github.repository_owner == 'openziti'
     uses: ./.github/workflows/jenkins-smoketest.yml
+    secrets: inherit
+    with:
+      ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
+
+  call-publish-containers:
+    if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main')
+    name: Publish Container Images
+    needs: publish
+    uses: ./.github/workflows/publish-containers.yml
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
