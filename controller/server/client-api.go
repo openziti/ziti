@@ -18,13 +18,13 @@ package server
 
 import (
 	"fmt"
+	"github.com/openziti/edge-api/go/rest_client_api_client"
+	"github.com/openziti/edge-api/go/rest_client_api_server"
+	"github.com/openziti/edge-api/go/rest_management_api_server"
 	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_client_api_client"
-	"github.com/openziti/edge/rest_client_api_server"
-	"github.com/openziti/edge/rest_management_api_server"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/xweb/v2"
 	"github.com/pkg/errors"

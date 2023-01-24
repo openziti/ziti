@@ -22,8 +22,8 @@ package tests
 import (
 	"github.com/Jeffail/gabs"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/go/rest_model"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/edge/rest_model"
 	"net/http"
 	"testing"
 )

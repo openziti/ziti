@@ -22,8 +22,8 @@ package tests
 import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"github.com/openziti/edge-api/go/rest_model"
 	"github.com/openziti/edge/controller/persistence"
-	"github.com/openziti/edge/rest_model"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"net/http"
 	"testing"

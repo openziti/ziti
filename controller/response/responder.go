@@ -19,15 +19,15 @@ package response
 import (
 	"fmt"
 	"github.com/go-openapi/errors"
+	"github.com/openziti/edge-api/go/rest_model"
 	"github.com/openziti/edge/internal/version"
-	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
 	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
 
-//todo: rename to Responder, remove old Responder and RequestResponder
+// todo: rename to Responder, remove old Responder and RequestResponder
 type Responder interface {
 	api.Responder
 	RespondWithOk(data interface{}, meta *rest_model.Meta)

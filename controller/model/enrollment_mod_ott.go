@@ -18,11 +18,11 @@ package model
 
 import (
 	"encoding/pem"
+	"github.com/openziti/edge-api/go/rest_model"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
-	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/fabric/controller/models"
 )
 
