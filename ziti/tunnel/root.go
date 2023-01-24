@@ -126,7 +126,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 
 	ziti.SetApplication("ziti-tunnel", version.GetVersion())
 
-	resolverConfig := cmd.Flag("resolver").Value.String()
+	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
 	resolver := dns.NewResolver(resolverConfig)
 
 	serviceListenerGroup := intercept.NewServiceListenerGroup(interceptor, resolver)
