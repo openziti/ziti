@@ -37,13 +37,12 @@ func NewProxyCmd() *cobra.Command {
 }
 
 func runProxy(cmd *cobra.Command, args []string) error {
-	root := cmd.Root()
 	// Fiddle with the poll rate and resolver settings if the user didn't wan't anything special.
-	if !root.Flag(svcPollRateFlag).Changed {
-		_ = root.PersistentFlags().Set(svcPollRateFlag, strconv.FormatUint(math.MaxUint32, 10))
+	if !cmd.Flag(svcPollRateFlag).Changed {
+		_ = cmd.PersistentFlags().Set(svcPollRateFlag, strconv.FormatUint(math.MaxUint32, 10))
 	}
-	if !root.Flag(resolverCfgFlag).Changed {
-		_ = root.PersistentFlags().Set(resolverCfgFlag, "")
+	if !cmd.Flag(resolverCfgFlag).Changed {
+		_ = cmd.PersistentFlags().Set(resolverCfgFlag, "")
 	}
 	var err error
 	if interceptor, err = proxy.New(net.IPv4zero, args); err != nil {
