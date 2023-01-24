@@ -277,7 +277,7 @@ jobs:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   call-publish-docker-images:
-    if: github.repository_owner == 'qrkourier' && (github.ref == 'refs/heads/main')
+    if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main')
     name: Publish Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
