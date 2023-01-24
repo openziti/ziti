@@ -1,6 +1,6 @@
 ARG ZITI_VERSION="latest"
 # this builds docker.io/openziti/ziti-router
-FROM docker.io/kbinghamnetfoundry/ziti-cli:${ZITI_VERSION}
+FROM docker.io/openziti/ziti-cli:${ZITI_VERSION}
 
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.

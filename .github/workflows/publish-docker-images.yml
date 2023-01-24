@@ -40,7 +40,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Base CLI Container
         env:
-          RELEASE_REPO: kbinghamnetfoundry/ziti-cli
+          RELEASE_REPO: openziti/ziti-cli
         id: tagprep_cli
         run: |
           DOCKER_TAGS=""
@@ -65,7 +65,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Controller Container
         env:
-          RELEASE_REPO: kbinghamnetfoundry/ziti-controller
+          RELEASE_REPO: openziti/ziti-controller
         id: tagprep_ctrl
         run: |
           DOCKER_TAGS=""
@@ -89,7 +89,7 @@ jobs:
 
       - name: Set Up Container Image Tags for Router Container
         env:
-          RELEASE_REPO: kbinghamnetfoundry/ziti-router
+          RELEASE_REPO: openziti/ziti-router
         id: tagprep_router
         run: |
           DOCKER_TAGS=""
@@ -110,8 +110,8 @@ jobs:
 
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
-          SNAPSHOT_REPO: kbinghamnetfoundry/ziti-tunnel
-          RELEASE_REPO: kbinghamnetfoundry/ziti-tunnel
+          SNAPSHOT_REPO: netfoundry/ziti-tunnel
+          RELEASE_REPO: openziti/ziti-tunnel
         id: tagprep_tun
         run: |
           DOCKER_TAGS=""
