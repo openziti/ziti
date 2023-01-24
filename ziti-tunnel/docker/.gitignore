@@ -1,6 +1,0 @@
-# enrollments in-use with Docker Compose
-*.json
-*.jwt
-
-# executable from fetch bins script
-/ziti-tunnel

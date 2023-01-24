@@ -4,12 +4,11 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal
 # It uses the same base as the final image to maximize docker cache hits.
 
 ARG ARTIFACTS_DIR=./release
+ARG DOCKER_BUILD_DIR=.
 # e.g. linux
 ARG TARGETOS
-# e.g. arm
+# e.g. arm64
 ARG TARGETARCH
-# e.g. v7 (OS variant)
-# TARGETVARIANT
 
 ### Required OpenShift Labels 
 LABEL name="openziti/ziti-cli" \
@@ -18,6 +17,8 @@ LABEL name="openziti/ziti-cli" \
       summary="Run the OpenZiti CLI" \
       description="Run the OpenZiti CLI"
 
+USER root
+
 ### add licenses to this directory
 RUN mkdir -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
@@ -25,6 +26,9 @@ COPY ./LICENSE /licenses/apache.txt
 RUN mkdir -p /usr/local/bin
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/ziti
-USER nobody
 
+COPY ${DOCKER_BUILD_DIR}/entrypoint-cli-base.sh /
+RUN chmod +x /entrypoint-cli-base.sh
+USER nobody
+ENTRYPOINT [ "/entrypoint-cli-base.sh" ]
 CMD [ "ziti" ]

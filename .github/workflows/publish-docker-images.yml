@@ -17,18 +17,18 @@ jobs:
       - name: Checkout Workspace
         uses: actions/checkout@v3
 
-      - name: Download Linux Release Artifact
+      - name: Download Linux Release Artifacts
         uses: actions/download-artifact@v3
         with:
           name: linux-release-${{ github.run_id }}
           path: release/
 
-      - name: Set up QEMU
+      - name: Set Up QEMU
         uses: docker/setup-qemu-action@v2
         with:
           platforms: amd64,arm64
 
-      - name: Set up Docker BuildKit
+      - name: Set Up Docker BuildKit
         id: buildx
         uses: docker/setup-buildx-action@v2
 
@@ -38,24 +38,99 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_API_USER }}
           password: ${{ secrets.DOCKER_HUB_API_TOKEN }}
 
-      - name: Set up Docker image tags for base CLI container
+      - name: Set Up Container Image Tags for Base CLI Container
         env:
           RELEASE_REPO: openziti/ziti-cli
-        id: tagprep_run
+        id: tagprep_cli
         run: |
           DOCKER_TAGS=""
           DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
-      - name: Build & Push Multi-Platform Container Image to Hub
+      # this is the base image into which is stuffed the Linux binary for each
+      # arch that was downloaded in ./release/
+      - name: Build & Push Multi-Platform CLI Container Image to Hub
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
           file: ${{ github.workspace }}/docker-images/cli-base/Dockerfile
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.tagprep_run.outputs.DOCKER_TAGS }}
+          tags: ${{ steps.tagprep_cli.outputs.DOCKER_TAGS }}
+          build-args: |
+            DOCKER_BUILD_DIR=./container-images
+          push: true
+
+      - name: Set Up Container Image Tags for Controller Container
+        env:
+          RELEASE_REPO: openziti/ziti-controller
+        id: tagprep_ctrl
+        run: |
+          DOCKER_TAGS=""
+          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      # This is a use-case image based on the minimal CLI image. It needs the
+      # ZITI_VERSION env var so it can build from the versioned image that
+      # we pushed in the prior step.
+      - name: Build & Push Multi-Platform Controller Container Image to Hub
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/container-images/
+          file: ${{ github.workspace }}/container-images/Dockerfile.controller
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_ctrl.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_VERSION=${{ env.ZITI_VERSION }}
+          push: true
+
+      - name: Set Up Container Image Tags for Router Container
+        env:
+          RELEASE_REPO: openziti/ziti-router
+        id: tagprep_router
+        run: |
+          DOCKER_TAGS=""
+          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Multi-Platform Router Container Image to Hub
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/container-images/
+          file: ${{ github.workspace }}/container-images/Dockerfile.router
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
+          build-args: |
+            ZITI_VERSION=${{ env.ZITI_VERSION }}
+          push: true
+
+      - name: Set Up Container Image Tags for Go Tunneler Container
+        env:
+          SNAPSHOT_REPO: netfoundry/ziti-tunnel
+          RELEASE_REPO: openziti/ziti-tunnel
+        id: tagprep_tun
+        run: |
+          DOCKER_TAGS=""
+          for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
+            DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
+          done
+          DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
+          echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
+          echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Build & Push Multi-Platform Go Tunneler Container Image to Hub
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ${{ github.workspace }}/container-images/
+          file: ${{ github.workspace }}/container-images/Dockerfile.tunnel
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_VERSION=${{ env.ZITI_VERSION }}
           push: true
