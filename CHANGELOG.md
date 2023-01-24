@@ -1,6 +1,8 @@
 # Release 0.27.3
 
-# What's New
+## What's New
+
+* Docker images for `ziti` CLI
 
 ## Component Updates and Bug Fixes
 
@@ -10,7 +12,7 @@
 
 # Release 0.27.2
 
-# What's New
+## What's New
 
 * Bug fixes
 
