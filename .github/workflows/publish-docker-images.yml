@@ -56,11 +56,11 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ${{ github.workspace }}/
-          file: ${{ github.workspace }}/docker-images/cli-base/Dockerfile
+          file: ${{ github.workspace }}/docker-images/ziti-cli/Dockerfile
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_cli.outputs.DOCKER_TAGS }}
           build-args: |
-            DOCKER_BUILD_DIR=./docker-images/cli-base
+            DOCKER_BUILD_DIR=./docker-images/ziti-cli
           push: true
 
       - name: Set Up Container Image Tags for Controller Container
@@ -80,7 +80,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/docker-images/controller/
+          context: ${{ github.workspace }}/docker-images/ziti-controller/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_ctrl.outputs.DOCKER_TAGS }}
           build-args: |
@@ -101,7 +101,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/docker-images/router/
+          context: ${{ github.workspace }}/docker-images/ziti-router/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
           build-args: |
@@ -126,7 +126,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/docker-images/tunnel/
+          context: ${{ github.workspace }}/docker-images/ziti-tunnel/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
