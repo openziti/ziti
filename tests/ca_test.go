@@ -6,7 +6,7 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"net/http"

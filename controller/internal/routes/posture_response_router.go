@@ -18,8 +18,8 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/openziti/edge-api/go/rest_client_api_server/operations/posture_checks"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_client_api_server/operations/posture_checks"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"

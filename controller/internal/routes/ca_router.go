@@ -23,7 +23,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/golang-jwt/jwt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/go/rest_management_api_server/operations/certificate_authority"
+	"github.com/openziti/edge-api/rest_management_api_server/operations/certificate_authority"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"

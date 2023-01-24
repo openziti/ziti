@@ -21,7 +21,7 @@ package tests
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/eid"
 	"net/http"
 	"net/url"

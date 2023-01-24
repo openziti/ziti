@@ -10,7 +10,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/google/uuid"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	id "github.com/openziti/identity"

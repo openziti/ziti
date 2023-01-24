@@ -20,7 +20,7 @@ package tests
 
 import (
 	"encoding/pem"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/eid"
 	"net/http"
 	"testing"

@@ -19,9 +19,9 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
-	clientInformational "github.com/openziti/edge-api/go/rest_client_api_server/operations/informational"
-	managementInformational "github.com/openziti/edge-api/go/rest_management_api_server/operations/informational"
-	"github.com/openziti/edge-api/go/rest_model"
+	clientInformational "github.com/openziti/edge-api/rest_client_api_server/operations/informational"
+	managementInformational "github.com/openziti/edge-api/rest_management_api_server/operations/informational"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"

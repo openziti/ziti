@@ -27,7 +27,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"github.com/google/uuid"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/persistence"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"math/big"

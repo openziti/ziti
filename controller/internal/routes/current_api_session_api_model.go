@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"

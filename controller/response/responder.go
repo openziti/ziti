@@ -19,7 +19,7 @@ package response
 import (
 	"fmt"
 	"github.com/go-openapi/errors"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/internal/version"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"

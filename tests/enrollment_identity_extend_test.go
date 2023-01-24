@@ -28,7 +28,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"

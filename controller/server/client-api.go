@@ -18,9 +18,9 @@ package server
 
 import (
 	"fmt"
-	"github.com/openziti/edge-api/go/rest_client_api_client"
-	"github.com/openziti/edge-api/go/rest_client_api_server"
-	"github.com/openziti/edge-api/go/rest_management_api_server"
+	"github.com/openziti/edge-api/rest_client_api_client"
+	"github.com/openziti/edge-api/rest_client_api_server"
+	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/edge/controller"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"

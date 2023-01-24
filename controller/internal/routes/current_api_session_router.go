@@ -19,9 +19,9 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
-	clientCurrentApiSession "github.com/openziti/edge-api/go/rest_client_api_server/operations/current_api_session"
-	managementCurrentApiSession "github.com/openziti/edge-api/go/rest_management_api_server/operations/current_api_session"
-	"github.com/openziti/edge-api/go/rest_model"
+	clientCurrentApiSession "github.com/openziti/edge-api/rest_client_api_server/operations/current_api_session"
+	managementCurrentApiSession "github.com/openziti/edge-api/rest_management_api_server/operations/current_api_session"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"

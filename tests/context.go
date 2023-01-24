@@ -28,7 +28,7 @@ import (
 	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/router/enroll"

@@ -4,7 +4,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge-api/go/rest_management_api_server"
+	"github.com/openziti/edge-api/rest_management_api_server"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"

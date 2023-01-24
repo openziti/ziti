@@ -23,7 +23,7 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"

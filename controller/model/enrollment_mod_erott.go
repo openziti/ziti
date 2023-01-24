@@ -18,7 +18,7 @@ package model
 
 import (
 	"fmt"
-	"github.com/openziti/edge-api/go/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/foundation/v2/errorz"
