@@ -13,8 +13,8 @@ LABEL name="openziti/ziti-router" \
       description="Run the OpenZiti Router"
 
 USER root
-COPY ./entrypoint-router.sh /
-RUN chmod +x /entrypoint-router.sh
+COPY ./entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 USER nobody
-ENTRYPOINT [ "/entrypoint-router.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]

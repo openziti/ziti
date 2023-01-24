@@ -27,8 +27,8 @@ RUN mkdir -p /usr/local/bin
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/ziti
 
-COPY ${DOCKER_BUILD_DIR}/entrypoint-cli-base.sh /
-RUN chmod +x /entrypoint-cli-base.sh
+COPY ${DOCKER_BUILD_DIR}/entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 USER nobody
-ENTRYPOINT [ "/entrypoint-cli-base.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "ziti" ]

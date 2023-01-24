@@ -13,8 +13,8 @@ LABEL name="openziti/ziti-controller" \
       description="Run the OpenZiti Controller"
 
 USER root
-COPY ./entrypoint-controller.sh /
-RUN chmod +x /entrypoint-controller.sh
+COPY ./entrypoint.sh /
+RUN chmod +x /entrypoint.sh
 USER nobody
-ENTRYPOINT [ "/entrypoint-controller.sh" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]

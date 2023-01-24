@@ -9,7 +9,7 @@ on:
         required: true
 
 jobs:
-  publish-containers:
+  publish-docker-images:
     runs-on: ubuntu-latest
     env:
       ZITI_VERSION: ${{ inputs.ziti-version || github.event.inputs.ziti-version }}
@@ -49,7 +49,8 @@ jobs:
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
       # this is the base image into which is stuffed the Linux binary for each
-      # arch that was downloaded in ./release/
+      # arch that was downloaded in ./release/, hence the need to specify the
+      # Dockerfile and DOCKER_BUILD_DIR
       - name: Build & Push Multi-Platform CLI Container Image to Hub
         uses: docker/build-push-action@v3
         with:
@@ -59,7 +60,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_cli.outputs.DOCKER_TAGS }}
           build-args: |
-            DOCKER_BUILD_DIR=./container-images
+            DOCKER_BUILD_DIR=./docker-images/cli-base
           push: true
 
       - name: Set Up Container Image Tags for Controller Container
@@ -79,8 +80,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/container-images/
-          file: ${{ github.workspace }}/container-images/Dockerfile.controller
+          context: ${{ github.workspace }}/docker-images/controller/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_ctrl.outputs.DOCKER_TAGS }}
           build-args: |
@@ -101,8 +101,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/container-images/
-          file: ${{ github.workspace }}/container-images/Dockerfile.router
+          context: ${{ github.workspace }}/docker-images/router/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
           build-args: |
@@ -127,8 +126,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           builder: ${{ steps.buildx.outputs.name }}
-          context: ${{ github.workspace }}/container-images/
-          file: ${{ github.workspace }}/container-images/Dockerfile.tunnel
+          context: ${{ github.workspace }}/docker-images/tunnel/
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |

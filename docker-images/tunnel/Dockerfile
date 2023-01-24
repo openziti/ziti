@@ -18,7 +18,7 @@ RUN   INSTALL_PKGS="util-linux iptables" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
-COPY ./entrypoint-tunnel.sh /
-RUN chmod +x /entrypoint-tunnel.sh
-ENTRYPOINT [ "/entrypoint-tunnel.sh" ]
+COPY ./entrypoint.sh /
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]
