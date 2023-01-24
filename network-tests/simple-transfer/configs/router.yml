@@ -8,10 +8,10 @@ v: 3
 enableDebugOps: true
 
 identity:
-  cert:                 /home/{{$ssh_username}}/fablab/pki/intermediate/certs/{{$identity}}-client.cert
-  server_cert:          /home/{{$ssh_username}}/fablab/pki/intermediate/certs/{{$identity}}-server.cert
-  key:                  /home/{{$ssh_username}}/fablab/pki/intermediate/keys/{{$identity}}.key
-  ca:                   /home/{{$ssh_username}}/fablab/pki/intermediate/certs/{{$identity}}-server.chain.pem
+  cert:                 /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-client.cert
+  server_cert:          /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.cert
+  key:                  /home/{{$ssh_username}}/fablab/cfg/{{$identity}}.key
+  ca:                   /home/{{$ssh_username}}/fablab/cfg/{{$identity}}-server.chain.pem
 
 ctrl:
   endpoint:             tls:{{$ctrl_ip}}:6262

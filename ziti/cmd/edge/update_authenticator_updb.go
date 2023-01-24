@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge/rest_management_api_client/authenticator"
+	"github.com/openziti/edge-api/rest_management_api_client/authenticator"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"

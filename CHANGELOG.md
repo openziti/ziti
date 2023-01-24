@@ -12,15 +12,24 @@
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.7 -> v1.0.8](https://github.com/openziti/agent/compare/v1.0.7...v1.0.8)
-* github.com/openziti/edge: [v0.24.95 -> v0.24.104](https://github.com/openziti/edge/compare/v0.24.95...v0.24.104)
+* github.com/openziti/channel/v2: [v2.0.25 -> v2.0.26](https://github.com/openziti/channel/compare/v2.0.25...v2.0.26)
+* github.com/openziti/edge: [v0.24.95 -> v0.24.115](https://github.com/openziti/edge/compare/v0.24.95...v0.24.115)
     * [Issue #1292](https://github.com/openziti/edge/issues/1292) - Support alternative tproxy configuration methods
 
-* github.com/openziti/fabric: [v0.22.7 -> v0.22.10](https://github.com/openziti/fabric/compare/v0.22.7...v0.22.10)
+* github.com/openziti/edge-api: v0.25.6 (new)
+* github.com/openziti/fabric: [v0.22.7 -> v0.22.19](https://github.com/openziti/fabric/compare/v0.22.7...v0.22.19)
+    * [Issue #592](https://github.com/openziti/fabric/issues/592) - Incoming "gateway" connections should be logged at a socket level
+    * [Issue #588](https://github.com/openziti/fabric/issues/588) - Make service events more consistent
+    * [Issue #589](https://github.com/openziti/fabric/issues/589) - Add duration to circuit updated and deleted events
     * [Issue #508](https://github.com/openziti/fabric/issues/508) - Refactor router debug ops for multiple controllers
 
-* github.com/openziti/runzmd: [v1.0.7 -> v1.0.8](https://github.com/openziti/runzmd/compare/v1.0.7...v1.0.8)
-* github.com/openziti/sdk-golang: [v0.18.21 -> v0.18.24](https://github.com/openziti/sdk-golang/compare/v0.18.21...v0.18.24)
+* github.com/openziti/identity: [v1.0.29 -> v1.0.30](https://github.com/openziti/identity/compare/v1.0.29...v1.0.30)
+* github.com/openziti/runzmd: [v1.0.7 -> v1.0.9](https://github.com/openziti/runzmd/compare/v1.0.7...v1.0.9)
+* github.com/openziti/sdk-golang: [v0.18.21 -> v0.18.26](https://github.com/openziti/sdk-golang/compare/v0.18.21...v0.18.26)
+* github.com/openziti/storage: [v0.1.31 -> v0.1.33](https://github.com/openziti/storage/compare/v0.1.31...v0.1.33)
+* github.com/openziti/transport/v2: [v2.0.49 -> v2.0.50](https://github.com/openziti/transport/compare/v2.0.49...v2.0.50)
 * github.com/openziti/ziti: [v0.27.2 -> v0.27.3](https://github.com/openziti/ziti/compare/v0.27.2...v0.27.3)
+    * [Issue #974](https://github.com/openziti/ziti/issues/974) - tunnel "host" and "proxy" modes shouldn't run the nameserver
     * [Issue #972](https://github.com/openziti/ziti/issues/972) - tunnel segfault
 
 # Release 0.27.2
