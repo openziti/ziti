@@ -40,7 +40,7 @@ jobs:
 
       - name: Set up Docker image tags for base CLI container
         env:
-          RELEASE_REPO: openziti/ziti-cli
+          RELEASE_REPO: kbinghamnetfoundry/ziti-cli
         id: tagprep_run
         run: |
           DOCKER_TAGS=""

@@ -27,6 +27,7 @@ env:
 
 jobs:
   mac-os-build:
+    if: github.repository_owner == 'openziti'
     name: Build Mac OS binaries
     runs-on: macos-11
     steps:
@@ -57,6 +58,7 @@ jobs:
           retention-days: 5
 
   windows-build:
+    if: github.repository_owner == 'openziti'
     name: Build Windows binaries
     runs-on: windows-2019
     steps:
@@ -155,7 +157,7 @@ jobs:
   publish:
     name: Publish Binaries and Docker Image
     runs-on: ubuntu-20.04
-    needs: [ mac-os-build, windows-build, fablab-smoketest ]
+    # needs: [ mac-os-build, windows-build, fablab-smoketest ]
     outputs:
       ZITI_VERSION: ${{ steps.get_version.outputs.ZITI_VERSION }}
     steps:
@@ -201,12 +203,14 @@ jobs:
           retention-days: 5
 
       - name: Download darwin release artifact
+        if: github.repository_owner == 'openziti'
         uses: actions/download-artifact@v3
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
+        if: github.repository_owner == 'openziti'
         uses: actions/download-artifact@v3
         with:
           name: windows-release-${{ github.run_id }}
@@ -326,7 +330,7 @@ jobs:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   call-publish-containers:
-    if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main')
+    if: github.repository_owner == 'qrkourier' && (github.ref == 'refs/heads/main')
     name: Publish Container Images
     needs: publish
     uses: ./.github/workflows/publish-containers.yml
