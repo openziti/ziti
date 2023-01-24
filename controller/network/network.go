@@ -536,9 +536,13 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		}
 		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
 
+		path.InitiatorLocalAddr = string(clientId.Data[uint32(ctrl_msg.InitiatorLocalAddressHeader)])
+		path.InitiatorRemoteAddr = string(clientId.Data[uint32(ctrl_msg.InitiatorRemoteAddressHeader)])
 		path.TerminatorLocalAddr = string(peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)])
 		path.TerminatorRemoteAddr = string(peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)])
 
+		delete(peerData, uint32(ctrl_msg.InitiatorLocalAddressHeader))
+		delete(peerData, uint32(ctrl_msg.InitiatorRemoteAddressHeader))
 		delete(peerData, uint32(ctrl_msg.TerminatorLocalAddressHeader))
 		delete(peerData, uint32(ctrl_msg.TerminatorRemoteAddressHeader))
 
@@ -768,9 +772,13 @@ func (network *Network) UpdatePath(path *Path) (*Path, error) {
 	}
 
 	path2 := &Path{
-		Nodes:     nodes,
-		IngressId: path.IngressId,
-		EgressId:  path.EgressId,
+		Nodes:                nodes,
+		IngressId:            path.IngressId,
+		EgressId:             path.EgressId,
+		InitiatorLocalAddr:   path.InitiatorLocalAddr,
+		InitiatorRemoteAddr:  path.InitiatorRemoteAddr,
+		TerminatorLocalAddr:  path.TerminatorLocalAddr,
+		TerminatorRemoteAddr: path.TerminatorRemoteAddr,
 	}
 	if err := network.setLinks(path2); err != nil {
 		return nil, err

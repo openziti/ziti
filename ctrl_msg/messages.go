@@ -34,6 +34,9 @@ const (
 	TerminatorLocalAddressHeader  = 1110
 	TerminatorRemoteAddressHeader = 1111
 
+	InitiatorLocalAddressHeader  = 1112
+	InitiatorRemoteAddressHeader = 1113
+
 	ErrorTypeGeneric                 = 0
 	ErrorTypeInvalidTerminator       = 1
 	ErrorTypeMisconfiguredTerminator = 2
