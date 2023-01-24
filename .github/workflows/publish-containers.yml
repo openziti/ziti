@@ -17,7 +17,7 @@ jobs:
       - name: Checkout Workspace
         uses: actions/checkout@v3
 
-      - name: Download darwin release artifact
+      - name: Download Linux Release Artifact
         uses: actions/download-artifact@v3
         with:
           name: linux-release-${{ github.run_id }}
