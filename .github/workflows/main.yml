@@ -325,11 +325,11 @@ jobs:
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
-  call-publish-containers:
-    if: github.repository_owner == 'openziti' && (github.ref == 'refs/heads/main')
-    name: Publish Container Images
+  call-publish-docker-images:
+    if: github.repository_owner == 'qrkourier' && (github.ref == 'refs/heads/main')
+    name: Publish Docker Images
     needs: publish
-    uses: ./.github/workflows/publish-containers.yml
+    uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
