@@ -1,6 +1,6 @@
 module github.com/openziti/edge
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -97,7 +97,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
-	github.com/lufia/plan9stats v0.0.0-20220913051719-115f729f3c8c // indirect
+	github.com/lufia/plan9stats v0.0.0-20230110061619-bbe2e5e100de // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
@@ -122,7 +122,7 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
-	golang.org/x/exp v0.0.0-20221217163422-3c43f8badb15 // indirect
+	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/net v0.5.0 // indirect
 	golang.org/x/term v0.4.0 // indirect

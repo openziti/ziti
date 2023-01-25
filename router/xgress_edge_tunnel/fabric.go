@@ -28,6 +28,7 @@ import (
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/fabric/build"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/errorz"
@@ -203,6 +204,9 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	if len(appData) > 0 {
 		peerData[edge.AppDataHeader] = appData
 	}
+
+	peerData[uint32(ctrl_msg.InitiatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
+	peerData[uint32(ctrl_msg.InitiatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
 	sessionId := self.getDialSession(service.GetName())
 	request := &edge_ctrl_pb.CreateCircuitForServiceRequest{

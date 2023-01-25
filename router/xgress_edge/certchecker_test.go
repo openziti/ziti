@@ -545,9 +545,10 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		Data:     nil,
 	}
 	ctrls := env.NewNetworkControllers(time.Second)
-	_, _ = ctrls.Add(testChannel)
+	if _, err = ctrls.Add(testChannel); err != nil {
+		panic(err)
+	}
 	return NewCertExpirationChecker(id, &edgerouter.Config{}, ctrls, closeNotify), func() { close(closeNotify) }
-
 }
 
 type simpleTestChannel struct {
