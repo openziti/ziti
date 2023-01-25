@@ -18,9 +18,12 @@ package agentcli
 
 import (
 	"fmt"
+
 	"github.com/golang/protobuf/proto"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/mgmt_pb"
+	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/spf13/cobra"
 )
@@ -69,9 +72,15 @@ func (self *AgentCtrlRaftListAction) makeRequest(ch channel.Channel) error {
 		if err = proto.Unmarshal(reply.Body, resp); err != nil {
 			return err
 		}
+		t := table.NewWriter()
+		t.SetStyle(table.StyleRounded)
+		t.AppendHeader(table.Row{"Id", "Address", "Voter", "Leader", "Version", "Connected"})
 		for _, m := range resp.Members {
-			fmt.Printf("id: %v, addr: %v, voter: %v, leader: %v\n", m.Id, m.Addr, m.IsVoter, m.IsLeader)
+			t.AppendRow(table.Row{m.Id, m.Addr, m.IsVoter, m.IsLeader, m.Version, m.IsConnected})
 		}
+		api.RenderTable(&api.Options{
+			CommonOptions: self.CommonOptions,
+		}, t, nil)
 	}
 	return nil
 }

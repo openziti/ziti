@@ -35,6 +35,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newInspectCmd(p))
 	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
+	fabricCmd.AddCommand(newRaftCmd(p))
 	return fabricCmd
 }
 

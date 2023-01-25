@@ -2,6 +2,12 @@ package agentcli
 
 import (
 	"fmt"
+	"io"
+	"net"
+	"os"
+	"strings"
+	"time"
+
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/router/debugops"
@@ -13,11 +19,6 @@ import (
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"os"
-	"strings"
-	"time"
 )
 
 type AgentAppId byte
@@ -64,6 +65,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
 	ctrlCmd.AddCommand(NewAgentCtrlRaftJoin(p))
 	ctrlCmd.AddCommand(NewAgentCtrlRaftList(p))
+	ctrlCmd.AddCommand(NewAgentCtrlRaftLeave(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
 
@@ -92,7 +94,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 // AgentOptions contains the command line options
 type AgentOptions struct {
 	common.CommonOptions
-	pid         uint16
+	pid         uint32
 	processName string
 	appId       string
 	appType     string
@@ -102,7 +104,7 @@ type AgentOptions struct {
 }
 
 func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
-	cmd.Flags().Uint16VarP(&self.pid, "pid", "p", 0, "Process ID of host application to talk to")
+	cmd.Flags().Uint32VarP(&self.pid, "pid", "p", 0, "Process ID of host application to talk to")
 	cmd.Flags().StringVarP(&self.processName, "process-name", "n", "", "Process name of host application to talk to")
 	cmd.Flags().StringVarP(&self.appId, "app-id", "i", "", "Id of host application to talk to (like controller or router id)")
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
