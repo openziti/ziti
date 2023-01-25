@@ -18,7 +18,7 @@ package routes
 
 import (
 	"github.com/go-openapi/strfmt"
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fabric/controller/models"
 	"path"
 )
@@ -36,7 +36,7 @@ func BaseEntityToRestModel(entity models.Entity, linkFactory LinksFactory) rest_
 		CreatedAt: &createdAt,
 		UpdatedAt: &updatedAt,
 		Links:     linkFactory.Links(entity),
-		Tags:     &tags,
+		Tags:      &tags,
 	}
 
 	if ret.Tags.SubTags == nil {

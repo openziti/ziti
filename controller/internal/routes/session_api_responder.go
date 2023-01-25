@@ -17,9 +17,9 @@
 package routes
 
 import (
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_model"
 	"net/http"
 )
 

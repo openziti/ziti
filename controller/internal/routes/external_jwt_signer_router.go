@@ -19,11 +19,11 @@ package routes
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/fabric/controller/fields"
 )
 

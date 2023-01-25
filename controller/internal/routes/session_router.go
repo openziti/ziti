@@ -18,13 +18,13 @@ package routes
 
 import (
 	"github.com/go-openapi/runtime/middleware"
+	"github.com/openziti/edge-api/rest_client_api_server/operations/session"
+	clientSession "github.com/openziti/edge-api/rest_client_api_server/operations/session"
+	managementSession "github.com/openziti/edge-api/rest_management_api_server/operations/session"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/edge/rest_client_api_server/operations/session"
-	clientSession "github.com/openziti/edge/rest_client_api_server/operations/session"
-	managementSession "github.com/openziti/edge/rest_management_api_server/operations/session"
-	"github.com/openziti/edge/rest_model"
 	"github.com/openziti/metrics"
 	"time"
 )

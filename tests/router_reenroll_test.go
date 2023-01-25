@@ -20,7 +20,7 @@
 package tests
 
 import (
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_model"
 	"net/http"
 	"testing"
 )
