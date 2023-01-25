@@ -4,9 +4,17 @@
 
 ## Component Updates and Bug Fixes
 
+* github.com/openziti/agent: [v1.0.7 -> v1.0.8](https://github.com/openziti/agent/compare/v1.0.7...v1.0.8)
 * github.com/openziti/edge: [v0.24.95 -> v0.24.104](https://github.com/openziti/edge/compare/v0.24.95...v0.24.104)
     * [Issue #1292](https://github.com/openziti/edge/issues/1292) - Support alternative tproxy configuration methods
 
+* github.com/openziti/fabric: [v0.22.7 -> v0.22.10](https://github.com/openziti/fabric/compare/v0.22.7...v0.22.10)
+    * [Issue #508](https://github.com/openziti/fabric/issues/508) - Refactor router debug ops for multiple controllers
+
+* github.com/openziti/runzmd: [v1.0.7 -> v1.0.8](https://github.com/openziti/runzmd/compare/v1.0.7...v1.0.8)
+* github.com/openziti/sdk-golang: [v0.18.21 -> v0.18.24](https://github.com/openziti/sdk-golang/compare/v0.18.21...v0.18.24)
+* github.com/openziti/ziti: [v0.27.2 -> v0.27.3](https://github.com/openziti/ziti/compare/v0.27.2...v0.27.3)
+    * [Issue #972](https://github.com/openziti/ziti/issues/972) - tunnel segfault
 
 # Release 0.27.2
 
