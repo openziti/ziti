@@ -39,8 +39,10 @@ type CircuitPath struct {
 	Links                []string `json:"links"`
 	IngressId            string   `json:"ingress_id"`
 	EgressId             string   `json:"egress_id"`
-	TerminatorLocalAddr  string   `json:"terminator_local_addr"`
-	TerminatorRemoteAddr string   `json:"terminator_remote_addr"`
+	InitiatorLocalAddr   string   `json:"initiator_local_addr,omitempty"`
+	InitiatorRemoteAddr  string   `json:"initiator_remote_addr,omitempty"`
+	TerminatorLocalAddr  string   `json:"terminator_local_addr,omitempty"`
+	TerminatorRemoteAddr string   `json:"terminator_remote_addr,omitempty"`
 }
 
 func (self *CircuitPath) String() string {

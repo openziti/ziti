@@ -31,6 +31,8 @@ type Path struct {
 	Links                []*Link
 	IngressId            string
 	EgressId             string
+	InitiatorLocalAddr   string
+	InitiatorRemoteAddr  string
 	TerminatorLocalAddr  string
 	TerminatorRemoteAddr string
 }
