@@ -1,6 +1,8 @@
 # Release 0.27.3
 
-# What's New
+## What's New
+
+* Docker images for `ziti` CLI
 
 * New Raft interaction commands
     * `raft-leave` allows removal of controllers from the raft cluster
@@ -23,7 +25,7 @@
 
 # Release 0.27.2
 
-# What's New
+## What's New
 
 * Bug fixes
 
