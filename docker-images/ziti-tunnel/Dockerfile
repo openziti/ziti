@@ -1,5 +1,5 @@
 ARG ZITI_VERSION="latest"
-# this builds docker.io/openziti/ziti-router, the legacy tunneler. The preferred tunneler is openziti/ziti-edge-tunnel documented in https://docs.openziti.io/docs/reference/tunnelers/linux/container/
+# this builds docker.io/openziti/ziti-tunnel, the legacy tunneler. The preferred tunneler is openziti/ziti-edge-tunnel documented in https://docs.openziti.io/docs/reference/tunnelers/linux/container/
 FROM docker.io/openziti/ziti-cli:${ZITI_VERSION}
 
 # This build stage grabs artifacts that are copied into the final image.
