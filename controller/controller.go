@@ -163,10 +163,12 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		})
 	}
 
-	logrus.Info("Adding router presence handler to send out ctrl addresses")
-	c.network.AddRouterPresenceHandler(
-		NewOnConnectCtrlAddressesUpdateHandler(c.config.Ctrl.Listener.String(), c.raftController),
-	)
+	if c.raftController != nil {
+		logrus.Info("Adding router presence handler to send out ctrl addresses")
+		c.network.AddRouterPresenceHandler(
+			NewOnConnectCtrlAddressesUpdateHandler(c.config.Ctrl.Listener.String(), c.raftController),
+		)
+	}
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
