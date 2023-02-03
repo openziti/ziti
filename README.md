@@ -1,6 +1,10 @@
-# Ziti
+[![Build Status](https://github.com/openziti/ziti/actions/workflows/main.yml/badge.svg)](https://github.com/openziti/ziti/actions/workflows/main.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/openziti/ziti)](https://goreportcard.com/report/github.com/openziti/ziti)
+![OpenZiti Logo](https://raw.githubusercontent.com/openziti/ziti-doc/main/docusaurus/static/img/ziti-logo-dark.svg)
 
-Ziti represents the next generation of secure, open-source networking for your applications. Ziti has several components.
+# OpenZiti
+
+OpenZiti represents the next generation of secure, open-source networking for your applications. OpenZiti has several components.
 
 ## Quick Reference
 
@@ -17,8 +21,8 @@ Ziti represents the next generation of secure, open-source networking for your a
 
 * The OpenZiti fabric provides a scalable, plugable, networking mesh with built in smart routing
 * The OpenZiti edge components provide a secure, Zero Trust entry point into your network
-* The OpenZiti SDKs allow you to integrate Ziti directly into your applications
-* The OpenZiti tunnelers and proxies allow existing applications and networks to take advantage of a Ziti deployment
+* The OpenZiti SDKs allow you to integrate OpenZiti directly into your applications
+* The OpenZiti tunnelers and proxies allow existing applications and networks to take advantage of a OpenZiti deployment
 
 ### Security Features
 
@@ -56,11 +60,11 @@ Let's break some of these buzzwords down.
 
 Many networking security solutions act like a wall around an internal network. Once you are through the wall, you have access to everything inside. Zero trust solutions enforce not just access to a network, but access to individual applications within that network.
 
-Every client in a Ziti system must have an identity with provisioned certificates. The certificates are used to establish secure communications channels as well as for authentication and authorization of the associated identity. Whenever the client attempts to access a network application, Ziti will first ensure that the identity has access to the application. If access is revoked, open network connections will be closed.
+Every client in a OpenZiti system must have an identity with provisioned certificates. The certificates are used to establish secure communications channels as well as for authentication and authorization of the associated identity. Whenever the client attempts to access a network application, OpenZiti will first ensure that the identity has access to the application. If access is revoked, open network connections will be closed.
 
-This model enables Ziti systems to provide access to multiple applications while ensuring that clients only get access to those applications to which they have been granted access.
+This model enables OpenZiti systems to provide access to multiple applications while ensuring that clients only get access to those applications to which they have been granted access.
 
-In addition to requiring cert based authentication for clients, Ziti uses certificates to authorize communication between Ziti components.
+In addition to requiring cert based authentication for clients, OpenZiti uses certificates to authorize communication between OpenZiti components.
 
 ### Dark Services and Routers
 
@@ -74,15 +78,15 @@ There are various levels of accessibility a network application/service can have
     1. For end users, VPNs add an extra step that needs to be done each time they want to access the service.
 1. Services can be made dark, meaning they do not have any ports open for anyone to even try and connect to.
 
-Making something dark can be done in a few ways, but the way it's generally handled in Ziti is that services reach out and establish one or more connections to the Ziti network fabric. Clients coming into the fabric can then reach the service through these connections after being authenticated and authorized.
+Making something dark can be done in a few ways, but the way it's generally handled in OpenZiti is that services reach out and establish one or more connections to the OpenZiti network fabric. Clients coming into the fabric can then reach the service through these connections after being authenticated and authorized.
 
-Ziti routers, which make up the fabric, can also be dark. Routers located in private networks will usually be made dark. These routers will reach out of the private network to talk to the controller and to make connections to join the network fabric mesh. This allows the services and routers in your private networks to make only outbound connections, so no holes have to be opened for inbound traffic.
+OpenZiti routers, which make up the fabric, can also be dark. Routers located in private networks will usually be made dark. These routers will reach out of the private network to talk to the controller and to make connections to join the network fabric mesh. This allows the services and routers in your private networks to make only outbound connections, so no holes have to be opened for inbound traffic.
 
-Services can be completely dark if they are implemented with a Ziti SDK. If this is not possible a Ziti tunneler or proxy can be colocated with the service. The service then only needs to allow connections from the local machine or network, depending on how close you colocate the proxy to the service.
+Services can be completely dark if they are implemented with a OpenZiti SDK. If this is not possible a OpenZiti tunneler or proxy can be colocated with the service. The service then only needs to allow connections from the local machine or network, depending on how close you colocate the proxy to the service.
 
 ### End to End Encryption
 
-If you take advantage of Ziti's developer SDKs and embed Ziti in your client and server applications, your traffic can be configured to be seamlessly encrypted from the client application to server application. If you prefer to use tunnelers or proxy applications, the traffic can be encrypted for you from machine to machine or private network to private network. Various combinations of the above are also supported.
+If you take advantage of OpenZiti's developer SDKs and embed OpenZiti in your client and server applications, your traffic can be configured to be seamlessly encrypted from the client application to server application. If you prefer to use tunnelers or proxy applications, the traffic can be encrypted for you from machine to machine or private network to private network. Various combinations of the above are also supported.
 
 End-to-end encryption means that even if systems between the client and server are compromised, your traffic cannot be decrypted or tampered with.
 
@@ -94,7 +98,7 @@ If you are looking to jump right in feet first you can follow along with one of 
 guides](https://openziti.github.io/ziti/quickstarts/quickstart-overview.html). These guides are designed to get an
 overlay network quickly and allow you to run it all locally, use Docker or host it anywhere.
 
-This environment is perfect for evaluators to get to know Ziti and the capabilities it offers.  The environment was not
+This environment is perfect for evaluators to get to know OpenZiti and the capabilities it offers.  The environment was not
 designed for large scale deployment or for long-term usage. If you are looking for a managed service to help you run a
 truly global, scalable network browse over [the NetFoundry web site](https://netfoundry.io) to learn more.
 
@@ -121,21 +125,21 @@ cruise on over to [the OpenZiti Discourse forum](https://openziti.discourse.grou
 
 ### Contributing
 
-The Ziti project welcomes contributions including, but not limited to, code, documentation and bug reports.
+The OpenZiti project welcomes contributions including, but not limited to, code, documentation and bug reports.
 
-* All Ziti code is found on Github under the [OpenZiti](https://github.com/openziti) organization. 
-  * [ziti](https://github.com/openziti/ziti): top level project which builds all Ziti executables
+* All OpenZiti code is found on Github under the [OpenZiti](https://github.com/openziti) organization. 
+  * [ziti](https://github.com/openziti/ziti): top level project which builds all OpenZiti executables
   * [edge](https://github.com/openziti/edge): edge components and model which includes identity, polices and config 
   * [fabric](https://github.com/openziti/fabric): fabric project which includes core controller and router
   * [foundation](https://github.com/openziti/foundation): project which contains library code used across multiple projects
   * SDKs
-    * [ziti-sdk-c] (https://github.com/openziti/ziti-sdk-c): C SDK
-    * [sdk-golang] (https://github.com/openziti/sdk-golang): Go SDK
-    * [ziti-sdk-jvm] (https://github.com/openziti/ziti-sdk-jvm): SDK for JVM based languages
-    * [ziti-sdk-swift] (https://github.com/openziti/ziti-sdk-swift): Swift SDK
-    * [ziti-sdk-nodejs] (https://github.com/openziti/ziti-sdk-nodejs): NodeJS SDK
-    * [ziti-sdk-csharp] (https://github.com/openziti/ziti-sdk-csharp): C# SDK
+    * [ziti-sdk-c](https://github.com/openziti/ziti-sdk-c): C SDK
+    * [sdk-golang](https://github.com/openziti/sdk-golang): Go SDK
+    * [ziti-sdk-jvm](https://github.com/openziti/ziti-sdk-jvm): SDK for JVM based languages
+    * [ziti-sdk-swift](https://github.com/openziti/ziti-sdk-swift): Swift SDK
+    * [ziti-sdk-nodejs](https://github.com/openziti/ziti-sdk-nodejs): NodeJS SDK
+    * [ziti-sdk-csharp](https://github.com/openziti/ziti-sdk-csharp): C# SDK
   * [ziti-doc](https://github.com/openziti/ziti-doc): Powers the static documentation site
 
-Ziti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). NetFoundry continues to fund and 
+OpenZiti was developed and open sourced by [Netfoundry, Inc](https://netfoundry.io). NetFoundry continues to fund and 
 contribute to OpenZiti.

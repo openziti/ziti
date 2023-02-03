@@ -19,7 +19,6 @@ package agentcli
 import (
 	"github.com/openziti/agent"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -38,22 +37,14 @@ func NewTraceCmd(p common.OptionsProvider) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "trace",
 		Short: "Turn tracing on for 5 seconds in the target application",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
-			err := action.Run()
-			cmdhelper.CheckErr(err)
+			return action.RunCopyOut(agent.Trace, nil, os.Stdout)
 		},
 	}
 
-	return cmd
-}
+	action.AddAgentOptions(cmd)
 
-// Run implements the command
-func (self *AgentTraceAction) Run() error {
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-	return agent.MakeRequest(addr, agent.Trace, nil, os.Stdout)
+	return cmd
 }

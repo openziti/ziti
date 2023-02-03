@@ -177,8 +177,7 @@ var m = &model.Model{
 
 	Configuration: model.ConfigurationStages{
 		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric(),
-			zitilib_runlevel_1_configuration.DotZiti(),
+			zitilib_runlevel_1_configuration.Fabric("simple-transfer.test", "#ctrl"),
 		),
 		config.Component(),
 		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti", "ziti-echo"}),

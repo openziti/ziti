@@ -19,8 +19,8 @@ package edge
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge/rest_management_api_client/posture_checks"
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_management_api_client/posture_checks"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"

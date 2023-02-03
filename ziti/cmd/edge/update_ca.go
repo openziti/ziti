@@ -18,8 +18,8 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
