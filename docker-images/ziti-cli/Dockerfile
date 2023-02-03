@@ -1,4 +1,12 @@
-# this builds docker.io/openziti/ziti-cli
+# this Dockerfile builds docker.io/openziti/ziti-cli
+
+# get kubectl CLI from a source with Docker Content Trust (DCT)
+# FIXME: require DCT at build time
+FROM bitnami/kubectl as bitnami-kubectl
+
+# FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
+# FROM registry.access.redhat.com/openshift4/ose-cli as openshift-cli  
+
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
@@ -19,7 +27,19 @@ LABEL name="openziti/ziti-cli" \
 
 USER root
 
-### add licenses to this directory
+### install packages
+RUN   INSTALL_PKGS="python38 python38-pip" && \
+      microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
+      microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
+
+### install OpenShift CLI (oc)
+# FIXME: This repo requires terms acceptance and is only available on registry.redhat.io.
+# COPY --from=openshift-cli  /path/to/oc /usr/local/bin/oc
+
+### install Kubernetes CLI
+COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
+
+### add license in the path prescribed by OpenShift
 RUN mkdir -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
