@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/openziti/edge/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/constants"
