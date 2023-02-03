@@ -71,8 +71,8 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) 
 		"routerId": r.Id,
 		"channel":  r.Control.LogicalName(),
 	})
-	log.Info("Router connected... syncing crtl addresses")
-	index, data := o.getAddresses()
+	log.Info("Router connected... syncing ctrl addresses")
+	index, data := o.raft.CtrlAddresses()
 	log.Info(data)
 
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{
@@ -83,11 +83,4 @@ func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) 
 	if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
 		log.WithError(err).Error("error sending UpdateCtrlAddresses on router connect")
 	}
-}
-
-func (o *OnConnectCtrlAddressesUpdateHandler) getAddresses() (uint64, []string) {
-	if o.raft != nil {
-		return o.raft.CtrlAddresses()
-	}
-	return 1, []string{o.ctrlAddress}
 }
