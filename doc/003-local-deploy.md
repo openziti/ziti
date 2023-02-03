@@ -6,15 +6,15 @@ be found in your shell's executable search `PATH`.
 
 You will configure and run:
 
-- `ziti-controller` with the provided demo certificate authority in `./etc/ca`
-- `ziti-router` as an edge router
+- `ziti controller` with the provided demo certificate authority in `./etc/ca`
+- `ziti router` as an edge router
 
 ## A Note About Windows
 
 These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest
 thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
-Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the example commands.
+Also note that the `ziti` command may need to have the `.exe` suffix appended to the example commands.
 
 ## Initialize the Environment
 
@@ -47,7 +47,7 @@ ZITI_SIGNING_KEY=./etc/ca/intermediate/private/intermediate.key.decrypted.pem \
 ```
 
 ```bash
-ziti-controller edge init ./db/ctrl-config.yml -u ADMIN_NAME -p ADMIN_PW
+ziti controller edge init ./db/ctrl-config.yml -u ADMIN_NAME -p ADMIN_PW
 ```
 
 ## Run the Controller
@@ -55,7 +55,7 @@ ziti-controller edge init ./db/ctrl-config.yml -u ADMIN_NAME -p ADMIN_PW
 Edge SDKs will connect to the running controller to authenticate and request a session. Leave the controller running in a terminal so that you may inspect the log messages.
 
 ```bash
-ziti-controller run ./db/ctrl-config.yml
+ziti controller run ./db/ctrl-config.yml
 ```
 
 ## Login to the Controller
@@ -92,7 +92,7 @@ ZITI_EDGE_ROUTER_RAWNAME=localhost \
 Enroll router01 by presenting the token to the controller to receive a certificate in the filesystem location specified in the configuration file.
 
 ```bash
-ziti-router enroll --jwt /tmp/router01.jwt ./db/router01-config.yml
+ziti router enroll --jwt /tmp/router01.jwt ./db/router01-config.yml
 ```
 
 ## Run the Edge Router
@@ -101,7 +101,7 @@ Edge SDKs will connect to the running edge router to connect to services. Leave 
 terminal.
 
 ```bash
-ziti-router run ./db/router01-config.yml
+ziti router run ./db/router01-config.yml
 ```
 
 ## Create Your First Service
