@@ -1,4 +1,4 @@
-name: CI build
+name: Public Docker Images
 
 on:
   workflow_call:
