@@ -1,10 +1,6 @@
-function TestUDP {
+function Start-UDP-Server {
   [CmdletBinding()]
   param (
-    # The IP address to bind to. Default: 0.0.0.0
-    [Parameter(Mandatory = $false)]
-    $Interface = "0.0.0.0",
-
     # The UDP port to listen on. Default 10000
     [Parameter(Mandatory = $false)]
     $Port = 10000,
@@ -17,12 +13,10 @@ function TestUDP {
   
   $udpListener = new-Object system.Net.Sockets.Udpclient($Port)
   $udpListener.Client.ReceiveTimeout = 100
-  $receivebytes=""
   $encoding = New-Object System.Text.ASCIIEncoding
   Try {
-    Write-Host "Starting UDP Listener:"
-    Write-Host "    Port: ${Port}"
-    Write-Host "    Echo: ${Echo}"
+    "Starting UDP Listener on port {0}:" -f $Port
+    
     do {
       $remoteInterface = New-Object system.net.ipendpoint([system.net.ipaddress]::Any,0)
       Try {
@@ -53,5 +47,34 @@ function TestUDP {
     Write-Host "Stopping UDP listener on ${Port}..."
     $udpListener.Close()
     $responder.Close()
+  }
+}
+
+function Test-UDP-Client {
+  [CmdletBinding()]
+  param (
+    # The IP address to send UDP traffic to.
+    [Parameter(Mandatory = $true)]
+    $Server,
+
+    # The UDP port to listen on. Default 10000
+    [Parameter(Mandatory = $false)]
+    $Port = 10000
+  )
+  
+  $udpClient = new-Object system.Net.Sockets.Udpclient
+  $udpClient.Connect($Server, $Port)
+  $encoding = New-Object System.Text.ASCIIEncoding
+  Try {
+      do {
+        $msg = Read-Host
+        $receivebytes=$encoding.GetBytes($msg+"`n")
+        [void]$udpClient.Send($receivebytes, $receivebytes.length)
+      } while(1)
+  } Catch {
+    Write-Warning "$($Error[0])"
+  } Finally {
+    Write-Host "stopping..."
+    $udpClient.Close()
   }
 }
