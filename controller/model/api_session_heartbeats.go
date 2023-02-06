@@ -112,9 +112,11 @@ func (self *HeartbeatCollector) flush() {
 
 		var beats []*Heartbeat
 
+		var buckets [][]*Heartbeat
+
 		self.apiSessionLastAccessedAtMap.IterCb(func(key string, status *HeartbeatStatus) {
 			if len(beats) >= self.batchSize {
-				self.flushAction(beats)
+				buckets = append(buckets, beats)
 				beats = nil
 			}
 
@@ -126,6 +128,10 @@ func (self *HeartbeatCollector) flush() {
 				})
 			}
 		})
+
+		for _, bucket := range buckets {
+			self.flushAction(bucket)
+		}
 
 		if len(beats) > 0 {
 			self.flushAction(beats)
