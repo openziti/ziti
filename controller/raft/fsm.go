@@ -17,11 +17,8 @@
 package raft
 
 import (
-	"io"
-	"os"
-	"path"
-	"sync/atomic"
-
+	"bytes"
+	"compress/gzip"
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
@@ -29,6 +26,9 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"io"
+	"os"
+	"path"
 )
 
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback RouterDispatchCallback) *BoltDbFsm {
@@ -44,7 +44,6 @@ type BoltDbFsm struct {
 	db           boltz.Db
 	dbPath       string
 	decoders     command.Decoders
-	initialized  atomic.Bool
 	indexTracker IndexTracker
 
 	currentState           *raft.Configuration
@@ -71,10 +70,6 @@ func (self *BoltDbFsm) Init() error {
 	}
 
 	return nil
-}
-
-func (self *BoltDbFsm) RaftInitialized() {
-	self.initialized.Store(true)
 }
 
 func (self *BoltDbFsm) GetDb() boltz.Db {
@@ -129,16 +124,22 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 func (self *BoltDbFsm) Snapshot() (raft.FSMSnapshot, error) {
 	logrus.Debug("creating snapshot")
 
-	id, data, err := self.db.SnapshotToMemory()
+	buf := &bytes.Buffer{}
+	gzWriter := gzip.NewWriter(buf)
+	id, err := self.db.SnapshotToWriter(gzWriter)
 	if err != nil {
 		return nil, err
+	}
+
+	if err = gzWriter.Close(); err != nil {
+		return nil, errors.Wrap(err, "error finishing gz compression of raft snapshot")
 	}
 
 	logrus.WithField("id", id).WithField("index", self.indexTracker.Index()).Info("creating snapshot")
 
 	return &boltSnapshot{
 		snapshotId:   id,
-		snapshotData: data,
+		snapshotData: buf.Bytes(),
 	}, nil
 }
 
@@ -161,7 +162,13 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(dbFile, snapshot)
+
+	gzReader, err := gzip.NewReader(snapshot)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create gz reader for reading raft snapshot during restore")
+	}
+
+	_, err = io.Copy(dbFile, gzReader)
 	if err != nil {
 		_ = os.Remove(self.dbPath)
 		if renameErr := os.Rename(backup, self.dbPath); renameErr != nil {
@@ -170,8 +177,8 @@ func (self *BoltDbFsm) Restore(snapshot io.ReadCloser) error {
 		return err
 	}
 
-	if self.initialized.Load() {
-		// figure out what happens when we restore a snapshot on startup, vs during runtime
+	// if we're not initializing from a snapshot at startup, restart
+	if self.indexTracker.Index() > 0 {
 		os.Exit(0)
 	}
 

@@ -320,6 +320,7 @@ func (self *Controller) Init() error {
 	conf.LocalID = raft.ServerID(self.Id.Token)
 	conf.NoSnapshotRestoreOnStart = false
 	conf.Logger = hclLogger
+	conf.TrailingLogs = 1
 
 	// Create the log store and stable store.
 	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
@@ -371,7 +372,7 @@ func (self *Controller) Init() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
-	self.Fsm.initialized.Store(true)
+
 	self.Raft = r
 
 	return nil

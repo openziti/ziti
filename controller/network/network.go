@@ -17,6 +17,8 @@
 package network
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -1151,19 +1153,31 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error 
 		return nil
 	}
 
-	network.getDb().RestoreSnapshot(cmd.Snapshot)
+	buf := bytes.NewBuffer(cmd.Snapshot)
+	reader, err := gzip.NewReader(buf)
+	if err != nil {
+		return errors.Wrapf(err, "unable to create gz reader for reading migration snapshot during restore")
+	}
+
+	network.getDb().RestoreFromReader(reader)
 	return nil
 }
 
 func (network *Network) SnapshotToRaft() error {
-	snapshotId, snapshot, err := network.getDb().SnapshotToMemory()
+	buf := &bytes.Buffer{}
+	gzWriter := gzip.NewWriter(buf)
+	snapshotId, err := network.db.SnapshotToWriter(gzWriter)
 	if err != nil {
 		return err
 	}
 
+	if err = gzWriter.Close(); err != nil {
+		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
+	}
+
 	cmd := &command.SyncSnapshotCommand{
 		SnapshotId:   snapshotId,
-		Snapshot:     snapshot,
+		Snapshot:     buf.Bytes(),
 		SnapshotSink: network.RestoreSnapshot,
 	}
 
