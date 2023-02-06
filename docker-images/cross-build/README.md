@@ -12,21 +12,14 @@ This article supports local development by providing a local containerized metho
 You only need to build the container image once unless you change the Dockerfile or `./linux-build.sh` (the container's entrypoint).
 
 ```bash
-# find the latest Go distribution's semver
-LATEST_GOLANG=$(curl -sSfL "https://go.dev/VERSION?m=text" | /bin/grep -Po '^go(\s+)?\K\d+\.\d+\.\d+$')
-# build a container image named "zitibuilder" with the Dockerfile in the top-level of this repo
+# build a container image named "zitibuilder" with the same version of Go that's declared in go.mod
 docker build \
     --tag=zitibuilder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
+    --build-arg golang_version=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod) \
     ./docker-images/cross-build/
 ```
-
-<!--
-    I pruned this arg because it doesn't currently match the go.dev URL, and
-    I changed the default arg value in Dockerfile to match go.dev.
-    --build-arg golang_version=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod) \
--->
 
 ## Run the Container to Build Executables for the Desired Architectures
 
