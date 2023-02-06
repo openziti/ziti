@@ -13,11 +13,12 @@ You only need to build the container image once unless you change the Dockerfile
 
 ```bash
 # build a container image named "zitibuilder" with the same version of Go that's declared in go.mod
-docker build \
+docker buildx build \
     --tag=zitibuilder \
     --build-arg uid=$UID \
     --build-arg gid=$GID \
     --build-arg golang_version=$(grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod) \
+    --load \
     ./docker-images/cross-build/
 ```
 
