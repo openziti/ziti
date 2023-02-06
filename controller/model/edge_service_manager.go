@@ -355,7 +355,7 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 			for cursor.IsValid() {
 				checkId := string(cursor.Current())
 				if postureCheck, found := postureCheckCache[checkId]; !found {
-					postureCheck, _ := self.env.GetManagers().PostureCheck.Read(checkId)
+					postureCheck, _ := self.env.GetManagers().PostureCheck.readInTx(tx, checkId)
 					postureCheckCache[checkId] = postureCheck
 					policyIdToChecks[policyIdStr].PostureChecks = append(policyIdToChecks[policyIdStr].PostureChecks, postureCheck)
 				} else {
