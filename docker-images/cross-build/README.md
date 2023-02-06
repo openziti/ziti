@@ -118,7 +118,6 @@ release/arm/linux/:
 total 95M
 -rwxr-xr-x 1 kbingham kbingham 95M Feb  6 11:20 ziti*
 
-ziti fix-crossbuilder
  ❯ ./release/amd64/linux/ziti version
 NAME             VERSION
 ziti             v0.0.0
