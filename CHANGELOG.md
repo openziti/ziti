@@ -1,3 +1,20 @@
+# Release 0.27.4
+
+## What's New
+
+This release contains a fix for a controller deadlock
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.26 -> v2.0.27](https://github.com/openziti/channel/compare/v2.0.26...v2.0.27)
+* github.com/openziti/edge: [v0.24.115 -> v0.24.121](https://github.com/openziti/edge/compare/v0.24.115...v0.24.121)
+    * [Issue #1303](https://github.com/openziti/edge/issues/1303) - Fix deadlock when flushing api session heartbeats 
+
+* github.com/openziti/fabric: [v0.22.19 -> v0.22.20](https://github.com/openziti/fabric/compare/v0.22.19...v0.22.20)
+* github.com/openziti/sdk-golang: [v0.18.26 -> v0.18.27](https://github.com/openziti/sdk-golang/compare/v0.18.26...v0.18.27)
+* github.com/openziti/transport/v2: [v2.0.50 -> v2.0.51](https://github.com/openziti/transport/compare/v2.0.50...v2.0.51)
+* github.com/openziti/ziti: [v0.27.3 -> v0.27.4](https://github.com/openziti/ziti/compare/v0.27.3...v0.27.4)
+
 # Release 0.27.3
 
 ## What's New

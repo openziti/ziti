@@ -54,6 +54,10 @@ raft:
     - tls:192.168.1.101
 ```
 
+Note that `bootstrapMembers` can only be used when setting the cluster up for the first time
+and should only be used on a single node. It cannot be used later to add additional nodes
+to an existing cluster.
+
 **Agent Comands**
 
 There are now three new agent commands specific to the controller.
