@@ -140,6 +140,7 @@ func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string,
 	var notFoundTokens []string
 	store := self.Store.(persistence.ApiSessionStore)
 
+	var apiSessions []*persistence.ApiSession
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		for _, token := range tokens {
 			apiSession, err := store.LoadOneByToken(tx, token)
@@ -151,11 +152,15 @@ func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string,
 					return err
 				}
 			}
-			self.HeartbeatCollector.Mark(apiSession.Id)
-			self.env.GetManagers().Identity.SetActive(apiSession.IdentityId)
+			apiSessions = append(apiSessions, apiSession)
 		}
 		return nil
 	})
+
+	for _, apiSession := range apiSessions {
+		self.HeartbeatCollector.Mark(apiSession.Id)
+		self.env.GetManagers().Identity.SetActive(apiSession.IdentityId)
+	}
 
 	return notFoundTokens, err
 }
