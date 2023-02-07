@@ -62,6 +62,10 @@ type Db interface {
 	// This operation is not allowed to fail, and will thus panic if the snapshot cannot be restored
 	RestoreSnapshot(snapshotData []byte)
 
+	// RestoreFromReader will replace the existing DB with the given snapshot
+	// This operation is not allowed to fail, and will thus panic if the snapshot cannot be restored
+	RestoreFromReader(snapshot io.Reader)
+
 	// AddRestoreListener adds a callback which will be invoked asynchronously when a snapshot is restored
 	AddRestoreListener(listener func())
 }
@@ -174,6 +178,11 @@ func (self *DbImpl) Snapshot(tx *bbolt.Tx) error {
 }
 
 func (self *DbImpl) RestoreSnapshot(snapshot []byte) {
+	r := bytes.NewBuffer(snapshot)
+	self.RestoreFromReader(r)
+}
+
+func (self *DbImpl) RestoreFromReader(snapshot io.Reader) {
 	snapshotPath, err := self.persistSnapshot(snapshot)
 	if err != nil {
 		panic(err)
@@ -206,13 +215,13 @@ func (self *DbImpl) RestoreSnapshot(snapshot []byte) {
 	}
 }
 
-func (self *DbImpl) persistSnapshot(snapshot []byte) (string, error) {
+func (self *DbImpl) persistSnapshot(snapshot io.Reader) (string, error) {
 	tmpPath := self.db.Path() + ".snapshot." + uuid.NewString()
 	f, err := os.Create(tmpPath)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create snapshot file [%v]", tmpPath)
 	}
-	_, err = f.Write(snapshot)
+	_, err = io.Copy(f, snapshot)
 	if err != nil {
 		if closeErr := f.Close(); closeErr != nil {
 			return "", errors.Wrapf(errorz.MultipleErrors{err, closeErr}, "unable to write snapshot data to file [%v]", tmpPath)
