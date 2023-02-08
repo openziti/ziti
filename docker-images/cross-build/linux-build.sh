@@ -39,7 +39,7 @@ for ARCH in ${JOBS[@]}; do
             -arch=${ARCH} \
             -output=${GOX_OUTPUT} \
             -parallel=${PROCS_PER_JOB} \
-            ./...
+            ./ziti/
     "
 case ${ARCH} in
         amd64)  eval ${GOX_CMD} ${BACKGROUND}
@@ -58,7 +58,7 @@ case ${ARCH} in
 done
 
 # if not background in parallel then exit now with well earned success
-[[ -z "${BACKGROUND:-}" ]] || exit 0
+[[ -z "${BACKGROUND:-}" ]] && exit 0
 
 # Wait for builds in the background and exit with an error if any fail
 EXIT=0
