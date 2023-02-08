@@ -32,7 +32,7 @@ function PURPLE { # Generally used for Express Install milestones.
 }
 
 function _wait_for_controller {
-  local advertised_host_port="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}:${ZITI_CTRL_WEB_ADVERTISED_PORT}"
+  local advertised_host_port="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}:${ZITI_CTRL_WEB_ADVERTISED_PORT}"
   while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"${advertised_host_port}"/version)" != "200" ]]; do
     echo "waiting for https://${advertised_host_port}"
     sleep 3
@@ -64,12 +64,12 @@ function _get_file_overwrite_permission() {
 }
 
 function _pki_client_server {
+  local retVal allow_list ZITI_CA_NAME_local ip_local file_name
   _check_env_variable ZITI_PKI ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
-  local allow_list ZITI_CA_NAME_local ip_local file_name
   allow_list=${1-}
   ZITI_CA_NAME_local=$2
   ip_local=$3
@@ -104,12 +104,12 @@ function _pki_client_server {
 }
 
 function _pki_create_ca {
+  local cert retVal
   _check_env_variable ZITI_PKI ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
-  local cert
   cert="${1}"
 
   echo "Creating CA: ${cert}"
@@ -122,6 +122,7 @@ function _pki_create_ca {
 }
 
 function _pki_create_intermediate {
+  local retVal
   _check_env_variable ZITI_PKI ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
@@ -140,7 +141,7 @@ function _pki_create_intermediate {
 
 # Checks that a specific command or set of commands exist on the path
 function _check_prereq {
-  local missing_requirements=""
+  local missing_requirements="" arg
   for arg
   do
     if ! [[ -x "$(command -v "${arg}")" ]]; then
@@ -163,7 +164,7 @@ function _check_prereq {
 # shellcheck disable=SC2296
 # Check if an environment variable is set, if not, throw an error
 function _check_env_variable() {
-  local _error=false
+  local _error=false arg
   for arg
   do
     # Parameter expansion is different between shells
@@ -242,6 +243,7 @@ function unsetZitiEnv {
 
 # Checks for explicit environment variables or set as defaults, also creating directories as needed
 function setupEnvironment {
+  local pwd_reply
   # TODO: May add an else in the case the ENV var is not empty, declaring that it was overridden
   echo "Populating environment variables"
   # General Ziti Values
@@ -255,7 +257,6 @@ function setupEnvironment {
     ZITI_PWD="$(LC_ALL=C tr -dc _A-Z-a-z-0-9 < /dev/urandom | head -c32)"
     echo -en "Do you want to keep the generated admin password '$ZITI_PWD'? (Y/n) "
     # shellcheck disable=SC2162
-    local pwd_reply
     read -r pwd_reply
     if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
       echo "INFO: using ZITI_PWD=${ZITI_PWD}"
@@ -267,11 +268,11 @@ function setupEnvironment {
 
   # PKI Values
   if [[ "${ZITI_PKI-}" == "" ]]; then export ZITI_PKI="${ZITI_HOME}/pki"; fi
-  if [[ "${ZITI_SIGNING_CERT_NAME-}" == "" ]]; then export ZITI_SIGNING_CERT_NAME="${ZITI_NETWORK}-signing"; fi
-  if [[ "${ZITI_SIGNING_ROOTCA_NAME-}" == "" ]]; then export ZITI_SIGNING_ROOTCA_NAME="${ZITI_SIGNING_CERT_NAME}-root-ca"; fi
-  if [[ "${ZITI_SIGNING_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_SIGNING_CERT_NAME}-intermediate"; fi
-  if [[ "${ZITI_SIGNING_CERT}" == "" ]]; then export ZITI_SIGNING_CERT="${ZITI_PKI}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
-  if [[ "${ZITI_SIGNING_KEY}" == "" ]]; then export ZITI_SIGNING_KEY="${ZITI_PKI}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
+  if [[ "${ZITI_PKI_SIGNER_CERT_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_CERT_NAME="${ZITI_NETWORK}-signing"; fi
+  if [[ "${ZITI_SIGNING_ROOTCA_NAME-}" == "" ]]; then export ZITI_SIGNING_ROOTCA_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-root-ca"; fi
+  if [[ "${ZITI_SIGNING_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_SIGNING_INTERMEDIATE_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-intermediate"; fi
+  if [[ "${ZITI_PKI_SIGNER_CERT}" == "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_PKI}/${ZITI_SIGNING_INTERMEDIATE_NAME}/certs/${ZITI_SIGNING_INTERMEDIATE_NAME}.cert"; fi
+  if [[ "${ZITI_PKI_SIGNER_KEY}" == "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_PKI}/${ZITI_SIGNING_INTERMEDIATE_NAME}/keys/${ZITI_SIGNING_INTERMEDIATE_NAME}.key"; fi
 
   # Run these functions to populate other pertinent environment values
   _detect_architecture    # ZITI_ARCH
@@ -285,19 +286,19 @@ function setupEnvironment {
   if [[ "${ZITI_CTRL_LISTENER_PORT-}" == "" ]]; then export ZITI_CTRL_LISTENER_PORT="6262"; fi
   if [[ "${ZITI_CTRL_MGMT_PORT-}" == "" ]]; then export ZITI_CTRL_MGMT_PORT="10000"; fi
   if [[ "${ZITI_CTRL_WEB_ADVERTISED_PORT-}" == "" ]]; then export ZITI_CTRL_WEB_ADVERTISED_PORT="1280"; fi
-  if [[ "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME-}" == "" ]]; then export ZITI_CTRL_WEB_ADVERTISED_HOSTNAME="${ZITI_NETWORK-}"; fi
-  if [[ "${ZITI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_CTRL_ROOTCA_NAME="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-root-ca"; fi
-  if [[ "${ZITI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-intermediate"; fi
-  if [[ "${ZITI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-root-ca"; fi
-  if [[ "${ZITI_CTRL_EDGE_INTERMEDATE_NAME-}" == "" ]]; then export ZITI_CTRL_EDGE_INTERMEDATE_NAME="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-intermediate"; fi
-  if [[ "${ZITI_CTRL_IDENTITY_SERVER_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_SERVER_CERT="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-server.chain.pem"; fi
-  if [[ "${ZITI_CTRL_IDENTITY_KEY-}" == "" ]]; then export ZITI_CTRL_IDENTITY_KEY="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-server.key"; fi
-  if [[ "${ZITI_CTRL_IDENTITY_CA-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CA="${ZITI_PKI}/cas.pem"; fi
-  if [[ "${ZITI_CTRL_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_IDENTITY_CERT="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-client.cert"; fi
-  if [[ "${ZITI_CTRL_WEB_IDENTITY_CERT-}" == "" ]]; then export ZITI_CTRL_WEB_IDENTITY_CERT="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-client.cert"; fi
-  if [[ "${ZITI_CTRL_WEB_IDENTITY_SERVER_CERT}" == "" ]]; then export ZITI_CTRL_WEB_IDENTITY_SERVER_CERT="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-server.chain.pem"; fi
-  if [[ "${ZITI_CTRL_WEB_IDENTITY_KEY}" == "" ]]; then export ZITI_CTRL_WEB_IDENTITY_KEY="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/keys/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-server.key"; fi
-  if [[ "${ZITI_CTRL_WEB_IDENTITY_CA}" == "" ]]; then export ZITI_CTRL_WEB_IDENTITY_CA="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}.cert"; fi
+  if [[ "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS-}" == "" ]]; then export ZITI_CTRL_WEB_ADVERTISED_ADDRESS="${ZITI_NETWORK-}"; fi
+  if [[ "${ZITI_CTRL_ROOTCA_NAME-}" == "" ]]; then export ZITI_CTRL_ROOTCA_NAME="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-root-ca"; fi
+  if [[ "${ZITI_CTRL_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_CTRL_INTERMEDIATE_NAME="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-intermediate"; fi
+  if [[ "${ZITI_CTRL_EDGE_ROOTCA_NAME-}" == "" ]]; then export ZITI_CTRL_EDGE_ROOTCA_NAME="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-root-ca"; fi
+  if [[ "${ZITI_CTRL_EDGE_INTERMEDATE_NAME-}" == "" ]]; then export ZITI_CTRL_EDGE_INTERMEDATE_NAME="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-intermediate"; fi
+  if [[ "${ZITI_PKI_CTRL_SERVER_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_SERVER_CERT="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-server.chain.pem"; fi
+  if [[ "${ZITI_PKI_CTRL_KEY-}" == "" ]]; then export ZITI_PKI_CTRL_KEY="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/keys/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-server.key"; fi
+  if [[ "${ZITI_PKI_CTRL_CA-}" == "" ]]; then export ZITI_PKI_CTRL_CA="${ZITI_PKI}/cas.pem"; fi
+  if [[ "${ZITI_PKI_CTRL_CERT-}" == "" ]]; then export ZITI_PKI_CTRL_CERT="${ZITI_PKI}/${ZITI_CTRL_INTERMEDIATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-client.cert"; fi
+  if [[ "${ZITI_PKI_EDGE_CERT-}" == "" ]]; then export ZITI_PKI_EDGE_CERT="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-client.cert"; fi
+  if [[ "${ZITI_PKI_EDGE_SERVER_CERT}" == "" ]]; then export ZITI_PKI_EDGE_SERVER_CERT="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-server.chain.pem"; fi
+  if [[ "${ZITI_PKI_EDGE_KEY}" == "" ]]; then export ZITI_PKI_EDGE_KEY="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/keys/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-server.key"; fi
+  if [[ "${ZITI_PKI_EDGE_CA}" == "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_PKI}/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}/certs/${ZITI_CTRL_EDGE_INTERMEDATE_NAME}.cert"; fi
 
   # Router Values
   if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; fi
@@ -343,8 +344,8 @@ function persistEnvironmentValues {
   echo "export PFXLOG_NO_JSON=true" >> "${filepath}"
 
   echo "alias zec='ziti edge'" >> "${filepath}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
+  echo "alias zlogin='ziti edge login \"\${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
   echo "alias psz='ps -ef | grep ziti'" >> "${filepath}"
 
   #when sourcing the emitted file add the bin folder to the path
@@ -366,11 +367,11 @@ heredoc
 
 # Clears environment variables prefixed with ZITI_, and removes ziti environment directories
 function removeZitiEnvironment {
+  local specifiedVersion=""
   # No need to `_check_env_variable ZITI_VERSION_OVERRIDE ZITI_BINARIES_VERSION` as this will still run if they're blank
   echo -e "$(GREEN "Clearing existing Ziti variables and continuing with express install")"
 
   # Check if the user chose a specific version
-  local specifiedVersion=""
   if [[ "${ZITI_VERSION_OVERRIDE-}" != "" ]] && [[ "${ZITI_VERSION_OVERRIDE-}" != "${ZITI_BINARIES_VERSION-}" ]]; then
     # Don't allow overriding the version if ziti quickstart was already run, the DB may not be compatible
     echo -e "$(RED "  --- Overriding the ziti version is not supported if the version differs from one already installed. ---")"
@@ -405,14 +406,15 @@ function removeZitiEnvironment {
 }
 
 function startController {
-  _check_env_variable ZITI_HOME ZITI_CTRL_WEB_ADVERTISED_HOSTNAME ZITI_BIN_DIR
+  local retVal log_file
+  _check_env_variable ZITI_HOME ZITI_CTRL_WEB_ADVERTISED_ADDRESS ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
-  local log_file="${ZITI_HOME-}/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}.log"
+  local log_file="${ZITI_HOME-}/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}.log"
   # shellcheck disable=SC2034
-  "${ZITI_BIN_DIR-}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}.yaml" &> "${log_file}" &
+  "${ZITI_BIN_DIR-}/ziti" controller run "${ZITI_HOME}/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}.yaml" &> "${log_file}" &
   ZITI_EXPRESS_CONTROLLER_PID=$!
   echo -e "ziti-controller started as process id: $ZITI_EXPRESS_CONTROLLER_PID. log located at: $(BLUE "${log_file}")"
 }
@@ -501,24 +503,25 @@ function _detect_OS {
 
 # Detect which architecture the script is running on and store it in a variable
 function _detect_architecture {
-    if [ -n "${ZITI_ARCH}" ]; then return; fi
-    _detect_OS
-    ZITI_ARCH="amd64"
-    local detected_arch
-    detected_arch="$(uname -m)"
-    # Apple M1 silicon
-    if [[ "${detected_arch}" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" == "darwin" ]]; then
-      echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
-    # LLVM 64 bit backends have merged so some versions of *nix use aarch64 while others use arm64 for parity with Apple
-    elif [[ "${detected_arch}" == *"aarch64"* ]] || [[ "${detected_arch}" == *"arm64"* ]]; then
-      ZITI_ARCH="arm64"
-    elif [[ "${detected_arch}" == *"arm"* ]]; then
-      ZITI_ARCH="arm"
-    fi
+  local detected_arch
+  if [ -n "${ZITI_ARCH}" ]; then return; fi
+  _detect_OS
+  ZITI_ARCH="amd64"
+  detected_arch="$(uname -m)"
+  # Apple M1 silicon
+  if [[ "${detected_arch}" == *"arm"* ]] && [[ "${ZITI_OSTYPE}" == "darwin" ]]; then
+    echo -e "$(YELLOW "WARN: It has been detected that you are using an Apple computer with ARM architecture. Deployment of Apple ARM architecture distributions is currently unsupported through git, the installer will pull darwin amd distribution instead.")"
+  # LLVM 64 bit backends have merged so some versions of *nix use aarch64 while others use arm64 for parity with Apple
+  elif [[ "${detected_arch}" == *"aarch64"* ]] || [[ "${detected_arch}" == *"arm64"* ]]; then
+    ZITI_ARCH="arm64"
+  elif [[ "${detected_arch}" == *"arm"* ]]; then
+    ZITI_ARCH="arm"
+  fi
 }
 
 # Downloads and extracts ziti binaries onto the system. The latest version is used unless ZITI_VERSION_OVERRIDE is set.
 function getZiti {
+  local retVal default_path ziti_binaries_file_abspath zitidl
   _check_env_variable ZITI_BIN_ROOT ZITI_BIN_DIR
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
@@ -577,7 +580,6 @@ function getZiti {
   fi
 
   # Where to store the ziti binaries zip
-  local ziti_binaries_file_abspath
   ziti_binaries_file_abspath="${ZITI_BIN_DIR}/${ZITI_BINARIES_FILE}"
   # Check if they're already downloaded
   if ! test -f "${ZITI_BIN_DIR}/ziti"; then
@@ -611,6 +613,7 @@ function getZiti {
 
 # Create a custom PKI
 function createPki {
+  local retVal pki_allow_list_dns pki_allow_list_ip
   _check_env_variable ZITI_CTRL_ROOTCA_NAME ZITI_CTRL_EDGE_ROOTCA_NAME ZITI_SIGNING_ROOTCA_NAME \
                       ZITI_SIGNING_INTERMEDIATE_NAME ZITI_CTRL_INTERMEDIATE_NAME \
                       ZITI_CTRL_EDGE_INTERMEDATE_NAME
@@ -630,17 +633,15 @@ function createPki {
   _pki_create_intermediate "${ZITI_SIGNING_ROOTCA_NAME}" "${ZITI_SPURIOUS_INTERMEDIATE}" 2
   _pki_create_intermediate "${ZITI_SPURIOUS_INTERMEDIATE}" "${ZITI_SIGNING_INTERMEDIATE_NAME}" 1
 
-  local pki_allow_list_dns
-  pki_allow_list_dns="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME},localhost,${ZITI_NETWORK}"
-  if [[ "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}"; fi
+  pki_allow_list_dns="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS},localhost,${ZITI_NETWORK}"
+  if [[ "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}"; fi
   if [[ "${EXTERNAL_DNS}" != "" ]]; then pki_allow_list_dns="${pki_allow_list_dns},${EXTERNAL_DNS}"; fi
-  local pki_allow_list_ip
   pki_allow_list_ip="127.0.0.1"
   if [[ "${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${ZITI_EDGE_CONTROLLER_IP_OVERRIDE}"; fi
   if [[ "${EXTERNAL_IP}" != "" ]]; then pki_allow_list_ip="${pki_allow_list_ip},${EXTERNAL_IP}"; fi
 
-  _pki_client_server "${pki_allow_list_dns}" "${ZITI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}"
-  _pki_client_server "${pki_allow_list_dns}" "${ZITI_CTRL_EDGE_INTERMEDATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}"
+  _pki_client_server "${pki_allow_list_dns}" "${ZITI_CTRL_INTERMEDIATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}"
+  _pki_client_server "${pki_allow_list_dns}" "${ZITI_CTRL_EDGE_INTERMEDATE_NAME}" "${pki_allow_list_ip}" "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}"
   echo -e "$(GREEN "PKI generated successfully")"
   echo -e ""
 }
@@ -649,11 +650,12 @@ function createPki {
 # shellcheck disable=SC2120
 # Creates a controller config file
 function createControllerConfig {
+  local controller_name retVal file_path output_file
   # TODO: allow passing in of env file
   # Allow controller name to be passed in as arg
-  local controller_name="${1-}"
+  controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
-  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}" ]]; then
+  if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}" ]]; then
     echo -e "$(YELLOW "createControllerConfig requires a controller name to be supplied") "
     echo -en "Enter controller name: "
     read -r controller_name
@@ -664,31 +666,29 @@ function createControllerConfig {
       return 1
     fi
   # If no controller name provided and env var is set, use env var
-  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}" ]]; then
-    controller_name="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}"
+  elif [[ "${controller_name}" == "" ]] && [[ -n "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}" ]]; then
+    controller_name="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}"
   fi
 
   # Make sure necessary env variables are set
   # The following are used by ziti bin to generate the config so they need to be checked:
-  #   ZITI_SIGNING_KEY ZITI_CTRL_WEB_IDENTITY_CERT ZITI_CTRL_WEB_IDENTITY_SERVER_CERT ZITI_CTRL_WEB_IDENTITY_KEY
-  #   ZITI_CTRL_WEB_IDENTITY_CA
-  _check_env_variable ZITI_CTRL_IDENTITY_SERVER_CERT ZITI_CTRL_IDENTITY_CA ZITI_SIGNING_CERT ZITI_SIGNING_KEY \
-    ZITI_BIN_DIR ZITI_CTRL_WEB_IDENTITY_CERT ZITI_CTRL_WEB_IDENTITY_SERVER_CERT ZITI_CTRL_WEB_IDENTITY_KEY \
-    ZITI_CTRL_WEB_IDENTITY_CA
+  #   ZITI_PKI_SIGNER_KEY ZITI_PKI_EDGE_CERT ZITI_PKI_EDGE_SERVER_CERT ZITI_PKI_EDGE_KEY ZITI_PKI_EDGE_CA
+  _check_env_variable ZITI_PKI_CTRL_SERVER_CERT ZITI_PKI_CTRL_CA ZITI_PKI_SIGNER_CERT ZITI_PKI_SIGNER_KEY ZITI_BIN_DIR \
+                      ZITI_PKI_EDGE_CERT ZITI_PKI_EDGE_SERVER_CERT ZITI_PKI_EDGE_KEY ZITI_PKI_EDGE_CA
   local retVal=$?
   if [ $retVal -ne 0 ]; then
     return 1
   fi
 
   # Use the current directory if none is set
-  local file_path="${ZITI_HOME}"
+  file_path="${ZITI_HOME}"
   if [[ "${ZITI_HOME-}" == "" ]]; then file_path="."; fi
 
-  cat "${ZITI_CTRL_IDENTITY_SERVER_CERT}" >"${ZITI_CTRL_IDENTITY_CA}"
-  cat "${ZITI_SIGNING_CERT}" >>"${ZITI_CTRL_IDENTITY_CA}"
-  echo -e "wrote CA file to: $(BLUE "${ZITI_CTRL_IDENTITY_CA}")"
+  cat "${ZITI_PKI_CTRL_SERVER_CERT}" >"${ZITI_PKI_CTRL_CA}"
+  cat "${ZITI_PKI_SIGNER_CERT}" >>"${ZITI_PKI_CTRL_CA}"
+  echo -e "wrote CA file to: $(BLUE "${ZITI_PKI_CTRL_CA}")"
 
-  local output_file="${file_path}/${controller_name}.yaml"
+  output_file="${file_path}/${controller_name}.yaml"
 
   _get_file_overwrite_permission "${output_file}"
   retVal=$?
@@ -726,7 +726,7 @@ function createFabricRouterConfig {
 
 # The main create router config function, all others point to this
 function _create_router_config {
-  local router_name router_type output_file retVal default_router_name
+  local router_name router_type output_file retVal default_router_name file_path
   # Allow router name and type to be passed in as arg
   router_name="${1-}"
   router_type="${2-}"
@@ -758,18 +758,18 @@ function _create_router_config {
 
   # Make sure necessary env variables are set
   # The following are used by ziti bin to generate the config so they need to be checked:
-  # ZITI_CTRL_WEB_ADVERTISED_HOSTNAME ZITI_CTRL_LISTENER_PORT
-  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_WEB_ADVERTISED_HOSTNAME ZITI_CTRL_LISTENER_PORT
+  # ZITI_CTRL_WEB_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
+  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_CTRL_WEB_ADVERTISED_ADDRESS ZITI_CTRL_LISTENER_PORT
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
     return 1
   fi
 
   # Use the current directory if none is set
-  local file_path="${ZITI_HOME}"
+  file_path="${ZITI_HOME}"
   if [[ "${ZITI_HOME-}" == "" ]]; then file_path="."; fi
 
-  local output_file="${file_path}/${router_name}.yaml"
+  output_file="${file_path}/${router_name}.yaml"
 
   _get_file_overwrite_permission "${output_file}"
   retVal=$?
@@ -839,22 +839,23 @@ function addRouter {
 }
 
 function initializeController {
+  local retVal log_file
   # TODO: Update this to possibly take a controller name as an argument, possibly check pwd for controller file, then default to env var values
   _setup_ziti_home
   # Make sure necessary env variables are set
-  _check_env_variable ZITI_HOME ZITI_CTRL_WEB_ADVERTISED_HOSTNAME ZITI_USER ZITI_PWD ZITI_CTRL_IDENTITY_CA ZITI_BIN_DIR
+  _check_env_variable ZITI_HOME ZITI_CTRL_WEB_ADVERTISED_ADDRESS ZITI_USER ZITI_PWD ZITI_PKI_CTRL_CA ZITI_BIN_DIR
   local retVal=$?
   if [ $retVal -ne 0 ]; then
     return 1
   fi
 
-  local log_file="${ZITI_HOME-}/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}-init.log"
-  "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
-  echo -e "${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME} initialized. See $(BLUE "${log_file}") for details"
+  log_file="${ZITI_HOME-}/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}-init.log"
+  "${ZITI_BIN_DIR-}/ziti" controller edge init "${ZITI_HOME}/${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}.yaml" -u "${ZITI_USER-}" -p "${ZITI_PWD}" &> "${log_file}"
+  echo -e "${ZITI_CTRL_WEB_ADVERTISED_ADDRESS} initialized. See $(BLUE "${log_file}") for details"
 }
 
 function zitiLogin {
-  local advertised_host_port="${ZITI_CTRL_WEB_ADVERTISED_HOSTNAME}:${ZITI_CTRL_WEB_ADVERTISED_PORT}"
+  local advertised_host_port="${ZITI_CTRL_WEB_ADVERTISED_ADDRESS}:${ZITI_CTRL_WEB_ADVERTISED_PORT}"
   "${ZITI_BIN_DIR-}/ziti" edge login "${advertised_host_port}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y 2>&1
 }
 
@@ -945,8 +946,9 @@ function getLatestZitiVersion {
 }
 
 function createControllerSystemdFile {
+  local controller_name retVal output_file
   # Allow controller name to be passed in as an arg
-  local controller_name="${1-}"
+  controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
   if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_WEB_ADVERTISED_PORT}" ]]; then
         echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
@@ -970,7 +972,7 @@ function createControllerSystemdFile {
     return 1
   fi
 
-  local output_file="${ZITI_HOME}/${controller_name}.service"
+  output_file="${ZITI_HOME}/${controller_name}.service"
 
   getFileOverwritePermission "${output_file}"
   retVal=$?
@@ -1255,6 +1257,7 @@ HeredocForSystemd
 # Ensure that the version desired as specified by ZITI_VERSION_OVERRIDE exists, this returns an error in cases where
 # the version doesn't exist or possibly just the version format provided in ZITI_VERSION_OVERRIDE is incorrect.
 function _verify_ziti_version_exists {
+  local ziticurl
 
   if ! setOs; then
     return 1
