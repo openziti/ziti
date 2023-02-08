@@ -76,7 +76,7 @@ func TestGetZitiCtrlAdvertisedAddressWhenUnset(t *testing.T) {
 	expectedValue, _ := os.Hostname()
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
+	actualValue, _ := GetCtrlWebAdvertisedHostname()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -93,7 +93,7 @@ func TestGetZitiCtrlAdvertisedAddressWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
+	actualValue, _ := GetCtrlWebAdvertisedHostname()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -110,7 +110,7 @@ func TestGetZitiCtrlAdvertisedAddressWhenExtDNSSet(t *testing.T) {
 	_ = os.Setenv(extDNSVarName, externalDNSValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlAdvertisedAddress()
+	actualValue, _ := GetCtrlWebAdvertisedHostname()
 	assert.Equal(t, externalDNSValue, actualValue)
 }
 
@@ -123,7 +123,7 @@ func TestGetZitiCtrlPortWhenUnset(t *testing.T) {
 	expectedValue := "6262"
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlPort()
+	actualValue, _ := GetCtrlPort()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -140,7 +140,7 @@ func TestGetZitiCtrlPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlPort()
+	actualValue, _ := GetCtrlPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -183,7 +183,7 @@ func TestGetZitiCtrlNameWhenUnset(t *testing.T) {
 	expectedValue := "controller"
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlName()
+	actualValue, _ := GetCtrlName()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -200,7 +200,7 @@ func TestGetZitiCtrlNameWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiCtrlName()
+	actualValue, _ := GetCtrlName()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -276,7 +276,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenUnset(t *testing.T) {
 	expectedValue := hostname + ":1280"
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	actualValue, _ := GetZitiCtrlEdgeHostPort()
 	assert.Equal(t, expectedValue, actualValue)
 
 	// The env variable should be populated with the expected value
@@ -295,7 +295,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenSet(t *testing.T) {
 	_ = os.Setenv(edgeCtrlAdvHostPortVarName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	actualValue, _ := GetZitiCtrlEdgeHostPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -314,7 +314,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExtDNSAndHostPortSet(t *testing.T)
 	_ = os.Setenv(extDNSVarName, externalDNSValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	actualValue, _ := GetZitiCtrlEdgeHostPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -331,7 +331,7 @@ func TestGetZitiEdgeCtrlAdvertisedHostPortWhenExternalDNSAndPortSet(t *testing.T
 	_ = os.Setenv(extDNSVarName, externalDNSValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedHostPort()
+	actualValue, _ := GetZitiCtrlEdgeHostPort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -344,7 +344,7 @@ func TestGetZitiEdgeCtrlPortWhenNotSet(t *testing.T) {
 	_ = os.Unsetenv(varName)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
+	actualValue, _ := GetZitiCtrlEdgePort()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -357,7 +357,7 @@ func TestGetZitiEdgeIdentityEnrollmentDurationWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeIdentityEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -372,7 +372,7 @@ func TestGetZitiEdgeIdentityEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeIdentityEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -386,7 +386,7 @@ func TestGetZitiEdgeIdentityEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeIdentityEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeIdentityEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -399,7 +399,7 @@ func TestGetZitiEdgeRouterEnrollmentDurationWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -414,7 +414,7 @@ func TestGetZitiEdgeRouterEnrollmentDurationWhenSetToBlank(t *testing.T) {
 	_ = os.Setenv(varName, "")
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -428,7 +428,7 @@ func TestGetZitiEdgeRouterEnrollmentDurationWhenNotSet(t *testing.T) {
 	_ = os.Setenv(varName, fmt.Sprintf("%.0f", expectedValue.Minutes()))
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeRouterEnrollmentDuration()
+	actualValue, _ := GetCtrlEdgeRouterEnrollmentDuration()
 	assert.Equal(t, expectedValue, actualValue)
 }
 
@@ -441,6 +441,6 @@ func TestGetZitiEdgeCtrlPortWhenSet(t *testing.T) {
 	_ = os.Setenv(varName, expectedValue)
 
 	// Check that the value matches
-	actualValue, _ := GetZitiEdgeCtrlAdvertisedPort()
+	actualValue, _ := GetZitiCtrlEdgePort()
 	assert.Equal(t, expectedValue, actualValue)
 }

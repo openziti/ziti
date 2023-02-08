@@ -69,15 +69,77 @@ func GetZitiHome() (string, error) {
 	return NormalizePath(retVal), nil
 }
 
-func GetZitiCtrlAdvertisedAddress() (string, error) {
+func GetCtrlListenerHostname() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlListenerHostnameVarName, constants.DefaultCtrlListenerHostname)
+}
 
-	// Use External DNS if set
-	extDNS := os.Getenv(constants.ExternalDNSVarName)
-	if extDNS != "" {
-		return extDNS, nil
+func GetCtrlListenerPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlListenerPortVarName, constants.DefaultCtrlListenerPort)
+}
+
+func GetCtrlMgmtHostname() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlMgmtHostnameVarName, constants.DefaultCtrlListenerHostname)
+}
+
+func GetCtrlMgmtPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlMgmtPortVarName, constants.DefaultCtrlMgmtListenerPort)
+}
+
+func GetCtrlEdgeApiHostname() (string, error) {
+	// Get the controller's web advertised hostname to use as the default
+	defaultHostname, err := GetCtrlWebAdvertisedHostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlWebAdvertisedHostnameVarName)
+		if err != nil {
+			return "", err
+		}
 	}
 
-	// Use hostname if external DNS and advertised address not set
+	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiHostnameVarName, defaultHostname)
+}
+
+func GetCtrlEdgeApiPort() (string, error) {
+	// Get the controller's web advertised port to use as the default
+	defaultPort, err := GetCtrlWebAdvertisedPort()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlWebAdvertisedPortVarName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiPortVarName, defaultPort)
+}
+
+func GetCtrlWebInterfaceHostname() (string, error) {
+	// Get the controller's listener hostname to use as the default
+	defaultHostname, err := GetCtrlListenerHostname()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlListenerHostnameVarName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(constants.CtrlWebInterfaceHostnameVarName, defaultHostname)
+}
+
+func GetCtrlWebInterfacePort() (string, error) {
+	// Get the controller's web advertised port to use as the default
+	defaultPort, err := GetCtrlWebAdvertisedPort()
+	if err != nil {
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlWebAdvertisedPortVarName)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return getValueOrSetAndGetDefault(constants.CtrlWebInterfacePortVarName, defaultPort)
+}
+
+func GetCtrlWebAdvertisedHostname() (string, error) {
+
+	// Use hostname if web advertised address not set
 	hostname, err := os.Hostname()
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get hostname")
@@ -86,19 +148,11 @@ func GetZitiCtrlAdvertisedAddress() (string, error) {
 		}
 	}
 
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlAdvertisedAddressVarName, hostname)
+	return getValueOrSetAndGetDefault(constants.CtrlWebAdvertisedHostnameVarName, hostname)
 }
 
-func GetZitiCtrlPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlPortVarName, constants.DefaultZitiControllerPort)
-}
-
-func GetZitiCtrlListenerAddress() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlListenerAddressVarName, constants.DefaultZitiControllerListenerAddress)
-}
-
-func GetZitiCtrlName() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiCtrlNameVarName, constants.DefaultZitiControllerName)
+func GetCtrlWebAdvertisedPort() (string, error) {
+	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiPortVarName, constants.DefaultCtrlWebAdvertisedPort)
 }
 
 func GetZitiEdgeRouterPort() (string, error) {
@@ -109,62 +163,17 @@ func GetZitiEdgeRouterListenerBindPort() (string, error) {
 	return getValueOrSetAndGetDefault(constants.ZitiEdgeRouterListenerBindPortVarName, constants.DefaultZitiEdgeRouterListenerBindPort)
 }
 
-func GetZitiEdgeCtrlListenerHostPort() (string, error) {
-	// Get the edge controller port to use as the default
-	edgeCtrlPort, err := GetZitiEdgeCtrlAdvertisedPort()
+func GetCtrlEdgeIdentityEnrollmentDuration() (time.Duration, error) {
+	retVal, err := getValueOrSetAndGetDefault(constants.CtrlEdgeIdentityEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlListenerHostPortVarName, constants.DefaultZitiEdgeListenerHost+":"+edgeCtrlPort)
-}
-
-func GetZitiEdgeCtrlAdvertisedHostPort() (string, error) {
-
-	port, err := GetZitiEdgeCtrlAdvertisedPort()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeCtrlAdvertisedPortVarName)
-		if err != nil {
-			return "", err
-		}
-	}
-
-	// Use External DNS if set
-	extDNS := os.Getenv(constants.ExternalDNSVarName)
-	if extDNS != "" {
-		return extDNS + ":" + port, nil
-	}
-
-	// Use hostname and advertised port if advertised host port env var not set
-	hostname, err := os.Hostname()
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get hostname")
-		if err != nil {
-			return "", err
-		}
-	}
-
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedHostPortVarName, hostname+":"+port)
-}
-
-func GetZitiEdgeCtrlAdvertisedPort() (string, error) {
-	return getValueOrSetAndGetDefault(constants.ZitiEdgeCtrlAdvertisedPortVarName, constants.DefaultZitiEdgeAPIPort)
-}
-
-func GetZitiEdgeIdentityEnrollmentDuration() (time.Duration, error) {
-	retVal, err := getValueOrSetAndGetDefault(constants.ZitiEdgeIdentityEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
-	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeIdentityEnrollmentDurationVarDescription)
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeIdentityEnrollmentDurationVarDescription)
 		if err != nil {
 			return edge.DefaultEdgeEnrollmentDuration, err
 		}
 	}
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeIdentityEnrollmentDurationVarDescription)
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeIdentityEnrollmentDurationVarDescription)
 		if err != nil {
 			return edge.DefaultEdgeEnrollmentDuration, err
 		}
@@ -173,17 +182,17 @@ func GetZitiEdgeIdentityEnrollmentDuration() (time.Duration, error) {
 	return time.Duration(retValInt) * time.Minute, nil
 }
 
-func GetZitiEdgeRouterEnrollmentDuration() (time.Duration, error) {
-	retVal, err := getValueOrSetAndGetDefault(constants.ZitiEdgeRouterEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
+func GetCtrlEdgeRouterEnrollmentDuration() (time.Duration, error) {
+	retVal, err := getValueOrSetAndGetDefault(constants.CtrlEdgeRouterEnrollmentDurationVarName, strconv.FormatInt(int64(edge.DefaultEdgeEnrollmentDuration.Minutes()), 10))
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeRouterEnrollmentDurationVarDescription)
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeRouterEnrollmentDurationVarDescription)
 		if err != nil {
 			return edge.DefaultEdgeEnrollmentDuration, err
 		}
 	}
 	retValInt, err := strconv.Atoi(retVal)
 	if err != nil {
-		err := errors.Wrap(err, "Unable to get "+constants.ZitiEdgeRouterEnrollmentDurationVarDescription)
+		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeRouterEnrollmentDurationVarDescription)
 		if err != nil {
 			return edge.DefaultEdgeEnrollmentDuration, err
 		}
