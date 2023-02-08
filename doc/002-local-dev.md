@@ -7,54 +7,38 @@ This local development README guides you to install the Ziti stack built from th
 You will need to [install a version of Go](https://go.dev/) that is as recent as the version used by this project. Find the current minimum version by running this command to inspect `go.mod`.
 
 ```bash
-grep -Po '^go\s+\K\d+\.\d+$' go.mod
+grep -Po '^go\s+\K\d+\.\d+(\.\d+)?$' go.mod
 ```
 
 ## Build and Install All Applications
 
-This repo contains several Go applications. The easiest way to build and install all to `${GOPATH}/bin` is:
+This repo contains several Go applications, e.g. ziti-controller, ziti-router. These applications were reorganized as subcommands of the `ziti` CLI application, so it's no longer necessary to build the discrete binaries. Only the `ziti` CLI is necessary. The easiest way to build and install `ziti` in `${GOPATH}/bin` is:
 
 ```bash
-# build and install all apps
-go install ./...
+# build and install ziti CLI
+go install ./ziti
 ```
 
 If you add `${GOPATH}/bin` to your executable search `${PATH}` then you may immediately run the newly-built binaries. For example,
 
 ```bash
-$ ziti-controller version
-v0.0.0
+$ ziti version
+NAME             VERSION
+ziti             v0.0.0
+ziti-controller  not installed
+ziti-prox-c      not installed
+ziti-router      not installed
+ziti-tunnel      not installed
+ziti-edge-tunnel v0.20.18-local
 ```
 
-The remainder of this article will assume you have installed all apps to be available in your `PATH`.
-
-## Build Applications Individually
-
-### `ziti` CLI
+## Build ziti CLI
 
 ```bash
 # build the binary without installing in GOPATH
-go build -o ./build/ziti ./ziti/cmd/ziti/
+go build -o ./build/ziti ./ziti/
 # execute the binary
 ./build/ziti version
-```
-
-### `ziti-controller`
-
-```bash
-# build the binary without installing in GOPATH
-go build -o ./build/ziti-controller ./ziti-controller/
-# execute the binary
-./build/ziti-controller version
-```
-
-### `ziti-router`
-
-```bash
-# build the binary without installing in GOPATH
-go build -o ./build/ziti-router ./ziti-router/
-# execute the binary
-./build/ziti-router version
 ```
 
 ## Run a Local Ziti Stack

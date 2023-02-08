@@ -19,7 +19,7 @@ router egress.  The full connection will be:
 
 These commands require a running BASH shell. Windows users will need to use WSL, [cygwin](https://www.cygwin.com/), a Linux virtual machine, or some other environment that supports BASH. The easiest thing might just be to use the shell that comes with [git bashfor windows](https://gitforwindows.org/). WSL is maturing more and more: [Mintty and WSL](https://github.com/mintty/wsltty).
 
-Also note that commands for `ziti`, `ziti-controller`, and `ziti-router` may need to have the `.exe` suffix appended to the example commands.
+Also note that the `ziti`command may need to have the `.exe` suffix appended to the example commands.
 
 ## Hosts File
 
@@ -213,10 +213,10 @@ The following steps outline how to configure and start the Ziti Controller.
 
     ```bash
     # if needed, initialize the controller
-    ziti-controller edge init $ZITI_HOME/controller.yaml -u admin -p admin
+    ziti controller edge init $ZITI_HOME/controller.yaml -u admin -p admin
     
     # run the controller
-    ziti-controller run $ZITI_HOME/controller.yaml
+    ziti controller run $ZITI_HOME/controller.yaml
     ```
 
     Note that running this command will commandeer your current terminal. Use `screen` or multiple terminals by using
@@ -329,7 +329,7 @@ to connect to and control the fabric.
 1. Start the router:
 
     ```bash
-    ziti-router run $ZITI_HOME/r01.yaml
+    ziti router run $ZITI_HOME/r01.yaml
     ```
 
     Note that running this command will commandeer your current terminal. Use `screen` or multiple terminals by using
@@ -339,7 +339,7 @@ to connect to and control the fabric.
 
 A Ziti Edge Router allows the Ziti SDK to ingress to a Ziti overlay network. A Ziti Edge Router is a Ziti Router that has the `edge`
 section of the configuration defined and has gone through the Edge Router Enrollment process instead of the Ziti Router
-enrollment process. Ziti Edge Routers and Ziti Routers are run from the same binary `ziti-router`.
+enrollment process. Ziti Edge Routers and Ziti Routers are run from the same binary `ziti router`.
 
 Ensure that the `env` file is sourced if you are using a new terminal.
 
@@ -401,13 +401,13 @@ Ensure that the `env` file is sourced if you are using a new terminal.
 1. Complete the enrollment process with the controller
 
     ```bash
-    ziti-router enroll $ZITI_HOME/er01.yaml --jwt $ZITI_HOME/er01.jwt
+    ziti router enroll $ZITI_HOME/er01.yaml --jwt $ZITI_HOME/er01.jwt
     ```
 
 1. Start the edge router:
 
     ```bash
-    ziti-router run $ZITI_HOME/er01.yaml
+    ziti router run $ZITI_HOME/er01.yaml
     ```
 
     Note that running this command will commandeer your current terminal. Use `screen` or multiple terminals by using
