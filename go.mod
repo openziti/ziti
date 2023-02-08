@@ -21,16 +21,16 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.8
-	github.com/openziti/channel/v2 v2.0.26
-	github.com/openziti/edge v0.24.115
+	github.com/openziti/channel/v2 v2.0.27
+	github.com/openziti/edge v0.24.121
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.19
+	github.com/openziti/fabric v0.22.20
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.30
 	github.com/openziti/runzmd v1.0.9
-	github.com/openziti/sdk-golang v0.18.26
+	github.com/openziti/sdk-golang v0.18.27
 	github.com/openziti/storage v0.1.33
-	github.com/openziti/transport/v2 v2.0.50
+	github.com/openziti/transport/v2 v2.0.51
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
@@ -174,12 +174,12 @@ require (
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
 	golang.org/x/crypto v0.5.0 // indirect
-	golang.org/x/exp v0.0.0-20230202163644-54bba9f4231b // indirect
+	golang.org/x/exp v0.0.0-20230206171751-46f607a40771 // indirect
 	golang.org/x/image v0.3.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.4.0 // indirect
-	golang.org/x/term v0.4.0 // indirect
+	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/term v0.5.0 // indirect
 	golang.org/x/text v0.6.0 // indirect
 	golang.org/x/tools v0.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20211208223120-3a66f561d7aa // indirect
