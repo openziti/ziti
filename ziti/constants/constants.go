@@ -96,7 +96,7 @@ const (
 	CtrlWebIdentityCAVarName                         = "ZITI_CTRL_WEB_IDENTITY_CA"
 	CtrlEdgeIdentityCAVarDescription                 = "Path to Identity CA for Ziti Edge Controller"
 
-	ZitiEdgeRouterRawNameVarName                 = "ZITI_EDGE_ROUTER_RAWNAME"
+	ZitiEdgeRouterRawNameVarName                 = "ZITI_EDGE_ROUTER_NAME"
 	ZitiEdgeRouterRawNameVarDescription          = "The Edge Router Raw Name"
 	ZitiEdgeRouterPortVarName                    = "ZITI_EDGE_ROUTER_PORT"
 	ZitiEdgeRouterPortVarDescription             = "Port of the Ziti Edge Router"
