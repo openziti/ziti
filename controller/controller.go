@@ -17,6 +17,8 @@
 package controller
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -450,16 +452,28 @@ func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err = sourceDb.Close(); err != nil {
+			log.WithError(err).Error("error closing migration source bolt db")
+		}
+	}()
 
 	log.Infof("initializing from bolt db [%v]", sourceDbPath)
-	snapshotId, snapshot, err := sourceDb.SnapshotToMemory()
+
+	buf := &bytes.Buffer{}
+	gzWriter := gzip.NewWriter(buf)
+	snapshotId, err := sourceDb.SnapshotToWriter(gzWriter)
 	if err != nil {
 		return err
 	}
 
+	if err = gzWriter.Close(); err != nil {
+		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
+	}
+
 	cmd := &command.SyncSnapshotCommand{
 		SnapshotId:   snapshotId,
-		Snapshot:     snapshot,
+		Snapshot:     buf.Bytes(),
 		SnapshotSink: c.network.RestoreSnapshot,
 	}
 

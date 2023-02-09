@@ -4,3 +4,5 @@ github_deploy_key
 .vscode/
 go.work
 go.work.sum
+tests/testdata/router1
+tests/testdata/router2
