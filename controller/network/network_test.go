@@ -59,7 +59,7 @@ func (self *testConfig) GetOptions() *Options {
 }
 
 func (self *testConfig) GetCommandDispatcher() command.Dispatcher {
-	return nil
+	return &command.LocalDispatcher{}
 }
 
 func (self *testConfig) GetDb() boltz.Db {

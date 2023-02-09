@@ -66,10 +66,10 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Leader: srv.Address == leaderAddr,
 			Version: func() string {
 				if srv.Address == leaderAddr {
-					return self.version
+					return self.version.Version()
 				}
 				if peer, exists := peers[string(srv.Address)]; exists {
-					return peer.Version
+					return peer.Version.Version
 				}
 				return "N/A"
 			}(),
@@ -86,7 +86,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Addr:      peer.Address,
 			Voter:     false,
 			Leader:    peer.Address == string(leaderAddr),
-			Version:   peer.Version,
+			Version:   peer.Version.Version,
 			Connected: true,
 		})
 	}

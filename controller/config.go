@@ -298,7 +298,11 @@ func LoadConfig(path string) (*Config, error) {
 									return nil, fmt.Errorf("error loading advertiseAddress for [ctrl/options] (%v)", err)
 								}
 								if controllerConfig.Raft != nil {
-									controllerConfig.Raft.AdvertiseAddress = advertiseAddr
+									addr, err := transport.ParseAddress(advertiseAddr)
+									if err != nil {
+										return nil, errors.Wrap(err, "unable to parse [ctrl/options/advertiseAddress]")
+									}
+									controllerConfig.Raft.AdvertiseAddress = addr
 								}
 							}
 						} else {
@@ -310,6 +314,9 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
+			}
+			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
+				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
 			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")
