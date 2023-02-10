@@ -81,12 +81,16 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 	rootCaPool := x509.NewCertPool()
 
-	rootPemData, err := os.ReadFile(self.CaCert)
-	if err != nil {
-		return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
-	}
+	if self.CaCert != "" {
+		rootPemData, err := os.ReadFile(self.CaCert)
+		if err != nil {
+			return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+		}
 
-	rootCaPool.AppendCertsFromPEM(rootPemData)
+		rootCaPool.AppendCertsFromPEM(rootPemData)
+	} else {
+		rootCaPool, _ = x509.SystemCertPool()
+	}
 
 	return &tls.Config{
 		RootCAs: rootCaPool,
