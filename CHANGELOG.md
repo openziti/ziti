@@ -1,3 +1,12 @@
+# Release 0.27.5
+
+## What's New
+
+Fixes an issue with `ziti` CLI when using a globally trusted CA
+
+## Component Updates and Bug Fixes
+
+
 # Release 0.27.4
 
 ## What's New
