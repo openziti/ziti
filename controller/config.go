@@ -292,13 +292,13 @@ func LoadConfig(path string) (*Config, error) {
 					if val, found := submap["advertiseAddress"]; found {
 						if advertiseAddr, ok := val.(string); ok {
 							if advertiseAddr != "" {
-								if addr, err := transport.ParseAddress(advertiseAddr); err == nil {
-									controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
-								} else {
-									return nil, fmt.Errorf("error loading advertiseAddress for [ctrl/options] (%v)", err)
+								addr, err := transport.ParseAddress(advertiseAddr)
+								if err != nil {
+									return nil, errors.Wrapf(err, "error parsing value '%v' for [ctrl/options/advertiseAddress]", advertiseAddr)
 								}
+								controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
 								if controllerConfig.Raft != nil {
-									controllerConfig.Raft.AdvertiseAddress = advertiseAddr
+									controllerConfig.Raft.AdvertiseAddress = addr
 								}
 							}
 						} else {
@@ -310,6 +310,9 @@ func LoadConfig(path string) (*Config, error) {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
+			}
+			if controllerConfig.Raft != nil && controllerConfig.Raft.AdvertiseAddress == nil {
+				return nil, errors.New("[ctrl/options/advertiseAddress] is required when raft is enabled")
 			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")

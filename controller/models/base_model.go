@@ -18,7 +18,6 @@ package models
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -62,6 +61,11 @@ type Entity interface {
 	GetUpdatedAt() time.Time
 	GetTags() map[string]interface{}
 	IsSystemEntity() bool
+}
+
+type NameIndexedStore interface {
+	boltz.CrudStore
+	GetNameIndex() boltz.ReadIndex
 }
 
 type BaseEntity struct {
@@ -268,7 +272,7 @@ func (ctrl *BaseEntityManager) ValidateNameOnUpdate(ctx boltz.MutateContext, upd
 			if namedEntity.GetName() == "" {
 				return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 			}
-			if nameIndexStore, ok := ctrl.GetStore().(db.NameIndexedStore); ok {
+			if nameIndexStore, ok := ctrl.GetStore().(NameIndexedStore); ok {
 				if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
 					return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 				}
@@ -293,7 +297,7 @@ func (handler *BaseEntityManager) ValidateNameOnCreate(ctx boltz.MutateContext, 
 		if namedEntity.GetName() == "" {
 			return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 		}
-		if nameIndexStore, ok := handler.GetStore().(db.NameIndexedStore); ok {
+		if nameIndexStore, ok := handler.GetStore().(NameIndexedStore); ok {
 			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
 				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 			}

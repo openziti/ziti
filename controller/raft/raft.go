@@ -19,6 +19,9 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/versions"
+	"github.com/openziti/transport/v2"
 	"os"
 	"path"
 	"reflect"
@@ -26,8 +29,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
-	"github.com/openziti/transport/v2"
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -47,7 +48,7 @@ type Config struct {
 	Recover               bool
 	DataDir               string
 	MinClusterSize        uint32
-	AdvertiseAddress      string
+	AdvertiseAddress      transport.Address
 	BootstrapMembers      []string
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
@@ -57,7 +58,59 @@ type Config struct {
 
 type RouterDispatchCallback func(*raft.Configuration) error
 
-func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager, routerDispatchCallback RouterDispatchCallback) *Controller {
+type ClusterEvent uint32
+
+func (self ClusterEvent) String() string {
+	switch self {
+	case ClusterEventReadOnly:
+		return "ClusterEventReadOnly"
+	case ClusterEventReadWrite:
+		return "ClusterEventReadWrite"
+	case ClusterEventLeadershipGained:
+		return "ClusterEventLeadershipGained"
+	case ClusterEventLeadershipLost:
+		return "ClusterEventLeadershipLost"
+	default:
+		return fmt.Sprintf("UnhandledClusterEventType[%v]", uint32(self))
+	}
+}
+
+const (
+	ClusterEventReadOnly         ClusterEvent = 0
+	ClusterEventReadWrite        ClusterEvent = 1
+	ClusterEventLeadershipGained ClusterEvent = 2
+	ClusterEventLeadershipLost   ClusterEvent = 3
+
+	isLeaderMask    = 0b01
+	isReadWriteMask = 0b10
+)
+
+type ClusterState uint8
+
+func (c ClusterState) IsLeader() bool {
+	return uint8(c)&isLeaderMask == isLeaderMask
+}
+
+func (c ClusterState) IsReadWrite() bool {
+	return uint8(c)&isReadWriteMask == isReadWriteMask
+}
+
+func (c ClusterState) String() string {
+	return fmt.Sprintf("ClusterState[isLeader=%v, isReadWrite=%v]", c.IsLeader(), c.IsReadWrite())
+}
+
+func newClusterState(isLeader, isReadWrite bool) ClusterState {
+	var val uint8
+	if isLeader {
+		val = val | isLeaderMask
+	}
+	if isReadWrite {
+		val = val | isReadWriteMask
+	}
+	return ClusterState(val)
+}
+
+func NewController(id *identity.TokenId, version versions.VersionProvider, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager, routerDispatchCallback RouterDispatchCallback) *Controller {
 	result := &Controller{
 		Id:                     id,
 		Config:                 config,
@@ -66,26 +119,37 @@ func NewController(id *identity.TokenId, version string, config *Config, metrics
 		version:                version,
 		migrationMgr:           migrationMgr,
 		routerDispatchCallback: routerDispatchCallback,
+		clusterEvents:          make(chan raft.Observation, 16),
 	}
 	return result
 }
 
 // Controller manages RAFT related state and operations
 type Controller struct {
-	Id                     *identity.TokenId
-	Config                 *Config
-	Mesh                   mesh.Mesh
-	Raft                   *raft.Raft
-	Fsm                    *BoltDbFsm
-	bootstrapped           atomic.Bool
-	clusterLock            sync.Mutex
-	servers                []raft.Server
-	metricsRegistry        metrics.Registry
-	closeNotify            <-chan struct{}
-	indexTracker           IndexTracker
-	version                string
-	migrationMgr           MigrationManager
-	routerDispatchCallback RouterDispatchCallback
+	Id                         *identity.TokenId
+	Config                     *Config
+	Mesh                       mesh.Mesh
+	Raft                       *raft.Raft
+	Fsm                        *BoltDbFsm
+	bootstrapped               atomic.Bool
+	clusterLock                sync.Mutex
+	servers                    []raft.Server
+	metricsRegistry            metrics.Registry
+	closeNotify                <-chan struct{}
+	indexTracker               IndexTracker
+	version                    versions.VersionProvider
+	migrationMgr               MigrationManager
+	routerDispatchCallback     RouterDispatchCallback
+	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState)]
+	isLeader                   atomic.Bool
+	clusterEvents              chan raft.Observation
+}
+
+func (self *Controller) RegisterClusterEventHandler(f func(event ClusterEvent, state ClusterState)) {
+	if self.isLeader.Load() {
+		f(ClusterEventLeadershipGained, newClusterState(true, !self.Mesh.IsReadOnly()))
+	}
+	self.clusterStateChangeHandlers.Append(f)
 }
 
 // GetRaft returns the managed raft instance
@@ -110,6 +174,14 @@ func (self *Controller) IsLeader() bool {
 
 func (self *Controller) IsLeaderOrLeaderless() bool {
 	return self.IsLeader() || self.GetLeaderAddr() == ""
+}
+
+func (self *Controller) IsReadOnlyMode() bool {
+	return self.Mesh.IsReadOnly()
+}
+
+func (self *Controller) IsDistributed() bool {
+	return true
 }
 
 // GetLeaderAddr returns the current leader address, which may be blank if there is no leader currently
@@ -314,13 +386,12 @@ func (self *Controller) Init() error {
 
 	hclLogger := NewHcLogrusLogger()
 
-	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress)
+	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress.String())
 	conf := raft.DefaultConfig()
 	conf.SnapshotThreshold = 10
 	conf.LocalID = raft.ServerID(self.Id.Token)
 	conf.NoSnapshotRestoreOnStart = false
 	conf.Logger = hclLogger
-	conf.TrailingLogs = 1
 
 	// Create the log store and stable store.
 	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
@@ -344,9 +415,14 @@ func (self *Controller) Init() error {
 		return nil
 	}
 
-	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
-
-	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
+	self.Mesh = mesh.New(self.Id, self.version, localAddr, channel.BindHandlerF(bindHandler))
+	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
+		obs := raft.Observation{
+			Raft: self.Raft,
+			Data: state,
+		}
+		self.clusterEvents <- obs
+	})
 
 	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.routerDispatchCallback)
 
@@ -354,8 +430,10 @@ func (self *Controller) Init() error {
 		return errors.Wrap(err, "failed to init FSM")
 	}
 
+	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
+
 	if raftConfig.Recover {
-		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, transport, raft.Configuration{
+		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, raftTransport, raft.Configuration{
 			Servers: []raft.Server{
 				{ID: conf.LocalID, Address: localAddr},
 			},
@@ -368,14 +446,59 @@ func (self *Controller) Init() error {
 		os.Exit(0)
 	}
 
-	r, err := raft.NewRaft(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, transport)
+	r, err := raft.NewRaft(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, raftTransport)
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
-
 	self.Raft = r
+	self.ObserveLeaderChanges()
 
 	return nil
+}
+
+func (self *Controller) ObserveLeaderChanges() {
+	self.Raft.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
+		_, ok := o.Data.(raft.RaftState)
+		return ok
+	}))
+
+	go func() {
+		if self.Raft.State() == raft.Leader {
+			self.isLeader.Store(true)
+			self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, true))
+		}
+
+		isReadWrite := true
+
+		for observation := range self.clusterEvents {
+			pfxlog.Logger().Tracef("raft observation received: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
+			if raftState, ok := observation.Data.(raft.RaftState); ok {
+				if raftState == raft.Leader && !self.isLeader.Load() {
+					self.isLeader.Store(true)
+					self.handleClusterStateChange(ClusterEventLeadershipGained, newClusterState(true, isReadWrite))
+				} else if raftState != raft.Leader && self.isLeader.Load() {
+					self.isLeader.Store(false)
+					self.handleClusterStateChange(ClusterEventLeadershipLost, newClusterState(false, isReadWrite))
+				}
+			} else if state, ok := observation.Data.(mesh.ClusterState); ok {
+				if state == mesh.ClusterReadWrite {
+					isReadWrite = true
+					self.handleClusterStateChange(ClusterEventReadWrite, newClusterState(self.isLeader.Load(), isReadWrite))
+				} else if state == mesh.ClusterReadOnly {
+					isReadWrite = false
+					self.handleClusterStateChange(ClusterEventReadOnly, newClusterState(self.isLeader.Load(), isReadWrite))
+				}
+			}
+
+			pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)
+		}
+	}()
+}
+
+func (self *Controller) handleClusterStateChange(event ClusterEvent, state ClusterState) {
+	for _, handler := range self.clusterStateChangeHandlers.Value() {
+		handler(event, state)
+	}
 }
 
 func (self *Controller) Bootstrap() error {

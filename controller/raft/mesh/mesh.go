@@ -17,6 +17,9 @@
 package mesh
 
 import (
+	"crypto/x509"
+	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/versions"
 	"net"
 	"strings"
 	"sync"
@@ -33,9 +36,7 @@ import (
 )
 
 const (
-	PeerIdHeader      = 10
-	PeerAddrHeader    = 11
-	PeerVersionHeader = 12
+	PeerAddrHeader = 11
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
@@ -49,7 +50,7 @@ type Peer struct {
 	Address  string
 	Channel  channel.Channel
 	RaftConn *raftPeerConn
-	Version  string
+	Version  *versions.VersionInfo
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
@@ -62,9 +63,7 @@ func (self *Peer) ContentType() int32 {
 
 func (self *Peer) HandleReceive(m *channel.Message, _ channel.Channel) {
 	go func() {
-		response := channel.NewMessage(channel.ContentTypeResultType, nil)
-		response.Headers[PeerIdHeader] = []byte(self.mesh.raftId)
-		response.Headers[PeerVersionHeader] = []byte(self.mesh.version)
+		response := channel.NewResult(true, "")
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
@@ -84,10 +83,10 @@ func (self *Peer) Connect(timeout time.Duration) error {
 	if err != nil {
 		return err
 	}
-	id, _ := response.GetStringHeader(PeerIdHeader)
-	version, _ := response.GetStringHeader(PeerVersionHeader)
-	self.Id = raft.ServerID(id)
-	self.Version = version
+	result := channel.UnmarshalResult(response)
+	if !result.Success {
+		return errors.Errorf("connect failed: %v", result.Message)
+	}
 
 	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
 
@@ -107,6 +106,13 @@ func (self meshAddr) String() string {
 	return self.addr
 }
 
+type ClusterState uint32
+
+const (
+	ClusterReadWrite ClusterState = 0
+	ClusterReadOnly  ClusterState = 1
+)
+
 // Mesh provides the networking layer to raft
 type Mesh interface {
 	raft.StreamLayer
@@ -121,39 +127,50 @@ type Mesh interface {
 	GetPeerId(address string, timeout time.Duration) (string, error)
 	GetAdvertiseAddr() raft.ServerAddress
 	GetPeers() map[string]*Peer
+
+	RegisterClusterStateHandler(f func(state ClusterState))
 }
 
-func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+func New(id *identity.TokenId, version versions.VersionProvider, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+	versionEncoded, err := version.EncoderDecoder().Encode(version.AsVersionInfo())
+	if err != nil {
+		panic(err)
+	}
+
 	return &impl{
 		id:       id,
-		raftId:   raftId,
 		raftAddr: raftAddr,
 		netAddr: &meshAddr{
 			network: "mesh",
 			addr:    string(raftAddr),
 		},
-		Peers:       map[string]*Peer{},
-		closeNotify: make(chan struct{}),
-		raftAccepts: make(chan net.Conn),
-		bindHandler: bindHandler,
-		version:     version,
-		readonly:    atomic.Bool{},
+		Peers:          map[string]*Peer{},
+		closeNotify:    make(chan struct{}),
+		raftAccepts:    make(chan net.Conn),
+		bindHandler:    bindHandler,
+		version:        version,
+		versionEncoded: versionEncoded,
 	}
 }
 
 type impl struct {
-	id          *identity.TokenId
-	raftId      raft.ServerID
-	raftAddr    raft.ServerAddress
-	netAddr     net.Addr
-	Peers       map[string]*Peer
-	lock        sync.RWMutex
-	closeNotify chan struct{}
-	closed      atomic.Bool
-	raftAccepts chan net.Conn
-	bindHandler channel.BindHandler
-	version     string
-	readonly    atomic.Bool
+	id                   *identity.TokenId
+	raftAddr             raft.ServerAddress
+	netAddr              net.Addr
+	Peers                map[string]*Peer
+	lock                 sync.RWMutex
+	closeNotify          chan struct{}
+	closed               atomic.Bool
+	raftAccepts          chan net.Conn
+	bindHandler          channel.BindHandler
+	version              versions.VersionProvider
+	versionEncoded       []byte
+	readonly             atomic.Bool
+	clusterStateHandlers concurrenz.CopyOnWriteSlice[func(state ClusterState)]
+}
+
+func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
+	self.clusterStateHandlers.Append(f)
 }
 
 func (self *impl) GetAdvertiseAddr() raft.ServerAddress {
@@ -198,7 +215,6 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 	if peer := self.GetPeer(raft.ServerAddress(address)); peer != nil {
 		logrus.Debugf("existing peer found for %v, returning", address)
-		self.checkState()
 		return peer, nil
 	}
 	logrus.Infof("creating new peer for %v, returning", address)
@@ -210,10 +226,9 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	headers := map[int32][]byte{
-		PeerIdHeader:       []byte(self.raftId),
-		PeerAddrHeader:     []byte(self.raftAddr),
-		PeerVersionHeader:  []byte(self.version),
-		channel.TypeHeader: []byte(ChannelTypeMesh),
+		channel.HelloVersionHeader: self.versionEncoded,
+		channel.TypeHeader:         []byte(ChannelTypeMesh),
+		PeerAddrHeader:             []byte(self.raftAddr),
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -231,6 +246,25 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		}
 
 		peer.Channel = binding.GetChannel()
+
+		underlay := binding.GetChannel().Underlay()
+		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
+		if err != nil {
+			return err
+		}
+
+		peer.Id = raft.ServerID(id)
+
+		versionEncoded, found := peer.Channel.Underlay().Headers()[channel.HelloVersionHeader]
+		if !found {
+			return errors.New("no version header supplied in hello response, can't bind peer")
+		}
+		versionInfo, err := self.version.EncoderDecoder().Decode(versionEncoded)
+		if err != nil {
+			return errors.Wrap(err, "can't decode version from returned from peer")
+		}
+
+		peer.Version = versionInfo
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 
 		binding.AddTypedReceiveHandler(peer)
@@ -268,9 +302,12 @@ func (self *impl) GetPeerId(address string, timeout time.Duration) (string, erro
 		}
 	}()
 
-	certs := c.PeerCertificates()
+	return self.extractPeerId(address, c.PeerCertificates())
+}
+
+func (self *impl) extractPeerId(peerAddr string, certs []*x509.Certificate) (string, error) {
 	if len(certs) == 0 {
-		return "", errors.Errorf("no certificates for peer at %v", address)
+		return "", errors.Errorf("no certificates for peer at %v", peerAddr)
 	}
 
 	leaf := certs[0]
@@ -287,13 +324,7 @@ func (self *impl) AddPeer(peer *Peer) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.Peers[peer.Address] = peer
-	//check if new peer is a different version
-	if !self.readonly.Load() {
-		if self.version != peer.Version {
-			self.readonly.Store(true)
-		}
-	}
-
+	self.updateClusterState()
 	logrus.Infof("added peer at %v", peer.Address)
 }
 
@@ -307,8 +338,35 @@ func (self *impl) RemovePeer(peer *Peer) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	delete(self.Peers, peer.Address)
-	//recheck if need to be readonly
-	self.checkState()
+	self.updateClusterState()
+}
+
+func (self *impl) updateClusterState() {
+	readOnlyPrevious := self.readonly.Load()
+
+	log := pfxlog.Logger()
+	readOnly := false
+	for _, p := range self.Peers {
+		if self.version.Version() != p.Version.Version {
+			if !readOnlyPrevious {
+				log.Infof("peer %v has version %v, not matching local version %v, entering read-only mode", p.Id, p.Version, self.version)
+			}
+			readOnly = true
+		}
+	}
+
+	self.readonly.Store(readOnly)
+
+	if readOnlyPrevious != readOnly {
+		for _, handler := range self.clusterStateHandlers.Value() {
+			if readOnly {
+				handler(ClusterReadOnly)
+			} else {
+				log.Info("cluster back at uniform version, exiting read-only mode")
+				handler(ClusterReadWrite)
+			}
+		}
+	}
 }
 
 func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
@@ -322,9 +380,12 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
 		ch := binding.GetChannel()
-		id := string(ch.Underlay().Headers()[PeerIdHeader])
 		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
-		version := string(ch.Underlay().Headers()[PeerVersionHeader])
+
+		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
+		if err != nil {
+			return err
+		}
 
 		if id == "" || addr == "" {
 			_ = ch.Close()
@@ -339,7 +400,18 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		peer.Id = raft.ServerID(id)
 		peer.Address = addr
 		peer.Channel = ch
-		peer.Version = version
+
+		versionEncoded, found := ch.Underlay().Headers()[channel.HelloVersionHeader]
+		if !found {
+			return errors.New("no version header supplied in hello, can't bind peer")
+		}
+
+		versionInfo, err := self.version.EncoderDecoder().Decode(versionEncoded)
+		if err != nil {
+			return errors.Wrap(err, "can't decode version from returned from dialing peer")
+		}
+
+		peer.Version = versionInfo
 
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		binding.AddTypedReceiveHandler(peer)
@@ -360,20 +432,16 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 }
 
 func (self *impl) GetPeers() map[string]*Peer {
-	return self.Peers
-}
+	self.lock.Lock()
+	defer self.lock.Unlock()
 
-func (self *impl) checkState() {
-	for _, p := range self.Peers {
-		if p != nil && p.Version != self.version {
-			logrus.Infof("My version is %s, Peer(%s) is %s\n", self.version, p.Id, p.Version)
-			self.readonly.Store(true)
-			return
-		}
+	result := map[string]*Peer{}
+
+	for k, v := range self.Peers {
+		result[k] = v
 	}
-	if self.IsReadOnly() {
-		self.readonly.Store(false)
-	}
+
+	return result
 }
 
 func (self *impl) IsReadOnly() bool {

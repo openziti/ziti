@@ -32,8 +32,3 @@ type baseStore struct {
 	stores *stores
 	*boltz.BaseStore
 }
-
-type NameIndexedStore interface {
-	boltz.CrudStore
-	GetNameIndex() boltz.ReadIndex
-}

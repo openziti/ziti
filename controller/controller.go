@@ -132,7 +132,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		c.raftController = raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c, c.routerDispatchCallback)
+		c.raftController = raft.NewController(cfg.Id, versionProvider, cfg.Raft, metricRegistry, c, c.routerDispatchCallback)
 		if err := c.raftController.Init(); err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
