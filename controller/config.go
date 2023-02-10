@@ -292,16 +292,12 @@ func LoadConfig(path string) (*Config, error) {
 					if val, found := submap["advertiseAddress"]; found {
 						if advertiseAddr, ok := val.(string); ok {
 							if advertiseAddr != "" {
-								if addr, err := transport.ParseAddress(advertiseAddr); err == nil {
-									controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
-								} else {
-									return nil, fmt.Errorf("error loading advertiseAddress for [ctrl/options] (%v)", err)
+								addr, err := transport.ParseAddress(advertiseAddr)
+								if err != nil {
+									return nil, errors.Wrapf(err, "error parsing value '%v' for [ctrl/options/advertiseAddress]", advertiseAddr)
 								}
+								controllerConfig.Ctrl.Options.AdvertiseAddress = &addr
 								if controllerConfig.Raft != nil {
-									addr, err := transport.ParseAddress(advertiseAddr)
-									if err != nil {
-										return nil, errors.Wrap(err, "unable to parse [ctrl/options/advertiseAddress]")
-									}
 									controllerConfig.Raft.AdvertiseAddress = addr
 								}
 							}
