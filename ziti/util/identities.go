@@ -89,7 +89,11 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 		rootCaPool.AppendCertsFromPEM(rootPemData)
 	} else {
-		rootCaPool, _ = x509.SystemCertPool()
+		var err error
+		rootCaPool, err = x509.SystemCertPool()
+		if err != nil {
+			return nil, errors.New("couldn't retrieve the SystemCertPool and no CaCert provided")
+		}
 	}
 
 	return &tls.Config{
