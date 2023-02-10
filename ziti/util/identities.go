@@ -95,7 +95,9 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
 	client := newClient()
-	client.SetRootCertificate(self.CaCert)
+	if self.CaCert != "" {
+		client.SetRootCertificate(self.CaCert)
+	}
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)
 	return client, nil
