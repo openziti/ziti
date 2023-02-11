@@ -1,8 +1,11 @@
 package router
 
 import (
+	"github.com/openziti/fabric/router/env"
+	"github.com/stretchr/testify/require"
 	"os"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
@@ -57,11 +60,55 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 	expected.Set(addr.String(), NewUpdatableAddress(addr))
 
 	assert.NoError(t, r.initializeCtrlEndpoints())
-	assert.FileExists(t, path.Join(tmpDir, "endpoints"))
+	assert.NoFileExists(t, path.Join(tmpDir, "endpoints"))
+}
+
+func Test_updateCtrlEndpoints(t *testing.T) {
+	req := require.New(t)
+	tmpDir, err := os.MkdirTemp("", "")
+	req.NoError(err)
+
+	defer os.RemoveAll(tmpDir)
+
+	transport.AddAddressParser(tls.AddressParser{})
+	addr, err := transport.ParseAddress("tls:localhost:6565")
+	req.NoError(err)
+
+	addr2, err := transport.ParseAddress("tls:localhost:6767")
+	req.NoError(err)
+
+	r := Router{
+		config: &Config{
+			Ctrl: struct {
+				InitialEndpoints      []*UpdatableAddress
+				LocalBinding          string
+				DefaultRequestTimeout time.Duration
+				Options               *channel.Options
+				DataDir               string
+			}{
+				DataDir:          tmpDir,
+				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},
+			},
+		},
+		ctrls:         env.NewNetworkControllers(time.Minute),
+		ctrlEndpoints: newCtrlEndpoints(),
+		controllersToConnect: struct {
+			controllers map[*UpdatableAddress]bool
+			mtx         sync.Mutex
+		}{controllers: map[*UpdatableAddress]bool{}, mtx: sync.Mutex{}},
+	}
+	expected := newCtrlEndpoints()
+	expected.Set(addr.String(), NewUpdatableAddress(addr))
+
+	req.NoError(r.initializeCtrlEndpoints())
+
+	err = r.UpdateCtrlEndpoints([]string{"tls:localhost:6565"})
+	req.NoError(err)
+	req.FileExists(path.Join(tmpDir, "endpoints"))
 
 	b, err := os.ReadFile(path.Join(tmpDir, "endpoints"))
-	assert.NoError(t, err)
-	assert.NotEmpty(t, b)
+	req.NoError(err)
+	req.NotEmpty(b)
 
 	//TODO: Figure out why we can't just unmarshal directly on struct
 	var holder = struct {
@@ -72,11 +119,11 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 
 	out := newCtrlEndpoints()
 	err = yaml.Unmarshal(b, &holder.inner)
-	assert.NoError(t, err)
+	req.NoError(err)
 
 	for k, v := range out.Items() {
-		assert.True(t, expected.Has(k), "Expected to have addr %s", k)
+		req.True(expected.Has(k), "Expected to have addr %s", k)
 		expectedAddr, _ := expected.Get(k)
-		assert.Equal(t, expectedAddr, v)
+		req.Equal(expectedAddr, v)
 	}
 }

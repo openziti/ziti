@@ -442,7 +442,17 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	for _, endpoint := range self.ctrlEndpoints.Items() {
+	endpoints := self.ctrlEndpoints.Items()
+	if len(endpoints) == 0 {
+		return errors.New("no controller endpoints configured, exiting")
+	}
+
+	log := pfxlog.Logger()
+
+	log.Infof("router configured with %v controller endpoints", len(endpoints))
+
+	for _, endpoint := range endpoints {
+		log.Infof("connecting to controller at endpoing [%v]", endpoint.String())
 		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
 			return err
 		}
@@ -617,30 +627,36 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 }
 
 func (self *Router) initializeCtrlEndpoints() error {
+	log := pfxlog.Logger()
 	if self.config.Ctrl.DataDir == "" {
 		return errors.New("ctrl DataDir not configured")
 	}
+
 	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
-	_, err := os.Stat(endpointsFile)
-	if errors.Is(err, fs.ErrNotExist) {
+
+	if _, err := os.Stat(endpointsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
+		log.Infof("controller endpoints file [%v] doesn't exist. Using initial endpoints from config", endpointsFile)
 		for _, ep := range self.config.Ctrl.InitialEndpoints {
 			self.ctrlEndpoints.Set(ep.String(), ep)
 		}
-		data, err := self.ctrlEndpoints.MarshalYAML()
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(endpointsFile, data.([]byte), 0600)
-	}
-
-	b, err := os.ReadFile(endpointsFile)
-	if err != nil {
 		return nil
 	}
 
-	if err := yaml.Unmarshal(b, &self.ctrlEndpoints); err != nil {
+	log.Infof("loading controller endpoints from [%v]", endpointsFile)
+
+	b, err := os.ReadFile(endpointsFile)
+	if err != nil {
 		return err
 	}
+
+	if err = yaml.Unmarshal(b, &self.ctrlEndpoints); err != nil {
+		return err
+	}
+
+	if len(self.ctrlEndpoints.Items()) == 0 {
+		return errors.Errorf("no controller endpoints found in [%v], consider deleting file", endpointsFile)
+	}
+
 	//TODO: Handle mismatches
 	return nil
 }
