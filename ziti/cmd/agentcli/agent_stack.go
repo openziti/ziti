@@ -62,5 +62,5 @@ func (o *AgentStackAction) Run() error {
 		fmt.Println("operation timed out")
 		os.Exit(-1)
 	})
-	return o.RunCopyOut(agent.Stats, nil, os.Stdout)
+	return o.RunCopyOut(agent.StackTrace, nil, os.Stdout)
 }
