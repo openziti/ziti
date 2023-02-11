@@ -1,6 +1,7 @@
 package network
 
 import (
+	"github.com/pkg/errors"
 	"runtime"
 	"testing"
 	"time"
@@ -26,6 +27,10 @@ type testConfig struct {
 	metricsRegistry metrics.Registry
 	versionProvider versions.VersionProvider
 	closeNotify     chan struct{}
+}
+
+func (self *testConfig) RenderJsonConfig() (string, error) {
+	panic(errors.New("not implemented"))
 }
 
 func newTestConfig(ctx *db.TestContext) *testConfig {

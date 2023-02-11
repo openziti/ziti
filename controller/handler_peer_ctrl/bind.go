@@ -14,25 +14,22 @@
 	limitations under the License.
 */
 
-package env
+package handler_peer_ctrl
 
 import (
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/identity"
-	"github.com/openziti/metrics"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 )
 
-type RouterEnv interface {
-	GetNetworkControllers() NetworkControllers
-	GetRouterId() *identity.TokenId
-	GetDialerCfg() map[string]xgress.OptionsData
-	GetXlinkDialer() []xlink.Dialer
-	GetXrctrls() []Xrctrl
-	GetTraceHandler() *channel.TraceHandler
-	GetXlinkRegistry() xlink.Registry
-	GetCloseNotify() <-chan struct{}
-	GetMetricsRegistry() metrics.UsageRegistry
-	RenderJsonConfig() (string, error)
+func NewBindHandler(n *network.Network, raftCtrl *raft.Controller) channel.BindHandler {
+	bindHandler := func(binding channel.Binding) error {
+		binding.AddTypedReceiveHandler(newCommandHandler(raftCtrl))
+		binding.AddTypedReceiveHandler(newAddPeerHandler(raftCtrl))
+		binding.AddTypedReceiveHandler(newRemovePeerHandler(raftCtrl))
+		binding.AddTypedReceiveHandler(newInspectHandler(n))
+		return nil
+	}
+
+	return channel.BindHandlerF(bindHandler)
 }

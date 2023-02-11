@@ -5,6 +5,14 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+func (request *AddPeerRequest) GetContentType() int32 {
+	return int32(ContentType_AddPeerRequestType)
+}
+
+func (request *RemovePeerRequest) GetContentType() int32 {
+	return int32(ContentType_RemovePeerRequestType)
+}
+
 // TypedMessage instances are protobuf messages which know their command type
 type TypedMessage interface {
 	proto.Message

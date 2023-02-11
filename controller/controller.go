@@ -21,6 +21,8 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/fabric/config"
+	"github.com/openziti/fabric/controller/handler_peer_ctrl"
 	"os"
 	"sync/atomic"
 	"time"
@@ -113,6 +115,15 @@ func (c *Controller) GetVersionProvider() versions.VersionProvider {
 
 func (c *Controller) GetCloseNotify() <-chan struct{} {
 	return c.shutdownC
+}
+
+func (c *Controller) RenderJsonConfig() (string, error) {
+	jsonMap, err := config.ToJsonCompatibleMap(c.config.src)
+	if err != nil {
+		return "", err
+	}
+	b, err := json.Marshal(jsonMap)
+	return string(b), err
 }
 
 func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Controller, error) {
@@ -237,6 +248,7 @@ func (c *Controller) Run() error {
 
 	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
 	if c.raftController != nil {
+		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController))
 		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
 	}
 

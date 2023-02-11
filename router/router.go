@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/fabric/config"
 	"io/fs"
 	"math/rand"
 	"os"
@@ -133,6 +134,15 @@ func (self *Router) GetCloseNotify() <-chan struct{} {
 
 func (self *Router) GetMetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
+}
+
+func (self *Router) RenderJsonConfig() (string, error) {
+	jsonMap, err := config.ToJsonCompatibleMap(self.config.src)
+	if err != nil {
+		return "", err
+	}
+	b, err := json.Marshal(jsonMap)
+	return string(b), err
 }
 
 func (self *Router) GetChannel(controllerId string) channel.Channel {

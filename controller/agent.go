@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"io"
 	"net"
 	"time"
@@ -9,7 +10,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
-	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/handler_common"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/pkg/errors"
@@ -121,7 +121,7 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 		isVoter = true
 	}
 
-	req := &raft.JoinRequest{
+	req := &cmd_pb.AddPeerRequest{
 		Addr:    addr,
 		Id:      id,
 		IsVoter: isVoter,
@@ -138,7 +138,7 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	//id := string(m.Body)
 
 	// TODO: make this work like Join where we test if we're bootstrapped yet
-	//if err := self.raftController.HandleRemove(); err != nil {
+	//if err := self.raftController.HandleRemovePeer(); err != nil {
 	//	return err
 	//}
 	// _, err := c.WriteString("success\n")
@@ -160,11 +160,11 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 		id = peerId
 	}
 
-	req := &raft.RemoveRequest{
+	req := &cmd_pb.RemovePeerRequest{
 		Id: id,
 	}
 
-	if err := self.raftController.HandleRemove(req); err != nil {
+	if err := self.raftController.HandleRemovePeer(req); err != nil {
 		handler_common.SendOpResult(m, ch, "raft.leave", err.Error(), false)
 		return
 	}

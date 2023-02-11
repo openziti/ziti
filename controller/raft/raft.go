@@ -19,6 +19,9 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-hclog"
+	"github.com/openziti/fabric/controller/peermsg"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
@@ -53,6 +56,76 @@ type Config struct {
 	CommandHandlerOptions struct {
 		MaxQueueSize uint16
 		MaxWorkers   uint16
+	}
+
+	SnapshotInterval  *time.Duration
+	SnapshotThreshold *uint32
+	TrailingLogs      *uint32
+	MaxAppendEntries  *uint32
+
+	HeartbeatTimeout   *time.Duration
+	ElectionTimeout    *time.Duration
+	LeaderLeaseTimeout *time.Duration
+
+	LogLevel *string
+	Logger   hclog.Logger
+}
+
+func (self *Config) Configure(conf *raft.Config) {
+	if self.SnapshotThreshold != nil {
+		conf.SnapshotThreshold = uint64(*self.SnapshotThreshold)
+	}
+
+	if self.SnapshotInterval != nil {
+		conf.SnapshotInterval = *self.SnapshotInterval
+	}
+
+	if self.TrailingLogs != nil {
+		conf.TrailingLogs = uint64(*self.TrailingLogs)
+	}
+
+	if self.MaxAppendEntries != nil {
+		conf.MaxAppendEntries = int(*self.MaxAppendEntries)
+	}
+
+	if self.ElectionTimeout != nil {
+		conf.ElectionTimeout = *self.ElectionTimeout
+	}
+
+	if self.HeartbeatTimeout != nil {
+		conf.HeartbeatTimeout = *self.HeartbeatTimeout
+	}
+
+	if self.LeaderLeaseTimeout != nil {
+		conf.LeaderLeaseTimeout = *self.LeaderLeaseTimeout
+	}
+
+	if self.LogLevel != nil {
+		conf.LogLevel = *self.LogLevel
+	}
+
+	conf.Logger = self.Logger
+}
+
+func (self *Config) ConfigureReloadable(conf *raft.ReloadableConfig) {
+	if self.SnapshotThreshold != nil {
+		conf.SnapshotThreshold = uint64(*self.SnapshotThreshold)
+	}
+
+	if self.SnapshotInterval != nil {
+		conf.SnapshotInterval = *self.SnapshotInterval
+	}
+
+	if self.TrailingLogs != nil {
+		conf.TrailingLogs = uint64(*self.TrailingLogs)
+	}
+
+	if self.ElectionTimeout != nil {
+		conf.ElectionTimeout = *self.ElectionTimeout
+	}
+
+	if self.HeartbeatTimeout != nil {
+		conf.HeartbeatTimeout = *self.HeartbeatTimeout
 	}
 }
 
@@ -162,6 +235,10 @@ func (self *Controller) GetMesh() mesh.Mesh {
 	return self.Mesh
 }
 
+func (self *Controller) ConfigureMeshHandlers(bindHandler channel.BindHandler) {
+	self.Mesh.Init(bindHandler)
+}
+
 // GetDb returns the DB instance
 func (self *Controller) GetDb() boltz.Db {
 	return self.Fsm.GetDb()
@@ -188,6 +265,22 @@ func (self *Controller) IsDistributed() bool {
 func (self *Controller) GetLeaderAddr() string {
 	addr, _ := self.Raft.LeaderWithID()
 	return string(addr)
+}
+
+func (self *Controller) GetPeers() map[string]channel.Channel {
+	result := map[string]channel.Channel{}
+	for k, v := range self.Mesh.GetPeers() {
+		result[k] = v.Channel
+	}
+	return result
+}
+
+func (self *Controller) GetCloseNotify() <-chan struct{} {
+	return self.closeNotify
+}
+
+func (self *Controller) GetMetricsRegistry() metrics.Registry {
+	return self.metricsRegistry
 }
 
 // Dispatch dispatches the given command to the current leader. If the current node is the leader, the command
@@ -221,14 +314,14 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return err
 	}
 
-	msg := channel.NewMessage(NewLogEntryType, encoded)
+	msg := channel.NewMessage(int32(cmd_pb.ContentType_NewLogEntryType), encoded)
 	result, err := msg.WithTimeout(5 * time.Second).SendForReply(peer.Channel)
 	if err != nil {
 		return err
 	}
 
-	if result.ContentType == SuccessResponseType {
-		idx, found := result.GetUint64Header(IndexHeader)
+	if result.ContentType == int32(cmd_pb.ContentType_SuccessResponseType) {
+		idx, found := result.GetUint64Header(int32(peermsg.HeaderIndex))
 		if found {
 			if err = self.indexTracker.WaitForIndex(idx, time.Now().Add(5*time.Second)); err != nil {
 				return err
@@ -237,9 +330,9 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 		return nil
 	}
 
-	if result.ContentType == ErrorResponseType {
-		errCode, found := result.GetUint32Header(HeaderErrorCode)
-		if found && errCode == ErrorCodeApiError {
+	if result.ContentType == int32(cmd_pb.ContentType_ErrorResponseType) {
+		errCode, found := result.GetUint32Header(peermsg.HeaderErrorCode)
+		if found && errCode == peermsg.ErrorCodeApiError {
 			return self.decodeApiError(result.Body)
 		}
 		return errors.New(string(result.Body))
@@ -379,19 +472,20 @@ func (self *Controller) ApplyWithTimeout(log []byte, timeout time.Duration) (int
 func (self *Controller) Init() error {
 	raftConfig := self.Config
 
+	if raftConfig.Logger == nil {
+		raftConfig.Logger = NewHcLogrusLogger()
+	}
+
 	if err := os.MkdirAll(raftConfig.DataDir, 0700); err != nil {
 		logrus.WithField("dir", raftConfig.DataDir).WithError(err).Error("failed to initialize data directory")
 		return err
 	}
 
-	hclLogger := NewHcLogrusLogger()
-
 	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress.String())
 	conf := raft.DefaultConfig()
-	conf.SnapshotThreshold = 10
 	conf.LocalID = raft.ServerID(self.Id.Token)
 	conf.NoSnapshotRestoreOnStart = false
-	conf.Logger = hclLogger
+	raftConfig.Configure(conf)
 
 	// Create the log store and stable store.
 	raftBoltFile := path.Join(raftConfig.DataDir, "raft.db")
@@ -402,20 +496,13 @@ func (self *Controller) Init() error {
 	}
 
 	snapshotsDir := raftConfig.DataDir
-	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, hclLogger)
+	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, raftConfig.Logger)
 	if err != nil {
 		logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize raft snapshot store in: '%v'", snapshotsDir)
 		return err
 	}
 
-	bindHandler := func(binding channel.Binding) error {
-		binding.AddTypedReceiveHandler(NewCommandHandler(self))
-		binding.AddTypedReceiveHandler(NewJoinHandler(self))
-		binding.AddTypedReceiveHandler(NewRemoveHandler(self))
-		return nil
-	}
-
-	self.Mesh = mesh.New(self.Id, self.version, localAddr, channel.BindHandlerF(bindHandler))
+	self.Mesh = mesh.New(self.Id, self.version, localAddr)
 	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
 		obs := raft.Observation{
 			Raft: self.Raft,
@@ -430,7 +517,7 @@ func (self *Controller) Init() error {
 		return errors.Wrap(err, "failed to init FSM")
 	}
 
-	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
+	raftTransport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, raftConfig.Logger)
 
 	if raftConfig.Recover {
 		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, raftTransport, raft.Configuration{
@@ -450,6 +537,13 @@ func (self *Controller) Init() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
+
+	rc := r.ReloadableConfig()
+	raftConfig.ConfigureReloadable(&rc)
+	if err = r.ReloadConfig(rc); err != nil {
+		return errors.Wrap(err, "error reloading raft configuration")
+	}
+
 	self.Raft = r
 	self.ObserveLeaderChanges()
 
@@ -507,7 +601,7 @@ func (self *Controller) Bootstrap() error {
 		self.bootstrapped.Store(true)
 	} else {
 		logrus.Infof("waiting for cluster size: %v", self.Config.MinClusterSize)
-		req := &JoinRequest{
+		req := &cmd_pb.AddPeerRequest{
 			Addr:    string(self.Mesh.GetAdvertiseAddr()),
 			Id:      self.Id.Token,
 			IsVoter: true,
@@ -520,7 +614,7 @@ func (self *Controller) Bootstrap() error {
 }
 
 // Join adds the given node to the raft cluster
-func (self *Controller) Join(req *JoinRequest) error {
+func (self *Controller) Join(req *cmd_pb.AddPeerRequest) error {
 	log := pfxlog.Logger()
 	self.clusterLock.Lock()
 	defer self.clusterLock.Unlock()
@@ -534,7 +628,7 @@ func (self *Controller) Join(req *JoinRequest) error {
 	}
 
 	if self.bootstrapped.Load() || self.GetRaft().LastIndex() > 0 {
-		return self.HandleJoin(req)
+		return self.HandleAddPeer(req)
 	}
 
 	suffrage := raft.Voter
@@ -602,11 +696,11 @@ func (self *Controller) Join(req *JoinRequest) error {
 
 // RemoveServer removes the node specified by the given id from the raft cluster
 func (self *Controller) RemoveServer(id string) error {
-	req := &RemoveRequest{
+	req := &cmd_pb.RemovePeerRequest{
 		Id: id,
 	}
 
-	return self.HandleRemove(req)
+	return self.HandleRemovePeer(req)
 }
 
 func (self *Controller) CtrlAddresses() (uint64, []string) {
@@ -616,6 +710,12 @@ func (self *Controller) CtrlAddresses() (uint64, []string) {
 		ret = append(ret, string(srvr.Address))
 	}
 	return index, ret
+}
+
+func (self *Controller) RenderJsonConfig() (string, error) {
+	cfg := self.Raft.ReloadableConfig()
+	b, err := json.Marshal(cfg)
+	return string(b), err
 }
 
 type MigrationManager interface {

@@ -17,6 +17,8 @@
 package raft
 
 import (
+	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/fabric/pb/cmd_pb"
 	"time"
 
 	"github.com/hashicorp/raft"
@@ -33,16 +35,6 @@ type Member struct {
 	Connected bool
 }
 
-// MemberModel presents information about and operations on RAFT membership
-type MemberModel interface {
-	// ListMembers returns the current set of raft members
-	ListMembers() ([]*Member, error)
-	// HandleJoin adds a node to the raft cluster
-	HandleJoin(req *JoinRequest) error
-	// HandleRemove removes a node from the raft cluster
-	HandleRemove(req *RemoveRequest) error
-}
-
 func (self *Controller) ListMembers() ([]*Member, error) {
 	configFuture := self.GetRaft().GetConfiguration()
 	if err := configFuture.Error(); err != nil {
@@ -51,7 +43,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 
 	var result []*Member
 
-	leaderAddr := self.GetRaft().Leader()
+	leaderAddr, _ := self.GetRaft().LeaderWithID()
 
 	peers := self.GetMesh().GetPeers()
 
@@ -94,7 +86,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 	return result, nil
 }
 
-func (self *Controller) HandleJoinAsLeader(req *JoinRequest) error {
+func (self *Controller) HandleAddPeerAsLeader(req *cmd_pb.AddPeerRequest) error {
 	r := self.GetRaft()
 
 	configFuture := r.GetConfiguration()
@@ -131,13 +123,13 @@ func (self *Controller) HandleJoinAsLeader(req *JoinRequest) error {
 	}
 
 	if err := f.Error(); err != nil {
-		return errors.Wrap(err, "join failed")
+		return errors.Wrap(err, "add peer failed")
 	}
 
 	return nil
 }
 
-func (self *Controller) HandleRemoveAsLeader(req *RemoveRequest) error {
+func (self *Controller) HandleRemovePeerAsLeader(req *cmd_pb.RemovePeerRequest) error {
 	r := self.GetRaft()
 
 	configFuture := r.GetConfiguration()
@@ -154,9 +146,9 @@ func (self *Controller) HandleRemoveAsLeader(req *RemoveRequest) error {
 	return nil
 }
 
-func (self *Controller) HandleJoin(req *JoinRequest) error {
+func (self *Controller) HandleAddPeer(req *cmd_pb.AddPeerRequest) error {
 	if self.IsLeader() {
-		return self.HandleJoinAsLeader(req)
+		return self.HandleAddPeerAsLeader(req)
 	}
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
@@ -164,30 +156,25 @@ func (self *Controller) HandleJoin(req *JoinRequest) error {
 		return err
 	}
 
-	msg, err := req.Encode()
+	result, err := protobufs.MarshalTyped(req).WithTimeout(5 * time.Second).SendForReply(peer.Channel)
 	if err != nil {
 		return err
 	}
 
-	result, err := msg.WithTimeout(5 * time.Second).SendForReply(peer.Channel)
-	if err != nil {
-		return err
-	}
-
-	if result.ContentType == SuccessResponseType {
+	if result.ContentType == int32(cmd_pb.ContentType_SuccessResponseType) {
 		return nil
 	}
 
-	if result.ContentType == ErrorResponseType {
+	if result.ContentType == int32(cmd_pb.ContentType_ErrorResponseType) {
 		return errors.New(string(result.Body))
 	}
 
 	return errors.Errorf("unexpected response type %v", result.ContentType)
 }
 
-func (self *Controller) HandleRemove(req *RemoveRequest) error {
+func (self *Controller) HandleRemovePeer(req *cmd_pb.RemovePeerRequest) error {
 	if self.IsLeader() {
-		return self.HandleRemoveAsLeader(req)
+		return self.HandleRemovePeerAsLeader(req)
 	}
 
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
@@ -195,21 +182,16 @@ func (self *Controller) HandleRemove(req *RemoveRequest) error {
 		return err
 	}
 
-	msg, err := req.Encode()
+	result, err := protobufs.MarshalTyped(req).WithTimeout(5 * time.Second).SendForReply(peer.Channel)
 	if err != nil {
 		return err
 	}
 
-	result, err := msg.WithTimeout(5 * time.Second).SendForReply(peer.Channel)
-	if err != nil {
-		return err
-	}
-
-	if result.ContentType == SuccessResponseType {
+	if result.ContentType == int32(cmd_pb.ContentType_SuccessResponseType) {
 		return nil
 	}
 
-	if result.ContentType == ErrorResponseType {
+	if result.ContentType == int32(cmd_pb.ContentType_ErrorResponseType) {
 		return errors.New(string(result.Body))
 	}
 

@@ -3,18 +3,51 @@ syntax = "proto3";
 package ziti.cmd.pb;
 option go_package = "github.com/openziti/fabric/pb/cmd_pb";
 
+// ContentTypes should be in the range 2000 - 2999, to ensure they don't overlap with ctrl_pb messages
+enum ContentType {
+  ContentTypeZero = 0;
+
+  NewLogEntryType = 2050;
+  ErrorResponseType = 2051;
+  SuccessResponseType = 2052;
+
+  AddPeerRequestType = 2053;
+  RemovePeerRequestType = 2054;
+}
+
 enum CommandType {
   Zero = 0;
+
   CreateEntityType = 1;
   UpdateEntityType = 2;
   DeleteEntityType = 3;
-  SyncSnapshot = 4;
+
+  SyncSnapshot = 10;
+}
+
+message ChangeContext {
+  string changeAuthor = 1;
+  string traceId = 2;
+}
+
+message AddPeerRequest {
+  string id = 1;
+  string addr = 2;
+  bool isVoter = 3;
+
+  ChangeContext ctx = 4;
+}
+
+message RemovePeerRequest {
+  string id = 1;
+  ChangeContext ctx = 2;
 }
 
 message CreateEntityCommand {
   string entityType = 1;
   bytes entityData = 2;
   uint32 flags = 3;
+  ChangeContext ctx = 4;
 }
 
 message UpdateEntityCommand {
@@ -22,11 +55,13 @@ message UpdateEntityCommand {
   bytes entityData = 2;
   repeated string updatedFields = 3;
   uint32 flags = 4;
+  ChangeContext ctx = 5;
 }
 
 message DeleteEntityCommand {
   string entityId = 1;
   string entityType = 2;
+  ChangeContext ctx = 3;
 }
 
 message SyncSnapshotCommand {

@@ -19,6 +19,7 @@ package network
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -94,6 +95,10 @@ func (ctx *inspectRequestContext) RunInspections() *InspectResult {
 		ctx.inspectRouter(router)
 	}
 
+	for _, ch := range ctx.network.Dispatcher.GetPeers() {
+		ctx.inspectPeer(ch.Id(), ch)
+	}
+
 	if !ctx.waitGroup.WaitForDone(ctx.timeout) {
 		log.Info("inspect timed out, some values may be missing")
 	}
@@ -118,8 +123,10 @@ func (ctx *inspectRequestContext) inspectLocal() {
 		ctx.waitGroup.AddNotifier(notifier)
 		go func() {
 			for _, requested := range ctx.requestedValues {
-				result := ctx.network.Inspect(requested)
-				if result != nil {
+				result, err := ctx.network.Inspect(requested)
+				if err != nil {
+					ctx.appendError(ctx.network.GetAppId(), err.Error())
+				} else if result != nil {
 					ctx.appendValue(ctx.network.GetAppId(), requested, *result)
 				}
 			}
@@ -133,7 +140,7 @@ func (ctx *inspectRequestContext) inspectLocal() {
 func (ctx *inspectRequestContext) inspectRouter(router *Router) {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
-		WithField("appId", router.Id).
+		WithField("routerId", router.Id).
 		WithField("values", ctx.requestedValues).
 		WithField("timeout", ctx.timeout)
 
@@ -142,30 +149,48 @@ func (ctx *inspectRequestContext) inspectRouter(router *Router) {
 		notifier := make(chan struct{})
 		ctx.waitGroup.AddNotifier(notifier)
 
-		go ctx.handleRouterMessaging(router, notifier)
+		go ctx.handleCtrlChanMessaging(router.Id, router.Control, notifier)
 	} else {
 		log.Debug("inspect not matched")
 	}
 }
 
-func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier chan struct{}) {
+func (ctx *inspectRequestContext) inspectPeer(id string, ch channel.Channel) {
+	log := pfxlog.Logger().
+		WithField("appRegex", ctx.appRegex).
+		WithField("ctrlId", id).
+		WithField("values", ctx.requestedValues).
+		WithField("timeout", ctx.timeout)
+
+	if ctx.regex.MatchString(id) {
+		log.Debug("inspect matched")
+		notifier := make(chan struct{})
+		ctx.waitGroup.AddNotifier(notifier)
+
+		go ctx.handleCtrlChanMessaging(id, ch, notifier)
+	} else {
+		log.Debug("inspect not matched")
+	}
+}
+
+func (ctx *inspectRequestContext) handleCtrlChanMessaging(id string, ch channel.Channel, notifier chan struct{}) {
 	defer close(notifier)
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}
 	resp := &ctrl_pb.InspectResponse{}
-	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctx.timeout).SendForReply(router.Control)
+	respMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctx.timeout).SendForReply(ch)
 	err = protobufs.TypedResponse(resp).Unmarshall(respMsg, err)
 	if err != nil {
-		ctx.appendError(router.Id, err.Error())
+		ctx.appendError(id, err.Error())
 		return
 	}
 
 	for _, err := range resp.Errors {
-		ctx.appendError(router.Id, err)
+		ctx.appendError(id, err)
 	}
 
 	for _, val := range resp.Values {
-		ctx.appendValue(router.Id, val.Name, val.Value)
+		ctx.appendValue(id, val.Name, val.Value)
 	}
 }
 

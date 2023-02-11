@@ -96,6 +96,8 @@ type Network struct {
 	serviceTerminatorConnectionRefusedCounter metrics.IntervalCounter
 	serviceInvalidTerminatorCounter           metrics.IntervalCounter
 	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
+
+	config Config
 }
 
 func NewNetwork(config Config) (*Network, error) {
@@ -134,6 +136,8 @@ func NewNetwork(config Config) (*Network, error) {
 		serviceTerminatorConnectionRefusedCounter: serviceEventMetrics.IntervalCounter("service.dial.terminator.connection_refused", time.Minute),
 		serviceInvalidTerminatorCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
 		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
+
+		config: config,
 	}
 
 	network.Managers = NewManagers(network, config.GetCommandDispatcher(), config.GetDb(), stores)
@@ -1077,25 +1081,40 @@ func (network *Network) showOptions() {
 	}
 }
 
-func (network *Network) Inspect(name string) *string {
+type renderConfig interface {
+	RenderJsonConfig() (string, error)
+}
+
+func (network *Network) Inspect(name string) (*string, error) {
 	lc := strings.ToLower(name)
 
 	if lc == "stackdump" {
 		result := debugz.GenerateStack()
-		return &result
+		return &result, nil
 	} else if strings.HasPrefix(lc, "metrics") {
 		msg := network.metricsRegistry.Poll()
 		js, err := json.Marshal(msg)
-		var result string
 		if err != nil {
-			result = errors.Wrap(err, "failed to marshal metrics to json").Error()
-		} else {
-			result = string(js)
+			return nil, errors.Wrap(err, "failed to marshal metrics to json")
 		}
-		return &result
+		result := string(js)
+		return &result, nil
+	} else if lc == "config" {
+		if rc, ok := network.config.(renderConfig); ok {
+			val, err := rc.RenderJsonConfig()
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to marshal config to json")
+			}
+			return &val, nil
+		}
+	} else if lc == "clusterconfig" {
+		if src, ok := network.Dispatcher.(renderConfig); ok {
+			val, err := src.RenderJsonConfig()
+			return &val, err
+		}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (network *Network) routerDeleted(routerId string) {

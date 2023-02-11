@@ -18,6 +18,7 @@ package command
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/sirupsen/logrus"
 	"reflect"
@@ -44,6 +45,7 @@ type Validatable interface {
 type Dispatcher interface {
 	Dispatch(command Command) error
 	IsLeaderOrLeaderless() bool
+	GetPeers() map[string]channel.Channel
 }
 
 // LocalDispatcher should be used when running a non-clustered system
@@ -53,6 +55,10 @@ type LocalDispatcher struct {
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
 	return true
+}
+
+func (self *LocalDispatcher) GetPeers() map[string]channel.Channel {
+	return nil
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {

@@ -14,31 +14,23 @@
 	limitations under the License.
 */
 
-package handler_ctrl
+package handler_peer_ctrl
 
 import (
-	"encoding/json"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/fabric/router/forwarder"
-	"github.com/openziti/foundation/v2/debugz"
-	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
 
 type inspectHandler struct {
-	env env.RouterEnv
-	fwd *forwarder.Forwarder
+	network *network.Network
 }
 
-func newInspectHandler(env env.RouterEnv, fwd *forwarder.Forwarder) *inspectHandler {
+func newInspectHandler(n *network.Network) *inspectHandler {
 	return &inspectHandler{
-		env: env,
-		fwd: fwd,
+		network: n,
 	}
 }
 
@@ -79,57 +71,11 @@ type inspectRequestContext struct {
 
 func (context *inspectRequestContext) processLocal() {
 	for _, requested := range context.request.RequestedValues {
-		lc := strings.ToLower(requested)
-		if lc == "stackdump" {
-			context.appendValue(requested, debugz.GenerateStack())
-		} else if lc == "links" {
-			result := &inspect.LinksInspectResult{}
-			for link := range context.handler.env.GetXlinkRegistry().Iter() {
-				result.Links = append(result.Links, link.InspectLink())
-			}
-			js, err := json.Marshal(result)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to marshal links to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
-		} else if strings.HasPrefix(lc, "circuit:") {
-			circuitId := requested[len("circuit:"):]
-			result := context.handler.fwd.InspectCircuit(circuitId, false)
-			if result != nil {
-				js, err := json.Marshal(result)
-				if err != nil {
-					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
-				} else {
-					context.appendValue(requested, string(js))
-				}
-			}
-		} else if strings.HasPrefix(lc, "circuitandstacks:") {
-			circuitId := requested[len("circuitAndStacks:"):]
-			result := context.handler.fwd.InspectCircuit(circuitId, true)
-			if result != nil {
-				js, err := json.Marshal(result)
-				if err != nil {
-					context.appendError(errors.Wrap(err, "failed to marshal circuit report to json").Error())
-				} else {
-					context.appendValue(requested, string(js))
-				}
-			}
-		} else if strings.HasPrefix(lc, "metrics") {
-			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
-			js, err := json.Marshal(msg)
-			if err != nil {
-				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
-			} else {
-				context.appendValue(requested, string(js))
-			}
-		} else if lc == "config" {
-			js, err := context.handler.env.RenderJsonConfig()
-			if err != nil {
-				context.appendError(err.Error())
-			} else {
-				context.appendValue(requested, js)
-			}
+		val, err := context.handler.network.Inspect(requested)
+		if err != nil {
+			context.appendError(err.Error())
+		} else if val != nil {
+			context.appendValue(requested, *val)
 		}
 	}
 }

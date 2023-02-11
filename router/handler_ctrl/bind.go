@@ -94,7 +94,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.env))
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
-	binding.AddTypedReceiveHandler(newInspectHandler(self.env.GetRouterId(), self.env.GetXlinkRegistry(), self.forwarder))
+	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
 	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))

@@ -129,9 +129,10 @@ type Mesh interface {
 	GetPeers() map[string]*Peer
 
 	RegisterClusterStateHandler(f func(state ClusterState))
+	Init(bindHandler channel.BindHandler)
 }
 
-func New(id *identity.TokenId, version versions.VersionProvider, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+func New(id *identity.TokenId, version versions.VersionProvider, raftAddr raft.ServerAddress) Mesh {
 	versionEncoded, err := version.EncoderDecoder().Encode(version.AsVersionInfo())
 	if err != nil {
 		panic(err)
@@ -147,7 +148,6 @@ func New(id *identity.TokenId, version versions.VersionProvider, raftAddr raft.S
 		Peers:          map[string]*Peer{},
 		closeNotify:    make(chan struct{}),
 		raftAccepts:    make(chan net.Conn),
-		bindHandler:    bindHandler,
 		version:        version,
 		versionEncoded: versionEncoded,
 	}
@@ -171,6 +171,12 @@ type impl struct {
 
 func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
 	self.clusterStateHandlers.Append(f)
+}
+
+func (self *impl) Init(bindHandler channel.BindHandler) {
+	if self.bindHandler == nil {
+		self.bindHandler = bindHandler
+	}
 }
 
 func (self *impl) GetAdvertiseAddr() raft.ServerAddress {

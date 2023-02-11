@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/hashicorp/go-hclog"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/config"
@@ -180,6 +181,68 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, errors.New("invalid bootstrapMembers value, should be array")
 				}
 			}
+
+			if value, found := submap["snapshotInterval"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.SnapshotInterval = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.snapshotInterval value '%v", value)
+				}
+			}
+
+			if value, found := submap["heartbeatTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.HeartbeatTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.heartbeatTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["leaderLeaseTimeout"]; found {
+				if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+					controllerConfig.Raft.LeaderLeaseTimeout = &val
+				} else {
+					return nil, errors.Wrapf(err, "failed to parse raft.leaderLeaseTimeout value '%v", value)
+				}
+			}
+
+			if value, found := submap["snapshotThreshold"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.SnapshotThreshold = &val
+			}
+
+			if value, found := submap["maxAppendEntries"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.MaxAppendEntries = &val
+			}
+
+			if value, found := submap["trailingLogs"]; found {
+				val := uint32(value.(int))
+				controllerConfig.Raft.TrailingLogs = &val
+			}
+
+			if value, found := submap["logLevel"]; found {
+				val := fmt.Sprintf("%v", value)
+				if hclog.LevelFromString(val) == hclog.NoLevel {
+					return nil, errors.Errorf("invalid value for raft.logLevel [%v]", val)
+				}
+				controllerConfig.Raft.LogLevel = &val
+			}
+
+			if value, found := submap["logFile"]; found {
+				val := fmt.Sprintf("%v", value)
+				options := *hclog.DefaultOptions
+				f, err := os.Create(val)
+				if err != nil {
+					return nil, errors.Wrapf(err, "unable to open raft log file [%v]", val)
+				}
+				options.Output = f
+				if controllerConfig.Raft.LogLevel != nil {
+					options.Level = hclog.LevelFromString(*controllerConfig.Raft.LogLevel)
+				}
+				controllerConfig.Raft.Logger = hclog.New(&options)
+			}
+
 			if value, found := cfgmap["commandHandler"]; found {
 				if chSubMap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := chSubMap["maxQueueSize"]; found {
