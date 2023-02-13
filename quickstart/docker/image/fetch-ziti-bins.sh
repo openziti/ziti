@@ -4,7 +4,7 @@
 
 dest="${1}"
 
-if [ -d /docker.build.context/ziti-bin -a ]; then
+if [ -d /docker.build.context/ziti-bin ]; then
   mv /docker.build.context/ziti-bin/ "${dest}"
 else
    source /docker.build.context/ziti-cli-functions.sh

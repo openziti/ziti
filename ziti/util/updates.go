@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/constants"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 
@@ -30,31 +31,33 @@ import (
 
 func LogReleaseVersionCheck(ziti_component string) {
 	logger := pfxlog.Logger()
-	developmentSemver, _ := semver.Parse("0.0.0")
-	latestGithubRelease, err := GetHighestVersionGitHubReleaseInfo(false, constants.ZITI)
-	if err != nil {
-		logger.Debugf("failed to find latest GitHub version with error: %s", err)
-		return // soft-fail version check if GitHub API is unavailable
-	}
-	// compose current build's semver as version string and semver object
-	currentBuildVersion := version.GetVersion()
-	currentBuildSemver, err := semver.ParseTolerant(currentBuildVersion) // ParseTolerant trims leading "v"
-	if err != nil {
-		logger.Warnf("failed to parse current build version as semver: '%s' with error: %s", version.GetVersion(), err)
-		return
-	}
-	// ignore non-release builds and current release build
-	if currentBuildSemver.EQ(developmentSemver) {
-		logger.Debugf(
-			"this build of %s is unreleased v%s",
-			ziti_component,
-			developmentSemver,
-		)
-	} else if latestGithubRelease.SemVer.GT(currentBuildSemver) {
-		yellow := color.New(color.FgYellow).SprintFunc()
-		green := color.New(color.FgGreen).SprintFunc()
-		fmt.Fprintf(os.Stderr,
-			`
+	if strings.ToLower(os.Getenv("ZITI_CHECK_VERSION")) == "true" {
+		logger.Debug("ZITI_CHECK_VERSION is true. starting version check")
+		developmentSemver, _ := semver.Parse("0.0.0")
+		latestGithubRelease, err := GetHighestVersionGitHubReleaseInfo(false, constants.ZITI)
+		if err != nil {
+			logger.Debugf("failed to find latest GitHub version with error: %s", err)
+			return // soft-fail version check if GitHub API is unavailable
+		}
+		// compose current build's semver as version string and semver object
+		currentBuildVersion := version.GetVersion()
+		currentBuildSemver, err := semver.ParseTolerant(currentBuildVersion) // ParseTolerant trims leading "v"
+		if err != nil {
+			logger.Warnf("failed to parse current build version as semver: '%s' with error: %s", version.GetVersion(), err)
+			return
+		}
+		// ignore non-release builds and current release build
+		if currentBuildSemver.EQ(developmentSemver) {
+			logger.Debugf(
+				"this build of %s is unreleased v%s",
+				ziti_component,
+				developmentSemver,
+			)
+		} else if latestGithubRelease.SemVer.GT(currentBuildSemver) {
+			yellow := color.New(color.FgYellow).SprintFunc()
+			green := color.New(color.FgGreen).SprintFunc()
+			fmt.Fprintf(os.Stderr,
+				`
 *********************************************************************************
 
 An update with %s is available for %s %s from 
@@ -62,22 +65,25 @@ https://github.com/openziti/%s/releases/latest/
 
 *********************************************************************************
 `,
-			green("v"+latestGithubRelease.SemVer.String()),
-			ziti_component,
-			yellow("v"+currentBuildSemver.String()),
-			constants.ZITI,
-		)
-		logger.Debugf(
-			"this v%s build of %s is superseded by v%s",
-			currentBuildSemver,
-			ziti_component,
-			latestGithubRelease,
-		)
-	} else if latestGithubRelease.SemVer.EQ(currentBuildSemver) {
-		logger.Debugf(
-			"this build of %s is the latest release v%s",
-			ziti_component,
-			currentBuildSemver,
-		)
+				green("v"+latestGithubRelease.SemVer.String()),
+				ziti_component,
+				yellow("v"+currentBuildSemver.String()),
+				constants.ZITI,
+			)
+			logger.Debugf(
+				"this v%s build of %s is superseded by v%s",
+				currentBuildSemver,
+				ziti_component,
+				latestGithubRelease,
+			)
+		} else if latestGithubRelease.SemVer.EQ(currentBuildSemver) {
+			logger.Debugf(
+				"this build of %s is the latest release v%s",
+				ziti_component,
+				currentBuildSemver,
+			)
+		}
+	} else {
+		logger.Debug("ZITI_CHECK_VERSION is not 'true'. skipping version check")
 	}
 }

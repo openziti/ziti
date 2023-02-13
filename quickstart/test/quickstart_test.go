@@ -128,7 +128,10 @@ func buildDockerQuickstartTestImage() {
 		All:     false,
 		Filters: danglers,
 	})
-
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("failed to collect docker image list")
+	}
 	for _, img := range results {
 		_, err = cli.ImageRemove(ctx, img.ID, types.ImageRemoveOptions{})
 		if err != nil {

@@ -184,11 +184,6 @@ func (o *loginOptions) Run() error {
 		}
 	}
 
-	absCertPath, err := filepath.Abs(o.CaCert)
-	if err == nil {
-		o.CaCert = absCertPath
-	}
-
 	loginIdentity := &util.RestClientEdgeIdentity{
 		Url:       host,
 		Username:  o.Username,

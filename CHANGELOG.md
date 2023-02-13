@@ -1,3 +1,24 @@
+# Release 0.27.5
+
+## What's New
+
+* Fixes an issue with `ziti` CLI when using a globally trusted CA
+* Fixes bug where `ziti agent stack` was calling `ziti agent stats`
+* ziti controller/router no longer compare the running version with 
+  the latest from github by default. Set ZITI_CHECK_VERSION=true to
+  enable this behavior
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.121 -> v0.24.125](https://github.com/openziti/edge/compare/v0.24.121...v0.24.125)
+* github.com/openziti/fabric: [v0.22.20 -> v0.22.24](https://github.com/openziti/fabric/compare/v0.22.20...v0.22.24)
+    * [Issue #601](https://github.com/openziti/fabric/issues/601) - Only use endpoints file in router once endpoints have changed
+    * [Issue #583](https://github.com/openziti/fabric/issues/583) - Compress raft snapshots
+
+* github.com/openziti/sdk-golang: [v0.18.27 -> v0.18.28](https://github.com/openziti/sdk-golang/compare/v0.18.27...v0.18.28)
+* github.com/openziti/storage: [v0.1.33 -> v0.1.34](https://github.com/openziti/storage/compare/v0.1.33...v0.1.34)
+* github.com/openziti/ziti: [v0.27.4 -> v0.27.5](https://github.com/openziti/ziti/compare/v0.27.4...v0.27.5)
+
 # Release 0.27.4
 
 ## What's New
