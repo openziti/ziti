@@ -4,6 +4,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -24,19 +25,25 @@ func (handler *updateCtrlAddressesHandler) ContentType() int32 {
 }
 
 func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
+	log := pfxlog.ContextLogger(ch.Label()).Entry
 	upd := &ctrl_pb.UpdateCtrlAddresses{}
 	if err := proto.Unmarshal(msg.Body, upd); err != nil {
 		log.WithError(err).Error("error unmarshalling")
 		return
 	}
 
+	log = log.WithFields(logrus.Fields{
+		"endpoints": upd.Addresses,
+		"version":   handler.currentVersion,
+	})
+
 	if upd.IsLeader || handler.currentVersion == 0 || handler.currentVersion < upd.Index {
 		if err := handler.callback.UpdateCtrlEndpoints(upd.Addresses); err != nil {
 			log.WithError(err).Error("Unable to update ctrl addresses")
 		}
 		handler.currentVersion = upd.Index
-		log.Infof("updated to version %v", handler.currentVersion)
+
+		log.Info("updated to version")
 	}
 }
 
