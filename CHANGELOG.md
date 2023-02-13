@@ -4,6 +4,9 @@
 
 * Fixes an issue with `ziti` CLI when using a globally trusted CA
 * Fixes bug where `ziti agent stack` was calling `ziti agent stats`
+* ziti controller/router no longer compare the running version with 
+  the latest from github by default. Set ZITI_CHECK_VERSION=true to
+  enable this behavior
 
 ## Component Updates and Bug Fixes
 
