@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/identity"
+	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
 )
 
@@ -81,11 +82,17 @@ type Dialer interface {
 	Dial(dial Dial) (Xlink, error)
 }
 
-type Xlink interface {
+type LinkDestination interface {
 	Id() string
 	SendPayload(payload *xgress.Payload) error
 	SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error
 	SendControl(control *xgress.Control) error
+	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
+}
+
+type Xlink interface {
+	LinkDestination
+	Init(metricsRegistry metrics.Registry) error
 	Close() error
 	CloseNotified() error
 	DestinationId() string
@@ -94,7 +101,6 @@ type Xlink interface {
 	DialAddress() string
 	HandleCloseNotification(f func())
 	IsClosed() bool
-	InspectCircuit(circuitDetail *inspect.CircuitInspectDetail)
 	InspectLink() *inspect.LinkInspectDetail
 	GetAddresses() []*ctrl_pb.LinkConn
 }

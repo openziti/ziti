@@ -44,7 +44,8 @@ func (t testBindHandlerFactory) BindChannel(channel.Binding) error {
 	return nil
 }
 
-func (t testBindHandlerFactory) NewBindHandler(xlink.Xlink, bool, bool) channel.BindHandler {
+func (t testBindHandlerFactory) NewBindHandler(l xlink.Xlink, _ bool, _ bool) channel.BindHandler {
+	_ = l.Init(metrics.NewRegistry("test", nil))
 	return t
 }
 
