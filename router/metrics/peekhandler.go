@@ -43,16 +43,6 @@ func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channe
 
 	usageCounter := registry.UsageCounter("fabricUsage", time.Minute)
 
-	closeHook := func() {
-		linkTxBytesMeter.Dispose()
-		linkTxMsgMeter.Dispose()
-		linkTxMsgSizeHistogram.Dispose()
-		linkRxBytesMeter.Dispose()
-		linkRxMsgMeter.Dispose()
-		linkRxMsgSizeHistogram.Dispose()
-		// app level metrics and usageCounter are shared across all links, so we don't dispose of them
-	}
-
 	return &channelPeekHandler{
 		appTxBytesMeter:        appTxBytesMeter,
 		appTxMsgMeter:          appTxMsgMeter,
@@ -67,7 +57,6 @@ func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channe
 		linkRxMsgMeter:         linkRxMsgMeter,
 		linkRxMsgSizeHistogram: linkRxMsgSizeHistogram,
 		usageCounter:           usageCounter,
-		closeHook:              closeHook,
 	}
 }
 
@@ -88,8 +77,6 @@ type channelPeekHandler struct {
 	linkRxMsgSizeHistogram metrics.Histogram
 
 	usageCounter metrics.UsageCounter
-
-	closeHook func()
 }
 
 func (h *channelPeekHandler) Connect(channel.Channel, string) {
@@ -132,9 +119,13 @@ func (h *channelPeekHandler) Tx(msg *channel.Message, _ channel.Channel) {
 }
 
 func (h *channelPeekHandler) Close(channel.Channel) {
-	if h.closeHook != nil {
-		h.closeHook()
-	}
+	// app level metrics and usageCounter are shared across all links, so we don't dispose of them
+	h.linkTxBytesMeter.Dispose()
+	h.linkTxMsgMeter.Dispose()
+	h.linkTxMsgSizeHistogram.Dispose()
+	h.linkRxBytesMeter.Dispose()
+	h.linkRxMsgMeter.Dispose()
+	h.linkRxMsgSizeHistogram.Dispose()
 }
 
 // NewXgressPeekHandler creates an xgress PeekHandler which tracks message rates and histograms as well as usage

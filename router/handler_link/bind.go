@@ -80,6 +80,9 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newControlHandler(self.xlink, self.forwarder))
 	binding.AddPeekHandler(metrics2.NewChannelPeekHandler(self.xlink.Id(), self.forwarder.MetricsRegistry()))
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.xlink.Id(), ch, self.forwarder.TraceController()))
+	if err := self.xlink.Init(self.forwarder.MetricsRegistry()); err != nil {
+		return err
+	}
 
 	doHeartbeat, err := self.getDestVersionInfo().HasMinimumVersion("0.25.0")
 	if err != nil {

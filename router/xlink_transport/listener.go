@@ -177,11 +177,10 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 	} else {
 		pending = &pendingLink{
 			link: &splitImpl{
-				id:              binding.GetChannel().Id(),
-				routerId:        routerId,
-				routerVersion:   routerVersion,
-				linkProtocol:    self.GetLinkProtocol(),
-				droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id()),
+				id:            binding.GetChannel().Id(),
+				routerId:      routerId,
+				routerVersion: routerVersion,
+				linkProtocol:  self.GetLinkProtocol(),
 			},
 			eventTime: time.Now(),
 		}
@@ -210,12 +209,11 @@ func (self *listener) getOrCreateSplitLink(id, routerId, routerVersion string, b
 
 func (self *listener) bindNonSplitChannel(binding channel.Binding, routerId, routerVersion string, log *logrus.Entry) error {
 	xli := &impl{
-		id:              binding.GetChannel().Id(),
-		ch:              binding.GetChannel(),
-		routerId:        routerId,
-		routerVersion:   routerVersion,
-		linkProtocol:    self.GetLinkProtocol(),
-		droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + binding.GetChannel().Id()),
+		id:            binding.GetChannel().Id(),
+		ch:            binding.GetChannel(),
+		routerId:      routerId,
+		routerVersion: routerVersion,
+		linkProtocol:  self.GetLinkProtocol(),
 	}
 
 	bindHandler := self.bindHandlerFactory.NewBindHandler(xli, true, true)

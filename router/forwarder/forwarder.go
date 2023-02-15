@@ -109,14 +109,14 @@ func (forwarder *Forwarder) HasDestination(address xgress.Address) bool {
 	return found
 }
 
-func (forwarder *Forwarder) RegisterLink(link xlink.Xlink) error {
+func (forwarder *Forwarder) RegisterLink(link xlink.LinkDestination) error {
 	if !forwarder.destinations.addDestinationIfAbsent(xgress.Address(link.Id()), link) {
 		return errors.Errorf("unable to register link %v as it is already registered", link.Id())
 	}
 	return nil
 }
 
-func (forwarder *Forwarder) UnregisterLink(link xlink.Xlink) {
+func (forwarder *Forwarder) UnregisterLink(link xlink.LinkDestination) {
 	forwarder.destinations.removeDestination(xgress.Address(link.Id()))
 }
 

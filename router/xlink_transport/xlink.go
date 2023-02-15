@@ -40,6 +40,13 @@ func (self *impl) Id() string {
 	return self.id
 }
 
+func (self *impl) Init(metricsRegistry metrics.Registry) error {
+	if self.droppedMsgMeter == nil {
+		self.droppedMsgMeter = metricsRegistry.Meter("link.dropped_msgs:" + self.id)
+	}
+	return nil
+}
+
 func (self *impl) SendPayload(msg *xgress.Payload) error {
 	sent, err := self.ch.TrySend(msg.Marshall())
 	if err == nil && !sent {

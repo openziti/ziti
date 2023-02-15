@@ -78,11 +78,10 @@ func (self *dialer) dialSplit(linkId *identity.TokenId, address transport.Addres
 	bindHandler := &splitDialBindHandler{
 		dialer: self,
 		link: &splitImpl{
-			id:              linkId.Token,
-			routerId:        dial.GetRouterId(),
-			routerVersion:   dial.GetRouterVersion(),
-			linkProtocol:    dial.GetLinkProtocol(),
-			droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + linkId.Token),
+			id:            linkId.Token,
+			routerId:      dial.GetRouterId(),
+			routerVersion: dial.GetRouterVersion(),
+			linkProtocol:  dial.GetLinkProtocol(),
 		},
 	}
 
@@ -121,11 +120,10 @@ func (self *dialer) dialSingle(linkId *identity.TokenId, address transport.Addre
 	bindHandler := &dialBindHandler{
 		dialer: self,
 		link: &impl{
-			id:              linkId.Token,
-			routerId:        dial.GetRouterId(),
-			linkProtocol:    dial.GetLinkProtocol(),
-			routerVersion:   dial.GetRouterVersion(),
-			droppedMsgMeter: self.metricsRegistry.Meter("link.dropped_msgs:" + linkId.Token),
+			id:            linkId.Token,
+			routerId:      dial.GetRouterId(),
+			linkProtocol:  dial.GetLinkProtocol(),
+			routerVersion: dial.GetRouterVersion(),
 		},
 	}
 

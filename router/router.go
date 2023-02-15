@@ -452,7 +452,7 @@ func (self *Router) startControlPlane() error {
 	log.Infof("router configured with %v controller endpoints", len(endpoints))
 
 	for _, endpoint := range endpoints {
-		log.Infof("connecting to controller at endpoing [%v]", endpoint.String())
+		log.Infof("connecting to controller at endpoint [%v]", endpoint.String())
 		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
 			return err
 		}
