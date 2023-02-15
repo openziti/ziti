@@ -53,6 +53,7 @@ func NewRouterCmd() *cobra.Command {
 	routerCmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 	routerCmd.PersistentFlags().BoolVar(&cliAgentEnabled, "cli-agent", true, "Enable/disable CLI Agent (enabled by default)")
 	routerCmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	routerCmd.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	routerCmd.PersistentFlags().BoolVar(&enableDebugOps, "debug-ops", false, "Enable/disable debug agent operations (disabled by default)")
 
 	routerCmd.AddCommand(NewRunCmd())
@@ -67,6 +68,7 @@ var logFormatter string
 var cliAgentEnabled bool
 var enableDebugOps bool
 var cliAgentAddr string
+var cliAgentAlias string
 
 func Execute() {
 	if err := NewRouterCmd().Execute(); err != nil {

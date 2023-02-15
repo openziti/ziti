@@ -3,13 +3,9 @@ v: 3
 db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
 
 identity:
-  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-client.cert
-  server_cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.cert
-  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/{{ .Component.PublicIdentity }}.key
-  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.chain.pem
-
-#trace:
-#  path:                 ctrl.trace
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/certs/{{ .Component.PublicIdentity }}-server.cert
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/keys/{{ .Component.PublicIdentity }}-server.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/certs/{{ .Component.PublicIdentity }}-server.chain.pem
 
 profile:
 #   cpu:
@@ -21,6 +17,7 @@ profile:
 ctrl:
   listener: tls:0.0.0.0:6262
   options:
+    advertiseAddress: tls:{{.Host.PublicIp}}:6262
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
     #maxQueuedConnects:      50
@@ -38,18 +35,6 @@ ctrl:
     # address. If defined, routers will update address configuration to immediately use the new address for future
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
-
-# the endpoint that management tools connect to the controller over.
-mgmt:
-  listener: tls:0.0.0.0:10000
-    #options:
-    # (optional) settings
-    # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
-  #maxQueuedConnects:      50
-  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
-  #maxOutstandingConnects: 100
-  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
-  #connectTimeoutMs:       3000
 
   #metrics:
   #file:
@@ -87,12 +72,6 @@ mgmt:
 #      format: json
 #      path: /tmp/ziti-events.log
 
-# xctrl_example
-#
-#example:
-#  enabled:              false
-#  delay:                5
-
 healthChecks:
   boltCheck:
     # How often to try entering a bolt read tx. Defaults to 30 seconds
@@ -127,8 +106,8 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/intermediate.cert
-      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/intermediate.key
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/certs/ctrl.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/keys/ctrl.key
 
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
@@ -220,13 +199,13 @@ web:
       #   - edge-client
       #   - fabric-management
       - binding: health-checks
-        options: { }
+        options: {}
       - binding: fabric
       - binding: edge-management
         # options - variable optional/required
         # This section is used to define values that are specified by the API they are associated with.
         # These settings are per API. The example below is for the `edge-api` and contains both optional values and
         # required values.
-        options: { }
+        options: {}
       - binding: edge-client
-        options: { }
+        options: {}

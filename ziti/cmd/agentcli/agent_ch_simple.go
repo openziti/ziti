@@ -20,21 +20,17 @@ import (
 	"fmt"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"net"
-	"time"
 )
 
-type SimpleChAgentCmdOptions struct {
+type SimpleChAgentCmdAction struct {
 	AgentOptions
 	requestType int32
 }
 
 func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common.OptionsProvider) *cobra.Command {
-	options := &SimpleChAgentCmdOptions{
+	action := &SimpleChAgentCmdAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
@@ -44,45 +40,45 @@ func NewSimpleChAgentCustomCmd(name string, appId AgentAppId, op int32, p common
 	cmd := &cobra.Command{
 		Args: cobra.MaximumNArgs(1),
 		Use:  name + " <optional-target> ",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run(appId)
-			cmdhelper.CheckErr(err)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action.Cmd = cmd
+			action.Args = args
+			return action.Run(appId)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
 // Run implements the command
-func (o *SimpleChAgentCmdOptions) Run(appId AgentAppId) error {
-	addr, err := agent.ParseGopsAddress(o.Args)
+func (self *SimpleChAgentCmdAction) Run(appId AgentAppId) error {
+	if len(self.Args) == 0 {
+		return self.MakeChannelRequest(byte(appId), self.makeRequest)
+	}
+
+	addr, err := agent.ParseGopsAddress(self.Args)
 	if err != nil {
 		return err
 	}
-
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{byte(appId)}, o.makeRequest)
+	return MakeAgentChannelRequest(addr, byte(appId), self.makeRequest)
 }
 
-func (o *SimpleChAgentCmdOptions) makeRequest(conn net.Conn) error {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	ch, err := channel.NewChannel("agent", dialer, nil, options)
-	if err != nil {
-		return err
-	}
-
-	msg := channel.NewMessage(o.requestType, nil)
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+func (self *SimpleChAgentCmdAction) makeRequest(ch channel.Channel) error {
+	msg := channel.NewMessage(self.requestType, nil)
+	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}
 	if reply.ContentType == channel.ContentTypeResultType {
 		result := channel.UnmarshalResult(reply)
 		if result.Success {
-			fmt.Println("success")
+			if len(result.Message) != 0 {
+				fmt.Print(result.Message)
+			} else {
+				fmt.Println("success")
+			}
 		} else {
 			fmt.Printf("error: %v\n", result.Message)
 		}

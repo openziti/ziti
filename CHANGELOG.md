@@ -1,3 +1,136 @@
+# Release 0.27.5
+
+## What's New
+
+* Fixes an issue with `ziti` CLI when using a globally trusted CA
+* Fixes bug where `ziti agent stack` was calling `ziti agent stats`
+* ziti controller/router no longer compare the running version with 
+  the latest from github by default. Set ZITI_CHECK_VERSION=true to
+  enable this behavior
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.121 -> v0.24.125](https://github.com/openziti/edge/compare/v0.24.121...v0.24.125)
+* github.com/openziti/fabric: [v0.22.20 -> v0.22.24](https://github.com/openziti/fabric/compare/v0.22.20...v0.22.24)
+    * [Issue #601](https://github.com/openziti/fabric/issues/601) - Only use endpoints file in router once endpoints have changed
+    * [Issue #583](https://github.com/openziti/fabric/issues/583) - Compress raft snapshots
+
+* github.com/openziti/sdk-golang: [v0.18.27 -> v0.18.28](https://github.com/openziti/sdk-golang/compare/v0.18.27...v0.18.28)
+* github.com/openziti/storage: [v0.1.33 -> v0.1.34](https://github.com/openziti/storage/compare/v0.1.33...v0.1.34)
+* github.com/openziti/ziti: [v0.27.4 -> v0.27.5](https://github.com/openziti/ziti/compare/v0.27.4...v0.27.5)
+
+# Release 0.27.4
+
+## What's New
+
+This release contains a fix for a controller deadlock
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.26 -> v2.0.27](https://github.com/openziti/channel/compare/v2.0.26...v2.0.27)
+* github.com/openziti/edge: [v0.24.115 -> v0.24.121](https://github.com/openziti/edge/compare/v0.24.115...v0.24.121)
+    * [Issue #1303](https://github.com/openziti/edge/issues/1303) - Fix deadlock when flushing api session heartbeats 
+
+* github.com/openziti/fabric: [v0.22.19 -> v0.22.20](https://github.com/openziti/fabric/compare/v0.22.19...v0.22.20)
+* github.com/openziti/sdk-golang: [v0.18.26 -> v0.18.27](https://github.com/openziti/sdk-golang/compare/v0.18.26...v0.18.27)
+* github.com/openziti/transport/v2: [v2.0.50 -> v2.0.51](https://github.com/openziti/transport/compare/v2.0.50...v2.0.51)
+* github.com/openziti/ziti: [v0.27.3 -> v0.27.4](https://github.com/openziti/ziti/compare/v0.27.3...v0.27.4)
+
+# Release 0.27.3
+
+## What's New
+
+* Docker images for `ziti` CLI
+
+* New Raft interaction commands
+    * `raft-leave` allows removal of controllers from the raft cluster
+    * `raft-list` lists all connected controllers and their version/connected status
+    * `fabric raft list-members` same info as the agent command, but over rest
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.7 -> v1.0.8](https://github.com/openziti/agent/compare/v1.0.7...v1.0.8)
+* github.com/openziti/channel/v2: [v2.0.25 -> v2.0.26](https://github.com/openziti/channel/compare/v2.0.25...v2.0.26)
+* github.com/openziti/edge: [v0.24.95 -> v0.24.115](https://github.com/openziti/edge/compare/v0.24.95...v0.24.115)
+    * [Issue #1292](https://github.com/openziti/edge/issues/1292) - Support alternative tproxy configuration methods
+
+* github.com/openziti/edge-api: v0.25.6 (new)
+* github.com/openziti/fabric: [v0.22.7 -> v0.22.19](https://github.com/openziti/fabric/compare/v0.22.7...v0.22.19)
+    * [Issue #592](https://github.com/openziti/fabric/issues/592) - Incoming "gateway" connections should be logged at a socket level
+    * [Issue #588](https://github.com/openziti/fabric/issues/588) - Make service events more consistent
+    * [Issue #589](https://github.com/openziti/fabric/issues/589) - Add duration to circuit updated and deleted events
+    * [Issue #508](https://github.com/openziti/fabric/issues/508) - Refactor router debug ops for multiple controllers
+
+* github.com/openziti/identity: [v1.0.29 -> v1.0.30](https://github.com/openziti/identity/compare/v1.0.29...v1.0.30)
+* github.com/openziti/runzmd: [v1.0.7 -> v1.0.9](https://github.com/openziti/runzmd/compare/v1.0.7...v1.0.9)
+* github.com/openziti/sdk-golang: [v0.18.21 -> v0.18.26](https://github.com/openziti/sdk-golang/compare/v0.18.21...v0.18.26)
+* github.com/openziti/storage: [v0.1.31 -> v0.1.33](https://github.com/openziti/storage/compare/v0.1.31...v0.1.33)
+* github.com/openziti/transport/v2: [v2.0.49 -> v2.0.50](https://github.com/openziti/transport/compare/v2.0.49...v2.0.50)
+* github.com/openziti/ziti: [v0.27.2 -> v0.27.3](https://github.com/openziti/ziti/compare/v0.27.2...v0.27.3)
+    * [Issue #974](https://github.com/openziti/ziti/issues/974) - tunnel "host" and "proxy" modes shouldn't run the nameserver
+    * [Issue #972](https://github.com/openziti/ziti/issues/972) - tunnel segfault
+
+# Release 0.27.2
+
+## What's New
+
+* Bug fixes
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.24 -> v2.0.25](https://github.com/openziti/channel/compare/v2.0.24...v2.0.25)
+* github.com/openziti/edge: [v0.24.86 -> v0.24.95](https://github.com/openziti/edge/compare/v0.24.86...v0.24.95)
+    * [Issue #1282](https://github.com/openziti/edge/issues/1282) - Ensure entity count events can be configured to only be emitted on the leader
+    * [Issue #1279](https://github.com/openziti/edge/issues/1279) - Constrain config-type schema to accept only object types
+
+* github.com/openziti/fabric: [v0.22.1 -> v0.22.7](https://github.com/openziti/fabric/compare/v0.22.1...v0.22.7)
+    * [Issue #573](https://github.com/openziti/fabric/issues/573) - Ensure specific events aren't duplicated in raft cluster
+    * [Issue #577](https://github.com/openziti/fabric/issues/577) - JSON Event formatter isn't putting events on their own line
+    * [Issue #571](https://github.com/openziti/fabric/issues/571) - Move raft.advertiseAddress to ctrl for consistency
+    * [Issue #569](https://github.com/openziti/fabric/issues/569) - Support automatic migration and agent based migration
+    * [Issue #567](https://github.com/openziti/fabric/issues/567) - Remove link dropped_msg metrics for closed links
+    * [Issue #566](https://github.com/openziti/fabric/issues/566) - Link listeners aren't properly configuring channel out queue size 
+
+* github.com/openziti/foundation/v2: [v2.0.9 -> v2.0.10](https://github.com/openziti/foundation/compare/v2.0.9...v2.0.10)
+* github.com/openziti/identity: [v1.0.28 -> v1.0.29](https://github.com/openziti/identity/compare/v1.0.28...v1.0.29)
+* github.com/openziti/sdk-golang: [v0.18.19 -> v0.18.21](https://github.com/openziti/sdk-golang/compare/v0.18.19...v0.18.21)
+* github.com/openziti/storage: [v0.1.30 -> v0.1.31](https://github.com/openziti/storage/compare/v0.1.30...v0.1.31)
+* github.com/openziti/transport/v2: [v2.0.48 -> v2.0.49](https://github.com/openziti/transport/compare/v2.0.48...v2.0.49)
+* github.com/openziti/metrics: [v1.2.2 -> v1.2.3](https://github.com/openziti/metrics/compare/v1.2.2...v1.2.3)
+* github.com/openziti/ziti: [v0.27.1 -> v0.27.2](https://github.com/openziti/ziti/compare/v0.27.1...v0.27.2)
+    * [Issue #916](https://github.com/openziti/ziti/issues/916) - Allow defining resource tags via json in the cli
+
+
+# Release 0.27.1
+
+## What's New
+
+* Event streaming over websocket
+    * `ziti fabric stream events`
+    * Events use same JSON formatting as the file based streaming
+    * Plain Text formatting removed
+    * Individual streaming of metrics/circuits removed in favor of unified events streaming
+* Improvements to router/tunneler terminator creation
+    * Create terminator requests are now idempotent, so repeated requests will not result in multiple terminators
+    * Create terminator requests are now asynchronous, so responses will no longer get timed out
+    * There is new timer metric from routers, timing how long terminator creates take: `xgress_edge_tunnel.terminator.create_timer`
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.75 -> v0.24.86](https://github.com/openziti/edge/compare/v0.24.75...v0.24.86)
+    * [Issue #1272](https://github.com/openziti/edge/issues/1272) - Mark xgress_edge and xgress_edge_tunnel created terminators as system entity
+    * [Issue #1270](https://github.com/openziti/edge/issues/1270) - Make xgress_edge_tunnel service hosting more scalabe
+    * [Issue #1268](https://github.com/openziti/edge/issues/1268) - session deletion can get stalled by restarts
+
+* github.com/openziti/fabric: [v0.21.36 -> v0.22.1](https://github.com/openziti/fabric/compare/v0.21.36...v0.22.1)
+    * [Issue #563](https://github.com/openziti/fabric/issues/563) - Allow streaming events over webscocket, replacing stream circuits and stream metrics
+    * [Issue #552](https://github.com/openziti/fabric/issues/552) - Add minimum cost delta for smart routing
+    * [Issue #558](https://github.com/openziti/fabric/issues/558) - Allow terminators to be marked as system entities
+
+* github.com/openziti/ziti: [v0.27.0 -> v0.27.1](https://github.com/openziti/ziti/compare/v0.27.0...v0.27.1)
+    * [Issue #928](https://github.com/openziti/ziti/issues/928) - ziti fabric update terminator should not require setting router
+    * [Issue #929](https://github.com/openziti/ziti/issues/929) - zit fabric list terminators isn't showing cost or dynamic cost 
+
 # Release 0.27.0
 
 ## What's New
@@ -5,6 +138,7 @@
 * Ziti CLI
     * The CLI has been cleaned up and unused, unusable and underused components have been removed or hidden
     * Add create/delete transit-router CLI commands
+    * [Issue-706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
 
 ## Ziti CLI
 
@@ -26,6 +160,33 @@
 * The demo and tutorial commands have been moved under the new learn subcommand
 * `ziti edge enroll` now has a verbose option for additional debugging
 * The `ziti edge` CLI now support create/delete transit-router. This allows transit/fabric routers to be provisioned using an enrollment process, rather than requiring certs to be created externally. Note that this requires that the fabric router config file has a `csr` section.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.5 -> v1.0.7](https://github.com/openziti/agent/compare/v1.0.5...v1.0.7)
+* github.com/openziti/channel/v2: [v2.0.12 -> v2.0.24](https://github.com/openziti/channel/compare/v2.0.12...v2.0.24)
+* github.com/openziti/edge: [v0.24.36 -> v0.24.75](https://github.com/openziti/edge/compare/v0.24.36...v0.24.75)
+    * [Issue #1253](https://github.com/openziti/edge/issues/1253) - Panic in controller getting hello from edge router
+    * [Issue #1233](https://github.com/openziti/edge/issues/1233) - edge-routers ref link in identities endpoint is incorrectly keyed
+    * [Issue #1234](https://github.com/openziti/edge/issues/1234) - identities missing service-config link ref
+    * [Issue #1232](https://github.com/openziti/edge/issues/1232) - edge management api identity-types endpoint produces incorrect links
+
+* github.com/openziti/fabric: [v0.21.17 -> v0.21.36](https://github.com/openziti/fabric/compare/v0.21.17...v0.21.36)
+    * [Issue #525](https://github.com/openziti/fabric/issues/525) - Update metrics message propagation from router to controller for HA
+
+* github.com/openziti/foundation/v2: [v2.0.7 -> v2.0.9](https://github.com/openziti/foundation/compare/v2.0.7...v2.0.9)
+* github.com/openziti/identity: [v1.0.20 -> v1.0.28](https://github.com/openziti/identity/compare/v1.0.20...v1.0.28)
+* github.com/openziti/runzmd: [v1.0.3 -> v1.0.7](https://github.com/openziti/runzmd/compare/v1.0.3...v1.0.7)
+* github.com/openziti/sdk-golang: [v0.16.146 -> v0.18.19](https://github.com/openziti/sdk-golang/compare/v0.16.146...v0.18.19)
+* github.com/openziti/storage: [v0.1.26 -> v0.1.30](https://github.com/openziti/storage/compare/v0.1.26...v0.1.30)
+* github.com/openziti/transport/v2: [v2.0.38 -> v2.0.48](https://github.com/openziti/transport/compare/v2.0.38...v2.0.48)
+* github.com/openziti/metrics: [v1.1.5 -> v1.2.2](https://github.com/openziti/metrics/compare/v1.1.5...v1.2.2)
+* github.com/openziti/ziti: [v0.26.11 -> v0.26.12](https://github.com/openziti/ziti/compare/v0.26.11...v0.26.12)
+    * [Issue #892](https://github.com/openziti/ziti/issues/892) - Add timeout to ziti agent controller snapshot-db command
+    * [Issue #917](https://github.com/openziti/ziti/issues/917) - ZITI_BIN_ROOT is incorrect in docker env
+    * [Issue #912](https://github.com/openziti/ziti/issues/912) - Binaries not updated in docker-compose env with new image
+    * [Issue #897](https://github.com/openziti/ziti/issues/897) - Add CLI options to manage  /edge/v1/transit-routers
+    * [Issue #706](https://github.com/openziti/ziti/issues/706) - Add port check to quickstart
 
 # Release 0.26.11
 

@@ -18,16 +18,12 @@ package agentcli
 
 import (
 	"fmt"
-	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
-	"github.com/openziti/identity"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
-	"net"
-	"time"
 )
 
 type ForgetLinkAgentAction struct {
@@ -35,56 +31,38 @@ type ForgetLinkAgentAction struct {
 }
 
 func NewForgetLinkAgentCmd(p common.OptionsProvider) *cobra.Command {
-	options := &ForgetLinkAgentAction{
+	action := &ForgetLinkAgentAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(1, 2),
-		Use:  "forget-link <optional-target> <link-id>",
+		Args: cobra.ExactArgs(1),
+		Use:  "forget-link <link-id>",
 		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
+			action.Cmd = cmd
+			action.Args = args
+			err := action.Run()
 			cmdhelper.CheckErr(err)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
 // Run implements the command
 func (self *ForgetLinkAgentAction) Run() error {
-	var addr string
-	var err error
-	if len(self.Args) == 2 {
-		addr, err = agent.ParseGopsAddress(self.Args)
-		if err != nil {
-			return err
-		}
-	}
-
-	return agent.MakeRequestF(addr, agent.CustomOpAsync, []byte{router.AgentAppId}, self.makeRequest)
+	return self.MakeChannelRequest(router.AgentAppId, self.makeRequest)
 }
 
-func (self *ForgetLinkAgentAction) makeRequest(conn net.Conn) error {
-	options := channel.DefaultOptions()
-	options.ConnectTimeout = time.Second
-	dialer := channel.NewExistingConnDialer(&identity.TokenId{Token: "agent"}, conn, nil)
-	ch, err := channel.NewChannel("agent", dialer, nil, options)
-	if err != nil {
-		return err
-	}
-
+func (self *ForgetLinkAgentAction) makeRequest(ch channel.Channel) error {
 	linkId := self.Args[0]
-	if len(self.Args) == 2 {
-		linkId = self.Args[1]
-	}
 
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugForgetLinkRequestType), []byte(linkId))
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}

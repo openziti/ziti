@@ -18,21 +18,20 @@ package edge
 
 import (
 	"fmt"
-	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/util"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/resty.v1"
 	"io"
-	"io/ioutil"
+	"os"
 )
 
 type updateCaOptions struct {
-	api.Options
+	api.EntityOptions
 	verify             bool
 	verifyCertPath     string
 	verifyCertBytes    []byte
@@ -43,7 +42,6 @@ type updateCaOptions struct {
 	authEnabled        bool
 	identityAttributes []string
 	identityNameFormat string
-	tags               map[string]string
 
 	externalIDClaim rest_model.ExternalIDClaimPatch
 }
@@ -51,11 +49,8 @@ type updateCaOptions struct {
 // newUpdateAuthenticatorCmd creates the 'edge controller update authenticator' command
 func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := updateCaOptions{
-		Options: api.Options{
-			CommonOptions:      common.CommonOptions{Out: out, Err: errOut},
-			OutputJSONResponse: false,
-		},
-		verify: false,
+		EntityOptions: api.NewEntityOptions(out, errOut),
+		verify:        false,
 		externalIDClaim: rest_model.ExternalIDClaimPatch{
 			Index:           I64(0),
 			Location:        S(""),
@@ -86,7 +81,7 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				}
 
 				var err error
-				options.verifyCertBytes, err = ioutil.ReadFile(options.verifyCertPath)
+				options.verifyCertBytes, err = os.ReadFile(options.verifyCertPath)
 
 				if err != nil {
 					return fmt.Errorf("could not read --cert file: %s", err)
@@ -124,7 +119,6 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.externalIDClaim.MatcherCriteria, "matcher-criteria", "x", "", "criteria used with the given matcher")
 	cmd.Flags().StringVarP(options.externalIDClaim.Parser, "parser", "p", "", "the parser to use on found external ids")
 	cmd.Flags().StringVarP(options.externalIDClaim.ParserCriteria, "parser-criteria", "z", "", "criteria used with the given parser")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 	return cmd
@@ -211,11 +205,11 @@ func runUpdateCa(options updateCaOptions) error {
 		changed = true
 	}
 
-	if options.Cmd.Flags().Changed("tags") {
+	if options.TagsProvided() {
 		ca.Tags = &rest_model.Tags{
 			SubTags: rest_model.SubTags{},
 		}
-		for k, v := range options.tags {
+		for k, v := range options.GetTags() {
 			ca.Tags.SubTags[k] = v
 		}
 		changed = true

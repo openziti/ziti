@@ -49,7 +49,6 @@ func NewRunCmd() *cobra.Command {
 
 	//flags are added to an internal map and read later on, see getFlags()
 	runCmd.Flags().BoolP("extend", "e", false, "force the router on startup to extend enrollment certificates")
-
 	return runCmd
 }
 
@@ -87,14 +86,20 @@ func run(cmd *cobra.Command, args []string) {
 	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
 	xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager)
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager, r.GetMetricsRegistry())
 	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
 	if err := r.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
 		logrus.WithError(err).Panic("error registering edge tunnel in framework")
 	}
 
 	if cliAgentEnabled {
-		options := agent.Options{Addr: cliAgentAddr}
+		options := agent.Options{
+			Addr:       cliAgentAddr,
+			AppId:      config.Id.Token,
+			AppType:    "router",
+			AppVersion: version.GetVersion(),
+			AppAlias:   cliAgentAlias,
+		}
 		if config.EnableDebugOps {
 			enableDebugOps = true
 		}

@@ -22,7 +22,6 @@ import (
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	errors2 "github.com/pkg/errors"
 	"github.com/spf13/cobra"
@@ -31,23 +30,17 @@ import (
 )
 
 type updateTerminatorOptions struct {
-	api.Options
+	api.EntityOptions
 	router     string
 	address    string
 	binding    string
 	cost       int32
 	precedence string
-	tags       map[string]string
 }
 
 func newUpdateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &updateTerminatorOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -70,7 +63,6 @@ func newUpdateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVar(&options.binding, "binding", "", "Set the terminator binding")
 	cmd.Flags().Int32VarP(&options.cost, "cost", "c", 0, "Set the terminator cost")
 	cmd.Flags().StringVarP(&options.precedence, "precedence", "p", "", "Set the terminator precedence ('default', 'required' or 'failed')")
-	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)
 
@@ -119,8 +111,8 @@ func runUpdateTerminator(o *updateTerminatorOptions) (err error) {
 		change = true
 	}
 
-	if o.Cmd.Flags().Changed("tags") {
-		api.SetJSONValue(entityData, o.tags, "tags")
+	if o.TagsProvided() {
+		o.SetTags(entityData)
 		change = true
 	}
 

@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"github.com/openziti/ziti/ziti/pki/certificate"
 	"io"
-	"io/ioutil"
 	"math/big"
 	"os"
 	"path/filepath"
@@ -50,7 +49,7 @@ var (
 	// 4 Serial
 	// 5 Filename
 	// 6 Subject
-	indexRegexp = regexp.MustCompile("^(V|R|E)\t([0-9]{12}Z)\t([0-9]{12}Z)?\t([0-9a-fA-F]{2,})\t([^\t]+)\t(.+)")
+	indexRegexp = regexp.MustCompile("^([VRE])\t([0-9]{12}Z)\t([0-9]{12}Z)?\t([0-9a-fA-F]{2,})\t([^\t]+)\t(.+)")
 )
 
 // Local lets us store a Certificate Authority on the local filesystem.
@@ -80,7 +79,7 @@ func (l *Local) Exists(caName, name string) bool {
 	return false
 }
 
-// Fetch fetchs the private key and certificate for a given name signed by caName.
+// Fetch fetches the private key and certificate for a given name signed by caName.
 func (l *Local) Fetch(caName, name string) ([]byte, []byte, error) {
 	filepath.Join(l.Root, caName)
 
@@ -96,12 +95,12 @@ func (l *Local) Fetch(caName, name string) ([]byte, []byte, error) {
 	return k, c, nil
 }
 
-// Fetch fetchs the private key and certificate for a given name signed by caName.
+// FetchKeyBytes fetchs the private key and certificate for a given name signed by caName.
 func (l *Local) FetchKeyBytes(caName, name string) ([]byte, error) {
 	filepath.Join(l.Root, caName)
 
 	keyPath, _ := l.path(caName, name)
-	bytes, err := ioutil.ReadFile(keyPath)
+	bytes, err := os.ReadFile(keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading %v: %v", keyPath, err)
 	}
@@ -109,7 +108,7 @@ func (l *Local) FetchKeyBytes(caName, name string) ([]byte, error) {
 }
 
 func readPEM(path string) ([]byte, error) {
-	bytes, err := ioutil.ReadFile(path)
+	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed reading %v: %v", path, err)
 	}
@@ -135,18 +134,18 @@ func (l *Local) Add(caName, name string, isCa bool, key, cert []byte) error {
 }
 
 // Chain concats an intermediate cert and a newly signed certificate bundle and adds the chained cert to the store.
-func (l *Local) Chain(caName, name string) error {
+func (l *Local) Chain(caName, destCaName, name string) error {
 	chainName := name + ".chain.pem"
-	if l.Exists(caName, chainName) {
-		return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, caName)
+	if l.Exists(destCaName, chainName) {
+		return fmt.Errorf("a bundle already exists for the name %v within CA %v", chainName, destCaName)
 	}
-	if err := l.writeChainBundle(caName, name, chainName); err != nil {
+	if err := l.writeChainBundle(caName, destCaName, name, chainName); err != nil {
 		return fmt.Errorf("failed writing chain %v to the local filesystem: %v", chainName, err)
 	}
 	return nil
 }
 
-// Add adds the given csr to the local filesystem.
+// AddCSR adds the given csr to the local filesystem.
 func (l *Local) AddCSR(caName, name string, isCa bool, key, cert []byte) error {
 	if l.Exists(caName, name) {
 		return fmt.Errorf("a CSR already exists for the name %v within CA %v", name, caName)
@@ -157,7 +156,7 @@ func (l *Local) AddCSR(caName, name string, isCa bool, key, cert []byte) error {
 	return nil
 }
 
-// Add adds the given key to the local filesystem.
+// AddKey adds the given key to the local filesystem.
 func (l *Local) AddKey(caName string, name string, key []byte) error {
 	if l.Exists(caName, name) {
 		return fmt.Errorf("a key already exists for the key name %v within CA %v", name, caName)
@@ -217,7 +216,7 @@ func (l *Local) writeBundle(caName, name string, isCa bool, key, cert []byte) er
 }
 
 // writeChainBundle concats...
-func (l *Local) writeChainBundle(caName, name string, chainName string) error {
+func (l *Local) writeChainBundle(caName, destCaName, name string, chainName string) error {
 	caDir := filepath.Join(l.Root, caName)
 	if _, err := os.Stat(caDir); err != nil {
 		if err := InitCADir(caDir); err != nil {
@@ -225,10 +224,15 @@ func (l *Local) writeChainBundle(caName, name string, chainName string) error {
 		}
 	}
 
-	caPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".cert")
-	caIn, err := os.Open(caPath)
+	caChainPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".chain.pem")
+	caIn, err := os.Open(caChainPath)
 	if err != nil {
-		return fmt.Errorf("failed to open CA: %v: %v", caPath, err)
+		// no chain path, likely means we're using the root as the CA, so fallback to the cert
+		caPath := filepath.Join(l.Root, caName, LocalCertsDir, caName+".cert")
+		caIn, err = os.Open(caPath)
+		if err != nil {
+			return fmt.Errorf("failed to open CA: %v: %v", caPath, err)
+		}
 	}
 	defer caIn.Close()
 
@@ -239,7 +243,7 @@ func (l *Local) writeChainBundle(caName, name string, chainName string) error {
 	}
 	defer serverCertIn.Close()
 
-	chainCertPath := filepath.Join(l.Root, caName, LocalCertsDir, chainName)
+	chainCertPath := filepath.Join(l.Root, destCaName, LocalCertsDir, chainName)
 	out, err := os.OpenFile(chainCertPath, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open chain file: %v: %v", chainCertPath, err)

@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/openziti/edge/rest_management_api_client"
+	"github.com/openziti/edge-api/rest_management_api_client"
 	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti/constants"
@@ -81,12 +81,20 @@ func (self *RestClientEdgeIdentity) IsReadOnly() bool {
 func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 	rootCaPool := x509.NewCertPool()
 
-	rootPemData, err := os.ReadFile(self.CaCert)
-	if err != nil {
-		return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
-	}
+	if self.CaCert != "" {
+		rootPemData, err := os.ReadFile(self.CaCert)
+		if err != nil {
+			return nil, errors.Errorf("could not read session certificates [%s]: %v", self.CaCert, err)
+		}
 
-	rootCaPool.AppendCertsFromPEM(rootPemData)
+		rootCaPool.AppendCertsFromPEM(rootPemData)
+	} else {
+		var err error
+		rootCaPool, err = x509.SystemCertPool()
+		if err != nil {
+			return nil, errors.New("couldn't retrieve the SystemCertPool and no CaCert provided")
+		}
+	}
 
 	return &tls.Config{
 		RootCAs: rootCaPool,
@@ -95,7 +103,9 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
 	client := newClient()
-	client.SetRootCertificate(self.CaCert)
+	if self.CaCert != "" {
+		client.SetRootCertificate(self.CaCert)
+	}
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)
 	return client, nil

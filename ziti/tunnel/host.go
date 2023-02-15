@@ -33,9 +33,8 @@ func NewHostCmd() *cobra.Command {
 }
 
 func runHost(cmd *cobra.Command, args []string) error {
-	root := cmd.Root()
-	if !root.Flag(resolverCfgFlag).Changed {
-		_ = root.PersistentFlags().Set(resolverCfgFlag, "")
+	if flag := cmd.Flag(resolverCfgFlag); !flag.Changed {
+		_ = flag.Value.Set("")
 	}
 	interceptor = host.New()
 	return nil

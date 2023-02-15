@@ -17,24 +17,22 @@
 package agentcli
 
 import (
-	"encoding/binary"
-	"github.com/openziti/agent"
+	"fmt"
+	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/ctrl_pb"
+	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"google.golang.org/protobuf/proto"
-	"os"
 )
 
 type AgentRouteAction struct {
 	AgentOptions
-	CtrlListener string
 }
 
 func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
-	options := &AgentRouteAction{
+	action := &AgentRouteAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
@@ -42,38 +40,26 @@ func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Args: cobra.RangeArgs(3, 4),
-		Use:  "route <optional-target> <session id> <source-address> <destination-address>",
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
+		Use:  "route <controller id> <circuit id> <source-address> <destination-address>",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			action.Cmd = cmd
+			action.Args = args
+			return action.MakeChannelRequest(router.AgentAppId, action.makeRequest)
 		},
 	}
+
+	action.AddAgentOptions(cmd)
 
 	return cmd
 }
 
-// Run implements the command
-func (self *AgentRouteAction) Run() error {
-	var addr string
-	var err error
-
-	offset := 0
-	if len(self.Args) == 4 {
-		addr, err = agent.ParseGopsAddress(self.Args)
-		if err != nil {
-			return err
-		}
-		offset = 1
-	}
-
+func (self *AgentRouteAction) makeRequest(ch channel.Channel) error {
 	route := &ctrl_pb.Route{
-		CircuitId: self.Args[offset],
+		CircuitId: self.Args[1],
 		Forwards: []*ctrl_pb.Route_Forward{
 			{
-				SrcAddress: self.Args[offset+1],
-				DstAddress: self.Args[offset+2],
+				SrcAddress: self.Args[2],
+				DstAddress: self.Args[3],
 			},
 		},
 	}
@@ -83,15 +69,26 @@ func (self *AgentRouteAction) Run() error {
 		return err
 	}
 
-	fullBuf := make([]byte, len(buf)+6)
-	fullBuf[0] = byte(AgentAppRouter)
-	fullBuf[1] = router.UpdateRoute
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), buf)
+	msg.PutStringHeader(int32(mgmt_pb.Header_ControllerId), self.Args[0])
+	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
+	if err != nil {
+		return err
+	}
 
-	sizeBuf := make([]byte, 4)
-	binary.LittleEndian.PutUint32(sizeBuf, uint32(len(buf)))
-
-	copy(fullBuf[2:], sizeBuf)
-	copy(fullBuf[6:], buf)
-
-	return agent.MakeRequest(addr, agent.CustomOp, fullBuf, os.Stdout)
+	if reply.ContentType == channel.ContentTypeResultType {
+		result := channel.UnmarshalResult(reply)
+		if result.Success {
+			if len(result.Message) > 0 {
+				fmt.Printf("success: %v\n", result.Message)
+			} else {
+				fmt.Println("success")
+			}
+		} else {
+			fmt.Printf("error: %v\n", result.Message)
+		}
+	} else {
+		fmt.Printf("unexpected response type %v\n", reply.ContentType)
+	}
+	return nil
 }

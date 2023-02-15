@@ -12,17 +12,17 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/openziti/edge/rest_management_api_client"
-	api_client_config "github.com/openziti/edge/rest_management_api_client/config"
-	"github.com/openziti/edge/rest_management_api_client/edge_router"
-	"github.com/openziti/edge/rest_management_api_client/edge_router_policy"
-	"github.com/openziti/edge/rest_management_api_client/identity"
-	"github.com/openziti/edge/rest_management_api_client/service"
-	"github.com/openziti/edge/rest_management_api_client/service_edge_router_policy"
-	"github.com/openziti/edge/rest_management_api_client/service_policy"
-	"github.com/openziti/edge/rest_management_api_client/terminator"
-	"github.com/openziti/edge/rest_model"
-	"github.com/openziti/edge/rest_util"
+	"github.com/openziti/edge-api/rest_management_api_client"
+	api_client_config "github.com/openziti/edge-api/rest_management_api_client/config"
+	"github.com/openziti/edge-api/rest_management_api_client/edge_router"
+	"github.com/openziti/edge-api/rest_management_api_client/edge_router_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/identity"
+	"github.com/openziti/edge-api/rest_management_api_client/service"
+	"github.com/openziti/edge-api/rest_management_api_client/service_edge_router_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/service_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/terminator"
+	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
 	sdk_config "github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
@@ -78,6 +78,7 @@ func buildDockerQuickstartTestImage() {
 	defer tw.Close()
 
 	dockerFile := "TestDockerfile"
+	imageNameAndTag := "openziti/quickstart:test"
 
 	filePaths := iterateDir(dir)
 
@@ -99,7 +100,7 @@ func buildDockerQuickstartTestImage() {
 		Context:    dockerFileTarReader,
 		Dockerfile: dockerFile,
 		Remove:     true,
-		Tags:       []string{"openziti/quickstart:test"},
+		Tags:       []string{imageNameAndTag},
 	})
 	if err != nil {
 		fmt.Println(err)
@@ -107,13 +108,30 @@ func buildDockerQuickstartTestImage() {
 	}
 	defer imageBuildResponse.Body.Close()
 
+	// Wait until the image finishes building (builds in a background thread)
+	for {
+		fmt.Println("Waiting for image build...")
+		output, err := exec.Command("docker", "images", "-q", imageNameAndTag).Output()
+		if err != nil {
+			fmt.Println(err)
+		}
+		if string(output) != "" {
+			fmt.Println("Build complete, continuing with test")
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+
 	danglers := filters.NewArgs()
 	danglers.Add("dangling", "true")
 	results, err := cli.ImageList(ctx, types.ImageListOptions{
 		All:     false,
 		Filters: danglers,
 	})
-
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("failed to collect docker image list")
+	}
 	for _, img := range results {
 		_, err = cli.ImageRemove(ctx, img.ID, types.ImageRemoveOptions{})
 		if err != nil {
@@ -205,13 +223,13 @@ func TestQuickStartEnvFile(t *testing.T) {
 	expectedValues := []string{
 		"export ZITI_EDGE_ROUTER_RAWNAME=\"localhost-edge-router\"",
 		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"localhost\"",
-		"export ZITI_HOME_OS_SPECIFIC=\"/openziti\"",
-		"export ZITI_HOME=\"/openziti\"",
-		"export ZITI_BIN_DIR=\"/openziti/ziti-bin\"",
+		"export ZITI_HOME_OS_SPECIFIC=\"/persistent\"",
+		"export ZITI_HOME=\"/persistent\"",
+		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
 		"export ZITI_EDGE_CTRL_ADVERTISED=\"localhost:1280\"",
 		"export ZITI_USER=\"admin\"",
 		"export ZITI_PWD=\"admin\"",
-		"export ZITI_PKI_OS_SPECIFIC=\"/openziti/pki\"",
+		"export ZITI_PKI_OS_SPECIFIC=\"/persistent/pki\"",
 		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"localhost-root-ca\"",
 		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"localhost-intermediate\"",
 	}
@@ -224,7 +242,7 @@ func TestQuickStartEnvFile(t *testing.T) {
 
 	// Wait until it finishes
 	for {
-		time.Sleep(1)
+		time.Sleep(1 * time.Second)
 		output, _ := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerId).Output()
 		if string(output) == "false\n" {
 			break
@@ -236,7 +254,7 @@ func TestQuickStartEnvFile(t *testing.T) {
 	if err != nil {
 		fmt.Printf("Error: %s\n", output)
 	}
-	cpString := containerId + ":/openziti/localhost.env"
+	cpString := containerId + ":/persistent/localhost.env"
 	cmd := exec.Command("docker", "cp", cpString, ".")
 	err = cmd.Run()
 	if err != nil {
@@ -285,12 +303,15 @@ func TestQuickStartEnvFile(t *testing.T) {
 }
 
 /*
-This is a manually run test that will, with the default values, confirm the docker-compose ziti network is running as
-expected. The values can be edited to confirm other ziti networks but will require an http server on the back end.
+This is a manually run test that will, with the default values except the admin password, confirm the docker-compose
+ziti network is running as expected. The values can be edited to confirm other ziti networks but will require an http
+server on the back end.
 */
 func TestSimpleWebService(t *testing.T) {
 
 	// Wait for the controller to become available
+	zitiAdminUsername := "admin"
+	zitiAdminPassword := "admin"
 	testerUsername := "gotester"
 	ctrlAddress := "https://ziti-edge-controller:1280"
 	hostingRouterName := "ziti-edge-router"
@@ -299,6 +320,7 @@ func TestSimpleWebService(t *testing.T) {
 	bindHostAddress := "web-test-blue"
 	bindHostPort := 8000
 	serviceName := "basic.web.smoke.test.service"
+	wd, _ := os.Getwd()
 	waitForController(ctrlAddress)
 	// Give routers time to enroll themselves
 	time.Sleep(5 * time.Second)
@@ -312,7 +334,7 @@ func TestSimpleWebService(t *testing.T) {
 	for _, ca := range caCerts {
 		caPool.AddCert(ca)
 	}
-	client, err := rest_util.NewEdgeManagementClientWithUpdb("admin", "admin", ctrlAddress, caPool)
+	client, err := rest_util.NewEdgeManagementClientWithUpdb(zitiAdminUsername, zitiAdminPassword, ctrlAddress, caPool)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -376,7 +398,7 @@ func TestSimpleWebService(t *testing.T) {
 		fmt.Println("Unable to detect a terminator for the edge router")
 	}
 	helloUrl := fmt.Sprintf("http://%s:%d", serviceName, dialPort)
-	httpClient := createZitifiedHttpClient("/Users/geoffberl/git/NetFoundry/ziti/quickstart/" + testerUsername + ".json")
+	httpClient := createZitifiedHttpClient(wd + "/" + testerUsername + ".json")
 	resp, e := httpClient.Get(helloUrl)
 	if e != nil {
 		panic(e)

@@ -35,6 +35,7 @@ func NewFabricCmd(p common.OptionsProvider) *cobra.Command {
 	fabricCmd.AddCommand(newInspectCmd(p))
 	fabricCmd.AddCommand(newDbCmd(p))
 	fabricCmd.AddCommand(newStreamCommand(p))
+	fabricCmd.AddCommand(newRaftCmd(p))
 	return fabricCmd
 }
 
@@ -80,8 +81,7 @@ func newStreamCommand(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 
-	streamCmd.AddCommand(NewStreamMetricsCmd(p))
-	streamCmd.AddCommand(NewStreamCircuitsCmd(p))
+	streamCmd.AddCommand(NewStreamEventsCmd(p))
 	streamTracesCmd := NewStreamTracesCmd(p)
 	streamCmd.AddCommand(streamTracesCmd)
 

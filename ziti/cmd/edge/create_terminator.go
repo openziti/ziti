@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/router/xgress_edge_transport"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/spf13/cobra"
 	"io"
@@ -30,7 +29,7 @@ import (
 )
 
 type createTerminatorOptions struct {
-	api.Options
+	api.EntityOptions
 	binding    string
 	cost       int32
 	precedence string
@@ -40,12 +39,7 @@ type createTerminatorOptions struct {
 // newCreateTerminatorCmd creates the 'edge controller create Terminator local' command for the given entity type
 func newCreateTerminatorCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createTerminatorOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -110,6 +104,7 @@ func runCreateTerminator(o *createTerminatorOptions) (err error) {
 		}
 		api.SetJSONValue(entityData, o.precedence, "precedence")
 	}
+	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("terminators", entityData.String(), &o.Options)
 	if err != nil {

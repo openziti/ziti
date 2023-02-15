@@ -34,8 +34,8 @@ import (
 	"strings"
 
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/edge/rest_management_api_client/certificate_authority"
-	"github.com/openziti/edge/rest_model"
+	"github.com/openziti/edge-api/rest_management_api_client/certificate_authority"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 )

@@ -123,8 +123,10 @@ func (o *loginOptions) Run() error {
 		return err
 	}
 
-	if certAbs, err := filepath.Abs(o.CaCert); err == nil {
-		o.CaCert = certAbs
+	if o.CaCert != "" {
+		if certAbs, err := filepath.Abs(o.CaCert); err == nil {
+			o.CaCert = certAbs
+		}
 	}
 
 	if ctrlUrl.Path == "" {
@@ -180,11 +182,6 @@ func (o *loginOptions) Run() error {
 		if !o.OutputJSONResponse {
 			o.Printf("Token: %v\n", o.Token)
 		}
-	}
-
-	absCertPath, err := filepath.Abs(o.CaCert)
-	if err == nil {
-		o.CaCert = absCertPath
 	}
 
 	loginIdentity := &util.RestClientEdgeIdentity{

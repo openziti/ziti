@@ -18,7 +18,6 @@ package edge
 
 import (
 	"github.com/openziti/ziti/ziti/cmd/api"
-	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"io"
 	"strings"
@@ -30,7 +29,7 @@ import (
 )
 
 type createServicePolicyOptions struct {
-	api.Options
+	api.EntityOptions
 	serviceRoles      []string
 	identityRoles     []string
 	postureCheckRoles []string
@@ -40,9 +39,7 @@ type createServicePolicyOptions struct {
 // newCreateServicePolicyCmd creates the 'edge controller create service-policy' command
 func newCreateServicePolicyCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createServicePolicyOptions{
-		Options: api.Options{
-			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
-		},
+		EntityOptions: api.NewEntityOptions(out, errOut),
 	}
 
 	cmd := &cobra.Command{
@@ -99,10 +96,11 @@ func runCreateServicePolicy(o *createServicePolicyOptions) error {
 	api.SetJSONValue(entityData, serviceRoles, "serviceRoles")
 	api.SetJSONValue(entityData, identityRoles, "identityRoles")
 	api.SetJSONValue(entityData, postureCheckRoles, "postureCheckRoles")
-
 	if o.semantic != "" {
 		api.SetJSONValue(entityData, o.semantic, "semantic")
 	}
+	o.SetTags(entityData)
+
 	result, err := CreateEntityOfType("service-policies", entityData.String(), &o.Options)
 	return o.LogCreateResult("service policy", result, err)
 }

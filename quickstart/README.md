@@ -41,7 +41,7 @@ the scripts in these folders before running them.
 ## Express
 
 By far the easiest way to establish an environment quickly is to simply run the express install script
-found at [./quickstart/local/express/express-dev-env.sh](). 
+found at [./quickstart/docker/image/ziti-cli-functions.sh]().
 
 ### What It Does
 

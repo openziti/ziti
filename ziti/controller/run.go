@@ -55,7 +55,6 @@ func run(cmd *cobra.Command, args []string) {
 		startLogger.WithError(err).Error("error starting ziti-controller")
 		panic(err)
 	}
-	config.SyncRaftToDb = syncRaftToDb
 
 	startLogger = startLogger.WithField("nodeId", config.Id.Token)
 	startLogger.Info("starting ziti-controller")
@@ -75,9 +74,14 @@ func run(cmd *cobra.Command, args []string) {
 	edgeController.Initialize()
 
 	if cliAgentEnabled {
-		options := agent.Options{Addr: cliAgentAddr}
+		options := agent.Options{
+			Addr:       cliAgentAddr,
+			AppId:      config.Id.Token,
+			AppType:    "controller",
+			AppVersion: version.GetVersion(),
+			AppAlias:   cliAgentAlias,
+		}
 		options.CustomOps = map[byte]func(conn net.Conn) error{
-			agent.CustomOp:      fabricController.HandleCustomAgentOp,
 			agent.CustomOpAsync: fabricController.HandleCustomAgentAsyncOp,
 		}
 		if err := agent.Listen(options); err != nil {

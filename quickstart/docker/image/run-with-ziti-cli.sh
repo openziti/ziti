@@ -15,21 +15,24 @@ if [[ ! -f $1 ]]; then
 fi
 
 # Should we execute?
-initFile="/openziti/access-control.init"
+initFile="${ZITI_HOME}/access-control.init"
 if [[ -f "${initFile}" ]]; then
   echo " "
-  echo "*****************************************************"
-  echo " docker-compose init file has been detected"
-  echo " the initialization of the docker-compose environment has already happened"
-  echo " if you wish to allow this volume to be re-initialized, delete the file"
+  echo "*****************************************************************"
+  echo " docker-compose init file has been detected, the initialization "
+  echo " of the docker-compose environment has already happened. If you "
+  echo " wish to allow this volume to be re-initialized, delete the file "
   echo " located at ${initFile}"
-  echo "*****************************************************"
+  echo "*****************************************************************"
   echo " "
   exit 0
 fi
 
 # give the controller scripts time to start and create the ziti environment file if running in docker compose 
 until $(test -f "${ZITI_HOME}/ziti.env"); do echo "waiting for ziti.env..."; sleep 1; done
+
+# Pause shortly to avoid the intermittent error of reading the file before it's completely done being written to.
+sleep 1
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 

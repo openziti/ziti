@@ -54,8 +54,8 @@ func NewControllerCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	cmd.PersistentFlags().BoolVarP(&cliAgentEnabled, "cliagent", "a", true, "Enable/disabled CLI Agent (enabled by default)")
 	cmd.PersistentFlags().StringVar(&cliAgentAddr, "cli-agent-addr", "", "Specify where CLI Agent should list (ex: unix:/tmp/myfile.sock or tcp:127.0.0.1:10001)")
+	cmd.PersistentFlags().StringVar(&cliAgentAlias, "cli-agent-alias", "", "Alias which can be used by ziti agent commands to find this instance")
 	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
-	cmd.PersistentFlags().BoolVar(&syncRaftToDb, "sync-raft-to-db", false, "Sync the current database state to raft as a snapshot. Use when moving an existing controller to run in HA/Raft")
 
 	cmd.AddCommand(NewRunCmd())
 	cmd.AddCommand(NewDeleteSessionsCmd())
@@ -69,8 +69,8 @@ func NewControllerCmd() *cobra.Command {
 var verbose bool
 var cliAgentEnabled bool
 var cliAgentAddr string
+var cliAgentAlias string
 var logFormatter string
-var syncRaftToDb bool
 
 func Execute() {
 	if err := NewControllerCmd().Execute(); err != nil {

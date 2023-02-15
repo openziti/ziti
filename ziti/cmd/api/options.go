@@ -17,9 +17,11 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/ziti/ziti/cmd/common"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
 )
@@ -67,4 +69,53 @@ func (options *Options) LogCreateResult(entityType string, result *gabs.Containe
 		return err
 	}
 	return nil
+}
+
+type EntityOptions struct {
+	Options
+	Tags     map[string]string
+	TagsJson string
+}
+
+func (self *EntityOptions) AddCommonFlags(cmd *cobra.Command) {
+	self.Options.AddCommonFlags(cmd)
+	if cmd.Flags().ShorthandLookup("t") == nil {
+		cmd.Flags().StringToStringVarP(&self.Tags, "tags", "t", nil, "Add tags to entity definition")
+	} else {
+		cmd.Flags().StringToStringVar(&self.Tags, "tags", nil, "Add tags to entity definition")
+	}
+	cmd.Flags().StringVar(&self.TagsJson, "tags-json", "", "Add tags defined in JSON to entity definition")
+}
+
+func (self *EntityOptions) GetTags() map[string]interface{} {
+	result := map[string]interface{}{}
+	if len(self.Tags) > 0 {
+		if err := json.Unmarshal([]byte(self.TagsJson), &result); err != nil {
+			panic(errors.Wrap(err, "invalid tags JSON"))
+		}
+	}
+	for k, v := range self.Tags {
+		result[k] = v
+	}
+	return result
+}
+
+func (self *EntityOptions) TagsProvided() bool {
+	return self.Cmd.Flags().Changed("tags") || self.Cmd.Flags().Changed("tags-json")
+}
+
+func (self *EntityOptions) SetTags(container *gabs.Container) {
+	tags := self.GetTags()
+	SetJSONValue(container, tags, "tags")
+}
+
+func NewEntityOptions(out, errOut io.Writer) EntityOptions {
+	return EntityOptions{
+		Options: Options{
+			CommonOptions: common.CommonOptions{
+				Out: out,
+				Err: errOut,
+			},
+		},
+	}
 }
