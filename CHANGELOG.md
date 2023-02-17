@@ -1,3 +1,30 @@
+# Release 0.27.6
+
+## What's New
+
+* Makes inspect CLI more discoverable by adding subcommands for inspectable values
+* Adds new inspection allowing configs to be retrieved: `ziti fabric inspect config`
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/channel/v2: [v2.0.27 -> v2.0.29](https://github.com/openziti/channel/compare/v2.0.27...v2.0.29)
+    * [Issue #83](https://github.com/openziti/channel/issues/83) - Improve protocol mismatch error(s)
+
+* github.com/openziti/edge: [v0.24.125 -> v0.24.134](https://github.com/openziti/edge/compare/v0.24.125...v0.24.134)
+* github.com/openziti/fabric: [v0.22.24 -> v0.22.32](https://github.com/openziti/fabric/compare/v0.22.24...v0.22.32)
+    * [Issue #584](https://github.com/openziti/fabric/issues/584) - Add cluster events
+    * [Issue #599](https://github.com/openziti/fabric/issues/599) - Add release and transfer leadership commands
+    * [Issue #606](https://github.com/openziti/fabric/issues/606) - Ensure consistent use of peer address
+    * [Issue #598](https://github.com/openziti/fabric/issues/598) - Add support to fabric inspect to propagate inspect to other controllers
+    * [Issue #597](https://github.com/openziti/fabric/issues/597) - Make raft settings configurable
+    * [Issue #604](https://github.com/openziti/fabric/issues/604) - Don't create link dropped msg metric until channel bind time
+
+* github.com/openziti/runzmd: [v1.0.9 -> v1.0.11](https://github.com/openziti/runzmd/compare/v1.0.9...v1.0.11)
+* github.com/openziti/sdk-golang: [v0.18.28 -> v0.18.30](https://github.com/openziti/sdk-golang/compare/v0.18.28...v0.18.30)
+* github.com/openziti/transport/v2: [v2.0.51 -> v2.0.52](https://github.com/openziti/transport/compare/v2.0.51...v2.0.52)
+* github.com/openziti/ziti: [v0.27.5 -> v0.27.6](https://github.com/openziti/ziti/compare/v0.27.5...v0.27.6)
+
+
 # Release 0.27.5
 
 ## What's New

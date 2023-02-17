@@ -12,7 +12,7 @@ packer {
 source "amazon-ebs" "ziti-tests-ubuntu-ami" {
   ami_description = "An Ubuntu AMI that has everything needed for running fablab smoketests."
   ami_name        = "ziti-tests-{{ timestamp }}"
-  ami_regions     = ["us-east-1", "us-west-2"]
+  ami_regions     = ["us-east-1", "us-west-2", "ca-central-1", "ap-northeast-1", "ap-southeast-2", "sa-east-1", "eu-central-1", "af-south-1"]
   instance_type   = "t2.micro"
   region          = "us-east-1"
   source_ami_filter {
@@ -41,10 +41,18 @@ build {
     destination = "/home/ubuntu/51-network-tuning.conf"
   }
 
+  provisioner "file" {
+    source      = "etc/systemd/resolved.conf.d/ziti-tunnel.conf"
+    destination = "/home/ubuntu/ziti-tunnel.conf"
+  }
+
   provisioner "shell" {
     inline = [
       "sudo mv /home/ubuntu/99remote-not-fancy /etc/apt/apt.conf.d/",
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
+      "sudo mkdir /etc/systemd/resolved.conf.d",
+      "sudo mv /home/ubuntu/ziti-tunnel.conf /etc/systemd/resolved.conf.d/",
+      "sudo chown root.root /etc/systemd/resolved.conf.d/*",
 
       "cloud-init status --wait",
 

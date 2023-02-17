@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/Jeffail/gabs v1.4.0
-	github.com/Jeffail/gabs/v2 v2.6.1
+	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/MakeNowJust/heredoc v1.0.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/docker/docker v20.10.21+incompatible
@@ -21,16 +21,16 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.8
-	github.com/openziti/channel/v2 v2.0.27
-	github.com/openziti/edge v0.24.125
+	github.com/openziti/channel/v2 v2.0.29
+	github.com/openziti/edge v0.24.135
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.24
+	github.com/openziti/fabric v0.22.32
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.30
-	github.com/openziti/runzmd v1.0.9
-	github.com/openziti/sdk-golang v0.18.28
+	github.com/openziti/runzmd v1.0.11
+	github.com/openziti/sdk-golang v0.18.30
 	github.com/openziti/storage v0.1.34
-	github.com/openziti/transport/v2 v2.0.51
+	github.com/openziti/transport/v2 v2.0.52
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pborman/uuid v1.2.0
@@ -60,7 +60,7 @@ require (
 	github.com/MichaelMure/go-term-text v0.3.1 // indirect
 	github.com/Microsoft/go-winio v0.6.0 // indirect
 	github.com/alecthomas/chroma v0.10.0 // indirect
-	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
@@ -117,7 +117,7 @@ require (
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
-	github.com/kyokomi/emoji/v2 v2.2.11 // indirect
+	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lucsky/cuid v1.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230110061619-bbe2e5e100de // indirect
@@ -174,7 +174,7 @@ require (
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
-	golang.org/x/exp v0.0.0-20230212135524-a684f29349b6 // indirect
+	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb // indirect
 	golang.org/x/image v0.5.0 // indirect
 	golang.org/x/mod v0.6.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
