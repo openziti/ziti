@@ -1107,12 +1107,12 @@ func (network *Network) Inspect(name string) (*string, error) {
 			}
 			return &val, nil
 		}
-	} else if lc == "clusterconfig" {
+	} else if lc == "cluster-config" {
 		if src, ok := network.Dispatcher.(renderConfig); ok {
 			val, err := src.RenderJsonConfig()
 			return &val, err
 		}
-	} else if lc == "routers" {
+	} else if lc == "connected-routers" {
 		var result []map[string]any
 		for _, r := range network.Routers.allConnected() {
 			status := map[string]any{}
