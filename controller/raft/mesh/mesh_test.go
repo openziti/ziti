@@ -1,6 +1,7 @@
 package mesh
 
 import (
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 	"runtime"
 	"testing"
@@ -51,25 +52,27 @@ func Test_checkState_ReadonlySetToFalseWhenPreviouslyTrueAndAllVersionsNowMatch(
 
 func Test_AddPeer_PassesReadonlyWhenVersionsMatch(t *testing.T) {
 	m := &impl{
-		Peers:   map[string]*Peer{},
-		version: NewVersionProviderTest(),
+		Peers:           map[string]*Peer{},
+		version:         NewVersionProviderTest(),
+		eventDispatcher: event.DispatcherMock{},
 	}
 
 	p := &Peer{Version: testVersion("1")}
 
-	m.AddPeer(p)
+	m.PeerConnected(p)
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
 }
 
 func Test_AddPeer_TurnsReadonlyWhenVersionsDoNotMatch(t *testing.T) {
 	m := &impl{
-		Peers:   map[string]*Peer{},
-		version: NewVersionProviderTest(),
+		Peers:           map[string]*Peer{},
+		version:         NewVersionProviderTest(),
+		eventDispatcher: event.DispatcherMock{},
 	}
 
 	p := &Peer{Version: testVersion("dne")}
 
-	m.AddPeer(p)
+	m.PeerConnected(p)
 	assert.Equal(t, true, m.readonly.Load(), "Expected readonly to be true, got ", m.readonly.Load())
 }
 
@@ -79,11 +82,12 @@ func Test_RemovePeer_StaysReadonlyWhenDeletingPeerAndStillHasMismatchedVersions(
 			"1": {Version: testVersion("dne"), Address: "1"},
 			"2": {Version: testVersion("dne"), Address: "2"},
 		},
-		version: NewVersionProviderTest(),
+		version:         NewVersionProviderTest(),
+		eventDispatcher: event.DispatcherMock{},
 	}
 	m.readonly.Store(true)
 
-	m.RemovePeer(m.Peers["1"])
+	m.PeerDisconnected(m.Peers["1"])
 	assert.Equal(t, true, m.readonly.Load(), "Expected readonly to be true, got ", m.readonly.Load())
 }
 
@@ -93,11 +97,12 @@ func Test_RemovePeer_RemovesReadonlyWhenDeletingPeerWithNoOtherMismatches(t *tes
 			"1": {Version: testVersion("dne"), Address: "1"},
 			"2": {Version: testVersion("1"), Address: "2"},
 		},
-		version: NewVersionProviderTest(),
+		version:         NewVersionProviderTest(),
+		eventDispatcher: event.DispatcherMock{},
 	}
 	m.readonly.Store(true)
 
-	m.RemovePeer(m.Peers["1"])
+	m.PeerDisconnected(m.Peers["1"])
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
 }
 
@@ -106,11 +111,12 @@ func Test_RemovePeer_RemovesReadonlyWhenDeletingLastPeer(t *testing.T) {
 		Peers: map[string]*Peer{
 			"1": {Version: testVersion("dne"), Address: "1"},
 		},
-		version: NewVersionProviderTest(),
+		version:         NewVersionProviderTest(),
+		eventDispatcher: event.DispatcherMock{},
 	}
 	m.readonly.Store(true)
 
-	m.RemovePeer(m.Peers["1"])
+	m.PeerDisconnected(m.Peers["1"])
 	assert.Equal(t, false, m.readonly.Load(), "Expected readonly to be false, got ", m.readonly.Load())
 }
 

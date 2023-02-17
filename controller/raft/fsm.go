@@ -23,6 +23,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -31,23 +32,22 @@ import (
 	"path"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback RouterDispatchCallback) *BoltDbFsm {
+func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
 	return &BoltDbFsm{
-		decoders:               decoders,
-		dbPath:                 path.Join(dataDir, "ctrl-ha.db"),
-		indexTracker:           indexTracker,
-		routerDispatchCallback: routerDispatchCallback,
+		decoders:        decoders,
+		dbPath:          path.Join(dataDir, "ctrl-ha.db"),
+		indexTracker:    indexTracker,
+		eventDispatcher: eventDispatcher,
 	}
 }
 
 type BoltDbFsm struct {
-	db           boltz.Db
-	dbPath       string
-	decoders     command.Decoders
-	indexTracker IndexTracker
-
-	currentState           *raft.Configuration
-	routerDispatchCallback RouterDispatchCallback
+	db              boltz.Db
+	dbPath          string
+	decoders        command.Decoders
+	indexTracker    IndexTracker
+	eventDispatcher event.Dispatcher
+	currentState    *raft.Configuration
 }
 
 func (self *BoltDbFsm) Init() error {
@@ -88,11 +88,16 @@ func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configura
 }
 
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
-	log := pfxlog.Logger()
 	self.currentState = &configuration
-	if err := self.routerDispatchCallback(&configuration); err != nil {
-		log.Errorf("Unable to dispatch router callback: %v", err)
+	evt := event.NewClusterEvent(event.ClusterMembersChanged)
+	evt.Index = index
+	for _, srv := range configuration.Servers {
+		evt.Peers = append(evt.Peers, &event.ClusterPeer{
+			Id:   string(srv.ID),
+			Addr: string(srv.Address),
+		})
 	}
+	self.eventDispatcher.AcceptClusterEvent(evt)
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {

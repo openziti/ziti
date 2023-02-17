@@ -58,7 +58,7 @@ func (self *Controller) ListMembers() ([]*Member, error) {
 			Leader: srv.Address == leaderAddr,
 			Version: func() string {
 				if srv.Address == leaderAddr {
-					return self.version.Version()
+					return self.env.GetVersionProvider().Version()
 				}
 				if peer, exists := peers[string(srv.Address)]; exists {
 					return peer.Version.Version

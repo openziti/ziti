@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/go-hclog"
 	"github.com/openziti/fabric/controller/peermsg"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
@@ -183,23 +184,28 @@ func newClusterState(isLeader, isReadWrite bool) ClusterState {
 	return ClusterState(val)
 }
 
-func NewController(id *identity.TokenId, version versions.VersionProvider, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager, routerDispatchCallback RouterDispatchCallback) *Controller {
+type Env interface {
+	GetId() *identity.TokenId
+	GetVersionProvider() versions.VersionProvider
+	GetRaftConfig() *Config
+	GetMetricsRegistry() metrics.Registry
+	GetEventDispatcher() event.Dispatcher
+}
+
+func NewController(env Env, migrationMgr MigrationManager) *Controller {
 	result := &Controller{
-		Id:                     id,
-		Config:                 config,
-		metricsRegistry:        metricsRegistry,
-		indexTracker:           NewIndexTracker(),
-		version:                version,
-		migrationMgr:           migrationMgr,
-		routerDispatchCallback: routerDispatchCallback,
-		clusterEvents:          make(chan raft.Observation, 16),
+		env:           env,
+		Config:        env.GetRaftConfig(),
+		indexTracker:  NewIndexTracker(),
+		migrationMgr:  migrationMgr,
+		clusterEvents: make(chan raft.Observation, 16),
 	}
 	return result
 }
 
 // Controller manages RAFT related state and operations
 type Controller struct {
-	Id                         *identity.TokenId
+	env                        Env
 	Config                     *Config
 	Mesh                       mesh.Mesh
 	Raft                       *raft.Raft
@@ -207,12 +213,9 @@ type Controller struct {
 	bootstrapped               atomic.Bool
 	clusterLock                sync.Mutex
 	servers                    []raft.Server
-	metricsRegistry            metrics.Registry
 	closeNotify                <-chan struct{}
 	indexTracker               IndexTracker
-	version                    versions.VersionProvider
 	migrationMgr               MigrationManager
-	routerDispatchCallback     RouterDispatchCallback
 	clusterStateChangeHandlers concurrenz.CopyOnWriteSlice[func(event ClusterEvent, state ClusterState)]
 	isLeader                   atomic.Bool
 	clusterEvents              chan raft.Observation
@@ -280,7 +283,7 @@ func (self *Controller) GetCloseNotify() <-chan struct{} {
 }
 
 func (self *Controller) GetMetricsRegistry() metrics.Registry {
-	return self.metricsRegistry
+	return self.env.GetMetricsRegistry()
 }
 
 // Dispatch dispatches the given command to the current leader. If the current node is the leader, the command
@@ -483,7 +486,7 @@ func (self *Controller) Init() error {
 
 	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress.String())
 	conf := raft.DefaultConfig()
-	conf.LocalID = raft.ServerID(self.Id.Token)
+	conf.LocalID = raft.ServerID(self.env.GetId().Token)
 	conf.NoSnapshotRestoreOnStart = false
 	raftConfig.Configure(conf)
 
@@ -502,7 +505,7 @@ func (self *Controller) Init() error {
 		return err
 	}
 
-	self.Mesh = mesh.New(self.Id, self.version, localAddr)
+	self.Mesh = mesh.New(self.env, localAddr)
 	self.Mesh.RegisterClusterStateHandler(func(state mesh.ClusterState) {
 		obs := raft.Observation{
 			Raft: self.Raft,
@@ -511,7 +514,7 @@ func (self *Controller) Init() error {
 		self.clusterEvents <- obs
 	})
 
-	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.routerDispatchCallback)
+	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.env.GetEventDispatcher())
 
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
@@ -545,6 +548,7 @@ func (self *Controller) Init() error {
 	}
 
 	self.Raft = r
+	self.addEventsHandlers()
 	self.ObserveLeaderChanges()
 
 	return nil
@@ -603,7 +607,7 @@ func (self *Controller) Bootstrap() error {
 		logrus.Infof("waiting for cluster size: %v", self.Config.MinClusterSize)
 		req := &cmd_pb.AddPeerRequest{
 			Addr:    string(self.Mesh.GetAdvertiseAddr()),
-			Id:      self.Id.Token,
+			Id:      self.env.GetId().Token,
 			IsVoter: true,
 		}
 		if err := self.Join(req); err != nil {
@@ -716,6 +720,23 @@ func (self *Controller) RenderJsonConfig() (string, error) {
 	cfg := self.Raft.ReloadableConfig()
 	b, err := json.Marshal(cfg)
 	return string(b), err
+}
+
+func (self *Controller) addEventsHandlers() {
+	self.RegisterClusterEventHandler(func(evt ClusterEvent, state ClusterState) {
+		switch evt {
+		case ClusterEventLeadershipGained:
+			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterLeadershipGained))
+		case ClusterEventLeadershipLost:
+			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterLeadershipLost))
+		case ClusterEventReadOnly:
+			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterStateReadOnly))
+		case ClusterEventReadWrite:
+			self.env.GetEventDispatcher().AcceptClusterEvent(event.NewClusterEvent(event.ClusterStateReadWrite))
+		default:
+			pfxlog.Logger().Errorf("unhandled cluster event type: %v", evt)
+		}
+	})
 }
 
 type MigrationManager interface {

@@ -131,7 +131,7 @@ func (self *networkControllers) Add(ch channel.Channel) (NetworkController, erro
 		ch: ch,
 	}
 	if existing := self.ctrls.Get(ctrl.Channel().Id()); existing != nil {
-		return nil, fmt.Errorf("Duplicate channel with id %v", ctrl.Channel().Id())
+		return nil, fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())
 	}
 	self.ctrls.Put(ctrl.Channel().Id(), ctrl)
 	return ctrl, nil

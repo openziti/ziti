@@ -18,6 +18,7 @@ package mesh
 
 import (
 	"crypto/x509"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/versions"
 	"net"
@@ -54,7 +55,7 @@ type Peer struct {
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
-	self.mesh.RemovePeer(self)
+	self.mesh.PeerDisconnected(self)
 }
 
 func (self *Peer) ContentType() int32 {
@@ -113,6 +114,12 @@ const (
 	ClusterReadOnly  ClusterState = 1
 )
 
+type Env interface {
+	GetId() *identity.TokenId
+	GetVersionProvider() versions.VersionProvider
+	GetEventDispatcher() event.Dispatcher
+}
+
 // Mesh provides the networking layer to raft
 type Mesh interface {
 	raft.StreamLayer
@@ -132,24 +139,25 @@ type Mesh interface {
 	Init(bindHandler channel.BindHandler)
 }
 
-func New(id *identity.TokenId, version versions.VersionProvider, raftAddr raft.ServerAddress) Mesh {
-	versionEncoded, err := version.EncoderDecoder().Encode(version.AsVersionInfo())
+func New(env Env, raftAddr raft.ServerAddress) Mesh {
+	versionEncoded, err := env.GetVersionProvider().EncoderDecoder().Encode(env.GetVersionProvider().AsVersionInfo())
 	if err != nil {
 		panic(err)
 	}
 
 	return &impl{
-		id:       id,
+		id:       env.GetId(),
 		raftAddr: raftAddr,
 		netAddr: &meshAddr{
 			network: "mesh",
 			addr:    string(raftAddr),
 		},
-		Peers:          map[string]*Peer{},
-		closeNotify:    make(chan struct{}),
-		raftAccepts:    make(chan net.Conn),
-		version:        version,
-		versionEncoded: versionEncoded,
+		Peers:           map[string]*Peer{},
+		closeNotify:     make(chan struct{}),
+		raftAccepts:     make(chan net.Conn),
+		version:         env.GetVersionProvider(),
+		versionEncoded:  versionEncoded,
+		eventDispatcher: env.GetEventDispatcher(),
 	}
 }
 
@@ -167,6 +175,7 @@ type impl struct {
 	versionEncoded       []byte
 	readonly             atomic.Bool
 	clusterStateHandlers concurrenz.CopyOnWriteSlice[func(state ClusterState)]
+	eventDispatcher      event.Dispatcher
 }
 
 func (self *impl) RegisterClusterStateHandler(f func(state ClusterState)) {
@@ -284,7 +293,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 		return nil, errors.Wrapf(err, "unable to dial %v", address)
 	}
 
-	self.AddPeer(peer)
+	self.PeerConnected(peer)
 	return peer, nil
 }
 
@@ -350,12 +359,21 @@ func (self *impl) extractPeerId(peerAddr string, certs []*x509.Certificate) (str
 	return "", errors.New("no controller SPIFFE ID found in peer certificates")
 }
 
-func (self *impl) AddPeer(peer *Peer) {
+func (self *impl) PeerConnected(peer *Peer) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.Peers[peer.Address] = peer
 	self.updateClusterState()
 	logrus.Infof("added peer at %v", peer.Address)
+
+	evt := event.NewClusterEvent(event.ClusterPeerConnected)
+	evt.Peers = append(evt.Peers, &event.ClusterPeer{
+		Id:      string(peer.Id),
+		Addr:    peer.Address,
+		Version: peer.Version.Version,
+	})
+
+	self.eventDispatcher.AcceptClusterEvent(evt)
 }
 
 func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
@@ -364,11 +382,20 @@ func (self *impl) GetPeer(addr raft.ServerAddress) *Peer {
 	return self.Peers[string(addr)]
 }
 
-func (self *impl) RemovePeer(peer *Peer) {
+func (self *impl) PeerDisconnected(peer *Peer) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	delete(self.Peers, peer.Address)
 	self.updateClusterState()
+
+	evt := event.NewClusterEvent(event.ClusterPeerDisconnected)
+	evt.Peers = append(evt.Peers, &event.ClusterPeer{
+		Id:      string(peer.Id),
+		Addr:    peer.Address,
+		Version: peer.Version.Version,
+	})
+
+	self.eventDispatcher.AcceptClusterEvent(evt)
 }
 
 func (self *impl) updateClusterState() {
@@ -455,7 +482,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		return err
 	}
 
-	self.AddPeer(peer)
+	self.PeerConnected(peer)
 	logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
 
 	return nil

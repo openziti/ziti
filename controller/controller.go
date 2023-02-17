@@ -30,7 +30,6 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/pkg/errors"
 
-	hcraft "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -117,6 +116,10 @@ func (c *Controller) GetCloseNotify() <-chan struct{} {
 	return c.shutdownC
 }
 
+func (c *Controller) GetRaftConfig() *raft.Config {
+	return c.config.Raft
+}
+
 func (c *Controller) RenderJsonConfig() (string, error) {
 	jsonMap, err := config.ToJsonCompatibleMap(c.config.src)
 	if err != nil {
@@ -143,7 +146,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		c.raftController = raft.NewController(cfg.Id, versionProvider, cfg.Raft, metricRegistry, c, c.routerDispatchCallback)
+		c.raftController = raft.NewController(c, c)
 		if err := c.raftController.Init(); err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
@@ -360,7 +363,7 @@ func (c *Controller) registerXts() {
 
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
-
+	c.eventDispatcher.AddClusterEventHandler(event.ClusterEventHandlerF(c.routerDispatchCallback))
 	return nil
 }
 
@@ -405,25 +408,24 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 	return c.eventDispatcher
 }
 
-func (c *Controller) routerDispatchCallback(cfg *hcraft.Configuration) error {
-	if c.raftController != nil {
-		data := make([]string, 0)
-		for _, srvr := range cfg.Servers {
-			data = append(data, string(srvr.Address))
+func (c *Controller) routerDispatchCallback(evt *event.ClusterEvent) {
+	if evt.EventType == event.ClusterMembersChanged {
+		var endpoints []string
+		for _, peer := range evt.Peers {
+			endpoints = append(endpoints, peer.Addr)
 		}
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
-			Addresses: data,
+			Addresses: endpoints,
 			IsLeader:  c.raftController.IsLeader(),
-			Index:     c.raftController.GetRaft().LastIndex(),
+			Index:     evt.Index,
 		}
 
 		for _, r := range c.network.AllConnectedRouters() {
 			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
-				return err
+				pfxlog.Logger().WithError(err).WithField("routerId", r.Id).Error("unable to update controller endpoints on router")
 			}
 		}
 	}
-	return nil
 }
 
 func (c *Controller) TryInitializeRaftFromBoltDb() error {
