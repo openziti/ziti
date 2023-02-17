@@ -27,6 +27,7 @@ func NewBindHandler(n *network.Network, raftCtrl *raft.Controller) channel.BindH
 		binding.AddTypedReceiveHandler(newCommandHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newAddPeerHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newRemovePeerHandler(raftCtrl))
+		binding.AddTypedReceiveHandler(newTransferLeadershipHandler(raftCtrl))
 		binding.AddTypedReceiveHandler(newInspectHandler(n))
 		return nil
 	}

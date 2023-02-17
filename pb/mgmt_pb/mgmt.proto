@@ -36,9 +36,10 @@ enum ContentType {
   // Raft
   RaftListMembersRequestType = 10080;
   RaftListMembersResponseType = 10081;
-  RaftJoinRequestType = 10082;
-  RaftRemoveRequestType = 10083;
-  RaftInitFromDb = 10084;
+  RaftAddPeerRequestType = 10082;
+  RaftRemovePeerRequestType = 10083;
+  RaftTransferLeadershipRequestType = 10084;
+  RaftInitFromDb = 10085;
 }
 
 enum Header {

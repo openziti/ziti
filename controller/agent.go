@@ -31,8 +31,9 @@ func (self *Controller) RegisterAgentBindHandler(bindHandler channel.BindHandler
 func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpSnapshotDb)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftListMembersRequestType), self.agentOpRaftList)
-	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftJoinRequestType), self.agentOpRaftJoin)
-	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemoveRequestType), self.agentOpRaftRemove)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftAddPeerRequestType), self.agentOpRaftAddPeer)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemovePeerRequestType), self.agentOpRaftRemovePeer)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftTransferLeadershipRequestType), self.agentOpRaftTransferLeadership)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftInitFromDb), self.agentOpInitFromDb)
 
 	for _, bh := range self.agentBindHandlers {
@@ -98,7 +99,7 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 	}
 }
 
-func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) {
+func (self *Controller) agentOpRaftAddPeer(m *channel.Message, ch channel.Channel) {
 	addr, found := m.GetStringHeader(AgentAddrHeader)
 	if !found {
 		handler_common.SendOpResult(m, ch, "raft.join", "address not supplied", false)
@@ -129,16 +130,16 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 	}
 
 	if err := self.raftController.Join(req); err != nil {
-		handler_common.SendOpResult(m, ch, "raft.join", err.Error(), false)
+		handler_common.SendOpResult(m, ch, "cluster.add-peer", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "raft.join", fmt.Sprintf("success, added %v at %v to cluster", id, addr), true)
+	handler_common.SendOpResult(m, ch, "cluster.add-peer", fmt.Sprintf("success, added %v at %v to cluster", id, addr), true)
 }
 
-func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel) {
+func (self *Controller) agentOpRaftRemovePeer(m *channel.Message, ch channel.Channel) {
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
-		handler_common.SendOpResult(m, ch, "raft.leave", "id not supplied", false)
+		handler_common.SendOpResult(m, ch, "cluster.remove-peer", "id not supplied", false)
 		return
 	}
 
@@ -147,10 +148,23 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	}
 
 	if err := self.raftController.HandleRemovePeer(req); err != nil {
-		handler_common.SendOpResult(m, ch, "raft.leave", err.Error(), false)
+		handler_common.SendOpResult(m, ch, "cluster.remove-peer", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "raft.leave", fmt.Sprintf("success, removed %v from cluster", id), true)
+	handler_common.SendOpResult(m, ch, "cluster.remove-peer", fmt.Sprintf("success, removed %v from cluster", id), true)
+}
+
+func (self *Controller) agentOpRaftTransferLeadership(m *channel.Message, ch channel.Channel) {
+	id, _ := m.GetStringHeader(AgentIdHeader)
+	req := &cmd_pb.TransferLeadershipRequest{
+		Id: id,
+	}
+
+	if err := self.raftController.HandleTransferLeadership(req); err != nil {
+		handler_common.SendOpResult(m, ch, "cluster.transfer-leadership", err.Error(), false)
+		return
+	}
+	handler_common.SendOpResult(m, ch, "cluster.transfer-leadership", "success", true)
 }
 
 func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {

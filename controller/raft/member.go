@@ -146,37 +146,64 @@ func (self *Controller) HandleRemovePeerAsLeader(req *cmd_pb.RemovePeerRequest) 
 	return nil
 }
 
+func (self *Controller) HandleTransferLeadershipAsLeader(req *cmd_pb.TransferLeadershipRequest) error {
+	r := self.GetRaft()
+
+	var future raft.Future
+	if req.Id == "" {
+		future = r.LeadershipTransfer()
+	} else {
+		configFuture := r.GetConfiguration()
+		if err := configFuture.Error(); err != nil {
+			return errors.Wrap(err, "failed to get raft configuration")
+		}
+
+		var targetServer *raft.Server
+		for _, v := range configFuture.Configuration().Servers {
+			if v.ID == raft.ServerID(req.Id) {
+				targetServer = &v
+				break
+			}
+		}
+		if targetServer == nil {
+			return errors.Errorf("no cluster node found with id %v", req.Id)
+		}
+
+		if targetServer.Suffrage != raft.Voter {
+			return errors.Errorf("cluster node %v is not a voting member", req.Id)
+		}
+
+		future = r.LeadershipTransferToServer(targetServer.ID, targetServer.Address)
+	}
+
+	if err := future.Error(); err != nil {
+		return errors.Wrapf(err, "error transfering leadership")
+	}
+	return nil
+}
+
 func (self *Controller) HandleAddPeer(req *cmd_pb.AddPeerRequest) error {
 	if self.IsLeader() {
 		return self.HandleAddPeerAsLeader(req)
 	}
-
-	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
-	if err != nil {
-		return err
-	}
-
-	result, err := protobufs.MarshalTyped(req).WithTimeout(5 * time.Second).SendForReply(peer.Channel)
-	if err != nil {
-		return err
-	}
-
-	if result.ContentType == int32(cmd_pb.ContentType_SuccessResponseType) {
-		return nil
-	}
-
-	if result.ContentType == int32(cmd_pb.ContentType_ErrorResponseType) {
-		return errors.New(string(result.Body))
-	}
-
-	return errors.Errorf("unexpected response type %v", result.ContentType)
+	return self.forwardToLeader(req)
 }
 
 func (self *Controller) HandleRemovePeer(req *cmd_pb.RemovePeerRequest) error {
 	if self.IsLeader() {
 		return self.HandleRemovePeerAsLeader(req)
 	}
+	return self.forwardToLeader(req)
+}
 
+func (self *Controller) HandleTransferLeadership(req *cmd_pb.TransferLeadershipRequest) error {
+	if self.IsLeader() {
+		return self.HandleTransferLeadershipAsLeader(req)
+	}
+	return self.forwardToLeader(req)
+}
+
+func (self *Controller) forwardToLeader(req protobufs.TypedMessage) error {
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
 		return err
