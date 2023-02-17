@@ -124,7 +124,7 @@ type Mesh interface {
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
 	IsReadOnly() bool
 
-	GetPeerId(address string, timeout time.Duration) (string, error)
+	GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error)
 	GetAdvertiseAddr() raft.ServerAddress
 	GetPeers() map[string]*Peer
 
@@ -288,27 +288,51 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	return peer, nil
 }
 
-func (self *impl) GetPeerId(address string, timeout time.Duration) (string, error) {
+func (self *impl) GetPeerInfo(address string, timeout time.Duration) (raft.ServerID, raft.ServerAddress, error) {
 	log := pfxlog.Logger().WithField("address", address)
 	addr, err := transport.ParseAddress(address)
 	if err != nil {
 		log.WithError(err).Error("failed to parse address")
-		return "", err
+		return "", "", err
 	}
 
-	c, err := addr.Dial("test", self.id, timeout, nil)
-	if err != nil {
-		log.WithError(err).Error("failed to dial address")
-		return "", err
+	headers := map[int32][]byte{
+		channel.HelloVersionHeader: self.versionEncoded,
+		channel.TypeHeader:         []byte(ChannelTypeMesh),
+		PeerAddrHeader:             []byte(self.raftAddr),
 	}
 
-	defer func() {
-		if err = c.Close(); err != nil {
-			log.WithError(err).Error("failed to close peer connection while getting peer id")
+	dialer := channel.NewClassicDialer(self.id, addr, headers)
+	dialOptions := channel.DefaultOptions()
+	dialOptions.ConnectOptions.ConnectTimeout = timeout
+
+	var peerId raft.ServerID
+	var peerAddr raft.ServerAddress
+
+	markerErr := errors.New("closing, after peer information extracted")
+
+	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
+		underlay := binding.GetChannel().Underlay()
+		id, err := self.extractPeerId(underlay.GetRemoteAddr().String(), underlay.Certificates())
+		if err != nil {
+			return err
 		}
-	}()
 
-	return self.extractPeerId(address, c.PeerCertificates())
+		peerId = raft.ServerID(id)
+		peerAddr = raft.ServerAddress(underlay.Headers()[PeerAddrHeader])
+
+		return markerErr
+	})
+
+	if _, err = channel.NewChannel(ChannelTypeMesh, dialer, bindHandler, channel.DefaultOptions()); err != markerErr {
+		return "", "", errors.Wrapf(err, "unable to dial %v", address)
+	}
+
+	if peerAddr == "" {
+		return "", "", errors.Errorf("peer at %v did not supply advertise address", addr)
+	}
+
+	return peerId, peerAddr, nil
 }
 
 func (self *impl) extractPeerId(peerAddr string, certs []*x509.Certificate) (string, error) {

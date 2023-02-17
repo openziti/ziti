@@ -230,6 +230,10 @@ func (c *Controller) Run() error {
 		channel.HelloVersionHeader: versionHeader,
 	}
 
+	if c.raftController != nil {
+		headers[mesh.PeerAddrHeader] = []byte(c.config.Raft.AdvertiseAddress.String())
+	}
+
 	/**
 	 * ctrl listener/accepter.
 	 */

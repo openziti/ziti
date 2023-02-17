@@ -654,14 +654,14 @@ func (self *Controller) Join(req *cmd_pb.AddPeerRequest) error {
 	for len(bootstrapMembers) > 0 {
 		hasErrs := false
 		for bootstrapMember := range bootstrapMembers {
-			if id, err := self.Mesh.GetPeerId(bootstrapMember, time.Second*5); err != nil {
+			if id, addr, err := self.Mesh.GetPeerInfo(bootstrapMember, time.Second*5); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("unable to get id for bootstrap member [%v]", bootstrapMember)
 				hasErrs = true
 			} else {
 				self.servers = append(self.servers, raft.Server{
 					Suffrage: raft.Voter,
-					ID:       raft.ServerID(id),
-					Address:  raft.ServerAddress(bootstrapMember),
+					ID:       id,
+					Address:  addr,
 				})
 				delete(bootstrapMembers, bootstrapMember)
 			}

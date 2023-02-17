@@ -107,13 +107,14 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
-		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
+		peerId, peerAddr, err := self.raftController.Mesh.GetPeerInfo(addr, 15*time.Second)
 		if err != nil {
 			errMsg := fmt.Sprintf("id not supplied and unable to retrieve [%v]", err.Error())
 			handler_common.SendOpResult(m, ch, "raft.join", errMsg, false)
 			return
 		}
-		id = peerId
+		id = string(peerId)
+		addr = string(peerAddr)
 	}
 
 	isVoter, found := m.GetBoolHeader(AgentIsVoterHeader)
@@ -135,29 +136,10 @@ func (self *Controller) agentOpRaftJoin(m *channel.Message, ch channel.Channel) 
 }
 
 func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel) {
-	//id := string(m.Body)
-
-	// TODO: make this work like Join where we test if we're bootstrapped yet
-	//if err := self.raftController.HandleRemovePeer(); err != nil {
-	//	return err
-	//}
-	// _, err := c.WriteString("success\n")
-	var addr string
-
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
-		addr, found = m.GetStringHeader(AgentAddrHeader)
-		if !found {
-			handler_common.SendOpResult(m, ch, "raft.leave", "address or id not supplied", false)
-			return
-		}
-		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
-		if err != nil {
-			errMsg := fmt.Sprintf("id not supplied and unable to retrieve from %s [%v]", addr, err.Error())
-			handler_common.SendOpResult(m, ch, "raft.leave", errMsg, false)
-			return
-		}
-		id = peerId
+		handler_common.SendOpResult(m, ch, "raft.leave", "id not supplied", false)
+		return
 	}
 
 	req := &cmd_pb.RemovePeerRequest{
@@ -168,7 +150,7 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 		handler_common.SendOpResult(m, ch, "raft.leave", err.Error(), false)
 		return
 	}
-	handler_common.SendOpResult(m, ch, "raft.leave", fmt.Sprintf("success, removed %v at %v from cluster", id, addr), true)
+	handler_common.SendOpResult(m, ch, "raft.leave", fmt.Sprintf("success, removed %v from cluster", id), true)
 }
 
 func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {
