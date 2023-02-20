@@ -53,6 +53,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result.RegisterEventTypeFunctions(event.ServiceEventsNs, result.registerServiceEventHandler, result.unregisterServiceEventHandler)
 	result.RegisterEventTypeFunctions(event.TerminatorEventsNs, result.registerTerminatorEventHandler, result.unregisterTerminatorEventHandler)
 	result.RegisterEventTypeFunctions(event.UsageEventsNs, result.registerUsageEventHandler, result.unregisterUsageEventHandler)
+	result.RegisterEventTypeFunctions(event.ClusterEventsNs, result.registerClusterEventHandler, result.unregisterClusterEventHandler)
 
 	result.RegisterFormatterFactory("json", event.FormatterFactoryF(func(sink event.FormattedEventSink) io.Closer {
 		return NewJsonFormatter(16, sink)
@@ -78,6 +79,7 @@ type Dispatcher struct {
 	terminatorEventHandlers concurrenz.CopyOnWriteSlice[event.TerminatorEventHandler]
 	usageEventHandlers      concurrenz.CopyOnWriteSlice[event.UsageEventHandler]
 	usageEventV3Handlers    concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
+	clusterEventHandlers    concurrenz.CopyOnWriteSlice[event.ClusterEventHandler]
 
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 

@@ -106,6 +106,9 @@ type Dispatcher interface {
 	AddUsageEventHandler(handler UsageEventHandler)
 	RemoveUsageEventHandler(handler UsageEventHandler)
 
+	AddClusterEventHandler(handler ClusterEventHandler)
+	RemoveClusterEventHandler(handler ClusterEventHandler)
+
 	CircuitEventHandler
 	LinkEventHandler
 	MetricsEventHandler
@@ -114,6 +117,7 @@ type Dispatcher interface {
 	ServiceEventHandler
 	TerminatorEventHandler
 	UsageEventHandler
+	ClusterEventHandler
 }
 
 type Event interface {
