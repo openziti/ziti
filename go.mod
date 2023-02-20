@@ -44,7 +44,7 @@ require (
 	github.com/spf13/viper v1.10.0
 	github.com/stretchr/testify v1.8.1
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/net v0.6.0
+	golang.org/x/net v0.7.0
 	google.golang.org/grpc v1.42.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/AlecAivazis/survey.v1 v1.8.7
