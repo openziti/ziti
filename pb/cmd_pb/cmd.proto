@@ -13,6 +13,7 @@ enum ContentType {
 
   AddPeerRequestType = 2053;
   RemovePeerRequestType = 2054;
+  TransferLeadershipRequestType = 2055;
 }
 
 enum CommandType {
@@ -39,6 +40,11 @@ message AddPeerRequest {
 }
 
 message RemovePeerRequest {
+  string id = 1;
+  ChangeContext ctx = 2;
+}
+
+message TransferLeadershipRequest {
   string id = 1;
   ChangeContext ctx = 2;
 }
