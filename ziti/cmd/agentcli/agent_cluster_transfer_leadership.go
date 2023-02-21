@@ -18,8 +18,6 @@ package agentcli
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller"
 	"github.com/openziti/fabric/pb/mgmt_pb"
@@ -28,22 +26,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlRaftLeaveAction struct {
+type AgentTransferLeadershipAction struct {
 	AgentOptions
-	MemberId   string
-	MemberAddr string
 }
 
-func NewAgentCtrlRaftLeave(p common.OptionsProvider) *cobra.Command {
-	action := AgentCtrlRaftLeaveAction{
+func NewAgentTransferLeadership(p common.OptionsProvider) *cobra.Command {
+	action := AgentTransferLeadershipAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(0, 1),
-		Use:  "raft-leave",
+		Args:  cobra.RangeArgs(0, 1),
+		Use:   "transfer-leadership [new leader id]",
+		Short: "triggers a new leader election in the controller cluster, optionally selecting a new preferred leader",
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -52,24 +49,16 @@ func NewAgentCtrlRaftLeave(p common.OptionsProvider) *cobra.Command {
 		},
 	}
 	action.AddAgentOptions(cmd)
-	cmd.Flags().StringVar(&action.MemberId, "id", "", "The member id. If not provided, it will be looked up by the provided address")
-	cmd.Flags().StringVar(&action.MemberAddr, "address", "", "The member address")
-
 	return cmd
 }
 
-func (o *AgentCtrlRaftLeaveAction) makeRequest(ch channel.Channel) error {
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftRemoveRequestType), nil)
+func (o *AgentTransferLeadershipAction) makeRequest(ch channel.Channel) error {
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftTransferLeadershipRequestType), nil)
 
-	if o.MemberId != "" {
-		msg.PutStringHeader(controller.AgentIdHeader, o.MemberId)
+	if len(o.Args) > 0 {
+		msg.PutStringHeader(controller.AgentIdHeader, o.Args[0])
 	}
-
-	if o.MemberAddr != "" {
-		msg.PutStringHeader(controller.AgentAddrHeader, o.MemberAddr)
-	}
-
-	reply, err := msg.WithTimeout(5 * time.Second).SendForReply(ch)
+	reply, err := msg.WithTimeout(o.timeout).SendForReply(ch)
 
 	if err != nil {
 		return err

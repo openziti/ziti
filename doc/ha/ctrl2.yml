@@ -14,9 +14,6 @@ ctrl:
   options:
     advertiseAddress: tls:localhost:6363
 
-healthChecks:
-  boltCheck:
-
 edge:
   api:
     address: 127.0.0.1:1380

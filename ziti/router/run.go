@@ -73,8 +73,6 @@ func run(cmd *cobra.Command, args []string) {
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
-	config.SetFlags(getFlags(cmd))
-
 	stateManager := fabric.NewStateManager()
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.GetMetricsRegistry())

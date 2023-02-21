@@ -2,7 +2,9 @@ package fabric
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/fatih/color"
 	"github.com/openziti/fabric/rest_client/inspect"
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/foundation/v2/errorz"
@@ -10,37 +12,81 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/util"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 	"io"
 	"os"
-	"sort"
 	"strings"
 )
 
 // newListCmd creates a command object for the "controller list" command
 func newInspectCmd(p common.OptionsProvider) *cobra.Command {
-	listCmd := &InspectCmd{Options: api.Options{CommonOptions: p()}}
-	return listCmd.newCobraCmd()
+	action := newInspectAction(p)
+	cmd := action.newCobraCmd()
+	cmd.AddCommand(action.newInspectSubCmd(p, "stackdump", "gets stackdumps from the requested nodes"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "metrics", "gets current metrics from the requested nodes"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "config", "gets configuration from the requested nodes"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "cluster-config", "gets a subset of cluster configuration from the requested nodes"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "connected-routers", "gets information about which routers are connected to which controllers"))
+	cmd.AddCommand(action.newInspectSubCmd(p, "links", "gets information from routers about their view of links"))
+
+	inspectCircuitsAction := &InspectCircuitsAction{InspectAction: *newInspectAction(p)}
+	cmd.AddCommand(inspectCircuitsAction.newCobraCmd())
+
+	return cmd
 }
 
-type InspectCmd struct {
+func newInspectAction(p common.OptionsProvider) *InspectAction {
+	return &InspectAction{Options: api.Options{CommonOptions: p()}}
+}
+
+type InspectAction struct {
 	api.Options
 	toFiles bool
+	format  string
 }
 
-func (self *InspectCmd) newCobraCmd() *cobra.Command {
+func (self *InspectAction) addFlags(cmd *cobra.Command) *cobra.Command {
+	self.AddCommonFlags(cmd)
+	cmd.Flags().BoolVarP(&self.toFiles, "file", "f", false, "Output results to a file per result, with the format <instanceId>.<ValueName>")
+	cmd.Flags().StringVar(&self.format, "format", "yaml", "Output format. One of yaml|json")
+	return cmd
+}
+
+func (self *InspectAction) newCobraCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect",
 		Short: "Inspect runtime <application> <values>",
 		RunE:  self.run,
 		Args:  cobra.MinimumNArgs(2),
 	}
-	self.AddCommonFlags(cmd)
-	cmd.Flags().BoolVarP(&self.toFiles, "file", "f", false, "Output results to a file per result, with the format <instanceId>.<ValueName>")
-	return cmd
+	return self.addFlags(cmd)
 }
 
-func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
+func (self *InspectAction) newInspectSubCmd(p common.OptionsProvider, value string, desc string) *cobra.Command {
+	inspectAction := newInspectAction(p)
+
+	cmd := &cobra.Command{
+		Use:   value + " [optional node id regex]",
+		Short: desc,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			appRegex := ".*"
+			if len(args) > 0 {
+				appRegex = args[0]
+			}
+			return inspectAction.inspect(appRegex, value)
+		},
+		Args: cobra.RangeArgs(0, 1),
+	}
+	return inspectAction.addFlags(cmd)
+}
+
+func (self *InspectAction) run(_ *cobra.Command, args []string) error {
+	return self.inspect(args[0], args[1:]...)
+}
+
+func (self *InspectAction) inspect(appRegex string, requestValues ...string) error {
 	client, err := util.NewFabricManagementClient(self)
 	if err != nil {
 		return err
@@ -48,8 +94,8 @@ func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
 
 	inspectOk, err := client.Inspect.Inspect(&inspect.InspectParams{
 		Request: &rest_model.InspectRequest{
-			AppRegex:        &args[0],
-			RequestedValues: args[1:],
+			AppRegex:        &appRegex,
+			RequestedValues: requestValues,
 		},
 		Context: context.Background(),
 	})
@@ -65,7 +111,7 @@ func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
 	result := inspectOk.Payload
 	if *result.Success {
 		fmt.Printf("Results: (%d)\n", len(result.Values))
-		for _, value := range result.Values {
+		for idx, value := range result.Values {
 			appId := stringz.OrEmpty(value.AppID)
 			name := stringz.OrEmpty(value.Name)
 			var out io.Writer
@@ -78,10 +124,13 @@ func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
 				}
 				out = file
 			} else {
-				fmt.Printf("%v.%v\n", appId, name)
+				if idx > 0 {
+					fmt.Println()
+				}
+				fmt.Printf(color.New(color.FgGreen, color.Bold).Sprintf("%v.%v\n", appId, name))
 				out = os.Stdout
 			}
-			if err = self.prettyPrintOutput(out, value.Value, 0); err != nil {
+			if err = self.prettyPrint(out, value.Value, 0); err != nil {
 				if closeErr := file.Close(); closeErr != nil {
 					return errorz.MultipleErrors{err, closeErr}
 				}
@@ -103,54 +152,15 @@ func (self *InspectCmd) run(_ *cobra.Command, args []string) error {
 	return nil
 }
 
-func (self *InspectCmd) prettyPrintOutput(o io.Writer, val interface{}, indent int) error {
-	if mapVal, ok := val.(map[string]interface{}); ok {
-		if _, err := fmt.Fprintf(o, "\n"); err != nil {
-			return err
-		}
-		var sortedKeys []string
-		for k := range mapVal {
-			sortedKeys = append(sortedKeys, k)
-		}
-		sort.Strings(sortedKeys)
-		for _, k := range sortedKeys {
-			for i := 0; i < indent; i++ {
-				if _, err := fmt.Fprintf(o, " "); err != nil {
-					return err
-				}
-			}
-			if _, err := fmt.Fprintf(o, "%v: ", k); err != nil {
-				return err
-			}
-			if err := self.prettyPrintOutput(o, mapVal[k], indent+4); err != nil {
-				return err
-			}
-		}
-	} else if sliceVal, ok := val.([]interface{}); ok {
-		if _, err := fmt.Fprintf(o, "\n"); err != nil {
-			return err
-		}
-		for _, v := range sliceVal {
-			for i := 0; i < indent; i++ {
-				if _, err := fmt.Fprintf(o, " "); err != nil {
-					return err
-				}
-			}
-			if _, err := fmt.Fprintf(o, "    - "); err != nil {
-				return err
-			}
-			if err := self.prettyPrintOutput(o, v, indent+6); err != nil {
-				return err
-			}
-		}
-	} else if strVal, ok := val.(string); ok {
+func (self *InspectAction) prettyPrint(o io.Writer, val interface{}, indent uint) error {
+	if strVal, ok := val.(string); ok {
 		if strings.IndexByte(strVal, '\n') > 0 {
 			lines := strings.Split(strVal, "\n")
 			if _, err := fmt.Fprintln(o, lines[0]); err != nil {
 				return err
 			}
 			for _, line := range lines[1:] {
-				for i := 0; i < indent; i++ {
+				for i := uint(0); i < indent; i++ {
 					if _, err := fmt.Fprintf(o, " "); err != nil {
 						return err
 					}
@@ -164,10 +174,17 @@ func (self *InspectCmd) prettyPrintOutput(o io.Writer, val interface{}, indent i
 				return err
 			}
 		}
-	} else {
-		if _, err := fmt.Fprintf(o, "%v\n", val); err != nil {
-			return err
-		}
+		return nil
 	}
-	return nil
+
+	if self.format == "yaml" {
+		return yaml.NewEncoder(o).Encode(val)
+	}
+
+	if self.format == "json" {
+		enc := json.NewEncoder(o)
+		enc.SetIndent("", "    ")
+		return enc.Encode(val)
+	}
+	return errors.Errorf("unsupported format %v", self.format)
 }

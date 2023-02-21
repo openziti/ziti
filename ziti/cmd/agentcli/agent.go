@@ -55,7 +55,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	ctrlCmd := &cobra.Command{
 		Use:     "controller",
 		Aliases: []string{"c"},
-		Short:   "Interact with a ziti-controller process using the IPC agent",
+		Short:   "Interact with a ziti controller process using the IPC agent",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmdhelper.CheckErr(cmd.Help())
 		},
@@ -63,11 +63,21 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 
 	agentCmd.AddCommand(ctrlCmd)
 	ctrlCmd.AddCommand(NewSimpleChAgentCustomCmd("snapshot-db", AgentAppController, int32(mgmt_pb.ContentType_SnapshotDbRequestType), p))
-	ctrlCmd.AddCommand(NewAgentCtrlRaftJoin(p))
-	ctrlCmd.AddCommand(NewAgentCtrlRaftList(p))
-	ctrlCmd.AddCommand(NewAgentCtrlRaftLeave(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInit(p))
 	ctrlCmd.AddCommand(NewAgentCtrlInitFromDb(p))
+
+	clusterCmd := &cobra.Command{
+		Use:   "cluster",
+		Short: "Manage an HA controller cluster using the IPC agent",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
+	agentCmd.AddCommand(clusterCmd)
+	clusterCmd.AddCommand(NewAgentClusterAdd(p))
+	clusterCmd.AddCommand(NewAgentClusterRemove(p))
+	clusterCmd.AddCommand(NewAgentClusterList(p))
+	clusterCmd.AddCommand(NewAgentTransferLeadership(p))
 
 	routerCmd := &cobra.Command{
 		Use:     "router",
