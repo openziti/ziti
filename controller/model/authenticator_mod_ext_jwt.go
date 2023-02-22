@@ -90,9 +90,18 @@ func (r *signerRecord) Resolve(force bool) error {
 			return errors.New("could not add signer, PEM did not parse to any certificates")
 		}
 
+		kid := ""
+		
+		if r.externalJwtSigner.Kid == nil {
+			kid = nfPem.FingerprintFromCertificate(certs[0])
+			pfxlog.Logger().WithField("id", r.externalJwtSigner.Id).WithField("name", r.externalJwtSigner.Name).Warn("external jwt signer does not have a kid, generated: %s", kid)
+		} else {
+			kid = *r.externalJwtSigner.Kid
+		}
+
 		// first cert only
 		r.kidToCertificate = map[string]*x509.Certificate{
-			*r.externalJwtSigner.Kid: certs[0],
+			kid: certs[0],
 		}
 
 		return nil
