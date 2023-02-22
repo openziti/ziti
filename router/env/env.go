@@ -35,4 +35,5 @@ type RouterEnv interface {
 	GetCloseNotify() <-chan struct{}
 	GetMetricsRegistry() metrics.UsageRegistry
 	RenderJsonConfig() (string, error)
+	GetHeartbeatOptions() HeartbeatOptions
 }

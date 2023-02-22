@@ -69,7 +69,7 @@ func Test_LinkWithValidCertFromUnknownChain(t *testing.T) {
 		"split": false,
 	}
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	ctrls := env.NewNetworkControllers(time.Second)
+	ctrls := env.NewNetworkControllers(time.Second, env.NewDefaultHeartbeatOptions())
 	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
 	dialer, err := factory.CreateDialer(badId, nil, tcfg)
 	ctx.Req.NoError(err)
@@ -118,7 +118,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 	}
 
 	metricsRegistery := metrics.NewRegistry("test", nil)
-	ctrls := env.NewNetworkControllers(time.Second)
+	ctrls := env.NewNetworkControllers(time.Second, env.NewDefaultHeartbeatOptions())
 	factory := xlink_transport.NewFactory(xla, testBindHandlerFactory{}, tcfg, router.NewLinkRegistry(ctrls), metricsRegistery)
 	dialer, err := factory.CreateDialer(router2Id, nil, tcfg)
 	ctx.Req.NoError(err)
