@@ -91,10 +91,10 @@ func (r *signerRecord) Resolve(force bool) error {
 		}
 
 		kid := ""
-		
+
 		if r.externalJwtSigner.Kid == nil {
 			kid = nfPem.FingerprintFromCertificate(certs[0])
-			pfxlog.Logger().WithField("id", r.externalJwtSigner.Id).WithField("name", r.externalJwtSigner.Name).Warn("external jwt signer does not have a kid, generated: %s", kid)
+			pfxlog.Logger().WithField("id", r.externalJwtSigner.Id).WithField("name", r.externalJwtSigner.Name).Warnf("external jwt signer does not have a kid, generated: %s", kid)
 		} else {
 			kid = *r.externalJwtSigner.Kid
 		}
