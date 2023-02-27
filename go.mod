@@ -28,9 +28,9 @@ require (
 	github.com/miekg/dns v1.1.51
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.3
-	github.com/openziti/channel/v2 v2.0.30
+	github.com/openziti/channel/v2 v2.0.31
 	github.com/openziti/edge-api v0.25.6-0.20230124204917-87f8ac9c70cf
-	github.com/openziti/fabric v0.22.33
+	github.com/openziti/fabric v0.22.34
 	github.com/openziti/foundation/v2 v2.0.11
 	github.com/openziti/identity v1.0.30
 	github.com/openziti/jwks v1.0.2
