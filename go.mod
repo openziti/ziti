@@ -31,11 +31,11 @@ require (
 	github.com/openziti/channel/v2 v2.0.30
 	github.com/openziti/edge-api v0.25.6-0.20230124204917-87f8ac9c70cf
 	github.com/openziti/fabric v0.22.33
-	github.com/openziti/foundation/v2 v2.0.10
+	github.com/openziti/foundation/v2 v2.0.11
 	github.com/openziti/identity v1.0.30
 	github.com/openziti/jwks v1.0.2
-	github.com/openziti/metrics v1.2.3
-	github.com/openziti/sdk-golang v0.18.32
+	github.com/openziti/metrics v1.2.4
+	github.com/openziti/sdk-golang v0.18.33
 	github.com/openziti/storage v0.1.34
 	github.com/openziti/transport/v2 v2.0.53
 	github.com/openziti/x509-claims v1.0.3
@@ -47,7 +47,7 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
