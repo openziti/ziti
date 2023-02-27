@@ -28,7 +28,7 @@ LABEL name="openziti/ziti-cli" \
 USER root
 
 ### install packages
-RUN   INSTALL_PKGS="python38 python38-pip" && \
+RUN   INSTALL_PKGS="python38 python38-pip tar" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
