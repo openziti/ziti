@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/config"
+	"github.com/openziti/xweb/v2"
 	"io/fs"
 	"math/rand"
 	"os"
@@ -60,7 +61,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/xweb/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -476,6 +476,7 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
+	logrus.Warnf("report interval = %v", self.config.Metrics.ReportInterval)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
