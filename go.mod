@@ -30,13 +30,13 @@ require (
 	github.com/netfoundry/secretstream v0.1.3
 	github.com/openziti/channel/v2 v2.0.32
 	github.com/openziti/edge-api v0.25.6-0.20230124204917-87f8ac9c70cf
-	github.com/openziti/fabric v0.22.35
+	github.com/openziti/fabric v0.22.36
 	github.com/openziti/foundation/v2 v2.0.12
 	github.com/openziti/identity v1.0.31
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.2.5
 	github.com/openziti/sdk-golang v0.18.36
-	github.com/openziti/storage v0.1.35
+	github.com/openziti/storage v0.1.36
 	github.com/openziti/transport/v2 v2.0.54
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2

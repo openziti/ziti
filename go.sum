@@ -456,8 +456,8 @@ github.com/openziti/channel/v2 v2.0.32 h1:epe6kTY+u27Kvc8Agh+lRv5bFwNC3yZQ5oTcST
 github.com/openziti/channel/v2 v2.0.32/go.mod h1:KJ5J38H3vH+PWDr3tgp0K7R17YL7mLoWDRx64DV+FRA=
 github.com/openziti/edge-api v0.25.6-0.20230124204917-87f8ac9c70cf h1:ev+hLgINDVwK8p3LBZMCnEBPAVK9jcfar6M/n1SF5WA=
 github.com/openziti/edge-api v0.25.6-0.20230124204917-87f8ac9c70cf/go.mod h1:Ohmiq2Fdz1UXiXIyxGUIPI1gXY3ZVNMiT7urvp8u6xw=
-github.com/openziti/fabric v0.22.35 h1:o108ArRP/ey1yInDrlVIVuOaBwPyGysn+zZcy0sjQUk=
-github.com/openziti/fabric v0.22.35/go.mod h1:agOwUfJo3msnuBdFkpWcr4aoHuCCFpcToSecqnsv42E=
+github.com/openziti/fabric v0.22.36 h1:CUxqH3Cn9a3UD0Sou39VDHO9ZVwiPytdca2ZaCMMRZ8=
+github.com/openziti/fabric v0.22.36/go.mod h1:ByoJXeRRinIhUSS2WnlPC0ETURUR2YmMzPvWd3+ylnM=
 github.com/openziti/foundation/v2 v2.0.12 h1:1CdKOjJJCwWuAFabiC/51SK3GDZp/iccZma9S+1+TBc=
 github.com/openziti/foundation/v2 v2.0.12/go.mod h1:4dQfHeB87/gvkKg1i/NUT3DZqyvlFVqWinRQM4Dz+5w=
 github.com/openziti/identity v1.0.31 h1:pk+WzaC3ay76yKTXVljp25hqDewAuyvaG9HWSZyEzsY=
@@ -468,8 +468,8 @@ github.com/openziti/metrics v1.2.5 h1:qwnH3stgUIg4HpuQqxgBmnTemUXgwPlYLBsrihxccV
 github.com/openziti/metrics v1.2.5/go.mod h1:NJOKXzI+Tyu8NZZiCP/yoh8Zl2rgwDnfbC1KsCep7wE=
 github.com/openziti/sdk-golang v0.18.36 h1:qQpL5UPHBSmnjhbO0qzObfQAcJFMoxwy3owLxOSLxGA=
 github.com/openziti/sdk-golang v0.18.36/go.mod h1:KNxhA1ZZbFeIB5Lcf5QAT8LJcpWQDSc0sfqQJJI+9Q4=
-github.com/openziti/storage v0.1.35 h1:GtExRe6fV96TpJMsjHJTEu0HevmgP2WMVxi9Zp5s5bE=
-github.com/openziti/storage v0.1.35/go.mod h1:PrefUzebEJqNJEg3OVznEYUItLCqNj5rS7TUHAFMlbU=
+github.com/openziti/storage v0.1.36 h1:wrJ8upZredBogJSxMTjnrASmed4Sl5QhMd6Fy8WvkAU=
+github.com/openziti/storage v0.1.36/go.mod h1:NSxL+t8EGUayIN4Q5tQCl0nPIlCAVWI3qhvUUxBW4xs=
 github.com/openziti/transport/v2 v2.0.54 h1:56V57m4yrxVJaXnStR6lEy+RUirH9p+d++fT5yobEUA=
 github.com/openziti/transport/v2 v2.0.54/go.mod h1:W3THvfsPaUyZhpODvVbybubyV/ujpeh4H9sAxgve/xU=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
