@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/sirupsen/logrus"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -31,13 +32,19 @@ import (
 )
 
 type bindHandler struct {
-	router  *network.Router
-	network *network.Network
-	xctrls  []xctrl.Xctrl
+	heartbeatOptions *channel.HeartbeatOptions
+	router           *network.Router
+	network          *network.Network
+	xctrls           []xctrl.Xctrl
 }
 
-func newBindHandler(router *network.Router, network *network.Network, xctrls []xctrl.Xctrl) channel.BindHandler {
-	return &bindHandler{router: router, network: network, xctrls: xctrls}
+func newBindHandler(heartbeatOptions *channel.HeartbeatOptions, router *network.Router, network *network.Network, xctrls []xctrl.Xctrl) channel.BindHandler {
+	return &bindHandler{
+		heartbeatOptions: heartbeatOptions,
+		router:           router,
+		network:          network,
+		xctrls:           xctrls,
+	}
 }
 
 func (self *bindHandler) BindChannel(binding channel.Binding) error {
@@ -81,12 +88,14 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	if doHeartbeat {
 		log.Info("router supports heartbeats")
 		cb := &heartbeatCallback{
-			latencyMetric:    roundTripHistogram,
-			queueTimeMetric:  queueTimeHistogram,
-			ch:               binding.GetChannel(),
-			latencySemaphore: concurrenz.NewSemaphore(2),
+			latencyMetric:            roundTripHistogram,
+			queueTimeMetric:          queueTimeHistogram,
+			ch:                       binding.GetChannel(),
+			latencySemaphore:         concurrenz.NewSemaphore(2),
+			closeUnresponsiveTimeout: self.heartbeatOptions.CloseUnresponsiveTimeout,
+			lastResponse:             time.Now().Add(self.heartbeatOptions.CloseUnresponsiveTimeout * 2).UnixMilli(), // wait at least 2x timeout before closing
 		}
-		channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
+		channel.ConfigureHeartbeat(binding, self.heartbeatOptions.SendInterval, self.heartbeatOptions.CheckInterval, cb)
 	} else if supportLatency, err := self.router.VersionInfo.HasMinimumVersion("0.18.7"); supportLatency && err == nil {
 		log.Info("router does not support heartbeats, using latency probe")
 		latencyHandler := &ctrlChannelLatencyHandler{
@@ -129,19 +138,15 @@ func (self *ctrlChannelLatencyHandler) HandleLatency(latencyType latency.Type, e
 }
 
 type heartbeatCallback struct {
-	latencyMetric    metrics.Histogram
-	queueTimeMetric  metrics.Histogram
-	firstSent        int64
-	lastResponse     int64
-	ch               channel.Channel
-	latencySemaphore concurrenz.Semaphore
+	latencyMetric            metrics.Histogram
+	queueTimeMetric          metrics.Histogram
+	lastResponse             int64
+	ch                       channel.Channel
+	latencySemaphore         concurrenz.Semaphore
+	closeUnresponsiveTimeout time.Duration
 }
 
-func (self *heartbeatCallback) HeartbeatTx(int64) {
-	if self.firstSent == 0 {
-		self.firstSent = time.Now().UnixMilli()
-	}
-}
+func (self *heartbeatCallback) HeartbeatTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRx(int64) {}
 
@@ -153,10 +158,14 @@ func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	self.latencyMetric.Update(now.UnixNano() - ts)
 }
 
+func (self *heartbeatCallback) timeSinceLastResponse(nowUnixMillis int64) time.Duration {
+	return time.Duration(nowUnixMillis-self.lastResponse) * time.Millisecond
+}
+
 func (self *heartbeatCallback) CheckHeartBeat() {
-	log := pfxlog.Logger().WithField("channelId", self.ch.Label())
 	now := time.Now().UnixMilli()
-	if self.firstSent != 0 && (now-self.firstSent > 30000) && (now-self.lastResponse > 30000) {
+	if self.timeSinceLastResponse(now) > self.closeUnresponsiveTimeout {
+		log := self.logger()
 		log.Error("heartbeat not received in time, closing link")
 		if err := self.ch.Close(); err != nil {
 			log.WithError(err).Error("error while closing link")
@@ -166,9 +175,8 @@ func (self *heartbeatCallback) CheckHeartBeat() {
 }
 
 func (self *heartbeatCallback) checkQueueTime() {
-	log := pfxlog.Logger().WithField("bindingId", self.ch.Id())
 	if !self.latencySemaphore.TryAcquire() {
-		log.Warn("unable to check queue time, too many check already running")
+		self.logger().Warn("unable to check queue time, too many check already running")
 		return
 	}
 
@@ -181,6 +189,10 @@ func (self *heartbeatCallback) checkQueueTime() {
 		StartTime: time.Now(),
 	}
 	if err := self.ch.Send(sendTracker); err != nil && !self.ch.IsClosed() {
-		log.WithError(err).Error("unable to send queue time tracer")
+		self.logger().WithError(err).Error("unable to send queue time tracer")
 	}
+}
+
+func (self *heartbeatCallback) logger() *logrus.Entry {
+	return pfxlog.Logger().WithField("channelType", "router").WithField("channelId", self.ch.Id())
 }

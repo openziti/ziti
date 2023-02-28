@@ -19,6 +19,7 @@ package router
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/fabric/router/env"
 	"io"
 	"os"
 	"path/filepath"
@@ -111,6 +112,7 @@ type Config struct {
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
 		DataDir               string
+		Heartbeats            env.HeartbeatOptions
 	}
 	Link struct {
 		Listeners []map[interface{}]interface{}
@@ -432,6 +434,8 @@ func LoadConfig(path string) (*Config, error) {
 
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
 	cfg.Ctrl.Options = channel.DefaultOptions()
+	cfg.Ctrl.Heartbeats = *env.NewDefaultHeartbeatOptions()
+
 	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap[CtrlEndpointBindMapKey]; found {
@@ -475,6 +479,20 @@ func LoadConfig(path string) (*Config, error) {
 					cfg.Ctrl.Options = options
 					if err := cfg.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
+					}
+				}
+
+				if value, found := submap["heartbeats"]; found {
+					if submap, ok := value.(map[interface{}]interface{}); ok {
+						options, err := channel.LoadHeartbeatOptions(submap)
+						if err != nil {
+							return nil, err
+						}
+						heartbeats, err := env.NewHeartbeatOptions(options)
+						if err != nil {
+							return nil, err
+						}
+						cfg.Ctrl.Heartbeats = *heartbeats
 					}
 				}
 			}
