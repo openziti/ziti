@@ -49,6 +49,7 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
 				DataDir               string
+				Heartbeats            env.HeartbeatOptions
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
@@ -85,12 +86,13 @@ func Test_updateCtrlEndpoints(t *testing.T) {
 				DefaultRequestTimeout time.Duration
 				Options               *channel.Options
 				DataDir               string
+				Heartbeats            env.HeartbeatOptions
 			}{
 				DataDir:          tmpDir,
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr), NewUpdatableAddress(addr2)},
 			},
 		},
-		ctrls:         env.NewNetworkControllers(time.Minute),
+		ctrls:         env.NewNetworkControllers(time.Minute, env.NewDefaultHeartbeatOptions()),
 		ctrlEndpoints: newCtrlEndpoints(),
 		controllersToConnect: struct {
 			controllers map[*UpdatableAddress]bool

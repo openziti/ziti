@@ -29,21 +29,24 @@ import (
 )
 
 type CtrlAccepter struct {
-	network      *network.Network
-	xctrls       []xctrl.Xctrl
-	options      *channel.Options
-	traceHandler *channel.TraceHandler
+	network          *network.Network
+	xctrls           []xctrl.Xctrl
+	options          *channel.Options
+	heartbeatOptions *channel.HeartbeatOptions
+	traceHandler     *channel.TraceHandler
 }
 
 func NewCtrlAccepter(network *network.Network,
 	xctrls []xctrl.Xctrl,
 	options *channel.Options,
+	heartbeatOptions *channel.HeartbeatOptions,
 	traceHandler *channel.TraceHandler) *CtrlAccepter {
 	return &CtrlAccepter{
-		network:      network,
-		xctrls:       xctrls,
-		options:      options,
-		traceHandler: traceHandler,
+		network:          network,
+		xctrls:           xctrls,
+		options:          options,
+		heartbeatOptions: heartbeatOptions,
+		traceHandler:     traceHandler,
 	}
 }
 
@@ -101,7 +104,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 
 		r.Control = ch
 		r.ConnectTime = time.Now()
-		if err := binding.Bind(newBindHandler(r, self.network, self.xctrls)); err != nil {
+		if err := binding.Bind(newBindHandler(self.heartbeatOptions, r, self.network, self.xctrls)); err != nil {
 			return errors.Wrap(err, "error binding router")
 		}
 

@@ -26,6 +26,31 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 )
 
+func NewDefaultHeartbeatOptions() *HeartbeatOptions {
+	return &HeartbeatOptions{
+		HeartbeatOptions:  *channel.DefaultHeartbeatOptions(),
+		UnresponsiveAfter: 5 * time.Second,
+	}
+}
+
+func NewHeartbeatOptions(options *channel.HeartbeatOptions) (*HeartbeatOptions, error) {
+	unresponsiveAfter, err := options.GetDuration("unresponsiveAfter")
+	if err != nil {
+		return nil, err
+	}
+	result := NewDefaultHeartbeatOptions()
+	result.HeartbeatOptions = *options
+	if unresponsiveAfter != nil {
+		result.UnresponsiveAfter = *unresponsiveAfter
+	}
+	return result, nil
+}
+
+type HeartbeatOptions struct {
+	channel.HeartbeatOptions
+	UnresponsiveAfter time.Duration
+}
+
 type CtrlChannel interface {
 	Channel() channel.Channel
 	DefaultRequestTimeout() time.Duration
@@ -52,11 +77,12 @@ type NetworkControllers interface {
 }
 
 type networkCtrl struct {
-	ch           channel.Channel
-	lastTx       int64
-	lastRx       int64
-	latency      atomic.Int64
-	unresponsive atomic.Bool
+	ch               channel.Channel
+	heartbeatOptions *HeartbeatOptions
+	lastTx           int64
+	lastRx           int64
+	latency          atomic.Int64
+	unresponsive     atomic.Bool
 }
 
 func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
@@ -103,8 +129,7 @@ func (self *networkCtrl) HeartbeatRespRx(ts int64) {
 }
 
 func (self *networkCtrl) CheckHeartBeat() {
-	// TODO: Make configurable, see fabric#507
-	if time.Duration(self.latency.Load()) > 5*time.Second {
+	if time.Duration(self.latency.Load()) > self.heartbeatOptions.UnresponsiveAfter {
 		// if latency is greater than 5 seconds, consider this channel unresponsive
 		self.unresponsive.Store(true)
 	} else if self.lastTx > 0 && self.lastRx < self.lastTx && (time.Now().UnixMilli()-self.lastTx) > 5000 {
@@ -115,20 +140,23 @@ func (self *networkCtrl) CheckHeartBeat() {
 	}
 }
 
-func NewNetworkControllers(defaultRequestTimeout time.Duration) NetworkControllers {
+func NewNetworkControllers(defaultRequestTimeout time.Duration, heartbeatOptions *HeartbeatOptions) NetworkControllers {
 	return &networkControllers{
+		heartbeatOptions:      heartbeatOptions,
 		defaultRequestTimeout: defaultRequestTimeout,
 	}
 }
 
 type networkControllers struct {
+	heartbeatOptions      *HeartbeatOptions
 	defaultRequestTimeout time.Duration
 	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
 }
 
 func (self *networkControllers) Add(ch channel.Channel) (NetworkController, error) {
 	ctrl := &networkCtrl{
-		ch: ch,
+		ch:               ch,
+		heartbeatOptions: self.heartbeatOptions,
 	}
 	if existing := self.ctrls.Get(ctrl.Channel().Id()); existing != nil {
 		return nil, fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())

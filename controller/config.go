@@ -86,8 +86,10 @@ type Config struct {
 // (e.g. NewListener)
 type CtrlOptions struct {
 	*channel.Options
-	NewListener      *transport.Address
-	AdvertiseAddress *transport.Address
+	NewListener            *transport.Address
+	AdvertiseAddress       *transport.Address
+	RouterHeartbeatOptions *channel.HeartbeatOptions
+	PeerHeartbeatOptions   *channel.HeartbeatOptions
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -321,7 +323,9 @@ func LoadConfig(path string) (*Config, error) {
 			}
 
 			controllerConfig.Ctrl.Options = &CtrlOptions{
-				Options: channel.DefaultOptions(),
+				Options:                channel.DefaultOptions(),
+				PeerHeartbeatOptions:   channel.DefaultHeartbeatOptions(),
+				RouterHeartbeatOptions: channel.DefaultHeartbeatOptions(),
 			}
 
 			if value, found := submap["options"]; found {
@@ -366,6 +370,26 @@ func LoadConfig(path string) (*Config, error) {
 							}
 						} else {
 							return nil, errors.New("error loading advertiseAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
+					if value, found := submap["routerHeartbeats"]; found {
+						if submap, ok := value.(map[interface{}]interface{}); ok {
+							options, err := channel.LoadHeartbeatOptions(submap)
+							if err != nil {
+								return nil, err
+							}
+							controllerConfig.Ctrl.Options.RouterHeartbeatOptions = options
+						}
+					}
+
+					if value, found := submap["peerHeartbeats"]; found {
+						if submap, ok := value.(map[interface{}]interface{}); ok {
+							options, err := channel.LoadHeartbeatOptions(submap)
+							if err != nil {
+								return nil, err
+							}
+							controllerConfig.Ctrl.Options.PeerHeartbeatOptions = options
 						}
 					}
 
