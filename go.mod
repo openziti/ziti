@@ -30,7 +30,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.3
 	github.com/openziti/channel/v2 v2.0.35
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.39
+	github.com/openziti/fabric v0.22.40
 	github.com/openziti/foundation/v2 v2.0.13
 	github.com/openziti/identity v1.0.33
 	github.com/openziti/jwks v1.0.2
