@@ -28,14 +28,14 @@ require (
 	github.com/miekg/dns v1.1.51
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.4
-	github.com/openziti/channel/v2 v2.0.38
+	github.com/openziti/channel/v2 v2.0.39
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.40
+	github.com/openziti/fabric v0.22.47
 	github.com/openziti/foundation/v2 v2.0.14
 	github.com/openziti/identity v1.0.34
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.2.8
-	github.com/openziti/sdk-golang v0.18.49
+	github.com/openziti/sdk-golang v0.18.50
 	github.com/openziti/storage v0.1.38
 	github.com/openziti/transport/v2 v2.0.58
 	github.com/openziti/x509-claims v1.0.3
@@ -61,7 +61,7 @@ require (
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/armon/go-metrics v0.3.10 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
@@ -111,7 +111,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
-	github.com/shirou/gopsutil/v3 v3.23.1 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.2 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
@@ -122,7 +122,7 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
-	golang.org/x/exp v0.0.0-20230124195608-d38c7dcee874 // indirect
+	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/term v0.5.0 // indirect
