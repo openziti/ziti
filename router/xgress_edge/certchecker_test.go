@@ -544,7 +544,7 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		Token:    eid.New(),
 		Data:     nil,
 	}
-	ctrls := env.NewNetworkControllers(time.Second)
+	ctrls := env.NewNetworkControllers(time.Second, env.NewDefaultHeartbeatOptions())
 	if _, err = ctrls.Add(testChannel); err != nil {
 		panic(err)
 	}
