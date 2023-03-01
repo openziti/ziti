@@ -464,9 +464,7 @@ function ziti_expressConfiguration {
         fi
       fi
 
-      # Silently clear ziti variables
-      unsetZitiEnv "-s"
-
+      
       if [[ "${specifiedVersion}" != "" ]]; then
         export ZITI_VERSION_OVERRIDE="${specifiedVersion}"
       fi
@@ -474,6 +472,10 @@ function ziti_expressConfiguration {
       # Stop any devices currently running to avoid port collisions
       stopRouter
       stopController
+      
+      # Silently clear ziti variables
+      unsetZitiEnv "-s"
+
     else
       echo -e "$(RED "  --- Exiting express install ---")"
       return 1
