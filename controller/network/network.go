@@ -168,7 +168,7 @@ func (network *Network) relayControllerMetrics() {
 }
 
 func (network *Network) InitServiceCounterDispatch(handler metrics.Handler) {
-	network.serviceEventMetrics.StartReporting(handler, 10*time.Second, 10)
+	network.serviceEventMetrics.StartReporting(handler, network.GetOptions().MetricsReportInterval, 10)
 }
 
 func (network *Network) GetAppId() string {
