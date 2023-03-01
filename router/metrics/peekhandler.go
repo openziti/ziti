@@ -19,6 +19,7 @@ package metrics
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/metrics"
 	"time"
@@ -41,7 +42,7 @@ func NewChannelPeekHandler(linkId string, registry metrics.UsageRegistry) channe
 	linkRxMsgMeter := registry.Meter("link." + linkId + ".rx.msgrate")
 	linkRxMsgSizeHistogram := registry.Histogram("link." + linkId + ".rx.msgsize")
 
-	usageCounter := registry.UsageCounter("fabricUsage", time.Minute)
+	usageCounter := registry.UsageCounter("fabricUsage", env.IntervalSize)
 
 	return &channelPeekHandler{
 		appTxBytesMeter:        appTxBytesMeter,
@@ -159,7 +160,7 @@ func NewXgressPeekHandler(registry metrics.UsageRegistry) xgress.PeekHandler {
 		egressTxMsgSizeHistogram:  egressTxMsgSizeHistogram,
 		egressRxMsgSizeHistogram:  egressRxMsgSizeHistogram,
 
-		usageCounter: registry.UsageCounter("usage", time.Minute),
+		usageCounter: registry.UsageCounter("usage", env.IntervalSize),
 	}
 }
 

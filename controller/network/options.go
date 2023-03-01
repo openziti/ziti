@@ -54,6 +54,7 @@ type Options struct {
 	RouterConnectChurnLimit time.Duration
 	InitialLinkLatency      time.Duration
 	MetricsReportInterval   time.Duration
+	IntervalAgeThreshold    time.Duration
 }
 
 func DefaultOptions() *Options {
@@ -200,6 +201,18 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.MetricsReportInterval = val
 		} else {
 			return nil, errors.New("invalid value for 'metricsReportInterval'")
+		}
+	}
+
+	if value, found := src["intervalAgeThreshold"]; found {
+		if sval, ok := value.(string); ok {
+			val, err := time.ParseDuration(sval)
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid value for 'intervalAgeThreshold'")
+			}
+			options.IntervalAgeThreshold = val
+		} else {
+			return nil, errors.New("invalid value for 'intervalAgeThreshold'")
 		}
 	}
 

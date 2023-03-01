@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/config"
+	"github.com/openziti/xweb/v2"
 	"io/fs"
 	"math/rand"
 	"os"
@@ -60,7 +61,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
-	"github.com/openziti/xweb/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -161,6 +161,11 @@ func (self *Router) GetHeartbeatOptions() env.HeartbeatOptions {
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
+	if config.Metrics.IntervalAgeThreshold != 0 {
+		metrics.SetIntervalAgeThreshold(config.Metrics.IntervalAgeThreshold)
+		logrus.Infof("set interval age threshold to '%v'", config.Metrics.IntervalAgeThreshold)
+	}
+	env.IntervalSize = config.Metrics.ReportInterval
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 

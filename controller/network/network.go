@@ -106,6 +106,10 @@ func NewNetwork(config Config) (*Network, error) {
 		return nil, err
 	}
 
+	if config.GetOptions().IntervalAgeThreshold != 0 {
+		metrics.SetIntervalAgeThreshold(config.GetOptions().IntervalAgeThreshold)
+		logrus.Infof("set interval age threshold to '%v'", config.GetOptions().IntervalAgeThreshold)
+	}
 	serviceEventMetrics := metrics.NewUsageRegistry(config.GetId().Token, nil, config.GetCloseNotify())
 
 	network := &Network{
@@ -168,7 +172,7 @@ func (network *Network) relayControllerMetrics() {
 }
 
 func (network *Network) InitServiceCounterDispatch(handler metrics.Handler) {
-	network.serviceEventMetrics.StartReporting(handler, time.Minute, 10)
+	network.serviceEventMetrics.StartReporting(handler, network.GetOptions().MetricsReportInterval, 10)
 }
 
 func (network *Network) GetAppId() string {
