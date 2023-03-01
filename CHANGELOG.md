@@ -4,6 +4,7 @@
 
 * Makes inspect CLI more discoverable by adding subcommands for inspectable values
 * Adds new inspection allowing configs to be retrieved: `ziti fabric inspect config`
+* Add a new REST API service built into quickstart
 
 ## Component Updates and Bug Fixes
 

@@ -58,6 +58,9 @@ else
   echo "---------- Enrolling edge-router ${ZITI_EDGE_ROUTER_HOSTNAME}...."
   "${ZITI_BIN_DIR}/ziti-router" enroll "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" --jwt "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.jwt"
   echo ""
+  # Wait one second to avoid race condition when enrollment is performed
+  sleep 1
+  "${ZITI_BIN_DIR}/ziti" edge update identity "${ZITI_EDGE_ROUTER_HOSTNAME}" -a "${ZITI_EDGE_ROUTER_IDENTITY_ROLES}"
 fi
 
 "${ZITI_BIN_DIR}/ziti-router" run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log"
