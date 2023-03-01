@@ -468,8 +468,8 @@ github.com/openziti/metrics v1.2.8 h1:EvsTR3szo6FyPgL+9YzHiv9zjV4zGCNeLx1n+lcGgf
 github.com/openziti/metrics v1.2.8/go.mod h1:HQB8N1+DqqcGOU02o2sNAoWBusc24CnN62r6WAxqzyg=
 github.com/openziti/sdk-golang v0.18.49 h1:IY1jD8MBn2SQTMKUQWGQVzSvphHsxvhrGwmivrG05ms=
 github.com/openziti/sdk-golang v0.18.49/go.mod h1:Hfl0+4L4f8GfxRcaGFFI7MLycednykRVHtJJIkXMIeA=
-github.com/openziti/storage v0.1.36 h1:wrJ8upZredBogJSxMTjnrASmed4Sl5QhMd6Fy8WvkAU=
-github.com/openziti/storage v0.1.36/go.mod h1:NSxL+t8EGUayIN4Q5tQCl0nPIlCAVWI3qhvUUxBW4xs=
+github.com/openziti/storage v0.1.38 h1:NsrgoTv3gbQeJDPbZzTjmJwoXRAz9yNUFyaD/tniQXA=
+github.com/openziti/storage v0.1.38/go.mod h1:qcz8cDtgouBWdWMXx0Vu436XbanTNY5ZCa+mlcPVTUk=
 github.com/openziti/transport/v2 v2.0.58 h1:JfKHzmbfUGH9uHOZkgNCD49Cct2HnzfEUwY/1uuJkkY=
 github.com/openziti/transport/v2 v2.0.58/go.mod h1:IRExZXwNfM2e6ispfeMkSWYTSpI5tj/Ta/6VDu9tIdE=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
