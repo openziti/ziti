@@ -21,7 +21,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru/v2 v2.0.1
 	github.com/jinzhu/copier v0.3.5
-	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6
+	github.com/kataras/go-events v0.0.3
 	github.com/lucsky/cuid v1.2.1
 	github.com/mdlayher/netlink v1.7.1
 	github.com/michaelquigley/pfxlog v0.6.9
@@ -30,13 +30,13 @@ require (
 	github.com/netfoundry/secretstream v0.1.4
 	github.com/openziti/channel/v2 v2.0.39
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.48
+	github.com/openziti/fabric v0.22.49
 	github.com/openziti/foundation/v2 v2.0.14
 	github.com/openziti/identity v1.0.34
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.2.8
 	github.com/openziti/sdk-golang v0.18.50
-	github.com/openziti/storage v0.1.38
+	github.com/openziti/storage v0.1.39
 	github.com/openziti/transport/v2 v2.0.58
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
