@@ -485,7 +485,6 @@ func (self *Router) startControlPlane() error {
 	}
 
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
-	logrus.Warnf("report interval = %v", self.config.Metrics.ReportInterval)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
