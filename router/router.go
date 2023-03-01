@@ -157,6 +157,11 @@ func (self *Router) DefaultRequestTimeout() time.Duration {
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
+	if config.Metrics.IntervalAgeThreshold != 0 {
+		metrics.SetIntervalAgeThreshold(config.Metrics.IntervalAgeThreshold)
+		logrus.Infof("set interval age threshold to '%v'", config.Metrics.IntervalAgeThreshold)
+	}
+	env.IntervalSize = config.Metrics.ReportInterval
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 

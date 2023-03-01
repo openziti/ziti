@@ -120,8 +120,9 @@ type Config struct {
 	Listeners []listenerBinding
 	Transport map[interface{}]interface{}
 	Metrics   struct {
-		ReportInterval   time.Duration
-		MessageQueueSize int
+		ReportInterval       time.Duration
+		IntervalAgeThreshold time.Duration
+		MessageQueueSize     int
 	}
 	HealthChecks struct {
 		CtrlPingCheck struct {
@@ -585,6 +586,12 @@ func LoadConfig(path string) (*Config, error) {
 				var err error
 				if cfg.Metrics.ReportInterval, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for metrics.reportInterval")
+				}
+			}
+			if value, found := submap["intervalAgeThreshold"]; found {
+				var err error
+				if cfg.Metrics.IntervalAgeThreshold, err = time.ParseDuration(value.(string)); err != nil {
+					return nil, errors.Wrap(err, "invalid value for metrics.intervalAgeThreshold")
 				}
 			}
 			if value, found := submap["messageQueueSize"]; found {
