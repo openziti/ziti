@@ -107,8 +107,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 		return err
 	}
 
-	// make configurable. see fabric#507
-	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, ctrl.HeartbeatCallback())
+	channel.ConfigureHeartbeat(binding, self.env.GetHeartbeatOptions().SendInterval, self.env.GetHeartbeatOptions().CheckInterval, ctrl.HeartbeatCallback())
 
 	if self.env.GetTraceHandler() != nil {
 		binding.AddPeekHandler(self.env.GetTraceHandler())

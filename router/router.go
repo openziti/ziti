@@ -154,6 +154,10 @@ func (self *Router) DefaultRequestTimeout() time.Duration {
 	return self.config.Ctrl.DefaultRequestTimeout
 }
 
+func (self *Router) GetHeartbeatOptions() env.HeartbeatOptions {
+	return self.config.Ctrl.Heartbeats
+}
+
 func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
@@ -165,7 +169,7 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
-	ctrls := env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout)
+	ctrls := env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, &config.Ctrl.Heartbeats)
 	faulter := forwarder.NewFaulter(ctrls, config.Forwarder.FaultTxInterval, closeNotify)
 	scanner := forwarder.NewScanner(ctrls, config.Forwarder, closeNotify)
 	fwd := forwarder.NewForwarder(metricsRegistry, faulter, scanner, config.Forwarder, closeNotify)

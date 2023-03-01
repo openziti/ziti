@@ -251,11 +251,11 @@ func (c *Controller) Run() error {
 		panic(err)
 	}
 
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.config.Ctrl.Options.Options, c.config.Ctrl.Options.RouterHeartbeatOptions, c.config.Trace.Handler)
 
 	ctrlAcceptors := map[string]channel.UnderlayAcceptor{}
 	if c.raftController != nil {
-		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController))
+		c.raftController.ConfigureMeshHandlers(handler_peer_ctrl.NewBindHandler(c.network, c.raftController, c.config.Ctrl.Options.PeerHeartbeatOptions))
 		ctrlAcceptors[mesh.ChannelTypeMesh] = c.raftController.GetMesh()
 	}
 
