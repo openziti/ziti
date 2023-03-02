@@ -144,7 +144,12 @@ func (self *bindHandler) verifyRouter(l xlink.Xlink, ch channel.Channel) error {
 		Fingerprints: fingerprints,
 	}
 
-	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(self.ctrl.AnyCtrlChannel())
+	ctrlCh := self.ctrl.AnyCtrlChannel()
+	if ctrlCh == nil {
+		return errors.Errorf("unable to verify link %v, no controller available", l.Id())
+	}
+
+	reply, err := protobufs.MarshalTyped(verifyLink).WithTimeout(10 * time.Second).SendForReply(ctrlCh)
 	if err != nil {
 		return errors.Wrapf(err, "unable to verify router %v for link %v", l.DestinationId(), l.Id())
 	}

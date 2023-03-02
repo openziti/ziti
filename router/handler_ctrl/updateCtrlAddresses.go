@@ -11,12 +11,11 @@ import (
 var updateCtrlAddressesHandlerInstance *updateCtrlAddressesHandler
 
 type CtrlAddressUpdater interface {
-	UpdateCtrlEndpoints(endpoints []string) error
+	UpdateCtrlEndpoints(endpoints []string)
 }
 
 type updateCtrlAddressesHandler struct {
-	callback CtrlAddressUpdater
-
+	callback       CtrlAddressUpdater
 	currentVersion uint64
 }
 
@@ -38,12 +37,9 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 	})
 
 	if upd.IsLeader || handler.currentVersion == 0 || handler.currentVersion < upd.Index {
-		if err := handler.callback.UpdateCtrlEndpoints(upd.Addresses); err != nil {
-			log.WithError(err).Error("Unable to update ctrl addresses")
-		}
+		log.Info("updating to controller endpoints to version")
+		handler.callback.UpdateCtrlEndpoints(upd.Addresses)
 		handler.currentVersion = upd.Index
-
-		log.Info("updated to version")
 	}
 }
 

@@ -28,14 +28,11 @@ import (
 	"os"
 	"path"
 	"plugin"
-	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
-	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/health"
@@ -61,7 +58,6 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/transport/v2"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -88,12 +84,6 @@ type Router struct {
 	metricsReporter metrics.Handler
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
-
-	ctrlEndpoints        ctrlEndpoints
-	controllersToConnect struct {
-		controllers map[*UpdatableAddress]bool
-		mtx         sync.Mutex
-	}
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -169,40 +159,28 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
-	ctrls := env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, &config.Ctrl.Heartbeats)
-	faulter := forwarder.NewFaulter(ctrls, config.Forwarder.FaultTxInterval, closeNotify)
-	scanner := forwarder.NewScanner(ctrls, config.Forwarder, closeNotify)
-	fwd := forwarder.NewForwarder(metricsRegistry, faulter, scanner, config.Forwarder, closeNotify)
-
-	xgress.InitPayloadIngester(closeNotify)
-	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
-	xgress.InitRetransmitter(fwd, fwd, metricsRegistry, closeNotify)
-
 	router := &Router{
 		config:              config,
-		ctrls:               ctrls,
-		faulter:             faulter,
-		scanner:             scanner,
-		forwarder:           fwd,
 		metricsRegistry:     metricsRegistry,
 		shutdownC:           closeNotify,
 		shutdownDoneC:       make(chan struct{}),
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
-		xlinkRegistry:       NewLinkRegistry(ctrls),
-		ctrlEndpoints:       newCtrlEndpoints(),
-		controllersToConnect: struct {
-			controllers map[*UpdatableAddress]bool
-			mtx         sync.Mutex
-		}{
-			controllers: make(map[*UpdatableAddress]bool),
-			mtx:         sync.Mutex{},
-		},
 	}
 
+	router.ctrls = env.NewNetworkControllers(config.Ctrl.DefaultRequestTimeout, router.connectToController, &config.Ctrl.Heartbeats)
+	router.xlinkRegistry = NewLinkRegistry(router.ctrls)
+	router.faulter = forwarder.NewFaulter(router.ctrls, config.Forwarder.FaultTxInterval, closeNotify)
+	router.scanner = forwarder.NewScanner(router.ctrls, config.Forwarder, closeNotify)
+	router.forwarder = forwarder.NewForwarder(metricsRegistry, router.faulter, router.scanner, config.Forwarder, closeNotify)
+
+	xgress.InitPayloadIngester(closeNotify)
+	xgress.InitAcker(router.forwarder, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(router.forwarder, router.forwarder, metricsRegistry, closeNotify)
+
 	var err error
-	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config, router)
+	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, router.forwarder, router)
 	if err != nil {
 		panic(err)
 	}
@@ -236,10 +214,6 @@ func (self *Router) Start() error {
 		return err
 	}
 
-	if err := self.initializeCtrlEndpoints(); err != nil {
-		return err
-	}
-
 	self.showOptions()
 
 	self.startProfiling()
@@ -269,7 +243,7 @@ func (self *Router) Start() error {
 		go web.Run()
 	}
 
-	if err := self.startControlPlane(); err != nil {
+	if err = self.startControlPlane(); err != nil {
 		return err
 	}
 	return nil
@@ -462,21 +436,15 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	endpoints := self.ctrlEndpoints.Items()
-	if len(endpoints) == 0 {
-		return errors.New("no controller endpoints configured, exiting")
+	endpoints, err := self.getInitialCtrlEndpoints()
+	if err != nil {
+		return err
 	}
 
 	log := pfxlog.Logger()
-
 	log.Infof("router configured with %v controller endpoints", len(endpoints))
 
-	for _, endpoint := range endpoints {
-		log.Infof("connecting to controller at endpoint [%v]", endpoint.String())
-		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
-			return err
-		}
-	}
+	self.ctrls.UpdateControllerEndpoints(endpoints)
 
 	for _, x := range self.xrctrls {
 		if err := x.Run(self); err != nil {
@@ -487,10 +455,16 @@ func (self *Router) startControlPlane() error {
 	self.metricsReporter = fabricMetrics.NewControllersReporter(self.ctrls)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
+	time.AfterFunc(time.Second*15, func() {
+		if len(self.ctrls.GetAll()) == 0 {
+			pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
+		}
+	})
+
 	return nil
 }
 
-func (self *Router) connectToController(addr *UpdatableAddress, localBinding string) error {
+func (self *Router) connectToController(addr transport.Address, bindHandler channel.BindHandler) error {
 	attributes := map[int32][]byte{}
 
 	version, err := self.versionProvider.EncoderDecoder().Encode(self.versionProvider.AsVersionInfo())
@@ -534,72 +508,14 @@ func (self *Router) connectToController(addr *UpdatableAddress, localBinding str
 	if "" != self.config.Ctrl.LocalBinding {
 		logrus.Debugf("Using local interface %s to dial controller", self.config.Ctrl.LocalBinding)
 	}
-	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, localBinding, attributes, reconnectHandler)
+	dialer := channel.NewReconnectingDialerWithHandlerAndLocalBinding(self.config.Id, addr, self.config.Ctrl.LocalBinding, attributes, reconnectHandler)
 
-	ch, err := channel.NewChannel("ctrl", dialer, self.ctrlBindhandler, self.config.Ctrl.Options)
+	bindHandler = channel.BindHandlers(bindHandler, self.ctrlBindhandler)
+	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
 	channelRef.Store(ch)
-
-	return nil
-}
-
-func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, localBinding string, maxTimeout *time.Duration) error {
-	self.controllersToConnect.mtx.Lock()
-	log := pfxlog.Logger()
-	defer func() {
-		self.controllersToConnect.mtx.Unlock()
-	}()
-	if _, exists := self.controllersToConnect.controllers[addr]; exists {
-		log.WithField("Controller Addr", addr).Info("Already attempting to connect")
-		return nil
-	}
-
-	expBackoff := backoff.NewExponentialBackOff()
-	expBackoff.InitialInterval = 50 * time.Millisecond
-	expBackoff.MaxInterval = 5 * time.Minute
-	expBackoff.MaxElapsedTime = 365 * 24 * time.Hour
-	if maxTimeout != nil {
-		expBackoff.MaxElapsedTime = *maxTimeout
-	}
-
-	operation := func() error {
-		self.controllersToConnect.mtx.Lock()
-		defer self.controllersToConnect.mtx.Unlock()
-		if _, exists := self.controllersToConnect.controllers[addr]; !exists {
-			return backoff.Permanent(errors.New("controller removed before connection established"))
-		}
-		err := self.connectToController(addr, localBinding)
-		if err != nil {
-			log.
-				WithField("Controller Addr", addr).
-				WithField("Local binding", localBinding).
-				WithError(err).
-				Error("Unable to connect controller")
-		}
-		return err
-	}
-
-	self.controllersToConnect.controllers[addr] = true
-	log.WithField("Controller Addr", addr).Info("Starting connection attempts")
-
-	go func() {
-		if err := backoff.Retry(operation, expBackoff); err != nil {
-			log.
-				WithField("Controller Addr", addr).
-				WithField("Local binding", localBinding).
-				WithError(err).
-				Error("Unable to connect controller. Stopping Retries.")
-		} else {
-			log.WithField("Controller Addr", addr).
-				WithField("Local binding", localBinding).
-				Info("Successfully connected to controller")
-		}
-		self.controllersToConnect.mtx.Lock()
-		delete(self.controllersToConnect.controllers, addr)
-		self.controllersToConnect.mtx.Unlock()
-	}()
 
 	return nil
 }
@@ -646,96 +562,62 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 	return self.xwebFactoryRegistry.Add(x)
 }
 
-func (self *Router) initializeCtrlEndpoints() error {
+func (self *Router) getInitialCtrlEndpoints() ([]string, error) {
 	log := pfxlog.Logger()
 	if self.config.Ctrl.DataDir == "" {
-		return errors.New("ctrl DataDir not configured")
+		return nil, errors.New("ctrl DataDir not configured")
 	}
 
 	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
 
+	var endpoints []string
+
 	if _, err := os.Stat(endpointsFile); err != nil && errors.Is(err, fs.ErrNotExist) {
 		log.Infof("controller endpoints file [%v] doesn't exist. Using initial endpoints from config", endpointsFile)
 		for _, ep := range self.config.Ctrl.InitialEndpoints {
-			self.ctrlEndpoints.Set(ep.String(), ep)
+			endpoints = append(endpoints, ep.String())
 		}
-		return nil
+		return endpoints, nil
 	}
 
 	log.Infof("loading controller endpoints from [%v]", endpointsFile)
 
 	b, err := os.ReadFile(endpointsFile)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = yaml.Unmarshal(b, &self.ctrlEndpoints); err != nil {
-		return err
+	endpointCfg := &endpointConfig{}
+
+	if err = yaml.Unmarshal(b, endpointCfg); err != nil {
+		return nil, err
 	}
 
-	if len(self.ctrlEndpoints.Items()) == 0 {
-		return errors.Errorf("no controller endpoints found in [%v], consider deleting file", endpointsFile)
+	endpoints = endpointCfg.Endpoints
+
+	if len(endpoints) == 0 {
+		return nil, errors.Errorf("no controller endpoints found in [%v], consider deleting file", endpointsFile)
 	}
 
-	//TODO: Handle mismatches
-	return nil
+	return endpoints, nil
 }
 
-func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
-	log := pfxlog.Logger()
-	save := false
-	newEps := make(map[string]bool)
-	for _, ep := range endpoints {
-		newEps[ep] = true
-	}
-	for knownep := range self.ctrlEndpoints.Items() {
-		if _, ok := newEps[knownep]; !ok {
-			log.WithField("endpoint", knownep).Info("Removing old ctrl endpoint")
-			save = true
-			parsed, err := transport.ParseAddress(knownep)
-			if err != nil {
-				return err
-			}
-			_, parsedAddr, _ := strings.Cut(parsed.String(), ":")
-
-			self.ctrlEndpoints.Remove(knownep)
-			self.controllersToConnect.mtx.Lock()
-			delete(self.controllersToConnect.controllers, NewUpdatableAddress(parsed))
-			self.controllersToConnect.mtx.Unlock()
-
-			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
-				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
-				return err
-			}
-		}
-	}
-	for _, ep := range endpoints {
-		if !self.ctrlEndpoints.Has(ep) {
-			log.WithField("endpoint", ep).Info("Adding new ctrl endpoint")
-			save = true
-			parsed, err := transport.ParseAddress(ep)
-			if err != nil {
-				return err
-			}
-			upAddr := NewUpdatableAddress(parsed)
-			if err := self.connectToControllerWithBackoff(upAddr, self.config.Ctrl.LocalBinding, nil); err != nil {
-				log.WithError(err).Error("Unable to connect controller")
-				return err
-			}
-			self.ctrlEndpoints.Set(ep, upAddr)
-		}
-	}
-
-	if save {
-		log.WithField("filepath", self.config.Ctrl.DataDir).Info("Attempting to save file")
+func (self *Router) UpdateCtrlEndpoints(endpoints []string) {
+	log := pfxlog.Logger().WithField("endpoints", endpoints).WithField("filepath", self.config.Ctrl.DataDir)
+	if changed := self.ctrls.UpdateControllerEndpoints(endpoints); changed {
+		log.Info("Attempting to save file")
 		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
-		data, err := self.ctrlEndpoints.MarshalYAML()
-		if err != nil {
-			return err
+
+		configData := map[string]interface{}{
+			"Endpoints": endpoints,
 		}
-		return os.WriteFile(endpointsFile, data.([]byte), 0600)
+
+		if data, err := yaml.Marshal(configData); err != nil {
+			log.WithError(err).Error("unable to marshal updated controller endpoints to yaml")
+		} else if err = os.WriteFile(endpointsFile, data, 0600); err != nil {
+			log.WithError(err).Error("unable to write updated controller endpoints to file")
+		}
 	}
-	return nil
 }
 
 type connectionToggle interface {
@@ -747,7 +629,7 @@ type controllerPinger struct {
 	router *Router
 }
 
-func (self *controllerPinger) PingContext(ctx context.Context) error {
+func (self *controllerPinger) PingContext(context.Context) error {
 	ctrls := self.router.ctrls.GetAll()
 
 	if len(ctrls) == 0 {
@@ -768,37 +650,6 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 	return errors.New("control channels are slow")
 }
 
-type ctrlEndpoints struct {
-	cmap.ConcurrentMap[string, *UpdatableAddress] `yaml:"Endpoints"`
-}
-
-func newCtrlEndpoints() ctrlEndpoints {
-	return ctrlEndpoints{cmap.New[*UpdatableAddress]()}
-}
-
-// MarshalYAML handles serialization for the YAML format
-func (c *ctrlEndpoints) MarshalYAML() (interface{}, error) {
-	data := make([]*UpdatableAddress, 0)
-	for _, ep := range c.Items() {
-		data = append(data, ep)
-	}
-	dat, err := yaml.Marshal(&struct {
-		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
-	}{
-		Endpoints: data,
-	})
-	return dat, err
-}
-
-func (c *ctrlEndpoints) UnmarshalYAML(value *yaml.Node) error {
-	var endpoints struct {
-		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
-	}
-	if err := value.Decode(&endpoints); err != nil {
-		return err
-	}
-	for _, ep := range endpoints.Endpoints {
-		c.ConcurrentMap.Set(ep.String(), ep)
-	}
-	return nil
+type endpointConfig struct {
+	Endpoints []string `yaml:"Endpoints"`
 }
