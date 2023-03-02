@@ -6,6 +6,7 @@ Until v1.0.0 or higher is reached, only the most recent version is supported. Af
 
 ## Reporting a Vulnerability
 
-If you have an issue that is not a sensitive security issue, please submit your issue via the GitHub issue tracker on either the main repository.
+If you have an issue that is not a sensitive security issue, please submit it to the GitHub issue tracker on this repository
+or if you're not sure what repository to submit it under, use the [main OpenZiti/ziti repository](https://github.com/openziti/ziti/issues).
 
 If you have a sensitive security issue or are unsure if it is sensitive, please email it to: security@openziti.org
