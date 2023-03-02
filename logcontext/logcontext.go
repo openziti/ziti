@@ -36,6 +36,7 @@ type Context interface {
 	GetStringFields() map[string]string
 	WithFields(fields map[string]interface{}) Context
 	WithField(field string, value interface{}) Context
+	Clone() Context
 }
 
 func NewContext() Context {
@@ -118,4 +119,15 @@ func (self *contextImpl) WithFields(fields map[string]interface{}) Context {
 func (self *contextImpl) WithField(k string, v interface{}) Context {
 	self.fields[k] = v
 	return self
+}
+
+func (self *contextImpl) Clone() Context {
+	result := &contextImpl{
+		channels: self.channels,
+		fields:   map[string]interface{}{},
+	}
+	for k, v := range self.fields {
+		result.fields[k] = v
+	}
+	return result
 }

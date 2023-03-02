@@ -442,9 +442,11 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, CircuitFailureInvalidService)
 		return nil, err
 	}
-	ctx.WithField("circuitId", circuitId)
-	ctx.WithField("serviceId", service)
-	ctx.WithField("attemptNumber", 1)
+	ctx.WithFields(map[string]interface{}{
+		"circuitId":     circuitId,
+		"serviceId":     service,
+		"attemptNumber": 1,
+	})
 	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
 
 	attempt := uint32(0)
@@ -493,7 +495,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 
 		// 5: Routing
 		logger.Debug("route attempt for circuit")
-		peerData, cleanups, circuitErr := rs.route(attempt, path, rms, strategy, terminator, ctx)
+		peerData, cleanups, circuitErr := rs.route(attempt, path, rms, strategy, terminator, ctx.Clone())
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
