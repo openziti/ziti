@@ -78,7 +78,7 @@ fi
 kubectl wait deployments "minicontroller" \
     --namespace ziti-controller \
     --for condition=Available=True \
-    --timeout=120s
+    --timeout=240s
 
 MINIKUBE_EXTERNAL_IP=$(minikube --profile miniziti ip)
 
@@ -140,7 +140,7 @@ kubectl get pods \
     --namespace kube-system \
     | awk '/^coredns-/ {print $1}' \
     | xargs -rl kubectl delete pods \
-        --namespace kube-system \
+        --namespace kube-system
 
 kubectl wait deployments "coredns" \
     --namespace kube-system \
@@ -217,7 +217,7 @@ fi
 kubectl wait deployments "miniconsole" \
     --namespace ziti-console \
     --for condition=Available=True \
-    --timeout=120s
+    --timeout=240s
 
 if ! ziti edge list identities 'name="edge-client"' | grep -q "edge-client"; then
     ziti edge create identity device "edge-client" \
