@@ -48,7 +48,6 @@ else
 fi
 
 echo "INFO: waiting for ingress-nginx to be ready"
-
 # wait for ingress-nginx
 kubectl wait jobs "ingress-nginx-admission-patch" \
     --namespace ingress-nginx \
@@ -61,7 +60,7 @@ kubectl wait pods \
     --selector=app.kubernetes.io/component=controller \
     --timeout=120s >/dev/null
 
-if [[ -n "${DEBUG:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease; then
+if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease; then
     echo "INFO: detected WSL. Privileged minikube tunnel required."\
         "You may be prompted for your WSL user's password to proceed."\
         "minikube tunnel will write log messages in /tmp/minitunnel.log"
@@ -77,29 +76,33 @@ if [[ -n "${DEBUG:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease; the
     )
 fi
 
+echo "INFO: applying Custom Resource Definitions: Certificate, Issuer, and Bundle"
 kubectl apply \
     --filename https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml >/dev/null
 kubectl apply \
     --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.4.0/deploy/crds/trust.cert-manager.io_bundles.yaml >/dev/null
 
 if helm list --namespace ziti-controller --all | grep -q minicontroller; then
+    echo "INFO: upgrading OpenZiti Controller, Cert Manager, Trust Manager"
     helm upgrade "minicontroller" openziti/ziti-controller \
         --namespace ziti-controller \
         --set clientApi.advertisedHost="minicontroller.ziti" \
         --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
 else
+    echo "INFO: installing OpenZiti Controller, Cert Manager, Trust Manager"
     helm install "minicontroller" openziti/ziti-controller \
         --namespace ziti-controller --create-namespace \
         --set clientApi.advertisedHost="minicontroller.ziti" \
         --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
 fi
 
-echo "INFO: waiting for minicontroller to be ready"
-
-kubectl wait deployments "minicontroller" \
-    --namespace ziti-controller \
-    --for condition=Available=True \
-    --timeout=240s >/dev/null
+for DEPLOYMENT in minicontroller-cert-manager trust-manager minicontroller; do
+    echo "INFO: waiting for $DEPLOYMENT to be ready"
+    kubectl wait deployments "$DEPLOYMENT" \
+        --namespace ziti-controller \
+        --for condition=Available=True \
+        --timeout=240s >/dev/null
+done
 
 MINIKUBE_EXTERNAL_IP=$(minikube --profile miniziti ip)
 
