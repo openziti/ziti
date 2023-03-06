@@ -31,11 +31,11 @@ require (
 	github.com/openziti/channel/v2 v2.0.45
 	github.com/openziti/edge-api v0.25.6
 	github.com/openziti/fabric v0.22.56
-	github.com/openziti/foundation/v2 v2.0.15
+	github.com/openziti/foundation/v2 v2.0.16
 	github.com/openziti/identity v1.0.37
 	github.com/openziti/jwks v1.0.2
-	github.com/openziti/metrics v1.2.10
-	github.com/openziti/sdk-golang v0.18.61
+	github.com/openziti/metrics v1.2.11
+	github.com/openziti/sdk-golang v0.18.62
 	github.com/openziti/storage v0.1.40
 	github.com/openziti/transport/v2 v2.0.63
 	github.com/openziti/x509-claims v1.0.3
@@ -53,7 +53,7 @@ require (
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/crypto v0.6.0
 	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/resty.v1 v1.12.0
 	gopkg.in/yaml.v2 v2.4.0
