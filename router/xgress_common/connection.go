@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/impl"
 	"github.com/pkg/errors"
@@ -41,6 +42,15 @@ const (
 	xgressTypeFlag  = 6
 )
 
+const (
+	DefaultMinReadBufferSize      = 8 * 1024
+	DefaultMaxReadBufferSize      = 62 * 1024
+	DefaultStartingReadBufferSize = 32 * 1024
+
+	DefaultReadBufferAdjustmentSize  = 2 * 1024
+	DefaultReadBufferUpperSlopFactor = 4 * 1024
+)
+
 type outOfBand struct {
 	data    []byte
 	headers map[uint8][]byte
@@ -54,8 +64,11 @@ type XgressConn struct {
 	receiver    secretstream.Decryptor
 	sender      secretstream.Encryptor
 
-	writeDone chan struct{}
-	flags     concurrenz.AtomicBitSet
+	writeDone  chan struct{}
+	flags      concurrenz.AtomicBitSet
+	minBuffer  int
+	maxBuffer  int
+	currBuffer int
 }
 
 func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn {
@@ -63,7 +76,17 @@ func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn 
 		Conn:        conn,
 		outOfBandTx: make(chan *outOfBand, 1),
 		writeDone:   make(chan struct{}),
+		minBuffer:   DefaultMinReadBufferSize,
+		maxBuffer:   DefaultMaxReadBufferSize,
+		currBuffer:  DefaultStartingReadBufferSize,
 	}
+
+	if _, isUdpConn := conn.(*net.UDPConn); isUdpConn {
+		result.minBuffer = info.MaxUdpPacketSize
+		result.maxBuffer = info.MaxUdpPacketSize
+		result.currBuffer = info.MaxUdpPacketSize
+	}
+
 	result.flags.Set(halfCloseFlag, halfClose)
 	result.flags.Set(xgressTypeFlag, isTransport)
 	return result
@@ -171,8 +194,9 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 		}
 	}
 
-	buffer := make([]byte, 10240)
+	buffer := make([]byte, self.currBuffer)
 	n, err := self.Conn.Read(buffer)
+	self.calculateNextBufferSize(n)
 	buffer = buffer[:n]
 
 	if self.sender != nil && n > 0 {
@@ -194,6 +218,23 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 	}
 
 	return buffer, nil, err
+}
+
+func (self *XgressConn) calculateNextBufferSize(bytesRead int) {
+	// if we could have theoretically read mode, see if we can increase buffer size
+	if self.currBuffer == bytesRead {
+		if self.currBuffer >= self.maxBuffer {
+			return
+		}
+		self.currBuffer += DefaultReadBufferAdjustmentSize // bump buffer size by 2k
+		return
+	}
+
+	// If we're already at min buffer size, or if the read bytes were with the slop factor, don't try to optimize further
+	if self.currBuffer <= self.minBuffer || (self.currBuffer-DefaultReadBufferUpperSlopFactor) < bytesRead {
+		return
+	}
+	self.currBuffer -= DefaultReadBufferAdjustmentSize
 }
 
 func (self *XgressConn) WritePayload(p []byte, headers map[uint8][]byte) (int, error) {
