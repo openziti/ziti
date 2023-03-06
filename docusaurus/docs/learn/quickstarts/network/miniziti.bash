@@ -82,6 +82,14 @@ kubectl apply \
 kubectl apply \
     --filename https://raw.githubusercontent.com/cert-manager/trust-manager/v0.4.0/deploy/crds/trust.cert-manager.io_bundles.yaml >/dev/null
 
+if helm repo list | grep -q openziti; then
+    echo "INFO: refreshing OpenZiti Helm Charts"
+    helm repo update openziti
+else
+    echo "INFO: subscribing to OpenZiti Helm Charts"
+    helm repo add openziti https://docs.openziti.io/helm-charts/
+fi
+
 if helm list --namespace ziti-controller --all | grep -q minicontroller; then
     echo "INFO: upgrading OpenZiti Controller, Cert Manager, Trust Manager"
     helm upgrade "minicontroller" openziti/ziti-controller \
