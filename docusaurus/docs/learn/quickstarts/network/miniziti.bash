@@ -1,17 +1,32 @@
 #!/usr/bin/env bash
+
 set -o errexit
 set -o nounset
 set -o pipefail
-# set -o xtrace
 
-# TODO ensure grep is grep
-unalias grep 2>/dev/null || true
+function checkDns(){
+    # only param is an IPv4
+    [[ $# -eq 1 && $1 =~ ([0-9]{1,3}\.){3}[0-9]{1,3} ]] || {
+        echo "ERROR: need IPv4 of miniziti ingress as only param to checkDns()" >&2
+        return 1
+    }
+    if grep -q "$1.*minicontroller.ziti" /etc/hosts \
+        || nslookup minicontroller.ziti | grep -q "$1"; then
+        echo "INFO: host DNS found expected minikube ingress IP '$1'"
+        return 0
+    else
+        echo    "ERROR: /etc/hosts does not contain the miniziti record."\
+                " Consult docs for Windows (WSL), macOS, and Linux solutions"\
+                " before re-running this script."
+        return 1
+    fi
+}
 
 # require commands
 declare -a BINS=(jq ziti minikube kubectl helm)
 for BIN in "${BINS[@]}"; do
     if ! command -v "$BIN" &>/dev/null; then
-        echo "ERROR: this script requires '$BIN'. Please install it on the search PATH and try again." >&2
+        echo "ERROR: this script requires commands '${BINS[*]}'. Please install on the search PATH and try again." >&2
         $BIN || exit 1
     fi
 done
@@ -20,6 +35,15 @@ done
 echo "INFO: waiting for minikube to be ready"
 if ! minikube --profile miniziti status 2>/dev/null | grep -q "apiserver: Running"; then
     minikube --profile miniziti start >/dev/null
+fi
+
+MINIKUBE_NODE_EXTERNAL=$(minikube --profile miniziti ip)
+
+if [[ -n "${MINIKUBE_NODE_EXTERNAL:-}" ]]; then
+    echo "INFO: the minikube external IP is ${MINIKUBE_NODE_EXTERNAL}"
+else
+    echo "ERROR: failed to find minikube external IP" >&2
+    exit 1
 fi
 
 # verify current context can connect to apiserver
@@ -60,7 +84,7 @@ kubectl wait pods \
     --selector=app.kubernetes.io/component=controller \
     --timeout=120s >/dev/null
 
-if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease; then
+if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease 2>/dev/null; then
     echo "INFO: detected WSL. Privileged minikube tunnel required."\
         "You may be prompted for your WSL user's password to proceed."\
         "minikube tunnel will write log messages in /tmp/minitunnel.log"
@@ -72,8 +96,19 @@ if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease;
         sudo --background bash -c \
             "MINIKUBE_HOME=${MINIKUBE_HOME:-${HOME}/.minikube} "\
             "KUBECONFIG=${KUBECONFIG:-${HOME}/.kube/config} "\
-                "minikube --profile miniziti tunnel &> /tmp/minitunnel.log"
+                "minikube --profile miniziti tunnel &>> /tmp/minitunnel.log"
     )
+    # recommend /etc/hosts change unless DNS is configured to reach the minikube node IP
+    checkDns "127.0.0.1"
+else
+    if [[ ${OSTYPE:-} =~ [Dd]arwin ]]; then
+        # Like WSL, macOS uses localhost port forwarding to reach the minikube node IP
+        checkDns "127.0.0.1"
+    else
+        # Exceptions notwithstanding, Linux, etc. presumably have an IP route to
+        # the minikube node IP
+        checkDns "$MINIKUBE_NODE_EXTERNAL"
+    fi
 fi
 
 echo "INFO: applying Custom Resource Definitions: Certificate, Issuer, and Bundle"
@@ -112,22 +147,13 @@ for DEPLOYMENT in minicontroller-cert-manager trust-manager minicontroller; do
         --timeout=240s >/dev/null
 done
 
-MINIKUBE_EXTERNAL_IP=$(minikube --profile miniziti ip)
-
-if [[ -n "${MINIKUBE_EXTERNAL_IP:-}" ]]; then
-    echo "INFO: the minikube external IP is ${MINIKUBE_EXTERNAL_IP}"
-else
-    echo "ERROR: failed to find minikube external IP" >&2
-    exit 1
-fi
-
 # xargs trims whitespace because minikube ssh returns a stray trailing '\r' after remote command output
-MINIKUBE_INTERNAL_HOST=$(minikube --profile miniziti ssh 'grep host.minikube.internal /etc/hosts')
+MINIKUBE_NODE_INTERNAL=$(minikube --profile miniziti ssh 'grep host.minikube.internal /etc/hosts')
 
-if [[ -n "${MINIKUBE_INTERNAL_HOST:-}" ]]; then
+if [[ -n "${MINIKUBE_NODE_INTERNAL:-}" ]]; then
     # strip surrounding whitespace
-    MINIKUBE_INTERNAL_HOST=$(xargs <<< "${MINIKUBE_INTERNAL_HOST}")
-    echo "INFO: the minikube internal host record is \"${MINIKUBE_INTERNAL_HOST}\""
+    MINIKUBE_NODE_INTERNAL=$(xargs <<< "${MINIKUBE_NODE_INTERNAL}")
+    echo "INFO: the minikube internal host record is \"${MINIKUBE_NODE_INTERNAL}\""
 else
     echo "ERROR: failed to find minikube internal IP" >&2
     exit 1
@@ -152,7 +178,7 @@ data:
             }
             prometheus :9153
             hosts {
-                ${MINIKUBE_INTERNAL_HOST}
+                ${MINIKUBE_NODE_INTERNAL}
                 fallthrough
             }
             forward . /etc/resolv.conf {
@@ -166,14 +192,14 @@ data:
         ziti:53 {
             errors
             cache 30
-            forward . ${MINIKUBE_EXTERNAL_IP}
+            forward . ${MINIKUBE_NODE_EXTERNAL}
         }
 " >/dev/null
 
 kubectl get pods \
     --namespace kube-system \
     | awk '/^coredns-/ {print $1}' \
-    | xargs -l kubectl delete pods \
+    | xargs kubectl delete pods \
         --namespace kube-system >/dev/null
 
 echo "INFO: waiting for coredns to be ready"
@@ -183,7 +209,7 @@ kubectl wait deployments "coredns" \
     --for condition=Available=True >/dev/null
 
 if kubectl run "dnstest" --rm --tty --stdin --image=busybox --restart=Never -- \
-    nslookup minicontroller.ziti | grep "${MINIKUBE_EXTERNAL_IP}" >/dev/null; then
+    nslookup minicontroller.ziti | grep "${MINIKUBE_NODE_EXTERNAL}" >/dev/null; then
     echo "INFO: cluster DNS is working"
 else
     echo "ERROR: cluster DNS test failed" >&2
@@ -193,7 +219,7 @@ fi
 kubectl get secrets "minicontroller-admin-secret" \
     --namespace ziti-controller \
     --output go-template='{{index .data "admin-password" | base64decode }}' \
-    | xargs -l ziti edge login minicontroller.ziti:443 \
+    | xargs ziti edge login minicontroller.ziti:443 \
         --yes --username "admin" \
         --password >/dev/null
 
