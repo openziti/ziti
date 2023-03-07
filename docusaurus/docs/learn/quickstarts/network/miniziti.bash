@@ -27,13 +27,13 @@ function checkDns(){
         echo "ERROR: need IPv4 of miniziti ingress as only param to checkDns()" >&2
         return 1
     }
-    echo "DEBUG: checking DNS to ensure minicontroller.ziti resolves to $1" >&3
+    echo "DEBUG: checking dns to ensure minicontroller.ziti resolves to $1" >&3
     if grep -qE "^${1//./\\.}.*minicontroller.ziti" /etc/hosts \
         || nslookup minicontroller.ziti | grep -q "${1//./\\.}"; then
-        echo "INFO: host DNS found expected minikube ingress IP '$1'"
+        echo "DEBUG: host dns found expected minikube ingress IP '$1'" >&3
         return 0
     else
-        echo    "ERROR: minicontroller.ziti does not resolve. Did you add the record in /etc/hosts?"
+        echo "ERROR: minicontroller.ziti does not resolve. Did you add the record in /etc/hosts?"
         return 1
     fi
 }
@@ -153,7 +153,7 @@ function main(){
                     "\n\n\tminikube --profile miniziti tunnel"
             exit 1
         fi
-        # recommend /etc/hosts change unless DNS is configured to reach the minikube node IP
+        # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
         checkDns "127.0.0.1"
     else
         if [[ ${OSTYPE:-} =~ [Dd]arwin ]]; then
@@ -181,13 +181,13 @@ function main(){
     fi
 
     if helm list --namespace ziti-controller --all | grep -q minicontroller; then
-        echo "INFO: upgrading OpenZiti Controller, Cert Manager, Trust Manager"
+        echo "INFO: upgrading openZiti controller"
         helm upgrade "minicontroller" openziti/ziti-controller \
             --namespace ziti-controller \
             --set clientApi.advertisedHost="minicontroller.ziti" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
     else
-        echo "INFO: installing OpenZiti Controller, Cert Manager, Trust Manager"
+        echo "INFO: installing openZiti controller"
         helm install "minicontroller" openziti/ziti-controller \
             --namespace ziti-controller --create-namespace \
             --set clientApi.advertisedHost="minicontroller.ziti" \
@@ -260,16 +260,16 @@ function main(){
         | xargs kubectl delete pods \
             --namespace kube-system >/dev/null
 
-    echo "DEBUG: waiting for cluster DNS to be ready" >&3
+    echo "DEBUG: waiting for cluster dns to be ready" >&3
     kubectl wait deployments "coredns" \
         --namespace kube-system \
         --for condition=Available=True >/dev/null
 
     if kubectl run "dnstest" --rm --tty --stdin --image=busybox --restart=Never -- \
         nslookup minicontroller.ziti | grep "${MINIKUBE_NODE_EXTERNAL}" >/dev/null; then
-        echo "INFO: cluster DNS is working"
+        echo "INFO: cluster dns is working"
     else
-        echo "ERROR: cluster DNS test failed" >&2
+        echo "ERROR: cluster dns test failed" >&2
         exit 1
     fi
 
@@ -294,7 +294,7 @@ function main(){
     fi
 
     if helm list --all --namespace ziti-router | grep -q minirouter; then
-        echo "DEBUG: upgrading minirouter release" >&3
+        echo "DEBUG: upgrading router chart as 'minirouter'" >&3
         helm upgrade "minirouter" openziti/ziti-router \
             --namespace ziti-router \
             --set enrollmentJwt=\ \
@@ -302,7 +302,7 @@ function main(){
             --set ctrl.endpoint=minicontroller-ctrl.ziti-controller.svc:6262 \
             --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >/dev/null
     else
-        echo "DEBUG: installing minirouter release" >&3
+        echo "DEBUG: installing router chart as 'minirouter'" >&3
         helm install "minirouter" openziti/ziti-router \
             --namespace ziti-router --create-namespace \
             --set-file enrollmentJwt=/tmp/minirouter.jwt \
@@ -327,14 +327,14 @@ function main(){
     fi
 
     if helm --namespace ziti-console list --all | grep -q miniconsole; then
-        echo "DEBUG: upgrading miniconsole release" >&3
+        echo "DEBUG: upgrading console chart as 'miniconsole'" >&3
         helm upgrade "miniconsole" openziti/ziti-console \
             --namespace ziti-console \
             --set ingress.advertisedHost=miniconsole.ziti \
             --set settings.edgeControllers[0].url=https://minicontroller-client.ziti-controller.svc:443 \
             --values https://docs.openziti.io/helm-charts/charts/ziti-console/values-ingress-nginx.yaml >/dev/null
     else
-        echo "DEBUG: installing miniconsole release" >&3
+        echo "DEBUG: installing console chart as 'miniconsole'" >&3
         helm install "miniconsole" openziti/ziti-console \
             --namespace ziti-console --create-namespace \
             --set ingress.advertisedHost=miniconsole.ziti \
@@ -429,12 +429,12 @@ function main(){
     fi
 
     if helm list --all --namespace default | grep -q testapi-host; then
-        echo "DEBUG: upgrading testapi-host release" >&3
+        echo "DEBUG: upgrading httpbin chart as 'testapi-host'" >&3
         helm upgrade "testapi-host" openziti/httpbin \
             --set-file zitiIdentity=/tmp/testapi-host.json \
             --set zitiServiceName=testapi-service >/dev/null
     else
-        echo "DEBUG: installing testapi-host release" >&3
+        echo "DEBUG: installing httpbin chart as 'testapi-host'" >&3
         helm install "testapi-host" openziti/httpbin \
             --set-file zitiIdentity=/tmp/testapi-host.json \
             --set zitiServiceName=testapi-service >/dev/null
