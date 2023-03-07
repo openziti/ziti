@@ -181,13 +181,13 @@ function main(){
     fi
 
     if helm list --namespace ziti-controller --all | grep -q minicontroller; then
-        echo "INFO: upgrading openZiti controller"
+        echo "INFO: upgrading openziti controller"
         helm upgrade "minicontroller" openziti/ziti-controller \
             --namespace ziti-controller \
             --set clientApi.advertisedHost="minicontroller.ziti" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
     else
-        echo "INFO: installing openZiti controller"
+        echo "INFO: installing openziti controller"
         helm install "minicontroller" openziti/ziti-controller \
             --namespace ziti-controller --create-namespace \
             --set clientApi.advertisedHost="minicontroller.ziti" \
