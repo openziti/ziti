@@ -167,10 +167,10 @@ function main(){
 
     if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease 2>/dev/null; then
         echo "DEBUG: detected WSL, probing for running minikube tunnel" >&3
-        if ! pgrep -f 'minikube --profile "${MINIKUBE_PROFILE}" tunnel' >/dev/null; then
+        if ! pgrep -f "minikube --profile ${MINIKUBE_PROFILE} tunnel" >/dev/null; then
             echo -e "INFO: detected WSL. minikube tunnel required."\
                     " In another terminal, run the following command. Then re-run this script."\
-                    "\n\n\tminikube --profile "${MINIKUBE_PROFILE}" tunnel"
+                    "\n\n\tminikube --profile ${MINIKUBE_PROFILE} tunnel"
             exit 1
         fi
         # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
@@ -371,7 +371,7 @@ function main(){
     if ! ziti edge list identities 'name="edge-client"' --csv | grep -q "edge-client"; then
         echo "DEBUG: creating identity edge-client" >&3
         ziti edge create identity device "edge-client" \
-            --jwt-output-file /tmp/edge-client.jwt --role-attributes testapi-clients >/dev/null
+            --jwt-output-file /tmp/miniziti-client.jwt --role-attributes testapi-clients >/dev/null
     else
         echo "DEBUG: ignoring identity edge-client" >&3
     fi
@@ -464,7 +464,7 @@ function main(){
         --namespace ziti-controller \
         --output go-template='{{"\nINFO: Your OpenZiti Console is here:\thttp://miniconsole.ziti\nINFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}{{"\n\n"}}'
 
-    echo "INFO: Success! Remember to add your edge client identity '/tmp/edge-client.jwt' in your client tunneler, e.g. Ziti Desktop Edge."
+    echo "INFO: Success! Remember to add your edge client identity '/tmp/miniziti-client.jwt' in your client tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
