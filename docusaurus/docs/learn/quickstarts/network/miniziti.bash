@@ -69,20 +69,25 @@ function main(){
 
     while (( $# )); do
         case "$1" in
-            --delete)   deleteMiniziti 10
-                        shift
+            -d|--delete)    DELETE_MINIZITI=1
+                            shift
             ;;
-            --quiet)    exec > /dev/null
-                        shift
+            -q|--quiet)     exec > /dev/null
+                            shift
             ;;
-            --verbose)  exec 3>&1
-                        shift
+            -v|--verbose|--debug)
+                            exec 3>&1
+                            shift
             ;;
-            --help)     _usage
-                        exit
+            *)              _usage
+                            exit
             ;;
         esac
     done
+
+    (( ${DELETE_MINIZITI:-0} )) && {
+        deleteMiniziti 10
+    }
 
     banner
 
