@@ -38,7 +38,7 @@ function checkDns(){
         echo "DEBUG: host dns found expected minikube ingress IP '$1'" >&3
         return 0
     else
-        echo "ERROR: minicontroller.ziti does not resolve. Did you add the record in /etc/hosts?"
+        echo "ERROR: minicontroller.ziti does not resolve to '$1'. Did you add the record in /etc/hosts?"
         return 1
     fi
 }
