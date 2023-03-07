@@ -27,7 +27,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/miekg/dns v1.1.51
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/netfoundry/secretstream v0.1.4
+	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.46
 	github.com/openziti/edge-api v0.25.6
 	github.com/openziti/fabric v0.22.57
@@ -35,7 +35,7 @@ require (
 	github.com/openziti/identity v1.0.38
 	github.com/openziti/jwks v1.0.2
 	github.com/openziti/metrics v1.2.11
-	github.com/openziti/sdk-golang v0.18.63
+	github.com/openziti/sdk-golang v0.18.64
 	github.com/openziti/storage v0.1.41
 	github.com/openziti/transport/v2 v2.0.64
 	github.com/openziti/x509-claims v1.0.3
@@ -51,7 +51,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/crypto v0.6.0
+	golang.org/x/crypto v0.7.0
 	golang.org/x/sync v0.1.0
 	golang.org/x/sys v0.6.0
 	google.golang.org/protobuf v1.28.1
@@ -124,7 +124,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
 	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
-	golang.org/x/term v0.5.0 // indirect
+	golang.org/x/net v0.8.0 // indirect
+	golang.org/x/term v0.6.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 )
