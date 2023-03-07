@@ -11,6 +11,10 @@ function banner(){
     |  | | | \| | /_ |  |  | 
 
 BANNER
+
+    if (( $# )); then
+        echo -e "      .: $* edition :.\n"
+    fi
 }
 
 function _usage(){
@@ -18,7 +22,8 @@ function _usage(){
     echo -e "\n"\
             "\t --quiet\tsuppress INFO messages\n"\
             "\t --verbose\tshow DEBUG messages\n"\
-            "\t --delete\tre-create miniziti"
+            "\t --delete\tdelete miniziti\n"\
+            "\t --profile\tMINIKUBE_PROFILE"
 }
 
 function checkDns(){
@@ -48,10 +53,10 @@ function deleteMiniziti(){
     (( $# )) && {
         echo "WARN: ignorring extra params '$*'" >&2
     }
-    echo "WARN: deleting miniziti in ${WAIT}s" >&2
+    echo "WARN: deleting ${MINIKUBE_PROFILE} in ${WAIT}s" >&2
     sleep "$WAIT"
-    echo "INFO: waiting for miniziti to be deleted"
-    minikube --profile miniziti delete >/dev/null
+    echo "INFO: waiting for ${MINIKUBE_PROFILE} to be deleted"
+    minikube --profile "${MINIKUBE_PROFILE}" delete >/dev/null
 }
 
 function main(){
@@ -69,6 +74,9 @@ function main(){
 
     while (( $# )); do
         case "$1" in
+            -p|--profile)   MINIKUBE_PROFILE="$2"
+                            shift 2
+            ;;
             -d|--delete)    DELETE_MINIZITI=1
                             shift
             ;;
@@ -85,19 +93,31 @@ function main(){
         esac
     done
 
-    (( ${DELETE_MINIZITI:-0} )) && {
-        deleteMiniziti 10
-    }
-
-    banner
-
-    # start unless running
-    echo "INFO: waiting for miniziti to be ready"
-    if ! minikube --profile miniziti status 2>/dev/null | grep -q "apiserver: Running"; then
-        minikube --profile miniziti start >/dev/null
+    if [[ ${MINIKUBE_PROFILE:="miniziti"} == "miniziti" ]]; then
+        banner
+    else
+        # sanity check the profile name input
+        if [[ ${MINIKUBE_PROFILE} =~ ^- ]]; then
+            # in case the arg value is another option instead of the profile name
+            echo "ERROR: --profile needs a profile name not starting with a hyphen" >&2
+            _usage; exit 1
+        fi
+        # print the alternative profile name if not default "miniziti"
+        banner "$MINIKUBE_PROFILE"
     fi
 
-    MINIKUBE_NODE_EXTERNAL=$(minikube --profile miniziti ip)
+    (( ${DELETE_MINIZITI:-0} )) && {
+        deleteMiniziti 10
+        exit 0
+    }
+
+    # start unless running
+    echo "INFO: waiting for minikube to be ready"
+    if ! minikube --profile "${MINIKUBE_PROFILE}" status 2>/dev/null | grep -q "apiserver: Running"; then
+        minikube --profile "${MINIKUBE_PROFILE}" start >/dev/null
+    fi
+
+    MINIKUBE_NODE_EXTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ip)
 
     if [[ -n "${MINIKUBE_NODE_EXTERNAL:-}" ]]; then
         echo "DEBUG: the minikube external IP is ${MINIKUBE_NODE_EXTERNAL}" >&3
@@ -119,8 +139,8 @@ function main(){
     else
         echo "DEBUG: installing ingress-nginx" >&3
         # enable minikube addons for ingress-nginx
-        minikube --profile miniziti addons enable ingress >/dev/null
-        minikube --profile miniziti addons enable ingress-dns >/dev/null
+        minikube --profile "${MINIKUBE_PROFILE}" addons enable ingress >/dev/null
+        minikube --profile "${MINIKUBE_PROFILE}" addons enable ingress-dns >/dev/null
 
         echo "DEBUG: patching ingress-nginx deployment to enable ssl-passthrough" >&3
         kubectl patch deployment "ingress-nginx-controller" \
@@ -147,10 +167,10 @@ function main(){
 
     if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease 2>/dev/null; then
         echo "DEBUG: detected WSL, probing for running minikube tunnel" >&3
-        if ! pgrep -f 'minikube --profile miniziti tunnel' >/dev/null; then
+        if ! pgrep -f 'minikube --profile "${MINIKUBE_PROFILE}" tunnel' >/dev/null; then
             echo -e "INFO: detected WSL. minikube tunnel required."\
                     " In another terminal, run the following command. Then re-run this script."\
-                    "\n\n\tminikube --profile miniziti tunnel"
+                    "\n\n\tminikube --profile "${MINIKUBE_PROFILE}" tunnel"
             exit 1
         fi
         # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
@@ -204,7 +224,7 @@ function main(){
 
     # xargs trims whitespace because minikube ssh returns a stray trailing '\r' after remote command output
     echo "DEBUG: probing minikube node for internal host record" >&3
-    MINIKUBE_NODE_INTERNAL=$(minikube --profile miniziti ssh 'grep host.minikube.internal /etc/hosts')
+    MINIKUBE_NODE_INTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ssh 'grep host.minikube.internal /etc/hosts')
 
     if [[ -n "${MINIKUBE_NODE_INTERNAL:-}" ]]; then
         # strip surrounding whitespace
