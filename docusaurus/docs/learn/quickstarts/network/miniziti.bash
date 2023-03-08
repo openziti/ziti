@@ -79,7 +79,7 @@ function getClientOttPath(){
     local ID_PATH=/tmp/miniziti-client.jwt
     if [[ $# -eq 1 ]]; then
         case $1 in
-            macOS|linux)     echo "$ID_PATH"
+            macOS|Linux)     echo "$ID_PATH"
             ;;
             Windows)          echo "$(wslpath -w $ID_PATH)"
             ;;
