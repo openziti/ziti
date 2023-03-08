@@ -44,19 +44,63 @@ function checkDns(){
 }
 
 function deleteMiniziti(){ 
+    local WAIT=10
     if (( $# )) && [[ $1 =~ ^[0-9]+$ ]]; then
         WAIT="$1"
         shift
+    elif (( $# )); then
+        echo "WARN: ignoring extra params '$*', using default wait time ${WAIT}s" >&2
     else
-        WAIT=10
+        echo "DEBUG: no integer param detected to deleteMiniziti(), using default wait time ${WAIT}s" >&3 
     fi
-    (( $# )) && {
-        echo "WARN: ignorring extra params '$*'" >&2
-    }
     echo "WARN: deleting ${MINIKUBE_PROFILE} in ${WAIT}s" >&2
     sleep "$WAIT"
     echo "INFO: waiting for ${MINIKUBE_PROFILE} to be deleted"
     minikube --profile "${MINIKUBE_PROFILE}" delete >/dev/null
+}
+
+function detectOs(){
+    if grep -qi "microsoft" /proc/sys/kernel/osrelease 2>/dev/null; then
+        echo "DEBUG: detected Windows OS" >&3
+        echo "Windows"
+    elif [[ ${OSTYPE:-} =~ [Dd]arwin ]]; then
+        echo "DEBUG: detected macOS OS" >&3
+        echo "macOS"
+    elif [[ ${OSTYPE:-} =~ [Ll]inux ]]; then
+        echo "DEBUG: detected Linux OS" >&3
+        echo "Linux"
+    else
+        echo "ERROR: failed to detect OS" >&2
+        return 1
+    fi
+}
+
+function getClientOttPath(){
+    local ID_PATH=/tmp/miniziti-client.jwt
+    if [[ $# -eq 1 ]]; then
+        case $1 in
+            macOS|linux)     echo "$ID_PATH"
+            ;;
+            Windows)          echo "$(wslpath -w $ID_PATH)"
+            ;;
+        esac
+    else
+        echo "ERROR: getClientOttPath() takes one param, DETECTED_OS" >&2
+        return 1
+    fi
+
+}
+
+function testClusterDns(){
+
+    if kubectl run "dnstest" --rm --tty --stdin --image=busybox --restart=Never -- \
+        nslookup minicontroller.ziti | grep "$1" >/dev/null; then
+        echo "INFO: cluster dns is working"
+    else
+        echo "ERROR: cluster dns test failed" >&2
+        return 1
+    fi
+
 }
 
 function main(){
@@ -71,6 +115,14 @@ function main(){
 
     # open a descriptor for debug messages
     exec 3>/dev/null
+
+    declare DETECTED_OS=$(detectOs) \
+            MINIKUBE_PROFILE \
+            DELETE_MINIZITI \
+            MINIKUBE_PROFILE \
+            MINIKUBE_NODE_EXTERNAL \
+            DEBUG_MINIKUBE_TUNNEL
+
 
     while (( $# )); do
         case "$1" in
@@ -106,6 +158,7 @@ function main(){
         banner "$MINIKUBE_PROFILE"
     fi
 
+    # delete and exit if --delete
     (( ${DELETE_MINIZITI:-0} )) && {
         deleteMiniziti 10
         exit 0
@@ -114,7 +167,10 @@ function main(){
     # start unless running
     echo "INFO: waiting for minikube to be ready"
     if ! minikube --profile "${MINIKUBE_PROFILE}" status 2>/dev/null | grep -q "apiserver: Running"; then
+        echo "DEBUG: apiserver not running, starting minikube" >&3
         minikube --profile "${MINIKUBE_PROFILE}" start >/dev/null
+    else
+        echo "DEBUG: apiserver is running, not starting minikube" >&3
     fi
 
     MINIKUBE_NODE_EXTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ip)
@@ -165,27 +221,6 @@ function main(){
         --selector=app.kubernetes.io/component=controller \
         --timeout=120s >/dev/null
 
-    if [[ -n "${DEBUG_WSL:-}" ]] || grep -qi "microsoft" /proc/sys/kernel/osrelease 2>/dev/null; then
-        echo "DEBUG: detected WSL, probing for running minikube tunnel" >&3
-        if ! pgrep -f "minikube --profile ${MINIKUBE_PROFILE} tunnel" >/dev/null; then
-            echo -e "INFO: detected WSL. minikube tunnel required."\
-                    " In another terminal, run the following command. Then re-run this script."\
-                    "\n\n\tminikube --profile ${MINIKUBE_PROFILE} tunnel"
-            exit 1
-        fi
-        # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
-        checkDns "127.0.0.1"
-    else
-        if [[ ${OSTYPE:-} =~ [Dd]arwin ]]; then
-            # Like WSL, macOS uses localhost port forwarding to reach the minikube node IP
-            checkDns "127.0.0.1"
-        else
-            # Exceptions notwithstanding, Linux, etc. presumably have an IP route to
-            # the minikube node IP
-            checkDns "$MINIKUBE_NODE_EXTERNAL"
-        fi
-    fi
-
     echo "DEBUG: applying Custom Resource Definitions: Certificate, Issuer, and Bundle" >&3
     kubectl apply \
         --filename https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.crds.yaml >/dev/null
@@ -222,75 +257,92 @@ function main(){
             --timeout=240s >/dev/null
     done
 
-    # xargs trims whitespace because minikube ssh returns a stray trailing '\r' after remote command output
-    echo "DEBUG: probing minikube node for internal host record" >&3
-    MINIKUBE_NODE_INTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ssh 'grep host.minikube.internal /etc/hosts')
-
-    if [[ -n "${MINIKUBE_NODE_INTERNAL:-}" ]]; then
-        # strip surrounding whitespace
-        MINIKUBE_NODE_INTERNAL=$(xargs <<< "${MINIKUBE_NODE_INTERNAL}")
-        echo "DEBUG: the minikube internal host record is \"${MINIKUBE_NODE_INTERNAL}\"" >&3
+    # wait to probe for the minikube tunnel until after controller deployment so there's at least one
+    # ingress causing minikube to immediately prompt for sudo password
+    if  [[ -n "${DEBUG_MINIKUBE_TUNNEL:-}" ]] || [[ "${DETECTED_OS}" =~ Windows|macOS ]]; then
+        echo "DEBUG: detected OS is ${DETECTED_OS}, probing for minikube tunnel" >&3
+        if ! pgrep -f "minikube --profile ${MINIKUBE_PROFILE} tunnel" >/dev/null; then
+            echo -e "ERROR: ${DETECTED_OS} OS requires a running minikube tunnel for ingresses."\
+                    " In another terminal, run the following command. Then re-run this script."\
+                    "\n\n\tminikube --profile ${MINIKUBE_PROFILE} tunnel\n" >&2
+            exit 1
+        else
+            echo "DEBUG: minikube tunnel is running" >&3
+        fi
+        # recommend /etc/hosts change unless dns is configured to reach the minikube node IP
+        checkDns "127.0.0.1"
     else
-        echo "ERROR: failed to find minikube internal IP" >&2
-        exit 1
+        checkDns "$MINIKUBE_NODE_EXTERNAL"
     fi
 
-    echo "DEBUG: patching coredns configmap with *.ziti forwarder to minikube ingress-dns nameserver" >&3
-    kubectl patch configmap "coredns" \
-        --namespace kube-system \
-        --patch="
-    data:
-        Corefile: |
-            .:53 {
-                log
-                errors
-                health {
-                    lameduck 5s
-                }
-                ready
-                kubernetes cluster.local in-addr.arpa ip6.arpa {
-                    pods insecure
-                    fallthrough in-addr.arpa ip6.arpa
-                    ttl 30
-                }
-                prometheus :9153
-                hosts {
-                    ${MINIKUBE_NODE_INTERNAL}
-                    fallthrough
-                }
-                forward . /etc/resolv.conf {
-                    max_concurrent 1000
-                }
-                cache 30
-                loop
-                reload
-                loadbalance
-            }
-            ziti:53 {
-                errors
-                cache 30
-                forward . ${MINIKUBE_NODE_EXTERNAL}
-            }
-    " >/dev/null
+    if ! testClusterDns "${MINIKUBE_NODE_EXTERNAL}" 2>/dev/null; then
+        echo "DEBUG: initial cluster dns test failed, doing cluster dns setup" >&3
 
-    echo "DEBUG: deleting coredns pod so a new one will have modified Corefile" >&3
-    kubectl get pods \
-        --namespace kube-system \
-        | awk '/^coredns-/ {print $1}' \
-        | xargs kubectl delete pods \
-            --namespace kube-system >/dev/null
+        # xargs trims whitespace because minikube ssh returns a stray trailing '\r' after remote command output
+        echo "DEBUG: probing minikube node for internal host record" >&3
+        MINIKUBE_NODE_INTERNAL=$(minikube --profile "${MINIKUBE_PROFILE}" ssh 'grep host.minikube.internal /etc/hosts')
 
-    echo "DEBUG: waiting for cluster dns to be ready" >&3
-    kubectl wait deployments "coredns" \
-        --namespace kube-system \
-        --for condition=Available=True >/dev/null
+        if [[ -n "${MINIKUBE_NODE_INTERNAL:-}" ]]; then
+            # strip surrounding whitespace
+            MINIKUBE_NODE_INTERNAL=$(xargs <<< "${MINIKUBE_NODE_INTERNAL}")
+            echo "DEBUG: the minikube internal host record is \"${MINIKUBE_NODE_INTERNAL}\"" >&3
+        else
+            echo "ERROR: failed to find minikube internal IP" >&2
+            exit 1
+        fi
 
-    if kubectl run "dnstest" --rm --tty --stdin --image=busybox --restart=Never -- \
-        nslookup minicontroller.ziti | grep "${MINIKUBE_NODE_EXTERNAL}" >/dev/null; then
-        echo "INFO: cluster dns is working"
-    else
-        echo "ERROR: cluster dns test failed" >&2
-        exit 1
+        echo "DEBUG: patching coredns configmap with *.ziti forwarder to minikube ingress-dns nameserver" >&3
+        kubectl patch configmap "coredns" \
+            --namespace kube-system \
+            --patch="
+        data:
+            Corefile: |
+                .:53 {
+                    log
+                    errors
+                    health {
+                        lameduck 5s
+                    }
+                    ready
+                    kubernetes cluster.local in-addr.arpa ip6.arpa {
+                        pods insecure
+                        fallthrough in-addr.arpa ip6.arpa
+                        ttl 30
+                    }
+                    prometheus :9153
+                    hosts {
+                        ${MINIKUBE_NODE_INTERNAL}
+                        fallthrough
+                    }
+                    forward . /etc/resolv.conf {
+                        max_concurrent 1000
+                    }
+                    cache 30
+                    loop
+                    reload
+                    loadbalance
+                }
+                ziti:53 {
+                    errors
+                    cache 30
+                    forward . ${MINIKUBE_NODE_EXTERNAL}
+                }
+        " >/dev/null
+
+        echo "DEBUG: deleting coredns pod so a new one will have modified Corefile" >&3
+        kubectl get pods \
+            --namespace kube-system \
+            | awk '/^coredns-/ {print $1}' \
+            | xargs kubectl delete pods \
+                --namespace kube-system >/dev/null
+
+        echo "DEBUG: waiting for cluster dns to be ready" >&3
+        kubectl wait deployments "coredns" \
+            --namespace kube-system \
+            --for condition=Available=True >/dev/null
+
+        # perform a DNS query in a pod so we know ingress-dns is working inside the cluster
+        testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
     fi
 
     echo "DEBUG: fetching admin password from k8s secret to log in to ziti mgmt" >&3
@@ -368,12 +420,12 @@ function main(){
         --for condition=Available=True \
         --timeout=240s >/dev/null
 
-    if ! ziti edge list identities 'name="edge-client"' --csv | grep -q "edge-client"; then
-        echo "DEBUG: creating identity edge-client" >&3
-        ziti edge create identity device "edge-client" \
+    if ! ziti edge list identities 'name="miniziti-client"' --csv | grep -q "miniziti-client"; then
+        echo "DEBUG: creating identity miniziti-client" >&3
+        ziti edge create identity device "miniziti-client" \
             --jwt-output-file /tmp/miniziti-client.jwt --role-attributes testapi-clients >/dev/null
     else
-        echo "DEBUG: ignoring identity edge-client" >&3
+        echo "DEBUG: ignoring identity miniziti-client" >&3
     fi
 
     if ! ziti edge list identities 'name="testapi-host"' --csv | grep -q "testapi-host"; then
@@ -439,32 +491,27 @@ function main(){
         echo "DEBUG: ignoring service-edge-router-policy public-routers" >&3
     fi
 
-    if [[ -s /tmp/testapi-host.json ]]; then
-        echo "WARN: /tmp/testapi-host.json exists, not enrolling 'testapi-host'."\
-            "If the file was left over from a prior run"\
-            " then delete it and re-run this script." >&2
-    else
+    if [[ -s /tmp/testapi-host.jwt ]]; then
         echo "DEBUG: enrolling /tmp/testapi-host.jwt" >&3
         ziti edge enroll /tmp/testapi-host.jwt >/dev/null
+        rm -f /tmp/testapi-host.jwt
+        echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
     fi
 
-    if helm list --all --namespace default | grep -q testapi-host; then
-        echo "DEBUG: upgrading httpbin chart as 'testapi-host'" >&3
-        helm upgrade "testapi-host" openziti/httpbin \
-            --set-file zitiIdentity=/tmp/testapi-host.json \
-            --set zitiServiceName=testapi-service >/dev/null
-    else
+    if [[ -s /tmp/testapi-host.json ]]; then
         echo "DEBUG: installing httpbin chart as 'testapi-host'" >&3
         helm install "testapi-host" openziti/httpbin \
             --set-file zitiIdentity=/tmp/testapi-host.json \
             --set zitiServiceName=testapi-service >/dev/null
+        rm -f /tmp/testapi-host.json
+        echo "DEBUG: deleted /tmp/testapi-host.json after installing successfully with testapi-host chart" >&3
     fi
 
     kubectl get secrets "minicontroller-admin-secret" \
         --namespace ziti-controller \
         --output go-template='{{"\nINFO: Your OpenZiti Console is here:\thttp://miniconsole.ziti\nINFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}{{"\n\n"}}'
 
-    echo "INFO: Success! Remember to add your edge client identity '/tmp/miniziti-client.jwt' in your client tunneler, e.g. Ziti Desktop Edge."
+    echo "INFO: Success! Remember to add your edge client identity '$(getClientOttPath ${DETECTED_OS})' in your tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
