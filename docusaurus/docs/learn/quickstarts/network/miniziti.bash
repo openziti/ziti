@@ -61,7 +61,7 @@ function deleteMiniziti(){
 
 function main(){
     # require commands
-    declare -a BINS=(jq ziti minikube kubectl helm)
+    declare -a BINS=(ziti minikube kubectl helm)
     for BIN in "${BINS[@]}"; do
         if ! command -v "$BIN" &>/dev/null; then
             echo "ERROR: this script requires commands '${BINS[*]}'. Please install on the search PATH and try again." >&2
