@@ -199,23 +199,21 @@ func (collection *linkCollectionImpl) IterateLinks(tx *bbolt.Tx, id []byte) ast.
 }
 
 func (collection *linkCollectionImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
-	if otherStore, ok := collection.otherField.GetStore().(*BaseStore); ok {
-		foundInverse := false
-		for _, lc := range otherStore.links {
-			if collection.GetFieldSymbol().GetName() == lc.GetLinkedSymbol().GetName() &&
-				collection.GetFieldSymbol().GetStore().GetEntityType() == lc.GetLinkedSymbol().GetStore().GetEntityType() &&
-				collection.GetLinkedSymbol().GetName() == lc.GetFieldSymbol().GetName() &&
-				collection.GetLinkedSymbol().GetStore().GetEntityType() == lc.GetFieldSymbol().GetStore().GetEntityType() {
-				foundInverse = true
-				break
-			}
+	foundInverse := false
+	for _, lc := range collection.otherField.GetStore().getLinks() {
+		if collection.GetFieldSymbol().GetName() == lc.GetLinkedSymbol().GetName() &&
+			collection.GetFieldSymbol().GetStore().GetEntityType() == lc.GetLinkedSymbol().GetStore().GetEntityType() &&
+			collection.GetLinkedSymbol().GetName() == lc.GetFieldSymbol().GetName() &&
+			collection.GetLinkedSymbol().GetStore().GetEntityType() == lc.GetFieldSymbol().GetStore().GetEntityType() {
+			foundInverse = true
+			break
 		}
-		if !foundInverse {
-			errorSink(errors.Errorf("%v store has link collection from %v -> %v.%v but no inverse collection found in %v",
-				collection.field.GetStore().GetEntityType(), collection.field.GetName(),
-				collection.otherField.GetStore().GetEntityType(), collection.otherField.GetName(),
-				collection.otherField.GetStore().GetEntityType()), false)
-		}
+	}
+	if !foundInverse {
+		errorSink(errors.Errorf("%v store has link collection from %v -> %v.%v but no inverse collection found in %v",
+			collection.field.GetStore().GetEntityType(), collection.field.GetName(),
+			collection.otherField.GetStore().GetEntityType(), collection.otherField.GetName(),
+			collection.otherField.GetStore().GetEntityType()), false)
 	}
 
 	for idCursor := collection.field.GetStore().IterateValidIds(tx, ast.BoolNodeTrue); idCursor.IsValid(); idCursor.Next() {

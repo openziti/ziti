@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/errorz"
-	"go.etcd.io/bbolt"
 )
 
 type MigrationStep struct {
@@ -34,8 +33,8 @@ type migrationManager struct {
 
 func (m *migrationManager) GetComponentVersion(component string) (int, error) {
 	version := 0
-	err := m.db.Update(func(tx *bbolt.Tx) error {
-		rootBucket, err := m.db.RootBucket(tx)
+	err := m.db.Update(nil, func(ctx MutateContext) error {
+		rootBucket, err := m.db.RootBucket(ctx.Tx())
 		if err != nil {
 			return err
 		}
@@ -56,8 +55,8 @@ func (m *migrationManager) GetComponentVersion(component string) (int, error) {
 }
 
 func (m *migrationManager) Migrate(component string, targetVersion int, migrator Migrator) error {
-	return m.db.Update(func(tx *bbolt.Tx) error {
-		rootBucket, err := m.db.RootBucket(tx)
+	return m.db.Update(nil, func(ctx MutateContext) error {
+		rootBucket, err := m.db.RootBucket(ctx.Tx())
 		if err != nil {
 			return err
 		}
@@ -73,12 +72,11 @@ func (m *migrationManager) Migrate(component string, targetVersion int, migrator
 		}
 
 		if versionP != nil && version != targetVersion {
-			if err := m.db.Snapshot(tx); err != nil {
+			if err := m.db.Snapshot(ctx.Tx()); err != nil {
 				return fmt.Errorf("failed to create bolt db snapshot: %w", err)
 			}
 		}
 
-		ctx := NewMutateContext(tx)
 		for version != targetVersion {
 			step := &MigrationStep{
 				Component:      component,

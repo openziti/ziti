@@ -26,7 +26,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func (store *BaseStore) MakeSymbolPublic(symbol string) {
+func (store *BaseStore[E]) MakeSymbolPublic(symbol string) {
 	if _, isMapSymbol := store.mapSymbols[symbol]; isMapSymbol || store.GetSymbol(symbol) != nil {
 		store.publicSymbols[symbol] = struct{}{}
 	} else {
@@ -34,7 +34,7 @@ func (store *BaseStore) MakeSymbolPublic(symbol string) {
 	}
 }
 
-func (store *BaseStore) GetPublicSymbols() []string {
+func (store *BaseStore[E]) GetPublicSymbols() []string {
 	var symbols []string
 	for k := range store.publicSymbols {
 		symbols = append(symbols, k)
@@ -42,7 +42,7 @@ func (store *BaseStore) GetPublicSymbols() []string {
 	return symbols
 }
 
-func (store *BaseStore) IsPublicSymbol(symbol string) bool {
+func (store *BaseStore[E]) IsPublicSymbol(symbol string) bool {
 	if _, ok := store.publicSymbols[symbol]; ok {
 		return true
 	}
@@ -56,21 +56,21 @@ func (store *BaseStore) IsPublicSymbol(symbol string) bool {
 	return false
 }
 
-func (store *BaseStore) GetSymbolType(name string) (ast.NodeType, bool) {
+func (store *BaseStore[E]) GetSymbolType(name string) (ast.NodeType, bool) {
 	if symbol := store.GetSymbol(name); symbol != nil {
 		return symbol.GetType(), true
 	}
 	return 0, false
 }
 
-func (store *BaseStore) GetSetSymbolTypes(name string) ast.SymbolTypes {
+func (store *BaseStore[E]) GetSetSymbolTypes(name string) ast.SymbolTypes {
 	if symbol := store.GetSymbol(name); symbol != nil {
 		return symbol.GetLinkedType()
 	}
 	return nil
 }
 
-func (store *BaseStore) IsSet(name string) (bool, bool) {
+func (store *BaseStore[E]) IsSet(name string) (bool, bool) {
 	if symbol := store.GetSymbol(name); symbol != nil {
 		return symbol.IsSet(), true
 	}
@@ -78,7 +78,7 @@ func (store *BaseStore) IsSet(name string) (bool, bool) {
 }
 
 // GetSymbol returns the symbol for the given name, or nil if the symbol doesn't exist
-func (store *BaseStore) GetSymbol(name string) EntitySymbol {
+func (store *BaseStore[E]) GetSymbol(name string) EntitySymbol {
 	/*
 		Types of symbols that we need to handle
 		1. Local single values (employee.name)
@@ -121,7 +121,7 @@ func (store *BaseStore) GetSymbol(name string) EntitySymbol {
 	return nil
 }
 
-func (store *BaseStore) createCompositeEntitySymbol(name string, first linkedEntitySymbol, rest EntitySymbol) EntitySymbol {
+func (store *BaseStore[E]) createCompositeEntitySymbol(name string, first linkedEntitySymbol, rest EntitySymbol) EntitySymbol {
 	ces, ok := rest.(compositeEntitySymbol)
 	var chain []EntitySymbol
 	if !ok {
@@ -178,7 +178,7 @@ func (store *BaseStore) createCompositeEntitySymbol(name string, first linkedEnt
 	}
 }
 
-func (store *BaseStore) addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol {
+func (store *BaseStore[E]) addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol {
 	store.symbols[name] = symbol
 	if public {
 		store.publicSymbols[name] = struct{}{}
@@ -186,11 +186,11 @@ func (store *BaseStore) addSymbol(name string, public bool, symbol EntitySymbol)
 	return symbol
 }
 
-func (store *BaseStore) inheritMapSymbol(symbol *entityMapSymbol) {
+func (store *BaseStore[E]) inheritMapSymbol(symbol *entityMapSymbol) {
 	store.mapSymbols[symbol.key] = symbol
 }
 
-func (store *BaseStore) GrantSymbols(child ListStore) {
+func (store *BaseStore[E]) GrantSymbols(child ListStore) {
 	for name, value := range store.symbols {
 		child.addSymbol(name, store.IsPublicSymbol(name), value)
 	}
@@ -202,7 +202,7 @@ func (store *BaseStore) GrantSymbols(child ListStore) {
 	}
 }
 
-func (store *BaseStore) AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol {
+func (store *BaseStore[E]) AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol {
 	return store.addSymbol(name, true, &entityIdSymbol{
 		store:      store,
 		symbolType: nodeType,
@@ -210,7 +210,7 @@ func (store *BaseStore) AddIdSymbol(name string, nodeType ast.NodeType) EntitySy
 	})
 }
 
-func (store *BaseStore) MapSymbol(name string, mapper SymbolMapper) {
+func (store *BaseStore[E]) MapSymbol(name string, mapper SymbolMapper) {
 	if symbol, found := store.symbols[name]; found {
 		store.symbols[name] = &symbolMapWrapper{
 			EntitySymbol: symbol,
@@ -219,22 +219,22 @@ func (store *BaseStore) MapSymbol(name string, mapper SymbolMapper) {
 	}
 }
 
-func (store *BaseStore) AddSymbol(name string, nodeType ast.NodeType, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddSymbol(name string, nodeType ast.NodeType, prefix ...string) EntitySymbol {
 	return store.AddSymbolWithKey(name, nodeType, name, prefix...)
 }
 
-func (store *BaseStore) AddFkSymbol(name string, linkedStore ListStore, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddFkSymbol(name string, linkedStore ListStore, prefix ...string) EntitySymbol {
 	return store.AddFkSymbolWithKey(name, name, linkedStore, prefix...)
 }
-func (store *BaseStore) AddSymbolWithKey(name string, nodeType ast.NodeType, key string, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddSymbolWithKey(name string, nodeType ast.NodeType, key string, prefix ...string) EntitySymbol {
 	return store.addSymbol(name, true, store.newEntitySymbol(name, nodeType, key, nil, prefix...))
 }
 
-func (store *BaseStore) AddFkSymbolWithKey(name string, key string, linkedStore ListStore, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddFkSymbolWithKey(name string, key string, linkedStore ListStore, prefix ...string) EntitySymbol {
 	return store.addSymbol(name, true, store.newEntitySymbol(name, ast.NodeTypeString, key, linkedStore, prefix...))
 }
 
-func (store *BaseStore) AddMapSymbol(name string, nodeType ast.NodeType, key string, prefix ...string) {
+func (store *BaseStore[E]) AddMapSymbol(name string, nodeType ast.NodeType, key string, prefix ...string) {
 	store.mapSymbols[name] = &entityMapSymbol{
 		store:      store,
 		key:        key,
@@ -243,11 +243,11 @@ func (store *BaseStore) AddMapSymbol(name string, nodeType ast.NodeType, key str
 	}
 }
 
-func (store *BaseStore) NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol {
+func (store *BaseStore[E]) NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol {
 	return store.newEntitySymbol(name, nodeType, name, nil)
 }
 
-func (store *BaseStore) newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType ListStore, prefix ...string) *entitySymbol {
+func (store *BaseStore[E]) newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType ListStore, prefix ...string) *entitySymbol {
 	var path []string
 	var bucketF func(entityBucket *TypedBucket) *TypedBucket
 
@@ -279,21 +279,21 @@ func (store *BaseStore) newEntitySymbol(name string, nodeType ast.NodeType, key 
 	}
 }
 
-func (store *BaseStore) AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol {
+func (store *BaseStore[E]) AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol {
 	return store.addSetSymbol(name, nodeType, nil)
 }
 
-func (store *BaseStore) AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol {
+func (store *BaseStore[E]) AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol {
 	result := store.addSetSymbol(name, nodeType, nil)
 	store.publicSymbols[name] = struct{}{}
 	return result
 }
 
-func (store *BaseStore) AddFkSetSymbol(name string, listStore ListStore) EntitySetSymbol {
+func (store *BaseStore[E]) AddFkSetSymbol(name string, listStore ListStore) EntitySetSymbol {
 	return store.addSetSymbol(name, ast.NodeTypeString, listStore)
 }
 
-func (store *BaseStore) addSetSymbol(name string, nodeType ast.NodeType, listStore ListStore) EntitySetSymbol {
+func (store *BaseStore[E]) addSetSymbol(name string, nodeType ast.NodeType, listStore ListStore) EntitySetSymbol {
 	entitySymbol := store.newEntitySymbol(name, nodeType, name, listStore)
 	result := &entitySetSymbolImpl{
 		entitySymbol: entitySymbol,
@@ -302,7 +302,7 @@ func (store *BaseStore) addSetSymbol(name string, nodeType ast.NodeType, listSto
 	return result
 }
 
-func (store *BaseStore) AddExtEntitySymbols() {
+func (store *BaseStore[E]) AddExtEntitySymbols() {
 	store.AddIdSymbol(FieldId, ast.NodeTypeString)
 	store.AddSymbol(FieldCreatedAt, ast.NodeTypeDatetime)
 	store.AddSymbol(FieldUpdatedAt, ast.NodeTypeDatetime)
@@ -311,7 +311,7 @@ func (store *BaseStore) AddExtEntitySymbols() {
 	store.AddSymbol(FieldIsSystemEntity, ast.NodeTypeBool)
 }
 
-func (store *BaseStore) NewScanner(sort []ast.SortField) Scanner {
+func (store *BaseStore[E]) NewScanner(sort []ast.SortField) Scanner {
 	if len(sort) > SortMax {
 		sort = sort[:SortMax]
 	}
@@ -345,7 +345,7 @@ func (sortField *sortFieldImpl) String() string {
 	return fmt.Sprintf("%v DESC", sortField.name)
 }
 
-func (store *BaseStore) NewRowComparator(sort []ast.SortField) (RowComparator, error) {
+func (store *BaseStore[E]) NewRowComparator(sort []ast.SortField) (RowComparator, error) {
 	// always have id as last sort element. this way if other sorts come out equal, we still
 	// can order on something, instead of having duplicates which causes rows to get discarded
 	sort = append(sort, &sortFieldImpl{name: "id", isAsc: true})
@@ -382,11 +382,11 @@ func (store *BaseStore) NewRowComparator(sort []ast.SortField) (RowComparator, e
 	return &rowComparatorImpl{symbols: symbolsComparators}, nil
 }
 
-func (store *BaseStore) QueryIdsf(tx *bbolt.Tx, queryString string, args ...interface{}) ([]string, int64, error) {
+func (store *BaseStore[E]) QueryIdsf(tx *bbolt.Tx, queryString string, args ...interface{}) ([]string, int64, error) {
 	return store.QueryIds(tx, fmt.Sprintf(queryString, args...))
 }
 
-func (store *BaseStore) QueryIds(tx *bbolt.Tx, queryString string) ([]string, int64, error) {
+func (store *BaseStore[E]) QueryIds(tx *bbolt.Tx, queryString string) ([]string, int64, error) {
 	query, err := ast.Parse(store, queryString)
 	if err != nil {
 		return nil, 0, err
@@ -394,12 +394,12 @@ func (store *BaseStore) QueryIds(tx *bbolt.Tx, queryString string) ([]string, in
 	return store.QueryIdsC(tx, query)
 }
 
-func (store *BaseStore) QueryIdsC(tx *bbolt.Tx, query ast.Query) ([]string, int64, error) {
+func (store *BaseStore[E]) QueryIdsC(tx *bbolt.Tx, query ast.Query) ([]string, int64, error) {
 	scanner := store.NewScanner(query.GetSortFields())
 	return scanner.Scan(tx, query)
 }
 
-func (store *BaseStore) IterateIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor {
+func (store *BaseStore[E]) IterateIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor {
 	entitiesBucket := store.GetEntitiesBucket(tx)
 	if entitiesBucket == nil {
 		return ast.EmptyCursor
@@ -408,7 +408,7 @@ func (store *BaseStore) IterateIds(tx *bbolt.Tx, filter ast.BoolNode) ast.Seekab
 	return cursor
 }
 
-func (store *BaseStore) IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor {
+func (store *BaseStore[E]) IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor {
 	result := store.IterateIds(tx, filter)
 	if store.isExtended {
 		validIdsCursor := &ValidIdsCursors{
@@ -424,14 +424,14 @@ func (store *BaseStore) IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.S
 	return result
 }
 
-func (store *BaseStore) QueryWithCursorC(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query) ([]string, int64, error) {
+func (store *BaseStore[E]) QueryWithCursorC(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query) ([]string, int64, error) {
 	scanner := store.NewScanner(query.GetSortFields())
 	return scanner.ScanCursor(tx, cursorProvider, query)
 }
 
 type ValidIdsCursors struct {
 	tx      *bbolt.Tx
-	store   *BaseStore
+	store   ListStore
 	wrapped ast.SeekableSetCursor
 }
 
