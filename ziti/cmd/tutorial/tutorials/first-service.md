@@ -7,7 +7,7 @@ Please note: this tutorial can be run interactively, by running 'ziti edge tutor
 <!---action:pause -->
 
 ## Goals
-Let’s say you’re the founder of CloudEcho, the number one provider of echo services. When someone needs to hear back what they’ve said, you are here to make that happen. Any way that a customer needs an echo, be it TCP, UDP or HTTP based echo services, you’ve got them covered. You’ve decided to try integrating Ziti into your services and clients. We’re going to look at a few different ways to do that integration and explore different areas of the Ziti model to build an understanding of how to provide and consume services. In this tutorial we’re going look at how to Zitify the HTTP echo service.
+Let’s say you’re the founder of CloudEcho, the number one provider of echo services. When someone needs to hear back what they’ve said, you are here to make that happen. Any way that a customer needs an echo, be it TCP, UDP or HTTP based echo services, you’ve got them covered. You’ve decided to try integrating Ziti into your services and clients. We’re going to look at a few different ways to do that integration and explore different areas of the Ziti model to build an understanding of how to provide and consume services. In this tutorial we’re going look at how to use the HTTP echo service in Ziti.
 
 <!---action:pause -->
 
