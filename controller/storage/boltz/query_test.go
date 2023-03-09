@@ -134,12 +134,19 @@ func (test *boltTest) createTestSchema() {
 }
 
 func (test *boltTest) setupScanEntity() {
-	test.placesStore = NewBaseStore("places", nil, "application")
+	placeStoreDef := (&StoreDefinition[Entity]{
+		EntityType: "places",
+	}).WithBasePath("application")
+
+	test.placesStore = NewBaseStore(*placeStoreDef)
 	test.placesStore.AddIdSymbol("id", ast.NodeTypeString)
 	test.placesStore.AddSymbol("name", ast.NodeTypeString)
 	test.placesStore.AddSetSymbol("businesses", ast.NodeTypeString)
 
-	test.peopleStore = NewBaseStore("people", nil, "application")
+	personStoreDef := (&StoreDefinition[Entity]{
+		EntityType: "people",
+	}).WithBasePath("application")
+	test.peopleStore = NewBaseStore(*personStoreDef)
 	test.peopleStore.AddIdSymbol("id", ast.NodeTypeString)
 	test.peopleStore.AddSymbolWithKey("personAge", ast.NodeTypeInt64, "age")
 	test.peopleStore.AddSymbolWithKey("index", ast.NodeTypeInt64, "index32")
@@ -651,7 +658,7 @@ func (test *boltQueryTests) testReadIsolation(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		tb := newTypedBucket(nil, bucket)
+		tb := NewTypedBucket(nil, bucket)
 		tb.PutValue([]byte("a"), nil)
 		tb.PutValue([]byte("b"), nil)
 		tb.PutValue([]byte("c"), nil)
@@ -681,7 +688,7 @@ func (test *boltQueryTests) testReadIsolation(t *testing.T) {
 
 	err = test.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte("read-isolation"))
-		tb := newTypedBucket(nil, bucket)
+		tb := NewTypedBucket(nil, bucket)
 		tb.PutValue([]byte("aa"), nil)
 		tb.PutValue([]byte("f"), nil)
 		fmt.Println("wrote aa")
@@ -693,7 +700,7 @@ func (test *boltQueryTests) testReadIsolation(t *testing.T) {
 
 	err = test.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte("read-isolation"))
-		tb := newTypedBucket(nil, bucket)
+		tb := NewTypedBucket(nil, bucket)
 		tb.PutValue([]byte("aaa"), nil)
 		tb.PutValue([]byte("g"), nil)
 		fmt.Println("wrote aaa")
@@ -705,7 +712,7 @@ func (test *boltQueryTests) testReadIsolation(t *testing.T) {
 
 	err = test.db.View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket([]byte("read-isolation"))
-		tb := newTypedBucket(nil, bucket)
+		tb := NewTypedBucket(nil, bucket)
 		tb.PutValue([]byte("aaaa"), nil)
 		tb.PutValue([]byte("h"), nil)
 		fmt.Println("wrote aaaa")

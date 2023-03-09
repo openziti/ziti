@@ -71,6 +71,8 @@ type ListStore interface {
 	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
 	AddFkSetSymbol(name string, linkedType ListStore) EntitySetSymbol
 	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
+	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType ListStore, prefix ...string) *entitySymbol
+
 	AddExtEntitySymbols()
 	MakeSymbolPublic(name string)
 
@@ -79,6 +81,12 @@ type ListStore interface {
 	IsPublicSymbol(symbol string) bool
 
 	FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string
+
+	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
+	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
+	GetLinkCollection(name string) LinkCollection
+	GetRefCountedLinkCollection(name string) RefCountedLinkCollection
+	getLinks() map[string]LinkCollection
 
 	GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field string) []string
 	GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field string, forward bool) ast.SetCursor
@@ -101,46 +109,82 @@ type ListStore interface {
 	IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor
 }
 
-type CrudStore interface {
+type EntityChangeHandler func(ctx MutateContext, entityId string) error
+
+type EntityCreateHandler[E Entity] interface {
+	HandleEntityCreate(ctx MutateContext, entity Entity)
+}
+
+type EntityUpdateHandler[E Entity] interface {
+	HandleEntityUpdate(ctx MutateContext, old, new Entity)
+}
+
+type EntityDeleteHandler[E Entity] interface {
+	HandleEntityDelete(ctx MutateContext, entity Entity)
+}
+
+type ChildStoreStrategy[E Entity] interface {
+	CrudBaseStore
+	HandleUpdate(ctx MutateContext, E Entity, checker FieldChecker) (bool, error)
+	HandleDelete(ctx MutateContext, E Entity) error
+}
+
+type CrudBaseStore interface {
 	ListStore
 	Constrained
 
-	GetParentStore() CrudStore
-	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
-	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
-	GetLinkCollection(name string) LinkCollection
-	GetRefCountedLinkCollection(name string) RefCountedLinkCollection
+	GetParentStore() CrudBaseStore
 
-	Create(ctx MutateContext, entity Entity) error
-	Update(ctx MutateContext, entity Entity, checker FieldChecker) error
 	DeleteById(ctx MutateContext, id string) error
 	DeleteWhere(ctx MutateContext, query string) error
-	cleanupExternal(ctx MutateContext, id string) error
+	processDeleteConstraints(ctx MutateContext, id string) error
 
-	CreateChild(ctx MutateContext, parentId string, entity Entity) error
-	UpdateChild(ctx MutateContext, parentId string, entity Entity, checker FieldChecker) error
-	DeleteChild(ctx MutateContext, parentId string, entity Entity) error
-	ListChildIds(tx *bbolt.Tx, parentId string, childType string) []string
-
-	BaseLoadOneById(tx *bbolt.Tx, id string, entity Entity) (bool, error)
-	BaseLoadOneByQuery(tx *bbolt.Tx, query string, entity Entity) (bool, error)
-	BaseLoadOneChildById(tx *bbolt.Tx, id string, childId string, entity Entity) (bool, error)
-	NewStoreEntity() Entity
-
-	AddDeleteHandler(handler EntityChangeHandler)
-	AddUpdateHandler(handler EntityChangeHandler)
 	NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
 
 	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
 
-	AddEvent(ctx MutateContext, entity Entity, name events.EventName)
-	events.EventEmmiter
+	// CreateChild is used to create child entities
+	//
+	// Deprecated: only used in spot, which will be gone soon
+	CreateChild(ctx MutateContext, parentId string, entity ChildEntity) error
+
+	// ListChildIds is used to list child entities
+	//
+	// Deprecated: only used in spot, which will be gone soon
+	ListChildIds(tx *bbolt.Tx, parentId string, childType string) []string
+
+	// BaseLoadOneChildById is used to load child entities
+	//
+	// Deprecated: only used in spot, which will be gone soon
+	BaseLoadOneChildById(tx *bbolt.Tx, id string, childId string, entity ChildEntity) (bool, error)
+}
+
+type CrudStore[E Entity] interface {
+	CrudBaseStore
+
+	RegisterChildStoreStrategy(childStoreStrategy ChildStoreStrategy[E])
+
+	Create(ctx MutateContext, entity E) error
+	Update(ctx MutateContext, entity E, checker FieldChecker) error
+
+	FindById(tx *bbolt.Tx, id string) (E, bool, error)
+	FindOneByQuery(tx *bbolt.Tx, query string) (E, bool, error)
+	LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, error)
+
+	GetEntityStrategy() EntityStrategy[E]
+	NewStoreEntity() E
+}
+
+type EntityStrategy[E Entity] interface {
+	New() E
+	LoadEntity(entity E, bucket *TypedBucket)
+	PersistEntity(entity E, ctx *PersistContext)
 }
 
 type PersistContext struct {
 	MutateContext
 	Id           string
-	Store        CrudStore
+	Store        CrudBaseStore
 	Bucket       *TypedBucket
 	FieldChecker FieldChecker
 	IsCreate     bool
@@ -230,9 +274,18 @@ func (ctx *PersistContext) ProceedWithSet(field string) bool {
 type Entity interface {
 	GetId() string
 	SetId(id string)
-	LoadValues(store CrudStore, bucket *TypedBucket)
-	SetValues(ctx *PersistContext)
+	//	LoadValues(store CrudStore, bucket *TypedBucket)
+	//	SetValues(ctx *PersistContext)
 	GetEntityType() string
+}
+
+// ChildEntity is an Entity that can be loaded and persisted
+//
+// Deprecated: Only used by Child entity functionality which is going away
+type ChildEntity interface {
+	Entity
+	LoadValues(bucket *TypedBucket)
+	SetValues(ctx *PersistContext)
 }
 
 type ExtEntity interface {
@@ -338,4 +391,18 @@ func (entity *BaseExtEntity) UpdateBaseValues(ctx *PersistContext) {
 	now := time.Now()
 	ctx.Bucket.SetTimeP(FieldUpdatedAt, &now, nil)
 	ctx.Bucket.PutMap(FieldTags, entity.Tags, ctx.FieldChecker, false)
+}
+
+type NilEntity struct{}
+
+func (n NilEntity) GetId() string {
+	panic("NilEntity methods should never be called")
+}
+
+func (n NilEntity) SetId(string) {
+	panic("NilEntity methods should never be called")
+}
+
+func (n NilEntity) GetEntityType() string {
+	panic("NilEntity methods should never be called")
 }

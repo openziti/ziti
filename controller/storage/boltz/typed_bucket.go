@@ -89,10 +89,10 @@ func ErrBucket(err error) *TypedBucket {
 }
 
 func newRootTypedBucket(bucket *bbolt.Bucket) *TypedBucket {
-	return newTypedBucket(nil, bucket)
+	return NewTypedBucket(nil, bucket)
 }
 
-func newTypedBucket(parent *TypedBucket, bucket *bbolt.Bucket) *TypedBucket {
+func NewTypedBucket(parent *TypedBucket, bucket *bbolt.Bucket) *TypedBucket {
 	return &TypedBucket{
 		Bucket:          bucket,
 		parent:          parent,
@@ -124,13 +124,13 @@ func (bucket *TypedBucket) GetOrCreateBucket(name string) *TypedBucket {
 	key := []byte(name)
 	child := bucket.Bucket.Bucket(key)
 	if child != nil {
-		return newTypedBucket(bucket, child)
+		return NewTypedBucket(bucket, child)
 	}
 	child, err := bucket.CreateBucketIfNotExists(key)
 	if err != nil {
 		return ErrBucket(err)
 	}
-	return newTypedBucket(bucket, child)
+	return NewTypedBucket(bucket, child)
 }
 
 func (bucket *TypedBucket) GetBucket(name string) *TypedBucket {
@@ -149,7 +149,7 @@ func (bucket *TypedBucket) GetBucketByKey(key []byte) *TypedBucket {
 	if child == nil {
 		return nil
 	}
-	return newTypedBucket(bucket, child)
+	return NewTypedBucket(bucket, child)
 }
 
 func (bucket *TypedBucket) DeleteEntity(id string) {
@@ -222,7 +222,7 @@ func (bucket *TypedBucket) EmptyBucket(name string) (*TypedBucket, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newTypedBucket(bucket, child), nil
+	return NewTypedBucket(bucket, child), nil
 }
 
 func GetTypeAndValue(bytes []byte) (FieldType, []byte) {

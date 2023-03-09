@@ -18,6 +18,7 @@ package boltz
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
@@ -339,7 +340,7 @@ func (index *uniqueIndex) ProcessBeforeDelete(ctx *IndexingContext) {
 }
 
 func (index *uniqueIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
-	mutateCtx := NewMutateContext(tx)
+	mutateCtx := NewMutateContext("db-integrity-check", context.Background()).setTx(tx)
 	indexBucket := index.getIndexBucket(tx)
 	cursor := indexBucket.Cursor()
 	store := index.symbol.GetStore()
@@ -376,7 +377,7 @@ func (index *uniqueIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(
 
 		if idxId == nil {
 			if fix {
-				ctx := store.(*BaseStore).NewIndexingContext(false, mutateCtx, string(id), nil)
+				ctx := store.(CrudBaseStore).NewIndexingContext(false, mutateCtx, string(id), nil)
 				if err := index.processIntegrityFix(ctx); err != nil {
 					return err
 				}
@@ -926,8 +927,8 @@ func (index *fkDeleteCascadeConstraint) ProcessBeforeDelete(ctx *IndexingContext
 		if ctx.ErrHolder.SetError(err) {
 			return
 		}
-		targetStore := index.symbol.GetStore().(*BaseStore)
-		mutateCtx := NewMutateContext(ctx.Tx())
+
+		targetStore := index.symbol.GetStore().(CrudBaseStore)
 
 		if index.cascadeType == CascadeNone {
 			for cursor := targetStore.IterateValidIds(ctx.Tx(), filter); cursor.IsValid(); cursor.Next() {
@@ -944,7 +945,7 @@ func (index *fkDeleteCascadeConstraint) ProcessBeforeDelete(ctx *IndexingContext
 		if index.cascadeType == CascadeDelete {
 			cursor := targetStore.IterateValidIds(ctx.Tx(), filter)
 			for cursor.IsValid() {
-				if ctx.ErrHolder.SetError(targetStore.DeleteById(mutateCtx, string(cursor.Current()))) {
+				if ctx.ErrHolder.SetError(targetStore.DeleteById(ctx.Ctx, string(cursor.Current()))) {
 					return
 				}
 

@@ -17,6 +17,7 @@
 package boltz
 
 import (
+	"context"
 	"github.com/kataras/go-events"
 	"go.etcd.io/bbolt"
 )
@@ -27,59 +28,94 @@ type CommitAction interface {
 
 type MutateContext interface {
 	Tx() *bbolt.Tx
-	AddEvent(em events.EventEmmiter, name events.EventName, entity Entity)
+	setTx(tx *bbolt.Tx) MutateContext
 	IsSystemContext() bool
 	GetSystemContext() MutateContext
+	Context() context.Context
+	UpdateContext(func(ctx context.Context) context.Context) MutateContext
+	GetChangeAuthor() string
 }
 
 type mutateEvent struct {
 	em     events.EventEmmiter
 	entity Entity
 	name   events.EventName
+	ctx    context.Context
 }
 
 func (self *mutateEvent) Exec() {
 	self.em.Emit(self.name, self.entity)
 }
 
-func (self *mutateEvent) Matches(i interface{}) bool {
+func (self *mutateEvent) Matches(interface{}) bool {
 	return false
 }
 
-func NewMutateContext(tx *bbolt.Tx) MutateContext {
-	context := &mutateContext{tx: tx}
-	tx.OnCommit(context.handleCommit)
-	return context
+func NewMutateContext(changeAuthor string, context context.Context) MutateContext {
+	ctx := &mutateContext{
+		ctx:          context,
+		changeAuthor: changeAuthor,
+	}
+	return ctx
+}
+
+func NewTxMutateContext(context context.Context, tx *bbolt.Tx) MutateContext {
+	ctx := &mutateContext{
+		ctx: context,
+	}
+	ctx.setTx(tx)
+	return ctx
 }
 
 type mutateContext struct {
-	tx     *bbolt.Tx
-	events []CommitAction
+	tx           *bbolt.Tx
+	events       []CommitAction
+	ctx          context.Context
+	changeAuthor string
 }
 
-func (context *mutateContext) GetSystemContext() MutateContext {
-	return NewSystemMutateContext(context)
+func (self *mutateContext) GetSystemContext() MutateContext {
+	return NewSystemMutateContext(self)
 }
 
-func (context *mutateContext) IsSystemContext() bool {
+func (self *mutateContext) IsSystemContext() bool {
 	return false
 }
 
-func (context *mutateContext) Tx() *bbolt.Tx {
-	return context.tx
+func (self *mutateContext) Tx() *bbolt.Tx {
+	return self.tx
 }
 
-func (context *mutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
-	context.events = append(context.events, &mutateEvent{
+func (self *mutateContext) setTx(tx *bbolt.Tx) MutateContext {
+	self.tx = tx
+	tx.OnCommit(self.handleCommit)
+	return self
+}
+
+func (self *mutateContext) Context() context.Context {
+	return self.ctx
+}
+
+func (self *mutateContext) GetChangeAuthor() string {
+	return self.changeAuthor
+}
+
+func (self *mutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
+	self.ctx = f(self.ctx)
+	return self
+}
+
+func (self *mutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
+	self.events = append(self.events, &mutateEvent{
 		em:     em,
 		entity: entity,
 		name:   name,
 	})
 }
 
-func (context *mutateContext) handleCommit() {
+func (self *mutateContext) handleCommit() {
 	go func() {
-		for _, event := range context.events {
+		for _, event := range self.events {
 			event.Exec()
 		}
 	}()
@@ -106,10 +142,22 @@ func (self *systemMutateContext) Tx() *bbolt.Tx {
 	return self.wrapped.Tx()
 }
 
-func (self *systemMutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
-	self.wrapped.AddEvent(em, name, entity)
+func (self *systemMutateContext) setTx(tx *bbolt.Tx) MutateContext {
+	return self.wrapped.setTx(tx)
 }
 
 func (self *systemMutateContext) IsSystemContext() bool {
 	return true
+}
+
+func (self *systemMutateContext) Context() context.Context {
+	return self.wrapped.Context()
+}
+
+func (self *systemMutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
+	return self.wrapped.UpdateContext(f)
+}
+
+func (self *systemMutateContext) GetChangeAuthor() string {
+	return self.GetChangeAuthor()
 }

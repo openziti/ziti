@@ -26,13 +26,13 @@ var _ EntitySymbol = (*entityIdSymbol)(nil)
 var _ EntitySymbol = (*entitySetSymbolImpl)(nil)
 
 type entityMapSymbol struct {
-	store      *BaseStore
+	store      ListStore
 	key        string
 	symbolType ast.NodeType
 	prefix     []string
 }
 
-func (self *entityMapSymbol) createElementSymbol(name string, parts []string) *entitySymbol {
+func (self *entityMapSymbol) createElementSymbol(name string, parts []string) EntitySymbol {
 	var prefix []string
 	prefix = append(prefix, self.prefix...)
 	prefix = append(prefix, self.key)
