@@ -48,7 +48,11 @@ function _setup_ziti_network {
   if [[ "${ZITI_NETWORK-}" == "" ]]; then ZITI_NETWORK="$(hostname -s)"; export ZITI_NETWORK; else echo "ZITI_NETWORK overridden: ${ZITI_NETWORK}"; fi
 }
 
-function _get_file_overwrite_permission() {
+function _set_ziti_bin_dir {
+  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"; fi
+}
+
+function _get_file_overwrite_permission {
   local file_path="${1-}"
 
   if [[ -f "${file_path}" ]]; then
@@ -298,7 +302,7 @@ function setupEnvironment {
   getLatestZitiVersion  # ZITI_BINARIES_FILE & ZITI_BINARIES_VERSION
 
   # Must run after the above (dependent on other variables)
-  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"; fi
+  _set_ziti_bin_dir
 
   # Controller Values
   if [[ "${ZITI_CTRL_NAME-}" == "" ]]; then export ZITI_CTRL_NAME="${ZITI_NETWORK}"; else echo "ZITI_CTRL_NAME overridden: ${ZITI_CTRL_NAME}"; fi
@@ -327,7 +331,7 @@ function setupEnvironment {
   mkdir -p "${ZITI_HOME}/db"
   mkdir -p "${ZITI_PKI}"
 
-  if [[ "${ENV_FILE-}" == "" ]]; then export ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"; else echo "ENV_FILE overridden: ${ENV_FILE}"; fi
+  if [[ "${ZITI_ENV_FILE-}" == "" ]]; then export ZITI_ENV_FILE="${ZITI_HOME}/${ZITI_NETWORK}.env"; else echo "ZITI_ENV_FILE overridden: ${ZITI_ENV_FILE}"; fi
 
   echo -e "$(GREEN "Your OpenZiti environment has been set up successfully.")"
   echo ""
@@ -339,13 +343,13 @@ function persistEnvironmentValues {
   # Get the file path
   filepath="${1-}"
   if [[ "" == "${filepath}" ]]; then
-    _check_env_variable ENV_FILE
+    _check_env_variable ZITI_ENV_FILE
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
-      echo -e "$(RED "  --- persistEnvironment must take a parameter or have ENV_FILE set ---")"
+      echo -e "$(RED "  --- persistEnvironment must take a parameter or have ZITI_ENV_FILE set ---")"
       return 1
     else
-      filepath="${ENV_FILE}"
+      filepath="${ZITI_ENV_FILE}"
     fi
   fi
 
@@ -583,7 +587,7 @@ function getZiti {
     default_path="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"
     echo -en "The path for ziti binaries has not been set, use the default (${default_path})? (Y/n) "
     read -r reply
-    if [[ -z "${reply}" || ${reply} =~ [yY] ]]; then
+    if [[ -z "${reply}" || ${reply} =~ [yY]* ]]; then
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
     else
@@ -625,15 +629,52 @@ function getZiti {
       echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR}")"
       return 1
     fi
-
-    # Get the download link
-    zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
-    echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ziti_binaries_file_abspath}")"
-    curl -Ls "${zitidl}" -o "${ziti_binaries_file_abspath}"
   else
-    echo -e "$(YELLOW 'Binaries already exist, using existing binaries at ')$(BLUE "${ZITI_BIN_DIR}")"
-    return 0
+    echo "ZITI_BIN_DIR/ziti does exist"
+    # Get the current version and compare with latest
+    local currentVersion
+    currentVersion="v0.27.4"     # "$("${ZITI_BIN_DIR}"/ziti -v) "
+    if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
+      # Prompt user for new download
+      echo -en "There is a newer version of OpenZiti, would you like to download it (Y/n)?"
+      read -r reply
+      if [[ -z "${reply}" || "${reply}" == [Yy]* ]]; then
+        # Update the ZITI_BIN_DIR path to point to the latest version
+        unset ZITI_BIN_DIR
+        _set_ziti_bin_dir
+        # Make the directory
+        mkdir -p "${ZITI_BIN_DIR}"
+        retVal=$?
+        if [[ "${retVal}" != 0 ]]; then
+          echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR}")"
+          return 1
+        fi
+
+        # Update the .env file with the new downloaded version
+        if ! test -f "${ZITI_ENV_FILE}"; then
+          echo -e "  * $(YELLOW "WARN: The OpenZiti Environment file could not be found to update ziti binary related paths")"
+        else
+          sed "s/export ZITI_BIN_DIR=.*/export ZITI_BIN_DIR=${ZITI_BIN_DIR}/g"
+          sed "s/export ZITI_BINARIES_VERSION=.*/export ZITI_BINARIES_VERSION=${ZITI_BINARIES_VERSION}/g"
+          sed "s/export ZITI_BINARIES_FILE=.*/export ZITI_BINARIES_FILE=${ZITI_BINARIES_FILE}/g"
+          sed "s/export ZITI_BINARIES_FILE_ABSPATH=.*/d"
+        fi
+
+        echo -e "$(YELLOW 'Getting latest binaries ')$(BLUE "${ZITI_BIN_DIR}")"
+      else
+        echo -e "$(YELLOW 'Using existing binaries at ')$(BLUE "${ZITI_BIN_DIR}")"
+        return 0
+      fi
+    else
+      echo -e "$(YELLOW 'Latest binaries already exist, using existing binaries at ')$(BLUE "${ZITI_BIN_DIR}")"
+      return 0
+    fi
   fi
+
+  # Get the download link
+  zitidl="https://github.com/openziti/ziti/releases/download/${ZITI_BINARIES_VERSION-}/${ZITI_BINARIES_FILE}"
+  echo -e 'Downloading '"$(BLUE "${zitidl}")"' to '"$(BLUE "${ziti_binaries_file_abspath}")"
+  curl -Ls "${zitidl}" -o "${ziti_binaries_file_abspath}"
 
   # Unzip the files
   tar -xf "${ziti_binaries_file_abspath}" --directory "${ZITI_BIN_DIR}"
