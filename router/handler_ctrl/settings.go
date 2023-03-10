@@ -21,21 +21,11 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
-	"strings"
 )
-
-// CtrlAddressChanger provides indirect access to underlying configuration without creating
-// import loops w/ *router.Config.
-type CtrlAddressChanger interface {
-	CreateBackup() (string, error)
-	UpdateControllerEndpoint(address string) error
-	Save() error
-	CurrentCtrlAddress() string
-}
 
 // settingsHandler is a catch-all handler for all settings message (currently only sent on router connect).
 type settingsHandler struct {
-	config CtrlAddressChanger
+	updater CtrlAddressUpdater
 }
 
 func (handler *settingsHandler) ContentType() int32 {
@@ -54,7 +44,7 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 			switch settingType {
 			case int32(ctrl_pb.SettingTypes_NewCtrlAddress):
 				newAddress := string(settingValue)
-				handler.newCtrlAddress(newAddress)
+				handler.updater.UpdateCtrlEndpoints([]string{newAddress})
 			default:
 				log.Error("unknown setting type, ignored")
 			}
@@ -64,49 +54,8 @@ func (handler *settingsHandler) HandleReceive(msg *channel.Message, ch channel.C
 	}
 }
 
-func newSettingsHandler(config CtrlAddressChanger) channel.TypedReceiveHandler {
+func newSettingsHandler(updater CtrlAddressUpdater) channel.TypedReceiveHandler {
 	return &settingsHandler{
-		config: config,
+		updater: updater,
 	}
-}
-
-// newCtrlAddress interrogates the current configuration for controller ctrl address updates.
-// If necessary it will create a backup of the current config, alter the runtime ctrl address,
-// and save a new version of the router configuration in place.
-func (handler *settingsHandler) newCtrlAddress(newAddress string) {
-	currentAddress := strings.TrimSpace(handler.config.CurrentCtrlAddress())
-	newAddress = strings.TrimSpace(newAddress)
-
-	log := pfxlog.Logger().WithFields(map[string]interface{}{
-		"newAddress":     newAddress,
-		"currentAddress": currentAddress,
-	})
-
-	log.Info("received new controller address header")
-
-	if currentAddress == newAddress {
-		log.Warn("ignoring new controller address, same as current value")
-		return
-	}
-
-	log.Info("new controller address detect creating backup and saving new configuration")
-	if destBackupPath, err := handler.config.CreateBackup(); err == nil {
-		log.WithField("backupPath", destBackupPath).Info("backup configuration created")
-	} else {
-		log.WithError(err).Error("could not create configuration backup")
-		return
-	}
-
-	if err := handler.config.UpdateControllerEndpoint(newAddress); err != nil {
-		log.WithError(err).Error("could not update controller endpoint address")
-		return
-	}
-
-	if err := handler.config.Save(); err != nil {
-		log.WithError(err).Error("could not save new configuration")
-		return
-	}
-
-	log.Info("successfully saved new controller address")
-
 }

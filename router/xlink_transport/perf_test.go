@@ -61,6 +61,10 @@ func (t testUnderlay) SetWriteTimeout(time.Duration) error {
 	return nil
 }
 
+func (t testUnderlay) SetWriteDeadline(time.Time) error {
+	return nil
+}
+
 func (t testUnderlay) GetLocalAddr() net.Addr {
 	panic("implement me")
 }

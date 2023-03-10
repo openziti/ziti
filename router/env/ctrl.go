@@ -17,67 +17,24 @@
 package env
 
 import (
-	"fmt"
 	"sync/atomic"
 	"time"
 
 	"github.com/openziti/channel/v2"
-	"github.com/openziti/foundation/v2/concurrenz"
-	"github.com/openziti/foundation/v2/errorz"
 )
-
-func NewDefaultHeartbeatOptions() *HeartbeatOptions {
-	return &HeartbeatOptions{
-		HeartbeatOptions:  *channel.DefaultHeartbeatOptions(),
-		UnresponsiveAfter: 5 * time.Second,
-	}
-}
-
-func NewHeartbeatOptions(options *channel.HeartbeatOptions) (*HeartbeatOptions, error) {
-	unresponsiveAfter, err := options.GetDuration("unresponsiveAfter")
-	if err != nil {
-		return nil, err
-	}
-	result := NewDefaultHeartbeatOptions()
-	result.HeartbeatOptions = *options
-	if unresponsiveAfter != nil {
-		result.UnresponsiveAfter = *unresponsiveAfter
-	}
-	return result, nil
-}
-
-type HeartbeatOptions struct {
-	channel.HeartbeatOptions
-	UnresponsiveAfter time.Duration
-}
-
-type CtrlChannel interface {
-	Channel() channel.Channel
-	DefaultRequestTimeout() time.Duration
-}
 
 type NetworkController interface {
 	Channel() channel.Channel
+	Address() string
 	Latency() time.Duration
 	HeartbeatCallback() channel.HeartbeatCallback
 	IsUnresponsive() bool
 	isMoreResponsive(other NetworkController) bool
 }
 
-type NetworkControllers interface {
-	Add(ch channel.Channel) (NetworkController, error)
-	GetAll() map[string]NetworkController
-	AnyCtrlChannel() channel.Channel
-	GetCtrlChannel(ctrlId string) channel.Channel
-	GetCtrlChannelByAddress(address string) (ctrlId string, ch channel.Channel)
-	DefaultRequestTimeout() time.Duration
-	ForEach(f func(ctrlId string, ch channel.Channel))
-	Close() error
-	CloseAndRemoveByAddress(address string) error
-}
-
 type networkCtrl struct {
 	ch               channel.Channel
+	address          string
 	heartbeatOptions *HeartbeatOptions
 	lastTx           int64
 	lastRx           int64
@@ -91,6 +48,10 @@ func (self *networkCtrl) HeartbeatCallback() channel.HeartbeatCallback {
 
 func (self *networkCtrl) Channel() channel.Channel {
 	return self.ch
+}
+
+func (self *networkCtrl) Address() string {
+	return self.address
 }
 
 func (self *networkCtrl) Latency() time.Duration {
@@ -140,91 +101,27 @@ func (self *networkCtrl) CheckHeartBeat() {
 	}
 }
 
-func NewNetworkControllers(defaultRequestTimeout time.Duration, heartbeatOptions *HeartbeatOptions) NetworkControllers {
-	return &networkControllers{
-		heartbeatOptions:      heartbeatOptions,
-		defaultRequestTimeout: defaultRequestTimeout,
+func NewDefaultHeartbeatOptions() *HeartbeatOptions {
+	return &HeartbeatOptions{
+		HeartbeatOptions:  *channel.DefaultHeartbeatOptions(),
+		UnresponsiveAfter: 5 * time.Second,
 	}
 }
 
-type networkControllers struct {
-	heartbeatOptions      *HeartbeatOptions
-	defaultRequestTimeout time.Duration
-	ctrls                 concurrenz.CopyOnWriteMap[string, NetworkController]
-}
-
-func (self *networkControllers) Add(ch channel.Channel) (NetworkController, error) {
-	ctrl := &networkCtrl{
-		ch:               ch,
-		heartbeatOptions: self.heartbeatOptions,
+func NewHeartbeatOptions(options *channel.HeartbeatOptions) (*HeartbeatOptions, error) {
+	unresponsiveAfter, err := options.GetDuration("unresponsiveAfter")
+	if err != nil {
+		return nil, err
 	}
-	if existing := self.ctrls.Get(ctrl.Channel().Id()); existing != nil {
-		return nil, fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())
+	result := NewDefaultHeartbeatOptions()
+	result.HeartbeatOptions = *options
+	if unresponsiveAfter != nil {
+		result.UnresponsiveAfter = *unresponsiveAfter
 	}
-	self.ctrls.Put(ctrl.Channel().Id(), ctrl)
-	return ctrl, nil
+	return result, nil
 }
 
-func (self *networkControllers) GetAll() map[string]NetworkController {
-	return self.ctrls.AsMap()
-}
-
-func (self *networkControllers) AnyCtrlChannel() channel.Channel {
-	var current NetworkController
-	for _, ctrl := range self.ctrls.AsMap() {
-		if current == nil || ctrl.isMoreResponsive(current) {
-			current = ctrl
-		}
-	}
-	if current == nil {
-		return nil
-	}
-	return current.Channel()
-}
-
-func (self *networkControllers) GetCtrlChannel(controllerId string) channel.Channel {
-	if ctrl := self.ctrls.Get(controllerId); ctrl != nil {
-		return ctrl.Channel()
-	}
-	return nil
-}
-
-func (self *networkControllers) GetCtrlChannelByAddress(address string) (string, channel.Channel) {
-	for k, v := range self.ctrls.AsMap() {
-		if v.Channel().Underlay().GetLocalAddr().String() == address || v.Channel().Underlay().GetRemoteAddr().String() == address {
-			return k, v.Channel()
-		}
-	}
-	return "", nil
-}
-
-func (self *networkControllers) DefaultRequestTimeout() time.Duration {
-	return self.defaultRequestTimeout
-}
-
-func (self *networkControllers) ForEach(f func(controllerId string, ch channel.Channel)) {
-	for controllerId, ctrl := range self.ctrls.AsMap() {
-		f(controllerId, ctrl.Channel())
-	}
-}
-
-func (self *networkControllers) Close() error {
-	var errors errorz.MultipleErrors
-	self.ForEach(func(_ string, ch channel.Channel) {
-		if err := ch.Close(); err != nil {
-			errors = append(errors, err)
-		}
-	})
-	return errors.ToError()
-}
-
-func (self *networkControllers) CloseAndRemoveByAddress(address string) error {
-	ctrlId, ch := self.GetCtrlChannelByAddress(address)
-	if ch != nil {
-		delete(self.ctrls.AsMap(), ctrlId)
-		if err := ch.Close(); err != nil {
-			return err
-		}
-	}
-	return nil
+type HeartbeatOptions struct {
+	channel.HeartbeatOptions
+	UnresponsiveAfter time.Duration
 }

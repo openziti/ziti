@@ -35,13 +35,12 @@ import (
 type bindHandler struct {
 	env                env.RouterEnv
 	forwarder          *forwarder.Forwarder
-	ctrlAddressChanger CtrlAddressChanger
 	xgDialerPool       goroutines.Pool
 	linkDialerPool     goroutines.Pool
 	ctrlAddressUpdater CtrlAddressUpdater
 }
 
-func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressChanger CtrlAddressChanger, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
+func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctrlAddressUpdater CtrlAddressUpdater) (channel.BindHandler, error) {
 	linkDialerPoolConfig := goroutines.PoolConfig{
 		QueueSize:   uint32(forwarder.Options.LinkDial.QueueLength),
 		MinWorkers:  0,
@@ -81,7 +80,6 @@ func NewBindHandler(routerEnv env.RouterEnv, forwarder *forwarder.Forwarder, ctr
 	return &bindHandler{
 		env:                routerEnv,
 		forwarder:          forwarder,
-		ctrlAddressChanger: ctrlAddressChanger,
 		xgDialerPool:       xgDialerPool,
 		linkDialerPool:     linkDialerPool,
 		ctrlAddressUpdater: ctrlAddressUpdater,
@@ -95,16 +93,16 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
 	binding.AddTypedReceiveHandler(newTraceHandler(self.env.GetRouterId(), self.forwarder.TraceController(), binding.GetChannel()))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.env, self.forwarder))
-	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
+	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressUpdater))
 	binding.AddTypedReceiveHandler(newFaultHandler(self.env.GetXlinkRegistry()))
 	binding.AddTypedReceiveHandler(newUpdateCtrlAddressesHandler(self.ctrlAddressUpdater))
 
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 	latency.AddLatencyProbeResponder(binding)
 
-	ctrl, err := self.env.GetNetworkControllers().Add(binding.GetChannel())
-	if err != nil {
-		return err
+	ctrl := self.env.GetNetworkControllers().GetNetworkController(binding.GetChannel().Id())
+	if ctrl == nil {
+		return errors.Errorf("controller [%v] not registered, cannot configure", binding.GetChannel().Id())
 	}
 
 	channel.ConfigureHeartbeat(binding, self.env.GetHeartbeatOptions().SendInterval, self.env.GetHeartbeatOptions().CheckInterval, ctrl.HeartbeatCallback())
