@@ -159,7 +159,7 @@ function verifyZitiVersionExists {
 
   ziticurl="$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/tags/"${ZITI_VERSION_OVERRIDE}")"
   # shellcheck disable=SC2155
-  export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
+  export ZITI_BINARIES_FILE=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
   # shellcheck disable=SC2155
   export ZITI_BINARIES_VERSION=$(echo "${ziticurl}" | tr '\r\n' ' ' | jq -r '.tag_name')
 
@@ -201,7 +201,7 @@ function getLatestZitiVersion {
   if [[ "${ZITI_BINARIES_VERSION-}" == "" ]]; then
     zitilatest=$(curl -s https://${GITHUB_TOKEN:+${GITHUB_TOKEN}@}api.github.com/repos/openziti/ziti/releases/latest)
     # shellcheck disable=SC2155
-    export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}"'")) | .name')
+    export ZITI_BINARIES_FILE=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.assets[] | select(.name | startswith("'"ziti-${ZITI_OSTYPE}-${ZITI_ARCH}-"'")) | .name')
     # shellcheck disable=SC2155
     export ZITI_BINARIES_VERSION=$(echo "${zitilatest}" | tr '\r\n' ' ' | jq -r '.tag_name')
   fi
