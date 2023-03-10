@@ -23,6 +23,7 @@
 * github.com/openziti/sdk-golang: [v0.18.28 -> v0.18.30](https://github.com/openziti/sdk-golang/compare/v0.18.28...v0.18.30)
 * github.com/openziti/transport/v2: [v2.0.51 -> v2.0.52](https://github.com/openziti/transport/compare/v2.0.51...v2.0.52)
 * github.com/openziti/ziti: [v0.27.5 -> v0.27.6](https://github.com/openziti/ziti/compare/v0.27.5...v0.27.6)
+    * [Issue #1031](https://github.com/openziti/ziti/issues/1031) - Fixed quickstart bug with arm and arm64 ambiguity when running quickstart on arm architecture
 
 
 # Release 0.27.5
