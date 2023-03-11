@@ -19,11 +19,16 @@ BANNER
 
 function _usage(){
     banner
-    echo -e "\n"\
+    echo -e " COMMANDS\n"\
+            "\t start\t\tstart miniziti (default)\n"\
+            "\t delete\t\tdelete miniziti\n"\
+            "\n OPTIONS\n"\
             "\t --quiet\tsuppress INFO messages\n"\
             "\t --verbose\tshow DEBUG messages\n"\
-            "\t --delete\tdelete miniziti\n"\
-            "\t --profile\tMINIKUBE_PROFILE (default is \"miniziti\")"
+            "\t --profile\tMINIKUBE_PROFILE (miniziti)\n"\
+            "\t --namespace\tZITI_NAMESPACE (MINIKUBE_PROFILE)\n"\
+            "\n DEBUG\n"\
+            "\t --charts\tZITI_CHARTS (openziti) alternative charts repo\n"
 }
 
 function checkDns(){
@@ -92,15 +97,13 @@ function getClientOttPath(){
 }
 
 function testClusterDns(){
-
-    if kubectl run "dnstest" --rm --tty --stdin --image=busybox --restart=Never -- \
+    if kubectl run "dnstest" --rm --tty --stdin --image busybox --restart Never -- \
         nslookup minicontroller.ziti | grep "$1" >/dev/null; then
-        echo "INFO: cluster dns is working"
+        echo "INFO: cluster dns test succeeded"
     else
         echo "ERROR: cluster dns test failed" >&2
         return 1
     fi
-
 }
 
 function main(){
@@ -116,21 +119,35 @@ function main(){
     # open a descriptor for debug messages
     exec 3>/dev/null
 
-    declare DETECTED_OS=$(detectOs) \
-            MINIKUBE_PROFILE \
-            DELETE_MINIZITI \
-            MINIKUBE_PROFILE \
+    # locals with defaults that never produce an error
+    declare DETECTED_OS \
+            MINIKUBE_PROFILE="miniziti" \
+            ZITI_NAMESPACE="miniziti" \
+            DELETE_MINIZITI=0 \
             MINIKUBE_NODE_EXTERNAL \
-            DEBUG_MINIKUBE_TUNNEL
+            DEBUG_MINIKUBE_TUNNEL \
+            ZITI_CHARTS="openziti"
+
+    # local defaults that are inherited or may error
+    DETECTED_OS="$(detectOs)"
+    : "${DEBUG_MINIKUBE_TUNNEL:=0}"  # set env = 1 to trigger the minikube tunnel probe
 
 
     while (( $# )); do
         case "$1" in
+            start)          shift
+            ;;
+            delete)         DELETE_MINIZITI=1
+                            shift
+            ;;
             -p|--profile)   MINIKUBE_PROFILE="$2"
                             shift 2
             ;;
-            -d|--delete)    DELETE_MINIZITI=1
-                            shift
+            -n|--namespace) ZITI_NAMESPACE="$2"
+                            shift 2
+            ;;
+            --charts)       ZITI_CHARTS="$2"
+                            shift 2
             ;;
             -q|--quiet)     exec > /dev/null
                             shift
@@ -145,7 +162,7 @@ function main(){
         esac
     done
 
-    if [[ ${MINIKUBE_PROFILE:="miniziti"} == "miniziti" ]]; then
+    if [[ ${MINIKUBE_PROFILE} == "miniziti" ]]; then
         banner
     else
         # sanity check the profile name input
@@ -159,14 +176,22 @@ function main(){
     fi
 
     # delete and exit if --delete
-    (( ${DELETE_MINIZITI:-0} )) && {
+    (( DELETE_MINIZITI )) && {
         deleteMiniziti 10
         exit 0
     }
 
+    : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
+
+    echo "DEBUG: setting default "
+    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
+        config set-context "${MINIKUBE_PROFILE}" \
+            --namespace "${ZITI_NAMESPACE}" >/dev/null
+
     # start unless running
     echo "INFO: waiting for minikube to be ready"
-    if ! minikube --profile "${MINIKUBE_PROFILE}" status 2>/dev/null | grep -q "apiserver: Running"; then
+    if  ! minikube --profile "${MINIKUBE_PROFILE}" status 2>/dev/null \
+        | grep -q "apiserver: Running"; then
         echo "DEBUG: apiserver not running, starting minikube" >&3
         minikube --profile "${MINIKUBE_PROFILE}" start >/dev/null
     else
@@ -195,14 +220,16 @@ function main(){
     else
         echo "DEBUG: installing ingress-nginx" >&3
         # enable minikube addons for ingress-nginx
-        minikube --profile "${MINIKUBE_PROFILE}" addons enable ingress >/dev/null
-        minikube --profile "${MINIKUBE_PROFILE}" addons enable ingress-dns >/dev/null
+        minikube addons enable ingress \
+            --profile "${MINIKUBE_PROFILE}" >/dev/null
+        minikube addons enable ingress-dns \
+            --profile "${MINIKUBE_PROFILE}" >/dev/null
 
         echo "DEBUG: patching ingress-nginx deployment to enable ssl-passthrough" >&3
         kubectl patch deployment "ingress-nginx-controller" \
             --namespace ingress-nginx \
-            --type='json' \
-            --patch='[{"op": "add",
+            --type json \
+            --patch '[{"op": "add",
                 "path": "/spec/template/spec/containers/0/args/-",
                 "value":"--enable-ssl-passthrough"
             }]' >/dev/null
@@ -212,14 +239,14 @@ function main(){
     # wait for ingress-nginx
     kubectl wait jobs "ingress-nginx-admission-patch" \
         --namespace ingress-nginx \
-            --for condition=complete \
-            --timeout=120s >/dev/null
+        --for condition=complete \
+        --timeout 120s >/dev/null
 
     kubectl wait pods \
         --namespace ingress-nginx \
-        --for=condition=ready \
-        --selector=app.kubernetes.io/component=controller \
-        --timeout=120s >/dev/null
+        --for condition=ready \
+        --selector app.kubernetes.io/component=controller \
+        --timeout 120s >/dev/null
 
     echo "DEBUG: applying Custom Resource Definitions: Certificate, Issuer, and Bundle" >&3
     kubectl apply \
@@ -235,31 +262,38 @@ function main(){
         helm repo add openziti https://docs.openziti.io/helm-charts/ >/dev/null
     fi
 
-    if helm list --namespace ziti-controller --all | grep -q minicontroller; then
+    if helm list --namespace "${ZITI_NAMESPACE}" --all | grep -q minicontroller; then
         echo "INFO: upgrading openziti controller"
-        helm upgrade "minicontroller" openziti/ziti-controller \
-            --namespace ziti-controller \
+        helm upgrade "minicontroller" "${ZITI_CHARTS}/ziti-controller" \
+            --namespace "${ZITI_NAMESPACE}" \
             --set clientApi.advertisedHost="minicontroller.ziti" \
+            --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
     else
         echo "INFO: installing openziti controller"
-        helm install "minicontroller" openziti/ziti-controller \
-            --namespace ziti-controller --create-namespace \
+        helm install "minicontroller" "${ZITI_CHARTS}/ziti-controller" \
+            --namespace "${ZITI_NAMESPACE}" --create-namespace \
             --set clientApi.advertisedHost="minicontroller.ziti" \
+            --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
     fi
+
+    echo "DEBUG: setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
+    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
+        config set-context "${MINIKUBE_PROFILE}" \
+            --namespace "${ZITI_NAMESPACE}" >/dev/null
 
     for DEPLOYMENT in minicontroller-cert-manager trust-manager minicontroller; do
         echo "INFO: waiting for $DEPLOYMENT to be ready"
         kubectl wait deployments "$DEPLOYMENT" \
-            --namespace ziti-controller \
+            --namespace "${ZITI_NAMESPACE}" \
             --for condition=Available=True \
-            --timeout=240s >/dev/null
+            --timeout 240s >/dev/null
     done
 
     # wait to probe for the minikube tunnel until after controller deployment so there's at least one
     # ingress causing minikube to immediately prompt for sudo password
-    if  [[ -n "${DEBUG_MINIKUBE_TUNNEL:-}" ]] || [[ "${DETECTED_OS}" =~ Windows|macOS ]]; then
+    if  (( DEBUG_MINIKUBE_TUNNEL )) || [[ "${DETECTED_OS}" =~ Windows|macOS ]]; then
         echo "DEBUG: detected OS is ${DETECTED_OS}, probing for minikube tunnel" >&3
         if ! pgrep -f "minikube --profile ${MINIKUBE_PROFILE} tunnel" >/dev/null; then
             echo -e "ERROR: ${DETECTED_OS} OS requires a running minikube tunnel for ingresses."\
@@ -294,7 +328,7 @@ function main(){
         echo "DEBUG: patching coredns configmap with *.ziti forwarder to minikube ingress-dns nameserver" >&3
         kubectl patch configmap "coredns" \
             --namespace kube-system \
-            --patch="
+            --patch "
         data:
             Corefile: |
                 .:53 {
@@ -347,13 +381,14 @@ function main(){
 
     echo "DEBUG: fetching admin password from k8s secret to log in to ziti mgmt" >&3
     kubectl get secrets "minicontroller-admin-secret" \
-        --namespace ziti-controller \
+        --namespace "${ZITI_NAMESPACE}" \
         --output go-template='{{index .data "admin-password" | base64decode }}' \
         | xargs ziti edge login minicontroller.ziti:443 \
             --yes --username "admin" \
             --password >/dev/null
 
-    if ziti edge list edge-routers 'name="minirouter"' | grep -q minirouter; then
+    if  ziti edge list edge-routers 'name="minirouter"' \
+        | grep -q minirouter; then
         echo "DEBUG: updating minirouter" >&3
         ziti edge update edge-router "minirouter" \
             --role-attributes "public-routers" >/dev/null
@@ -365,27 +400,28 @@ function main(){
             --jwt-output-file /tmp/minirouter.jwt >/dev/null
     fi
 
-    if helm list --all --namespace ziti-router | grep -q minirouter; then
+    if  helm list --all --namespace "${ZITI_NAMESPACE}" \
+        | grep -q minirouter; then
         echo "DEBUG: upgrading router chart as 'minirouter'" >&3
-        helm upgrade "minirouter" openziti/ziti-router \
-            --namespace ziti-router \
+        helm upgrade "minirouter" "${ZITI_CHARTS}/ziti-router" \
+            --namespace "${ZITI_NAMESPACE}" \
             --set enrollmentJwt=\ \
             --set edge.advertisedHost=minirouter.ziti \
-            --set ctrl.endpoint=minicontroller-ctrl.ziti-controller.svc:6262 \
+            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:6262" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >/dev/null
     else
         echo "DEBUG: installing router chart as 'minirouter'" >&3
-        helm install "minirouter" openziti/ziti-router \
-            --namespace ziti-router --create-namespace \
+        helm install "minirouter" "${ZITI_CHARTS}/ziti-router" \
+            --namespace "${ZITI_NAMESPACE}" \
             --set-file enrollmentJwt=/tmp/minirouter.jwt \
             --set edge.advertisedHost=minirouter.ziti \
-            --set ctrl.endpoint=minicontroller-ctrl.ziti-controller.svc:6262 \
+            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:6262" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >/dev/null
     fi
 
     echo "INFO: waiting for minirouter to be ready"
     kubectl wait deployments "minirouter" \
-        --namespace ziti-router \
+        --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True >/dev/null
 
     echo "DEBUG: probing minirouter for online status" >&3
@@ -398,29 +434,31 @@ function main(){
         exit 1
     fi
 
-    if helm --namespace ziti-console list --all | grep -q miniconsole; then
+    if  helm --namespace "${ZITI_NAMESPACE}" list --all \
+        | grep -q miniconsole; then
         echo "DEBUG: upgrading console chart as 'miniconsole'" >&3
-        helm upgrade "miniconsole" openziti/ziti-console \
-            --namespace ziti-console \
+        helm upgrade "miniconsole" "${ZITI_CHARTS}/ziti-console" \
+            --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost=miniconsole.ziti \
-            --set settings.edgeControllers[0].url=https://minicontroller-client.ziti-controller.svc:443 \
+            --set "settings.edgeControllers[0].url=https://minicontroller-client.${ZITI_NAMESPACE}.svc:443" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-console/values-ingress-nginx.yaml >/dev/null
     else
         echo "DEBUG: installing console chart as 'miniconsole'" >&3
-        helm install "miniconsole" openziti/ziti-console \
-            --namespace ziti-console --create-namespace \
+        helm install "miniconsole" "${ZITI_CHARTS}/ziti-console" \
+            --namespace "${ZITI_NAMESPACE}" \
             --set ingress.advertisedHost=miniconsole.ziti \
-            --set settings.edgeControllers[0].url=https://minicontroller-client.ziti-controller.svc:443 \
+            --set "settings.edgeControllers[0].url=https://minicontroller-client.${ZITI_NAMESPACE}.svc:443" \
             --values https://docs.openziti.io/helm-charts/charts/ziti-console/values-ingress-nginx.yaml >/dev/null
     fi
 
     echo "INFO: waiting for miniconsole to be ready"
     kubectl wait deployments "miniconsole" \
-        --namespace ziti-console \
+        --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True \
-        --timeout=240s >/dev/null
+        --timeout 240s >/dev/null
 
-    if ! ziti edge list identities 'name="miniziti-client"' --csv | grep -q "miniziti-client"; then
+    if  ! ziti edge list identities 'name="miniziti-client"' --csv \
+        | grep -q "miniziti-client"; then
         echo "DEBUG: creating identity miniziti-client" >&3
         ziti edge create identity device "miniziti-client" \
             --jwt-output-file /tmp/miniziti-client.jwt --role-attributes testapi-clients >/dev/null
@@ -428,7 +466,8 @@ function main(){
         echo "DEBUG: ignoring identity miniziti-client" >&3
     fi
 
-    if ! ziti edge list identities 'name="testapi-host"' --csv | grep -q "testapi-host"; then
+    if  ! ziti edge list identities 'name="testapi-host"' --csv \
+        | grep -q "testapi-host"; then
         echo "DEBUG: creating identity testapi-host" >&3
         ziti edge create identity device "testapi-host" \
             --jwt-output-file /tmp/testapi-host.jwt --role-attributes testapi-hosts >/dev/null
@@ -436,7 +475,8 @@ function main(){
         echo "DEBUG: ignoring identity testapi-host" >&3
     fi
         
-    if ! ziti edge list configs 'name="testapi-intercept-config"' --csv | grep -q "testapi-intercept-config"; then
+    if  ! ziti edge list configs 'name="testapi-intercept-config"' --csv \
+        | grep -q "testapi-intercept-config"; then
         echo "DEBUG: creating config testapi-intercept-config" >&3
         ziti edge create config "testapi-intercept-config" intercept.v1 \
             '{"protocols":["tcp"],"addresses":["testapi.ziti"], "portRanges":[{"low":80, "high":80}]}' >/dev/null
@@ -444,7 +484,8 @@ function main(){
         echo "DEBUG: ignoring config testapi-intercept-config" >&3
     fi
         
-    if ! ziti edge list configs 'name="testapi-host-config"' --csv | grep -q "testapi-host-config"; then
+    if  ! ziti edge list configs 'name="testapi-host-config"' --csv \
+        | grep -q "testapi-host-config"; then
         echo "DEBUG: creating config testapi-host-config" >&3
         ziti edge create config "testapi-host-config" host.v1 \
             '{"protocol":"tcp", "address":"httpbin","port":8080}' >/dev/null
@@ -452,14 +493,16 @@ function main(){
         echo "DEBUG: ignoring config testapi-host-config" >&3
     fi
         
-    if ! ziti edge list services 'name="testapi-service"' --csv | grep -q "testapi-service"; then
+    if  ! ziti edge list services 'name="testapi-service"' --csv \
+        | grep -q "testapi-service"; then
         echo "DEBUG: creating service testapi-service" >&3
         ziti edge create service "testapi-service" --configs testapi-intercept-config,testapi-host-config >/dev/null
     else
         echo "DEBUG: ignoring service testapi-service" >&3
     fi
         
-    if ! ziti edge list service-policies 'name="testapi-bind-policy"' --csv | grep -q "testapi-bind-policy"; then
+    if  ! ziti edge list service-policies 'name="testapi-bind-policy"' --csv \
+        | grep -q "testapi-bind-policy"; then
         echo "DEBUG: creating service-policy testapi-bind-policy" >&3
         ziti edge create service-policy "testapi-bind-policy" Bind \
             --service-roles '@testapi-service' --identity-roles '#testapi-hosts' >/dev/null
@@ -467,7 +510,8 @@ function main(){
         echo "DEBUG: ignoring service-policy testapi-bind-policy" >&3
     fi
         
-    if ! ziti edge list service-policies 'name="testapi-dial-policy"' --csv | grep -q "testapi-dial-policy"; then
+    if  ! ziti edge list service-policies 'name="testapi-dial-policy"' --csv \
+        | grep -q "testapi-dial-policy"; then
         echo "DEBUG: creating service-policy testapi-dial-policy" >&3
         ziti edge create service-policy "testapi-dial-policy" Dial \
             --service-roles '@testapi-service' --identity-roles '#testapi-clients' >/dev/null
@@ -475,7 +519,8 @@ function main(){
         echo "DEBUG: ignoring service-policy testapi-dial-policy" >&3
     fi
         
-    if ! ziti edge list edge-router-policies 'name="public-routers"' --csv | grep -q "public-routers"; then
+    if  ! ziti edge list edge-router-policies 'name="public-routers"' --csv \
+        | grep -q "public-routers"; then
         echo "DEBUG: creating edge-router-policy public-routers" >&3
         ziti edge create edge-router-policy "public-routers" \
             --edge-router-roles '#public-routers' --identity-roles '#all' >/dev/null
@@ -483,7 +528,8 @@ function main(){
         echo "DEBUG: ignoring edge-router-policy public-routers" >&3
     fi
         
-    if ! ziti edge list service-edge-router-policies 'name="public-routers"' --csv | grep -q "public-routers"; then
+    if  ! ziti edge list service-edge-router-policies 'name="public-routers"' --csv \
+        | grep -q "public-routers"; then
         echo "DEBUG: creating service-edge-router-policy public-routers" >&3
         ziti edge create service-edge-router-policy "public-routers" \
             --edge-router-roles '#public-routers' --service-roles '#all' >/dev/null
@@ -493,14 +539,16 @@ function main(){
 
     if [[ -s /tmp/testapi-host.jwt ]]; then
         echo "DEBUG: enrolling /tmp/testapi-host.jwt" >&3
-        ziti edge enroll /tmp/testapi-host.jwt >/dev/null
+        # discard expected output that normally flows to stderr
+        ziti edge enroll /tmp/testapi-host.jwt 2>&1 \
+            grep -vE '^INFO\s+(generating.*key|enrolled\s+successfully)'
         rm -f /tmp/testapi-host.jwt
         echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
     fi
 
     if [[ -s /tmp/testapi-host.json ]]; then
         echo "DEBUG: installing httpbin chart as 'testapi-host'" >&3
-        helm install "testapi-host" openziti/httpbin \
+        helm install "testapi-host" "${ZITI_CHARTS}/httpbin" \
             --set-file zitiIdentity=/tmp/testapi-host.json \
             --set zitiServiceName=testapi-service >/dev/null
         rm -f /tmp/testapi-host.json
@@ -508,10 +556,13 @@ function main(){
     fi
 
     kubectl get secrets "minicontroller-admin-secret" \
-        --namespace ziti-controller \
-        --output go-template='{{"\nINFO: Your OpenZiti Console is here:\thttp://miniconsole.ziti\nINFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}{{"\n\n"}}'
+        --namespace "${ZITI_NAMESPACE}" \
+        --output go-template='{{"\n'\
+'INFO: Your OpenZiti Console is here:\thttp://miniconsole.ziti\n'\
+'INFO: The password for \"admin\" is:\t"}}{{index .data "admin-password" | base64decode }}'\
+'{{"\n\n"}}'
 
-    echo "INFO: Success! Remember to add your edge client identity '$(getClientOttPath ${DETECTED_OS})' in your tunneler, e.g. Ziti Desktop Edge."
+    echo "INFO: Success! Remember to add your edge client identity '$(getClientOttPath "${DETECTED_OS}")' in your tunneler, e.g. Ziti Desktop Edge."
 }
 
 main "$@"
