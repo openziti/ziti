@@ -135,7 +135,7 @@ function main(){
     # local strings with defaults that never produce an error
     declare DETECTED_OS \
             MINIKUBE_PROFILE="miniziti" \
-            ZITI_NAMESPACE="miniziti" \
+            ZITI_NAMESPACE \
             DELETE_MINIZITI=0 \
             MINIKUBE_NODE_EXTERNAL \
             DEBUG_MINIKUBE_TUNNEL \
