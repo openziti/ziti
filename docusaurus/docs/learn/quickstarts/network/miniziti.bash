@@ -51,11 +51,9 @@ function checkDns(){
 
 function deleteMiniziti(){ 
     local WAIT=10
-    if (( $# )) && [[ $1 =~ ^[0-9]+$ ]]; then
+    if [[ $1 =~ ^[0-9]+$ ]]; then
         WAIT="$1"
         shift
-    elif (( $# )); then
-        echo "WARN: ignoring extra params '$*', using default wait time ${WAIT}s" >&2
     else
         echo "DEBUG: no integer param detected to deleteMiniziti(), using default wait time ${WAIT}s" >&3 
     fi
@@ -82,7 +80,7 @@ function detectOs(){
 }
 
 function getClientOttPath(){
-    local ID_PATH=/tmp/miniziti-client.jwt
+    local ID_PATH="/tmp/${MINIKUBE_PROFILE}-client.jwt"
     if [[ $# -eq 1 ]]; then
         case $1 in
             macOS|Linux)     echo "$ID_PATH"
@@ -103,6 +101,20 @@ function testClusterDns(){
         echo "INFO: cluster dns test succeeded"
     else
         echo "ERROR: cluster dns test failed" >&2
+        return 1
+    fi
+}
+
+function validateDnsName(){
+    if ! [[ $# -eq 1 ]]; then
+        echo "ERROR: validateDnsName() takes one string param" >&2
+        return 1
+    fi
+    if grep -qP '(?=^.{4,253}$)(^(?:[a-zA-Z0-9](?:(?:[a-zA-Z0-9\-]){0,61}[a-zA-Z0-9])?)+[a-zA-Z0-9]$)' <<< "$1"; then
+        echo "DEBUG: '$1' is a valid DNS name" >&3
+        return 0
+    else
+        echo "ERROR: '$1' could not be validated as an unqualified DNS name which is limited to at least four alphanumeric and hyphen characters, starts with a letter, and does not end with a hyphen." >&2
         return 1
     fi
 }
@@ -143,7 +155,8 @@ function main(){
             delete)         DELETE_MINIZITI=1
                             shift
             ;;
-            -p|--profile)   MINIKUBE_PROFILE="$2"
+            -p|--profile)   validateDnsName "$2"
+                            MINIKUBE_PROFILE="$2"
                             shift 2
             ;;
             -n|--namespace) ZITI_NAMESPACE="$2"
@@ -495,13 +508,13 @@ function main(){
     ## Ensure OpenZiti Identities and Services are Created
     #
 
-    if  ! ziti edge list identities 'name="miniziti-client"' --csv \
-        | grep -q "miniziti-client"; then
-        echo "DEBUG: creating identity miniziti-client" >&3
-        ziti edge create identity device "miniziti-client" \
-            --jwt-output-file /tmp/miniziti-client.jwt --role-attributes testapi-clients >/dev/null
+    if  ! ziti edge list identities "name=\"${MINIKUBE_PROFILE}-client\"" --csv \
+        | grep -q "${MINIKUBE_PROFILE}-client"; then
+        echo "DEBUG: creating identity ${MINIKUBE_PROFILE}-client" >&3
+        ziti edge create identity device "${MINIKUBE_PROFILE}-client" \
+            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes testapi-clients >/dev/null
     else
-        echo "DEBUG: ignoring identity miniziti-client" >&3
+        echo "DEBUG: ignoring identity ${MINIKUBE_PROFILE}-client" >&3
     fi
 
     if  ! ziti edge list identities 'name="testapi-host"' --csv \
