@@ -591,10 +591,19 @@ function main(){
     if [[ -s /tmp/testapi-host.jwt ]]; then
         echo "DEBUG: enrolling /tmp/testapi-host.jwt" >&3
         # discard expected output that normally flows to stderr
-        ziti edge enroll /tmp/testapi-host.jwt 2>&1 \
-            | grep -vE '(generating.*key|enrolled\s+successfully)'
-        rm -f /tmp/testapi-host.jwt
-        echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
+        ENROLL_OUT="$(
+            ziti edge enroll /tmp/testapi-host.jwt 2>&1 \
+                | grep -vE '(generating.*key|enrolled\s+successfully)' \
+                || true
+        )"
+        if [[ -z "${ENROLL_OUT}" ]]; then
+            rm -f /tmp/testapi-host.jwt
+            echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
+        else
+            echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
+                    "${ENROLL_OUT}"
+            exit 1
+        fi
     fi
 
     if [[ -s /tmp/testapi-host.json ]]; then
