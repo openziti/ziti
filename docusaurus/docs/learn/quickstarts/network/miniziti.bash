@@ -22,6 +22,7 @@ function _usage(){
     echo -e " COMMANDS\n"\
             "\t start\t\tstart miniziti (default)\n"\
             "\t delete\t\tdelete miniziti\n"\
+            "\t help\t\tshow these usage hints\n"\
             "\n OPTIONS\n"\
             "\t --quiet\tsuppress INFO messages\n"\
             "\t --verbose\tshow DEBUG messages\n"\
@@ -119,7 +120,7 @@ function main(){
     # open a descriptor for debug messages
     exec 3>/dev/null
 
-    # locals with defaults that never produce an error
+    # local strings with defaults that never produce an error
     declare DETECTED_OS \
             MINIKUBE_PROFILE="miniziti" \
             ZITI_NAMESPACE="miniziti" \
@@ -127,6 +128,8 @@ function main(){
             MINIKUBE_NODE_EXTERNAL \
             DEBUG_MINIKUBE_TUNNEL \
             ZITI_CHARTS="openziti"
+    # local arrays with defaults that never produce an error
+    declare -a MINIKUBE_START_ARGS=()
 
     # local defaults that are inherited or may error
     DETECTED_OS="$(detectOs)"
@@ -156,8 +159,11 @@ function main(){
                             exec 3>&1
                             shift
             ;;
-            *)              _usage
+            -h|*help)       _usage
                             exit
+            ;;
+            *)              MINIKUBE_START_ARGS+=("$1")
+                            shift
             ;;
         esac
     done
@@ -188,12 +194,16 @@ function main(){
         config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >/dev/null
 
-    # start unless running
+    # run 'minikube start' if not running or any extra start args are present
     echo "INFO: waiting for minikube to be ready"
-    if  ! minikube --profile "${MINIKUBE_PROFILE}" status 2>/dev/null \
-        | grep -q "apiserver: Running"; then
+    if  ! minikube status \
+            --profile "${MINIKUBE_PROFILE}" 2>/dev/null \
+        | grep -q "apiserver: Running" \
+        || (( ${#MINIKUBE_START_ARGS[*]} )); then
         echo "DEBUG: apiserver not running, starting minikube" >&3
-        minikube --profile "${MINIKUBE_PROFILE}" start >/dev/null
+        minikube start \
+            --profile "${MINIKUBE_PROFILE}" \
+            "${MINIKUBE_START_ARGS[@]}" >/dev/null
     else
         echo "DEBUG: apiserver is running, not starting minikube" >&3
     fi
@@ -541,7 +551,7 @@ function main(){
         echo "DEBUG: enrolling /tmp/testapi-host.jwt" >&3
         # discard expected output that normally flows to stderr
         ziti edge enroll /tmp/testapi-host.jwt 2>&1 \
-            grep -vE '^INFO\s+(generating.*key|enrolled\s+successfully)'
+            | grep -vE '(generating.*key|enrolled\s+successfully)'
         rm -f /tmp/testapi-host.jwt
         echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
     fi
