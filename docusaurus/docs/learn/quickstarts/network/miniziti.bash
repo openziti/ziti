@@ -189,10 +189,9 @@ function main(){
 
     : "${ZITI_NAMESPACE:=${MINIKUBE_PROFILE}}"
 
-    echo "DEBUG: setting default "
-    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
-        config set-context "${MINIKUBE_PROFILE}" \
-            --namespace "${ZITI_NAMESPACE}" >/dev/null
+    #
+    ## Ensure Minikube is Started and Configured
+    #
 
     # run 'minikube start' if not running or any extra start args are present
     echo "INFO: waiting for minikube to be ready"
@@ -200,7 +199,7 @@ function main(){
             --profile "${MINIKUBE_PROFILE}" 2>/dev/null \
         | grep -q "apiserver: Running" \
         || (( ${#MINIKUBE_START_ARGS[*]} )); then
-        echo "DEBUG: apiserver not running, starting minikube" >&3
+        echo "DEBUG: apiserver not running or got extra start args, running 'minikube start'" >&3
         minikube start \
             --profile "${MINIKUBE_PROFILE}" \
             "${MINIKUBE_START_ARGS[@]}" >/dev/null
@@ -272,6 +271,10 @@ function main(){
         helm repo add openziti https://docs.openziti.io/helm-charts/ >/dev/null
     fi
 
+    #
+    ## Ensure OpenZiti Controller is Upgraded and Ready
+    #
+
     if helm list --namespace "${ZITI_NAMESPACE}" --all | grep -q minicontroller; then
         echo "INFO: upgrading openziti controller"
         helm upgrade "minicontroller" "${ZITI_CHARTS}/ziti-controller" \
@@ -288,7 +291,7 @@ function main(){
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >/dev/null
     fi
 
-    echo "DEBUG: setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'"
+    echo "DEBUG: setting default namespace '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'" >&3
     minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
         config set-context "${MINIKUBE_PROFILE}" \
             --namespace "${ZITI_NAMESPACE}" >/dev/null
@@ -300,6 +303,10 @@ function main(){
             --for condition=Available=True \
             --timeout 240s >/dev/null
     done
+
+    #
+    ## Ensure Minikube Tunnel is Running on macOS and WSL
+    #
 
     # wait to probe for the minikube tunnel until after controller deployment so there's at least one
     # ingress causing minikube to immediately prompt for sudo password
@@ -318,6 +325,10 @@ function main(){
     else
         checkDns "$MINIKUBE_NODE_EXTERNAL"
     fi
+
+    #
+    ## Ensure Cluster DNS is Resolving minicontroller.ziti
+    #
 
     if ! testClusterDns "${MINIKUBE_NODE_EXTERNAL}" 2>/dev/null; then
         echo "DEBUG: initial cluster dns test failed, doing cluster dns setup" >&3
@@ -389,6 +400,10 @@ function main(){
         testClusterDns "${MINIKUBE_NODE_EXTERNAL}"
     fi
 
+    #
+    ## Ensure OpenZiti Router is Enrolled and Ready
+    #
+
     echo "DEBUG: fetching admin password from k8s secret to log in to ziti mgmt" >&3
     kubectl get secrets "minicontroller-admin-secret" \
         --namespace "${ZITI_NAMESPACE}" \
@@ -444,6 +459,10 @@ function main(){
         exit 1
     fi
 
+    #
+    ## Ensure OpenZiti Console is Configured and Ready
+    #
+
     if  helm --namespace "${ZITI_NAMESPACE}" list --all \
         | grep -q miniconsole; then
         echo "DEBUG: upgrading console chart as 'miniconsole'" >&3
@@ -466,6 +485,15 @@ function main(){
         --namespace "${ZITI_NAMESPACE}" \
         --for condition=Available=True \
         --timeout 240s >/dev/null
+
+    echo "DEBUG: setting default namespace to '${ZITI_NAMESPACE}' in kubeconfig context '${MINIKUBE_PROFILE}'" >&3
+    minikube kubectl --profile "${MINIKUBE_PROFILE}" -- \
+        config set-context "${MINIKUBE_PROFILE}" \
+            --namespace "${ZITI_NAMESPACE}" >/dev/null
+
+    #
+    ## Ensure OpenZiti Identities and Services are Created
+    #
 
     if  ! ziti edge list identities 'name="miniziti-client"' --csv \
         | grep -q "miniziti-client"; then
