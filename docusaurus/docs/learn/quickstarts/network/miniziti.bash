@@ -138,7 +138,6 @@ function main(){
             ZITI_NAMESPACE \
             DELETE_MINIZITI=0 \
             MINIKUBE_NODE_EXTERNAL \
-            DEBUG_MINIKUBE_TUNNEL \
             ZITI_CHARTS="openziti"
     # local arrays with defaults that never produce an error
     declare -a MINIKUBE_START_ARGS=()
