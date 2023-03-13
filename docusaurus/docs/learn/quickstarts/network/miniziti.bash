@@ -307,6 +307,8 @@ function main(){
             --namespace "${ZITI_NAMESPACE}" \
             --set clientApi.advertisedHost="minicontroller.ziti" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
+            --set trust-manager.enabled=true \
+            --set cert-manager.enabled=true \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >&3
     else
         echo "INFO: installing openziti controller"
@@ -314,6 +316,8 @@ function main(){
             --namespace "${ZITI_NAMESPACE}" --create-namespace \
             --set clientApi.advertisedHost="minicontroller.ziti" \
             --set trust-manager.app.trust.namespace="${ZITI_NAMESPACE}" \
+            --set trust-manager.enabled=true \
+            --set cert-manager.enabled=true \
             --values https://docs.openziti.io/helm-charts/charts/ziti-controller/values-ingress-nginx.yaml >&3
     fi
 
