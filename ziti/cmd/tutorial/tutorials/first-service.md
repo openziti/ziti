@@ -2,7 +2,7 @@
 
 Hello. In this tutorial we’re going to go explore services, identities and polices.
 
-Please note: this tutorial can be run interactively, by running 'ziti edge tutorial first-service'. It can also be viewed as a web page [here](https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/tutorial/tutorials/first-service.md). It may be convenient to be able to view both at the same time. The interactive version will save you a lot of typing or copy/pasting, but content may be easier to read in a web-browser.
+Please note: this tutorial can be run interactively, by running 'ziti edge tutorial first-service'. It can also be viewed as a web page [here](https://github.com/openziti/ziti/blob/release-next/ziti/cmd/tutorial/tutorials/first-service.md). It may be convenient to be able to view both at the same time. The interactive version will save you a lot of typing or copy/pasting, but content may be easier to read in a web-browser.
 
 <!---action:pause -->
 
@@ -242,7 +242,7 @@ First we need to grant access to use the service via a service policy. There are
 
 For now, we just need a dial policy. Later, when we try hosting the echo service with an SDK embedded application, we’ll need a bind policy as well. We're going to explicitly add our service and identity to this policy. The service we'll reference by name. The identity we'll include by role attribute. 
 
-For a deep dive into policies, see [here](https://openziti.github.io/ziti/policies/overview.html).
+For a deep dive into policies, see [here](https://docs.openziti.io/docs/learn/core-concepts/security/authorization/policies/overview).
 
 ```action:ziti
 ziti edge create service-policy echo-clients Dial --service-roles '@echo' --identity-roles '#management'
