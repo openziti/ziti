@@ -525,63 +525,63 @@ function main(){
         | grep -q "${MINIKUBE_PROFILE}-client"; then
         echo "DEBUG: creating identity ${MINIKUBE_PROFILE}-client" >&3
         ziti edge create identity device "${MINIKUBE_PROFILE}-client" \
-            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes testapi-clients >&3
+            --jwt-output-file "/tmp/${MINIKUBE_PROFILE}-client.jwt" --role-attributes miniapi-clients >&3
     else
         echo "DEBUG: ignoring identity ${MINIKUBE_PROFILE}-client" >&3
     fi
 
-    if  ! ziti edge list identities 'name="testapi-host"' --csv \
-        | grep -q "testapi-host"; then
-        echo "DEBUG: creating identity testapi-host" >&3
-        ziti edge create identity device "testapi-host" \
-            --jwt-output-file /tmp/testapi-host.jwt --role-attributes testapi-hosts >&3
+    if  ! ziti edge list identities 'name="miniapi-host"' --csv \
+        | grep -q "miniapi-host"; then
+        echo "DEBUG: creating identity miniapi-host" >&3
+        ziti edge create identity device "miniapi-host" \
+            --jwt-output-file /tmp/miniapi-host.jwt --role-attributes miniapi-hosts >&3
     else
-        echo "DEBUG: ignoring identity testapi-host" >&3
+        echo "DEBUG: ignoring identity miniapi-host" >&3
     fi
         
-    if  ! ziti edge list configs 'name="testapi-intercept-config"' --csv \
-        | grep -q "testapi-intercept-config"; then
-        echo "DEBUG: creating config testapi-intercept-config" >&3
-        ziti edge create config "testapi-intercept-config" intercept.v1 \
-            '{"protocols":["tcp"],"addresses":["testapi.ziti"], "portRanges":[{"low":80, "high":80}]}' >&3
+    if  ! ziti edge list configs 'name="miniapi-intercept-config"' --csv \
+        | grep -q "miniapi-intercept-config"; then
+        echo "DEBUG: creating config miniapi-intercept-config" >&3
+        ziti edge create config "miniapi-intercept-config" intercept.v1 \
+            '{"protocols":["tcp"],"addresses":["miniapi.ziti"], "portRanges":[{"low":80, "high":80}]}' >&3
     else
-        echo "DEBUG: ignoring config testapi-intercept-config" >&3
+        echo "DEBUG: ignoring config miniapi-intercept-config" >&3
     fi
         
-    if  ! ziti edge list configs 'name="testapi-host-config"' --csv \
-        | grep -q "testapi-host-config"; then
-        echo "DEBUG: creating config testapi-host-config" >&3
-        ziti edge create config "testapi-host-config" host.v1 \
+    if  ! ziti edge list configs 'name="miniapi-host-config"' --csv \
+        | grep -q "miniapi-host-config"; then
+        echo "DEBUG: creating config miniapi-host-config" >&3
+        ziti edge create config "miniapi-host-config" host.v1 \
             '{"protocol":"tcp", "address":"httpbin","port":8080}' >&3
     else
-        echo "DEBUG: ignoring config testapi-host-config" >&3
+        echo "DEBUG: ignoring config miniapi-host-config" >&3
     fi
         
-    if  ! ziti edge list services 'name="testapi-service"' --csv \
-        | grep -q "testapi-service"; then
-        echo "DEBUG: creating service testapi-service" >&3
-        ziti edge create service "testapi-service" \
-            --configs testapi-intercept-config,testapi-host-config >&3
+    if  ! ziti edge list services 'name="miniapi-service"' --csv \
+        | grep -q "miniapi-service"; then
+        echo "DEBUG: creating service miniapi-service" >&3
+        ziti edge create service "miniapi-service" \
+            --configs miniapi-intercept-config,miniapi-host-config >&3
     else
-        echo "DEBUG: ignoring service testapi-service" >&3
+        echo "DEBUG: ignoring service miniapi-service" >&3
     fi
         
-    if  ! ziti edge list service-policies 'name="testapi-bind-policy"' --csv \
-        | grep -q "testapi-bind-policy"; then
-        echo "DEBUG: creating service-policy testapi-bind-policy" >&3
-        ziti edge create service-policy "testapi-bind-policy" Bind \
-            --service-roles '@testapi-service' --identity-roles '#testapi-hosts' >&3
+    if  ! ziti edge list service-policies 'name="miniapi-bind-policy"' --csv \
+        | grep -q "miniapi-bind-policy"; then
+        echo "DEBUG: creating service-policy miniapi-bind-policy" >&3
+        ziti edge create service-policy "miniapi-bind-policy" Bind \
+            --service-roles '@miniapi-service' --identity-roles '#miniapi-hosts' >&3
     else
-        echo "DEBUG: ignoring service-policy testapi-bind-policy" >&3
+        echo "DEBUG: ignoring service-policy miniapi-bind-policy" >&3
     fi
         
-    if  ! ziti edge list service-policies 'name="testapi-dial-policy"' --csv \
-        | grep -q "testapi-dial-policy"; then
-        echo "DEBUG: creating service-policy testapi-dial-policy" >&3
-        ziti edge create service-policy "testapi-dial-policy" Dial \
-            --service-roles '@testapi-service' --identity-roles '#testapi-clients' >&3
+    if  ! ziti edge list service-policies 'name="miniapi-dial-policy"' --csv \
+        | grep -q "miniapi-dial-policy"; then
+        echo "DEBUG: creating service-policy miniapi-dial-policy" >&3
+        ziti edge create service-policy "miniapi-dial-policy" Dial \
+            --service-roles '@miniapi-service' --identity-roles '#miniapi-clients' >&3
     else
-        echo "DEBUG: ignoring service-policy testapi-dial-policy" >&3
+        echo "DEBUG: ignoring service-policy miniapi-dial-policy" >&3
     fi
         
     if  ! ziti edge list edge-router-policies 'name="public-routers"' --csv \
@@ -602,17 +602,17 @@ function main(){
         echo "DEBUG: ignoring service-edge-router-policy public-routers" >&3
     fi
 
-    if [[ -s /tmp/testapi-host.jwt ]]; then
-        echo "DEBUG: enrolling /tmp/testapi-host.jwt" >&3
+    if [[ -s /tmp/miniapi-host.jwt ]]; then
+        echo "DEBUG: enrolling /tmp/miniapi-host.jwt" >&3
         # discard expected output that normally flows to stderr
         ENROLL_OUT="$(
-            ziti edge enroll /tmp/testapi-host.jwt 2>&1 \
+            ziti edge enroll /tmp/miniapi-host.jwt 2>&1 \
                 | grep -vE '(generating.*key|enrolled\s+successfully)' \
                 || true
         )"
         if [[ -z "${ENROLL_OUT}" ]]; then
-            rm -f /tmp/testapi-host.jwt
-            echo "DEBUG: deleted /tmp/testapi-host.jwt after enrolling successfully" >&3
+            rm -f /tmp/miniapi-host.jwt
+            echo "DEBUG: deleted /tmp/miniapi-host.jwt after enrolling successfully" >&3
         else
             echo -e "ERROR: unexpected result during OpenZiti Identity enrollment\n"\
                     "${ENROLL_OUT}"
@@ -620,13 +620,13 @@ function main(){
         fi
     fi
 
-    if [[ -s /tmp/testapi-host.json ]]; then
-        echo "DEBUG: installing httpbin chart as 'testapi-host'" >&3
-        helm install "testapi-host" "${ZITI_CHARTS}/httpbin" \
-            --set-file zitiIdentity=/tmp/testapi-host.json \
-            --set zitiServiceName=testapi-service >&3
-        rm -f /tmp/testapi-host.json
-        echo "DEBUG: deleted /tmp/testapi-host.json after installing successfully with testapi-host chart" >&3
+    if [[ -s /tmp/miniapi-host.json ]]; then
+        echo "DEBUG: installing httpbin chart as 'miniapi-host'" >&3
+        helm install "miniapi-host" "${ZITI_CHARTS}/httpbin" \
+            --set-file zitiIdentity=/tmp/miniapi-host.json \
+            --set zitiServiceName=miniapi-service >&3
+        rm -f /tmp/miniapi-host.json
+        echo "DEBUG: deleted /tmp/miniapi-host.json after installing successfully with miniapi-host chart" >&3
     fi
 
     kubectl get secrets "minicontroller-admin-secret" \
