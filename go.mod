@@ -33,7 +33,7 @@ require (
 	github.com/openziti/fabric v0.22.62
 	github.com/openziti/foundation/v2 v2.0.18
 	github.com/openziti/identity v1.0.41
-	github.com/openziti/jwks v1.0.2
+	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.14
 	github.com/openziti/sdk-golang v0.18.70
 	github.com/openziti/storage v0.1.44

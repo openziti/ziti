@@ -74,7 +74,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		}
 
 		signerRec := &signerRecord{
-			kidToCertificate: map[string]*x509.Certificate{},
+			kidToPubKey: map[string]*x509.Certificate{},
 			externalJwtSigner: &persistence.ExternalJwtSigner{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id:        "fake-id",
@@ -91,7 +91,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		req.NoError(signerRec.Resolve(false))
 		req.True(jwksResolver.called)
 		req.Equal(jwksEndpoint, jwksResolver.calledWithUrl)
-		req.Len(signerRec.kidToCertificate, 2)
+		req.Len(signerRec.kidToPubKey, 2)
 
 	})
 }
