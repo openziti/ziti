@@ -28,7 +28,7 @@ import (
 // so they can be shipped from one controller for RAFT coordination
 type Command interface {
 	// Apply runs the commands
-	Apply() error
+	Apply(raftIndex uint64) error
 
 	// Encode returns a serialized representation of the command
 	Encode() ([]byte, error)
@@ -82,10 +82,10 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		return cmd.Apply()
+		return cmd.Apply(0)
 	}
 
-	return command.Apply()
+	return command.Apply(0)
 }
 
 // Decoder instances know how to decode encoded commands

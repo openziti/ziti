@@ -1,11 +1,12 @@
 package command
 
 import (
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 )
 
 // EntityMarshaller instances can marshal and unmarshal entities of the type that they manage
@@ -55,13 +56,15 @@ type EntityManager[T models.Entity] interface {
 }
 
 type CreateEntityCommand[T models.Entity] struct {
+	Context        *change.Context
 	Creator        EntityCreator[T]
 	Entity         T
-	PostCreateHook func(tx *bbolt.Tx, entity T) error
+	PostCreateHook func(ctx boltz.MutateContext, entity T) error
 	Flags          uint32
 }
 
-func (self *CreateEntityCommand[T]) Apply() error {
+func (self *CreateEntityCommand[T]) Apply(raftIndex uint64) error {
+	self.Context.RaftIndex = raftIndex
 	return self.Creator.ApplyCreate(self)
 }
 
@@ -72,6 +75,7 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 		return nil, errors.Wrapf(err, "error mashalling entity of type %T (%v)", self.Entity, entityType)
 	}
 	return cmd_pb.EncodeProtobuf(&cmd_pb.CreateEntityCommand{
+		Ctx:        self.Context.ToProtoBuf(),
 		EntityType: entityType,
 		EntityData: encodedEntity,
 		Flags:      self.Flags,
@@ -79,13 +83,15 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 }
 
 type UpdateEntityCommand[T models.Entity] struct {
+	Context       *change.Context
 	Updater       EntityUpdater[T]
 	Entity        T
 	UpdatedFields fields.UpdatedFields
 	Flags         uint32
 }
 
-func (self *UpdateEntityCommand[T]) Apply() error {
+func (self *UpdateEntityCommand[T]) Apply(raftIndex uint64) error {
+	self.Context.RaftIndex = raftIndex
 	return self.Updater.ApplyUpdate(self)
 }
 
@@ -102,6 +108,7 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 	}
 
 	return cmd_pb.EncodeProtobuf(&cmd_pb.UpdateEntityCommand{
+		Ctx:           self.Context.ToProtoBuf(),
 		EntityType:    entityType,
 		EntityData:    encodedEntity,
 		UpdatedFields: updatedFields,
@@ -110,16 +117,19 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 }
 
 type DeleteEntityCommand struct {
+	Context *change.Context
 	Deleter EntityDeleter
 	Id      string
 }
 
-func (self *DeleteEntityCommand) Apply() error {
+func (self *DeleteEntityCommand) Apply(raftIndex uint64) error {
+	self.Context.RaftIndex = raftIndex
 	return self.Deleter.ApplyDelete(self)
 }
 
 func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.DeleteEntityCommand{
+		Ctx:        self.Context.ToProtoBuf(),
 		EntityId:   self.Id,
 		EntityType: self.Deleter.GetEntityTypeId(),
 	})
@@ -131,7 +141,7 @@ type SyncSnapshotCommand struct {
 	SnapshotSink func(cmd *SyncSnapshotCommand) error
 }
 
-func (self *SyncSnapshotCommand) Apply() error {
+func (self *SyncSnapshotCommand) Apply(uint64) error {
 	return self.SnapshotSink(self)
 }
 

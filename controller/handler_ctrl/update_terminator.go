@@ -31,29 +31,34 @@ import (
 )
 
 type updateTerminatorHandler struct {
-	network *network.Network
+	baseHandler
 }
 
-func newUpdateTerminatorHandler(network *network.Network) *updateTerminatorHandler {
-	return &updateTerminatorHandler{network: network}
+func newUpdateTerminatorHandler(network *network.Network, router *network.Router) *updateTerminatorHandler {
+	return &updateTerminatorHandler{
+		baseHandler: baseHandler{
+			router:  router,
+			network: network,
+		},
+	}
 }
 
-func (h *updateTerminatorHandler) ContentType() int32 {
+func (self *updateTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_UpdateTerminatorRequestType)
 }
 
-func (h *updateTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *updateTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	request := &ctrl_pb.UpdateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		log.WithError(err).Error("failed to unmarshal update terminator message")
 		return
 	}
 
-	go h.handleUpdateTerminator(msg, ch, request)
+	go self.handleUpdateTerminator(msg, ch, request)
 }
 
-func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.UpdateTerminatorRequest) {
-	terminator, err := h.network.Terminators.Read(request.TerminatorId)
+func (self *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.UpdateTerminatorRequest) {
+	terminator, err := self.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
@@ -92,7 +97,7 @@ func (h *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message, c
 		checker[db.FieldTerminatorPrecedence] = struct{}{}
 	}
 
-	if err := h.network.Terminators.Update(terminator, checker); err != nil {
+	if err := self.network.Terminators.Update(terminator, checker, self.newChangeContext(ch)); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}

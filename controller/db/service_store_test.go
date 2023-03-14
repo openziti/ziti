@@ -19,6 +19,7 @@ package db
 import (
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"
 
@@ -40,7 +41,7 @@ func Test_ServiceStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateInvalidServices(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	defer ctx.cleanupAll()
 
 	service := &Service{
@@ -48,31 +49,31 @@ func (ctx *TestContext) testCreateInvalidServices(t *testing.T) {
 		Name:          uuid.New().String(),
 	}
 
-	ctx.RequireCreate(service)
-	err := ctx.Create(service)
+	boltztest.RequireCreate(ctx, service)
+	err := boltztest.Create(ctx, service)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type service already exists with id %v", service.Id))
 
 	service.Id = uuid.New().String()
-	err = ctx.Create(service)
+	err = boltztest.Create(ctx, service)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on services store", service.Name))
 
 	service.Id = uuid.New().String()
 	service.Name = uuid.New().String()
 	service.TerminatorStrategy = uuid.New().String()
-	err = ctx.Create(service)
+	err = boltztest.Create(ctx, service)
 	ctx.EqualError(err, fmt.Sprintf("terminatorStrategy with name %v not found", service.TerminatorStrategy))
 }
 
 func (ctx *TestContext) testCreateServices(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	defer ctx.cleanupAll()
 
 	service := &Service{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
 		Name:          uuid.New().String(),
 	}
-	ctx.RequireCreate(service)
-	ctx.ValidateBaseline(service)
+	boltztest.RequireCreate(ctx, service)
+	boltztest.ValidateBaseline(ctx, service)
 }
 
 type serviceTestEntities struct {
@@ -88,7 +89,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 	service2.Tags = map[string]interface{}{
 		"location": "NY",
 	}
-	ctx.RequireUpdate(service2)
+	boltztest.RequireUpdate(ctx, service2)
 	router := ctx.requireNewRouter()
 
 	terminator := &Terminator{
@@ -101,7 +102,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 		Address: "tcp:localhost:22",
 	}
 
-	ctx.RequireCreate(terminator)
+	boltztest.RequireCreate(ctx, terminator)
 
 	return &serviceTestEntities{
 		service1:   service1,
@@ -112,18 +113,18 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 }
 
 func (ctx *TestContext) testLoadQueryServices(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	ctx.cleanupAll()
 
 	entities := ctx.createServiceTestEntities()
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		service, err := ctx.stores.Service.LoadOneById(tx, entities.service1.Id)
+		service, _, err := ctx.stores.Service.FindById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 		ctx.EqualValues(entities.service1.Id, service.Id)
 
-		service, err = ctx.stores.Service.LoadOneByName(tx, entities.service1.Name)
+		service, err = ctx.stores.Service.FindByName(tx, entities.service1.Name)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 		ctx.EqualValues(entities.service1.Id, service.Id)
@@ -152,18 +153,18 @@ func (ctx *TestContext) testLoadQueryServices(t *testing.T) {
 }
 
 func (ctx *TestContext) testUpdateServices(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	ctx.cleanupAll()
 	entities := ctx.createServiceTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		original, err := ctx.stores.Service.LoadOneById(tx, entities.service1.Id)
+	err := ctx.GetDb().Update(nil, func(changeCtx boltz.MutateContext) error {
+		original, _, err := ctx.stores.Service.FindById(changeCtx.Tx(), entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
 
-		service, err := ctx.stores.Service.LoadOneById(tx, entities.service1.Id)
+		service, _, err := ctx.stores.Service.FindById(changeCtx.Tx(), entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 
@@ -174,9 +175,9 @@ func (ctx *TestContext) testUpdateServices(t *testing.T) {
 		service.CreatedAt = now
 		service.Tags = tags
 
-		err = ctx.stores.Service.Update(boltz.NewMutateContext(tx), service, nil)
+		err = ctx.stores.Service.Update(changeCtx, service, nil)
 		ctx.NoError(err)
-		loaded, err := ctx.stores.Service.LoadOneById(tx, entities.service1.Id)
+		loaded, _, err := ctx.stores.Service.FindById(changeCtx.Tx(), entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.EqualValues(original.CreatedAt, loaded.CreatedAt)
@@ -190,10 +191,10 @@ func (ctx *TestContext) testUpdateServices(t *testing.T) {
 }
 
 func (ctx *TestContext) testDeleteServices(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 
 	ctx.cleanupAll()
 	entities := ctx.createServiceTestEntities()
-	ctx.RequireDelete(entities.service1)
-	ctx.RequireDelete(entities.service2)
+	boltztest.RequireDelete(ctx, entities.service1)
+	boltztest.RequireDelete(ctx, entities.service2)
 }

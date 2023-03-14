@@ -93,9 +93,9 @@ func (self *Dispatcher) initTerminatorEvents(n *network.Network) {
 		Dispatcher: self,
 	}
 
-	n.GetStores().Terminator.AddListener(boltz.EventCreate, terminatorEvtAdapter.terminatorCreated)
-	n.GetStores().Terminator.AddListener(boltz.EventUpdate, terminatorEvtAdapter.terminatorUpdated)
-	n.GetStores().Terminator.AddListener(boltz.EventDelete, terminatorEvtAdapter.terminatorDeleted)
+	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorCreated, boltz.EntityCreated)
+	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorUpdated, boltz.EntityUpdated)
+	n.GetStores().Terminator.AddEntityEventListenerF(terminatorEvtAdapter.terminatorDeleted, boltz.EntityDeleted)
 
 	n.AddRouterPresenceHandler(terminatorEvtAdapter)
 }
@@ -141,10 +141,10 @@ func (self *terminatorEventAdapter) routerChange(eventType event.TerminatorEvent
 		cursor := self.Network.GetStores().Router.GetRelatedEntitiesCursor(tx, r.Id, db.EntityTypeTerminators, true)
 		for cursor.IsValid() {
 			id := cursor.Current()
-			terminator, err := self.Network.GetStores().Terminator.LoadOneById(tx, string(id))
+			terminator, found, err := self.Network.GetStores().Terminator.FindById(tx, string(id))
 			if err != nil {
 				pfxlog.Logger().WithError(err).Errorf("failure while generating terminator events for %v with terminator %v on router %v", eventType, string(id), r.Id)
-			} else {
+			} else if found {
 				terminators = append(terminators, terminator)
 			}
 			cursor.Next()
@@ -162,30 +162,19 @@ func (self *terminatorEventAdapter) routerChange(eventType event.TerminatorEvent
 	}
 }
 
-func (self *terminatorEventAdapter) terminatorCreated(args ...interface{}) {
-	self.terminatorChanged(event.TerminatorCreated, args...)
+func (self *terminatorEventAdapter) terminatorCreated(terminator *db.Terminator) {
+	self.terminatorChanged(event.TerminatorCreated, terminator)
 }
 
-func (self *terminatorEventAdapter) terminatorUpdated(args ...interface{}) {
-	self.terminatorChanged(event.TerminatorUpdated, args...)
+func (self *terminatorEventAdapter) terminatorUpdated(terminator *db.Terminator) {
+	self.terminatorChanged(event.TerminatorUpdated, terminator)
 }
 
-func (self *terminatorEventAdapter) terminatorDeleted(args ...interface{}) {
-	self.terminatorChanged(event.TerminatorDeleted, args...)
+func (self *terminatorEventAdapter) terminatorDeleted(terminator *db.Terminator) {
+	self.terminatorChanged(event.TerminatorDeleted, terminator)
 }
 
-func (self *terminatorEventAdapter) terminatorChanged(eventType event.TerminatorEventType, args ...interface{}) {
-	var terminator *db.Terminator
-	if len(args) == 1 {
-		terminator, _ = args[0].(*db.Terminator)
-	}
-
-	if terminator == nil {
-		log := pfxlog.Logger()
-		log.Error("could not cast event args to event details")
-		return
-	}
-
+func (self *terminatorEventAdapter) terminatorChanged(eventType event.TerminatorEventType, terminator *db.Terminator) {
 	terminator = self.Network.Services.NotifyTerminatorChanged(terminator)
 	self.createTerminatorEvent(eventType, terminator)
 }

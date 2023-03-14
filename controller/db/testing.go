@@ -6,42 +6,32 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
+	"github.com/openziti/storage/boltztest"
 	"testing"
 )
 
 func NewTestContext(t testing.TB) *TestContext {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 
-	context := &TestContext{
-		BaseTestContext: *boltz.NewTestContext(t),
-	}
-	context.Impl = context
+	context := &TestContext{}
+	context.BaseTestContext = boltztest.NewTestContext(t, context.GetStoreForEntity)
 	context.Init()
 	return context
 }
 
 type TestContext struct {
-	db     boltz.Db
 	stores *Stores
-	boltz.BaseTestContext
+	*boltztest.BaseTestContext
 }
 
-func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return ctx.stores.GetStoreForEntity(entity)
 }
 
-func (ctx *TestContext) GetDb() boltz.Db {
-	return ctx.db
-}
-
 func (ctx *TestContext) Init() {
-	ctx.InitDbFile()
+	ctx.InitDb(Open)
 
 	var err error
-	ctx.db, err = Open(ctx.GetDbFile().Name())
-	ctx.NoError(err)
-
 	ctx.stores, err = InitStores(ctx.GetDb())
 	ctx.NoError(err)
 }
@@ -51,7 +41,7 @@ func (ctx *TestContext) requireNewService() *Service {
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
 		Name:          uuid.New().String(),
 	}
-	ctx.RequireCreate(entity)
+	boltztest.RequireCreate(ctx, entity)
 	return entity
 }
 
@@ -60,15 +50,14 @@ func (ctx *TestContext) requireNewRouter() *Router {
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
 		Name:          uuid.New().String(),
 	}
-	ctx.RequireCreate(entity)
+	boltztest.RequireCreate(ctx, entity)
 	return entity
 }
 
 func (ctx *TestContext) cleanupAll() {
-	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		mutateContext := boltz.NewMutateContext(tx)
+	_ = ctx.GetDb().Update(nil, func(changeCtx boltz.MutateContext) error {
 		for _, store := range ctx.stores.storeMap {
-			if err := store.DeleteWhere(mutateContext, `true limit none`); err != nil {
+			if err := store.DeleteWhere(changeCtx, `true limit none`); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())
 				return err
 			}

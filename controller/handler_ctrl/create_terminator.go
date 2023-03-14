@@ -28,32 +28,33 @@ import (
 )
 
 type createTerminatorHandler struct {
-	router  *network.Router
-	network *network.Network
+	baseHandler
 }
 
 func newCreateTerminatorHandler(network *network.Network, router *network.Router) *createTerminatorHandler {
 	return &createTerminatorHandler{
-		network: network,
-		router:  router,
+		baseHandler: baseHandler{
+			network: network,
+			router:  router,
+		},
 	}
 }
 
-func (h *createTerminatorHandler) ContentType() int32 {
+func (self *createTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_CreateTerminatorRequestType)
 }
 
-func (h *createTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *createTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 	request := &ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		log.WithError(err).Error("failed to unmarshal create terminator message")
 		return
 	}
-	go h.handleCreateTerminator(msg, ch, request)
+	go self.handleCreateTerminator(msg, ch, request)
 }
 
-func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.CreateTerminatorRequest) {
+func (self *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.CreateTerminatorRequest) {
 	if request.Cost > math.MaxUint16 {
 		handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid cost %v. cost must be between 0 and %v inclusive", request.Cost, math.MaxUint16))
 		return
@@ -61,7 +62,7 @@ func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, c
 
 	terminator := &network.Terminator{
 		Service:        request.ServiceId,
-		Router:         h.router.Id,
+		Router:         self.router.Id,
 		Binding:        request.Binding,
 		Address:        request.Address,
 		InstanceId:     request.InstanceId,
@@ -71,7 +72,7 @@ func (h *createTerminatorHandler) handleCreateTerminator(msg *channel.Message, c
 		Cost:           uint16(request.Cost),
 	}
 
-	if err := h.network.Terminators.Create(terminator); err == nil {
+	if err := self.network.Terminators.Create(terminator, self.newChangeContext(ch)); err == nil {
 		pfxlog.Logger().Infof("created terminator [t/%s]", terminator.Id)
 		handler_common.SendSuccess(msg, ch, terminator.Id)
 	} else {

@@ -14,30 +14,23 @@
 	limitations under the License.
 */
 
-package db
+package handler_ctrl
 
 import (
-	"github.com/openziti/storage/boltz"
+	"fmt"
+	"github.com/openziti/channel/v2"
+	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/fabric/controller/network"
 )
 
-const (
-	RootBucket = "ziti"
-)
+type baseHandler struct {
+	router  *network.Router
+	network *network.Network
+}
 
-func Open(path string) (boltz.Db, error) {
-	db, err := boltz.Open(path, RootBucket)
-	if err != nil {
-		return nil, err
-	}
-
-	err = db.Update(nil, func(ctx boltz.MutateContext) error {
-		_, err := ctx.Tx().CreateBucketIfNotExists([]byte(RootBucket))
-		return err
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	return db, nil
+func (self *baseHandler) newChangeContext(ch channel.Channel) *change.Context {
+	return change.New().
+		SetChangeAuthorId(self.router.Id).
+		SetChangeAuthorName(self.router.Name).
+		SetSource(fmt.Sprintf("ctrl[%v]", ch.Underlay().GetRemoteAddr().String()))
 }

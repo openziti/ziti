@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
 	"math"
 	"testing"
@@ -52,26 +53,26 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 		Service: uuid.New().String(),
 		Router:  uuid.New().String(),
 	}
-	err := ctx.Update(terminator)
+	err := boltztest.Update(ctx, terminator)
 	ctx.EqualError(err, "cannot update terminator with blank id")
 
 	terminator.Binding = ""
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, "the value '' for 'binding' is invalid: binding is required")
 
 	terminator.Binding = uuid.New().String()
 	terminator.Address = ""
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, "the value '' for 'address' is invalid: address is required")
 
 	terminator.Router = ""
 	terminator.Address = uuid.New().String()
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, "the value '' for 'router' is invalid: router is required")
 
 	terminator.Service = ""
 	terminator.Router = uuid.New().String()
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, "the value '' for 'service' is invalid: service is required")
 
 	service := ctx.requireNewService()
@@ -79,12 +80,12 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 
 	terminator.Service = uuid.New().String()
 	terminator.Router = router.Id
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", terminator.Service))
 
 	terminator.Service = service.Id
 	terminator.Router = uuid.New().String()
-	err = ctx.Create(terminator)
+	err = boltztest.Create(ctx, terminator)
 	ctx.EqualError(err, fmt.Sprintf("router with id %v not found", terminator.Router))
 }
 
@@ -112,7 +113,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator.Binding = uuid.New().String()
 	e.terminator.Address = uuid.New().String()
 	e.terminator.Cost = 0
-	ctx.RequireCreate(e.terminator)
+	boltztest.RequireCreate(ctx, e.terminator)
 
 	e.router2 = ctx.requireNewRouter()
 
@@ -122,7 +123,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator2.Binding = uuid.New().String()
 	e.terminator2.Address = uuid.New().String()
 	e.terminator2.Cost = 100
-	ctx.RequireCreate(e.terminator2)
+	boltztest.RequireCreate(ctx, e.terminator2)
 
 	e.service2 = ctx.requireNewService()
 
@@ -132,7 +133,7 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.terminator3.Binding = uuid.New().String()
 	e.terminator3.Address = uuid.New().String()
 	e.terminator3.Cost = math.MaxUint16
-	ctx.RequireCreate(e.terminator3)
+	boltztest.RequireCreate(ctx, e.terminator3)
 
 	return e
 }
@@ -143,9 +144,9 @@ func (ctx *TestContext) testCreateTerminators(t *testing.T) {
 
 	e := ctx.createTestTerminators()
 
-	ctx.ValidateBaseline(e.terminator)
-	ctx.ValidateBaseline(e.terminator2)
-	ctx.ValidateBaseline(e.terminator3)
+	boltztest.ValidateBaseline(ctx, e.terminator)
+	boltztest.ValidateBaseline(ctx, e.terminator2)
+	boltztest.ValidateBaseline(ctx, e.terminator3)
 
 	terminatorIds := ctx.GetRelatedIds(e.service, EntityTypeTerminators)
 	ctx.EqualValues(2, len(terminatorIds))
@@ -174,8 +175,9 @@ func (ctx *TestContext) testLoadQueryTerminators(t *testing.T) {
 	e := ctx.createTestTerminators()
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		loadedTerminator, err := ctx.stores.Terminator.LoadOneById(tx, e.terminator.Id)
+		loadedTerminator, found, err := ctx.stores.Terminator.FindById(tx, e.terminator.Id)
 		ctx.NoError(err)
+		ctx.True(found)
 		ctx.NotNil(loadedTerminator)
 		ctx.EqualValues(e.terminator.Id, loadedTerminator.Id)
 		ctx.EqualValues(e.terminator.Service, loadedTerminator.Service)
@@ -184,24 +186,24 @@ func (ctx *TestContext) testLoadQueryTerminators(t *testing.T) {
 		ctx.EqualValues(e.terminator.Address, loadedTerminator.Address)
 		ctx.EqualValues(e.terminator.Cost, loadedTerminator.Cost)
 
-		ids, _, err := ctx.stores.Terminator.QueryIdsf(tx, `service = "%v"`, e.service.Id)
+		ids, _, err := ctx.stores.Terminator.QueryIds(tx, fmt.Sprintf(`service = "%v"`, e.service.Id))
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
 		ctx.True(stringz.Contains(ids, e.terminator.Id))
 		ctx.True(stringz.Contains(ids, e.terminator2.Id))
 
-		ids, _, err = ctx.stores.Terminator.QueryIdsf(tx, `router = "%v"`, e.router2.Id)
+		ids, _, err = ctx.stores.Terminator.QueryIds(tx, fmt.Sprintf(`router = "%v"`, e.router2.Id))
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
 		ctx.True(stringz.Contains(ids, e.terminator2.Id))
 		ctx.True(stringz.Contains(ids, e.terminator3.Id))
 
-		ids, _, err = ctx.stores.Service.QueryIdsf(tx, `anyOf(terminators) = "%v"`, e.terminator.Id)
+		ids, _, err = ctx.stores.Service.QueryIds(tx, fmt.Sprintf(`anyOf(terminators) = "%v"`, e.terminator.Id))
 		ctx.NoError(err)
 		ctx.EqualValues(1, len(ids))
 		ctx.True(stringz.Contains(ids, e.service.Id))
 
-		ids, _, err = ctx.stores.Router.QueryIdsf(tx, `anyOf(terminators) = "%v"`, e.terminator.Id)
+		ids, _, err = ctx.stores.Router.QueryIds(tx, fmt.Sprintf(`anyOf(terminators) = "%v"`, e.terminator.Id))
 		ctx.NoError(err)
 		ctx.EqualValues(1, len(ids))
 		ctx.True(stringz.Contains(ids, e.router.Id))
@@ -218,7 +220,7 @@ func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 	e := ctx.createTestTerminators()
 
 	terminator := e.terminator
-	ctx.RequireReload(terminator)
+	boltztest.RequireReload(ctx, terminator)
 
 	time.Sleep(time.Millisecond * 10) // ensure updatedAt is after createdAt
 
@@ -227,10 +229,10 @@ func (ctx *TestContext) testUpdateTerminators(t *testing.T) {
 	terminator.Binding = uuid.New().String()
 	terminator.Address = uuid.New().String()
 	terminator.Tags = ctx.CreateTags()
-	ctx.RequireUpdate(terminator)
+	boltztest.RequireUpdate(ctx, terminator)
 
 	terminator.Service = e.service.Id // service should not be updated
-	ctx.ValidateUpdated(terminator)
+	boltztest.ValidateUpdated(ctx, terminator)
 
 }
 
@@ -240,17 +242,17 @@ func (ctx *TestContext) testDeleteTerminators(t *testing.T) {
 
 	e := ctx.createTestTerminators()
 
-	ctx.RequireDelete(e.terminator3)
-	ctx.RequireDelete(e.router2)
+	boltztest.RequireDelete(ctx, e.terminator3)
+	boltztest.RequireDelete(ctx, e.router2)
 
-	ctx.ValidateDeleted(e.terminator2.Id)
-	ctx.ValidateDeleted(e.terminator3.Id)
+	boltztest.ValidateDeleted(ctx, e.terminator2.Id)
+	boltztest.ValidateDeleted(ctx, e.terminator3.Id)
 
-	ctx.RequireDelete(e.service)
-	ctx.ValidateDeleted(e.terminator.Id)
+	boltztest.RequireDelete(ctx, e.service)
+	boltztest.ValidateDeleted(ctx, e.terminator.Id)
 }
 
-func (ctx *TestContext) testPatchTerminator(t *testing.T) {
+func (ctx *TestContext) testPatchTerminator(*testing.T) {
 	service := ctx.requireNewService()
 	router := ctx.requireNewRouter()
 
@@ -264,15 +266,15 @@ func (ctx *TestContext) testPatchTerminator(t *testing.T) {
 		1: {1, 2, 3},
 		2: {3, 4, 5},
 	}
-	ctx.RequireCreate(terminator)
-	ctx.ValidateBaseline(terminator)
+	boltztest.RequireCreate(ctx, terminator)
+	boltztest.ValidateBaseline(ctx, terminator)
 
 	terminator.Cost = 100
 	checker := fields.UpdatedFieldsMap{
 		FieldTerminatorCost: struct{}{},
 	}
-	ctx.RequirePatch(terminator, checker)
-	ctx.ValidateUpdated(terminator)
+	boltztest.RequirePatch(ctx, terminator, checker)
+	boltztest.ValidateUpdated(ctx, terminator)
 
 	terminator.PeerData = map[uint32][]byte{
 		1: {7, 8, 9},
@@ -281,8 +283,8 @@ func (ctx *TestContext) testPatchTerminator(t *testing.T) {
 	checker = fields.UpdatedFieldsMap{
 		FieldServerPeerData: struct{}{},
 	}
-	ctx.RequirePatch(terminator, checker)
-	ctx.ValidateUpdated(terminator)
+	boltztest.RequirePatch(ctx, terminator, checker)
+	boltztest.ValidateUpdated(ctx, terminator)
 }
 
 type testStrategyFactory struct{}

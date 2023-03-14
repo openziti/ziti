@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/fields"
@@ -42,7 +43,7 @@ func (self *Service) GetName() string {
 	return self.Name
 }
 
-func (entity *Service) toBolt() boltz.Entity {
+func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
 		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:               entity.Name,
@@ -52,7 +53,7 @@ func (entity *Service) toBolt() boltz.Entity {
 
 func newServiceManager(managers *Managers) *ServiceManager {
 	result := &ServiceManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Service, func() *Service {
+		baseEntityManager: newBaseEntityManager[*Service, *db.Service](managers, managers.stores.Service, func() *Service {
 			return &Service{}
 		}),
 		cache: cmap.New[*Service](),
@@ -60,24 +61,13 @@ func newServiceManager(managers *Managers) *ServiceManager {
 	}
 	result.populateEntity = result.populateService
 
-	cacheInvalidationF := func(i ...interface{}) {
-		for _, val := range i {
-			if service, ok := val.(*db.Service); ok {
-				result.RemoveFromCache(service.Id)
-			} else {
-				pfxlog.Logger().Errorf("error in service listener. expected *db.Service, got %T", val)
-			}
-		}
-	}
-
-	managers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
-	managers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
+	managers.stores.Service.AddEntityIdListener(result.RemoveFromCache, boltz.EntityUpdated, boltz.EntityDeleted)
 
 	return result
 }
 
 type ServiceManager struct {
-	baseEntityManager[*Service]
+	baseEntityManager[*Service, *db.Service]
 	cache cmap.ConcurrentMap[string, *Service]
 	store db.ServiceStore
 }
@@ -87,7 +77,7 @@ func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *
 	serviceId := terminator.Service
 	if serviceId == "" {
 		err := self.db.View(func(tx *bbolt.Tx) error {
-			t, err := self.stores.Terminator.LoadOneById(tx, terminator.Id)
+			t, _, err := self.stores.Terminator.FindById(tx, terminator.Id)
 			if t != nil {
 				terminator = t
 			}
@@ -104,15 +94,14 @@ func (self *ServiceManager) NotifyTerminatorChanged(terminator *db.Terminator) *
 	return terminator
 }
 
-func (self *ServiceManager) Create(entity *Service) error {
-	return DispatchCreate[*Service](self, entity)
+func (self *ServiceManager) Create(entity *Service, ctx *change.Context) error {
+	return DispatchCreate[*Service](self, entity, ctx)
 }
 
 func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
 	s := cmd.Entity
-	err := self.db.Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		if err := self.ValidateNameOnCreate(ctx, s); err != nil {
+	err := self.db.Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		if err := self.ValidateNameOnCreate(ctx.Tx(), s); err != nil {
 			return err
 		}
 		if err := self.store.Create(ctx, s.toBolt()); err != nil {
@@ -127,12 +116,12 @@ func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Servic
 	return nil
 }
 
-func (self *ServiceManager) Update(entity *Service, updatedFields fields.UpdatedFields) error {
-	return DispatchUpdate[*Service](self, entity, updatedFields)
+func (self *ServiceManager) Update(entity *Service, updatedFields fields.UpdatedFields, ctx *change.Context) error {
+	return DispatchUpdate[*Service](self, entity, updatedFields, ctx)
 }
 
 func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
-	if err := self.updateGeneral(cmd.Entity, cmd.UpdatedFields); err != nil {
+	if err := self.updateGeneral(cmd.Context.NewMutateContext(), cmd.Entity, cmd.UpdatedFields); err != nil {
 		return err
 	}
 	self.RemoveFromCache(cmd.Entity.Id)

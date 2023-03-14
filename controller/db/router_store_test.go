@@ -18,6 +18,7 @@ package db
 
 import (
 	"fmt"
+	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"
 
@@ -41,7 +42,7 @@ func Test_RouterStore(t *testing.T) {
 }
 
 func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	defer ctx.cleanupAll()
 
 	router := &Router{
@@ -50,17 +51,17 @@ func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
 		NoTraversal:   true,
 	}
 
-	ctx.RequireCreate(router)
-	err := ctx.Create(router)
+	boltztest.RequireCreate(ctx, router)
+	err := boltztest.Create(ctx, router)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type router already exists with id %v", router.Id))
 
 	router.Id = uuid.New().String()
-	err = ctx.Create(router)
+	err = boltztest.Create(ctx, router)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on routers store", router.Name))
 }
 
 func (ctx *TestContext) testCreateRouters(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	defer ctx.cleanupAll()
 
 	router := &Router{
@@ -68,8 +69,8 @@ func (ctx *TestContext) testCreateRouters(t *testing.T) {
 		Name:          uuid.New().String(),
 		Cost:          2,
 	}
-	ctx.RequireCreate(router)
-	ctx.ValidateBaseline(router)
+	boltztest.RequireCreate(ctx, router)
+	boltztest.ValidateBaseline(ctx, router)
 }
 
 type routerTestEntities struct {
@@ -94,7 +95,7 @@ func (ctx *TestContext) createRouterTestEntities() *routerTestEntities {
 		Address: "tcp:localhost:22",
 	}
 
-	ctx.RequireCreate(terminator)
+	boltztest.RequireCreate(ctx, terminator)
 
 	return &routerTestEntities{
 		router1:    router1,
@@ -105,18 +106,18 @@ func (ctx *TestContext) createRouterTestEntities() *routerTestEntities {
 }
 
 func (ctx *TestContext) testLoadQueryRouters(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	ctx.cleanupAll()
 
 	entities := ctx.createRouterTestEntities()
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		router, err := ctx.stores.Router.LoadOneById(tx, entities.router1.Id)
+		router, _, err := ctx.stores.Router.FindById(tx, entities.router1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(router)
 		ctx.EqualValues(entities.router1.Id, router.Id)
 
-		router, err = ctx.stores.Router.LoadOneByName(tx, entities.router1.Name)
+		router, err = ctx.stores.Router.FindByName(tx, entities.router1.Name)
 		ctx.NoError(err)
 		ctx.NotNil(router)
 		ctx.EqualValues(entities.router1.Id, router.Id)
@@ -133,19 +134,19 @@ func (ctx *TestContext) testLoadQueryRouters(t *testing.T) {
 }
 
 func (ctx *TestContext) testUpdateRouters(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	ctx.cleanupAll()
 
 	entities := ctx.createRouterTestEntities()
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		original, err := ctx.stores.Router.LoadOneById(tx, entities.router1.Id)
+	err := ctx.GetDb().Update(nil, func(change boltz.MutateContext) error {
+		original, _, err := ctx.stores.Router.FindById(change.Tx(), entities.router1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
 
-		router, err := ctx.stores.Router.LoadOneById(tx, entities.router1.Id)
+		router, _, err := ctx.stores.Router.FindById(change.Tx(), entities.router1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(router)
 
@@ -156,9 +157,9 @@ func (ctx *TestContext) testUpdateRouters(t *testing.T) {
 		router.CreatedAt = now
 		router.Tags = tags
 
-		err = ctx.stores.Router.Update(boltz.NewMutateContext(tx), router, nil)
+		err = ctx.stores.Router.Update(change, router, nil)
 		ctx.NoError(err)
-		loaded, err := ctx.stores.Router.LoadOneById(tx, entities.router1.Id)
+		loaded, _, err := ctx.stores.Router.FindById(change.Tx(), entities.router1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
 		ctx.EqualValues(original.CreatedAt, loaded.CreatedAt)
@@ -172,9 +173,9 @@ func (ctx *TestContext) testUpdateRouters(t *testing.T) {
 }
 
 func (ctx *TestContext) testDeleteRouters(t *testing.T) {
-	ctx.Impl.NextTest(t)
+	ctx.NextTest(t)
 	ctx.cleanupAll()
 	entities := ctx.createRouterTestEntities()
-	ctx.RequireDelete(entities.router1)
-	ctx.RequireDelete(entities.router2)
+	boltztest.RequireDelete(ctx, entities.router1)
+	boltztest.RequireDelete(ctx, entities.router2)
 }

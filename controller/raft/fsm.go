@@ -114,7 +114,7 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 
 			logger.Infof("[%v] apply log with type %T", log.Index, cmd)
 
-			if err = cmd.Apply(); err != nil {
+			if err = cmd.Apply(log.Index); err != nil {
 				logger.WithError(err).Error("applying log resulted in error")
 			}
 

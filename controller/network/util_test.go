@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 
@@ -50,7 +51,7 @@ type testEntityHelper struct {
 func (self *testEntityHelper) addTestRouter() *Router {
 	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, false)
 	self.network.Routers.markConnected(router)
-	self.ctx.NoError(self.network.Routers.Create(router))
+	self.ctx.NoError(self.network.Routers.Create(router, change.New()))
 	self.routerIdx++
 	return router
 }
@@ -67,7 +68,7 @@ func (self *testEntityHelper) addTestTerminator(serviceName string, routerName s
 		InstanceId: instanceId,
 		Address:    "ToDo",
 	}
-	self.ctx.NoError(self.network.Terminators.Create(term))
+	self.ctx.NoError(self.network.Terminators.Create(term, change.New()))
 	self.terminatorIdx++
 	return term
 }
@@ -80,7 +81,7 @@ func (self *testEntityHelper) addTestService(serviceName string) *Service {
 		TerminatorStrategy: xt_smartrouting.Name,
 	}
 	self.serviceIdx++
-	self.ctx.NoError(self.network.Services.Create(svc))
+	self.ctx.NoError(self.network.Services.Create(svc, change.New()))
 	return svc
 }
 

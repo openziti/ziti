@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
@@ -78,7 +79,7 @@ func ListWithQueryFAndCollector[T models.Entity](n *network.Network, rc api.Requ
 	ListWithEnvelopeFactory(rc, toEnvelope, func(rc api.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(lister.GetStore())
+		query, err := queryOptions.getFullQuery(lister.GetListStore())
 		if err != nil {
 			return nil, err
 		}
@@ -221,18 +222,18 @@ func Detail(rc api.RequestContext, f ModelDetailF) {
 type ModelDeleteF func(rc api.RequestContext, id string) error
 
 type DeleteHandler interface {
-	Delete(id string) error
+	Delete(id string, ctx *change.Context) error
 }
 
-type DeleteHandlerF func(id string) error
+type DeleteHandlerF func(id string, ctx *change.Context) error
 
-func (self DeleteHandlerF) Delete(id string) error {
-	return self(id)
+func (self DeleteHandlerF) Delete(id string, ctx *change.Context) error {
+	return self(id, ctx)
 }
 
 func DeleteWithHandler(rc api.RequestContext, deleteHandler DeleteHandler) {
 	Delete(rc, func(rc api.RequestContext, id string) error {
-		return deleteHandler.Delete(id)
+		return deleteHandler.Delete(id, rc.NewChangeContext())
 	})
 }
 
@@ -347,7 +348,7 @@ func ListAssociationWithHandler[T models.Entity, A models.Entity](n *network.Net
 	ListAssociations(rc, func(rc api.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain a final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(sourceR.GetStore())
+		query, err := queryOptions.getFullQuery(sourceR.GetListStore())
 		if err != nil {
 			return nil, err
 		}
@@ -355,7 +356,7 @@ func ListAssociationWithHandler[T models.Entity, A models.Entity](n *network.Net
 		result := models.EntityListResult[A]{
 			Loader: associatedR,
 		}
-		err = sourceR.PreparedListAssociatedWithHandler(id, associatedR.GetStore().GetEntityType(), query, result.Collect)
+		err = sourceR.PreparedListAssociatedWithHandler(id, associatedR.GetListStore().GetEntityType(), query, result.Collect)
 		if err != nil {
 			return nil, err
 		}

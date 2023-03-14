@@ -94,9 +94,7 @@ type Stats interface {
 }
 
 type Costs interface {
-	SetPrecedenceChangeHandler(f func(terminatorId string, precedence Precedence))
 	ClearCost(terminatorId string)
-	SetPrecedence(terminatorId string, precedence Precedence)
 	SetDynamicCost(terminatorId string, weight uint16)
 	UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16)
 	GetDynamicCost(terminatorId string) uint16

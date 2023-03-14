@@ -17,6 +17,7 @@
 package db
 
 import (
+	"context"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
@@ -24,32 +25,40 @@ import (
 	"sync"
 )
 
+func NewStoreDefinition[E boltz.ExtEntity](strategy boltz.EntityStrategy[E]) boltz.StoreDefinition[E] {
+	entityType := strategy.NewEntity().GetEntityType()
+	return boltz.StoreDefinition[E]{
+		EntityType:     entityType,
+		EntityStrategy: strategy,
+		BasePath:       []string{RootBucket},
+		EntityNotFoundF: func(id string) error {
+			return boltz.NewNotFoundError(boltz.GetSingularEntityType(entityType), "id", id)
+		},
+	}
+}
+
 type Stores struct {
 	Terminator TerminatorStore
 	Router     RouterStore
 	Service    ServiceStore
-	storeMap   map[string]boltz.CrudStore
+	storeMap   map[string]boltz.Store
 	lock       sync.Mutex
-	checkables []Checkable
+	checkables []boltz.Checkable
 }
 
-type Checkable interface {
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
-}
-
-func (store *Stores) AddCheckable(checkable Checkable) {
+func (store *Stores) AddCheckable(checkable boltz.Checkable) {
 	store.lock.Lock()
 	defer store.lock.Unlock()
 	store.checkables = append(store.checkables, checkable)
 }
 
 func (stores *Stores) buildStoreMap() {
-	stores.storeMap = map[string]boltz.CrudStore{}
+	stores.storeMap = map[string]boltz.Store{}
 	val := reflect.ValueOf(stores).Elem()
 	for i := 0; i < val.NumField(); i++ {
 		f := val.Field(i)
 		if f.CanInterface() {
-			if store, ok := f.Interface().(boltz.CrudStore); ok {
+			if store, ok := f.Interface().(boltz.Store); ok {
 				stores.storeMap[store.GetEntityType()] = store
 				stores.AddCheckable(store)
 			}
@@ -57,44 +66,47 @@ func (stores *Stores) buildStoreMap() {
 	}
 }
 
-func (stores *Stores) GetStoreList() []boltz.CrudStore {
-	var result []boltz.CrudStore
+func (stores *Stores) GetStoreList() []boltz.Store {
+	var result []boltz.Store
 	for _, store := range stores.storeMap {
 		result = append(result, store)
 	}
 	return result
 }
 
-func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return stores.storeMap[entity.GetEntityType()]
 }
 
-func (stores *Stores) GetStoreForEntityType(entityType string) boltz.CrudStore {
+func (stores *Stores) GetStoreForEntityType(entityType string) boltz.Store {
 	return stores.storeMap[entityType]
 }
 
-func (stores *Stores) CheckIntegrity(db boltz.Db, fix bool, errorHandler func(error, bool)) error {
+func (stores *Stores) CheckIntegrity(db boltz.Db, ctx context.Context, fix bool, errorHandler func(error, bool)) error {
+
 	if fix {
-		return db.Update(func(tx *bbolt.Tx) error {
-			return stores.CheckIntegrityInTx(db, tx, fix, errorHandler)
+		changeCtx := boltz.NewMutateContext(ctx)
+		return db.Update(changeCtx, func(changeCtx boltz.MutateContext) error {
+			return stores.CheckIntegrityInTx(db, changeCtx, fix, errorHandler)
 		})
 	}
 
 	return db.View(func(tx *bbolt.Tx) error {
-		return stores.CheckIntegrityInTx(db, tx, fix, errorHandler)
+		changeCtx := boltz.NewTxMutateContext(ctx, tx)
+		return stores.CheckIntegrityInTx(db, changeCtx, fix, errorHandler)
 	})
 }
 
-func (stores *Stores) CheckIntegrityInTx(db boltz.Db, tx *bbolt.Tx, fix bool, errorHandler func(error, bool)) error {
+func (stores *Stores) CheckIntegrityInTx(db boltz.Db, ctx boltz.MutateContext, fix bool, errorHandler func(error, bool)) error {
 	if fix {
 		pfxlog.Logger().Info("creating database snapshot before attempting to fix data integrity issues")
-		if err := db.Snapshot(tx); err != nil {
+		if err := db.Snapshot(ctx.Tx()); err != nil {
 			return err
 		}
 	}
 
 	for _, checkable := range stores.checkables {
-		if err := checkable.CheckIntegrity(tx, fix, errorHandler); err != nil {
+		if err := checkable.CheckIntegrity(ctx, fix, errorHandler); err != nil {
 			return err
 		}
 	}

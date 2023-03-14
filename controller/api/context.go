@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/pkg/errors"
 	"net/http"
 )
@@ -75,6 +76,15 @@ func (rc *RequestContextImpl) GetEntitySubId() (string, error) {
 	}
 
 	return rc.entitySubId, nil
+}
+
+func (rc *RequestContextImpl) NewChangeContext() *change.Context {
+	src := fmt.Sprintf("rest[auth=fabric/host=%v/method=%v/remote=%v]", rc.GetRequest().Host, rc.GetRequest().Method, rc.GetRequest().RemoteAddr)
+	changeCtx := change.New().SetSource(src)
+	if rc.Request.Form.Has("traceId") {
+		changeCtx.SetChangeAuthorId(rc.Request.Form.Get("traceId"))
+	}
+	return changeCtx
 }
 
 // ContextKey is used a custom type to avoid accidental context key collisions

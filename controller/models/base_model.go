@@ -46,7 +46,7 @@ type EntityRetriever[T Entity] interface {
 
 	PreparedListAssociatedWithHandler(id string, association string, query ast.Query, handler ListResultHandler) error
 
-	GetStore() boltz.CrudStore
+	GetListStore() boltz.Store
 
 	// GetEntityTypeId returns a unique id for the entity type. Some entities may share a storage type, such
 	// as fabric and edge services, and fabric and edge routers. However, they should have distinct entity type
@@ -64,7 +64,7 @@ type Entity interface {
 }
 
 type NameIndexedStore interface {
-	boltz.CrudStore
+	boltz.Store
 	GetNameIndex() boltz.ReadIndex
 }
 
@@ -118,16 +118,10 @@ func (entity *BaseEntity) ToBoltBaseExtEntity() *boltz.BaseExtEntity {
 	}
 }
 
-func (entity *BaseEntity) NewMutateContext(tx *bbolt.Tx) boltz.MutateContext {
-	ctx := boltz.NewMutateContext(tx)
-	if entity.IsSystem {
-		return ctx.GetSystemContext()
-	}
-	return ctx
-}
-
 type EntityListResult[T Entity] struct {
-	Loader   EntityRetriever[T]
+	Loader interface {
+		BaseLoadInTx(tx *bbolt.Tx, id string) (T, error)
+	}
 	Entities []T
 	QueryMetaData
 }
@@ -159,17 +153,21 @@ type QueryMetaData struct {
 	FilterableFields []string
 }
 
-type BaseEntityManager struct {
-	Store boltz.CrudStore
+type BaseEntityManager[E boltz.ExtEntity] struct {
+	Store boltz.EntityStore[E]
 }
 
-func (ctrl *BaseEntityManager) GetStore() boltz.CrudStore {
+func (ctrl *BaseEntityManager[E]) GetStore() boltz.EntityStore[E] {
+	return ctrl.Store
+}
+
+func (ctrl *BaseEntityManager[E]) GetListStore() boltz.Store {
 	return ctrl.Store
 }
 
 type ListResultHandler func(tx *bbolt.Tx, ids []string, qmd *QueryMetaData) error
 
-func (ctrl *BaseEntityManager) checkLimits(query ast.Query) {
+func (ctrl *BaseEntityManager[E]) checkLimits(query ast.Query) {
 	if query.GetLimit() == nil || *query.GetLimit() < -1 || *query.GetLimit() == 0 {
 		query.SetLimit(ListLimitDefault)
 	} else if *query.GetLimit() > ListLimitMax {
@@ -183,7 +181,7 @@ func (ctrl *BaseEntityManager) checkLimits(query ast.Query) {
 	}
 }
 
-func (ctrl *BaseEntityManager) ListWithTx(tx *bbolt.Tx, queryString string, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager[E]) ListWithTx(tx *bbolt.Tx, queryString string, resultHandler ListResultHandler) error {
 	query, err := ast.Parse(ctrl.Store, queryString)
 	if err != nil {
 		return err
@@ -192,7 +190,7 @@ func (ctrl *BaseEntityManager) ListWithTx(tx *bbolt.Tx, queryString string, resu
 	return ctrl.PreparedListWithTx(tx, query, resultHandler)
 }
 
-func (ctrl *BaseEntityManager) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager[E]) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	keys, count, err := ctrl.Store.QueryIdsC(tx, query)
@@ -208,7 +206,7 @@ func (ctrl *BaseEntityManager) PreparedListWithTx(tx *bbolt.Tx, query ast.Query,
 	return resultHandler(tx, keys, qmd)
 }
 
-func (ctrl *BaseEntityManager) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager[E]) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	var count int64
@@ -242,7 +240,7 @@ func (ctrl *BaseEntityManager) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, as
 	return resultHandler(tx, keys, qmd)
 }
 
-func (ctrl *BaseEntityManager) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseEntityManager[E]) PreparedListIndexedWithTx(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	keys, count, err := ctrl.Store.QueryWithCursorC(tx, cursorProvider, query)
@@ -264,7 +262,7 @@ type Named interface {
 	GetName() string
 }
 
-func (ctrl *BaseEntityManager) ValidateNameOnUpdate(ctx boltz.MutateContext, updatedEntity, existingEntity boltz.Entity, checker boltz.FieldChecker) error {
+func (ctrl *BaseEntityManager[E]) ValidateNameOnUpdate(ctx boltz.MutateContext, updatedEntity, existingEntity boltz.Entity, checker boltz.FieldChecker) error {
 	// validate name for named entities
 	if namedEntity, ok := updatedEntity.(boltz.NamedExtEntity); ok {
 		existingNamed := existingEntity.(boltz.NamedExtEntity)
@@ -284,21 +282,20 @@ func (ctrl *BaseEntityManager) ValidateNameOnUpdate(ctx boltz.MutateContext, upd
 	return nil
 }
 
-func (handler *BaseEntityManager) ValidateName(db boltz.Db, boltEntity Named) error {
+func (handler *BaseEntityManager[E]) ValidateName(db boltz.Db, boltEntity Named) error {
 	return db.View(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		return handler.ValidateNameOnCreate(ctx, boltEntity)
+		return handler.ValidateNameOnCreate(tx, boltEntity)
 	})
 }
 
-func (handler *BaseEntityManager) ValidateNameOnCreate(ctx boltz.MutateContext, entity interface{}) error {
+func (handler *BaseEntityManager[E]) ValidateNameOnCreate(tx *bbolt.Tx, entity interface{}) error {
 	// validate name for named entities
 	if namedEntity, ok := entity.(Named); ok {
 		if namedEntity.GetName() == "" {
 			return errorz.NewFieldError("name is required", "name", namedEntity.GetName())
 		}
 		if nameIndexStore, ok := handler.GetStore().(NameIndexedStore); ok {
-			if nameIndexStore.GetNameIndex().Read(ctx.Tx(), []byte(namedEntity.GetName())) != nil {
+			if nameIndexStore.GetNameIndex().Read(tx, []byte(namedEntity.GetName())) != nil {
 				return errorz.NewFieldError("name is must be unique", "name", namedEntity.GetName())
 			}
 		} else {

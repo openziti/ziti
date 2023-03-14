@@ -26,18 +26,23 @@ import (
 )
 
 type removeTerminatorsHandler struct {
-	network *network.Network
+	baseHandler
 }
 
-func newRemoveTerminatorsHandler(network *network.Network) *removeTerminatorsHandler {
-	return &removeTerminatorsHandler{network: network}
+func newRemoveTerminatorsHandler(network *network.Network, router *network.Router) *removeTerminatorsHandler {
+	return &removeTerminatorsHandler{
+		baseHandler: baseHandler{
+			router:  router,
+			network: network,
+		},
+	}
 }
 
-func (h *removeTerminatorsHandler) ContentType() int32 {
+func (self *removeTerminatorsHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_RemoveTerminatorsRequestType)
 }
 
-func (h *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	request := &ctrl_pb.RemoveTerminatorsRequest{}
@@ -46,13 +51,13 @@ func (h *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch channe
 		return
 	}
 
-	go h.handleRemoveTerminators(msg, ch, request)
+	go self.handleRemoveTerminators(msg, ch, request)
 }
 
-func (h *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
+func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	if err := h.network.Terminators.DeleteBatch(request.TerminatorIds); err == nil {
+	if err := self.network.Terminators.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch)); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("terminatorIds", request.TerminatorIds).

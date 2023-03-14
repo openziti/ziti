@@ -81,7 +81,7 @@ func (r *RouterRouter) Detail(n *network.Network, rc api.RequestContext) {
 func (r *RouterRouter) Create(n *network.Network, rc api.RequestContext, params router.CreateRouterParams) {
 	Create(rc, RouterLinkFactory, func() (string, error) {
 		router := MapCreateRouterToModel(params.Router)
-		err := n.Routers.Create(router)
+		err := n.Routers.Create(router, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
@@ -95,13 +95,13 @@ func (r *RouterRouter) Delete(network *network.Network, rc api.RequestContext) {
 
 func (r *RouterRouter) Update(n *network.Network, rc api.RequestContext, params router.UpdateRouterParams) {
 	Update(rc, func(id string) error {
-		return n.Managers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router), nil)
+		return n.Managers.Routers.Update(MapUpdateRouterToModel(params.ID, params.Router), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *RouterRouter) Patch(n *network.Network, rc api.RequestContext, params router.PatchRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.FilterMaps("tags"))
+		return n.Managers.Routers.Update(MapPatchRouterToModel(params.ID, params.Router), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 

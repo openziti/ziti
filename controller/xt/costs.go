@@ -30,9 +30,6 @@ const (
 
 var globalCosts = &costs{
 	costMap: cmap.New[uint16](),
-	precedenceChangeHandler: func(string, Precedence) {
-		panic("precedence change handler not set")
-	},
 }
 
 func GlobalCosts() Costs {
@@ -132,20 +129,11 @@ func GetPrecedenceForName(name string) Precedence {
 }
 
 type costs struct {
-	costMap                 cmap.ConcurrentMap[string, uint16]
-	precedenceChangeHandler func(terminatorId string, precedence Precedence)
-}
-
-func (self *costs) SetPrecedenceChangeHandler(f func(terminatorId string, precedence Precedence)) {
-	self.precedenceChangeHandler = f
+	costMap cmap.ConcurrentMap[string, uint16]
 }
 
 func (self *costs) ClearCost(terminatorId string) {
 	self.costMap.Remove(terminatorId)
-}
-
-func (self *costs) SetPrecedence(terminatorId string, precedence Precedence) {
-	self.precedenceChangeHandler(terminatorId, precedence)
 }
 
 func (self *costs) SetDynamicCost(terminatorId string, cost uint16) {

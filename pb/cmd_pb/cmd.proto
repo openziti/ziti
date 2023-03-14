@@ -28,8 +28,8 @@ enum CommandType {
 }
 
 message ChangeContext {
-  string changeAuthor = 1;
-  string traceId = 2;
+  map<string, string> attributes = 1;
+  uint64 raftIndex = 2;
 }
 
 message AddPeerRequest {

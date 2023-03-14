@@ -39,52 +39,29 @@ type Router struct {
 	Disabled    bool
 }
 
-func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
-	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
-	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
-	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
-}
-
-func (entity *Router) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
-	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
-	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
-	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
-}
-
 func (entity *Router) GetEntityType() string {
 	return EntityTypeRouters
 }
 
 type RouterStore interface {
-	boltz.CrudStore
+	boltz.EntityStore[*Router]
+	boltz.EntityStrategy[*Router]
 	GetNameIndex() boltz.ReadIndex
-	LoadOneById(tx *bbolt.Tx, id string) (*Router, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Router, error)
+	FindByName(tx *bbolt.Tx, id string) (*Router, error)
 }
 
 func newRouterStore(stores *stores) *routerStoreImpl {
-	notFoundErrorFactory := func(id string) error {
-		return boltz.NewNotFoundError(boltz.GetSingularEntityType(EntityTypeRouters), "id", id)
-	}
-
-	store := &routerStoreImpl{
-		baseStore: baseStore{
-			stores:    stores,
-			BaseStore: boltz.NewBaseStore(EntityTypeRouters, notFoundErrorFactory, RootBucket),
-		},
+	store := &routerStoreImpl{}
+	store.baseStore = baseStore[*Router]{
+		stores:    stores,
+		BaseStore: boltz.NewBaseStore(NewStoreDefinition[*Router](store)),
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type routerStoreImpl struct {
-	baseStore
+	baseStore[*Router]
 	indexName         boltz.ReadIndex
 	terminatorsSymbol boltz.EntitySetSymbol
 }
@@ -105,26 +82,37 @@ func (store *routerStoreImpl) initializeLocal() {
 func (store *routerStoreImpl) initializeLinked() {
 }
 
+func (self *routerStoreImpl) NewEntity() *Router {
+	return &Router{}
+}
+
+func (self *routerStoreImpl) FillEntity(entity *Router, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
+	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
+	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
+	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
+}
+
+func (self *routerStoreImpl) PersistEntity(entity *Router, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
+	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
+	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
+	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
+	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
+}
+
 func (store *routerStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *routerStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Router{}
-}
-
-func (store *routerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Router, error) {
-	entity := &Router{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *routerStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Router, error) {
+func (store *routerStoreImpl) FindByName(tx *bbolt.Tx, name string) (*Router, error) {
 	id := store.indexName.Read(tx, []byte(name))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		entity, _, err := store.FindById(tx, string(id))
+		return entity, err
 	}
 	return nil, nil
 }
