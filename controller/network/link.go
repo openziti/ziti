@@ -24,6 +24,9 @@ import (
 )
 
 type Link struct {
+	SrcLatency  int64
+	DstLatency  int64
+	Cost        int64
 	Id          string
 	Src         *Router
 	Dst         *Router
@@ -32,9 +35,6 @@ type Link struct {
 	state       []*LinkState
 	down        bool
 	StaticCost  int32
-	SrcLatency  int64
-	DstLatency  int64
-	Cost        int64
 	usable      atomic.Bool
 	lock        sync.Mutex
 }
