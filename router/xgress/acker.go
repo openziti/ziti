@@ -18,12 +18,15 @@ type ackEntry struct {
 	*Acknowledgement
 }
 
+// Note: if altering this struct, be sure to account for 64 bit alignment on 32 bit arm arch
+// https://pkg.go.dev/sync/atomic#pkg-note-BUG
+// https://github.com/golang/go/issues/36606
 type Acker struct {
+	acksQueueSize int64
 	forwarder     PayloadBufferForwarder
 	acks          *deque.Deque
 	ackIngest     chan *ackEntry
 	ackSend       chan *ackEntry
-	acksQueueSize int64
 	closeNotify   <-chan struct{}
 }
 

@@ -32,7 +32,11 @@ type PayloadBufferForwarder interface {
 	ForwardAcknowledgement(srcAddr Address, acknowledgement *Acknowledgement) error
 }
 
+// Note: if altering this struct, be sure to account for 64 bit alignment on 32 bit arm arch
+// https://pkg.go.dev/sync/atomic#pkg-note-BUG
+// https://github.com/golang/go/issues/36606
 type LinkSendBuffer struct {
+	retxScale             float64
 	x                     *Xgress
 	buffer                map[int32]*txPayload
 	newlyBuffered         chan *txPayload
@@ -48,7 +52,6 @@ type LinkSendBuffer struct {
 	closed                atomic.Bool
 	blockedByLocalWindow  bool
 	blockedByRemoteWindow bool
-	retxScale             float64
 	retxThreshold         uint32
 	lastRtt               uint16
 	lastRetransmitTime    int64
@@ -57,8 +60,8 @@ type LinkSendBuffer struct {
 }
 
 type txPayload struct {
-	payload    *Payload
 	age        int64
+	payload    *Payload
 	retxQueued int32
 	x          *Xgress
 	next       *txPayload
