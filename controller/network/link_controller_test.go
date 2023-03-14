@@ -17,10 +17,26 @@
 package network
 
 import (
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
+
+// A simple test to check for failure of alignment on atomic operations for 64 bit variables in a struct
+func Test64BitAlignment(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("One of the variables that was tested is not properly 64-bit aligned.")
+		}
+	}()
+
+	link := Link{}
+
+	atomic.LoadInt64(&link.SrcLatency)
+	atomic.LoadInt64(&link.DstLatency)
+	atomic.LoadInt64(&link.Cost)
+}
 
 func TestLifecycle(t *testing.T) {
 	linkController := newLinkController(nil)

@@ -19,8 +19,28 @@ package xgress
 import (
 	"github.com/stretchr/testify/assert"
 	"reflect"
+	"sync/atomic"
 	"testing"
 )
+
+// A simple test to check for failure of alignment on atomic operations for 64 bit variables in a struct
+func Test64BitAlignment(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("One of the variables that was tested is not properly 64-bit aligned.")
+		}
+	}()
+
+	lsb := Xgress{}
+	tPayload := txPayload{}
+	reTx := Retransmitter{}
+	ackerObj := Acker{}
+
+	atomic.LoadInt64(&lsb.timeOfLastRxFromLink)
+	atomic.LoadInt64(&tPayload.age)
+	atomic.LoadInt64(&reTx.retransmitsQueueSize)
+	atomic.LoadInt64(&ackerObj.acksQueueSize)
+}
 
 func TestSetOriginatorFlag(t *testing.T) {
 	type args struct {
