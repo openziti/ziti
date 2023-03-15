@@ -13,6 +13,7 @@ import (
 	"github.com/openziti/fabric/router/env"
 	"github.com/openziti/foundation/v2/tlz"
 	"github.com/openziti/identity"
+	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"math/big"
@@ -544,15 +545,62 @@ func newCertChecker() (*CertExpirationChecker, func()) {
 		Token:    eid.New(),
 		Data:     nil,
 	}
-	ctrls := env.NewNetworkControllers(time.Second, env.NewDefaultHeartbeatOptions())
-	if _, err = ctrls.Add(testChannel); err != nil {
-		panic(err)
+	ctrlDialer := env.CtrlDialer(func(address transport.Address, bindHandler channel.BindHandler) error {
+		return testChannel.Bind(bindHandler)
+	})
+	ctrls := env.NewNetworkControllers(time.Second, ctrlDialer, env.NewDefaultHeartbeatOptions())
+	ctrls.UpdateControllerEndpoints([]string{"tls:localhost:6262"})
+	start := time.Now()
+	for {
+		if ctrls.AnyCtrlChannel() != nil {
+			break
+		}
+		if time.Since(start) > time.Second {
+			panic("control channel not setup")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 	return NewCertExpirationChecker(id, &edgerouter.Config{}, ctrls, closeNotify), func() { close(closeNotify) }
 }
 
 type simpleTestChannel struct {
 	isClosed bool
+}
+
+func (ch *simpleTestChannel) Bind(h channel.BindHandler) error {
+	return h.BindChannel(ch)
+}
+
+func (ch *simpleTestChannel) AddPeekHandler(h channel.PeekHandler) {
+}
+
+func (ch *simpleTestChannel) AddTransformHandler(h channel.TransformHandler) {
+}
+
+func (ch *simpleTestChannel) AddReceiveHandler(contentType int32, h channel.ReceiveHandler) {
+}
+
+func (ch *simpleTestChannel) AddReceiveHandlerF(contentType int32, h channel.ReceiveHandlerF) {
+}
+
+func (ch *simpleTestChannel) AddTypedReceiveHandler(h channel.TypedReceiveHandler) {
+}
+
+func (ch *simpleTestChannel) AddErrorHandler(h channel.ErrorHandler) {
+}
+
+func (ch *simpleTestChannel) AddCloseHandler(h channel.CloseHandler) {
+}
+
+func (ch *simpleTestChannel) SetUserData(data interface{}) {
+}
+
+func (ch *simpleTestChannel) GetUserData() interface{} {
+	return nil
+}
+
+func (ch *simpleTestChannel) GetChannel() channel.Channel {
+	return ch
 }
 
 func (ch *simpleTestChannel) TrySend(s channel.Sendable) (bool, error) {

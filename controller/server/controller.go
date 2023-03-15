@@ -16,7 +16,6 @@
 
 package server
 
-import "C"
 import (
 	"fmt"
 	"github.com/openziti/channel/v2"

@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -91,8 +90,6 @@ func Test_EventsTest(t *testing.T) {
 	ctx.CreateEnrollAndStartEdgeRouter()
 
 	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll(xt_smartrouting.Name)
-
-	ctx.CreateEnrollAndStartEdgeRouter()
 
 	hostIdentity, hostContext := ctx.AdminManagementSession.RequireCreateSdkContext()
 	defer hostContext.Close()

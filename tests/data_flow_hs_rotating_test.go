@@ -1,3 +1,4 @@
+//go:build dataflow
 // +build dataflow
 
 /*
@@ -21,7 +22,6 @@ package tests
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
@@ -159,7 +159,7 @@ type clientFirstRotatingService struct {
 	maxRequests uint32
 	requests    uint32
 	closeCB     func()
-	closing     concurrenz.AtomicBoolean
+	closing     atomic.Bool
 }
 
 func (service *clientFirstRotatingService) Handle(conn *testServerConn) error {
@@ -301,7 +301,7 @@ type serverFirstRotatingService struct {
 	maxRequests uint32
 	requests    uint32
 	closeCB     func()
-	closing     concurrenz.AtomicBoolean
+	closing     atomic.Bool
 }
 
 func (service *serverFirstRotatingService) Handle(conn *testServerConn) error {
