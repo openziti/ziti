@@ -242,7 +242,7 @@ First we need to grant access to use the service via a service policy. There are
 
 For now, we just need a dial policy. Later, when we try hosting the echo service with an SDK embedded application, we’ll need a bind policy as well. We're going to explicitly add our service and identity to this policy. The service we'll reference by name. The identity we'll include by role attribute. 
 
-For a deep dive into policies, see [here](https://docs.openziti.io/docs/learn/core-concepts/security/authorization/policies/overview).
+For a deep dive into policies, see [here](https://docs.openziti.io/docs/learn/core-concepts/security/authorization/policies/overview/).
 
 ```action:ziti
 ziti edge create service-policy echo-clients Dial --service-roles '@echo' --identity-roles '#management'
