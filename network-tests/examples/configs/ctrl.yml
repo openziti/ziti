@@ -62,30 +62,77 @@ mgmt:
   #url:                http://localhost:8086
   #database:           ziti
 
-#events:
-#  jsonLogger:
-#    subscriptions:
-#      - type: fabric.routers
-#      - type: fabric.terminators
-#      - type: metrics
-#        sourceFilter: .*
-#        metricFilter: .*egress.*m1_rate*
-#      - type: fabric.circuits
-#        include:
-#          - created
-#      - type: edge.sessions
-#        include:
-#          - created
-#      - type: edge.apiSessions
-#      - type: fabric.usage
+metrics:
+  reportInterval: 1m
+
+events:
+  jsonLogger:
+    subscriptions:
+      - type: metrics
+        metricFilter: "link.latency.*"
+      - type: metrics
+        sourceFilter: .*
+        metricFilter: "(.*session.create.*)|(bolt.*)"
+      - type: metrics
+        sourceFilter: .*
+        metricFilter: "/edge*"
+      - type: metrics
+        metricFilter: "ctrl.*"
 #      - type: services
 #      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
-#    handler:
-#      type: file
-#      format: json
-#      path: /tmp/ziti-events.log
+    handler:
+      type: file
+      format: json
+      path: /var/log/ziti/utilization-metrics.log
+      maxsizemb: 1024
+      maxbackups: 1
+
+  edgeSessionLogger:
+    subscriptions:
+      - type: edge.sessions
+        include:
+          - created
+    handler:
+      type: file
+      format: json
+      path: /var/log/ziti/utilization-edgesessions.log
+      maxsizemb: 1024
+      maxbackups: 1
+
+  utilizationLogger:
+    subscriptions:
+      - type: fabric.circuits
+        version: 3
+        include:
+          - created
+          - failed
+          - pathUpdated
+      - type: fabric.usage
+        version: 3
+    handler:
+      type: file
+      format: json
+      path: /var/log/ziti/utilization-usage.log
+      maxsizemb: 1024
+      maxbackups: 5
+
+  eventsLogger:
+    subscriptions:
+      - type: edge.apiSessions
+      - type: fabric.routers
+      - type: services
+      - type: edge.entityCounts
+      - type: fabric.terminators
+      - type: fabric.links
+    handler:
+      type: file
+      format: json
+      path: /var/log/ziti/utilization-events.log
+      maxsizemb: 1024
+      maxbackups: 1
+
 
 # xctrl_example
 #
