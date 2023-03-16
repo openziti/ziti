@@ -26,14 +26,19 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
 	workflow.AddAction(edge.InitController("#ctrl"))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.Start("#ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	workflow.AddAction(edge.Login("#ctrl"))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
-	//workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	//workflow.AddAction(zitilib_actions.Edge("create", "service", "echo"))
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-server", "host.v1", `		 
@@ -42,6 +47,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 							"port" : 7001,
 							"protocol" : "tcp"
 					}`))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-intercept", "intercept.v1", `
 		{
 			"addresses": ["iperf.service"],
@@ -50,7 +56,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			 ],
 			"protocols": ["tcp"]
 		}`))
-
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "iperf", "-c", "iperf-server,iperf-intercept"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "iperf-server", "Bind", "--service-roles",
@@ -60,9 +66,11 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	//
 	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-server", "--edge-router-roles",
-	//"@router-east-server", "--identity-roles", "#server"))
+	//	"@router-east-server", "--identity-roles", "#server"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
 		"#iperf-client", "--identity-roles", "#iperf-client"))
+	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-server", "--edge-router-roles",
+		"#iperf-server", "--identity-roles", "#iperf-server"))
 	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
 	//"@router-tokyo-client", "--identity-roles", "#client"))
 	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
