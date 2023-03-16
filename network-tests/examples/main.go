@@ -54,10 +54,10 @@ func getConfigData(filePath string) []byte {
 
 // Definition of the model, which houses most you need to run things.
 var m = &model.Model{
-	Id: "example-pete",
+	Id: "services-pete",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "example-pete-test",
+			"environment": "services-pete",
 			"credentials": model.Variables{
 				"ssh": model.Variables{
 					"username": "ubuntu",
@@ -89,7 +89,7 @@ var m = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl": {
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"ctrl": {
 							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
@@ -102,7 +102,7 @@ var m = &model.Model{
 					},
 				},
 				"router-east-server": {
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-east-server": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-server", "tunneler"}},
@@ -112,63 +112,69 @@ var m = &model.Model{
 							PublicIdentity: "router-east-server",
 							RunWithSudo:    true,
 						},
-					},
-				},
-				"router-east-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-east-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-east-client.yml",
-							PublicIdentity: "router-east-client",
-							RunWithSudo:    true,
-						},
-						//"tun-east-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+						//"tun-east-server": {
+						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-server", "sdk-app"}},
 						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-east-client",
+						//	PublicIdentity: "tun-east-server",
 						//	RunWithSudo:    true,
 						//},
 					},
 				},
+				//"router-east-client": {
+				//	Scope:        model.Scope{Tags: model.Tags{}},
+				//	InstanceType: "t3.micro",
+				//	Components: model.Components{
+				//		"router-east-client": {
+				//			Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+				//			BinaryName:     "ziti-router",
+				//			ConfigSrc:      "router.yml",
+				//			ConfigName:     "router-east-client.yml",
+				//			PublicIdentity: "router-east-client",
+				//			RunWithSudo:    true,
+				//		},
+				//		//"tun-east-client": {
+				//		//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+				//		//	BinaryName:     "ziti-edge-tunnel",
+				//		//	PublicIdentity: "tun-east-client",
+				//		//	RunWithSudo:    true,
+				//		//},
+				//	},
+				//},
 			},
 		},
-		"us-west-2": {
-			Region: "us-west-2",
-			Site:   "us-west-2b",
-			Hosts: model.Hosts{
-				"router-west-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-west-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-west-client.yml",
-							PublicIdentity: "router-west-client",
-							RunWithSudo:    true,
-						},
-						//"tun-west-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-west-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
+		//"us-west-2": {
+		//	Region: "us-west-2",
+		//	Site:   "us-west-2b",
+		//	Hosts: model.Hosts{
+		//		"router-west-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "t3.micro",
+		//			Components: model.Components{
+		//				"router-west-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-west-client.yml",
+		//					PublicIdentity: "router-west-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-west-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-west-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
 		"ca-central-1": {
 			Region: "ca-central-1",
 			Site:   "ca-central-1b",
 			Hosts: model.Hosts{
 				"router-canada-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-canada-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
@@ -188,136 +194,136 @@ var m = &model.Model{
 				},
 			},
 		},
-		"ap-northeast-1": {
-			Region: "ap-northeast-1",
-			Site:   "ap-northeast-1a",
-			Hosts: model.Hosts{
-				"router-tokyo-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-tokyo-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-tokyo-client.yml",
-							PublicIdentity: "router-tokyo-client",
-							RunWithSudo:    true,
-						},
-						//"tun-tokyo-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-tokyo-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
-		"ap-southeast-2": {
-			Region: "ap-southeast-2",
-			Site:   "ap-southeast-2a",
-			Hosts: model.Hosts{
-				"router-sydney-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-sydney-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-sydney-client.yml",
-							PublicIdentity: "router-sydney-client",
-							RunWithSudo:    true,
-						},
-						//"tun-sydney-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-sydney-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
-		"sa-east-1": {
-			Region: "sa-east-1",
-			Site:   "sa-east-1a",
-			Hosts: model.Hosts{
-				"router-brazil-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-brazil-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-brazil-client.yml",
-							PublicIdentity: "router-brazil-client",
-							RunWithSudo:    true,
-						},
-						//"tun-brazil-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-brazil-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
-		"eu-central-1": {
-			Region: "eu-central-1",
-			Site:   "eu-central-1a",
-			Hosts: model.Hosts{
-				"router-frankfurt-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-frankfurt-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-frankfurt-client.yml",
-							PublicIdentity: "router-frankfurt-client",
-							RunWithSudo:    true,
-						},
-						//"tun-frankfurt-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-frankfurt-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
-		"af-south-1": {
-			Region: "af-south-1",
-			Site:   "af-south-1a",
-			Hosts: model.Hosts{
-				"router-cape_town-client": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
-					Components: model.Components{
-						"router-cape_town-client": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-cape_town-client.yml",
-							PublicIdentity: "router-cape_town-client",
-							RunWithSudo:    true,
-						},
-						//"tun-cape_town-client": {
-						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-cape_town-client",
-						//	RunWithSudo:    true,
-						//},
-					},
-				},
-			},
-		},
+		//"ap-northeast-1": {
+		//	Region: "ap-northeast-1",
+		//	Site:   "ap-northeast-1a",
+		//	Hosts: model.Hosts{
+		//		"router-tokyo-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "c5.large",
+		//			Components: model.Components{
+		//				"router-tokyo-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-tokyo-client.yml",
+		//					PublicIdentity: "router-tokyo-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-tokyo-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-tokyo-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
+		//"ap-southeast-2": {
+		//	Region: "ap-southeast-2",
+		//	Site:   "ap-southeast-2a",
+		//	Hosts: model.Hosts{
+		//		"router-sydney-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "c5.large",
+		//			Components: model.Components{
+		//				"router-sydney-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-sydney-client.yml",
+		//					PublicIdentity: "router-sydney-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-sydney-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-sydney-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
+		//"sa-east-1": {
+		//	Region: "sa-east-1",
+		//	Site:   "sa-east-1a",
+		//	Hosts: model.Hosts{
+		//		"router-brazil-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "c5.large",
+		//			Components: model.Components{
+		//				"router-brazil-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-brazil-client.yml",
+		//					PublicIdentity: "router-brazil-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-brazil-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-brazil-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
+		//"eu-central-1": {
+		//	Region: "eu-central-1",
+		//	Site:   "eu-central-1a",
+		//	Hosts: model.Hosts{
+		//		"router-frankfurt-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "c5.large",
+		//			Components: model.Components{
+		//				"router-frankfurt-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-frankfurt-client.yml",
+		//					PublicIdentity: "router-frankfurt-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-frankfurt-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-frankfurt-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
+		//"af-south-1": {
+		//	Region: "af-south-1",
+		//	Site:   "af-south-1a",
+		//	Hosts: model.Hosts{
+		//		"router-cape_town-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "c5.large",
+		//			Components: model.Components{
+		//				"router-cape_town-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-cape_town-client.yml",
+		//					PublicIdentity: "router-cape_town-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-cape_town-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-cape_town-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
 	},
 
 	Actions: model.ActionBinders{
@@ -384,10 +390,9 @@ func main() {
 
 	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Overlay", endpoint, "component.iperf-server", "component.iperf-client", 60, true))
 	m.AddOperatingStage(fablib_5_operation.Persist())
-	m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Underlay_Only", endpoint, "component.iperf-server", "component.iperf-client", 60, false))
-	m.AddOperatingStage(fablib_5_operation.Persist())
+	//m.AddOperatingStage(fablib_5_operation.Iperf("Ziti_Underlay_Only", endpoint, "component.iperf-server", "component.iperf-client", 60, false))
+	//m.AddOperatingStage(fablib_5_operation.Persist())
 
 	fablab.InitModel(m)
 	fablab.Run()
-
 }
