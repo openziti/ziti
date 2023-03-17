@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-func NewCmdDb(_ io.Writer, errOut io.Writer) *cobra.Command {
+func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := util.NewEmptyParentCmd("db", "Interact with Ziti database files")
 
 	exploreCmd := &cobra.Command{
@@ -22,5 +22,7 @@ func NewCmdDb(_ io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd.AddCommand(exploreCmd)
+	cmd.AddCommand(NewCompactAction())
+
 	return cmd
 }
