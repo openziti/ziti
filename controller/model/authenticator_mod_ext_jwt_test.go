@@ -1,7 +1,6 @@
 package model
 
 import (
-	"crypto/x509"
 	"encoding/json"
 	"github.com/Jeffail/gabs/v2"
 	"github.com/openziti/edge/controller/persistence"
@@ -74,7 +73,7 @@ func Test_signerRecord_Resolve(t *testing.T) {
 		}
 
 		signerRec := &signerRecord{
-			kidToPubKey: map[string]*x509.Certificate{},
+			kidToPubKey: map[string]pubKey{},
 			externalJwtSigner: &persistence.ExternalJwtSigner{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id:        "fake-id",
