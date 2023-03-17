@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import (
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/sdk-golang/ziti"
@@ -121,6 +122,10 @@ func (self *servicePoller) pollServices(pollInterval time.Duration, notifyClose 
 
 func (self *servicePoller) requestServiceListUpdate() {
 	ctrlCh := self.fabricProvider.factory.ctrls.AnyCtrlChannel()
-	lastUpdateToken, _ := self.servicesLastUpdateToken.Get(ctrlCh.Id())
-	self.fabricProvider.requestServiceList(ctrlCh, lastUpdateToken)
+	if ctrlCh != nil { // not currently connected to any controllers
+		lastUpdateToken, _ := self.servicesLastUpdateToken.Get(ctrlCh.Id())
+		self.fabricProvider.requestServiceList(ctrlCh, lastUpdateToken)
+	} else {
+		pfxlog.Logger().Warn("unable to request service list update, no controllers connected")
+	}
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/edge/impl"
 	"github.com/pkg/errors"
@@ -41,6 +42,10 @@ const (
 	xgressTypeFlag  = 6
 )
 
+const (
+	DefaultBufferSize = 10 * 1024
+)
+
 type outOfBand struct {
 	data    []byte
 	headers map[uint8][]byte
@@ -54,8 +59,9 @@ type XgressConn struct {
 	receiver    secretstream.Decryptor
 	sender      secretstream.Encryptor
 
-	writeDone chan struct{}
-	flags     concurrenz.AtomicBitSet
+	writeDone  chan struct{}
+	flags      concurrenz.AtomicBitSet
+	bufferSize int
 }
 
 func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn {
@@ -63,7 +69,13 @@ func NewXgressConn(conn net.Conn, halfClose bool, isTransport bool) *XgressConn 
 		Conn:        conn,
 		outOfBandTx: make(chan *outOfBand, 1),
 		writeDone:   make(chan struct{}),
+		bufferSize:  DefaultBufferSize,
 	}
+
+	if _, isUdpConn := conn.(*net.UDPConn); isUdpConn {
+		result.bufferSize = info.MaxUdpPacketSize
+	}
+
 	result.flags.Set(halfCloseFlag, halfClose)
 	result.flags.Set(xgressTypeFlag, isTransport)
 	return result
@@ -171,7 +183,7 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 		}
 	}
 
-	buffer := make([]byte, 10240)
+	buffer := make([]byte, self.bufferSize)
 	n, err := self.Conn.Read(buffer)
 	buffer = buffer[:n]
 
