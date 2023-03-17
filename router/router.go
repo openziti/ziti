@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/fabric/config"
+	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/xweb/v2"
 	"io/fs"
 	"math/rand"
@@ -456,7 +457,10 @@ func (self *Router) startControlPlane() error {
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	time.AfterFunc(time.Second*15, func() {
-		if len(self.ctrls.GetAll()) == 0 {
+		if !self.isShutdown.Load() && len(self.ctrls.GetAll()) == 0 {
+			if os.Getenv("STACKDUMP_ON_FAILED_STARTUP") == "true" {
+				debugz.DumpStack()
+			}
 			pfxlog.Logger().Fatal("unable to connect to any controllers before timeout")
 		}
 	})
