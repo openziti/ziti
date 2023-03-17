@@ -96,6 +96,9 @@ func (o *UseOptions) install(branch string, zitiApp string) error {
 
 	if o.Version != "" {
 		newVersion, err = semver.Make(o.Version)
+		if err != nil {
+			return err
+		}
 	}
 
 	log.Infoln("Attempting to install '" + zitiApp + "'  version: " + newVersion.String() + " from branch '" + branch + "'")
@@ -111,6 +114,9 @@ func (o *UseOptions) Run() error {
 	branch := o.Branch
 	if branch == "" {
 		list, err := o.getCurrentZitiSnapshotList()
+		if err != nil {
+			return err
+		}
 		branch, err = util.PickName(list, "Which Branch would you like to switch to: ")
 		if err != nil {
 			return err
