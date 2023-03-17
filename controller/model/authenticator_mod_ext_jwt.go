@@ -13,6 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
 package model
 
 import (
@@ -64,11 +65,16 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 	return ret
 }
 
+type pubKey struct {
+	pubKey any
+	chain  []*x509.Certificate
+}
+
 type signerRecord struct {
 	sync.Mutex
 	jwksLastRequest time.Time
 
-	kidToCertificate  map[string]*x509.Certificate
+	kidToPubKey       map[string]pubKey
 	jwksResponse      *jwks.Response
 	externalJwtSigner *persistence.ExternalJwtSigner
 
@@ -80,7 +86,7 @@ func (r *signerRecord) Resolve(force bool) error {
 	defer r.Mutex.Unlock()
 
 	if r.externalJwtSigner.CertPem != nil {
-		if len(r.kidToCertificate) != 0 && !force {
+		if len(r.kidToPubKey) != 0 && !force {
 			return nil
 		}
 
@@ -100,14 +106,17 @@ func (r *signerRecord) Resolve(force bool) error {
 		}
 
 		// first cert only
-		r.kidToCertificate = map[string]*x509.Certificate{
-			kid: certs[0],
+		r.kidToPubKey = map[string]pubKey{
+			kid: {
+				pubKey: certs[0].PublicKey,
+				chain:  certs,
+			},
 		}
 
 		return nil
 
 	} else if r.externalJwtSigner.JwksEndpoint != nil {
-		if len(r.kidToCertificate) != 0 && !force {
+		if len(r.kidToPubKey) != 0 && !force {
 			return nil
 		}
 
@@ -124,27 +133,41 @@ func (r *signerRecord) Resolve(force bool) error {
 		}
 
 		for _, key := range jwksResponse.Keys {
-			if len(key.X509Chain) == 0 {
-				return errors.New("could not parse JWKS keys, x509 chain was empty")
+			//if we have an x509chain the first must be the signing key
+			if len(key.X509Chain) != 0 {
+				x509Der, err := base64.StdEncoding.DecodeString(key.X509Chain[0])
+
+				if err != nil {
+					return fmt.Errorf("could not parse JWKS keys: %v", err)
+				}
+
+				certs, err := x509.ParseCertificates(x509Der)
+
+				if err != nil {
+					return fmt.Errorf("could not parse JWKS DER as x509: %v", err)
+				}
+
+				if len(certs) == 0 {
+					return fmt.Errorf("no ceritficates parsed")
+				}
+
+				r.kidToPubKey[key.KeyId] = pubKey{
+					pubKey: certs[0].PublicKey,
+					chain:  certs,
+				}
+			} else {
+				//else the key properties are the only way to construct the public key
+				k, err := jwks.KeyToPublicKey(key)
+
+				if err != nil {
+					return err
+				}
+
+				r.kidToPubKey[key.KeyId] = pubKey{
+					pubKey: k,
+				}
 			}
 
-			x509Der, err := base64.StdEncoding.DecodeString(key.X509Chain[0])
-
-			if err != nil {
-				return fmt.Errorf("could not parse JWKS keys: %v", err)
-			}
-
-			certs, err := x509.ParseCertificates(x509Der)
-
-			if err != nil {
-				return fmt.Errorf("could not parse JWKS DER as x509: %v", err)
-			}
-
-			if len(certs) == 0 {
-				return fmt.Errorf("no ceritficates parsed")
-			}
-
-			r.kidToCertificate[key.KeyId] = certs[0]
 		}
 
 		r.jwksResponse = jwksResponse
@@ -212,14 +235,14 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 		return nil, apierror.NewInvalidAuth()
 	}
 
-	cert, ok := signerRecord.kidToCertificate[kid]
+	key, ok := signerRecord.kidToPubKey[kid]
 
 	if !ok {
 		if err := signerRecord.Resolve(false); err != nil {
 			logger.WithError(err).Error("error attempting to resolve extJwtSigner certificate used for signing")
 		}
 
-		cert, ok = signerRecord.kidToCertificate[kid]
+		key, ok = signerRecord.kidToPubKey[kid]
 
 		if !ok {
 			return nil, fmt.Errorf("kid [%s] not found for issuer [%s]", kid, issuer)
@@ -228,7 +251,7 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 
 	claims[ExtJwtInternalClaim] = signerRecord.externalJwtSigner
 
-	return cert.PublicKey, nil
+	return key.pubKey, nil
 }
 
 func (a *AuthModuleExtJwt) Process(context AuthContext) (AuthResult, error) {
@@ -322,14 +345,23 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 			audSlice, ok := audValues.([]string)
 
 			if !ok {
-				audString, ok := audValues.(string)
+				audISlice, ok := audValues.([]interface{})
 
-				if !ok {
-					logger.WithField("audience", audValues).Error("audience is not a string or array of strings")
-					return nil, apierror.NewInvalidAuth()
+				if ok {
+					audSlice = []string{}
+					for _, aud := range audISlice {
+						audSlice = append(audSlice, aud.(string))
+					}
+				} else {
+					audString, ok := audValues.(string)
+
+					if !ok {
+						logger.WithField("audience", audValues).Error("audience is not a string or array of strings")
+						return nil, apierror.NewInvalidAuth()
+					}
+
+					audSlice = []string{audString}
 				}
-
-				audSlice = []string{audString}
 			}
 
 			found := false
@@ -423,7 +455,7 @@ func (a *AuthModuleExtJwt) process(context AuthContext, isPrimary bool) (AuthRes
 					return nil, apierror.NewInvalidAuth()
 				}
 			} else {
-				return nil, apierror.NewInvalidAuth()
+				externalJwtSignerId = extJwt.Id
 			}
 		} else if authPolicy.Secondary.RequiredExtJwtSigner != nil {
 			if extJwt.Id != *authPolicy.Secondary.RequiredExtJwtSigner {
@@ -503,7 +535,7 @@ func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
 	signerRec := &signerRecord{
 		externalJwtSigner: signer,
 		jwksResolver:      &jwks.HttpResolver{},
-		kidToCertificate:  map[string]*x509.Certificate{},
+		kidToPubKey:       map[string]pubKey{},
 	}
 
 	if err := signerRec.Resolve(false); err != nil {

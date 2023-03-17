@@ -33,6 +33,8 @@ paths:
           $ref: './current-api-session.yml/#/responses/detailCurrentAPISession'
         '400':
           $ref: './standard-responses.yml#/responses/badRequestResponse'
+        '401':
+          $ref: './standard-responses.yml#/responses/invalidAuthResponse'
         '403':
           $ref: './standard-responses.yml#/responses/invalidAuthResponse'
 
