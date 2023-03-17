@@ -325,7 +325,7 @@ main(){
     ## Ensure OpenZiti Controller is Upgraded and Ready
     #
 
-    if helm list --namespace "${ZITI_NAMESPACE}" --all | grep -q minicontroller; then
+    if helm status minicontroller --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logInfo "upgrading openziti controller"
         helm upgrade "minicontroller" "${ZITI_CHARTS}/ziti-controller" \
             --namespace "${ZITI_NAMESPACE}" \
@@ -479,23 +479,26 @@ main(){
             --jwt-output-file /tmp/minirouter.jwt >&3
     fi
 
-    if  helm list --all --namespace "${ZITI_NAMESPACE}" \
-        | grep -q minirouter; then
+    if  helm status minirouter --namespace "${ZITI_NAMESPACE}" &>/dev/null; then
         logDebug "upgrading router chart as 'minirouter'" 
         helm upgrade "minirouter" "${ZITI_CHARTS}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set enrollmentJwt=\ \
             --set edge.advertisedHost=minirouter.ziti \
-            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:6262" \
-            --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
+            --set linkListeners.transport.advertisedHost=minirouter-transport.ziti \
+            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:443" \
+            --values /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
+            # --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
     else
         logDebug "installing router chart as 'minirouter'" 
         helm install "minirouter" "${ZITI_CHARTS}/ziti-router" \
             --namespace "${ZITI_NAMESPACE}" \
             --set-file enrollmentJwt=/tmp/minirouter.jwt \
             --set edge.advertisedHost=minirouter.ziti \
-            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:6262" \
-            --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
+            --set linkListeners.transport.advertisedHost=minirouter-transport.ziti \
+            --set "ctrl.endpoint=minicontroller-ctrl.${ZITI_NAMESPACE}.svc:443" \
+            --values /home/kbingham/Sites/netfoundry/github/openziti-helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
+            # --values https://docs.openziti.io/helm-charts/charts/ziti-router/values-ingress-nginx.yaml >&3
     fi
 
     logInfo "waiting for minirouter to be ready"
