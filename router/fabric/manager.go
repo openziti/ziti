@@ -217,7 +217,7 @@ func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession
 
 func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener {
 	if sm.recentlyRemovedSessions.Has(token) {
-		callBack(token)
+		go callBack(token) // callback can be long process with network traffic. Don't block event processing
 		return func() {}
 	}
 
@@ -231,7 +231,7 @@ func (sm *StateManagerImpl) AddEdgeSessionRemovedListener(token string, callBack
 	eventName := sm.getEdgeSessionRemovedEventName(token)
 
 	listener := func(args ...interface{}) {
-		callBack(token)
+		go callBack(token) // callback can be long process with network traffic. Don't block event processing
 	}
 	sm.AddListener(eventName, listener)
 
