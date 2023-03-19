@@ -36,7 +36,7 @@ func NewCompactAction() *cobra.Command {
 		RunE:  action.Run,
 	}
 
-	cmd.Flags().BoolVar(&action.useArrayFreelists, "array-freelist", false, "Use array freelist")
+	cmd.Flags().BoolVar(&action.useArrayFreelists, "array-freelist", true, "Use array freelist")
 	return cmd
 }
 

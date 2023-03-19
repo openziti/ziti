@@ -20,7 +20,8 @@
     * [Issue #83](https://github.com/openziti/channel/issues/83) - Improve protocol mismatch error(s)
     * [Issue #93](https://github.com/openziti/channel/issues/93) - Fix atomic 64-bit alignment error on arm devices
 
-* github.com/openziti/edge: [v0.24.125 -> v0.24.219](https://github.com/openziti/edge/compare/v0.24.125...v0.24.219)
+* github.com/openziti/edge: [v0.24.125 -> v0.24.223](https://github.com/openziti/edge/compare/v0.24.125...v0.24.223)
+    * [Issue #1373](https://github.com/openziti/edge/issues/1373) - Add support for disabled flag to edge and transit routers 
     * [Issue #1374](https://github.com/openziti/edge/issues/1374) - Multiple MFA enrollments cannot be cleaned up by administrators
     * [Issue #1336](https://github.com/openziti/edge/issues/1336) - xgress_edge_tunnel shouldn't stop/start host on control channel reconnect
     * [Issue #1369](https://github.com/openziti/edge/issues/1369) - Add missing entity type id for TransitRouter
@@ -33,8 +34,9 @@
     * [Issue #1329](https://github.com/openziti/edge/issues/1329) - UDP connections can drop data if datagrams are > 10k in size
     * [Issue #1310](https://github.com/openziti/edge/issues/1310) - Creating a cert backed ext-jwt-signer causes nil dereference
 
-* github.com/openziti/edge-api: [v0.25.6 -> v0.25.8](https://github.com/openziti/edge-api/compare/v0.25.6...v0.25.8)
-* github.com/openziti/fabric: [v0.22.24 -> v0.22.74](https://github.com/openziti/fabric/compare/v0.22.24...v0.22.74)
+* github.com/openziti/edge-api: [v0.25.6 -> v0.25.9](https://github.com/openziti/edge-api/compare/v0.25.6...v0.25.9)
+* github.com/openziti/fabric: [v0.22.24 -> v0.22.76](https://github.com/openziti/fabric/compare/v0.22.24...v0.22.76)
+    * [Issue #651](https://github.com/openziti/fabric/issues/651) - Add router enable/disable mechanism
     * [Issue #648](https://github.com/openziti/fabric/issues/648) - Add rate limiter pool to router for operations with potential to flood the controller 
     * [Issue #610](https://github.com/openziti/fabric/issues/610) - Fix router disconnect when endpoint removed from cluster
     * [Issue #622](https://github.com/openziti/fabric/issues/622) - fatal error: concurrent map iteration and map write in logContext.WireEntry
