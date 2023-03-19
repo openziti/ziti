@@ -88,15 +88,15 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		if err := getEdgeRouterJwt(o, id); err != nil {
+		if err := getEdgeRouterJwt(o.EntityOptions.Options, o.jwtOutputFile, id); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.Options.Timeout, o.Options.Verbose)
+func getEdgeRouterJwt(o api.Options, jwtOutputFile string, id string) error {
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,8 @@ func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
 		return fmt.Errorf("enrollment JWT not present for new edge router")
 	}
 
-	if err := os.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
-		fmt.Printf("Failed to write JWT to file(%v)\n", o.jwtOutputFile)
+	if err := os.WriteFile(jwtOutputFile, []byte(jwt), 0600); err != nil {
+		fmt.Printf("Failed to write JWT to file(%v)\n", jwtOutputFile)
 		return err
 	}
 
