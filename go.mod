@@ -22,7 +22,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/openziti/agent v1.0.8
 	github.com/openziti/channel/v2 v2.0.27
-	github.com/openziti/edge v0.24.125
+	github.com/openziti/edge v0.24.125-1
 	github.com/openziti/edge-api v0.25.6
 	github.com/openziti/fabric v0.22.24
 	github.com/openziti/foundation/v2 v2.0.10

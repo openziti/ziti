@@ -1,3 +1,9 @@
+# Release 0.27.6
+
+# What's New
+
+* [Issue #1350](https://github.com/openziti/edge/issues/1350) - Fixes a deadlock in the router session events code
+
 # Release 0.27.5
 
 ## What's New
