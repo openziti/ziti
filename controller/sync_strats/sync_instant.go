@@ -157,17 +157,30 @@ func (strategy *InstantStrategy) Stop() {
 }
 
 func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, router *network.Router) {
+	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
+		WithField("routerId", router.Id).
+		WithField("routerName", router.Name).
+		WithField("routerFingerprint", *router.Fingerprint)
+
+	//connecting router has closed control channel
+	if router.Control.IsClosed() {
+		log.Errorf("connecting router has closed control channel [id: %s], ignoring", router.Id)
+		return
+	}
+
+	existingRtx := strategy.rtxMap.Get(router.Id)
+
+	//same channel, do nothing
+	if existingRtx != nil && existingRtx.Router.Control == router.Control {
+		log.Errorf("duplicate router connection detected [id: %s], channels are the same, ignoring", router.Id)
+		return
+	}
+
 	rtx := newRouterSender(edgeRouter, router, strategy.RouterTxBufferSize)
 	rtx.SetSyncStatus(env.RouterSyncQueued)
 	rtx.SetIsOnline(true)
 
-	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
-		WithField("syncStatus", rtx.SyncStatus()).
-		WithField("routerId", rtx.Router.Id).
-		WithField("routerName", rtx.Router.Name).
-		WithField("routerFingerprint", rtx.Router.Fingerprint)
-
-	log.Info("edge router connected, adding to sync routerConnectedQueue")
+	log.WithField("syncStatus", rtx.SyncStatus()).Info("edge router connected, adding to sync routerConnectedQueue")
 
 	strategy.rtxMap.Add(router.Id, rtx)
 
@@ -175,10 +188,25 @@ func (strategy *InstantStrategy) RouterConnected(edgeRouter *model.EdgeRouter, r
 }
 
 func (strategy *InstantStrategy) RouterDisconnected(router *network.Router) {
-	pfxlog.Logger().WithField("routerId", router.Id).
+	log := pfxlog.Logger().WithField("sync_strategy", strategy.Type()).
+		WithField("routerId", router.Id).
 		WithField("routerName", router.Name).
-		WithField("routerFingerprint", router.Fingerprint).
-		Infof("edge router [%s] disconnecting", router.Id)
+		WithField("routerFingerprint", *router.Fingerprint)
+
+	existingRtx := strategy.rtxMap.Get(router.Id)
+
+	if existingRtx == nil {
+		log.Infof("edge router [%s] disconnect event, but no rtx found, ignoring", router.Id)
+		return
+	}
+
+	if existingRtx.Router.Control != router.Control && !existingRtx.Router.Control.IsClosed() {
+		log.Infof("edge router [%s] disconnect event, but channels do not match and existing channel is still open, ignoring", router.Id)
+		return
+	}
+
+	log.Infof("edge router [%s] disconnect event, router rtx removed", router.Id)
+	existingRtx.SetIsOnline(false)
 	strategy.rtxMap.Remove(router)
 }
 

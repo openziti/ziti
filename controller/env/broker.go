@@ -79,24 +79,20 @@ func (broker *Broker) GetReceiveHandlers() []channel.TypedReceiveHandler {
 
 func (broker *Broker) RouterConnected(router *network.Router) {
 	go func() {
-		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", router.Fingerprint)
-
-		//check connection status, if already connected, ignore as it will be disconnected shortly
-		if broker.ae.IsEdgeRouterOnline(router.Id) {
-			log.Errorf("duplicate router connection detected [id: %s], ignoring", router.Id)
-			return
+		fingerprint := ""
+		if router != nil && router.Fingerprint != nil {
+			fingerprint = *router.Fingerprint
 		}
 
-		if router.Fingerprint == nil {
+		log := pfxlog.Logger().WithField("routerId", router.Id).WithField("routerName", router.Name).WithField("routerFingerprint", fingerprint)
+
+		if fingerprint == "" {
 			log.Errorf("router without fingerprints connecting [id: %s], ignoring", router.Id)
 			return
 		}
 
-		if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(*router.Fingerprint); edgeRouter != nil {
-			pfxlog.Logger().WithField("routerId", router.Id).
-				WithField("routerName", router.Name).
-				WithField("routerFingerprint", router.Fingerprint).
-				Infof("broker detected edge router with id %s connecting", router.Id)
+		if edgeRouter, _ := broker.ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
+			log.Infof("broker detected edge router with id %s connecting", router.Id)
 			broker.routerSyncStrategy.RouterConnected(edgeRouter, router)
 		} else {
 			log.Debugf("broker detected non-edge router with id %s connecting", router.Id)
@@ -106,17 +102,13 @@ func (broker *Broker) RouterConnected(router *network.Router) {
 }
 
 func (broker *Broker) RouterDisconnected(r *network.Router) {
-	// if disconnected but, by id it is still connected then it may have been a dupe
-	// router connecting and being disconnected
-	if !broker.ae.HostController.GetNetwork().ConnectedRouter(r.Id) {
-		go func() {
-			pfxlog.Logger().WithField("routerId", r.Id).
-				WithField("routerName", r.Name).
-				WithField("routerFingerprint", r.Fingerprint).
-				Infof("broker detected router with id %s disconnecting", r.Id)
-			broker.routerSyncStrategy.RouterDisconnected(r)
-		}()
-	}
+	go func() {
+		pfxlog.Logger().WithField("routerId", r.Id).
+			WithField("routerName", r.Name).
+			WithField("routerFingerprint", r.Fingerprint).
+			Infof("broker detected router with id %s disconnecting", r.Id)
+		broker.routerSyncStrategy.RouterDisconnected(r)
+	}()
 }
 
 func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
