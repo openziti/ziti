@@ -127,10 +127,17 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		n := self.appEnv.GetHostController().GetNetwork()
 		err := n.Terminators.Create(terminator)
 		if err != nil {
-			self.returnError(ctx, internalError(err))
-			return
+			// terminator might have been created while we were trying to create.
+			terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address)
+			if terminator != nil {
+				logger.Info("terminator already exists")
+			} else {
+				self.returnError(ctx, internalError(err))
+				return
+			}
+		} else {
+			logger.Info("created terminator")
 		}
-		logger.Info("created terminator")
 	}
 
 	response := &edge_ctrl_pb.CreateTunnelTerminatorResponse{
