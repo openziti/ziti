@@ -90,7 +90,7 @@ func (rtx *RouterSender) logger() *logrus.Entry {
 		WithField("routerTxId", rtx.Id).
 		WithField("routerId", rtx.Router.Id).
 		WithField("routerName", rtx.Router.Name).
-		WithField("routerFingerprint", rtx.Router.Fingerprint).
+		WithField("routerFingerprint", *rtx.Router.Fingerprint).
 		WithField("routerChannelIsOpen", !rtx.Router.Control.IsClosed())
 }
 
