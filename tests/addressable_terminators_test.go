@@ -1,4 +1,4 @@
-// +build dataflow
+//go:build dataflow
 
 /*
 	Copyright NetFoundry Inc.

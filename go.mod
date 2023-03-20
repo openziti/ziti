@@ -30,7 +30,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.53
 	github.com/openziti/edge-api v0.25.6
-	github.com/openziti/fabric v0.22.62
+	github.com/openziti/fabric v0.22.67
 	github.com/openziti/foundation/v2 v2.0.18
 	github.com/openziti/identity v1.0.42
 	github.com/openziti/jwks v1.0.3
@@ -122,7 +122,7 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect
-	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
+	golang.org/x/exp v0.0.0-20230315142452-642cacee5cc0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.8.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
