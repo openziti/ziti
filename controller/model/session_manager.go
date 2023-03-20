@@ -273,29 +273,6 @@ func (self *SessionManager) PublicQueryForIdentity(sessionIdentity *Identity, qu
 	return self.querySessions(query)
 }
 
-func (self *SessionManager) ReadSessionCerts(sessionId string) ([]*SessionCert, error) {
-	var result []*SessionCert
-	err := self.GetDb().View(func(tx *bbolt.Tx) error {
-		var err error
-		certs, err := self.GetEnv().GetStores().Session.LoadCerts(tx, sessionId)
-		if err != nil {
-			return err
-		}
-		for _, cert := range certs {
-			modelSessionCert := &SessionCert{}
-			if err = modelSessionCert.FillFrom(self, tx, cert); err != nil {
-				return err
-			}
-			result = append(result, modelSessionCert)
-		}
-		return err
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result, nil
-}
-
 func (self *SessionManager) Query(query string) (*SessionListResult, error) {
 	result := &SessionListResult{manager: self}
 	err := self.ListWithHandler(query, result.collect)
