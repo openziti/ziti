@@ -213,27 +213,19 @@ func (self *baseSessionRequestContext) checkSessionType(sessionType string) {
 
 func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []string) {
 	if self.err == nil {
-		now := time.Now()
+		var apiSessionCertFingerprints []string
 
-		var sessionFingerprints []string
-		for _, cert := range self.session.SessionCerts {
-			if !cert.ValidFrom.After(now) && !cert.ValidTo.Before(now) {
-				sessionFingerprints = append(sessionFingerprints, cert.Fingerprint)
+		found := false
+		err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
+			apiSessionCertFingerprints = append(apiSessionCertFingerprints, fingerprint)
+			if stringz.Contains(fingerprints, fingerprint) {
+				found = true
+				return true
 			}
-		}
+			return false
+		})
 
-		found := stringz.ContainsAny(sessionFingerprints, fingerprints...)
-		if !found {
-			err := self.GetHandler().getAppEnv().Managers.ApiSession.VisitFingerprintsForApiSessionId(self.session.ApiSessionId, func(fingerprint string) bool {
-				sessionFingerprints = append(sessionFingerprints, fingerprint)
-				if stringz.Contains(fingerprints, fingerprint) {
-					found = true
-					return true
-				}
-				return false
-			})
-			self.err = internalError(err)
-		}
+		self.err = internalError(err)
 
 		if self.err != nil || !found {
 			if self.err == nil {
@@ -242,7 +234,7 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 			logrus.
 				WithField("sessionId", self.session.Id).
 				WithField("operation", self.handler.Label()).
-				WithField("sessionFingerprints", sessionFingerprints).
+				WithField("apiSessionFingerprints", apiSessionCertFingerprints).
 				WithField("clientFingerprints", fingerprints).
 				Error("matching fingerprint not found for connect")
 		}

@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/crypto"
+	"github.com/openziti/edge/eid"
 	edgeCert "github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
@@ -535,7 +536,7 @@ func (self *AuthenticatorManager) ExtendCertForIdentity(identityId string, authe
 	return newPemCert, nil
 }
 
-func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authenticatorId string, verifyCertPem string) error {
+func (self *AuthenticatorManager) VerifyExtendCertForIdentity(apiSessionId, identityId, authenticatorId string, verifyCertPem string) error {
 	authenticator, _ := self.Read(authenticatorId)
 
 	if authenticator == nil {
@@ -563,12 +564,18 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authen
 	if authenticatorCert.UnverifiedPem == "" || authenticatorCert.UnverifiedFingerprint == "" {
 		return apierror.NewAuthenticatorCannotBeUpdated()
 	}
+	verifyCerts := nfpem.PemStringToCertificates(verifyCertPem)
+	if len(verifyCerts) != 1 {
+		return apierror.NewInvalidClientCertificate()
+	}
 
-	verifyPrint := nfpem.FingerprintFromPemString(verifyCertPem)
+	verifyPrint := nfpem.FingerprintFromCertificate(verifyCerts[0])
 
 	if verifyPrint != authenticatorCert.UnverifiedFingerprint {
 		return apierror.NewInvalidClientCertificate()
 	}
+
+	oldFingerprint := authenticatorCert.Fingerprint
 
 	authenticatorCert.Pem = authenticatorCert.UnverifiedPem
 	authenticatorCert.Fingerprint = authenticatorCert.UnverifiedFingerprint
@@ -577,7 +584,7 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authen
 	authenticatorCert.UnverifiedPem = ""
 
 	err := self.env.GetManagers().Authenticator.Update(authenticatorCert.Authenticator, true, fields.UpdatedFieldsMap{
-		persistence.FieldSessionCertFingerprint:                 struct{}{},
+		"fingerprint": struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertPem:         struct{}{},
 		persistence.FieldAuthenticatorUnverifiedCertFingerprint: struct{}{},
 
@@ -585,7 +592,34 @@ func (self *AuthenticatorManager) VerifyExtendCertForIdentity(identityId, authen
 		persistence.FieldAuthenticatorCertFingerprint: struct{}{},
 	})
 
-	return err
+	if err != nil {
+		return err
+	}
+
+	sessionCert := &persistence.ApiSessionCertificate{
+		BaseExtEntity: boltz.BaseExtEntity{
+			Id: eid.New(),
+		},
+		ApiSessionId: apiSessionId,
+		Subject:      verifyCerts[0].Subject.String(),
+		Fingerprint:  verifyPrint,
+		ValidAfter:   &verifyCerts[0].NotBefore,
+		ValidBefore:  &verifyCerts[0].NotAfter,
+		PEM:          verifyCertPem,
+	}
+
+	return self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		err = self.env.GetStores().ApiSessionCertificate.Create(ctx, sessionCert)
+
+		if err != nil {
+			return err
+		}
+
+		err = self.env.GetStores().ApiSessionCertificate.DeleteWhere(ctx, fmt.Sprintf("%s=\"%s\"", persistence.FieldApiSessionCertificateFingerprint, oldFingerprint))
+
+		return err
+	})
 }
 
 // ReEnroll converts the given authenticator `id` back to an enrollment of the same type with the same

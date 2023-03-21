@@ -97,6 +97,5 @@ func NewSession(apiSessionId, serviceId string) *persistence.Session {
 		ApiSessionId:  apiSessionId,
 		ServiceId:     serviceId,
 		Type:          persistence.SessionTypeDial,
-		Certs:         nil,
 	}
 }

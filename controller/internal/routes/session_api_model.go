@@ -59,7 +59,6 @@ func MapCreateSessionToModel(identityId, apiSessionId string, session *rest_mode
 		ServiceId:       session.ServiceID,
 		IdentityId:      identityId,
 		Type:            string(session.Type),
-		SessionCerts:    nil,
 		ServicePolicies: nil,
 	}
 

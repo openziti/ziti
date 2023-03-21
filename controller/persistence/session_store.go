@@ -21,9 +21,7 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 const (
@@ -33,11 +31,6 @@ const (
 	FieldSessionIdentity        = "identity"
 	FieldSessionType            = "type"
 	FieldSessionServicePolicies = "servicePolicies"
-
-	FieldSessionCertCert        = "cert"
-	FieldSessionCertFingerprint = "fingerprint"
-	FieldSessionCertValidFrom   = "validFrom"
-	FieldSessionCertValidTo     = "validTo"
 
 	SessionTypeDial = "Dial"
 	SessionTypeBind = "Bind"
@@ -52,7 +45,6 @@ type Session struct {
 	ApiSessionId    string
 	ServiceId       string
 	Type            string
-	Certs           []*SessionCert
 	ApiSession      *ApiSession
 	ServicePolicies []string
 }
@@ -85,13 +77,6 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldSessionType, entity.Type)
 	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
 
-	if ctx.FieldChecker == nil || ctx.FieldChecker.IsUpdated("sessionCerts") {
-		mutateCtx := boltz.NewMutateContext(ctx.Bucket.Tx())
-		for _, cert := range entity.Certs {
-			ctx.Bucket.SetError(ctx.Store.CreateChild(mutateCtx, entity.Id, cert))
-		}
-	}
-
 	if entity.ApiSession == nil {
 		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadOneById(ctx.Bucket.Tx(), entity.ApiSessionId)
 	}
@@ -101,45 +86,10 @@ func (entity *Session) GetEntityType() string {
 	return EntityTypeSessions
 }
 
-type SessionCert struct {
-	Id          string
-	Cert        string
-	Fingerprint string
-	ValidFrom   time.Time
-	ValidTo     time.Time
-}
-
-func (entity *SessionCert) GetId() string {
-	return entity.Id
-}
-
-func (entity *SessionCert) SetId(id string) {
-	entity.Id = id
-}
-
-func (entity *SessionCert) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.Cert = bucket.GetStringOrError(FieldSessionCertCert)
-	entity.Fingerprint = bucket.GetStringOrError(FieldSessionCertFingerprint)
-	entity.ValidFrom = bucket.GetTimeOrError(FieldSessionCertValidFrom)
-	entity.ValidTo = bucket.GetTimeOrError(FieldSessionCertValidTo)
-}
-
-func (entity *SessionCert) SetValues(ctx *boltz.PersistContext) {
-	ctx.Bucket.SetString(FieldSessionCertCert, entity.Cert, ctx.FieldChecker)
-	ctx.Bucket.SetString(FieldSessionCertFingerprint, entity.Fingerprint, ctx.FieldChecker)
-	ctx.Bucket.SetTime(FieldSessionCertValidFrom, entity.ValidFrom, ctx.FieldChecker)
-	ctx.Bucket.SetTime(FieldSessionCertValidTo, entity.ValidTo, ctx.FieldChecker)
-}
-
-func (entity *SessionCert) GetEntityType() string {
-	return EntityTypeSessionCerts
-}
-
 type SessionStore interface {
 	Store
 	LoadOneById(tx *bbolt.Tx, id string) (*Session, error)
 	LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error)
-	LoadCerts(tx *bbolt.Tx, id string) ([]*SessionCert, error)
 	GetTokenIndex() boltz.ReadIndex
 }
 
@@ -199,22 +149,4 @@ func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Sess
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
-}
-
-func (store *sessionStoreImpl) LoadCerts(tx *bbolt.Tx, id string) ([]*SessionCert, error) {
-	ids := store.ListChildIds(tx, id, EntityTypeSessionCerts)
-
-	var result []*SessionCert
-	for _, childId := range ids {
-		sessionCert := &SessionCert{}
-		found, err := store.BaseLoadOneChildById(tx, id, childId, sessionCert)
-		if err != nil {
-			return nil, err
-		}
-		if !found {
-			return nil, errors.Errorf("session %v missing record for session cert %v", id, childId)
-		}
-		result = append(result, sessionCert)
-	}
-	return result, nil
 }

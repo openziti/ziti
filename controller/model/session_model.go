@@ -17,7 +17,6 @@
 package model
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
@@ -25,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
-	"time"
 )
 
 type Session struct {
@@ -35,15 +33,7 @@ type Session struct {
 	ApiSessionId    string
 	ServiceId       string
 	Type            string
-	SessionCerts    []*SessionCert
 	ServicePolicies []string
-}
-
-type SessionCert struct {
-	Cert        string
-	Fingerprint string
-	ValidFrom   time.Time
-	ValidTo     time.Time
 }
 
 func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
@@ -64,37 +54,6 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager
 		Type:            entity.Type,
 		ApiSession:      apiSession,
 		ServicePolicies: entity.ServicePolicies,
-	}
-
-	identity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
-
-	if err != nil {
-		return nil, err
-	}
-
-	fingerprints := map[string]string{}
-
-	for _, authenticatorId := range identity.Authenticators {
-		authenticator, err := manager.GetEnv().GetStores().Authenticator.LoadOneById(tx, authenticatorId)
-		if err != nil {
-			pfxlog.Logger().Errorf("encountered error retrieving fingerprints for authenticator [%s]", authenticatorId)
-			continue
-		}
-		if certAuth := authenticator.ToCert(); certAuth != nil {
-			fingerprints[certAuth.Fingerprint] = certAuth.Pem
-		}
-	}
-
-	for fingerprint, cert := range fingerprints {
-		validFrom := time.Now()
-		validTo := time.Now().AddDate(1, 0, 0)
-
-		boltEntity.Certs = append(boltEntity.Certs, &persistence.SessionCert{
-			Cert:        cert,
-			Fingerprint: fingerprint,
-			ValidFrom:   validFrom,
-			ValidTo:     validTo,
-		})
 	}
 
 	return boltEntity, nil
@@ -124,17 +83,5 @@ func (entity *Session) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.E
 	entity.ServiceId = boltSession.ServiceId
 	entity.Type = boltSession.Type
 	entity.ServicePolicies = boltSession.ServicePolicies
-	return nil
-}
-
-func (entity *SessionCert) FillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltSessionCert, ok := boltEntity.(*persistence.SessionCert)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model SessionCert", reflect.TypeOf(boltEntity))
-	}
-	entity.Fingerprint = boltSessionCert.Fingerprint
-	entity.Cert = boltSessionCert.Cert
-	entity.ValidFrom = boltSessionCert.ValidFrom
-	entity.ValidTo = boltSessionCert.ValidTo
 	return nil
 }

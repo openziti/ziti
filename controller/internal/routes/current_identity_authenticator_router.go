@@ -25,14 +25,10 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
-	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
-	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 )
 
 func init() {
@@ -230,34 +226,11 @@ func (r *CurrentIdentityAuthenticatorRouter) ExtendVerify(ae *env.AppEnv, rc *re
 		return
 	}
 
-	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.Identity.Id, authId, *extend.ClientCert)
+	err = ae.Managers.Authenticator.VerifyExtendCertForIdentity(rc.ApiSession.Id, rc.Identity.Id, authId, *extend.ClientCert)
 
 	if err != nil {
 		rc.RespondWithError(err)
 		return
-	}
-
-	certs := nfpem.PemStringToCertificates(*extend.ClientCert)
-
-	if len(certs) == 0 {
-		rc.RespondWithError(errorz.NewUnhandled(errors.New("unexpected certificate parse length")))
-		return
-	}
-
-	fingerprint := ae.GetFingerprintGenerator().FromRaw(certs[0].Raw)
-
-	sessionCert := &model.ApiSessionCertificate{
-		BaseEntity:   models.BaseEntity{},
-		ApiSessionId: rc.ApiSession.Id,
-		Subject:      certs[0].Subject.String(),
-		Fingerprint:  fingerprint,
-		ValidAfter:   &certs[0].NotBefore,
-		ValidBefore:  &certs[0].NotAfter,
-		PEM:          *extend.ClientCert,
-	}
-
-	if _, err := ae.GetManagers().ApiSessionCertificate.Create(sessionCert); err != nil {
-		rc.RespondWithError(errorz.NewUnhandled(err))
 	}
 
 	rc.RespondWithEmptyOk()

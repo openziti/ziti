@@ -21,8 +21,8 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -36,7 +36,6 @@ func Test_SessionStore(t *testing.T) {
 	t.Run("test create invalid sessions", ctx.testCreateInvalidSessions)
 	t.Run("test update invalid sessions", ctx.testUpdateInvalidSessions)
 	t.Run("test create sessions", ctx.testCreateSessions)
-	t.Run("test create session certs", ctx.testCreateSessionsCerts)
 	t.Run("test load/query sessions", ctx.testLoadQuerySessions)
 	t.Run("test update sessions", ctx.testUpdateSessions)
 	t.Run("test delete sessions", ctx.testDeleteSessions)
@@ -153,45 +152,6 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.ValidateDeleted(session.Id)
 	ctx.ValidateDeleted(session2.Id)
 
-}
-
-func (ctx *TestContext) testCreateSessionsCerts(_ *testing.T) {
-	ctx.CleanupAll()
-
-	sessionCert1 := &SessionCert{
-		Id:          "a" + eid.New()[1:],
-		Cert:        eid.New(),
-		Fingerprint: eid.New(),
-		ValidFrom:   time.Now(),
-		ValidTo:     time.Now().Add(10 * time.Hour),
-	}
-
-	sessionCert2 := &SessionCert{
-		Id:          "b" + eid.New()[1:],
-		Cert:        eid.New(),
-		Fingerprint: eid.New(),
-		ValidFrom:   time.Now().Add(-1 * time.Hour),
-		ValidTo:     time.Now().Add(5 * time.Hour),
-	}
-
-	identity := ctx.RequireNewIdentity("Jojo", false)
-	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
-	service := ctx.RequireNewService("test-service")
-	session := NewSession(apiSession.Id, service.Id)
-	session.Certs = []*SessionCert{sessionCert1, sessionCert2}
-	ctx.RequireCreate(session)
-
-	var certs []*SessionCert
-	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		var err error
-		certs, err = ctx.stores.Session.LoadCerts(tx, session.Id)
-		return err
-	})
-	ctx.NoError(err)
-	ctx.NotNil(certs)
-	ctx.Equal(2, len(certs))
-	ctx.True(cmp.Equal(certs, session.Certs), cmp.Diff(certs, session.Certs))
 }
 
 type sessionTestEntities struct {
@@ -315,6 +275,5 @@ func NewSession(apiSessionId, serviceId string) *Session {
 		ApiSessionId:  apiSessionId,
 		ServiceId:     serviceId,
 		Type:          SessionTypeDial,
-		Certs:         nil,
 	}
 }
