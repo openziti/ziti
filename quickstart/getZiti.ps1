@@ -16,7 +16,7 @@ None.
 None. If "dot sourced" this script will add the resultant directory to your path
 
 .EXAMPLE
-PS> . .\getLatestZiti.ps1
+PS> . .\getZiti.ps1
 #>
 $latestFromGitHub=(irm https://api.github.com/repos/openziti/ziti/releases/latest)
 $version=($latestFromGitHub.tag_name)
@@ -37,11 +37,23 @@ if($(Test-Path -Path $zipFile -PathType Leaf)) {
     Write-Output "Downloading file "
     Write-Output "    from: ${downloadUrl} "
     Write-Output "      to: ${zipFile}"
+    $SavedProgressPreference=$ProgressPreference
+    $ProgressPreference='SilentlyContinue'
     iwr ${downloadUrl} -OutFile "$zipFile"
+    $ProgressPreference=$SavedProgressPreference
 }
 
 Expand-Archive -Path $zipFile -DestinationPath "${toDir}\${version}" -ErrorAction SilentlyContinue
 
-if(! $env:Path.Contains("${toDir}\${version}\ziti\")){
-    $env:Path+=";${toDir}\${version}\ziti\"
+Write-Output " "
+Write-Output "Extracted binaries to ${toDir}\${version}\ziti"
+Write-Output " "
+$addToPath=$(Read-Host "Would you like to add ziti to this session's path? [default: Y]")
+if($addToPath.Trim() -eq "") {
+    $addToPath=("Y")
+}
+
+if($addToPath -ilike "y*") {
+  $env:Path+=";${toDir}\${version}\ziti\"
+  Write-Output "ziti added to your path!"
 }
