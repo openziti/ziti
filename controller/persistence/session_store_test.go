@@ -21,12 +21,15 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
 )
+
+const apiSessionsSessionsIdxPath = "/" + db.RootBucket + "/" + boltz.IndexesBucket + "/" + EntityTypeApiSessions + "/" + EntityTypeSessions
 
 func Test_SessionStore(t *testing.T) {
 	ctx := NewTestContext(t)
@@ -86,21 +89,29 @@ func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
 	session := NewSession(apiSession.Id, service.Id)
 	ctx.RequireCreate(session)
 
-	session.ApiSessionId = "invalid-id"
-	err := ctx.Update(session)
-	ctx.EqualError(err, fmt.Sprintf("apiSession with id %v not found", session.ApiSessionId))
+	token := session.Token
 
-	session.ApiSessionId = apiSession.Id
-	session.ServiceId = ""
-	err = ctx.Update(session)
-	ctx.EqualError(err, "fk constraint on sessions.service does not allow null or empty values")
+	session.ApiSessionId = "invalid-api-session-id"
+	session.ServiceId = "invalid-service-id"
+	session.Token = "different token"
+	session.IdentityId = "different id"
+	session.Type = PolicyTypeBindName
+	ctx.RequireUpdate(session)
 
-	session.ServiceId = "invalid-id"
-	err = ctx.Update(session)
-	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", session.ServiceId))
+	err := ctx.db.View(func(tx *bbolt.Tx) error {
+		loaded, err := ctx.stores.Session.LoadOneById(tx, session.Id)
+		ctx.NoError(err)
+		ctx.NotNil(loaded)
+		ctx.Equal(apiSession.Id, loaded.ApiSessionId)
+		ctx.Equal(service.Id, loaded.ServiceId)
+		ctx.Equal(token, loaded.Token)
+		ctx.Equal(apiSession.IdentityId, loaded.IdentityId)
+		ctx.Equal(PolicyTypeDialName, loaded.Type)
+		return nil
+	})
+	ctx.NoError(err)
 
-	ctx.RequireDelete(session)
-	ctx.ValidateDeleted(session.Id)
+	ctx.RequireDelete(session, apiSessionsSessionsIdxPath)
 
 	err = ctx.Update(session)
 	ctx.EqualError(err, fmt.Sprintf("session with id %v not found", session.Id))
@@ -119,20 +130,15 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 	ctx.RequireCreate(session)
 	ctx.ValidateBaseline(session, compareOpts)
 
-	session2 := NewSession(apiSession.Id, service.Id)
-	ctx.RequireCreate(session2)
-	ctx.ValidateBaseline(session2, compareOpts)
-
 	service2 := ctx.RequireNewService("test-service-2")
 	session3 := NewSession(apiSession.Id, service2.Id)
 	session3.Tags = ctx.CreateTags()
 	ctx.RequireCreate(session3)
 	ctx.ValidateBaseline(session3, compareOpts)
 
-	ctx.RequireDelete(service2)
-	ctx.ValidateDeleted(session3.Id)
+	ctx.RequireDelete(service2, apiSessionsSessionsIdxPath)
+	ctx.ValidateDeleted(session3.Id, apiSessionsSessionsIdxPath)
 	ctx.RequireReload(session)
-	ctx.RequireReload(session2)
 
 	err := ctx.Delete(apiSession)
 	ctx.NoError(err)
@@ -147,11 +153,14 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 
 	}
 
-	ctx.ValidateDeleted(apiSession.GetId())
-
 	ctx.ValidateDeleted(session.Id)
-	ctx.ValidateDeleted(session2.Id)
+	ctx.ValidateDeleted(apiSession.GetId())
+}
 
+func (ctx *TestContext) RequireDelete(entity boltz.Entity, ignoredPaths ...string) {
+	err := ctx.Delete(entity)
+	ctx.NoError(err)
+	ctx.ValidateDeleted(entity.GetId(), ignoredPaths...)
 }
 
 type sessionTestEntities struct {
@@ -184,6 +193,8 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 	ctx.RequireCreate(session2)
 
 	session3 := NewSession(apiSession2.Id, service2.Id)
+	session3.Type = PolicyTypeBindName
+
 	ctx.RequireCreate(session3)
 
 	return &sessionTestEntities{
@@ -238,11 +249,8 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 
 		tags := ctx.CreateTags()
 		now := time.Now()
-		session.Token = eid.New()
 		session.UpdatedAt = earlier
 		session.CreatedAt = now
-		session.ApiSessionId = entities.apiSession2.Id
-		session.ServiceId = entities.service2.Id
 		session.Tags = tags
 
 		err = ctx.stores.Session.Update(boltz.NewMutateContext(tx), session, nil)
@@ -263,9 +271,9 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 func (ctx *TestContext) testDeleteSessions(_ *testing.T) {
 	ctx.CleanupAll()
 	entities := ctx.createSessionTestEntities()
-	ctx.RequireDelete(entities.session1)
-	ctx.RequireDelete(entities.session2)
-	ctx.RequireDelete(entities.session3)
+	ctx.RequireDelete(entities.session1, apiSessionsSessionsIdxPath)
+	ctx.RequireDelete(entities.session2, apiSessionsSessionsIdxPath)
+	ctx.RequireDelete(entities.session3, apiSessionsSessionsIdxPath)
 }
 
 func NewSession(apiSessionId, serviceId string) *Session {

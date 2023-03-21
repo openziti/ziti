@@ -17,13 +17,14 @@
 package persistence
 
 import (
-	"fmt"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"strings"
 	"time"
 )
 
@@ -100,6 +101,7 @@ type ApiSessionStore interface {
 	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
 	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error)
 	GetTokenIndex() boltz.ReadIndex
+	GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string
 }
 
 func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
@@ -119,35 +121,61 @@ type apiSessionStoreImpl struct {
 	symbolIdentity boltz.EntitySymbol
 }
 
-func (store *apiSessionStoreImpl) onEventualDelete(name string, data []byte) {
-	var ids []string
+func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []byte) {
+	idCollector := &sessionIdCollector{}
+	indexPath := []string{db.RootBucket, boltz.IndexesBucket, EntityTypeApiSessions, EntityTypeSessions}
 	err := store.stores.DbProvider.GetDb().View(func(tx *bbolt.Tx) error {
-		query := fmt.Sprintf(`%s = "%s"`, FieldSessionApiSession, string(data))
-		var err error
-		ids, _, err = store.stores.session.QueryIds(tx, query)
-		return err
+		path := append(indexPath, string(apiSessionId))
+		if bucket := boltz.Path(tx, path...); bucket != nil {
+			boltz.Traverse(bucket.Bucket, "/"+strings.Join(path, "/"), idCollector)
+		}
+		return nil
 	})
 
 	if err != nil {
 		pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
 			"eventName":    name,
-			"apiSessionId": string(data),
+			"apiSessionId": string(apiSessionId),
 		}).Error("error querying for session associated to an api session during onEventualDelete")
 	}
 
-	for _, id := range ids {
-		err := store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
+	for _, id := range idCollector.ids {
+		err = store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
 			ctx := boltz.NewMutateContext(tx)
-			return store.stores.session.DeleteById(ctx, id)
+			if err := store.stores.session.DeleteById(ctx, id); err != nil {
+				if boltz.IsErrNotFoundErr(err) {
+					return nil
+				}
+				return err
+			}
+			return nil
 		})
 
 		if err != nil {
 			pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
 				"eventName":    name,
-				"apiSessionId": string(data),
+				"apiSessionId": string(apiSessionId),
 				"sessionId":    id,
 			}).Error("error deleting for session associated to an api session during onEventualDelete")
 		}
+	}
+
+	err = store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
+		if bucket := boltz.Path(tx, indexPath...); bucket != nil {
+			if err := bucket.DeleteBucket(apiSessionId); err != nil {
+				if err != bbolt.ErrBucketNotFound {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
+			"eventName":    name,
+			"apiSessionId": string(apiSessionId),
+		}).Error("error deleting for api session index associated to an api session during onEventualDelete")
 	}
 }
 
@@ -241,8 +269,37 @@ func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*A
 	return entity, nil
 }
 
+func (store *apiSessionStoreImpl) GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string {
+	bucket := boltz.Path(tx,
+		db.RootBucket, boltz.IndexesBucket,
+		EntityTypeApiSessions, EntityTypeSessions,
+		apiSessionId, sessionType,
+	)
+
+	if bucket != nil {
+		return bucket.GetString(serviceId)
+	}
+
+	return nil
+}
+
 type UpdateLastActivityAtChecker struct{}
 
 func (u UpdateLastActivityAtChecker) IsUpdated(field string) bool {
 	return field == FieldApiSessionLastActivityAt
+}
+
+type sessionIdCollector struct {
+	ids []string
+}
+
+func (self *sessionIdCollector) VisitBucket(string, []byte, *bbolt.Bucket) bool {
+	return true
+}
+
+func (self *sessionIdCollector) VisitKeyValue(_ string, _, value []byte) bool {
+	if sessionId := boltz.FieldToString(boltz.GetTypeAndValue(value)); sessionId != nil {
+		self.ids = append(self.ids, *sessionId)
+	}
+	return true
 }

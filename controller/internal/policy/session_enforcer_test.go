@@ -56,6 +56,7 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 	ctx.ValidateBaseline(session, compareOpts)
 
 	session2 := NewSession(apiSession.Id, service.Id)
+	session2.Type = persistence.PolicyTypeBindName
 	ctx.RequireCreate(session2)
 	ctx.ValidateBaseline(session2, compareOpts)
 

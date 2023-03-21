@@ -18,6 +18,7 @@ package model
 
 import (
 	"github.com/golang-jwt/jwt"
+	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
@@ -190,6 +191,43 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	}
 	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter))
 	return edgeRouter
+}
+
+func (ctx *TestContext) requireNewApiSession(identity *Identity) *ApiSession {
+	entity := &ApiSession{
+		Token:          uuid.NewString(),
+		IdentityId:     identity.Id,
+		Identity:       identity,
+		LastActivityAt: time.Now(),
+	}
+	_, err := ctx.managers.ApiSession.Create(entity, nil)
+	ctx.NoError(err)
+	return entity
+}
+
+func (ctx *TestContext) requireNewSession(apiSession *ApiSession, serviceId string, sessionType string) *Session {
+	entity := &Session{
+		Token:        uuid.NewString(),
+		IdentityId:   apiSession.IdentityId,
+		ApiSessionId: apiSession.Id,
+		ServiceId:    serviceId,
+		Type:         sessionType,
+	}
+	_, err := ctx.managers.Session.Create(entity)
+	ctx.NoError(err)
+	return entity
+}
+
+func (ctx *TestContext) requireNewServicePolicy(policyType string, identityRoles, serviceRoles []string) *ServicePolicy {
+	policy := &ServicePolicy{
+		Name:          eid.New(),
+		Semantic:      persistence.SemanticAllOf,
+		IdentityRoles: identityRoles,
+		ServiceRoles:  serviceRoles,
+		PolicyType:    policyType,
+	}
+	ctx.NoError(ctx.managers.ServicePolicy.Create(policy))
+	return policy
 }
 
 func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRoles []string) *EdgeRouterPolicy {

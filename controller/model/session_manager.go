@@ -151,6 +151,10 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 }
 
 func (self *SessionManager) Create(entity *Session) (string, error) {
+	if self.getExistingSessionEntity(entity) {
+		return entity.Id, nil
+	}
+
 	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
 
 	apiSession, err := self.GetEnv().GetManagers().ApiSession.Read(entity.ApiSessionId)
@@ -196,7 +200,47 @@ func (self *SessionManager) Create(entity *Session) (string, error) {
 
 	entity.ServicePolicies = policyResult.PassingPolicyIds
 
-	return self.createEntity(entity)
+	return self.createSessionEntity(entity)
+}
+
+func (self *SessionManager) createSessionEntity(session *Session) (string, error) {
+	var id string
+	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
+		if self.getExistingSessionEntityInTx(tx, session) {
+			id = session.Id
+			return nil
+		}
+
+		var err error
+		id, err = self.createEntityInTx(boltz.NewMutateContext(tx), session)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return id, nil
+
+}
+
+func (self *SessionManager) getExistingSessionEntity(session *Session) bool {
+	var result bool
+	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
+		result = self.getExistingSessionEntityInTx(tx, session)
+		return nil
+	})
+	return result
+}
+
+func (self *SessionManager) getExistingSessionEntityInTx(tx *bbolt.Tx, session *Session) bool {
+	sessionId := self.env.GetStores().ApiSession.GetCachedSessionId(tx, session.ApiSessionId, session.Type, session.ServiceId)
+	if sessionId != nil {
+		if existingSession, _ := self.readInTx(tx, *sessionId); existingSession != nil {
+			session.Id = existingSession.Id
+			session.Token = existingSession.Token
+			return true
+		}
+	}
+	return false
 }
 
 func (self *SessionManager) ReadByToken(token string) (*Session, error) {
