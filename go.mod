@@ -30,7 +30,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.53
 	github.com/openziti/edge-api v0.25.8
-	github.com/openziti/fabric v0.22.70
+	github.com/openziti/fabric v0.22.71
 	github.com/openziti/foundation/v2 v2.0.18
 	github.com/openziti/identity v1.0.42
 	github.com/openziti/jwks v1.0.3
@@ -87,7 +87,7 @@ require (
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/hashicorp/go-hclog v1.4.0 // indirect
+	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
