@@ -23,6 +23,7 @@ func NewCmdDb(out io.Writer, errOut io.Writer) *cobra.Command {
 
 	cmd.AddCommand(exploreCmd)
 	cmd.AddCommand(NewCompactAction())
+	cmd.AddCommand(NewDiskUsageAction())
 
 	return cmd
 }
