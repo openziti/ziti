@@ -59,15 +59,14 @@ type BoltVisitor interface {
 }
 
 type boltTraverseEntry struct {
-	bucket *bbolt.Bucket
-	cursor *bbolt.Cursor
-	path   string
+	Traversable
+	path string
 }
 
 type loggingTraverseVisitor struct {
 }
 
-func (visitor loggingTraverseVisitor) VisitBucket(path string, key []byte, bucket *bbolt.Bucket) bool {
+func (visitor loggingTraverseVisitor) VisitBucket(path string, key []byte, _ *bbolt.Bucket) bool {
 	fmt.Printf("%v/%v\n", path, string(key))
 	return true
 }
@@ -84,27 +83,34 @@ func (visitor loggingTraverseVisitor) VisitKeyValue(path string, key, value []by
 }
 
 func DumpBoltDb(tx *bbolt.Tx) {
-	Traverse(tx, loggingTraverseVisitor{})
+	Traverse(tx, "", loggingTraverseVisitor{})
 }
 
-func Traverse(tx *bbolt.Tx, visitor BoltVisitor) {
+func DumpBucket(tx *bbolt.Tx, path ...string) {
+	bucket := Path(tx, path...)
+	if bucket != nil {
+		Traverse(bucket.Bucket, "/"+strings.Join(path, "/"), loggingTraverseVisitor{})
+	}
+}
+
+type Traversable interface {
+	Cursor() *bbolt.Cursor
+	Bucket(key []byte) *bbolt.Bucket
+}
+
+func Traverse(traversable Traversable, basePath string, visitor BoltVisitor) {
 	var queue []*boltTraverseEntry
 	queue = append(queue, &boltTraverseEntry{
-		cursor: tx.Cursor(),
-		path:   "",
+		Traversable: traversable,
+		path:        basePath,
 	})
 	for len(queue) > 0 {
 		entry := queue[0]
-		cursor := entry.cursor
+		cursor := entry.Cursor()
 		queue = queue[1:]
 		for key, value := cursor.First(); key != nil; key, value = cursor.Next() {
 			if value == nil {
-				var childBucket *bbolt.Bucket
-				if entry.bucket == nil {
-					childBucket = tx.Bucket(key)
-				} else {
-					childBucket = entry.bucket.Bucket(key)
-				}
+				childBucket := entry.Bucket(key)
 				if childBucket == nil {
 					if !visitor.VisitKeyValue(entry.path, key, nil) {
 						return
@@ -114,9 +120,8 @@ func Traverse(tx *bbolt.Tx, visitor BoltVisitor) {
 						return
 					}
 					queue = append(queue, &boltTraverseEntry{
-						bucket: childBucket,
-						cursor: childBucket.Cursor(),
-						path:   entry.path + "/" + string(key),
+						Traversable: childBucket,
+						path:        entry.path + "/" + string(key),
 					})
 				}
 			} else if !visitor.VisitKeyValue(entry.path, key, value) {
@@ -132,7 +137,7 @@ func ValidateDeleted(tx *bbolt.Tx, id string, ignorePaths ...string) error {
 		fieldAndKey: PrependFieldType(TypeString, []byte(id)),
 		ignorePaths: ignorePaths,
 	}
-	Traverse(tx, visitor)
+	Traverse(tx, "", visitor)
 	return visitor.err
 }
 
