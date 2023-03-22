@@ -23,12 +23,14 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/xweb/v2"
 	"io/fs"
 	"math/rand"
 	"os"
 	"path"
 	"plugin"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -78,6 +80,7 @@ type Router struct {
 	xlinkDialers    []xlink.Dialer
 	xlinkRegistry   *linkRegistryImpl
 	xgressListeners []xgress.Listener
+	rateLimiterPool goroutines.Pool
 	metricsRegistry metrics.UsageRegistry
 	shutdownC       chan struct{}
 	shutdownDoneC   chan struct{}
@@ -216,7 +219,9 @@ func (self *Router) Start() error {
 	}
 
 	self.showOptions()
-
+	if err := self.initRateLimiterPool(); err != nil {
+		return err
+	}
 	self.startProfiling()
 
 	healthChecker, err := self.initializeHealthChecks()
@@ -323,6 +328,33 @@ func (self *Router) startProfiling() {
 		}
 	}
 	go newRouterMonitor(self.forwarder, self.shutdownC).Monitor()
+}
+
+func (self *Router) initRateLimiterPool() error {
+	linkDialerPoolConfig := goroutines.PoolConfig{
+		QueueSize:   uint32(self.forwarder.Options.RateLimiter.QueueLength),
+		MinWorkers:  0,
+		MaxWorkers:  uint32(self.forwarder.Options.LinkDial.WorkerCount),
+		IdleTime:    30 * time.Second,
+		CloseNotify: self.GetCloseNotify(),
+		PanicHandler: func(err interface{}) {
+			pfxlog.Logger().WithField(logrus.ErrorKey, err).WithField("backtrace", string(debug.Stack())).Error("panic during rate limited operation")
+		},
+	}
+
+	fabricMetrics.ConfigureGoroutinesPoolMetrics(&linkDialerPoolConfig, self.GetMetricsRegistry(), "pool.link.dialer")
+
+	rateLimiterPool, err := goroutines.NewPool(linkDialerPoolConfig)
+	if err != nil {
+		return errors.Wrap(err, "error creating rate limted pool")
+	}
+
+	self.rateLimiterPool = rateLimiterPool
+	return nil
+}
+
+func (self *Router) GetRateLimiterPool() goroutines.Pool {
+	return self.rateLimiterPool
 }
 
 func (self *Router) registerComponents() error {

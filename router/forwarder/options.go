@@ -35,12 +35,20 @@ const (
 	DefaultXgressDialWorkerCount       = 128
 	MinXgressDialWorkerCount           = 1
 	MaxXgressDialWorkerCount           = 10000
-	DefaultLinkDialQueueLength         = 1000
-	MinLinkDialWorkerQueueLength       = 1
-	MaxLinkDialWorkerQueueLength       = 10000
-	DefaultLinkDialWorkerCount         = 32
-	MinLinkDialWorkerCount             = 1
-	MaxLinkDialWorkerCount             = 10000
+
+	DefaultLinkDialQueueLength   = 1000
+	MinLinkDialWorkerQueueLength = 1
+	MaxLinkDialWorkerQueueLength = 10000
+	DefaultLinkDialWorkerCount   = 32
+	MinLinkDialWorkerCount       = 1
+	MaxLinkDialWorkerCount       = 10000
+
+	DefaultRateLimiterQueueLength   = 5000
+	MinRateLimiterWorkerQueueLength = 1
+	MaxRateLimiterWorkerQueueLength = 50000
+	DefaultRateLimiterWorkerCount   = 5
+	MinRateLimiterWorkerCount       = 1
+	MaxRateLimiterWorkerCount       = 10000
 )
 
 type Options struct {
@@ -53,6 +61,7 @@ type Options struct {
 	IdleCircuitTimeout       time.Duration
 	XgressDial               WorkerPoolOptions
 	LinkDial                 WorkerPoolOptions
+	RateLimiter              WorkerPoolOptions
 }
 
 type WorkerPoolOptions struct {
@@ -76,6 +85,10 @@ func DefaultOptions() *Options {
 		LinkDial: WorkerPoolOptions{
 			QueueLength: DefaultLinkDialQueueLength,
 			WorkerCount: DefaultLinkDialWorkerCount,
+		},
+		RateLimiter: WorkerPoolOptions{
+			QueueLength: DefaultRateLimiterQueueLength,
+			WorkerCount: DefaultRateLimiterWorkerCount,
 		},
 	}
 }
@@ -180,6 +193,28 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.LinkDial.WorkerCount = uint16(workers)
 		} else {
 			return nil, errors.Errorf("invalid value for 'linkDialWorkerCount', expected integer between %v and %v", MinLinkDialWorkerCount, MaxLinkDialWorkerCount)
+		}
+	}
+
+	if value, found := src["rateLimitedQueueLength"]; found {
+		if length, ok := value.(int); ok {
+			if length < MinRateLimiterWorkerQueueLength || length > MaxRateLimiterWorkerQueueLength {
+				return nil, errors.Errorf("invalid value for 'rateLimitedQueueLength', expected integer between %v and %v", MinRateLimiterWorkerQueueLength, MaxRateLimiterWorkerQueueLength)
+			}
+			options.RateLimiter.QueueLength = uint16(length)
+		} else {
+			return nil, errors.Errorf("invalid value for 'rateLimitedQueueLength', expected integer between %v and %v", MinRateLimiterWorkerQueueLength, MaxRateLimiterWorkerQueueLength)
+		}
+	}
+
+	if value, found := src["rateLimitedWorkerCount"]; found {
+		if workers, ok := value.(int); ok {
+			if workers <= MinRateLimiterWorkerCount || workers > MaxRateLimiterWorkerCount {
+				return nil, errors.Errorf("invalid value for 'rateLimitedWorkerCount', expected integer between %v and %v", MinRateLimiterWorkerCount, MaxRateLimiterWorkerCount)
+			}
+			options.RateLimiter.WorkerCount = uint16(workers)
+		} else {
+			return nil, errors.Errorf("invalid value for 'rateLimitedWorkerCount', expected integer between %v and %v", MinRateLimiterWorkerCount, MaxRateLimiterWorkerCount)
 		}
 	}
 

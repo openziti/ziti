@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
+	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 )
@@ -36,4 +37,5 @@ type RouterEnv interface {
 	GetMetricsRegistry() metrics.UsageRegistry
 	RenderJsonConfig() (string, error)
 	GetHeartbeatOptions() HeartbeatOptions
+	GetRateLimiterPool() goroutines.Pool
 }
