@@ -55,7 +55,6 @@ func (self *baseRequestHandler) getChannel() channel.Channel {
 }
 
 func (self *baseRequestHandler) returnError(ctx requestContext, err controllerError) {
-	ctx.CleanupOnError()
 	responseMsg := channel.NewMessage(int32(edge_ctrl_pb.ContentType_ErrorType), []byte(err.Error()))
 	responseMsg.PutUint32Header(edge.ErrorCodeHeader, err.ErrorCode())
 	responseMsg.ReplyTo(ctx.GetMessage())
@@ -86,7 +85,6 @@ func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 	}
 
 	if err != nil {
-		ctx.CleanupOnError()
 		logger.WithError(err).Error("operation failed")
 	} else {
 		logger.Debug("operation success")
@@ -96,7 +94,6 @@ func (self *baseRequestHandler) logResult(ctx requestContext, err error) {
 type requestContext interface {
 	GetHandler() requestHandler
 	GetMessage() *channel.Message
-	CleanupOnError()
 }
 
 type sessionRequestContext interface {
@@ -113,18 +110,6 @@ type baseSessionRequestContext struct {
 	service      *model.Service
 	newSession   bool
 	logContext   logcontext.Context
-}
-
-func (self *baseSessionRequestContext) CleanupOnError() {
-	if self.newSession && self.session != nil {
-		logger := logrus.
-			WithField("operation", self.handler.Label()).
-			WithField("routerId", self.sourceRouter.Name)
-
-		if err := self.handler.getAppEnv().Managers.Session.Delete(self.session.Id); err != nil {
-			logger.WithError(err).Error("unable to delete session created before error encountered")
-		}
-	}
 }
 
 func (self *baseSessionRequestContext) GetMessage() *channel.Message {
