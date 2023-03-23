@@ -48,6 +48,7 @@ type Factory struct {
 	serviceListHandler *handler_edge_ctrl.ServiceListHandler
 	tunneler           *tunneler
 	metricsRegistry    metrics.UsageRegistry
+	env                env.RouterEnv
 }
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
@@ -87,12 +88,13 @@ func (self *Factory) DefaultRequestTimeout() time.Duration {
 }
 
 // NewFactory constructs a new Edge Xgress Tunnel Factory instance
-func NewFactory(routerConfig *router.Config, stateManager fabric.StateManager, metricsRegistry metrics.UsageRegistry) *Factory {
+func NewFactory(env env.RouterEnv, routerConfig *router.Config, stateManager fabric.StateManager) *Factory {
 	factory := &Factory{
-		id:              routerConfig.Id,
+		id:              env.GetRouterId(),
 		routerConfig:    routerConfig,
 		stateManager:    stateManager,
-		metricsRegistry: metricsRegistry,
+		metricsRegistry: env.GetMetricsRegistry(),
+		env:             env,
 	}
 	factory.tunneler = newTunneler(factory, stateManager)
 	return factory

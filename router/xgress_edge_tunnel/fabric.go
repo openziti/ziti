@@ -39,6 +39,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"math"
 	"net"
 	"runtime"
 	"strings"
@@ -283,7 +284,14 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 
 	self.tunneler.terminators.Set(terminator.id, terminator)
 
-	go self.establishTerminatorWithRetry(terminator)
+	err = self.factory.env.GetRateLimiterPool().QueueWithTimeout(func() {
+		self.establishTerminatorWithRetry(terminator)
+	}, math.MaxInt64)
+
+	if err != nil {
+		self.tunneler.terminators.Set(terminator.id, terminator)
+		return nil, err
+	}
 
 	return terminator, nil
 }
