@@ -252,6 +252,6 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 func (ctx *TestContext) testDeleteServices(_ *testing.T) {
 	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
-	ctx.RequireDelete(entities.service1)
-	ctx.RequireDelete(entities.service2)
+	ctx.RequireDelete(entities.service1, apiSessionsSessionsIdxPath)
+	ctx.RequireDelete(entities.service2, apiSessionsSessionsIdxPath)
 }

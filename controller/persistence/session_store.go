@@ -17,10 +17,12 @@
 package persistence
 
 import (
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -70,11 +72,18 @@ func (entity *Session) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldSessionToken, entity.Token)
-	ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
-	ctx.SetString(FieldSessionService, entity.ServiceId)
-	ctx.SetString(FieldSessionIdentity, entity.IdentityId)
-	ctx.SetString(FieldSessionType, entity.Type)
+	if ctx.IsCreate {
+		ctx.SetString(FieldSessionToken, entity.Token)
+		ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
+		ctx.SetString(FieldSessionService, entity.ServiceId)
+
+		sessionStore := ctx.Store.(*sessionStoreImpl)
+		_, identityId := sessionStore.stores.apiSession.symbolIdentity.Eval(ctx.Tx(), []byte(entity.ApiSessionId))
+		entity.IdentityId = string(identityId)
+
+		ctx.SetString(FieldSessionIdentity, entity.IdentityId)
+		ctx.SetString(FieldSessionType, entity.Type)
+	}
 	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
 
 	if entity.ApiSession == nil {
@@ -127,10 +136,16 @@ func (store *sessionStoreImpl) initializeLocal() {
 	store.symbolApiSession = store.AddFkSymbol(FieldSessionApiSession, store.stores.apiSession)
 	store.symbolService = store.AddFkSymbol(FieldSessionService, store.stores.edgeService)
 	store.symbolServicePolicies = store.AddFkSetSymbol(FieldSessionServicePolicies, store.stores.servicePolicy)
-	store.AddSymbol(FieldSessionType, ast.NodeTypeString)
+	sessionTypeSymbol := store.AddSymbol(FieldSessionType, ast.NodeTypeString)
 
 	store.AddFkConstraint(store.symbolApiSession, false, boltz.CascadeCreateUpdate)
 	store.AddFkConstraint(store.symbolService, false, boltz.CascadeDelete)
+	store.AddConstraint(&sessionApiSessionIndex{
+		apiSessionSymbol:  store.symbolApiSession,
+		sessionTypeSymbol: sessionTypeSymbol,
+		serviceSymbol:     store.symbolService,
+		apiSessionStore:   store.stores.apiSession,
+	})
 }
 
 func (store *sessionStoreImpl) initializeLinked() {}
@@ -149,4 +164,54 @@ func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Sess
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
+}
+
+type sessionApiSessionIndex struct {
+	apiSessionSymbol  boltz.EntitySymbol
+	serviceSymbol     boltz.EntitySymbol
+	sessionTypeSymbol boltz.EntitySymbol
+	apiSessionStore   boltz.ListStore
+}
+
+func (self *sessionApiSessionIndex) ProcessBeforeUpdate(*boltz.IndexingContext) {}
+
+func (self *sessionApiSessionIndex) ProcessAfterUpdate(ctx *boltz.IndexingContext) {
+	if ctx.IsCreate && !ctx.ErrHolder.HasError() {
+		_, sessionType := self.sessionTypeSymbol.Eval(ctx.Tx(), ctx.RowId)
+		_, apiSessionId := self.apiSessionSymbol.Eval(ctx.Tx(), ctx.RowId)
+		_, serviceId := self.serviceSymbol.Eval(ctx.Tx(), ctx.RowId)
+
+		if len(apiSessionId) == 0 {
+			ctx.ErrHolder.SetError(errors.Errorf("index on %v.%v does not allow null or empty values",
+				self.apiSessionSymbol.GetStore().GetEntityType(), self.apiSessionSymbol.GetName()))
+			return
+		}
+
+		bucket := boltz.GetOrCreatePath(ctx.Tx(),
+			db.RootBucket,
+			boltz.IndexesBucket,
+			EntityTypeApiSessions,
+			EntityTypeSessions,
+			string(apiSessionId),
+			string(sessionType),
+		)
+
+		if existingSessionId := bucket.GetString(string(serviceId)); existingSessionId != nil {
+			if self.sessionTypeSymbol.GetStore().IsEntityPresent(ctx.Tx(), *existingSessionId) {
+				ctx.ErrHolder.SetError(errors.Errorf("session for api-session %v, service %v and type: %v already exists",
+					string(apiSessionId), string(serviceId), string(sessionType)))
+			}
+		}
+
+		bucket.SetString(string(serviceId), string(ctx.RowId), nil)
+		ctx.ErrHolder.SetError(bucket.GetError())
+	}
+}
+
+func (self *sessionApiSessionIndex) ProcessBeforeDelete(*boltz.IndexingContext) {}
+
+func (self *sessionApiSessionIndex) Initialize(*bbolt.Tx, errorz.ErrorHolder) {}
+
+func (self *sessionApiSessionIndex) CheckIntegrity(*bbolt.Tx, bool, func(err error, fixed bool)) error {
+	return nil
 }
