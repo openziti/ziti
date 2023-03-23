@@ -80,13 +80,13 @@ func (self *fabricProvider) getBindSession(serviceName string) string {
 	return sessionId
 }
 
-func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.CreateApiSessionResponse) {
+func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.CreateApiSessionResponse) bool {
 	self.apiSessionLock.Lock()
 	defer self.apiSessionLock.Unlock()
 
 	currentToken := self.apiSessionTokens[ctrlId]
 	if currentToken == resp.Token {
-		return
+		return false
 	}
 
 	self.tunneler.stateManager.RemoveConnectedApiSession(currentToken)
@@ -119,6 +119,7 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 	}
 
 	self.tunneler.stateManager.AddConnectedApiSession(resp.Token)
+	return true
 }
 
 func (self *fabricProvider) authenticate() error {
@@ -276,10 +277,11 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 	hostData[edge.PublicKeyHeader] = keyPair.Public()
 
 	terminator := &tunnelTerminator{
-		id:       id,
-		hostData: hostData,
-		provider: self,
-		context:  hostCtx,
+		id:            id,
+		hostData:      hostData,
+		provider:      self,
+		context:       hostCtx,
+		notifyCreated: make(chan struct{}, 1),
 	}
 
 	self.tunneler.terminators.Set(terminator.id, terminator)
@@ -288,8 +290,8 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 		self.establishTerminatorWithRetry(terminator)
 	}, math.MaxInt64)
 
-	if err != nil {
-		self.tunneler.terminators.Set(terminator.id, terminator)
+	if err != nil { // should only happen if router is shutting down
+		self.tunneler.terminators.Remove(terminator.id)
 		return nil, err
 	}
 
@@ -363,14 +365,14 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 		return err
 	}
 
-	time.Sleep(250 * time.Millisecond)
-	if terminator.created.Load() {
+	if terminator.WaitForCreated(10 * time.Second) {
 		return nil
 	}
 
 	// return an error to indicate that we need to check if a response has come back after the next interval,
 	// and if not, re-send
-	return errors.New("check back later")
+	return errors.Errorf("timeout waiting for response to create terminator request for terminator %v on service %v",
+		terminator.id, terminator.context.ServiceName())
 }
 
 func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh channel.Channel) {
@@ -384,8 +386,9 @@ func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh ch
 	}
 
 	if response.ApiSession != nil {
-		log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new api-session")
-		self.updateApiSession(ctrlCh.Id(), response.ApiSession)
+		if self.updateApiSession(ctrlCh.Id(), response.ApiSession) {
+			log.WithField("apiSessionId", response.ApiSession.SessionId).Info("received new api-session")
+		}
 	}
 
 	log = log.WithField("terminatorId", response.TerminatorId)
@@ -403,6 +406,7 @@ func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh ch
 	}
 
 	if terminator.created.CompareAndSwap(false, true) {
+		// TODO: How do we make sure we don't get dups here. Probably not a big problem and this will need to be refactored for JWT sessions in any case
 		closeCallback := self.tunneler.stateManager.AddEdgeSessionRemovedListener(response.Session.Token, func(token string) {
 			if err := self.removeTerminator(terminator); err != nil {
 				log.WithError(err).Error("failed to remove terminator after edge session was removed")
@@ -423,6 +427,8 @@ func (self *fabricProvider) HandleTunnelResponse(msg *channel.Message, ctrlCh ch
 	} else {
 		log.Info("received additional terminator created notification")
 	}
+
+	terminator.NotifyCreated()
 }
 
 func (self *fabricProvider) removeTerminator(terminator *tunnelTerminator) error {
@@ -517,10 +523,29 @@ type tunnelTerminator struct {
 	created       atomic.Bool
 	closeCallback concurrenz.AtomicValue[func()]
 	closed        atomic.Bool
+	notifyCreated chan struct{}
 }
 
 func (self *tunnelTerminator) SendHealthEvent(pass bool) error {
 	return self.provider.sendHealthEvent(self.id, pass)
+}
+
+func (self *tunnelTerminator) NotifyCreated() {
+	select {
+	case self.notifyCreated <- struct{}{}:
+	default:
+	}
+}
+
+func (self *tunnelTerminator) WaitForCreated(timeout time.Duration) bool {
+	if self.created.Load() {
+		return true
+	}
+	select {
+	case <-self.notifyCreated:
+	case <-time.After(timeout):
+	}
+	return self.created.Load()
 }
 
 func (self *tunnelTerminator) Close() error {

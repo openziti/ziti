@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/fabric/router/xgress"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
+	"math"
 	"net"
 	"strings"
 	"time"
@@ -38,20 +39,24 @@ type tunneler struct {
 	stateManager  fabric.StateManager
 	bindHandler   xgress.BindHandler
 
-	interceptor    intercept.Interceptor
-	servicePoller  *servicePoller
-	fabricProvider *fabricProvider
-	terminators    cmap.ConcurrentMap[string, *tunnelTerminator]
+	interceptor     intercept.Interceptor
+	servicePoller   *servicePoller
+	fabricProvider  *fabricProvider
+	terminators     cmap.ConcurrentMap[string, *tunnelTerminator]
+	notifyReconnect chan struct{}
 }
 
 func newTunneler(factory *Factory, stateManager fabric.StateManager) *tunneler {
 	result := &tunneler{
-		stateManager: stateManager,
-		terminators:  cmap.New[*tunnelTerminator](),
+		stateManager:    stateManager,
+		terminators:     cmap.New[*tunnelTerminator](),
+		notifyReconnect: make(chan struct{}, 1),
 	}
 
 	result.fabricProvider = newProvider(factory, result)
 	result.servicePoller = newServicePoller(result.fabricProvider)
+
+	go result.ReestablishmentRunner()
 
 	return result
 }
@@ -137,4 +142,57 @@ func (self *tunneler) Listen(_ string, bindHandler xgress.BindHandler) error {
 func (self *tunneler) Close() error {
 	self.interceptor.Stop()
 	return nil
+}
+
+func (self *tunneler) HandleReconnect() {
+	terminators := self.terminators.Items()
+	for _, terminator := range terminators {
+		terminator.created.Store(false)
+	}
+
+	select {
+	case self.notifyReconnect <- struct{}{}:
+	default:
+	}
+}
+
+func (self *tunneler) ReestablishmentRunner() {
+	for {
+		<-self.notifyReconnect
+		self.ReestablishTerminators()
+	}
+}
+
+func (self *tunneler) ReestablishTerminators() {
+	log := pfxlog.Logger()
+	terminators := self.terminators.Items()
+
+	if len(terminators) > 0 {
+		pfxlog.Logger().Debugf("reestablishing %v terminators", len(terminators))
+	}
+
+	count := 1
+	for _, terminator := range terminators {
+		t := terminator
+		if !terminator.created.Load() && !terminator.closed.Load() {
+			err := self.fabricProvider.factory.env.GetRateLimiterPool().QueueWithTimeout(func() {
+				self.fabricProvider.establishTerminatorWithRetry(t)
+			}, math.MaxInt64)
+
+			if err != nil {
+				// should only happen if router is shutting down
+				log.WithField("terminatorId", terminator.id).WithError(err).
+					Error("unable to queue terminator reestablishment")
+			}
+		} else if terminator.created.Load() {
+			log.Infof("terminator %v already verified", terminator.id)
+		} else if terminator.closed.Load() {
+			log.Infof("terminator %v closed, can't reestablish", terminator.id)
+		}
+		count++
+	}
+
+	if len(terminators) > 0 {
+		log.Debug("finished queueing terminator reestablishment")
+	}
 }

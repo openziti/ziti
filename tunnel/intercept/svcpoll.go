@@ -294,12 +294,6 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 	}
 	svc.AddCleanupAction(stopHook)
 
-	svc.SetReconnectAction(func() {
-		logger.Info("re-establishing hosting after reconnect")
-		stopHook()
-		self.host(svc, tracker)
-	})
-
 	for idx, hostContext := range hostContexts {
 		hostControl, err := self.provider.HostService(hostContext)
 		if err != nil {
@@ -322,17 +316,6 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 			logger.WithError(err).Error("error setting up health checks")
 			hostContext.OnClose()
 			return
-		}
-	}
-}
-
-func (self *ServiceListener) NotifyOfReconnect() {
-	// might get called before we're fully initialized
-	if self != nil {
-		self.Lock()
-		defer self.Unlock()
-		for _, svc := range self.services {
-			svc.RunReconnectAction()
 		}
 	}
 }
