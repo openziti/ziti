@@ -200,7 +200,7 @@ func (ctx *TestContext) requireNewApiSession(identity *Identity) *ApiSession {
 		Identity:       identity,
 		LastActivityAt: time.Now(),
 	}
-	_, err := ctx.managers.ApiSession.Create(entity, nil)
+	_, err := ctx.managers.ApiSession.Create(nil, entity, nil)
 	ctx.NoError(err)
 	return entity
 }

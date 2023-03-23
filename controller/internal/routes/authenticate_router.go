@@ -170,7 +170,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		sessionCerts = append(sessionCerts, sessionCert)
 	}
 
-	sessionId, err := ae.Managers.ApiSession.Create(newApiSession, sessionCerts)
+	sessionId, err := ae.Managers.ApiSession.Create(nil, newApiSession, sessionCerts)
 
 	if err != nil {
 		rc.RespondWithError(err)
