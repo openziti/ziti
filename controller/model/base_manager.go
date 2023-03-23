@@ -30,6 +30,8 @@ import (
 	"reflect"
 )
 
+const annotationsBucketName = "annotations"
+
 type EntityManager interface {
 	models.EntityRetriever[models.Entity]
 	command.EntityDeleter
@@ -379,6 +381,31 @@ func (self *baseEntityManager) iterateRelatedEntitiesInTx(tx *bbolt.Tx, id, fiel
 		cursor.Next()
 	}
 	return nil
+}
+
+func (self *baseEntityManager) Annotate(ctx boltz.MutateContext, entityId string, key, value string) error {
+	entityBucket := self.GetStore().GetEntityBucket(ctx.Tx(), []byte(entityId))
+	if entityBucket == nil {
+		return boltz.NewNotFoundError(self.GetStore().GetEntityType(), "id", entityId)
+	}
+	annotationsBucket := entityBucket.GetOrCreatePath(annotationsBucketName)
+	annotationsBucket.SetString(key, value, nil)
+	return annotationsBucket.GetError()
+}
+
+func (self *baseEntityManager) GetAnnotation(entityId string, key string) (*string, error) {
+	var result *string
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		entityBucket := self.GetStore().GetEntityBucket(tx, []byte(entityId))
+		if entityBucket == nil {
+			return nil
+		}
+		if annotationsBucket := entityBucket.GetPath(annotationsBucketName); annotationsBucket != nil {
+			result = annotationsBucket.GetString(key)
+		}
+		return nil
+	})
+	return result, err
 }
 
 type AndFieldChecker struct {

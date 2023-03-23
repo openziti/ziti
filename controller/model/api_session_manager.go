@@ -50,33 +50,40 @@ func (self *ApiSessionManager) newModelEntity() edgeEntity {
 	return &ApiSession{}
 }
 
-func (self *ApiSessionManager) Create(entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
-	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
-
-	var apiSessionId string
-	err := self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
-		var err error
-		ctx := boltz.NewMutateContext(tx)
-		apiSessionId, err = self.createEntityInTx(ctx, entity)
-
-		if err != nil {
+func (self *ApiSessionManager) Create(ctx boltz.MutateContext, entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
+	if ctx == nil {
+		var apiSessionId string
+		err := self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+			ctx = boltz.NewMutateContext(tx)
+			var err error
+			apiSessionId, err = self.CreateInCtx(ctx, entity, sessionCerts)
 			return err
+		})
+		if err != nil {
+			return "", err
 		}
+		return apiSessionId, nil
+	}
 
-		for _, sessionCert := range sessionCerts {
-			sessionCert.ApiSessionId = apiSessionId
-			_, err := self.env.GetManagers().ApiSessionCertificate.createEntityInTx(ctx, sessionCert)
+	return self.CreateInCtx(ctx, entity, sessionCerts)
+}
 
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+func (self *ApiSessionManager) CreateInCtx(ctx boltz.MutateContext, entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
+	entity.Id = cuid.New() //use cuids which are longer than shortids but are monotonic
+	apiSessionId, err := self.createEntityInTx(ctx, entity)
 
 	if err != nil {
-		self.MarkActivityById(apiSessionId)
+		return "", err
 	}
+
+	for _, sessionCert := range sessionCerts {
+		sessionCert.ApiSessionId = apiSessionId
+		if _, err = self.env.GetManagers().ApiSessionCertificate.createEntityInTx(ctx, sessionCert); err != nil {
+			return "", err
+		}
+	}
+
+	self.MarkActivityById(apiSessionId)
 
 	return apiSessionId, err
 }
@@ -98,7 +105,7 @@ func (self *ApiSessionManager) ReadByToken(token string) (*ApiSession, error) {
 	return modelApiSession, nil
 }
 
-func (self *ApiSessionManager) readInTx(tx *bbolt.Tx, id string) (*ApiSession, error) {
+func (self *ApiSessionManager) ReadInTx(tx *bbolt.Tx, id string) (*ApiSession, error) {
 	modelApiSession := &ApiSession{}
 	if err := self.readEntityInTx(tx, id, modelApiSession); err != nil {
 		return nil, err
@@ -202,7 +209,7 @@ func (self *ApiSessionManager) Stream(query string, collect func(*ApiSession, er
 		for cursor := self.Store.IterateIds(tx, filter); cursor.IsValid(); cursor.Next() {
 			current := cursor.Current()
 
-			apiSession, err := self.readInTx(tx, string(current))
+			apiSession, err := self.ReadInTx(tx, string(current))
 			if err := collect(apiSession, err); err != nil {
 				return err
 			}
@@ -240,7 +247,7 @@ func (self *ApiSessionManager) Query(query string) (*ApiSessionListResult, error
 
 func (self *ApiSessionManager) VisitFingerprintsForApiSessionId(apiSessionId string, visitor func(fingerprint string) bool) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
-		apiSession, err := self.readInTx(tx, apiSessionId)
+		apiSession, err := self.ReadInTx(tx, apiSessionId)
 		if err != nil {
 			return errors.Wrapf(err, "could not query fingerprints by api session id [%s]", apiSessionId)
 		}
@@ -288,7 +295,7 @@ type ApiSessionListResult struct {
 func (result *ApiSessionListResult) collect(tx *bbolt.Tx, ids []string, queryMetaData *models.QueryMetaData) error {
 	result.QueryMetaData = *queryMetaData
 	for _, key := range ids {
-		ApiSession, err := result.manager.readInTx(tx, key)
+		ApiSession, err := result.manager.ReadInTx(tx, key)
 		if err != nil {
 			return err
 		}

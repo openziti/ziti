@@ -12,6 +12,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
+	"go.etcd.io/bbolt"
 	"sync"
 	"time"
 )
@@ -131,6 +132,18 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			}
 		}
 
+		identityMgr := self.handler.getAppEnv().Managers.Identity
+		if cachedApiSessionId, _ := identityMgr.GetAnnotation(self.identity.Id, "apiSessionId"); cachedApiSessionId != nil {
+			apiSession, _ := self.handler.getAppEnv().Managers.ApiSession.Read(*cachedApiSessionId)
+			if apiSession != nil && apiSession.IdentityId == self.identity.Id {
+				self.apiSession = apiSession
+				if _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
+					logger.WithError(err).Error("unexpected error while marking api session activity")
+				}
+				return true
+			}
+		}
+
 		apiSession := &model.ApiSession{
 			Token:          uuid.NewString(),
 			IdentityId:     self.identity.Id,
@@ -139,14 +152,23 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			IPAddress:      self.handler.getChannel().Underlay().GetRemoteAddr().String(),
 		}
 
-		var err error
-		apiSession.Id, err = self.handler.getAppEnv().GetManagers().ApiSession.Create(apiSession, nil)
-		if err != nil {
-			self.err = internalError(err)
-			return false
-		}
+		err := self.handler.getAppEnv().GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+			ctx := boltz.NewMutateContext(tx)
 
-		apiSession, err = self.handler.getAppEnv().GetManagers().ApiSession.Read(apiSession.Id)
+			var err error
+			apiSession.Id, err = self.handler.getAppEnv().GetManagers().ApiSession.Create(ctx, apiSession, nil)
+			if err != nil {
+				return err
+			}
+
+			if err = identityMgr.Annotate(ctx, self.identity.Id, "apiSessionId", apiSession.Id); err != nil {
+				logger.WithError(err).Error("failed to cache new api session on router identity")
+			}
+
+			apiSession, err = self.handler.getAppEnv().GetManagers().ApiSession.ReadInTx(ctx.Tx(), apiSession.Id)
+			return err
+		})
+
 		if err != nil {
 			self.err = internalError(err)
 			return false
