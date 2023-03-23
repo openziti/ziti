@@ -173,6 +173,7 @@ func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, s
 	RegisterManagerDecoder[*Service](result, result.Services)
 	RegisterManagerDecoder[*Router](result, result.Routers)
 	RegisterManagerDecoder[*Terminator](result, result.Terminators)
+	RegisterCommand(result, &DeleteTerminatorsBatchCommand{}, &cmd_pb.DeleteTerminatorsBatchCommand{})
 
 	return result
 }

@@ -47,6 +47,10 @@ func (x *DeleteEntityCommand) GetCommandType() int32 {
 	return int32(CommandType_DeleteEntityType)
 }
 
+func (x *DeleteTerminatorsBatchCommand) GetCommandType() int32 {
+	return int32(CommandType_DeleteTerminatorsBatchType)
+}
+
 func (x *SyncSnapshotCommand) GetCommandType() int32 {
 	return int32(CommandType_SyncSnapshot)
 }

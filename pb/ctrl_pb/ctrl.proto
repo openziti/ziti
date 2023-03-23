@@ -33,6 +33,8 @@ enum ContentType {
   VerifyRouterType = 1036;
   UpdateCtrlAddressesType = 1037;
 
+  RemoveTerminatorsRequestType = 1038;
+
   ListenersHeader = 10;
 }
 
@@ -79,6 +81,10 @@ message CreateTerminatorRequest {
 
 message RemoveTerminatorRequest {
   string terminatorId = 1;
+}
+
+message RemoveTerminatorsRequest {
+  repeated string terminatorIds = 1;
 }
 
 message Terminator {

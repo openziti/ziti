@@ -25,6 +25,10 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const (
+	TerminatorDeleteBatchSize = 50
+)
+
 type validateTerminatorsHandler struct {
 	env env.RouterEnv
 }
@@ -58,6 +62,8 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 
 	log.Debugf("validate terminators route request received: %v terminators", len(req.Terminators))
 	dialers := map[string]xgress.Dialer{}
+
+	var deleteList []string
 	for _, terminator := range req.Terminators {
 		binding := terminator.Binding
 		dialer := dialers[binding]
@@ -73,9 +79,18 @@ func (handler *validateTerminatorsHandler) validateTerminators(req *ctrl_pb.Vali
 		//       rather than deleting them
 		if dialer == nil || !dialer.IsTerminatorValid(terminator.Id, terminator.Address) {
 			log.Infof("removing invalid terminator %v with binding: %v. had dialer? %v", terminator.Id, terminator.Binding, dialer != nil)
-			if err := xgress.RemoveTerminator(handler.env.GetNetworkControllers(), terminator.Id); err != nil {
-				log.Errorf("failed to remove invalid terminator %v (%v)", terminator.Id, err)
+			deleteList = append(deleteList, terminator.Id)
+			if len(deleteList) >= TerminatorDeleteBatchSize {
+				log.Infof("send batch of %v terminator deletes", len(deleteList))
+				xgress.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
+				deleteList = nil
 			}
 		}
 	}
+
+	if len(deleteList) > 0 {
+		log.Infof("send batch of %v terminator deletes", len(deleteList))
+		xgress.RemoveTerminators(handler.env.GetNetworkControllers(), deleteList)
+	}
+
 }
