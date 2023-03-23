@@ -142,7 +142,7 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 		self.session, err = self.handler.getAppEnv().Managers.Session.ReadByToken(token)
 		if err != nil {
 			if boltz.IsErrNotFoundErr(err) {
-				self.err = InvalidApiSessionError{}
+				self.err = InvalidSessionError{}
 			} else {
 				self.err = internalError(err)
 			}

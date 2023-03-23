@@ -32,6 +32,16 @@ func (self InvalidApiSessionError) ErrorCode() uint32 {
 	return edge.ErrorCodeInvalidApiSession
 }
 
+type InvalidSessionError struct{}
+
+func (InvalidSessionError) Error() string {
+	return "invalid session"
+}
+
+func (self InvalidSessionError) ErrorCode() uint32 {
+	return edge.ErrorCodeInvalidSession
+}
+
 type WrongSessionTypeError struct{}
 
 func (WrongSessionTypeError) Error() string {
