@@ -63,31 +63,10 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 		"@iperf", "--identity-roles", "#iperf-server"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "iperf-client", "Dial", "--service-roles",
 		"@iperf", "--identity-roles", "#iperf-client"))
-
-	//
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-server", "--edge-router-roles",
-	//	"@router-east-server", "--identity-roles", "#server"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
 		"#iperf-client", "--identity-roles", "#iperf-client"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-server", "--edge-router-roles",
 		"#iperf-server", "--identity-roles", "#iperf-server"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-tokyo-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-sydney-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-canada-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-frankfurt-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-brazil-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-east-client", "--identity-roles", "#client"))
-	//workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
-	//"@router-west-client", "--identity-roles", "#client"))
-
-	//workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "echo", "--semantic", "AnyOf",
-	//"--service-roles", "@echo", "--edge-router-roles", "#all"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "iperf", "--semantic", "AnyOf",
 		"--service-roles", "@iperf", "--edge-router-roles", "#all"))
 	//workflow.AddAction(component.Stop(models.ControllerTag))

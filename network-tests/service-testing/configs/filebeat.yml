@@ -1,0 +1,73 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/*.log
+      - /var/log/*/*.log
+      - /var/log/messages
+      - /var/log/secure
+      - /var/log/syslog
+    exclude_files:
+      - '\.gz$'
+      - /var/log/auth.log*
+      - /var/log/audit/*
+      - /var/log/chrony/*
+      - /var/log/salt/*
+      - /var/log/ziti/*
+
+  - type: log
+    enabled: true
+    paths:
+      - /home/ubuntu/logs/utilization*.log
+    close_timeout: 5m
+    tags: ["ztutilization"]
+    fields_under_root: true
+
+  - type: log
+    enabled: true
+    paths:
+      - /home/ubuntu/logs/ziti-controller.log*
+      - /home/ubuntu/logs/ziti-router.log*
+      - /home/ubuntu/logs/ziti-fabric.log*
+    close_timeout: 5m
+    exclude_files:
+      - '\.gz$'
+    tags: ["ztlogs"]
+    fields_under_root: true
+
+migration.6_to_7.enabled: false
+
+name: ${serverHost.PublicIp}
+
+monitoring.enabled: false
+
+queue.mem:
+  events: 65536
+
+processors:
+  - add_cloud_metadata:
+  - decode_json_fields:
+      fields: [ "message" ]
+      process_array: false
+      max_depth: 1
+      target: ""
+      overwrite_keys: false
+      add_error_key: true
+
+fields_under_root: true
+
+# CUSTOMIZE THIS BLOCK HOWEVER YOU NEED TO!
+fields:
+  env: "sandbox"
+  inventoryName: ${serverHost.PublicIp}
+  networkId: "aed976a4-e859-46c4-a5a7-b5823f699dc1"
+  networkName: "RAMCO"
+  # All Elasticsearch queries still depend on the old organizationId term for it's search
+  organizationId: "984075bf-add6-47e1-adb9-41fb3d2122a8"
+  providerId: ""
+  providerName: "AWS"
+  node_type: "NC"
+
+cloud.id: "fablab-metrics-tmp:dXMtZWFzdC0xLmF3cy5mb3VuZC5pbzo0NDMkMTE4YTlmM2FiN2YzNDE5NmE4MTNhNDU3MzBmMjhjNTckZWY4NzA5ZWIyOTRkNDY0YzhkMmVjOGIzMTU1Y2JhODU="
+cloud.auth: "elastic:otPugEP6G58SGCVCLGL6qTki"
+

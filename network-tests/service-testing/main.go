@@ -18,7 +18,7 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/terraform"
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
-	"github.com/openziti/ziti/network-tests/examples/actions"
+	"github.com/openziti/ziti/network-tests/service-testing/actions"
 	"github.com/openziti/zitilab"
 	"github.com/openziti/zitilab/actions/edge"
 	zitilib_runlevel_1_configuration "github.com/openziti/zitilab/runlevel/1_configuration"
@@ -94,8 +94,8 @@ var m = &model.Model{
 						"ctrl": {
 							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
 							BinaryName:     "ziti-controller",
-							ConfigSrc:      "ctrl.yml",
-							ConfigName:     "ctrl.yml",
+							ConfigSrc:      "ctrl.yml.old",
+							ConfigName:     "ctrl.yml.old",
 							PublicIdentity: "ctrl",
 							RunWithSudo:    true,
 						},
@@ -142,58 +142,58 @@ var m = &model.Model{
 				//},
 			},
 		},
-		//"us-west-2": {
-		//	Region: "us-west-2",
-		//	Site:   "us-west-2b",
-		//	Hosts: model.Hosts{
-		//		"router-west-client": {
-		//			Scope:        model.Scope{Tags: model.Tags{}},
-		//			InstanceType: "t3.micro",
-		//			Components: model.Components{
-		//				"router-west-client": {
-		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
-		//					BinaryName:     "ziti-router",
-		//					ConfigSrc:      "router.yml",
-		//					ConfigName:     "router-west-client.yml",
-		//					PublicIdentity: "router-west-client",
-		//					RunWithSudo:    true,
-		//				},
-		//				//"tun-west-client": {
-		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
-		//				//	BinaryName:     "ziti-edge-tunnel",
-		//				//	PublicIdentity: "tun-west-client",
-		//				//	RunWithSudo:    true,
-		//				//},
-		//			},
-		//		},
-		//	},
-		//},
-		"ca-central-1": {
-			Region: "ca-central-1",
-			Site:   "ca-central-1b",
+		"us-west-2": {
+			Region: "us-west-2",
+			Site:   "us-west-2b",
 			Hosts: model.Hosts{
-				"router-canada-client": {
+				"router-west-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
 					InstanceType: "t3.micro",
 					Components: model.Components{
-						"router-canada-client": {
+						"router-west-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
 							BinaryName:     "ziti-router",
 							ConfigSrc:      "router.yml",
-							ConfigName:     "router-canada-client.yml",
-							PublicIdentity: "router-canada-client",
+							ConfigName:     "router-west-client.yml",
+							PublicIdentity: "router-west-client",
 							RunWithSudo:    true,
 						},
-						//"tun-canada-client": {
+						//"tun-west-client": {
 						//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
 						//	BinaryName:     "ziti-edge-tunnel",
-						//	PublicIdentity: "tun-canada-client",
+						//	PublicIdentity: "tun-west-client",
 						//	RunWithSudo:    true,
 						//},
 					},
 				},
 			},
 		},
+		//"ca-central-1": {
+		//	Region: "ca-central-1",
+		//	Site:   "ca-central-1b",
+		//	Hosts: model.Hosts{
+		//		"router-canada-client": {
+		//			Scope:        model.Scope{Tags: model.Tags{}},
+		//			InstanceType: "t3.micro",
+		//			Components: model.Components{
+		//				"router-canada-client": {
+		//					Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
+		//					BinaryName:     "ziti-router",
+		//					ConfigSrc:      "router.yml",
+		//					ConfigName:     "router-canada-client.yml",
+		//					PublicIdentity: "router-canada-client",
+		//					RunWithSudo:    true,
+		//				},
+		//				//"tun-canada-client": {
+		//				//	Scope:          model.Scope{Tags: model.Tags{"terminator", "iperf-client", "sdk-app"}},
+		//				//	BinaryName:     "ziti-edge-tunnel",
+		//				//	PublicIdentity: "tun-canada-client",
+		//				//	RunWithSudo:    true,
+		//				//},
+		//			},
+		//		},
+		//	},
+		//},
 		//"ap-northeast-1": {
 		//	Region: "ap-northeast-1",
 		//	Site:   "ap-northeast-1a",
@@ -341,8 +341,8 @@ var m = &model.Model{
 
 	Configuration: model.ConfigurationStages{
 		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric(),
-			zitilib_runlevel_1_configuration.DotZiti(),
+			zitilib_runlevel_1_configuration.Fabric("domain.com"),
+			//zitilib_runlevel_1_configuration.DotZiti(),
 		),
 		config.Component(),
 		zitilab.DefaultZitiBinaries(),

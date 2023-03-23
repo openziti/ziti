@@ -1,0 +1,40 @@
+metricbeat.modules:
+  - module: system
+    enabled: true
+    period: 60s
+    metricsets:
+      - cpu
+      - filesystem
+      - load
+      - network
+      - process
+      - socket_summary
+      - memory
+      - diskio
+      - process_summary
+      - uptime
+
+    processes: ['ziti-controller', 'ziti-router']
+    filesystem.ignore_types: ["nfs", "autofs", "tmpfs", "devtmpfs", "sysfs", "cgroup", "pstore", "hugetlbfs", "mqueue", "configfs", "proc", "selinuxfs", "rpc_pipefs", "rootfs", "securityfs", "devpts", "nfsd", "debugfs", "binfmt_misc", "squashfs"]
+    interfaces: ["eth0", "enp0s3"]
+
+migration.6_to_7.enabled: false
+
+name: ${serverHost.PublicIp}
+
+monitoring.enabled: false
+
+# CUSTOMIZE THIS BLOCK HOWEVER YOU NEED TO!
+fields:
+  env: "sandbox"
+  inventoryName: ${serverHost.PublicIp}
+  networkId: "aed976a4-e859-46c4-a5a7-b5823f699dc1"
+  networkName: "RAMCO"
+  # All Elasticsearch queries still depend on the old organizationId term for it's search
+  organizationId: "984075bf-add6-47e1-adb9-41fb3d2122a8"
+  providerId: ""
+  providerName: "AWS"
+  node_type: "NC"
+
+cloud.id: "fablab-metrics-tmp:dXMtZWFzdC0xLmF3cy5mb3VuZC5pbzo0NDMkMTE4YTlmM2FiN2YzNDE5NmE4MTNhNDU3MzBmMjhjNTckZWY4NzA5ZWIyOTRkNDY0YzhkMmVjOGIzMTU1Y2JhODU="
+cloud.auth: "elastic:otPugEP6G58SGCVCLGL6qTki"

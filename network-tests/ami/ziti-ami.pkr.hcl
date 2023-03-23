@@ -32,25 +32,34 @@ build {
   sources = ["source.amazon-ebs.ziti-tests-ubuntu-ami"]
 
   provisioner "file" {
-    source      = "etc/apt/apt.conf.d/99remote-not-fancy"
+    source      = "/etc/apt/apt.conf.d/99remote-not-fancy"
     destination = "/home/ubuntu/99remote-not-fancy"
   }
 
   provisioner "file" {
-    source      = "etc/sysctl.d/51-network-tuning.conf"
+    source      = "/etc/sysctl.d/51-network-tuning.conf"
+    destination = "/home/ubuntu/51-network-tuning.conf"
+  }
+
+  provisioner "file" {
+    source      = "/etc/sysctl.d/51-network-tuning.conf"
     destination = "/home/ubuntu/51-network-tuning.conf"
   }
 
   provisioner "shell" {
     inline = [
+      # add mkdir
       "sudo mv /home/ubuntu/99remote-not-fancy /etc/apt/apt.conf.d/",
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
-
+      # Add chmod and then move them into the correct folder
       "cloud-init status --wait",
 
       # add metricsbeat sources
       "curl --fail --silent --show-error --location https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor | sudo dd of=/usr/share/keyrings/elasticsearch-archive-keyring.gpg",
       "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/elasticsearch-archive-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main\" | sudo tee -a /etc/apt/sources.list.d/elastic-8.x.list",
+
+      # add filebeat sources
+
 
       # add consul sources
       "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
