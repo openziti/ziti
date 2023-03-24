@@ -4,6 +4,8 @@
 
 * Makes inspect CLI more discoverable by adding subcommands for inspectable values
 * Adds new inspection allowing configs to be retrieved: `ziti fabric inspect config`
+* Quickstart environment variable names have been cleaned up. 
+  * IMPORTANT: If you update your OpenZiti binaries to this version or later (which can be done easily with the `getZiti()` function, you will need to migrate any existing network that has been developed using OpenZiti v0.27.5 or earlier binaries as the new binaries will expect the new environment variable names. A function `performMigration()` has been provided in the `ziti-cli-script.sh` for this purpose. Simply source the latest `ziti-cli-script.sh`, and your current network's .env file, then run `performMigration()` to update environment variable name references. If the migration process cannot find your existing environment file in the default location, you will need to provide the path to the migration function, ex: `performMigration <path-to-environment-file>`
 
 ## Component Updates and Bug Fixes
 
@@ -26,6 +28,7 @@
 * github.com/openziti/transport/v2: [v2.0.51 -> v2.0.52](https://github.com/openziti/transport/compare/v2.0.51...v2.0.52)
 * github.com/openziti/ziti: [v0.27.5 -> v0.27.6](https://github.com/openziti/ziti/compare/v0.27.5...v0.27.6)
     * [Issue #1031](https://github.com/openziti/ziti/issues/1031) - Fixed quickstart bug with arm and arm64 ambiguity when running quickstart on arm architecture
+    * [Issue #1030](https://github.com/openziti/ziti/issues/1030) - Provide an upgrade path for quickstart cleanup
 
 
 # Release 0.27.5
