@@ -639,7 +639,7 @@ function getZiti {
     echo "ZITI_BIN_DIR/ziti does exist"
     # Get the current version and compare with latest
     local currentVersion
-    currentVersion="v0.27.4"     # "$("${ZITI_BIN_DIR}"/ziti -v) "
+    currentVersion="$("${ZITI_BIN_DIR}"/ziti -v) "
     if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
       # Prompt user for new download
       echo -en "There is a newer version of OpenZiti, would you like to download it (Y/n)?"
