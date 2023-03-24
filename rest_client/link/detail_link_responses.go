@@ -109,6 +109,11 @@ func (o *DetailLinkOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the detail link o k response
+func (o *DetailLinkOK) Code() int {
+	return 200
+}
+
 func (o *DetailLinkOK) Error() string {
 	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DetailLinkUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the detail link unauthorized response
+func (o *DetailLinkUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DetailLinkUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /links/{id}][%d] detailLinkUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DetailLinkNotFound) IsServerError() bool {
 // IsCode returns true when this detail link not found response a status code equal to that given
 func (o *DetailLinkNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the detail link not found response
+func (o *DetailLinkNotFound) Code() int {
+	return 404
 }
 
 func (o *DetailLinkNotFound) Error() string {

@@ -115,6 +115,11 @@ func (o *UpdateRouterOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the update router o k response
+func (o *UpdateRouterOK) Code() int {
+	return 200
+}
+
 func (o *UpdateRouterOK) Error() string {
 	return fmt.Sprintf("[PUT /routers/{id}][%d] updateRouterOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *UpdateRouterBadRequest) IsServerError() bool {
 // IsCode returns true when this update router bad request response a status code equal to that given
 func (o *UpdateRouterBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the update router bad request response
+func (o *UpdateRouterBadRequest) Code() int {
+	return 400
 }
 
 func (o *UpdateRouterBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *UpdateRouterUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the update router unauthorized response
+func (o *UpdateRouterUnauthorized) Code() int {
+	return 401
+}
+
 func (o *UpdateRouterUnauthorized) Error() string {
 	return fmt.Sprintf("[PUT /routers/{id}][%d] updateRouterUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *UpdateRouterNotFound) IsServerError() bool {
 // IsCode returns true when this update router not found response a status code equal to that given
 func (o *UpdateRouterNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the update router not found response
+func (o *UpdateRouterNotFound) Code() int {
+	return 404
 }
 
 func (o *UpdateRouterNotFound) Error() string {

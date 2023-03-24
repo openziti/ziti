@@ -109,6 +109,11 @@ func (o *CreateServiceCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the create service created response
+func (o *CreateServiceCreated) Code() int {
+	return 201
+}
+
 func (o *CreateServiceCreated) Error() string {
 	return fmt.Sprintf("[POST /services][%d] createServiceCreated  %+v", 201, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *CreateServiceBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the create service bad request response
+func (o *CreateServiceBadRequest) Code() int {
+	return 400
+}
+
 func (o *CreateServiceBadRequest) Error() string {
 	return fmt.Sprintf("[POST /services][%d] createServiceBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *CreateServiceUnauthorized) IsServerError() bool {
 // IsCode returns true when this create service unauthorized response a status code equal to that given
 func (o *CreateServiceUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the create service unauthorized response
+func (o *CreateServiceUnauthorized) Code() int {
+	return 401
 }
 
 func (o *CreateServiceUnauthorized) Error() string {

@@ -115,6 +115,11 @@ func (o *PatchLinkOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the patch link o k response
+func (o *PatchLinkOK) Code() int {
+	return 200
+}
+
 func (o *PatchLinkOK) Error() string {
 	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *PatchLinkBadRequest) IsServerError() bool {
 // IsCode returns true when this patch link bad request response a status code equal to that given
 func (o *PatchLinkBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the patch link bad request response
+func (o *PatchLinkBadRequest) Code() int {
+	return 400
 }
 
 func (o *PatchLinkBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *PatchLinkUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the patch link unauthorized response
+func (o *PatchLinkUnauthorized) Code() int {
+	return 401
+}
+
 func (o *PatchLinkUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /links/{id}][%d] patchLinkUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *PatchLinkNotFound) IsServerError() bool {
 // IsCode returns true when this patch link not found response a status code equal to that given
 func (o *PatchLinkNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the patch link not found response
+func (o *PatchLinkNotFound) Code() int {
+	return 404
 }
 
 func (o *PatchLinkNotFound) Error() string {

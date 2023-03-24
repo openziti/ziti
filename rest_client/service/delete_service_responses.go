@@ -115,6 +115,11 @@ func (o *DeleteServiceOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the delete service o k response
+func (o *DeleteServiceOK) Code() int {
+	return 200
+}
+
 func (o *DeleteServiceOK) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *DeleteServiceBadRequest) IsServerError() bool {
 // IsCode returns true when this delete service bad request response a status code equal to that given
 func (o *DeleteServiceBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the delete service bad request response
+func (o *DeleteServiceBadRequest) Code() int {
+	return 400
 }
 
 func (o *DeleteServiceBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *DeleteServiceUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the delete service unauthorized response
+func (o *DeleteServiceUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DeleteServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /services/{id}][%d] deleteServiceUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *DeleteServiceConflict) IsServerError() bool {
 // IsCode returns true when this delete service conflict response a status code equal to that given
 func (o *DeleteServiceConflict) IsCode(code int) bool {
 	return code == 409
+}
+
+// Code gets the status code for the delete service conflict response
+func (o *DeleteServiceConflict) Code() int {
+	return 409
 }
 
 func (o *DeleteServiceConflict) Error() string {

@@ -109,6 +109,11 @@ func (o *ListServiceTerminatorsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the list service terminators o k response
+func (o *ListServiceTerminatorsOK) Code() int {
+	return 200
+}
+
 func (o *ListServiceTerminatorsOK) Error() string {
 	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *ListServiceTerminatorsBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the list service terminators bad request response
+func (o *ListServiceTerminatorsBadRequest) Code() int {
+	return 400
+}
+
 func (o *ListServiceTerminatorsBadRequest) Error() string {
 	return fmt.Sprintf("[GET /services/{id}/terminators][%d] listServiceTerminatorsBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *ListServiceTerminatorsUnauthorized) IsServerError() bool {
 // IsCode returns true when this list service terminators unauthorized response a status code equal to that given
 func (o *ListServiceTerminatorsUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the list service terminators unauthorized response
+func (o *ListServiceTerminatorsUnauthorized) Code() int {
+	return 401
 }
 
 func (o *ListServiceTerminatorsUnauthorized) Error() string {

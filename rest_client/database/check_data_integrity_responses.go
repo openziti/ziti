@@ -109,6 +109,11 @@ func (o *CheckDataIntegrityAccepted) IsCode(code int) bool {
 	return code == 202
 }
 
+// Code gets the status code for the check data integrity accepted response
+func (o *CheckDataIntegrityAccepted) Code() int {
+	return 202
+}
+
 func (o *CheckDataIntegrityAccepted) Error() string {
 	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityAccepted  %+v", 202, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *CheckDataIntegrityUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the check data integrity unauthorized response
+func (o *CheckDataIntegrityUnauthorized) Code() int {
+	return 401
+}
+
 func (o *CheckDataIntegrityUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database/check-data-integrity][%d] checkDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *CheckDataIntegrityTooManyRequests) IsServerError() bool {
 // IsCode returns true when this check data integrity too many requests response a status code equal to that given
 func (o *CheckDataIntegrityTooManyRequests) IsCode(code int) bool {
 	return code == 429
+}
+
+// Code gets the status code for the check data integrity too many requests response
+func (o *CheckDataIntegrityTooManyRequests) Code() int {
+	return 429
 }
 
 func (o *CheckDataIntegrityTooManyRequests) Error() string {

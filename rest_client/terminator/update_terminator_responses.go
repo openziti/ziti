@@ -115,6 +115,11 @@ func (o *UpdateTerminatorOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the update terminator o k response
+func (o *UpdateTerminatorOK) Code() int {
+	return 200
+}
+
 func (o *UpdateTerminatorOK) Error() string {
 	return fmt.Sprintf("[PUT /terminators/{id}][%d] updateTerminatorOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *UpdateTerminatorBadRequest) IsServerError() bool {
 // IsCode returns true when this update terminator bad request response a status code equal to that given
 func (o *UpdateTerminatorBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the update terminator bad request response
+func (o *UpdateTerminatorBadRequest) Code() int {
+	return 400
 }
 
 func (o *UpdateTerminatorBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *UpdateTerminatorUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the update terminator unauthorized response
+func (o *UpdateTerminatorUnauthorized) Code() int {
+	return 401
+}
+
 func (o *UpdateTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[PUT /terminators/{id}][%d] updateTerminatorUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *UpdateTerminatorNotFound) IsServerError() bool {
 // IsCode returns true when this update terminator not found response a status code equal to that given
 func (o *UpdateTerminatorNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the update terminator not found response
+func (o *UpdateTerminatorNotFound) Code() int {
+	return 404
 }
 
 func (o *UpdateTerminatorNotFound) Error() string {

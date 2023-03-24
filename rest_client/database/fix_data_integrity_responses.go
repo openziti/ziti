@@ -109,6 +109,11 @@ func (o *FixDataIntegrityAccepted) IsCode(code int) bool {
 	return code == 202
 }
 
+// Code gets the status code for the fix data integrity accepted response
+func (o *FixDataIntegrityAccepted) Code() int {
+	return 202
+}
+
 func (o *FixDataIntegrityAccepted) Error() string {
 	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityAccepted  %+v", 202, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *FixDataIntegrityUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the fix data integrity unauthorized response
+func (o *FixDataIntegrityUnauthorized) Code() int {
+	return 401
+}
+
 func (o *FixDataIntegrityUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database/fix-data-integrity][%d] fixDataIntegrityUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *FixDataIntegrityTooManyRequests) IsServerError() bool {
 // IsCode returns true when this fix data integrity too many requests response a status code equal to that given
 func (o *FixDataIntegrityTooManyRequests) IsCode(code int) bool {
 	return code == 429
+}
+
+// Code gets the status code for the fix data integrity too many requests response
+func (o *FixDataIntegrityTooManyRequests) Code() int {
+	return 429
 }
 
 func (o *FixDataIntegrityTooManyRequests) Error() string {

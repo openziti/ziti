@@ -103,6 +103,11 @@ func (o *ListServicesOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the list services o k response
+func (o *ListServicesOK) Code() int {
+	return 200
+}
+
 func (o *ListServicesOK) Error() string {
 	return fmt.Sprintf("[GET /services][%d] listServicesOK  %+v", 200, o.Payload)
 }
@@ -164,6 +169,11 @@ func (o *ListServicesUnauthorized) IsServerError() bool {
 // IsCode returns true when this list services unauthorized response a status code equal to that given
 func (o *ListServicesUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the list services unauthorized response
+func (o *ListServicesUnauthorized) Code() int {
+	return 401
 }
 
 func (o *ListServicesUnauthorized) Error() string {
