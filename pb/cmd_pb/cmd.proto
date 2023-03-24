@@ -97,7 +97,8 @@ message Router {
   bytes fingerprint = 3;
   uint32 cost = 4;
   bool noTraversal = 5;
-  map<string, TagValue> tags = 6;
+  bool disabled = 6;
+  map<string, TagValue> tags = 7;
 }
 
 message Terminator {

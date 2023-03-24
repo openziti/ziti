@@ -27,6 +27,7 @@ const (
 	FieldRouterFingerprint = "fingerprint"
 	FieldRouterCost        = "cost"
 	FieldRouterNoTraversal = "noTraversal"
+	FieldRouterDisabled    = "disabled"
 )
 
 type Router struct {
@@ -35,6 +36,7 @@ type Router struct {
 	Fingerprint *string
 	Cost        uint16
 	NoTraversal bool
+	Disabled    bool
 }
 
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -43,6 +45,7 @@ func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
 	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
+	entity.Disabled = bucket.GetBoolWithDefault(FieldRouterDisabled, false)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
@@ -51,6 +54,7 @@ func (entity *Router) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
 	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
 	ctx.SetBool(FieldRouterNoTraversal, entity.NoTraversal)
+	ctx.SetBool(FieldRouterDisabled, entity.Disabled)
 }
 
 func (entity *Router) GetEntityType() string {
@@ -93,6 +97,9 @@ func (store *routerStoreImpl) initializeLocal() {
 
 	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
 	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
+	store.AddSymbol(FieldRouterCost, ast.NodeTypeInt64)
+	store.AddSymbol(FieldRouterNoTraversal, ast.NodeTypeBool)
+	store.AddSymbol(FieldRouterDisabled, ast.NodeTypeBool)
 }
 
 func (store *routerStoreImpl) initializeLinked() {

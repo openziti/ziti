@@ -1267,6 +1267,7 @@ definitions:
           - connected
           - cost
           - noTraversal
+          - disabled
         properties:
           name:
             type: string
@@ -1279,6 +1280,8 @@ definitions:
             minimum: 0
             maximum: 65535
           noTraversal:
+            type: boolean
+          disabled:
             type: boolean
           listenerAddresses:
             type: array
@@ -1317,6 +1320,9 @@ definitions:
         maximum: 65535
       noTraversal:
         type: boolean
+      disabled:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
@@ -1337,6 +1343,9 @@ definitions:
         maximum: 65535
       noTraversal:
         type: boolean
+      disabled:
+        type: boolean
+        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   routerPatch:
@@ -1353,6 +1362,9 @@ definitions:
         maximum: 65535
         x-nullable: true
       noTraversal:
+        type: boolean
+        x-nullable: true
+      disabled:
         type: boolean
         x-nullable: true
       tags:
