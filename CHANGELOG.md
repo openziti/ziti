@@ -9,6 +9,7 @@
 
 * github.com/openziti/channel/v2: [v2.0.27 -> v2.0.29](https://github.com/openziti/channel/compare/v2.0.27...v2.0.29)
     * [Issue #83](https://github.com/openziti/channel/issues/83) - Improve protocol mismatch error(s)
+    * [Issue #93](https://github.com/openziti/channel/issues/93) - Fix atomic 64-bit alignment error on arm devices
 
 * github.com/openziti/edge: [v0.24.125 -> v0.24.134](https://github.com/openziti/edge/compare/v0.24.125...v0.24.134)
 * github.com/openziti/fabric: [v0.22.24 -> v0.22.32](https://github.com/openziti/fabric/compare/v0.22.24...v0.22.32)
@@ -18,6 +19,7 @@
     * [Issue #598](https://github.com/openziti/fabric/issues/598) - Add support to fabric inspect to propagate inspect to other controllers
     * [Issue #597](https://github.com/openziti/fabric/issues/597) - Make raft settings configurable
     * [Issue #604](https://github.com/openziti/fabric/issues/604) - Don't create link dropped msg metric until channel bind time
+    * [Issue #638](https://github.com/openziti/fabric/issues/638) - Fix atomic 64-bit alignment error on arm devices
 
 * github.com/openziti/runzmd: [v1.0.9 -> v1.0.11](https://github.com/openziti/runzmd/compare/v1.0.9...v1.0.11)
 * github.com/openziti/sdk-golang: [v0.18.28 -> v0.18.30](https://github.com/openziti/sdk-golang/compare/v0.18.28...v0.18.30)
