@@ -221,15 +221,13 @@ quickstart script is run.
 */
 func TestQuickStartEnvFile(t *testing.T) {
 	expectedValues := []string{
-		"export ZITI_EDGE_ROUTER_RAWNAME=\"localhost-edge-router\"",
-		"export ZITI_EDGE_CONTROLLER_RAWNAME=\"localhost\"",
-		"export ZITI_HOME_OS_SPECIFIC=\"/persistent\"",
+		"export ZITI_EDGE_ROUTER_NAME=\"localhost-edge-router\"",
+		"export ZITI_CTRL_EDGE_ADVERTISED_PORT=\"localhost\"",
 		"export ZITI_HOME=\"/persistent\"",
 		"export ZITI_BIN_DIR=\"/var/openziti/ziti-bin\"",
-		"export ZITI_EDGE_CTRL_ADVERTISED=\"localhost:1280\"",
 		"export ZITI_USER=\"admin\"",
 		"export ZITI_PWD=\"admin\"",
-		"export ZITI_PKI_OS_SPECIFIC=\"/persistent/pki\"",
+		"export ZITI_PKI=\"/persistent/pki\"",
 		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"localhost-root-ca\"",
 		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"localhost-intermediate\"",
 	}

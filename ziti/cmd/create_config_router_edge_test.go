@@ -3,7 +3,9 @@ package cmd
 import (
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -12,55 +14,35 @@ import (
 var defaultArgs = []string{"edge", "--routerName", "test-router"}
 var testHostname, _ = os.Hostname()
 
-func setEnvByMap[K string, V string](m map[K]V) {
-	for k, v := range m {
-		os.Setenv(string(k), string(v))
-	}
-}
-
-func execCreateConfigCommand(args []string, keys map[string]string) {
-	// Setup options
-	clearOptionsAndTemplateData()
-	routerOptions.Output = defaultOutput
-
-	setEnvByMap(keys)
-	// Create and run the CLI command (capture output, otherwise config prints to stdout instead of test results)
-	cmd := NewCmdCreateConfigRouter()
-	cmd.SetArgs(args)
-	_ = captureOutput(func() {
-		_ = cmd.Execute()
-	})
-}
-
 func TestEdgeRouterAdvertised(t *testing.T) {
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerAdvHostIp := "192.168.10.10"
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
 	keys := map[string]string{
-		"ZITI_CTRL_PORT":        "80",
-		"ZITI_EDGE_ROUTER_PORT": "443",
+		"ZITI_CTRL_LISTENER_PORT": "80",
+		"ZITI_EDGE_ROUTER_PORT":   "443",
 	}
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
 
-	keys["ZITI_EDGE_ROUTER_RAWNAME"] = routerAdvHostDns
+	keys["ZITI_EDGE_ROUTER_NAME"] = routerAdvHostDns
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
 
-	keys["ZITI_EDGE_ROUTER_RAWNAME"] = ""
+	keys["ZITI_EDGE_ROUTER_NAME"] = ""
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
 
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = ""
 	keys["EXTERNAL_DNS"] = routerAdvHostDns
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
 
 	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostIp
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
 
 	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
 	keys["EXTERNAL_DNS"] = routerAdvHostDns
@@ -70,7 +52,7 @@ func TestEdgeRouterAdvertised(t *testing.T) {
 
 func TestTunnelerEnabledByDefault(t *testing.T) {
 	// Setup options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
@@ -88,7 +70,7 @@ func TestTunnelerEnabledByDefault(t *testing.T) {
 
 func TestTunnelerNoneMode(t *testing.T) {
 	// Setup options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command with the disable tunnel flag
@@ -109,7 +91,7 @@ func TestTunnelerNoneMode(t *testing.T) {
 
 func TestTunnelerHostModeIsDefault(t *testing.T) {
 	// Setup options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
@@ -128,7 +110,7 @@ func TestTunnelerHostModeIsDefault(t *testing.T) {
 
 func TestTunnelerTproxyMode(t *testing.T) {
 	// Setup options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Create and run the CLI command without the tunnel flag
@@ -151,7 +133,7 @@ func TestTunnelerInvalidMode(t *testing.T) {
 	expectedErrorMsg := "Unknown tunneler mode [" + invalidMode + "] provided, should be \"" + noneTunMode + "\", \"" + hostTunMode + "\", or \"" + tproxyTunMode + "\""
 
 	// Create the options with both flags set to true
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 	routerOptions.TunnelerMode = invalidMode
 
@@ -161,7 +143,7 @@ func TestTunnelerInvalidMode(t *testing.T) {
 }
 
 func TestPrivateEdgeRouterNotAdvertising(t *testing.T) {
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 
 	// Create and run the CLI command
 	config := createRouterConfig([]string{"edge", "--routerName", "myRouter", "--private"})
@@ -175,7 +157,7 @@ func TestBlankEdgeRouterNameBecomesHostname(t *testing.T) {
 	blank := ""
 
 	// Setup options with blank router name
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 	routerOptions.RouterName = blank
 
@@ -191,7 +173,7 @@ func TestBlankEdgeRouterNameBecomesHostname(t *testing.T) {
 }
 
 func TestDefaultZitiEdgeRouterListenerBindPort(t *testing.T) {
-	expectedDefaultPort := TEST_ROUTER_LISTENER_PORT
+	expectedDefaultPortStr := strconv.Itoa(testDefaultRouterListenerPort)
 
 	// Make sure the related env vars are unset
 	_ = os.Unsetenv("ZITI_EDGE_ROUTER_LISTENER_BIND_PORT")
@@ -200,14 +182,14 @@ func TestDefaultZitiEdgeRouterListenerBindPort(t *testing.T) {
 	config := createRouterConfig([]string{"edge", "--routerName", "testRouter"})
 
 	// Check that the template data has been updated as expected
-	assert.Equal(t, expectedDefaultPort, data.Router.Edge.ListenerBindPort)
+	assert.Equal(t, expectedDefaultPortStr, data.Router.Edge.ListenerBindPort)
 
 	// Check that the actual config output has the correct port
 	for i := 1; i < len(config.Link.Listeners); i++ {
 		if config.Link.Listeners[i].Binding == "transport" {
 			// Assert Bind and Advertise use Bind port value
-			assert.Equal(t, expectedDefaultPort, strings.Split(config.Link.Listeners[i].Bind, ":")[1])
-			assert.Equal(t, expectedDefaultPort, strings.Split(config.Link.Listeners[i].Address, ":")[1])
+			require.Equal(t, expectedDefaultPortStr, strings.Split(config.Link.Listeners[i].Bind, ":")[1])
+			require.Equal(t, expectedDefaultPortStr, strings.Split(config.Link.Listeners[i].Address, ":")[1])
 			break
 		}
 	}
@@ -239,7 +221,7 @@ func TestEdgeRouterCannotBeWSSAndPrivate(t *testing.T) {
 	expectedErrorMsg := "Flags for private and wss configs are mutually exclusive. You must choose private or wss, not both"
 
 	// Create the options with both flags set to true
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 	routerOptions.IsPrivate = true
 	routerOptions.WssEnabled = true
@@ -253,7 +235,7 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 	expectedErrorMsg := "stat /IDoNotExist: no such file or directory"
 
 	// Set the router options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.TunnelerMode = defaultTunnelerMode
 	routerOptions.RouterName = "MyEdgeRouter"
 	routerOptions.Output = "/IDoNotExist/MyEdgeRouter.yaml"
@@ -297,7 +279,7 @@ func TestEdgeRouterIPOverrideIsConsumed(t *testing.T) {
 	externalIP := "123.456.78.9"
 
 	// Setup options
-	clearOptionsAndTemplateData()
+	clearRouterOptionsAndTemplateData()
 	routerOptions.Output = defaultOutput
 
 	// Set the env variable to non-empty value

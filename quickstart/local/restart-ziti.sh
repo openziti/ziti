@@ -22,6 +22,6 @@ DIRNAME=$(dirname $0)
 sleep 1
 ziti-router -v run "${ZITI_HOME}/${ZITI_ROUTER_RED_NAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_RED_NAME}.log" 2>&1 &
 # sleep 1
-# ziti-router run "${ZITI_HOME}/${ZITI_EDGE_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_ROUTER_HOSTNAME}.log" 2>&1 &
+# ziti-router run "${ZITI_HOME}/${ZITI_ROUTER_ADVERTISED_ADDRESS}.yaml" > "${ZITI_HOME}/ziti-${ZITI_ROUTER_ADVERTISED_ADDRESS}.log" 2>&1 &
 sleep 1
 ziti-router -v run "${ZITI_HOME}/${ZITI_EDGE_WSS_ROUTER_HOSTNAME}.yaml" > "${ZITI_HOME}/ziti-${ZITI_EDGE_WSS_ROUTER_HOSTNAME}.log" 2>&1 &

@@ -103,7 +103,7 @@ Ziti Controller:
 
 Ziti Edge Router:
    
-    routerName=edge-router; docker run -d --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_RAWNAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-router.sh edge
+    routerName=edge-router; docker run -d --name "${zitinw}-${routerName}" --rm -e ZITI_EDGE_ROUTER_NAME="${routerName}" --volume "${zitinw_shared}":/openziti/shared -it --network="${zitinw}" --hostname "${routerName}" --network-alias="${routerName}" --rm openziti/quickstart /openziti/scripts/run-router.sh edge
 
 
 

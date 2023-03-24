@@ -37,7 +37,7 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	}
 
 	externalDNS := os.Getenv(constants.ExternalDNSVarName)
-	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterRawNameVarName)
+	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterNameVarName)
 	if externalDNS != "" {
 		r.Edge.Hostname = externalDNS
 		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost

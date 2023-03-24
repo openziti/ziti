@@ -12,19 +12,19 @@ ziti edge controller delete config iperfsvcconfig
 
 ziti edge controller create config httpbinsvcconfig ziti-tunneler-client.v1 '{ "hostname" : "httpbin.ziti", "port" : 8000 }'
 ziti edge controller create service httpbinsvc --configs httpbinsvcconfig
-ziti edge controller create terminator httpbinsvc "${ZITI_EDGE_ROUTER_HOSTNAME}" tcp:localhost:80
+ziti edge controller create terminator httpbinsvc "${ZITI_ROUTER_ADVERTISED_ADDRESS}" tcp:localhost:80
 
 ziti edge controller create config netcatconfig ziti-tunneler-client.v1 '{ "hostname" : "localhost", "port" : 7256 }'
 ziti edge controller create service netcatsvc --configs netcatconfig
-ziti edge controller create terminator netcatsvc "${ZITI_EDGE_ROUTER_HOSTNAME}" tcp:localhost:7256
+ziti edge controller create terminator netcatsvc "${ZITI_ROUTER_ADVERTISED_ADDRESS}" tcp:localhost:7256
 
 ziti edge controller create config zcatconfig ziti-tunneler-client.v1 '{ "hostname" : "zcat.ziti", "port" : 7256 }'
 ziti edge controller create service zcatsvc --configs zcatconfig
-ziti edge controller create terminator zcatsvc "${ZITI_EDGE_ROUTER_HOSTNAME}" tcp:localhost:7256
+ziti edge controller create terminator zcatsvc "${ZITI_ROUTER_ADVERTISED_ADDRESS}" tcp:localhost:7256
 
 ziti edge controller create config iperfsvcconfig ziti-tunneler-client.v1 '{ "hostname" : "iperf3.ziti", "port" : 15000 }'
 ziti edge controller create service iperfsvc --configs iperfsvcconfig 
-ziti edge controller create terminator iperfsvc "${ZITI_EDGE_ROUTER_HOSTNAME}" tcp:localhost:5201
+ziti edge controller create terminator iperfsvc "${ZITI_ROUTER_ADVERTISED_ADDRESS}" tcp:localhost:5201
 
 ziti edge controller delete identity "test_identity"
 ziti edge controller create identity device "test_identity" -o "${ZITI_HOME}/test_identity".jwt

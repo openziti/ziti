@@ -83,7 +83,7 @@ Generate a configuration file for router01.
 ```bash
 ZITI_HOME=./db \
 ZITI_CTRL_ADVERTISED_ADDRESS=127.0.0.1 \
-ZITI_EDGE_ROUTER_RAWNAME=localhost \
+ZITI_EDGE_ROUTER_NAME=localhost \
     ziti create config router edge \
     --routerName router01 \
     --output ./db/router01-config.yml

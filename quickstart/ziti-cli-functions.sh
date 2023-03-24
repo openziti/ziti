@@ -1,1 +1,0 @@
-docker/image/ziti-cli-functions.sh

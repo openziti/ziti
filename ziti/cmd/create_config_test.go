@@ -3,45 +3,78 @@ package cmd
 import (
 	"bytes"
 	"fmt"
+	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
 	"strings"
 	"testing"
+	"time"
+)
+
+// These constants are hard-coded so that they may serve as a notifier. When the constants change in the source from
+// which they came, we may need to update any related documentation. If the constant is changed, the tests should fail
+// as they are expecting these hard-coded values. In which case, we update the hard-coded values and check any docs.
+const (
+	testDefaultCtrlEdgeAdvertisedPort         = "1280"
+	testDefaultCtrlListenerAddress            = "0.0.0.0"
+	testDefaultCtrlListenerPort               = "6262"
+	testDefaultBoltCheckInterval              = "30s"
+	testDefaultBoltCheckTimeout               = "20s"
+	testDefaultBoltCheckInitialDelay          = "30s"
+	testDefaultEdgeOptionsIdleTimeout         = "5000ms"
+	testDefaultEdgeOptionsReadTimeout         = "5000ms"
+	testDefaultEdgeOptionsWriteTimeout        = "100000ms"
+	testDefaultEdgeOptionsMinTLSVersion       = "TLS1.2"
+	testDefaultEdgeOptionsMaxTLSVersion       = "TLS1.3"
+	testDefaultEdgeIdentityEnrollmentDuration = time.Duration(180) * time.Minute
+	testDefaultEdgeIdentityEnrollmentStr      = "180m"
+	testDefaultEdgeRouterEnrollmentDuration   = time.Duration(180) * time.Minute
+	testDefaultEdgeRouterEnrollmentStr        = "180m"
 )
 
 func getZitiEnvironmentVariables() []string {
 	return []string{
 		"ZITI_HOME",
-		"ZITI_CONTROLLER_NAME",
-		"ZITI_CTRL_PORT",
-		"ZITI_EDGE_ROUTER_RAWNAME",
+		"ZITI_EDGE_ROUTER_NAME",
 		"ZITI_EDGE_ROUTER_PORT",
-		"ZITI_EDGE_CTRL_IDENTITY_CERT",
-		"ZITI_EDGE_CTRL_IDENTITY_SERVER_CERT",
-		"ZITI_EDGE_CTRL_IDENTITY_KEY",
-		"ZITI_EDGE_CTRL_IDENTITY_CA",
-		"ZITI_EDGE_CONTROLLER_PORT",
-		"ZITI_CTRL_IDENTITY_CERT",
-		"ZITI_CTRL_IDENTITY_SERVER_CERT",
-		"ZITI_CTRL_IDENTITY_KEY",
-		"ZITI_CTRL_IDENTITY_CA",
-		"ZITI_SIGNING_CERT",
-		"ZITI_SIGNING_KEY",
+		"ZITI_PKI_CTRL_CERT",
+		"ZITI_PKI_CTRL_SERVER_CERT",
+		"ZITI_PKI_CTRL_KEY",
+		"ZITI_PKI_CTRL_CA",
+		"ZITI_CTRL_LISTENER_ADDRESS",
+		"ZITI_CTRL_LISTENER_PORT",
+		"ZITI_CTRL_EDGE_API_ADDRESS",
+		"ZITI_CTRL_EDGE_API_PORT",
+		"ZITI_PKI_SIGNER_CERT",
+		"ZITI_PKI_SIGNER_KEY",
+		"ZITI_CTRL_EDGE_INTERFACE_ADDRESS",
+		"ZITI_CTRL_EDGE_INTERFACE_PORT",
+		"ZITI_CTRL_EDGE_ADVERTISED_ADDRESS",
+		"ZITI_CTRL_EDGE_ADVERTISED_PORT",
+		"ZITI_PKI_EDGE_CA",
+		"ZITI_PKI_EDGE_KEY",
+		"ZITI_PKI_EDGE_SERVER_CERT",
+		"ZITI_PKI_EDGE_CERT",
 		"ZITI_ROUTER_IDENTITY_CERT",
 		"ZITI_ROUTER_IDENTITY_SERVER_CERT",
 		"ZITI_ROUTER_IDENTITY_KEY",
 		"ZITI_ROUTER_IDENTITY_CA",
 		"ZITI_EDGE_ROUTER_IP_OVERRIDE",
-		"ZITI_CTRL_LISTENER_ADDRESS",
-		"ZITI_CTRL_ADVERTISED_ADDRESS",
-		"ZITI_CTRL_EDGE_LISTENER_HOST_PORT",
-		"ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT",
 		"ZITI_EDGE_IDENTITY_ENROLLMENT_DURATION",
 		"ZITI_EDGE_ROUTER_ENROLLMENT_DURATION",
 		"ZITI_EDGE_ROUTER_ADVERTISED_HOST",
 		"ZITI_EDGE_ROUTER_LISTENER_BIND_PORT",
 	}
+}
+
+func unsetZitiEnv() {
+	// Unset environment variables
+	envVars := getZitiEnvironmentVariables()
+	for i := 0; i < len(envVars); i++ {
+		_ = os.Unsetenv(envVars[i])
+	}
+	_ = os.Unsetenv(constants.ExternalDNSVarName)
 }
 
 // Test that all ZITI_* variables are included in the values for output
@@ -233,4 +266,10 @@ func captureOutput(function func()) string {
 	os.Stdout = oldStdOut
 	_, _ = io.Copy(&buffer, r)
 	return buffer.String()
+}
+
+func setEnvByMap[K string, V string](m map[K]V) {
+	for k, v := range m {
+		os.Setenv(string(k), string(v))
+	}
 }
