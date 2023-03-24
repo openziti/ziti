@@ -4,6 +4,11 @@
 
 * Makes inspect CLI more discoverable by adding subcommands for inspectable values
 * Adds new inspection allowing configs to be retrieved: `ziti fabric inspect config`
+* Many improvements to hosting managemetn performance  with edge-router/tunnelers with large numbers of hosted services
+    * routers should no longer overwhelm controller while setting up or reestablishing hosting
+* Adds ability to disable router
+* Adds CLI command to compact offline bbolt database: `ziti ops db compact <src> <dst>`
+* Adds CLI command to reenroll edge routers: `ziti edge re-enroll edge-router`
 
 ## Component Updates and Bug Fixes
 
