@@ -6,7 +6,6 @@ filebeat.inputs:
       - /var/log/*/*.log
       - /var/log/messages
       - /var/log/secure
-      - /var/log/syslog
     exclude_files:
       - '\.gz$'
       - /var/log/auth.log*
@@ -14,6 +13,8 @@ filebeat.inputs:
       - /var/log/chrony/*
       - /var/log/salt/*
       - /var/log/ziti/*
+      - /var/log/unattended-upgrades/*
+      - /var/log/ubuntu-advantage.log
 
   - type: log
     enabled: true
@@ -37,7 +38,9 @@ filebeat.inputs:
 
 migration.6_to_7.enabled: false
 
-name: ${serverHost.PublicIp}
+filebeat.config.modules.path: ${path.config}/modules.d/*.yml
+
+name: "Service Testing"
 
 monitoring.enabled: false
 
@@ -59,7 +62,7 @@ fields_under_root: true
 # CUSTOMIZE THIS BLOCK HOWEVER YOU NEED TO!
 fields:
   env: "sandbox"
-  inventoryName: ${serverHost.PublicIp}
+  inventoryName: "EC2 Ziti"
   networkId: "aed976a4-e859-46c4-a5a7-b5823f699dc1"
   networkName: "RAMCO"
   # All Elasticsearch queries still depend on the old organizationId term for it's search
