@@ -362,19 +362,9 @@ func (r *IdentityRouter) getPostureDataFailedServiceRequests(ae *env.AppEnv, rc 
 
 func (r *IdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext) {
 	id, _ := rc.GetEntityId()
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(id)
+	err := ae.Managers.Mfa.DeleteAllForIdentity(id)
 
 	if err != nil {
-		rc.RespondWithError(err)
-		return
-	}
-
-	if mfa == nil || !mfa.IsVerified {
-		rc.RespondWithNotFound()
-		return
-	}
-
-	if err := ae.Managers.Mfa.Delete(mfa.Id); err != nil {
 		rc.RespondWithError(err)
 		return
 	}

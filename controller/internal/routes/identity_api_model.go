@@ -232,7 +232,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		return nil, err
 	}
 
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 	if err != nil {
 		return nil, err
 	}

@@ -136,7 +136,7 @@ func (self *MfaManager) Query(query string) (*MfaListResult, error) {
 	return result, nil
 }
 
-func (self *MfaManager) ReadByIdentityId(identityId string) (*Mfa, error) {
+func (self *MfaManager) ReadOneByIdentityId(identityId string) (*Mfa, error) {
 	query := fmt.Sprintf(`identity = "%s"`, identityId)
 
 	resultList, err := self.Query(query)
@@ -183,7 +183,7 @@ func (self *MfaManager) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
 }
 
 func (self *MfaManager) DeleteForIdentity(identity *Identity, code string) error {
-	mfa, err := self.ReadByIdentityId(identity.Id)
+	mfa, err := self.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		return err
@@ -295,6 +295,14 @@ func (self *MfaManager) Unmarshall(bytes []byte) (*Mfa, error) {
 		Secret:        msg.Secret,
 		RecoveryCodes: msg.RecoveryCodes,
 	}, nil
+}
+
+// DeleteAllForIdentity is meant for administrators to remove all MFAs (enrolled or not) from an identity
+func (self *MfaManager) DeleteAllForIdentity(id string) error {
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		return self.Store.DeleteWhere(ctx, fmt.Sprintf("identity = \"%s\"", id))
+	})
 }
 
 type MfaListResult struct {
