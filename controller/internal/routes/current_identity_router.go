@@ -189,18 +189,6 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
-
-	if err != nil {
-		rc.RespondWithError(err)
-		return
-	}
-
-	if mfa != nil {
-		rc.RespondWithError(apierror.NewMfaExistsError())
-		return
-	}
-
 	id, err := ae.Managers.Mfa.CreateForIdentity(rc.Identity)
 
 	if err != nil {
