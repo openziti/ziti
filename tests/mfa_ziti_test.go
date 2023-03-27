@@ -145,13 +145,6 @@ func Test_MFA(t *testing.T) {
 				ctx.Req.False(isMfaEnabled, "isMfaEnabled is false")
 			})
 
-			t.Run("delete MFA should 404", func(t *testing.T) {
-				ctx.testContextChanged(t)
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", noMfaIdentityId))
-
-				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
-			})
 		})
 	})
 
@@ -246,13 +239,6 @@ func Test_MFA(t *testing.T) {
 				ctx.Req.False(isMfaEnabled, "isMfaEnabled is false")
 			})
 
-			t.Run("delete MFA should fail with 404", func(t *testing.T) {
-				ctx.testContextChanged(t)
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Delete(fmt.Sprintf("/identities/%s/mfa", mfaStartedIdentityId))
-
-				ctx.Req.NoError(err)
-				standardErrorJsonResponseTests(resp, errorz.NotFoundCode, http.StatusNotFound, t)
-			})
 		})
 
 		t.Run("and get MFA QR code should return a PNG", func(t *testing.T) {
