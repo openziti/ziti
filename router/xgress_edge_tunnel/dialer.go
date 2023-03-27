@@ -29,7 +29,11 @@ import (
 )
 
 func (self *tunneler) IsTerminatorValid(_ string, destination string) bool {
-	_, found := self.terminators.Get(destination)
+	terminator, found := self.terminators.Get(destination)
+	if terminator != nil {
+		terminator.created.Store(true)
+		terminator.NotifyCreated()
+	}
 	return found
 }
 

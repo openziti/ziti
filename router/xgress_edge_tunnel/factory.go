@@ -53,7 +53,7 @@ type Factory struct {
 
 func (self *Factory) NotifyOfReconnect(channel.Channel) {
 	pfxlog.Logger().Info("control channel reconnected, re-establishing hosted services")
-	self.tunneler.servicePoller.serviceListener.NotifyOfReconnect()
+	self.tunneler.HandleReconnect()
 }
 
 func (self *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
