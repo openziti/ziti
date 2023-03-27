@@ -151,7 +151,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		LastActivityAt:  time.Now().UTC(),
 	}
 
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -203,7 +203,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 }
 
 func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCode *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)

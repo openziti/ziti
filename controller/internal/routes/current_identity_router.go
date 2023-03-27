@@ -139,7 +139,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -189,7 +189,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -212,7 +212,7 @@ func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -252,7 +252,7 @@ func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.RequestContext) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -282,7 +282,7 @@ func (r *CurrentIdentityRouter) detailMfaQrCode(ae *env.AppEnv, rc *response.Req
 }
 
 func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, body *rest_model.MfaCode) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -315,7 +315,7 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 }
 
 func (r *CurrentIdentityRouter) detailMfaRecoveryCodes(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
-	mfa, err := ae.Managers.Mfa.ReadByIdentityId(rc.Identity.Id)
+	mfa, err := ae.Managers.Mfa.ReadOneByIdentityId(rc.Identity.Id)
 
 	if err != nil {
 		rc.RespondWithError(err)
