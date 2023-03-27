@@ -91,8 +91,23 @@ func (self *MfaManager) Create(entity *Mfa) error {
 }
 
 func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa]) error {
-	_, err := self.createEntity(cmd.Entity)
-	return err
+	return self.GetDb().Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		result := &MfaListResult{manager: self}
+		err := self.ListWithTx(tx, fmt.Sprintf(`identity = "%s"`, cmd.Entity.IdentityId), result.collect)
+
+		if err != nil {
+			return err
+		}
+
+		if len(result.Mfas) > 0 {
+			return apierror.NewMfaExistsError()
+		}
+
+		_, err = self.createEntityInTx(ctx, cmd.Entity)
+
+		return err
+	})
 }
 
 func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields) error {
