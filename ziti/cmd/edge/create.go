@@ -26,6 +26,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func Ptr[T any](sub T) *T {
+	return &sub
+}
+
+// newCreateCmd creates a command object for the "list" command
 // newCreateCmd creates a command object for the "create" command
 func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{
@@ -51,6 +56,7 @@ func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newCreateServicePolicyCmd(out, errOut))
 	cmd.AddCommand(newCreateTerminatorCmd(out, errOut))
 	cmd.AddCommand(newCreateTransitRouterCmd(out, errOut))
+	cmd.AddCommand(newCreateExtJwtSignerCmd(out, errOut))
 
 	return cmd
 }

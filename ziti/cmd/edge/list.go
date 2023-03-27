@@ -22,6 +22,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -67,6 +68,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
 	cmd.AddCommand(newListCmdForEntityType("enrollments", runListEnrollments, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("ext-jwt-signers", runListExtJwtSigners, newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -478,15 +480,104 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 	return nil
 }
 
+func runListExtJwtSigners(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
+
+	if err != nil {
+		return err
+	}
+
+	var filter *string = nil
+
+	if len(options.Args) > 0 {
+		filter = &options.Args[0]
+	}
+
+	params := external_jwt_signer.NewListExternalJWTSignersParams()
+	params.Filter = filter
+
+	result, err := client.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Enabled", "Audience", "Type", "ClaimsProp", "UseExternalId", "Config", "Config"}, rowConfigAutoMerge)
+
+	for _, entity := range result.GetPayload().Data {
+		id := *entity.ID
+		name := *entity.Name
+		audience := *entity.Audience
+		isEnabled := *entity.Enabled
+		claimsProperty := *entity.ClaimsProperty
+		useExternalId := *entity.UseExternalID
+
+		if entity.JwksEndpoint != nil {
+			confType := "JWKS"
+			outTable.AppendRow(table.Row{id, name, isEnabled, audience, confType, claimsProperty, useExternalId, "JWKS", entity.JwksEndpoint.String()})
+		} else {
+			confType := "CERT"
+			outTable.AppendRow(table.Row{id, name, isEnabled, audience, confType, claimsProperty, useExternalId, "Fingerprint", *entity.Fingerprint})
+		}
+
+	}
+
+	pagingInfo := newPagingInfo(payload.Meta)
+	api.RenderTable(options, outTable, pagingInfo)
+
+	_, _ = fmt.Fprint(options.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
+
+	return nil
+}
+
+func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Expires At", "Token", "JWT"})
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		method := entity.Path("method").Data().(string)
+		identityId := entity.Path("identityId").Data().(string)
+		identityName := entity.Path("identity.name").Data().(string)
+		expiresAt := entity.Path("expiresAt").Data().(string)
+		token := entity.Path("token").Data().(string)
+		jwt := "See json"
+
+		t.AppendRow(table.Row{id, method, identityId, identityName, expiresAt, token, jwt})
+	}
+	api.RenderTable(o, t, pagingInfo)
+	return nil
+}
+
 func runListEnrollments(o *api.Options) error {
-	children, pagingInfo, err := listEntitiesWithOptions("enrollments", o)
+	children, pagingInfo, err := listEntitiesWithOptions("ext-jwt-signers", o)
 	if err != nil {
 		return err
 	}
 	return outputEnrollments(o, children, pagingInfo)
 }
 
-func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+func outputExtJwtSigners(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
