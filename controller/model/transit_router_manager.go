@@ -57,6 +57,10 @@ type TransitRouterManager struct {
 	allowedFields boltz.FieldChecker
 }
 
+func (self *TransitRouterManager) GetEntityTypeId() string {
+	return "transitRouters"
+}
+
 func (self *TransitRouterManager) newModelEntity() edgeEntity {
 	return &TransitRouter{}
 }
