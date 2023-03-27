@@ -38,7 +38,7 @@ filebeat.inputs:
 
 migration.6_to_7.enabled: false
 
-filebeat.config.modules.path: ${path.config}/modules.d/*.yml
+filebeat.config.modules.path: /etc/filebeat/modules.d/*.yml
 
 name: "Service Testing"
 
