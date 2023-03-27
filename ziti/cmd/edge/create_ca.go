@@ -39,21 +39,21 @@ func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options := &createCaOptions{
 		EntityOptions: api.NewEntityOptions(out, errOut),
 		Ca: rest_model.CaCreate{
-			CertPem: S(""),
+			CertPem: Ptr(""),
 			ExternalIDClaim: &rest_model.ExternalIDClaim{
-				Index:           I64(0),
-				Location:        S(""),
-				Matcher:         S(""),
-				MatcherCriteria: S(""),
-				Parser:          S(""),
-				ParserCriteria:  S(""),
+				Index:           Ptr(int64(0)),
+				Location:        Ptr(""),
+				Matcher:         Ptr(""),
+				MatcherCriteria: Ptr(""),
+				Parser:          Ptr(""),
+				ParserCriteria:  Ptr(""),
 			},
 			IdentityNameFormat:        "",
 			IdentityRoles:             []string{},
-			IsAuthEnabled:             B(false),
-			IsAutoCaEnrollmentEnabled: B(false),
-			IsOttCaEnrollmentEnabled:  B(false),
-			Name:                      S(""),
+			IsAuthEnabled:             Ptr(false),
+			IsAutoCaEnrollmentEnabled: Ptr(false),
+			IsOttCaEnrollmentEnabled:  Ptr(false),
+			Name:                      Ptr(""),
 			Tags: &rest_model.Tags{
 				SubTags: map[string]interface{}{},
 			},
@@ -75,7 +75,7 @@ func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 			pemBytes, err := os.ReadFile(caFile)
 
-			options.Ca.CertPem = S(string(pemBytes))
+			options.Ca.CertPem = Ptr(string(pemBytes))
 
 			if err != nil {
 				return fmt.Errorf("could not read CA certificate file: %s", err)
@@ -112,18 +112,6 @@ func newCreateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	options.AddCommonFlags(cmd)
 
 	return cmd
-}
-
-func S(s string) *string {
-	return &s
-}
-
-func B(b bool) *bool {
-	return &b
-}
-
-func I64(i int64) *int64 {
-	return &i
 }
 
 func runCreateCa(options *createCaOptions) (err error) {
