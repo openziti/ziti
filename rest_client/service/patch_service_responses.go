@@ -115,6 +115,11 @@ func (o *PatchServiceOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the patch service o k response
+func (o *PatchServiceOK) Code() int {
+	return 200
+}
+
 func (o *PatchServiceOK) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *PatchServiceBadRequest) IsServerError() bool {
 // IsCode returns true when this patch service bad request response a status code equal to that given
 func (o *PatchServiceBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the patch service bad request response
+func (o *PatchServiceBadRequest) Code() int {
+	return 400
 }
 
 func (o *PatchServiceBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *PatchServiceUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the patch service unauthorized response
+func (o *PatchServiceUnauthorized) Code() int {
+	return 401
+}
+
 func (o *PatchServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /services/{id}][%d] patchServiceUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *PatchServiceNotFound) IsServerError() bool {
 // IsCode returns true when this patch service not found response a status code equal to that given
 func (o *PatchServiceNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the patch service not found response
+func (o *PatchServiceNotFound) Code() int {
+	return 404
 }
 
 func (o *PatchServiceNotFound) Error() string {

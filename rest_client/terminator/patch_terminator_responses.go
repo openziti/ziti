@@ -115,6 +115,11 @@ func (o *PatchTerminatorOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the patch terminator o k response
+func (o *PatchTerminatorOK) Code() int {
+	return 200
+}
+
 func (o *PatchTerminatorOK) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *PatchTerminatorBadRequest) IsServerError() bool {
 // IsCode returns true when this patch terminator bad request response a status code equal to that given
 func (o *PatchTerminatorBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the patch terminator bad request response
+func (o *PatchTerminatorBadRequest) Code() int {
+	return 400
 }
 
 func (o *PatchTerminatorBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *PatchTerminatorUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the patch terminator unauthorized response
+func (o *PatchTerminatorUnauthorized) Code() int {
+	return 401
+}
+
 func (o *PatchTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /terminators/{id}][%d] patchTerminatorUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *PatchTerminatorNotFound) IsServerError() bool {
 // IsCode returns true when this patch terminator not found response a status code equal to that given
 func (o *PatchTerminatorNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the patch terminator not found response
+func (o *PatchTerminatorNotFound) Code() int {
+	return 404
 }
 
 func (o *PatchTerminatorNotFound) Error() string {

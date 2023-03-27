@@ -109,6 +109,11 @@ func (o *ListRouterTerminatorsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the list router terminators o k response
+func (o *ListRouterTerminatorsOK) Code() int {
+	return 200
+}
+
 func (o *ListRouterTerminatorsOK) Error() string {
 	return fmt.Sprintf("[GET /routers/{id}/terminators][%d] listRouterTerminatorsOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *ListRouterTerminatorsBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the list router terminators bad request response
+func (o *ListRouterTerminatorsBadRequest) Code() int {
+	return 400
+}
+
 func (o *ListRouterTerminatorsBadRequest) Error() string {
 	return fmt.Sprintf("[GET /routers/{id}/terminators][%d] listRouterTerminatorsBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *ListRouterTerminatorsUnauthorized) IsServerError() bool {
 // IsCode returns true when this list router terminators unauthorized response a status code equal to that given
 func (o *ListRouterTerminatorsUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the list router terminators unauthorized response
+func (o *ListRouterTerminatorsUnauthorized) Code() int {
+	return 401
 }
 
 func (o *ListRouterTerminatorsUnauthorized) Error() string {

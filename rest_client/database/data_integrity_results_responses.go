@@ -103,6 +103,11 @@ func (o *DataIntegrityResultsOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the data integrity results o k response
+func (o *DataIntegrityResultsOK) Code() int {
+	return 200
+}
+
 func (o *DataIntegrityResultsOK) Error() string {
 	return fmt.Sprintf("[GET /database/data-integrity-results][%d] dataIntegrityResultsOK  %+v", 200, o.Payload)
 }
@@ -164,6 +169,11 @@ func (o *DataIntegrityResultsUnauthorized) IsServerError() bool {
 // IsCode returns true when this data integrity results unauthorized response a status code equal to that given
 func (o *DataIntegrityResultsUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the data integrity results unauthorized response
+func (o *DataIntegrityResultsUnauthorized) Code() int {
+	return 401
 }
 
 func (o *DataIntegrityResultsUnauthorized) Error() string {

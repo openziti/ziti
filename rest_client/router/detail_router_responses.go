@@ -109,6 +109,11 @@ func (o *DetailRouterOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the detail router o k response
+func (o *DetailRouterOK) Code() int {
+	return 200
+}
+
 func (o *DetailRouterOK) Error() string {
 	return fmt.Sprintf("[GET /routers/{id}][%d] detailRouterOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DetailRouterUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the detail router unauthorized response
+func (o *DetailRouterUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DetailRouterUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /routers/{id}][%d] detailRouterUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DetailRouterNotFound) IsServerError() bool {
 // IsCode returns true when this detail router not found response a status code equal to that given
 func (o *DetailRouterNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the detail router not found response
+func (o *DetailRouterNotFound) Code() int {
+	return 404
 }
 
 func (o *DetailRouterNotFound) Error() string {

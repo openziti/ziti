@@ -115,6 +115,11 @@ func (o *UpdateServiceOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the update service o k response
+func (o *UpdateServiceOK) Code() int {
+	return 200
+}
+
 func (o *UpdateServiceOK) Error() string {
 	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *UpdateServiceBadRequest) IsServerError() bool {
 // IsCode returns true when this update service bad request response a status code equal to that given
 func (o *UpdateServiceBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the update service bad request response
+func (o *UpdateServiceBadRequest) Code() int {
+	return 400
 }
 
 func (o *UpdateServiceBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *UpdateServiceUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the update service unauthorized response
+func (o *UpdateServiceUnauthorized) Code() int {
+	return 401
+}
+
 func (o *UpdateServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[PUT /services/{id}][%d] updateServiceUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *UpdateServiceNotFound) IsServerError() bool {
 // IsCode returns true when this update service not found response a status code equal to that given
 func (o *UpdateServiceNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the update service not found response
+func (o *UpdateServiceNotFound) Code() int {
+	return 404
 }
 
 func (o *UpdateServiceNotFound) Error() string {

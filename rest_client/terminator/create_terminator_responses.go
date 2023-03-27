@@ -109,6 +109,11 @@ func (o *CreateTerminatorCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the create terminator created response
+func (o *CreateTerminatorCreated) Code() int {
+	return 201
+}
+
 func (o *CreateTerminatorCreated) Error() string {
 	return fmt.Sprintf("[POST /terminators][%d] createTerminatorCreated  %+v", 201, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *CreateTerminatorBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the create terminator bad request response
+func (o *CreateTerminatorBadRequest) Code() int {
+	return 400
+}
+
 func (o *CreateTerminatorBadRequest) Error() string {
 	return fmt.Sprintf("[POST /terminators][%d] createTerminatorBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *CreateTerminatorUnauthorized) IsServerError() bool {
 // IsCode returns true when this create terminator unauthorized response a status code equal to that given
 func (o *CreateTerminatorUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the create terminator unauthorized response
+func (o *CreateTerminatorUnauthorized) Code() int {
+	return 401
 }
 
 func (o *CreateTerminatorUnauthorized) Error() string {

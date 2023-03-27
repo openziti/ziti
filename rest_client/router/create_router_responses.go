@@ -109,6 +109,11 @@ func (o *CreateRouterCreated) IsCode(code int) bool {
 	return code == 201
 }
 
+// Code gets the status code for the create router created response
+func (o *CreateRouterCreated) Code() int {
+	return 201
+}
+
 func (o *CreateRouterCreated) Error() string {
 	return fmt.Sprintf("[POST /routers][%d] createRouterCreated  %+v", 201, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *CreateRouterBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the create router bad request response
+func (o *CreateRouterBadRequest) Code() int {
+	return 400
+}
+
 func (o *CreateRouterBadRequest) Error() string {
 	return fmt.Sprintf("[POST /routers][%d] createRouterBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *CreateRouterUnauthorized) IsServerError() bool {
 // IsCode returns true when this create router unauthorized response a status code equal to that given
 func (o *CreateRouterUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the create router unauthorized response
+func (o *CreateRouterUnauthorized) Code() int {
+	return 401
 }
 
 func (o *CreateRouterUnauthorized) Error() string {

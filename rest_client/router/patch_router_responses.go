@@ -115,6 +115,11 @@ func (o *PatchRouterOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the patch router o k response
+func (o *PatchRouterOK) Code() int {
+	return 200
+}
+
 func (o *PatchRouterOK) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *PatchRouterBadRequest) IsServerError() bool {
 // IsCode returns true when this patch router bad request response a status code equal to that given
 func (o *PatchRouterBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the patch router bad request response
+func (o *PatchRouterBadRequest) Code() int {
+	return 400
 }
 
 func (o *PatchRouterBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *PatchRouterUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the patch router unauthorized response
+func (o *PatchRouterUnauthorized) Code() int {
+	return 401
+}
+
 func (o *PatchRouterUnauthorized) Error() string {
 	return fmt.Sprintf("[PATCH /routers/{id}][%d] patchRouterUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *PatchRouterNotFound) IsServerError() bool {
 // IsCode returns true when this patch router not found response a status code equal to that given
 func (o *PatchRouterNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the patch router not found response
+func (o *PatchRouterNotFound) Code() int {
+	return 404
 }
 
 func (o *PatchRouterNotFound) Error() string {

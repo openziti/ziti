@@ -103,6 +103,11 @@ func (o *RaftListMembersOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the raft list members o k response
+func (o *RaftListMembersOK) Code() int {
+	return 200
+}
+
 func (o *RaftListMembersOK) Error() string {
 	return fmt.Sprintf("[GET /raft/list-members][%d] raftListMembersOK  %+v", 200, o.Payload)
 }
@@ -164,6 +169,11 @@ func (o *RaftListMembersUnauthorized) IsServerError() bool {
 // IsCode returns true when this raft list members unauthorized response a status code equal to that given
 func (o *RaftListMembersUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the raft list members unauthorized response
+func (o *RaftListMembersUnauthorized) Code() int {
+	return 401
 }
 
 func (o *RaftListMembersUnauthorized) Error() string {

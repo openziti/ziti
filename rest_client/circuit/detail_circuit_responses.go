@@ -109,6 +109,11 @@ func (o *DetailCircuitOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the detail circuit o k response
+func (o *DetailCircuitOK) Code() int {
+	return 200
+}
+
 func (o *DetailCircuitOK) Error() string {
 	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DetailCircuitUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the detail circuit unauthorized response
+func (o *DetailCircuitUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DetailCircuitUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /circuits/{id}][%d] detailCircuitUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DetailCircuitNotFound) IsServerError() bool {
 // IsCode returns true when this detail circuit not found response a status code equal to that given
 func (o *DetailCircuitNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the detail circuit not found response
+func (o *DetailCircuitNotFound) Code() int {
+	return 404
 }
 
 func (o *DetailCircuitNotFound) Error() string {

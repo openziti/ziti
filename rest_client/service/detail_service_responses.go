@@ -109,6 +109,11 @@ func (o *DetailServiceOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the detail service o k response
+func (o *DetailServiceOK) Code() int {
+	return 200
+}
+
 func (o *DetailServiceOK) Error() string {
 	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DetailServiceUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the detail service unauthorized response
+func (o *DetailServiceUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DetailServiceUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /services/{id}][%d] detailServiceUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DetailServiceNotFound) IsServerError() bool {
 // IsCode returns true when this detail service not found response a status code equal to that given
 func (o *DetailServiceNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the detail service not found response
+func (o *DetailServiceNotFound) Code() int {
+	return 404
 }
 
 func (o *DetailServiceNotFound) Error() string {

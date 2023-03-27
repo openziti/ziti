@@ -115,6 +115,11 @@ func (o *DeleteCircuitOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the delete circuit o k response
+func (o *DeleteCircuitOK) Code() int {
+	return 200
+}
+
 func (o *DeleteCircuitOK) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *DeleteCircuitBadRequest) IsServerError() bool {
 // IsCode returns true when this delete circuit bad request response a status code equal to that given
 func (o *DeleteCircuitBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the delete circuit bad request response
+func (o *DeleteCircuitBadRequest) Code() int {
+	return 400
 }
 
 func (o *DeleteCircuitBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *DeleteCircuitUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the delete circuit unauthorized response
+func (o *DeleteCircuitUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DeleteCircuitUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /circuits/{id}][%d] deleteCircuitUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *DeleteCircuitConflict) IsServerError() bool {
 // IsCode returns true when this delete circuit conflict response a status code equal to that given
 func (o *DeleteCircuitConflict) IsCode(code int) bool {
 	return code == 409
+}
+
+// Code gets the status code for the delete circuit conflict response
+func (o *DeleteCircuitConflict) Code() int {
+	return 409
 }
 
 func (o *DeleteCircuitConflict) Error() string {

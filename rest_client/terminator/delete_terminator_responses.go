@@ -115,6 +115,11 @@ func (o *DeleteTerminatorOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the delete terminator o k response
+func (o *DeleteTerminatorOK) Code() int {
+	return 200
+}
+
 func (o *DeleteTerminatorOK) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *DeleteTerminatorBadRequest) IsServerError() bool {
 // IsCode returns true when this delete terminator bad request response a status code equal to that given
 func (o *DeleteTerminatorBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the delete terminator bad request response
+func (o *DeleteTerminatorBadRequest) Code() int {
+	return 400
 }
 
 func (o *DeleteTerminatorBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *DeleteTerminatorUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the delete terminator unauthorized response
+func (o *DeleteTerminatorUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DeleteTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /terminators/{id}][%d] deleteTerminatorUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *DeleteTerminatorConflict) IsServerError() bool {
 // IsCode returns true when this delete terminator conflict response a status code equal to that given
 func (o *DeleteTerminatorConflict) IsCode(code int) bool {
 	return code == 409
+}
+
+// Code gets the status code for the delete terminator conflict response
+func (o *DeleteTerminatorConflict) Code() int {
+	return 409
 }
 
 func (o *DeleteTerminatorConflict) Error() string {

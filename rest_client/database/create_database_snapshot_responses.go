@@ -109,6 +109,11 @@ func (o *CreateDatabaseSnapshotOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the create database snapshot o k response
+func (o *CreateDatabaseSnapshotOK) Code() int {
+	return 200
+}
+
 func (o *CreateDatabaseSnapshotOK) Error() string {
 	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *CreateDatabaseSnapshotUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the create database snapshot unauthorized response
+func (o *CreateDatabaseSnapshotUnauthorized) Code() int {
+	return 401
+}
+
 func (o *CreateDatabaseSnapshotUnauthorized) Error() string {
 	return fmt.Sprintf("[POST /database][%d] createDatabaseSnapshotUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *CreateDatabaseSnapshotTooManyRequests) IsServerError() bool {
 // IsCode returns true when this create database snapshot too many requests response a status code equal to that given
 func (o *CreateDatabaseSnapshotTooManyRequests) IsCode(code int) bool {
 	return code == 429
+}
+
+// Code gets the status code for the create database snapshot too many requests response
+func (o *CreateDatabaseSnapshotTooManyRequests) Code() int {
+	return 429
 }
 
 func (o *CreateDatabaseSnapshotTooManyRequests) Error() string {

@@ -103,6 +103,11 @@ func (o *InspectOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the inspect o k response
+func (o *InspectOK) Code() int {
+	return 200
+}
+
 func (o *InspectOK) Error() string {
 	return fmt.Sprintf("[POST /inspections][%d] inspectOK  %+v", 200, o.Payload)
 }
@@ -164,6 +169,11 @@ func (o *InspectUnauthorized) IsServerError() bool {
 // IsCode returns true when this inspect unauthorized response a status code equal to that given
 func (o *InspectUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the inspect unauthorized response
+func (o *InspectUnauthorized) Code() int {
+	return 401
 }
 
 func (o *InspectUnauthorized) Error() string {

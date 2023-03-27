@@ -109,6 +109,11 @@ func (o *DetailTerminatorOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the detail terminator o k response
+func (o *DetailTerminatorOK) Code() int {
+	return 200
+}
+
 func (o *DetailTerminatorOK) Error() string {
 	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DetailTerminatorUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the detail terminator unauthorized response
+func (o *DetailTerminatorUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DetailTerminatorUnauthorized) Error() string {
 	return fmt.Sprintf("[GET /terminators/{id}][%d] detailTerminatorUnauthorized  %+v", 401, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DetailTerminatorNotFound) IsServerError() bool {
 // IsCode returns true when this detail terminator not found response a status code equal to that given
 func (o *DetailTerminatorNotFound) IsCode(code int) bool {
 	return code == 404
+}
+
+// Code gets the status code for the detail terminator not found response
+func (o *DetailTerminatorNotFound) Code() int {
+	return 404
 }
 
 func (o *DetailTerminatorNotFound) Error() string {

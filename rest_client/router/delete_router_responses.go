@@ -115,6 +115,11 @@ func (o *DeleteRouterOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the delete router o k response
+func (o *DeleteRouterOK) Code() int {
+	return 200
+}
+
 func (o *DeleteRouterOK) Error() string {
 	return fmt.Sprintf("[DELETE /routers/{id}][%d] deleteRouterOK  %+v", 200, o.Payload)
 }
@@ -176,6 +181,11 @@ func (o *DeleteRouterBadRequest) IsServerError() bool {
 // IsCode returns true when this delete router bad request response a status code equal to that given
 func (o *DeleteRouterBadRequest) IsCode(code int) bool {
 	return code == 400
+}
+
+// Code gets the status code for the delete router bad request response
+func (o *DeleteRouterBadRequest) Code() int {
+	return 400
 }
 
 func (o *DeleteRouterBadRequest) Error() string {
@@ -241,6 +251,11 @@ func (o *DeleteRouterUnauthorized) IsCode(code int) bool {
 	return code == 401
 }
 
+// Code gets the status code for the delete router unauthorized response
+func (o *DeleteRouterUnauthorized) Code() int {
+	return 401
+}
+
 func (o *DeleteRouterUnauthorized) Error() string {
 	return fmt.Sprintf("[DELETE /routers/{id}][%d] deleteRouterUnauthorized  %+v", 401, o.Payload)
 }
@@ -302,6 +317,11 @@ func (o *DeleteRouterConflict) IsServerError() bool {
 // IsCode returns true when this delete router conflict response a status code equal to that given
 func (o *DeleteRouterConflict) IsCode(code int) bool {
 	return code == 409
+}
+
+// Code gets the status code for the delete router conflict response
+func (o *DeleteRouterConflict) Code() int {
+	return 409
 }
 
 func (o *DeleteRouterConflict) Error() string {

@@ -109,6 +109,11 @@ func (o *DeleteLinkOK) IsCode(code int) bool {
 	return code == 200
 }
 
+// Code gets the status code for the delete link o k response
+func (o *DeleteLinkOK) Code() int {
+	return 200
+}
+
 func (o *DeleteLinkOK) Error() string {
 	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkOK  %+v", 200, o.Payload)
 }
@@ -172,6 +177,11 @@ func (o *DeleteLinkBadRequest) IsCode(code int) bool {
 	return code == 400
 }
 
+// Code gets the status code for the delete link bad request response
+func (o *DeleteLinkBadRequest) Code() int {
+	return 400
+}
+
 func (o *DeleteLinkBadRequest) Error() string {
 	return fmt.Sprintf("[DELETE /links/{id}][%d] deleteLinkBadRequest  %+v", 400, o.Payload)
 }
@@ -233,6 +243,11 @@ func (o *DeleteLinkUnauthorized) IsServerError() bool {
 // IsCode returns true when this delete link unauthorized response a status code equal to that given
 func (o *DeleteLinkUnauthorized) IsCode(code int) bool {
 	return code == 401
+}
+
+// Code gets the status code for the delete link unauthorized response
+func (o *DeleteLinkUnauthorized) Code() int {
+	return 401
 }
 
 func (o *DeleteLinkUnauthorized) Error() string {
