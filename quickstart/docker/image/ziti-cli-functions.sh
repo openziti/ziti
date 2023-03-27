@@ -586,10 +586,6 @@ function ziti_expressConfiguration {
   "${ZITI_BIN_DIR-}/ziti-router" enroll "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.yaml" --jwt "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.jwt" &> "${ZITI_HOME_OS_SPECIFIC}/${ZITI_EDGE_ROUTER_RAWNAME}.enrollment.log"
   echo ""
 
-  echo -e "******** Setting Up Default Service ********"
-
-  createAPIService
-
   stopController
   echo "Edge Router enrolled. Controller stopped."
 
