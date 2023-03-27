@@ -979,6 +979,9 @@ function expressInstall {
 
   echo ""
   echo -e "$(GREEN "Congratulations. Express setup complete!")"
+  echo -e "Your ZITI_HOME is located here: $(BLUE "${ZITI_HOME}")"
+  echo -e "Your admin password is: $(BLUE "${ZITI_PWD}")"
+  echo ""
   echo -e "Start your Ziti Controller by running the function: $(BLUE "startController")"
   echo -e "Start your Ziti Edge Router by running : $(BLUE 'startRouter')"
   echo ""
