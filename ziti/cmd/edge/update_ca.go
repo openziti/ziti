@@ -52,12 +52,12 @@ func newUpdateCaCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 		EntityOptions: api.NewEntityOptions(out, errOut),
 		verify:        false,
 		externalIDClaim: rest_model.ExternalIDClaimPatch{
-			Index:           I64(0),
-			Location:        S(""),
-			Matcher:         S(""),
-			MatcherCriteria: S(""),
-			Parser:          S(""),
-			ParserCriteria:  S(""),
+			Index:           Ptr(int64(0)),
+			Location:        Ptr(""),
+			Matcher:         Ptr(""),
+			MatcherCriteria: Ptr(""),
+			Parser:          Ptr(""),
+			ParserCriteria:  Ptr(""),
 		},
 	}
 
