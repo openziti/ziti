@@ -37,6 +37,7 @@ type updateEdgeRouterOptions struct {
 	usePut            bool
 	cost              uint16
 	noTraversal       bool
+	disabled          bool
 }
 
 func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -69,6 +70,7 @@ func newUpdateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.usePut, "use-put", false, "Use PUT to when making the request")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
+	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 
 	options.AddCommonFlags(cmd)
 
@@ -116,6 +118,11 @@ func runUpdateEdgeRouter(o *updateEdgeRouterOptions) error {
 
 	if o.Cmd.Flags().Changed("no-traversal") {
 		api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("disabled") {
+		api.SetJSONValue(entityData, o.disabled, "disabled")
 		change = true
 	}
 

@@ -62,7 +62,7 @@ func newUpdateRouterCmd(p common.OptionsProvider) *cobra.Command {
 	cmd.Flags().StringVar(&options.fingerprint, "fingerprint", "", "Sets the router fingerprint")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
-	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled router can't connect to controllers")
+	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 	cmd.Flags().StringToStringVar(&options.tags, "tags", nil, "Custom management tags")
 
 	options.AddCommonFlags(cmd)

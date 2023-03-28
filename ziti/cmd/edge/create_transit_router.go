@@ -32,6 +32,7 @@ type createTransitRouterOptions struct {
 	jwtOutputFile string
 	cost          uint16
 	noTraversal   bool
+	disabled      bool
 }
 
 func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -57,6 +58,7 @@ func newCreateTransitRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
+	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 
 	options.AddCommonFlags(cmd)
 
@@ -69,6 +71,7 @@ func runCreateTransitRouter(o *createTransitRouterOptions) error {
 	api.SetJSONValue(entityData, o.Args[0], "name")
 	api.SetJSONValue(entityData, o.cost, "cost")
 	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
+	api.SetJSONValue(entityData, o.disabled, "disabled")
 	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("transit-routers", entityData.String(), &o.Options)
