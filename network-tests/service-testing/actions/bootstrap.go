@@ -72,7 +72,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 		"#iperf-server", "--identity-roles", "#iperf-server"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "iperf", "--semantic", "AnyOf",
 		"--service-roles", "@iperf", "--edge-router-roles", "#all"))
-	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start; sleep 5; sudo filebeat status"))
-	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start; sleep 5; sudo metricbeat status"))
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start; sleep 5; sudo service filebeat status"))
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start; sleep 5; sudo service metricbeat status"))
 	return workflow
 }
