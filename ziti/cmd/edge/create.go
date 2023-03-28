@@ -30,7 +30,6 @@ func Ptr[T any](sub T) *T {
 	return &sub
 }
 
-// newCreateCmd creates a command object for the "list" command
 // newCreateCmd creates a command object for the "create" command
 func newCreateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd := &cobra.Command{

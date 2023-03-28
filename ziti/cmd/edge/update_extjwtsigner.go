@@ -73,6 +73,8 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 				return fmt.Errorf("too many positional arguments")
 			}
 
+			options.nameOrId = args[0]
+
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
@@ -99,6 +101,7 @@ func newUpdateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(options.ExtJwtSigner.CertPem, "cert-file", "f", "", "A public certificate PEM file, not usable with -u, -p")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.ExternalAuthURL, "external-auth-url", "y", "", "The URL that users are directed to obtain a JWT")
 	cmd.Flags().StringVarP(options.ExtJwtSigner.Kid, "kid", "k", "", "The KID for the signer, required if using -p or -f")
+	cmd.Flags().StringVarP(options.ExtJwtSigner.Issuer, "issuer", "l", "", "The issuer for the signer")
 	return cmd
 }
 
@@ -122,6 +125,12 @@ func runUpdateExtJwtSigner(options updateExtJwtOptions) error {
 		changed = true
 	} else {
 		options.ExtJwtSigner.Name = nil
+	}
+
+	if options.Cmd.Flag("issuer").Changed {
+		changed = true
+	} else {
+		options.ExtJwtSigner.Issuer = nil
 	}
 
 	if options.Cmd.Flag("use-external-id").Changed {

@@ -514,10 +514,16 @@ func runListExtJwtSigners(options *api.Options) error {
 
 	outTable := table.NewWriter()
 	outTable.SetStyle(table.StyleRounded)
+	outTable.Style().Options.SeparateRows = true
 
 	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
 
-	outTable.AppendHeader(table.Row{"ID", "Name", "Enabled", "Audience", "Type", "ClaimsProp", "UseExternalId", "Config", "Config"}, rowConfigAutoMerge)
+	outTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 2, AutoMerge: true, Align: text.AlignLeft},
+	})
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Config", "Config"}, rowConfigAutoMerge)
 
 	for _, entity := range result.GetPayload().Data {
 		id := *entity.ID
@@ -526,21 +532,34 @@ func runListExtJwtSigners(options *api.Options) error {
 		isEnabled := *entity.Enabled
 		claimsProperty := *entity.ClaimsProperty
 		useExternalId := *entity.UseExternalID
+		issuer := *entity.Issuer
 
 		if entity.JwksEndpoint != nil {
 			confType := "JWKS"
-			outTable.AppendRow(table.Row{id, name, isEnabled, audience, confType, claimsProperty, useExternalId, "JWKS", entity.JwksEndpoint.String()})
+			urlStr := entity.JwksEndpoint.String()
+			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "JWKS URL", urlStr}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
 		} else {
 			confType := "CERT"
-			outTable.AppendRow(table.Row{id, name, isEnabled, audience, confType, claimsProperty, useExternalId, "Fingerprint", *entity.Fingerprint})
+			fingerprint := *entity.Fingerprint
+			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Fingerprint", fingerprint}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
 		}
 
 	}
 
 	pagingInfo := newPagingInfo(payload.Meta)
 	api.RenderTable(options, outTable, pagingInfo)
-
-	_, _ = fmt.Fprint(options.Out, "\nFlags: (V) Verified, (A) AutoCa Enrollment, (O) OttCA Enrollment, (E) Authentication Enabled\n\n")
 
 	return nil
 }
