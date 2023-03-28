@@ -31,7 +31,7 @@ source "amazon-ebs" "ziti-tests-ubuntu-ami" {
 
 build {
   sources = ["source.amazon-ebs.ziti-tests-ubuntu-ami"]
-# change the source path to match your environment (I broke mine so had to do this)
+# change the source path to match your environment (some directory with minimum permissions, ideally)
   provisioner "file" {
     source      = "/home/padibona/resources/99remote-not-fancy"
     destination = "/home/ubuntu/99remote-not-fancy"
