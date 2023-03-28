@@ -113,8 +113,6 @@ build {
       "sudo apt install -y consul",
       "sudo bash -c \"echo 'ubuntu soft nofile 40960' >> /etc/security/limits.conf\"",
       "sudo sed -i 's/ENABLED=\"false\"/ENABLED=\"true\"/g' /etc/default/sysstat",
-      "sudo service metricbeat stop; sleep 5; sudo service metricbeat start",
-      "sudo service filebeat stop; sleep 5; sudo service filebeat start",
     ]
   }
 }
