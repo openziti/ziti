@@ -1,7 +1,7 @@
 metricbeat.modules:
   - module: system
     enabled: true
-    period: 60s
+    period: 10s
     metricsets:
       - cpu
       - filesystem
