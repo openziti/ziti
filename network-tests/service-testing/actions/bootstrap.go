@@ -25,10 +25,11 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(edge.InitController("#ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(semaphore.Sleep(10 * time.Second))
 
 	workflow.AddAction(edge.Login("#ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
@@ -37,6 +38,8 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
+	workflow.AddAction(semaphore.Sleep(10 * time.Second))
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
@@ -69,7 +72,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 		"#iperf-server", "--identity-roles", "#iperf-server"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "iperf", "--semantic", "AnyOf",
 		"--service-roles", "@iperf", "--edge-router-roles", "#all"))
-	//workflow.AddAction(component.Stop(models.ControllerTag))
-
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start; sleep 5; sudo filebeat status"))
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start; sleep 5; sudo metricbeat status"))
 	return workflow
 }
