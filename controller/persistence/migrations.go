@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	CurrentDbVersion = 29
+	CurrentDbVersion = 30
 	FieldVersion     = "version"
 )
 
@@ -130,6 +130,12 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 		m.dropEntity(step, "eventLogs")
 	}
 
+	if step.CurrentVersion < 30 {
+		m.dropEntity(step, EntityTypeSessions)
+		m.dropEntity(step, EntityTypeApiSessions)
+		m.dropEntity(step, EntityTypeApiSessionCertificates)
+	}
+
 	// current version
 	if step.CurrentVersion <= CurrentDbVersion {
 		return CurrentDbVersion
@@ -141,14 +147,26 @@ func (m *Migrations) migrate(step *boltz.MigrationStep) int {
 
 func (m *Migrations) dropEntity(step *boltz.MigrationStep, entityType string) {
 	rootBucket := step.Ctx.Tx().Bucket([]byte(db.RootBucket))
-	if rootBucket != nil {
-		if rootBucket.Bucket([]byte(entityType)) != nil {
-			step.SetError(rootBucket.DeleteBucket([]byte(entityType)))
-			pfxlog.Logger().Infof("removed entity type: %v", entityType)
-		} else {
-			pfxlog.Logger().Infof("entity type not present, don't need to remove: %v", entityType)
-		}
+	if rootBucket == nil {
+		return
+	}
+
+	if rootBucket.Bucket([]byte(entityType)) != nil {
+		step.SetError(rootBucket.DeleteBucket([]byte(entityType)))
+		pfxlog.Logger().Infof("removed entity type: %v", entityType)
 	} else {
-		step.SetError(errors.New("can't get root bbolt bucket"))
+		pfxlog.Logger().Infof("entity type not present, don't need to remove: %v", entityType)
+	}
+
+	indexesBucket := rootBucket.Bucket([]byte(boltz.IndexesBucket))
+	if indexesBucket == nil {
+		return
+	}
+
+	if indexesBucket.Bucket([]byte(entityType)) != nil {
+		step.SetError(indexesBucket.DeleteBucket([]byte(entityType)))
+		pfxlog.Logger().Infof("removed entity type indexes: %v", entityType)
+	} else {
+		pfxlog.Logger().Infof("entity type indexes not present, don't need to remove: %v", entityType)
 	}
 }
