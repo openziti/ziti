@@ -103,7 +103,6 @@ build {
       "sudo chown :root /home/ubuntu/metricbeat.yml",
 
       "sudo filebeat modules enable system",
-      "sudo metricbeat modules enable aws",
       "sudo mv /home/ubuntu/filebeat.yml /etc/filebeat/",
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
       "sudo apt update",
@@ -111,6 +110,7 @@ build {
       "sudo apt install -y iperf3 tcpdump sysstat",
       "sudo apt install -y metricbeat=8.3.2",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
+      "sudo metricbeat modules enable aws",
       "sudo apt install -y consul",
       "sudo bash -c \"echo 'ubuntu soft nofile 40960' >> /etc/security/limits.conf\"",
       "sudo sed -i 's/ENABLED=\"false\"/ENABLED=\"true\"/g' /etc/default/sysstat",
