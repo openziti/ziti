@@ -56,6 +56,7 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *network.Router {
 		Fingerprint: router.Fingerprint,
 		Cost:        uint16(Int64OrDefault(router.Cost)),
 		NoTraversal: BoolOrDefault(router.NoTraversal),
+		Disabled:    BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -71,6 +72,7 @@ func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *network
 		Fingerprint: router.Fingerprint,
 		Cost:        uint16(Int64OrDefault(router.Cost)),
 		NoTraversal: BoolOrDefault(router.NoTraversal),
+		Disabled:    BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -86,6 +88,7 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.R
 		Fingerprint: router.Fingerprint,
 		Cost:        uint16(Int64OrDefault(router.Cost)),
 		NoTraversal: BoolOrDefault(router.NoTraversal),
+		Disabled:    BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -117,6 +120,7 @@ func (RouterModelMapper) ToApi(n *network.Network, _ api.RequestContext, router 
 		VersionInfo: restVersionInfo,
 		Cost:        &cost,
 		NoTraversal: &router.NoTraversal,
+		Disabled:    &router.Disabled,
 	}
 
 	if connected != nil {

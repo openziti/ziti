@@ -109,6 +109,10 @@ func (self *ConnectHandler) HandleConnection(hello *channel.Hello, certificates 
 			log.WithField("fp", *r.Fingerprint).WithField("givenFps", validFingerPrints).Error("router fingerprint mismatch")
 			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
 		}
+		if r.Disabled {
+			log.Error("router disabled")
+			return errors.Errorf("router disabld, routerId: %v", id)
+		}
 	} else {
 		log.Error("unknown/unenrolled router")
 		return errors.Errorf("unknown/unenrolled router, routerId: %v", id)

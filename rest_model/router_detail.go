@@ -55,6 +55,10 @@ type RouterDetail struct {
 	// Minimum: 0
 	Cost *int64 `json:"cost"`
 
+	// disabled
+	// Required: true
+	Disabled *bool `json:"disabled"`
+
 	// fingerprint
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
@@ -89,6 +93,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Cost *int64 `json:"cost"`
 
+		Disabled *bool `json:"disabled"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddresses []*RouterListener `json:"listenerAddresses"`
@@ -106,6 +112,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	m.Connected = dataAO1.Connected
 
 	m.Cost = dataAO1.Cost
+
+	m.Disabled = dataAO1.Disabled
 
 	m.Fingerprint = dataAO1.Fingerprint
 
@@ -134,6 +142,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		Cost *int64 `json:"cost"`
 
+		Disabled *bool `json:"disabled"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddresses []*RouterListener `json:"listenerAddresses"`
@@ -148,6 +158,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.Connected = m.Connected
 
 	dataAO1.Cost = m.Cost
+
+	dataAO1.Disabled = m.Disabled
 
 	dataAO1.Fingerprint = m.Fingerprint
 
@@ -181,6 +193,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateDisabled(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -230,6 +246,15 @@ func (m *RouterDetail) validateCost(formats strfmt.Registry) error {
 	}
 
 	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateDisabled(formats strfmt.Registry) error {
+
+	if err := validate.Required("disabled", "body", m.Disabled); err != nil {
 		return err
 	}
 

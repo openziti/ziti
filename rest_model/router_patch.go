@@ -48,6 +48,9 @@ type RouterPatch struct {
 	// Minimum: 0
 	Cost *int64 `json:"cost,omitempty"`
 
+	// disabled
+	Disabled *bool `json:"disabled,omitempty"`
+
 	// fingerprint
 	Fingerprint *string `json:"fingerprint,omitempty"`
 

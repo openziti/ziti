@@ -49,6 +49,9 @@ type RouterCreate struct {
 	// Minimum: 0
 	Cost *int64 `json:"cost"`
 
+	// disabled
+	Disabled *bool `json:"disabled,omitempty"`
+
 	// fingerprint
 	Fingerprint *string `json:"fingerprint,omitempty"`
 

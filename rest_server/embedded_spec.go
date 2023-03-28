@@ -1689,6 +1689,10 @@ func init() {
           "type": "integer",
           "maximum": 65535
         },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -1720,7 +1724,8 @@ func init() {
             "fingerprint",
             "connected",
             "cost",
-            "noTraversal"
+            "noTraversal",
+            "disabled"
           ],
           "properties": {
             "connected": {
@@ -1729,6 +1734,9 @@ func init() {
             "cost": {
               "type": "integer",
               "maximum": 65535
+            },
+            "disabled": {
+              "type": "boolean"
             },
             "fingerprint": {
               "type": "string"
@@ -1781,6 +1789,10 @@ func init() {
           "maximum": 65535,
           "x-nullable": true
         },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -1809,6 +1821,10 @@ func init() {
         "cost": {
           "type": "integer",
           "maximum": 65535
+        },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "fingerprint": {
           "type": "string"
@@ -5979,6 +5995,10 @@ func init() {
           "maximum": 65535,
           "minimum": 0
         },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -6010,7 +6030,8 @@ func init() {
             "fingerprint",
             "connected",
             "cost",
-            "noTraversal"
+            "noTraversal",
+            "disabled"
           ],
           "properties": {
             "connected": {
@@ -6020,6 +6041,9 @@ func init() {
               "type": "integer",
               "maximum": 65535,
               "minimum": 0
+            },
+            "disabled": {
+              "type": "boolean"
             },
             "fingerprint": {
               "type": "string"
@@ -6073,6 +6097,10 @@ func init() {
           "minimum": 0,
           "x-nullable": true
         },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -6102,6 +6130,10 @@ func init() {
           "type": "integer",
           "maximum": 65535,
           "minimum": 0
+        },
+        "disabled": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "fingerprint": {
           "type": "string"

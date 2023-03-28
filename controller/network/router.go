@@ -54,6 +54,7 @@ type Router struct {
 	routerLinks RouterLinks
 	Cost        uint16
 	NoTraversal bool
+	Disabled    bool
 }
 
 func (entity *Router) toBolt() boltz.Entity {
@@ -63,6 +64,7 @@ func (entity *Router) toBolt() boltz.Entity {
 		Fingerprint:   entity.Fingerprint,
 		Cost:          entity.Cost,
 		NoTraversal:   entity.NoTraversal,
+		Disabled:      entity.Disabled,
 	}
 }
 
@@ -239,6 +241,7 @@ func (self *RouterManager) populateRouter(entity *Router, _ *bbolt.Tx, boltEntit
 	entity.Fingerprint = boltRouter.Fingerprint
 	entity.Cost = boltRouter.Cost
 	entity.NoTraversal = boltRouter.NoTraversal
+	entity.Disabled = boltRouter.Disabled
 	entity.FillCommon(boltRouter)
 	return nil
 }
@@ -286,6 +289,14 @@ func (self *RouterManager) UpdateCachedRouter(id string) {
 			v.Fingerprint = router.Fingerprint
 			v.Cost = router.Cost
 			v.NoTraversal = router.NoTraversal
+			v.Disabled = router.Disabled
+
+			if v.Disabled {
+				if ctrl := v.Control; ctrl != nil {
+					_ = ctrl.Close()
+					log.Warn("connected router disabled, disconnecting router")
+				}
+			}
 
 			return false
 		}
@@ -316,6 +327,7 @@ func (self *RouterManager) Marshall(entity *Router) ([]byte, error) {
 		Fingerprint: fingerprint,
 		Cost:        uint32(entity.Cost),
 		NoTraversal: entity.NoTraversal,
+		Disabled:    entity.Disabled,
 		Tags:        tags,
 	}
 
@@ -343,6 +355,7 @@ func (self *RouterManager) Unmarshall(bytes []byte) (*Router, error) {
 		Fingerprint: fingerprint,
 		Cost:        uint16(msg.Cost),
 		NoTraversal: msg.NoTraversal,
+		Disabled:    msg.Disabled,
 	}, nil
 }
 

@@ -68,6 +68,9 @@ func (self *registry) Register(name string, provider Provider) {
 }
 
 func (self *registry) RegisterSingleton(name string, val any) {
+	if self.GetProvider(name) != nil {
+		panic(errors.Errorf("provider for %v already registered", name))
+	}
 	self.Register(name, ProviderF(func() any {
 		return val
 	}))
