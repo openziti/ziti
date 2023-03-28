@@ -62,6 +62,11 @@ build {
     destination = "/home/ubuntu/system.yml"
   }
 
+  provisioner "file" {
+    source      = "/home/padibona/resources/aws.yml"
+    destination = "/home/ubuntu/aws.yml"
+  }
+
   provisioner "shell" {
     inline = [
 # Set custom files with proper permissions
@@ -97,6 +102,8 @@ build {
       # Set New Beats files with proper permissions
       "sudo chown root /home/ubuntu/system.yml",
       "sudo chown :root /home/ubuntu/system.yml",
+      "sudo chown root /home/ubuntu/aws.yml",
+      "sudo chown :root /home/ubuntu/aws.yml",
       "sudo chown root /home/ubuntu/filebeat.yml",
       "sudo chown :root /home/ubuntu/filebeat.yml",
       "sudo chown root /home/ubuntu/metricbeat.yml",
@@ -110,6 +117,7 @@ build {
       "sudo apt install -y iperf3 tcpdump sysstat",
       "sudo apt install -y metricbeat=8.3.2",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
+      "sudo mv  /home/ubuntu/aws.yml /etc/metricbeat/modules.d/aws.yml",
       "sudo metricbeat modules enable aws",
       "sudo apt install -y consul",
       "sudo bash -c \"echo 'ubuntu soft nofile 40960' >> /etc/security/limits.conf\"",
