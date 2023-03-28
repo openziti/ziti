@@ -49,6 +49,7 @@ func NewEdgeRouterManager(env Env) *EdgeRouterManager {
 			boltz.FieldTags:                              struct{}{},
 			db.FieldRouterCost:                           struct{}{},
 			db.FieldRouterNoTraversal:                    struct{}{},
+			db.FieldRouterDisabled:                       struct{}{},
 		},
 	}
 
@@ -260,7 +261,7 @@ func (self *EdgeRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, c
 		return err
 	}
 
-	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.FieldEdgeRouterEnrollments)
+	associationIds := self.GetStore().GetRelatedEntitiesIdList(tx, id, persistence.EntityTypeEnrollments)
 	for _, enrollmentId := range associationIds {
 		enrollment, err := self.env.GetManagers().Enrollment.readInTx(tx, enrollmentId)
 		if err != nil {
@@ -476,7 +477,7 @@ func (self *EdgeRouterManager) EdgeRouterToProtobuf(entity *EdgeRouter) (*edge_c
 		UnverifiedCertPem:     entity.UnverifiedCertPem,
 		Cost:                  uint32(entity.Cost),
 		NoTraversal:           entity.NoTraversal,
-		EdgeRouterProtocols:   entity.EdgeRouterProtocols,
+		Disabled:              entity.Disabled,
 	}
 
 	return msg, nil
@@ -507,13 +508,13 @@ func (self *EdgeRouterManager) ProtobufToEdgeRouter(msg *edge_cmd_pb.EdgeRouter)
 		Fingerprint:           msg.Fingerprint,
 		CertPem:               msg.CertPem,
 		Hostname:              msg.Hostname,
-		EdgeRouterProtocols:   msg.EdgeRouterProtocols,
 		IsTunnelerEnabled:     msg.IsTunnelerEnabled,
 		AppData:               appData,
 		UnverifiedFingerprint: msg.UnverifiedFingerprint,
 		UnverifiedCertPem:     msg.UnverifiedCertPem,
 		Cost:                  uint16(msg.Cost),
 		NoTraversal:           msg.NoTraversal,
+		Disabled:              msg.Disabled,
 	}, nil
 }
 
