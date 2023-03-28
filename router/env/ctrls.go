@@ -36,6 +36,7 @@ type NetworkControllers interface {
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
+	AnyValidCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
@@ -167,6 +168,21 @@ func (self *networkControllers) AnyCtrlChannel() channel.Channel {
 		return nil
 	}
 	return current.Channel()
+}
+
+func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {
+	delay := 10 * time.Millisecond
+	for {
+		result := self.AnyCtrlChannel()
+		if result != nil {
+			return result
+		}
+		time.Sleep(delay)
+		delay = delay * 2
+		if delay >= time.Minute {
+			delay = time.Minute
+		}
+	}
 }
 
 func (self *networkControllers) GetCtrlChannel(controllerId string) channel.Channel {

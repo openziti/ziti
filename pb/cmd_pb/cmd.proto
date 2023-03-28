@@ -22,6 +22,7 @@ enum CommandType {
   CreateEntityType = 1;
   UpdateEntityType = 2;
   DeleteEntityType = 3;
+  DeleteTerminatorsBatchType = 4;
 
   SyncSnapshot = 10;
 }
@@ -73,6 +74,11 @@ message DeleteEntityCommand {
 message SyncSnapshotCommand {
   string snapshotId = 1;
   bytes snapshot = 2;
+}
+
+message DeleteTerminatorsBatchCommand {
+  repeated string entityIds = 1;
+  ChangeContext ctx = 2;
 }
 
 message TagValue {

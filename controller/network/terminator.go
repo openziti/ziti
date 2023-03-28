@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
@@ -147,6 +148,33 @@ func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ter
 		}
 		return nil
 	})
+}
+
+func (self *TerminatorManager) DeleteBatch(ids []string) error {
+	cmd := &DeleteTerminatorsBatchCommand{
+		Manager: self,
+		Ids:     ids,
+	}
+	return self.Managers.Dispatch(cmd)
+}
+
+func (self *baseEntityManager[T]) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand) error {
+	var errorList errorz.MultipleErrors
+	err := self.db.Update(func(tx *bbolt.Tx) error {
+		ctx := boltz.NewMutateContext(tx)
+		for _, id := range cmd.Ids {
+			if self.Store.IsEntityPresent(tx, id) {
+				if err := self.Store.DeleteById(ctx, id); err != nil {
+					errorList = append(errorList, err)
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		errorList = append(errorList, err)
+	}
+	return errorList.ToError()
 }
 
 func (self *TerminatorManager) checkBinding(terminator *Terminator) {
@@ -329,4 +357,25 @@ type RoutingTerminator struct {
 
 func (r *RoutingTerminator) GetRouteCost() uint32 {
 	return r.RouteCost
+}
+
+type DeleteTerminatorsBatchCommand struct {
+	Manager *TerminatorManager
+	Ids     []string
+}
+
+func (self *DeleteTerminatorsBatchCommand) Apply() error {
+	return self.Manager.ApplyDeleteBatch(self)
+}
+
+func (self *DeleteTerminatorsBatchCommand) Encode() ([]byte, error) {
+	return cmd_pb.EncodeProtobuf(&cmd_pb.DeleteTerminatorsBatchCommand{
+		EntityIds: self.Ids,
+	})
+}
+
+func (self *DeleteTerminatorsBatchCommand) Decode(n *Network, msg *cmd_pb.DeleteTerminatorsBatchCommand) error {
+	self.Manager = n.Terminators
+	self.Ids = msg.EntityIds
+	return nil
 }

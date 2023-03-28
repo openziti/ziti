@@ -138,6 +138,7 @@ var circuitError = errors.New("error connecting circuit")
 
 type networkControllers interface {
 	AnyCtrlChannel() channel.Channel
+	AnyValidCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
 	ForEach(f func(ctrlId string, ch channel.Channel))
@@ -231,5 +232,29 @@ func RemoveTerminator(ctrls networkControllers, terminatorId string) error {
 	} else {
 		log.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
 		return errors.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
+	}
+}
+
+func RemoveTerminators(ctrls networkControllers, terminatorIds []string) {
+	log := pfxlog.Logger()
+	request := &ctrl_pb.RemoveTerminatorsRequest{
+		TerminatorIds: terminatorIds,
+	}
+
+	responseMsg, err := protobufs.MarshalTyped(request).WithTimeout(ctrls.DefaultRequestTimeout()).SendForReply(ctrls.AnyValidCtrlChannel())
+	if err != nil {
+		log.WithError(err).Errorf("failed to send RemoveTerminatorsRequest message")
+		return
+	}
+
+	if responseMsg != nil && responseMsg.ContentType == channel.ContentTypeResultType {
+		result := channel.UnmarshalResult(responseMsg)
+		if result.Success {
+			log.Debug("successfully removed terminators")
+		} else {
+			log.Errorf("failure removing terminators (%v)", result.Message)
+		}
+	} else {
+		log.Errorf("unexpected controller response, ContentType [%v]", responseMsg.ContentType)
 	}
 }
