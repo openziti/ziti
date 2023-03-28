@@ -20,7 +20,7 @@
     * [Issue #83](https://github.com/openziti/channel/issues/83) - Improve protocol mismatch error(s)
     * [Issue #93](https://github.com/openziti/channel/issues/93) - Fix atomic 64-bit alignment error on arm devices
 
-* github.com/openziti/edge: [v0.24.125 -> v0.24.223](https://github.com/openziti/edge/compare/v0.24.125...v0.24.223)
+* github.com/openziti/edge: [v0.24.125 -> v0.24.224](https://github.com/openziti/edge/compare/v0.24.125...v0.24.224)
     * [Issue #1373](https://github.com/openziti/edge/issues/1373) - Add support for disabled flag to edge and transit routers 
     * [Issue #1374](https://github.com/openziti/edge/issues/1374) - Multiple MFA enrollments cannot be cleaned up by administrators
     * [Issue #1336](https://github.com/openziti/edge/issues/1336) - xgress_edge_tunnel shouldn't stop/start host on control channel reconnect
