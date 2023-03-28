@@ -171,7 +171,7 @@ message EdgeRouter {
   optional string unverifiedCertPem = 12;
   uint32 cost = 13;
   bool noTraversal = 14;
-  map<string, string> edgeRouterProtocols = 15;
+  bool disabled = 15;
 }
 
 message CreateEdgeRouterCmd {
@@ -385,6 +385,7 @@ message TransitRouter {
   optional string unverifiedCertPem = 7;
   uint32 cost = 8;
   bool noTraversal = 9;
+  bool disabled = 10;
 }
 
 message CreateTransitRouterCmd {

@@ -65,6 +65,7 @@ func MapCreateEdgeRouterToModel(router *rest_model.EdgeRouterCreate) *model.Edge
 		AppData:           TagsOrDefault(router.AppData),
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -82,6 +83,7 @@ func MapUpdateEdgeRouterToModel(id string, router *rest_model.EdgeRouterUpdate) 
 		AppData:           TagsOrDefault(router.AppData),
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -99,6 +101,7 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 		AppData:           TagsOrDefault(router.AppData),
 		Cost:              uint16(Int64OrDefault(router.Cost)),
 		NoTraversal:       BoolOrDefault(router.NoTraversal),
+		Disabled:          BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -163,6 +166,7 @@ func MapEdgeRouterToRestModel(ae *env.AppEnv, router *model.EdgeRouter) (*rest_m
 			AppData:            &appData,
 			Cost:               &cost,
 			NoTraversal:        &router.NoTraversal,
+			Disabled:           &router.Disabled,
 		},
 		RoleAttributes:        &roleAttributes,
 		EnrollmentToken:       nil,

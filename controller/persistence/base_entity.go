@@ -68,22 +68,6 @@ func isSemanticValid(semantic string) bool {
 	return false
 }
 
-func toStringStringMap(m map[string]interface{}) map[string]string {
-	result := map[string]string{}
-	for k, v := range m {
-		result[k] = v.(string)
-	}
-	return result
-}
-
-func toStringInterfaceMap(m map[string]string) map[string]interface{} {
-	result := map[string]interface{}{}
-	for k, v := range m {
-		result[k] = v
-	}
-	return result
-}
-
 type Policy interface {
 	boltz.NamedExtEntity
 }

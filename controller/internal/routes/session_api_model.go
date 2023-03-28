@@ -185,6 +185,7 @@ func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.Ses
 				SyncStatus:         &syncStatus,
 				Cost:               &cost,
 				NoTraversal:        &edgeRouter.NoTraversal,
+				Disabled:           &edgeRouter.Disabled,
 			},
 			// `urls` is deprecated and should be removed once older SDKs that rely on it are not longer in use
 			Urls: state.Protocols,

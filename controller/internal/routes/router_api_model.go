@@ -37,6 +37,7 @@ func MapUpdateTransitRouterToModel(id string, router *rest_model.RouterUpdate) *
 		Name:        stringz.OrEmpty(router.Name),
 		Cost:        uint16(Int64OrDefault(router.Cost)),
 		NoTraversal: BoolOrDefault(router.NoTraversal),
+		Disabled:    BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -51,6 +52,7 @@ func MapPatchTransitRouterToModel(id string, router *rest_model.RouterPatch) *mo
 		Name:        router.Name,
 		Cost:        uint16(Int64OrDefault(router.Cost)),
 		NoTraversal: BoolOrDefault(router.NoTraversal),
+		Disabled:    BoolOrDefault(router.Disabled),
 	}
 
 	return ret
@@ -90,6 +92,7 @@ func MapTransitRouterToRestModel(ae *env.AppEnv, router *model.TransitRouter) (*
 		UnverifiedCertPem:     router.UnverifiedCertPem,
 		Cost:                  &cost,
 		NoTraversal:           &router.NoTraversal,
+		Disabled:              &router.Disabled,
 	}
 
 	if !router.IsBase && !router.IsVerified {

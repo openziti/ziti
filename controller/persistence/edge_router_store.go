@@ -33,8 +33,6 @@ const (
 	FieldEdgeRouterUnverifiedCertPEM     = "unverifiedCertPem"
 	FieldEdgeRouterUnverifiedFingerprint = "unverifiedFingerprint"
 	FieldEdgeRouterIsVerified            = "isVerified"
-	FieldEdgeRouterProtocols             = "protocols"
-	FieldEdgeRouterEnrollments           = "enrollments"
 	FieldEdgeRouterIsTunnelerEnabled     = "isTunnelerEnabled"
 	FieldEdgeRouterAppData               = "appData"
 )
@@ -55,9 +53,7 @@ type EdgeRouter struct {
 	CertPem               *string
 	UnverifiedCertPem     *string
 	UnverifiedFingerprint *string
-	EdgeRouterProtocols   map[string]string
 	RoleAttributes        []string
-	Enrollments           []string
 	IsTunnelerEnabled     bool
 	AppData               map[string]interface{}
 }
@@ -73,9 +69,6 @@ func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedB
 	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
 	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
 
-	//old v4, migrations only
-	entity.Enrollments = bucket.GetStringList(FieldEdgeRouterEnrollments)
-	entity.EdgeRouterProtocols = toStringStringMap(bucket.GetMap(FieldEdgeRouterProtocols))
 	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
 	entity.AppData = bucket.GetMap(FieldIdentityAppData)
 }
@@ -86,7 +79,6 @@ func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
 	store := ctx.Store.(*edgeRouterStoreImpl)
 	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
 	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
-	ctx.SetMap(FieldEdgeRouterProtocols, toStringInterfaceMap(entity.EdgeRouterProtocols))
 	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
 	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
 	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
@@ -165,7 +157,7 @@ func (store *edgeRouterStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldEdgeRouterIsVerified, ast.NodeTypeBool)
 	store.AddSymbol(FieldEdgeRouterIsTunnelerEnabled, ast.NodeTypeBool)
 
-	store.symbolEnrollments = store.AddFkSetSymbol(FieldEdgeRouterEnrollments, store.stores.enrollment)
+	store.symbolEnrollments = store.AddFkSetSymbol(EntityTypeEnrollments, store.stores.enrollment)
 	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
 	store.symbolServiceEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeServiceEdgeRouterPolicies, store.stores.serviceEdgeRouterPolicy)
 

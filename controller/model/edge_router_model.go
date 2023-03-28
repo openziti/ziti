@@ -36,7 +36,6 @@ type EdgeRouter struct {
 	Fingerprint           *string
 	CertPem               *string
 	Hostname              *string
-	EdgeRouterProtocols   map[string]string
 	VersionInfo           *versions.VersionInfo
 	IsTunnelerEnabled     bool
 	AppData               map[string]interface{}
@@ -44,6 +43,7 @@ type EdgeRouter struct {
 	UnverifiedCertPem     *string
 	Cost                  uint16
 	NoTraversal           bool
+	Disabled              bool
 }
 
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
@@ -53,6 +53,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz
 			Name:          entity.Name,
 			Cost:          entity.Cost,
 			NoTraversal:   entity.NoTraversal,
+			Disabled:      entity.Disabled,
 		},
 		RoleAttributes:    entity.RoleAttributes,
 		IsVerified:        false,
@@ -71,11 +72,11 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.
 			Fingerprint:   entity.Fingerprint,
 			Cost:          entity.Cost,
 			NoTraversal:   entity.NoTraversal,
+			Disabled:      entity.Disabled,
 		},
 		RoleAttributes:        entity.RoleAttributes,
 		IsVerified:            entity.IsVerified,
 		CertPem:               entity.CertPem,
-		EdgeRouterProtocols:   entity.EdgeRouterProtocols,
 		IsTunnelerEnabled:     entity.IsTunnelerEnabled,
 		AppData:               entity.AppData,
 		UnverifiedFingerprint: entity.UnverifiedFingerprint,
@@ -95,13 +96,13 @@ func (entity *EdgeRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity bolt
 	entity.IsVerified = boltEdgeRouter.IsVerified
 	entity.Fingerprint = boltEdgeRouter.Fingerprint
 	entity.CertPem = boltEdgeRouter.CertPem
-	entity.EdgeRouterProtocols = boltEdgeRouter.EdgeRouterProtocols
 	entity.IsTunnelerEnabled = boltEdgeRouter.IsTunnelerEnabled
 	entity.AppData = boltEdgeRouter.AppData
 	entity.UnverifiedFingerprint = boltEdgeRouter.UnverifiedFingerprint
 	entity.UnverifiedCertPem = boltEdgeRouter.UnverifiedCertPem
 	entity.Cost = boltEdgeRouter.Cost
 	entity.NoTraversal = boltEdgeRouter.NoTraversal
+	entity.Disabled = boltEdgeRouter.Disabled
 
 	return nil
 }
