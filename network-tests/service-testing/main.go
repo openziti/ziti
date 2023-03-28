@@ -94,8 +94,8 @@ var m = &model.Model{
 						"ctrl": {
 							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
 							BinaryName:     "ziti-controller",
-							ConfigSrc:      "ctrl.yml.old",
-							ConfigName:     "ctrl.yml.old",
+							ConfigSrc:      "ctrl.yml",
+							ConfigName:     "ctrl.yml",
 							PublicIdentity: "ctrl",
 							RunWithSudo:    true,
 						},
