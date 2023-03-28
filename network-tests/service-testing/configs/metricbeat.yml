@@ -20,6 +20,8 @@ metricbeat.modules:
 
 migration.6_to_7.enabled: false
 
+filebeat.config.modules.path: /etc/metricbeat/modules.d/*.yml
+
 name: "Service Testing"
 
 monitoring.enabled: false
