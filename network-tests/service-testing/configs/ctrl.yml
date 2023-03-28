@@ -172,7 +172,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: ${serverHost.PublicIp}:1280
+    address: {{.Host.PublicIp}}:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -225,7 +225,7 @@ web:
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: ${serverHost.PublicIp}:1280
+        address: {{.Host.PublicIp}}:1280
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
