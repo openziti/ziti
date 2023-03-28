@@ -103,6 +103,7 @@ build {
       "sudo chown :root /home/ubuntu/metricbeat.yml",
 
       "sudo filebeat modules enable system",
+      "sudo metricbeat modules enable aws",
       "sudo mv /home/ubuntu/filebeat.yml /etc/filebeat/",
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
       "sudo apt update",
