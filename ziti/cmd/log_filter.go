@@ -24,7 +24,7 @@ import (
 	"os"
 )
 
-// AgentOptions contains the command line options
+// LogFormatOptions contains the command line options
 type LogFormatOptions struct {
 	CommonOptions
 

@@ -296,15 +296,16 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "No Traversal", "Version", "Listeners"})
+	t.AppendHeader(table.Row{"ID", "Name", "Online", "Cost", "No Traversal", "Disabled", "Version", "Listeners"})
 
 	for _, entity := range children {
-		id := entity.Path("id").Data().(string)
-		name := entity.Path("name").Data().(string)
-		connected := entity.Path("connected").Data().(bool)
+		id := api.GetJsonString(entity, "id")
+		name := api.GetJsonString(entity, "name")
+		connected := api.GetJsonBool(entity, "connected")
 		cost := entity.Path("cost").Data().(float64)
 		versionInfo := entity.Path("versionInfo")
-		noTraversal := entity.Path("noTraversal").Data().(bool)
+		noTraversal := api.GetJsonBool(entity, "noTraversal")
+		disabled := api.GetJsonBool(entity, "disabled")
 		var version string
 		if versionInfo != nil {
 			v := versionInfo.Path("version").Data().(string)
@@ -321,7 +322,7 @@ func outputRouters(o *api.Options, children []*gabs.Container, pagingInfo *api.P
 				listeners = append(listeners, fmt.Sprintf("%v: %v", idx+1, addr))
 			}
 		}
-		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, version, strings.Join(listeners, "\n")})
+		t.AppendRow(table.Row{id, name, connected, cost, noTraversal, disabled, version, strings.Join(listeners, "\n")})
 	}
 
 	api.RenderTable(o, t, pagingInfo)

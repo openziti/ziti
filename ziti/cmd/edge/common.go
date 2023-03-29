@@ -73,18 +73,23 @@ func mapIdToName(entityType string, val string, o api.Options) (string, error) {
 func mapNamesToIDs(entityType string, o api.Options, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
-		if strings.HasPrefix(val, "id") {
+		if strings.HasPrefix(val, "id:") {
 			id := strings.TrimPrefix(val, "id:")
 			result = append(result, id)
 		} else {
 			query := fmt.Sprintf(`id = "%s" or name="%s"`, val, val)
-			if strings.HasPrefix(val, "name") {
+			if strings.HasPrefix(val, "name:") {
 				name := strings.TrimPrefix(val, "name:")
 				query = fmt.Sprintf(`name="%s"`, name)
 			}
 			list, _, err := filterEntitiesOfType(entityType, query, false, nil, o.Timeout, o.Verbose)
 			if err != nil {
 				return nil, err
+			}
+
+			if len(list) == 0 {
+				fmt.Printf("Found 0 %v with id or name matching %v\n", entityType, val)
+				return nil, errors.Errorf("no %v with id or name matching %v", entityType, val)
 			}
 
 			if len(list) > 1 {

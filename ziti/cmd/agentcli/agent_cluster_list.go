@@ -28,20 +28,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlRaftListAction struct {
+type AgentClusterListAction struct {
 	AgentOptions
 }
 
-func NewAgentCtrlRaftList(p common.OptionsProvider) *cobra.Command {
-	action := &AgentCtrlRaftListAction{
+func NewAgentClusterList(p common.OptionsProvider) *cobra.Command {
+	action := &AgentClusterListAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(0, 1),
-		Use:  "raft-list",
+		Args:  cobra.RangeArgs(0, 1),
+		Use:   "list",
+		Short: "lists the nodes in the controller cluster",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
@@ -54,7 +55,7 @@ func NewAgentCtrlRaftList(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *AgentCtrlRaftListAction) makeRequest(ch channel.Channel) error {
+func (self *AgentClusterListAction) makeRequest(ch channel.Channel) error {
 	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftListMembersRequestType), nil)
 	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {

@@ -14,28 +14,25 @@
 	limitations under the License.
 */
 
-package cmd
+package edge
 
 import (
-	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/pborman/uuid"
-	"github.com/stretchr/testify/assert"
-	"os"
-	"testing"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"io"
+
+	"github.com/spf13/cobra"
 )
 
-func TestInstallZitiApp(t *testing.T) {
-	t.Skip("skipping test for now")
+func newReEnrollCmd(out io.Writer, errOut io.Writer) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "re-enroll",
+		Short: "re-enrolls various entities managed by the Ziti Edge Controller",
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdhelper.CheckErr(cmd.Help())
+		},
+	}
 
-	oldPath := os.Getenv("PATH")
-	err := os.Setenv("PATH", "")
-	assert.Nil(t, err)
-	defer os.Setenv("PATH", oldPath)
+	cmd.AddCommand(newReEnrollEdgeRouterCmd(out, errOut))
 
-	defer os.Unsetenv("HOME")
-	err = os.Setenv("HOME", "/tmp/"+uuid.New())
-	assert.Nil(t, err)
-	err = (&CommonOptions{}).installZitiApp("main", c.ZITI_CONTROLLER, true, "0.0.0-0")
-
-	assert.FileExists(t, os.Getenv("HOME")+"/bin/"+c.ZITI_CONTROLLER)
+	return cmd
 }

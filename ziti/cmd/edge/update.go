@@ -51,6 +51,7 @@ func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newUpdateServiceEdgeRouterPolicyCmd(out, errOut))
 	cmd.AddCommand(newUpdateTerminatorCmd(out, errOut))
 	cmd.AddCommand(newUpdatePostureCheckCmd(out, errOut))
+	cmd.AddCommand(newUpdateExtJwtSignerCmd(out, errOut))
 
 	return cmd
 }

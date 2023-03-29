@@ -26,22 +26,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type AgentCtrlRaftJoinAction struct {
+type AgentClusterRemoveAction struct {
 	AgentOptions
-	Voter    bool
-	MemberId string
 }
 
-func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
-	action := &AgentCtrlRaftJoinAction{
+func NewAgentClusterRemove(p common.OptionsProvider) *cobra.Command {
+	action := AgentClusterRemoveAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(1),
-		Use:  "raft-join <addr>",
+		Args:  cobra.ExactArgs(1),
+		Use:   "remove <node id>",
+		Short: "removes a node from the controller cluster",
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -49,24 +48,16 @@ func NewAgentCtrlRaftJoin(p common.OptionsProvider) *cobra.Command {
 			cmdhelper.CheckErr(err)
 		},
 	}
-
 	action.AddAgentOptions(cmd)
-	cmd.Flags().BoolVar(&action.Voter, "voter", true, "Is this member a voting member")
-	cmd.Flags().StringVar(&action.MemberId, "id", "", "The member id. If not provided, it will be looked up")
-
 	return cmd
 }
 
-func (self *AgentCtrlRaftJoinAction) makeRequest(ch channel.Channel) error {
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftJoinRequestType), nil)
-	msg.PutStringHeader(controller.AgentAddrHeader, self.Args[0])
-	msg.PutBoolHeader(controller.AgentIsVoterHeader, self.Voter)
+func (o *AgentClusterRemoveAction) makeRequest(ch channel.Channel) error {
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RaftRemovePeerRequestType), nil)
 
-	if self.MemberId != "" {
-		msg.PutStringHeader(controller.AgentIdHeader, self.MemberId)
-	}
+	msg.PutStringHeader(controller.AgentIdHeader, o.Args[0])
+	reply, err := msg.WithTimeout(o.timeout).SendForReply(ch)
 
-	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err
 	}

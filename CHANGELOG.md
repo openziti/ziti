@@ -1,3 +1,69 @@
+# Release 0.27.6
+
+## What's New
+
+* Makes inspect CLI more discoverable by adding subcommands for inspectable values
+* Adds new inspection allowing configs to be retrieved: `ziti fabric inspect config`
+* Many improvements to edge-router/tunneler hosting performance with large numbers of hosted services
+    * Routers should no longer overwhelm controller while setting up or reestablishing hosting
+* Adds ability to disable router
+* Adds CLI command to compact offline bbolt database: `ziti ops db compact <src> <dst>`
+* Adds CLI command to re-enroll edge routers: `ziti edge re-enroll edge-router`
+* Routers can now be disabled. Connections to the controller from disabled routers will be rejected.
+    * Disable with: `ziti fabric update router <router-id> --disabled`
+    * Enable with:  `ziti fabric update router <router-id> --disabled=false`
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/agent: [v1.0.8 -> v1.0.10](https://github.com/openziti/agent/compare/v1.0.8...v1.0.10)
+* github.com/openziti/channel/v2: [v2.0.27 -> v2.0.53](https://github.com/openziti/channel/compare/v2.0.27...v2.0.53)
+    * [Issue #83](https://github.com/openziti/channel/issues/83) - Improve protocol mismatch error(s)
+    * [Issue #93](https://github.com/openziti/channel/issues/93) - Fix atomic 64-bit alignment error on arm devices
+
+* github.com/openziti/edge: [v0.24.125 -> v0.24.224](https://github.com/openziti/edge/compare/v0.24.125...v0.24.224)
+    * [Issue #1373](https://github.com/openziti/edge/issues/1373) - Add support for disabled flag to edge and transit routers 
+    * [Issue #1374](https://github.com/openziti/edge/issues/1374) - Multiple MFA enrollments cannot be cleaned up by administrators
+    * [Issue #1336](https://github.com/openziti/edge/issues/1336) - xgress_edge_tunnel shouldn't stop/start host on control channel reconnect
+    * [Issue #1369](https://github.com/openziti/edge/issues/1369) - Add missing entity type id for TransitRouter
+    * [Issue #1366](https://github.com/openziti/edge/issues/1366) - Error message incorrectly state 'invalid api session' when it's an invalid session
+    * [Issue #1364](https://github.com/openziti/edge/issues/1364) - Cache api-sessions for tunneler router so we don't need to unnecessarily create new sessions
+    * [Issue #1362](https://github.com/openziti/edge/issues/1362) - Rate limit terminator creates for router/tunneler
+    * [Issue #1359](https://github.com/openziti/edge/issues/1359) - Sessions creates should be idempotent
+    * [Issue #1355](https://github.com/openziti/edge/issues/1355) - Handle duplicate create terminator requests if create terminator fails
+    * [Issue #1350](https://github.com/openziti/edge/issues/1350) - Router event processing can deadlock
+    * [Issue #1329](https://github.com/openziti/edge/issues/1329) - UDP connections can drop data if datagrams are > 10k in size
+    * [Issue #1310](https://github.com/openziti/edge/issues/1310) - Creating a cert backed ext-jwt-signer causes nil dereference
+
+* github.com/openziti/edge-api: [v0.25.6 -> v0.25.9](https://github.com/openziti/edge-api/compare/v0.25.6...v0.25.9)
+* github.com/openziti/fabric: [v0.22.24 -> v0.22.76](https://github.com/openziti/fabric/compare/v0.22.24...v0.22.76)
+    * [Issue #651](https://github.com/openziti/fabric/issues/651) - Add router enable/disable mechanism
+    * [Issue #648](https://github.com/openziti/fabric/issues/648) - Add rate limiter pool to router for operations with potential to flood the controller 
+    * [Issue #610](https://github.com/openziti/fabric/issues/610) - Fix router disconnect when endpoint removed from cluster
+    * [Issue #622](https://github.com/openziti/fabric/issues/622) - fatal error: concurrent map iteration and map write in logContext.WireEntry
+    * [Issue #507](https://github.com/openziti/fabric/issues/507) - Add configuration for control channel heartbeat
+    * [Issue #584](https://github.com/openziti/fabric/issues/584) - Add cluster events
+    * [Issue #599](https://github.com/openziti/fabric/issues/599) - Add release and transfer leadership commands
+    * [Issue #606](https://github.com/openziti/fabric/issues/606) - Ensure consistent use of peer address
+    * [Issue #598](https://github.com/openziti/fabric/issues/598) - Add support to fabric inspect to propagate inspect to other controllers
+    * [Issue #597](https://github.com/openziti/fabric/issues/597) - Make raft settings configurable
+    * [Issue #604](https://github.com/openziti/fabric/issues/604) - Don't create link dropped msg metric until channel bind time
+    * [Issue #638](https://github.com/openziti/fabric/issues/638) - Fix atomic 64-bit alignment error on arm devices
+
+* github.com/openziti/foundation/v2: [v2.0.10 -> v2.0.18](https://github.com/openziti/foundation/compare/v2.0.10...v2.0.18)
+* github.com/openziti/identity: [v1.0.30 -> v1.0.42](https://github.com/openziti/identity/compare/v1.0.30...v1.0.42)
+* github.com/openziti/runzmd: [v1.0.9 -> v1.0.18](https://github.com/openziti/runzmd/compare/v1.0.9...v1.0.18)
+* github.com/openziti/sdk-golang: [v0.18.28 -> v0.18.76](https://github.com/openziti/sdk-golang/compare/v0.18.28...v0.18.76)
+    * [Issue #356](https://github.com/openziti/sdk-golang/issues/356) - sdk connections should respect net.Conn deadline related API specifications 
+
+* github.com/openziti/storage: [v0.1.34 -> v0.1.45](https://github.com/openziti/storage/compare/v0.1.34...v0.1.45)
+* github.com/openziti/transport/v2: [v2.0.51 -> v2.0.68](https://github.com/openziti/transport/compare/v2.0.51...v2.0.68)
+* github.com/openziti/jwks: [v1.0.2 -> v1.0.3](https://github.com/openziti/jwks/compare/v1.0.2...v1.0.3)
+* github.com/openziti/metrics: [v1.2.3 -> v1.2.16](https://github.com/openziti/metrics/compare/v1.2.3...v1.2.16)
+* github.com/openziti/ziti: [v0.27.5 -> v0.27.6](https://github.com/openziti/ziti/compare/v0.27.5...v0.27.6)
+    * [Issue #1041](https://github.com/openziti/ziti/issues/1041) - Add ziti compact command to CLI
+    * [Issue #1032](https://github.com/openziti/ziti/issues/1032) - ziti edge create service fails silently if config names don't exist
+    * [Issue #1031](https://github.com/openziti/ziti/issues/1031) - Fixed quickstart bug with arm and arm64 ambiguity when running quickstart on arm architecture
+
 # Release 0.27.5
 
 ## What's New

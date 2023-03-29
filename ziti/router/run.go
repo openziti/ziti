@@ -73,8 +73,6 @@ func run(cmd *cobra.Command, args []string) {
 
 	r := router.Create(config, version.GetCmdBuildInfo())
 
-	config.SetFlags(getFlags(cmd))
-
 	stateManager := fabric.NewStateManager()
 
 	xgressEdgeFactory := xgress_edge.NewFactory(config, version.GetCmdBuildInfo(), stateManager, r.GetMetricsRegistry())
@@ -86,7 +84,7 @@ func run(cmd *cobra.Command, args []string) {
 	xgressEdgeTransportFactory := xgress_edge_transport.NewFactory()
 	xgress.GlobalRegistry().Register(xgress_edge_transport.BindingName, xgressEdgeTransportFactory)
 
-	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(config, stateManager, r.GetMetricsRegistry())
+	xgressEdgeTunnelFactory := xgress_edge_tunnel.NewFactory(r, config, stateManager)
 	xgress.GlobalRegistry().Register(edge_common.TunnelBinding, xgressEdgeTunnelFactory)
 	if err := r.RegisterXrctrl(xgressEdgeTunnelFactory); err != nil {
 		logrus.WithError(err).Panic("error registering edge tunnel in framework")

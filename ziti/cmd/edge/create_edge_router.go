@@ -34,6 +34,7 @@ type createEdgeRouterOptions struct {
 	appData           map[string]string
 	cost              uint16
 	noTraversal       bool
+	disabled          bool
 }
 
 func newCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -64,6 +65,7 @@ func newCreateEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringToStringVar(&options.appData, "app-Data", nil, "Custom application data")
 	cmd.Flags().Uint16Var(&options.cost, "cost", 0, "Specifies the router cost. Default 0.")
 	cmd.Flags().BoolVar(&options.noTraversal, "no-traversal", false, "Disallow traversal for this edge router. Default to allowed(false).")
+	cmd.Flags().BoolVar(&options.disabled, "disabled", false, "Disabled routers can't connect to controllers")
 
 	options.AddCommonFlags(cmd)
 
@@ -79,6 +81,7 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 	api.SetJSONValue(entityData, o.appData, "appData")
 	api.SetJSONValue(entityData, o.cost, "cost")
 	api.SetJSONValue(entityData, o.noTraversal, "noTraversal")
+	api.SetJSONValue(entityData, o.disabled, "disabled")
 	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("edge-routers", entityData.String(), &o.Options)
@@ -88,15 +91,15 @@ func runCreateEdgeRouter(o *createEdgeRouterOptions) error {
 
 	if o.jwtOutputFile != "" {
 		id := result.S("data", "id").Data().(string)
-		if err := getEdgeRouterJwt(o, id); err != nil {
+		if err := getEdgeRouterJwt(o.EntityOptions.Options, o.jwtOutputFile, id); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
-	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.Options.Timeout, o.Options.Verbose)
+func getEdgeRouterJwt(o api.Options, jwtOutputFile string, id string) error {
+	newRouter, err := DetailEntityOfType("edge-routers", id, o.OutputJSONResponse, o.Out, o.Timeout, o.Verbose)
 	if err != nil {
 		return err
 	}
@@ -110,8 +113,8 @@ func getEdgeRouterJwt(o *createEdgeRouterOptions, id string) error {
 		return fmt.Errorf("enrollment JWT not present for new edge router")
 	}
 
-	if err := os.WriteFile(o.jwtOutputFile, []byte(jwt), 0600); err != nil {
-		fmt.Printf("Failed to write JWT to file(%v)\n", o.jwtOutputFile)
+	if err := os.WriteFile(jwtOutputFile, []byte(jwt), 0600); err != nil {
+		fmt.Printf("Failed to write JWT to file(%v)\n", jwtOutputFile)
 		return err
 	}
 

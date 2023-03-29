@@ -38,5 +38,6 @@ COPY --chown=ziti run-controller.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-router.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti run-with-ziti-cli.sh "${ZITI_SCRIPTS}/"
 COPY --chown=ziti access-control.sh "${ZITI_SCRIPTS}/"
+COPY --chown=ziti run-router-external.sh "${ZITI_SCRIPTS}/"
 
 RUN /bin/bash -c "source ${ZITI_SCRIPTS}/ziti-cli-functions.sh; ziti_createEnvFile; echo source ${ZITI_HOME}/ziti.env >> ~/.bashrc"

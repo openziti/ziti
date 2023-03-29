@@ -16,8 +16,14 @@ ctrl:
   options:
     advertiseAddress: tls:localhost:6262
 
-healthChecks:
-  boltCheck:
+#events:
+#  jsonLogger:
+#    subscriptions:
+#      - type: fabric.cluster
+#    handler:
+#      type: file
+#      format: json
+#      path: /tmp/ziti-events.log
 
 edge:
   api:
