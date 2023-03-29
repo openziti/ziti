@@ -58,9 +58,10 @@ func newCreateExtJwtSignerCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> -xe]",
-		Short: "creates an external JWT signer managed by the Ziti Edge Controller",
-		Long:  "creates an external JWT signer managed by the Ziti Edge Controller",
+		Use:     "ext-jwt-signer <name> <issuer> (-u <jwksEndpoint>|-p <cert pem>|-f <cert file>) [-a <audience> -c <claimProperty> -xe]",
+		Short:   "creates an external JWT signer managed by the Ziti Edge Controller",
+		Long:    "creates an external JWT signer managed by the Ziti Edge Controller",
+		Aliases: []string{"external-jwt-signer"},
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) != 2 {
 				return fmt.Errorf("requires 2 arg, received %d", len(args))
@@ -106,15 +107,11 @@ func runCreateExtJwtSigner(options *createExtJwtSignerOptions) (err error) {
 	}
 
 	hasJwks := options.JwksEndpoint != ""
-	hasCertPem := options.ExtJwtSigner.CertPem != nil || *options.ExtJwtSigner.CertPem == ""
+	hasCertPem := options.ExtJwtSigner.CertPem != nil && *options.ExtJwtSigner.CertPem != ""
 	hasCertPath := options.CertFilePath != ""
 
-	if (hasJwks && !hasCertPem && !hasCertPath) || (hasCertPem && !hasJwks && !hasCertPath) || (hasCertPath && !hasJwks && !hasCertPem) {
+	if (hasJwks && !(!hasCertPem && !hasCertPath)) || (hasCertPem && !(!hasJwks && !hasCertPath)) || (hasCertPath && !(!hasJwks && !hasCertPem)) {
 		return errors.New("must specify only one certificate source (JWKS, cert file, or inline cert PEM")
-	}
-
-	if (hasCertPem || hasCertPath) && (options.ExtJwtSigner.Kid == nil || *options.ExtJwtSigner.Kid == "") {
-		return errors.New("must specify a KID if using a certificate file or inline PEM")
 	}
 
 	if options.ExtJwtSigner.Audience == nil || *options.ExtJwtSigner.Audience == "" {
