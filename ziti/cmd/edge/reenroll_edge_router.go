@@ -53,7 +53,7 @@ func newReEnrollEdgeRouterCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.jwtOutputFile, "jwt-output-file", "o", "", "File to which to output the JWT used for enrolling the edge router")
 
-	options.AddCommonFlags(cmd)
+	options.Options.AddCommonFlags(cmd)
 
 	return cmd
 }

@@ -21,6 +21,8 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
+	"github.com/pkg/errors"
+	"math"
 	"strconv"
 
 	"github.com/shirou/gopsutil/v3/process"
@@ -57,23 +59,21 @@ func NewGetCmd(p common.OptionsProvider) *cobra.Command {
 
 // Run implements the command
 func (self *AgentGetOptionsAction) Run() error {
-	pidStr := self.Args[0]
-	_, err := strconv.Atoi(self.Args[0])
-	if err != nil {
-		return err
-	}
-	pid, err := strconv.Atoi(pidStr)
+	pid, err := strconv.Atoi(self.Args[0])
 	if err != nil {
 		return err
 	}
 
-	processInfo(pid)
+	if pid >= 0 && pid < math.MaxInt32 {
+		processInfo(int32(pid))
+		return nil
+	}
 
-	return nil
+	return errors.Errorf("invalid pid [%v]", self.Args[0])
 }
 
-func processInfo(pid int) {
-	p, err := process.NewProcess(int32(pid))
+func processInfo(pid int32) {
+	p, err := process.NewProcess(pid)
 	if err != nil {
 		log.Fatalf("Cannot read process info: %v", err)
 	}
