@@ -12,7 +12,7 @@ packer {
 source "amazon-ebs" "ziti-tests-ubuntu-ami" {
   ami_description = "An Ubuntu AMI that has everything needed for running fablab smoketests."
   ami_name        = "ziti-tests-{{ timestamp }}"
-  ami_regions     = ["us-east-1", "us-west-2"]
+  ami_regions     = ["us-east-1", "ca-central-1"]
   instance_type   = "t2.micro"
   region          = "us-east-1"
   source_ami_filter {
@@ -84,12 +84,14 @@ build {
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
       "sudo mv /home/ubuntu/10-ziti-logs.conf /etc/sysctl.d/",
 
-
       "cloud-init status --wait",
 
       # Add metricsbeat sources
       "curl --fail --silent --show-error --location https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmor | sudo dd of=/usr/share/keyrings/elasticsearch-archive-keyring.gpg",
       "echo \"deb [arch=amd64 signed-by=/usr/share/keyrings/elasticsearch-archive-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main\" | sudo tee -a /etc/apt/sources.list.d/elastic-8.x.list",
+
+      "sudo apt update",
+      "sudo apt upgrade -y",
 
       # Install filebeat
       "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.6.2-amd64.deb",
@@ -112,8 +114,7 @@ build {
       "sudo filebeat modules enable system",
       "sudo mv /home/ubuntu/filebeat.yml /etc/filebeat/",
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
-      "sudo apt update",
-      "sudo apt upgrade -y",
+
       "sudo apt install -y iperf3 tcpdump sysstat",
       "sudo apt install -y metricbeat=8.3.2",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
