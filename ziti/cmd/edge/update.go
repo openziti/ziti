@@ -52,6 +52,7 @@ func newUpdateCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newUpdateTerminatorCmd(out, errOut))
 	cmd.AddCommand(newUpdatePostureCheckCmd(out, errOut))
 	cmd.AddCommand(newUpdateExtJwtSignerCmd(out, errOut))
+	cmd.AddCommand(newUpdateAuthPolicySignerCmd(out, errOut))
 
 	return cmd
 }
