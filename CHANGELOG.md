@@ -1,3 +1,9 @@
+# Release 0.27.7
+
+## What's New
+
+* This release updates the build to use Go 1.20
+
 # Release 0.27.6
 
 ## What's New
