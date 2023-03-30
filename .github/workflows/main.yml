@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - release-v*
+      - release-next
   pull_request:
   workflow_dispatch:
 
@@ -276,9 +277,18 @@ jobs:
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
-  call-publish-docker-images:
+  call-publish-prerelease-docker-images:
+    if: github.ref == 'refs/heads/release-next'
+    name: Publish Pre-Release Docker Images
+    needs: publish
+    uses: ./.github/workflows/publish-docker-images.yml
+    secrets: inherit
+    with:
+      ziti-version: release-next
+
+  call-publish-release-docker-images:
     if: github.ref == 'refs/heads/main'
-    name: Publish Docker Images
+    name: Publish Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit

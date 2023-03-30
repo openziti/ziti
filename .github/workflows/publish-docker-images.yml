@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       ziti-version:
-        description: 'Ziti Release Version'
+        description: 'Tag or Branch Ref to Publish'
         type: string
         required: true
 
@@ -13,6 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       ZITI_VERSION: ${{ inputs.ziti-version || github.event.inputs.ziti-version }}
+      ZITI_CLI_IMAGE: ${{ vars.ZITI_CLI_IMAGE || 'docker.io/openziti/ziti-cli' }}
+      ZITI_CONTROLLER_IMAGE: ${{ vars.ZITI_CONTROLLER_IMAGE || 'docker.io/openziti/ziti-controller' }}
+      ZITI_ROUTER_IMAGE: ${{ vars.ZITI_ROUTER_IMAGE || 'docker.io/openziti/ziti-router' }}
+      ZITI_TUNNEL_IMAGE: ${{ vars.ZITI_TUNNEL_IMAGE || 'docker.io/openziti/ziti-tunnel' }}
     steps:
       - name: Checkout Workspace
         uses: actions/checkout@v3
@@ -40,11 +44,14 @@ jobs:
 
       - name: Set Up Container Image Tags for Base CLI Container
         env:
-          RELEASE_REPO: openziti/ziti-cli
+          IMAGE_REPO: ${{ env.ZITI_CLI_IMAGE }}
         id: tagprep_cli
         run: |
           DOCKER_TAGS=""
-          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
+          fi
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
@@ -65,11 +72,14 @@ jobs:
 
       - name: Set Up Container Image Tags for Controller Container
         env:
-          RELEASE_REPO: openziti/ziti-controller
+          IMAGE_REPO: ${{ env. ZITI_CONTROLLER_IMAGE }}
         id: tagprep_ctrl
         run: |
           DOCKER_TAGS=""
-          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
+          fi
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
@@ -85,15 +95,19 @@ jobs:
           tags: ${{ steps.tagprep_ctrl.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_VERSION=${{ env.ZITI_VERSION }}
+            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
           push: true
 
       - name: Set Up Container Image Tags for Router Container
         env:
-          RELEASE_REPO: openziti/ziti-router
+          IMAGE_REPO: ${{ env.ZITI_ROUTER_IMAGE }}
         id: tagprep_router
         run: |
           DOCKER_TAGS=""
-          DOCKER_TAGS="${RELEASE_REPO}:${ZITI_VERSION},${RELEASE_REPO}:latest"
+          DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            DOCKER_TAGS+=",${IMAGE_REPO}:latest"
+          fi
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
           echo DOCKER_TAGS="${DOCKER_TAGS}" >> $GITHUB_OUTPUT
 
@@ -106,17 +120,21 @@ jobs:
           tags: ${{ steps.tagprep_router.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_VERSION=${{ env.ZITI_VERSION }}
+            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
           push: true
 
       - name: Set Up Container Image Tags for Go Tunneler Container
         env:
-          SNAPSHOT_REPO: netfoundry/ziti-tunnel
-          RELEASE_REPO: openziti/ziti-tunnel
+          IMAGE_REPO: ${{ env.ZITI_TUNNEL_IMAGE }}
+          LEGACY_REPO: netfoundry/ziti-tunnel
         id: tagprep_tun
         run: |
           DOCKER_TAGS=""
-          for REPO in ${SNAPSHOT_REPO} ${RELEASE_REPO}; do
-            DOCKER_TAGS+=",${REPO}:${ZITI_VERSION},${REPO}:latest"
+          for REPO in ${LEGACY_REPO} ${IMAGE_REPO}; do
+            DOCKER_TAGS="${IMAGE_REPO}:${ZITI_VERSION}"
+            if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+              DOCKER_TAGS+=",${IMAGE_REPO}:latest"
+            fi
           done
           DOCKER_TAGS=${DOCKER_TAGS#,} # drop leading comma char
           echo "DEBUG: DOCKER_TAGS=${DOCKER_TAGS}"
@@ -131,4 +149,5 @@ jobs:
           tags: ${{ steps.tagprep_tun.outputs.DOCKER_TAGS }}
           build-args: |
             ZITI_VERSION=${{ env.ZITI_VERSION }}
+            ZITI_CLI_IMAGE=${{ env.ZITI_CLI_IMAGE }}
           push: true

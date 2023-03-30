@@ -40,7 +40,7 @@ RUN   INSTALL_PKGS="python38 python38-pip tar" && \
 COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
 
 ### add license in the path prescribed by OpenShift
-RUN mkdir -m0755 /licenses
+RUN mkdir -p -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
 RUN mkdir -p /usr/local/bin
