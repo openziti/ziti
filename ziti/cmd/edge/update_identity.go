@@ -41,6 +41,7 @@ type updateIdentityOptions struct {
 	servicePrecedences       map[string]string
 	appData                  map[string]string
 	externalId               string
+	authPolicyIdOrName       string
 }
 
 func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -74,6 +75,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().StringVarP(&options.authPolicyIdOrName, "auth-policy", "P", "", "The auth policy id or name to assign to the identity")
 
 	return cmd
 }
@@ -113,6 +115,19 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 			return err
 		}
 		api.SetJSONValue(entityData, prec, "defaultHostingPrecedence")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("auth-policy") {
+		authPolicyId, err := mapNameToID("auth-policies", o.authPolicyIdOrName, o.Options)
+		if err != nil {
+			return fmt.Errorf("could not fetch auth policy by name or id: %w", err)
+		}
+
+		if authPolicyId == "" {
+			return fmt.Errorf("authentication policy id or name '%s' is not found", o.authPolicyIdOrName)
+		}
+		api.SetJSONValue(entityData, authPolicyId, "authPolicyId")
 		change = true
 	}
 
