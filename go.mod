@@ -22,9 +22,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.10
 	github.com/openziti/channel/v2 v2.0.53
-	github.com/openziti/edge v0.24.224
+	github.com/openziti/edge v0.24.227
 	github.com/openziti/edge-api v0.25.9
-	github.com/openziti/fabric v0.22.76
+	github.com/openziti/fabric v0.22.77
 	github.com/openziti/foundation/v2 v2.0.18
 	github.com/openziti/identity v1.0.42
 	github.com/openziti/runzmd v1.0.18
@@ -129,7 +129,7 @@ require (
 	github.com/mdlayher/netlink v1.7.1 // indirect
 	github.com/mdlayher/socket v0.4.0 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/miekg/dns v1.1.52 // indirect
+	github.com/miekg/dns v1.1.53 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
