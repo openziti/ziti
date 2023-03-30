@@ -979,7 +979,7 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes"})
+	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes", "Auth-Policy"})
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
@@ -987,7 +987,8 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 			wrapper.String("id"),
 			wrapper.String("name"),
 			wrapper.String("type.name"),
-			strings.Join(wrapper.StringSlice("roleAttributes"), ",")})
+			strings.Join(wrapper.StringSlice("roleAttributes"), ","),
+			wrapper.String("authPolicyId")})
 	}
 	api.RenderTable(o, t, pagingInfo)
 
