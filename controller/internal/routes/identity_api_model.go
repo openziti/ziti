@@ -175,7 +175,7 @@ func MapUpdateIdentityToModel(id string, identity *rest_model.IdentityUpdate, id
 		ServiceHostingPrecedences: getServiceHostingPrecedences(identity.ServiceHostingPrecedences),
 		ServiceHostingCosts:       getServiceHostingCosts(identity.ServiceHostingCosts),
 		AppData:                   TagsOrDefault(identity.AppData),
-		AuthPolicyId:              *identity.AuthPolicyID,
+		AuthPolicyId:              stringz.OrEmpty(identity.AuthPolicyID),
 		ExternalId:                identity.ExternalID,
 	}
 
