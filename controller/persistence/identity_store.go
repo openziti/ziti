@@ -275,6 +275,7 @@ type IdentityStore interface {
 	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
 	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
 	LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{}
+	GetIdentityServicesCursorProvider(identityId string) ast.SetCursorProvider
 }
 
 func newIdentityStore(stores *stores) *identityStoreImpl {
@@ -651,4 +652,29 @@ func (store *identityStoreImpl) LoadServiceConfigsByServiceAndType(tx *bbolt.Tx,
 
 func (store *identityStoreImpl) GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error) {
 	return store.getRoleAttributesCursorProvider(store.indexRoleAttributes, values, semantic)
+}
+
+func (store *identityStoreImpl) GetIdentityServicesCursorProvider(identityId string) ast.SetCursorProvider {
+	provider := &IdentityServicesCursorProvider{
+		store:      store,
+		identityId: identityId,
+	}
+	return provider.Cursor
+}
+
+type IdentityServicesCursorProvider struct {
+	store      *identityStoreImpl
+	identityId string
+}
+
+func (self *IdentityServicesCursorProvider) Cursor(tx *bbolt.Tx, forward bool) ast.SetCursor {
+	fst := self.store.dialServicesCollection.IterateLinks(tx, []byte(self.identityId), forward)
+	snd := self.store.bindServicesCollection.IterateLinks(tx, []byte(self.identityId), forward)
+	if !fst.IsValid() {
+		return snd
+	}
+	if !snd.IsValid() {
+		return fst
+	}
+	return ast.NewUnionSetCursor(fst, snd, forward)
 }

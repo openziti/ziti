@@ -36,7 +36,7 @@ func TestServicePerf(t *testing.T) {
 		go func() {
 			for i := 0; i < 100; i++ {
 				start := time.Now()
-				_ = ctx.AdminManagementSession.requireQuery("services?asIdentity=" + identityId)
+				_ = ctx.AdminManagementSession.requireQuery("services?asIdentity=" + identityId + "&filter=" + url.QueryEscape("true limit 100"))
 				lookupTimer.UpdateSince(start)
 			}
 			close(doneC)

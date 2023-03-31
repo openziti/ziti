@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
@@ -122,14 +121,14 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		identity := rc.Identity
 		if asId := rc.Request.URL.Query().Get("asIdentity"); asId != "" {
-			var err error
-			identity, err = ae.Managers.Identity.ReadOneByQuery(fmt.Sprintf(`id = "%v" or name = "%v"`, asId, asId))
-			if err != nil {
-				return nil, err
+			identity, _ = ae.Managers.Identity.Read(asId)
+			if identity == nil {
+				identity, _ = ae.Managers.Identity.ReadByName(asId)
 			}
 			if identity == nil {
 				return nil, boltz.NewNotFoundError("identity", "id or name", asId)
 			}
+			rc.Identity = identity
 		}
 
 		// allow overriding config types

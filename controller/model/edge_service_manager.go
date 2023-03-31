@@ -17,7 +17,6 @@
 package model
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
@@ -166,13 +165,6 @@ func (self *EdgeServiceManager) PublicQueryForIdentity(sessionIdentity *Identity
 }
 
 func (self *EdgeServiceManager) QueryForIdentity(identityId string, configTypes map[string]struct{}, query ast.Query) (*ServiceListResult, error) {
-	idFilterQueryString := fmt.Sprintf(`(anyOf(dialIdentities) = "%v" or anyOf(bindIdentities) = "%v")`, identityId, identityId)
-	idFilterQuery, err := ast.Parse(self.Store, idFilterQueryString)
-	if err != nil {
-		return nil, err
-	}
-
-	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), idFilterQuery.GetPredicate()))
 	return self.queryServices(query, identityId, configTypes, false)
 }
 
@@ -183,9 +175,15 @@ func (self *EdgeServiceManager) queryServices(query ast.Query, identityId string
 		configTypes: configTypes,
 		isAdmin:     isAdmin,
 	}
-	err := self.PreparedListWithHandler(query, result.collect)
-	if err != nil {
-		return nil, err
+	if isAdmin {
+		if err := self.PreparedListWithHandler(query, result.collect); err != nil {
+			return nil, err
+		}
+	} else {
+		cursorProvider := self.env.GetStores().Identity.GetIdentityServicesCursorProvider(identityId)
+		if err := self.PreparedListIndexed(cursorProvider, query, result.collect); err != nil {
+			return nil, err
+		}
 	}
 	return result, nil
 }
@@ -326,6 +324,9 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	postureCheckLinks := servicePolicyStore.GetLinkCollection(persistence.EntityTypePostureChecks)
 	serviceLinks := servicePolicyStore.GetLinkCollection(db.EntityTypeServices)
 
+	policyNameSymbol := self.env.GetStores().ServicePolicy.GetSymbol(persistence.FieldName)
+	policyTypeSymbol := self.env.GetStores().ServicePolicy.GetSymbol(persistence.FieldServicePolicyType)
+
 	_ = self.GetDb().View(func(tx *bbolt.Tx) error {
 		policyCursor := self.env.GetStores().Identity.GetRelatedEntitiesCursor(tx, identityId, persistence.EntityTypeServicePolicies, true)
 		policyCursor = ast.NewFilteredCursor(policyCursor, func(policyId []byte) bool {
@@ -337,18 +338,17 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 			policyIdStr := string(policyIdBytes)
 			policyCursor.Next()
 
-			policy, err := self.env.GetStores().ServicePolicy.LoadOneById(tx, policyIdStr)
-
-			if err != nil {
-				pfxlog.Logger().Errorf("could not retrieve policy by id [%s] to create posture queries for service id [%s]", policyIdStr, serviceId)
-				continue
+			policyName := boltz.FieldToString(policyNameSymbol.Eval(tx, policyIdBytes))
+			policyType := persistence.PolicyTypeDial
+			if fieldType, policyTypeValue := policyTypeSymbol.Eval(tx, policyIdBytes); fieldType == boltz.TypeInt32 {
+				policyType = persistence.PolicyType(*boltz.BytesToInt32(policyTypeValue))
 			}
 
 			//required to provide an entry for policies w/ no checks
 			policyIdToChecks[policyIdStr] = &PolicyPostureChecks{
 				PostureChecks: []*PostureCheck{},
-				PolicyType:    policy.PolicyType,
-				PolicyName:    policy.Name,
+				PolicyType:    policyType,
+				PolicyName:    *policyName,
 			}
 
 			cursor := postureCheckLinks.IterateLinks(tx, policyIdBytes)

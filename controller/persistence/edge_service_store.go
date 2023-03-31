@@ -230,7 +230,7 @@ func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity boltz.
 	// If a service is updated we need to notify everyone who has access to the identity, not just those who
 	// have gained/lost access, since everyone will need to refresh the service. We will generate two events
 	// for identities
-	cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id), true)
 	for cursor.IsValid() {
 		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
 			Type:       ServiceUpdated,
@@ -240,7 +240,7 @@ func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity boltz.
 		cursor.Next()
 	}
 
-	cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+	cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id), true)
 	for cursor.IsValid() {
 		servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
 			Type:       ServiceUpdated,
@@ -273,7 +273,7 @@ func (store *edgeServiceStoreImpl) cleanupEdgeService(ctx boltz.MutateContext, i
 
 		var servicePolicyEvents []*ServiceEvent
 
-		cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+		cursor := store.dialIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id), true)
 		for cursor.IsValid() {
 			servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
 				Type:       ServiceDialAccessLost,
@@ -283,7 +283,7 @@ func (store *edgeServiceStoreImpl) cleanupEdgeService(ctx boltz.MutateContext, i
 			cursor.Next()
 		}
 
-		cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id))
+		cursor = store.bindIdentitiesCollection.IterateLinks(ctx.Tx(), []byte(id), true)
 		for cursor.IsValid() {
 			servicePolicyEvents = append(servicePolicyEvents, &ServiceEvent{
 				Type:       ServiceBindAccessLost,

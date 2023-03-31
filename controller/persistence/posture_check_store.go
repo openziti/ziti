@@ -18,9 +18,9 @@ package persistence
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"github.com/openziti/foundation/v2/errorz"
 	"go.etcd.io/bbolt"
 )
 
@@ -227,13 +227,13 @@ func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity boltz
 func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id string) {
 	eh := &serviceEventHandler{}
 
-	cursor := store.bindServicesCollection.IterateLinks(tx, []byte(id))
+	cursor := store.bindServicesCollection.IterateLinks(tx, []byte(id), true)
 	for cursor.IsValid() {
 		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
 		cursor.Next()
 	}
 
-	cursor = store.dialServicesCollection.IterateLinks(tx, []byte(id))
+	cursor = store.dialServicesCollection.IterateLinks(tx, []byte(id), true)
 	for cursor.IsValid() {
 		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
 		cursor.Next()
