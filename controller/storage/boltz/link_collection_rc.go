@@ -29,7 +29,7 @@ type RefCountedLinkCollection interface {
 	GetLinkCounts(tx *bbolt.Tx, id []byte, relatedId []byte) (*int32, *int32)
 	SetLinkCount(tx *bbolt.Tx, id []byte, key []byte, count int) (*int32, *int32, error)
 	EntityDeleted(tx *bbolt.Tx, id string) error
-	IterateLinks(tx *bbolt.Tx, id []byte) ast.SeekableSetCursor
+	IterateLinks(tx *bbolt.Tx, id []byte, forward bool) ast.SeekableSetCursor
 	GetFieldSymbol() EntitySymbol
 	GetLinkedSymbol() EntitySymbol
 }
@@ -122,9 +122,9 @@ func (collection *rcLinkCollectionImpl) EntityDeleted(tx *bbolt.Tx, id string) e
 	return fieldBucket.Err
 }
 
-func (collection *rcLinkCollectionImpl) IterateLinks(tx *bbolt.Tx, id []byte) ast.SeekableSetCursor {
+func (collection *rcLinkCollectionImpl) IterateLinks(tx *bbolt.Tx, id []byte, forward bool) ast.SeekableSetCursor {
 	if fieldBucket := collection.getFieldBucket(tx, id); !fieldBucket.HasError() {
-		return fieldBucket.IterateStringList()
+		return fieldBucket.IterateStringListInDirection(forward)
 	}
 	return ast.EmptyCursor
 }
