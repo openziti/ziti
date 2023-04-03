@@ -605,6 +605,13 @@ func (bucket *TypedBucket) IterateStringList() ast.SeekableSetCursor {
 	return NewTypedForwardBoltCursor(bucket.Cursor(), TypeString)
 }
 
+func (bucket *TypedBucket) IterateStringListInDirection(forward bool) ast.SeekableSetCursor {
+	if forward {
+		return NewTypedForwardBoltCursor(bucket.Cursor(), TypeString)
+	}
+	return NewTypedReverseBoltCursor(bucket.Cursor(), TypeString)
+}
+
 func (bucket *TypedBucket) IsStringListEmpty(name string) bool {
 	listBucket := bucket.GetBucket(name)
 	if listBucket == nil {
