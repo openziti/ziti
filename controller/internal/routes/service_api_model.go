@@ -177,11 +177,6 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			pfxlog.Logger().Errorf("attempting to render API response for policy type [%s] for policy id [%s], unknown type expected dial/bind", policyPostureChecks.PolicyType, policyId)
 		}
 
-		if policyPostureChecks == nil {
-			pfxlog.Logger().Errorf("unexpected nil policyPostureCheck attempting to render posture queries for service [%s]", service.Id)
-			continue
-		}
-
 		for _, postureCheck := range policyPostureChecks.PostureChecks {
 			query := PostureCheckToQueries(postureCheck)
 
