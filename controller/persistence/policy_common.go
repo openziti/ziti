@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -19,14 +19,14 @@ type serviceEventHandler struct {
 }
 
 func (self *serviceEventHandler) addServiceUpdatedEvent(store *baseStore, tx *bbolt.Tx, serviceId []byte) {
-	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId)
+	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
 
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
 	}
 
-	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId)
+	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId, true)
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()

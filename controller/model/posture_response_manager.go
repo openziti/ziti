@@ -227,6 +227,10 @@ func (self *PostureResponseManager) PostureData(id string) *PostureData {
 	return self.postureCache.PostureData(id)
 }
 
+func (self *PostureResponseManager) WithPostureData(id string, f func(data *PostureData)) {
+	self.postureCache.WithPostureData(id, f)
+}
+
 func (self *PostureResponseManager) SetSdkInfo(identityId, apiSessionId string, sdkInfo *SdkInfo) {
 	if identityId == "" || apiSessionId == "" || sdkInfo == nil {
 		return

@@ -7,7 +7,7 @@ v: 3
 #  memory:
 #    path: ctrl.memprof
 
-db: testdata/${ZITI_TEST_DB}.db
+db: ${ZITI_TEST_DB}
 
 identity:
   cert: testdata/ca/intermediate/certs/ctrl-client.cert.pem

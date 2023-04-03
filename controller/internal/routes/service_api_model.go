@@ -177,11 +177,6 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 			pfxlog.Logger().Errorf("attempting to render API response for policy type [%s] for policy id [%s], unknown type expected dial/bind", policyPostureChecks.PolicyType, policyId)
 		}
 
-		if policyPostureChecks == nil {
-			pfxlog.Logger().Errorf("unexpected nil policyPostureCheck attempting to render posture queries for service [%s]", service.Id)
-			continue
-		}
-
 		for _, postureCheck := range policyPostureChecks.PostureChecks {
 			query := PostureCheckToQueries(postureCheck)
 
@@ -191,16 +186,21 @@ func MapServiceToRestModel(ae *env.AppEnv, rc *response.RequestContext, service 
 				isCheckPassing, _ = ae.Managers.PostureResponse.Evaluate(rc.Identity.Id, rc.ApiSession.Id, postureCheck)
 				validChecks[postureCheck.Id] = isCheckPassing
 			}
-			timeout := postureCheck.TimeoutSeconds()
-			timeoutRemaining := postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, ae.Managers.PostureResponse.PostureData(rc.Identity.Id))
 
-			//determine if updatedAt is provided by the source posture check or the posture state
-			if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, ae.Managers.PostureResponse.PostureData(rc.Identity.Id)); lastUpdatedAt != nil {
-				if lastUpdatedAt.After(postureCheck.UpdatedAt) {
-					query.UpdatedAt = DateTimePtrOrNil(lastUpdatedAt)
+			var timeoutRemaining int64
+
+			ae.Managers.PostureResponse.WithPostureData(rc.Identity.Id, func(postureData *model.PostureData) {
+				timeoutRemaining = postureCheck.TimeoutRemainingSeconds(rc.ApiSession.Id, postureData)
+
+				//determine if updatedAt is provided by the source posture check or the posture state
+				if lastUpdatedAt := postureCheck.LastUpdatedAt(rc.ApiSession.Id, postureData); lastUpdatedAt != nil {
+					if lastUpdatedAt.After(postureCheck.UpdatedAt) {
+						query.UpdatedAt = DateTimePtrOrNil(lastUpdatedAt)
+					}
 				}
+			})
 
-			}
+			timeout := postureCheck.TimeoutSeconds()
 			query.IsPassing = &isCheckPassing
 			query.TimeoutRemaining = &timeoutRemaining
 			query.Timeout = &timeout

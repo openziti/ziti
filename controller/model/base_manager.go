@@ -112,7 +112,7 @@ func (self *baseEntityManager) BasePreparedList(query ast.Query) (*models.Entity
 
 func (self *baseEntityManager) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[models.Entity], error) {
 	result := &models.EntityListResult[models.Entity]{Loader: self}
-	if err := self.preparedListIndexed(cursorProvider, query, result.Collect); err != nil {
+	if err := self.PreparedListIndexed(cursorProvider, query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
@@ -124,7 +124,7 @@ func (self *baseEntityManager) PreparedListWithHandler(query ast.Query, resultHa
 	})
 }
 
-func (self *baseEntityManager) preparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler models.ListResultHandler) error {
+func (self *baseEntityManager) PreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query, resultHandler models.ListResultHandler) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.PreparedListIndexedWithTx(tx, cursorProvider, query, resultHandler)
 	})

@@ -264,6 +264,19 @@ func (pc *PostureCache) PostureData(identityId string) *PostureData {
 	return result
 }
 
+func (pc *PostureCache) WithPostureData(identityId string, f func(data *PostureData)) {
+	pc.Upsert(identityId, false, func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
+		var pd *PostureData
+		if exist {
+			pd = valueInMap
+		} else {
+			pd = newValue
+		}
+		f(pd)
+		return pd
+	})
+}
+
 func (pc *PostureCache) ApiSessionCreated(args ...interface{}) {
 	var apiSession *persistence.ApiSession
 	if len(args) == 1 {

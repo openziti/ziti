@@ -30,6 +30,7 @@ import (
 type Stores struct {
 	DbProvider      DbProvider
 	EventualEventer EventualEventer
+	internal        *stores
 
 	// fabric stores
 	Router     db.RouterStore
@@ -201,6 +202,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 
 	externalStores := &Stores{
 		DbProvider: dbProvider,
+		internal:   internalStores,
 
 		Terminator: dbProvider.GetStores().Terminator,
 		Router:     dbProvider.GetStores().Router,

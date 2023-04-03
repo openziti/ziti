@@ -51,7 +51,6 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -292,10 +291,10 @@ func (ctx *TestContext) NewClientComponentsWithClientCert(cert *x509.Certificate
 }
 
 func (ctx *TestContext) StartServer() {
-	ctx.StartServerFor("default", true)
+	ctx.StartServerFor("testdata/default.db", true)
 }
 
-func (ctx *TestContext) StartServerFor(test string, clean bool) {
+func (ctx *TestContext) StartServerFor(testDb string, clean bool) {
 	if ctx.LogLevel != "" {
 		if level, err := logrus.ParseLevel(ctx.LogLevel); err == nil {
 			logrus.StandardLogger().SetLevel(level)
@@ -305,19 +304,13 @@ func (ctx *TestContext) StartServerFor(test string, clean bool) {
 	log := pfxlog.Logger()
 	_ = os.Mkdir("testdata", os.FileMode(0755))
 	if clean {
-		err := filepath.Walk("testdata", func(path string, info os.FileInfo, err error) error {
-			if err == nil {
-				if !info.IsDir() && strings.HasPrefix(info.Name(), test+".db") {
-					pfxlog.Logger().Infof("removing test bolt file or backup: %v", path)
-					err = os.Remove(path)
-				}
-			}
-			return err
-		})
-		ctx.Req.NoError(err)
+		err := os.Remove(testDb)
+		if !os.IsNotExist(err) {
+			ctx.Req.NoError(err)
+		}
 	}
 
-	err := os.Setenv("ZITI_TEST_DB", test)
+	err := os.Setenv("ZITI_TEST_DB", testDb)
 	ctx.Req.NoError(err)
 
 	log.Info("loading config")

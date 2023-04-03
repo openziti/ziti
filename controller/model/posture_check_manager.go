@@ -18,6 +18,7 @@ package model
 
 import (
 	"fmt"
+	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
 	"github.com/openziti/fabric/controller/command"
@@ -36,16 +37,31 @@ const (
 )
 
 func NewPostureCheckManager(env Env) *PostureCheckManager {
+	cache, err := lru.New[string, *PostureCheck](256)
+	if err != nil {
+		panic(err)
+	}
 	manager := &PostureCheckManager{
 		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheck),
+		cache:             cache,
 	}
 	manager.impl = manager
 	network.RegisterManagerDecoder[*PostureCheck](env.GetHostController().GetNetwork().GetManagers(), manager)
+
+	evictF := func(i ...interface{}) {
+		postureCheck := i[0].(*persistence.PostureCheck)
+		manager.cache.Remove(postureCheck.Id)
+	}
+
+	manager.Store.AddListener(boltz.EventUpdate, evictF)
+	manager.Store.AddListener(boltz.EventDelete, evictF)
+
 	return manager
 }
 
 type PostureCheckManager struct {
 	baseEntityManager
+	cache *lru.Cache[string, *PostureCheck]
 }
 
 func (self *PostureCheckManager) newModelEntity() edgeEntity {
@@ -74,6 +90,9 @@ func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*P
 }
 
 func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {
+	if postureCheck, ok := self.cache.Get(id); ok {
+		return postureCheck, nil
+	}
 	modelEntity := &PostureCheck{}
 	if err := self.readEntity(id, modelEntity); err != nil {
 		return nil, err
@@ -82,10 +101,16 @@ func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {
 }
 
 func (self *PostureCheckManager) readInTx(tx *bbolt.Tx, id string) (*PostureCheck, error) {
+	if postureCheck, ok := self.cache.Get(id); ok {
+		return postureCheck, nil
+	}
+
 	modelEntity := &PostureCheck{}
 	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
 		return nil, err
 	}
+	self.cache.Add(id, modelEntity)
+
 	return modelEntity, nil
 }
 
