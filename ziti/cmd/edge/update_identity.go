@@ -67,7 +67,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
-	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
+	cmd.Flags().StringVarP(&options.externalId, "external-id", "x", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
