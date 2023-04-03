@@ -94,8 +94,8 @@ build {
       "sudo apt upgrade -y",
 
       # Install filebeat
-      "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.6.2-amd64.deb",
-      "sudo dpkg -i filebeat-8.6.2-amd64.deb",
+      "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.17.5-amd64.deb",
+      "sudo dpkg -i filebeat-7.17.5-amd64.deb",
 
       # add consul sources
       "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
@@ -116,7 +116,7 @@ build {
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
 
       "sudo apt install -y iperf3 tcpdump sysstat",
-      "sudo apt install -y metricbeat=8.3.2",
+      "sudo apt install -y metricbeat=7.17.5",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
       "sudo mv  /home/ubuntu/aws.yml /etc/metricbeat/modules.d/aws.yml",
       "sudo metricbeat modules enable aws",
