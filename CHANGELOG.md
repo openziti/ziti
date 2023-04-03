@@ -1,3 +1,23 @@
+# Release 0.27.8
+
+## What's New
+
+* CLI additions for auth policies and external JWT signers
+* Performance improvements for listing services
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.224 -> v0.24.228](https://github.com/openziti/edge/compare/v0.24.224...v0.24.228)
+    * [Issue #1388](https://github.com/openziti/edge/issues/1388) - Make better use of identity service indexes for service list
+    * [Issue #1386](https://github.com/openziti/edge/issues/1386) - PUT on identities results in an error and internal PANIC
+
+* github.com/openziti/fabric: [v0.22.76 -> v0.22.77](https://github.com/openziti/fabric/compare/v0.22.76...v0.22.77)
+* github.com/openziti/storage: [v0.1.45 -> v0.1.46](https://github.com/openziti/storage/compare/v0.1.45...v0.1.46)
+* github.com/openziti/ziti: [v0.27.7 -> v0.27.8](https://github.com/openziti/ziti/compare/v0.27.7...v0.27.8)
+    * [Issue #1064](https://github.com/openziti/ziti/issues/1064) - Support auth-policy assignments on identities via the CLI
+    * [Issue #1058](https://github.com/openziti/ziti/issues/1058) - Allow Auth Policy Create/Update/Delete via CLI
+    * [Issue #1059](https://github.com/openziti/ziti/issues/1059) - Expose Delete for Ext JWT Signers in CLI
+
 # Release 0.27.7
 
 ## What's New
