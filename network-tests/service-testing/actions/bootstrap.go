@@ -2,6 +2,7 @@ package actions
 
 import (
 	zitilib_actions "github.com/openziti/zitilab/actions"
+	"strconv"
 	"time"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -30,7 +31,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.InitController("#ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(semaphore.Sleep(10 * time.Second))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	// Login to Ziti Controller
 	workflow.AddAction(edge.Login("#ctrl"))
@@ -42,7 +43,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
-	workflow.AddAction(semaphore.Sleep(10 * time.Second))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
 	// Init Identities
 	workflow.AddAction(edge.InitIdentities(models.SdkAppTag, 2))
@@ -66,24 +67,29 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 		}`))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 
-	// Create Service
-	workflow.AddAction(zitilib_actions.Edge("create", "service", "iperf", "-c", "iperf-server,iperf-intercept"))
+	// Start Beats Services
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start"))
+	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start"))
 
-	// Enroll Policies
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "iperf-server", "Bind", "--service-roles",
-		"@iperf", "--identity-roles", "#iperf-server"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "iperf-client", "Dial", "--service-roles",
-		"@iperf", "--identity-roles", "#iperf-client"))
+	// Create Services and Policies that require unique names
+	serviceCount := 10
+	for i := 1; i <= serviceCount; i++ {
+		serviceName := "service" + strconv.Itoa(i)
+		atServiceName := "@" + serviceName
+		workflow.AddAction(zitilib_actions.Edge("create", "service", serviceName, "-c", "iperf-server,iperf-intercept"))
+		workflow.AddAction(zitilib_actions.Edge("create", "service-policy", serviceName+"Bind", "Bind", "--service-roles",
+			atServiceName, "--identity-roles", "#iperf-server"))
+		workflow.AddAction(zitilib_actions.Edge("create", "service-policy", serviceName+"Dial", "Dial", "--service-roles",
+			atServiceName, "--identity-roles", "#iperf-client"))
+		workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", serviceName, "--semantic", "AnyOf",
+			"--service-roles", atServiceName, "--edge-router-roles", "#all"))
+	}
+
+	// Enroll the rest of Policies
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-client", "--edge-router-roles",
 		"#iperf-client", "--identity-roles", "#iperf-client"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "iperf-server", "--edge-router-roles",
 		"#iperf-server", "--identity-roles", "#iperf-server"))
-	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "iperf", "--semantic", "AnyOf",
-		"--service-roles", "@iperf", "--edge-router-roles", "#all"))
-
-	// Start Beats Services
-	workflow.AddAction(host.GroupExec("*", 25, "sudo service filebeat stop; sleep 5; sudo service filebeat start; sleep 5; sudo service filebeat status"))
-	workflow.AddAction(host.GroupExec("*", 25, "sudo service metricbeat stop; sleep 5; sudo service metricbeat start; sleep 5; sudo service metricbeat status"))
 
 	return workflow
 }
