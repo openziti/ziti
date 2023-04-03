@@ -257,8 +257,8 @@ github.com/go-kit/kit v0.9.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=
 github.com/go-logfmt/logfmt v0.4.0/go.mod h1:3RMwSq7FuexP4Kalkev3ejPJsZTpXXBr9+V4qmtdjCk=
 github.com/go-logr/logr v1.2.2/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
-github.com/go-logr/logr v1.2.3 h1:2DntVwHkVopvECVRSlL5PSo9eG+cAkDCuckLubN+rq0=
-github.com/go-logr/logr v1.2.3/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
+github.com/go-logr/logr v1.2.4 h1:g01GSCwiDw2xSZfjJ2/T9M+S6pFdcNtFYsp+Y43HYDQ=
+github.com/go-logr/logr v1.2.4/go.mod h1:jdQByPbusPIv2/zmleS9BjJVeZ6kBagPoEUsqbVz/1A=
 github.com/go-logr/stdr v1.2.2 h1:hSWxHoqTgW2S2qGc0LTAI563KZ5YKYRhT3MFKZMbjag=
 github.com/go-logr/stdr v1.2.2/go.mod h1:mMo/vtBO5dYbehREoey6XUKy/eSumjCCveDpRre4VKE=
 github.com/go-ole/go-ole v1.2.6 h1:/Fpf6oFPoeFik9ty7siob0G6Ke8QvQEuVcuChpwXzpY=
@@ -703,8 +703,8 @@ github.com/openziti/channel/v2 v2.0.53 h1:qHcGpbHCg6GqpHxFs4qfk4X2DJIv3YEx7ePX6L
 github.com/openziti/channel/v2 v2.0.53/go.mod h1:/AA0mtP4z+N59+vB8SJD72PfSQWSwrVqWZgR7YTXlEo=
 github.com/openziti/dilithium v0.3.3 h1:PLgQ6PMNLSTzCFbX/h98cmudgz/cU6TmjdSv5NAPD8k=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/edge v0.24.227 h1:OOtj3rlOzAvm5/MgX+S9s7FBvarydBUvy26sZ/v0yeI=
-github.com/openziti/edge v0.24.227/go.mod h1:5JK6PPaFIuwJh6zNRhUv8CpNcNOqxDxC51/gxdNrR98=
+github.com/openziti/edge v0.24.228 h1:sxjBjFkffEs443MF4hoUz7rq4JqKqEdlab6Sp6c+ONo=
+github.com/openziti/edge v0.24.228/go.mod h1:Pd52RE8RM1FPVofXRaryEwLB6tBjTNYm5ZrCiey/nFw=
 github.com/openziti/edge-api v0.25.9 h1:zw/cBTB/R6TA3PQxOCkVvProIFyQiHxC3GvVM1L+qR0=
 github.com/openziti/edge-api v0.25.9/go.mod h1:9JyKMYV3QdkBot/pj/ujFcV8Hyf8OUEiwtmPKQRqNHU=
 github.com/openziti/fabric v0.22.77 h1:PLFZ6FSYp+6mRZQznhyuUtLu2PXR8D6QufcPQHQ6Clo=
@@ -721,8 +721,8 @@ github.com/openziti/runzmd v1.0.18 h1:khKJR3dSOXF6QIjfOq3SLPNLKi6utg42Bznu53FB3z
 github.com/openziti/runzmd v1.0.18/go.mod h1:UK/1Q/dZoWBWJHe8toEKtnlfqELnbM1i1C19v+J/bz8=
 github.com/openziti/sdk-golang v0.18.76 h1:D+UW1lpGHBBgfVrObpauq9RvJV/TFPdEEshfuPkiMcI=
 github.com/openziti/sdk-golang v0.18.76/go.mod h1:kw/5rWDLwx52iwW/4a0VRQMUi7GPSI3aETx+G5TvdFQ=
-github.com/openziti/storage v0.1.45 h1:0ZBW0Fyx6qbIoHWK9PKJod0+BFeF/TPX6gZJ+cg+4Xo=
-github.com/openziti/storage v0.1.45/go.mod h1:RptgJKYVJwEJb0byGpvgZPEZbpLtdJYFGlplvxf6wRQ=
+github.com/openziti/storage v0.1.46 h1:2PH1sidrzzbsDwpAM+kpBFV3ANeDKGKWf7C+P5VERUY=
+github.com/openziti/storage v0.1.46/go.mod h1:RptgJKYVJwEJb0byGpvgZPEZbpLtdJYFGlplvxf6wRQ=
 github.com/openziti/transport/v2 v2.0.68 h1:58QTO10nLakqCqGwABC/codq9O1WjtFSByhwlQvF1sc=
 github.com/openziti/transport/v2 v2.0.68/go.mod h1:dKNuMCulCqNyhkoLWPUzB1CLdhrslSgWsJPKWwrUBTo=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
@@ -816,8 +816,12 @@ github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb
 github.com/sacloud/libsacloud v1.36.2/go.mod h1:P7YAOVmnIn3DKHqCZcUKYUXmSwGBm3yS7IBEjKVSrjg=
 github.com/sean-/seed v0.0.0-20170313163322-e2103e2c3529/go.mod h1:DxrIzT+xaE7yg65j358z/aeFdxmN0P9QXhEzd20vsDc=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
-github.com/shirou/gopsutil/v3 v3.23.2 h1:PAWSuiAszn7IhPMBtXsbSCafej7PqUOvY6YywlQUExU=
-github.com/shirou/gopsutil/v3 v3.23.2/go.mod h1:gv0aQw33GLo3pG8SiWKiQrbDzbRY1K80RyZJ7V4Th1M=
+github.com/shirou/gopsutil/v3 v3.23.3 h1:Syt5vVZXUDXPEXpIBt5ziWsJ4LdSAAxF4l/xZeQgSEE=
+github.com/shirou/gopsutil/v3 v3.23.3/go.mod h1:lSBNN6t3+D6W5e5nXTxc8KIMMVxAcS+6IJlffjRRlMU=
+github.com/shoenig/go-m1cpu v0.1.4 h1:SZPIgRM2sEF9NJy50mRHu9PKGwxyyTTJIWvCtgVbozs=
+github.com/shoenig/go-m1cpu v0.1.4/go.mod h1:Wwvst4LR89UxjeFtLRMrpgRiyY4xPsejnVZym39dbAQ=
+github.com/shoenig/test v0.6.3 h1:GVXWJFk9PiOjN0KoJ7VrJGH6uLPnqxR7/fe3HUPfE0c=
+github.com/shoenig/test v0.6.3/go.mod h1:byHiCGXqrVaflBLAMq/srcZIHynQPQgeyvkvXnjqq0k=
 github.com/shurcooL/component v0.0.0-20170202220835-f88ec8f54cc4/go.mod h1:XhFIlyj5a1fBNx5aJTbKoIq0mNaPvOagO+HjB3EtxrY=
 github.com/shurcooL/events v0.0.0-20181021180414-410e4ca65f48/go.mod h1:5u70Mqkb5O5cxEA8nxTsgrgLehJeAw6Oc4Ab1c/P1HM=
 github.com/shurcooL/github_flavored_markdown v0.0.0-20181002035957-2122de532470/go.mod h1:2dOwnU2uBioM+SGy2aZoq1f/Sd1l9OkAeAUvjSyvgU0=
