@@ -67,22 +67,51 @@ build {
     destination = "/home/ubuntu/aws.yml"
   }
 
+  provisioner "file" {
+    source      = "/home/padibona/resources/beats.crt"
+    destination = "/home/ubuntu/beats.crt"
+  }
+
+  provisioner "file" {
+    source      = "/home/padibona/resources/beats.key"
+    destination = "/home/ubuntu/beats.key"
+  }
+
+  provisioner "file" {
+    source      = "/home/padibona/resources/logstashCA.crt"
+    destination = "/home/ubuntu/logstashCA.crt"
+  }
+
   provisioner "shell" {
     inline = [
-# Set custom files with proper permissions
+# Create directories for beats/logstash certs and keys
+      "sudo mkdir /etc/pki/",
+      "sudo mkdir /etc/pki/beats/",
+
+# Set custom files with proper permissions/owners/groups
       "sudo chown root /home/ubuntu/99remote-not-fancy",
       "sudo chown :root /home/ubuntu/99remote-not-fancy",
       "sudo chown root /home/ubuntu/51-network-tuning.conf",
       "sudo chown :root /home/ubuntu/51-network-tuning.conf",
       "sudo chown root /home/ubuntu/10-ziti-logs.conf",
       "sudo chown :root /home/ubuntu/10-ziti-logs.conf",
-
-
+      "sudo chown root /home/ubuntu/beats.crt",
+      "sudo chown :root /home/ubuntu/beats.crt",
+      "sudo chmod 0644 /home/ubuntu/beats.crt",
+      "sudo chown root /home/ubuntu/beats.key",
+      "sudo chown :root /home/ubuntu/beats.key",
+      "sudo chmod 0400 /home/ubuntu/beats.key",
+      "sudo chown root /home/ubuntu/logstashCA.crt",
+      "sudo chown :root /home/ubuntu/logstashCA.crt",
+      "sudo chmod 0644 /home/ubuntu/logstashCA.crt",
 
 # Move custom files into proper locations
       "sudo mv /home/ubuntu/99remote-not-fancy /etc/apt/apt.conf.d/",
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
       "sudo mv /home/ubuntu/10-ziti-logs.conf /etc/sysctl.d/",
+      "sudo mv /home/ubuntu/beats.crt /etc/pki/beats/",
+      "sudo mv /home/ubuntu/beats.key /etc/pki/beats/",
+      "sudo mv /home/ubuntu/logstashCA.crt /etc/pki/beats/",
 
       "cloud-init status --wait",
 
@@ -96,6 +125,10 @@ build {
       # Install filebeat
       "curl -L -O https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-7.17.5-amd64.deb",
       "sudo dpkg -i filebeat-7.17.5-amd64.deb",
+
+      # Install metricbeat
+      "curl -L -O https://artifacts.elastic.co/downloads/beats/metricbeat/metricbeat-7.17.5-amd64.deb",
+      "sudo dpkg -i metricbeat-7.17.5-amd64.deb",
 
       # add consul sources
       "curl --fail --silent --show-error --location https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo dd of=/usr/share/keyrings/hashicorp-archive-keyring.gpg",
@@ -116,7 +149,6 @@ build {
       "sudo mv  /home/ubuntu/system.yml /etc/filebeat/modules.d/system.yml",
 
       "sudo apt install -y iperf3 tcpdump sysstat",
-      "sudo apt install -y metricbeat=7.17.5",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
       "sudo mv  /home/ubuntu/aws.yml /etc/metricbeat/modules.d/aws.yml",
       "sudo metricbeat modules enable aws",
