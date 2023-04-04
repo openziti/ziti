@@ -76,7 +76,5 @@ func (o *addIdentityOptions) run(_ *cobra.Command, args []string) error {
 	o.Printf("Saving identity '%v' to %v\n", id, configFile)
 	config.FabricIdentities[id] = loginIdentity
 
-	err = util.PersistRestClientConfig(config)
-
-	return nil
+	return util.PersistRestClientConfig(config)
 }
