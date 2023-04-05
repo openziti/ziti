@@ -91,6 +91,14 @@ func (self *EntityChangeState[E]) GetChangeType() EntityEventType {
 	return self.ChangeType
 }
 
+func (self *EntityChangeState[E]) GetInitialState() Entity {
+	return self.InitialState
+}
+
+func (self *EntityChangeState[E]) GetFinalState() Entity {
+	return self.FinalState
+}
+
 func (self *EntityChangeState[E]) GetInitialParentEntity() Entity {
 	var tmp Entity = self.InitialState
 	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
@@ -159,19 +167,24 @@ func (self *EntityChangeState[E]) ProcessPostCommit() {
 	}
 }
 
+type UntypedEntityChangeState interface {
+	GetId() string
+	GetCtx() MutateContext
+	GetChangeType() EntityEventType
+	GetInitialState() Entity
+	GetFinalState() Entity
+	GetInitialParentEntity() Entity
+	GetFinalParentEntity() Entity
+}
+
 type EntityChangeFlow interface {
+	UntypedEntityChangeState
 	Init(ctx MutateContext) (bool, error)
 	InitFromChild(flow EntityChangeFlow)
 	LoadFinalState() error
 	ProcessPreCommit() error
 	ProcessPostCommit()
 	FireEvents() error
-
-	GetId() string
-	GetCtx() MutateContext
-	GetChangeType() EntityEventType
-	GetInitialParentEntity() Entity
-	GetFinalParentEntity() Entity
 }
 
 type BaseStore[E Entity] struct {

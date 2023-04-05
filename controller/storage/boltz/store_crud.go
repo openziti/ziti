@@ -195,6 +195,9 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 		IsCreate:      true,
 	}
 	store.entityStrategy.PersistEntity(entity, persistCtx)
+	if bucket.HasError() {
+		return bucket.GetError()
+	}
 	indexingContext := store.NewIndexingContext(true, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessAfterUpdate()
 
@@ -238,6 +241,10 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 			store.GetEntityType(), entity.GetEntityType())
 	}
 
+	if entity.GetId() == "" {
+		return errors.Errorf("cannot update %v with blank id", store.GetSingularEntityType())
+	}
+
 	baseEntity, found, err := store.FindById(ctx.Tx(), entity.GetId())
 	if err != nil {
 		return err
@@ -245,10 +252,6 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 
 	if !found {
 		return store.entityNotFoundF(entity.GetId())
-	}
-
-	if entity.GetId() == "" {
-		return errors.Errorf("cannot update %v with blank id", store.GetSingularEntityType())
 	}
 
 	bucket := store.GetEntityBucket(ctx.Tx(), []byte(entity.GetId()))
@@ -529,14 +532,14 @@ func (*BaseStore[E]) IteratorMatchingAnyOf(readIndex SetReadIndex, values []stri
 	}
 }
 
-func (store *BaseStore[E]) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
+func (store *BaseStore[E]) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
 	for _, linkCollection := range store.links {
-		if err := linkCollection.CheckIntegrity(tx, fix, errorSink); err != nil {
+		if err := linkCollection.CheckIntegrity(ctx, fix, errorSink); err != nil {
 			return err
 		}
 	}
 	for _, constraint := range store.Indexer.constraints {
-		if err := constraint.CheckIntegrity(tx, fix, errorSink); err != nil {
+		if err := constraint.CheckIntegrity(ctx, fix, errorSink); err != nil {
 			return err
 		}
 	}
@@ -547,30 +550,50 @@ func (store *BaseStore[E]) AddEntityConstraint(constraint EntityConstraint[E]) {
 	store.entityConstraints.Append(constraint)
 }
 
+func (store *BaseStore[E]) AddUntypedEntityConstraint(constraint UntypedEntityConstraint) {
+	store.entityConstraints.Append(&untypedEntityConstraintWrapper[E]{constraint: constraint})
+}
+
 func (store *BaseStore[E]) AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType) {
-	store.entityConstraints.Append(&EntityConstraintWrapper[E]{
+	store.entityConstraints.Append(&entityListenerAdapter[E]{
+		eventListener: listener,
+		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+func (store *BaseStore[E]) AddEntityEventListenerF(listener func(E), changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&entityFunctionListenerAdapter[E]{
 		eventListener: listener,
 		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
 	})
 }
 
 func (store *BaseStore[E]) AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType) {
-	store.entityConstraints.Append(&untypedEntityConstraintWrapper[E]{
+	store.entityConstraints.Append(&untypedEventListenerWrapper[E]{
 		eventListener: listener,
 		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
 	})
 }
 
-type EntityConstraintWrapper[E Entity] struct {
+func (store *BaseStore[E]) AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&untypedEventListenerWrapper[E]{
+		eventListener: func(entity Entity) {
+			listener(entity.GetId())
+		},
+		changeTypes: append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+type entityListenerAdapter[E Entity] struct {
 	eventListener EntityEventListener[E]
 	changeTypes   []EntityEventType
 }
 
-func (self *EntityConstraintWrapper[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+func (self *entityListenerAdapter[E]) ProcessPreCommit(*EntityChangeState[E]) error {
 	return nil
 }
 
-func (self *EntityConstraintWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+func (self *entityListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
 	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
 		self.eventListener.HandleEntityEvent(state.FinalState)
 	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
@@ -580,16 +603,35 @@ func (self *EntityConstraintWrapper[E]) ProcessPostCommit(state *EntityChangeSta
 	}
 }
 
-type untypedEntityConstraintWrapper[E Entity] struct {
+type entityFunctionListenerAdapter[E Entity] struct {
+	eventListener func(E)
+	changeTypes   []EntityEventType
+}
+
+func (self *entityFunctionListenerAdapter[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+	return nil
+}
+
+func (self *entityFunctionListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
+		self.eventListener(state.FinalState)
+	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
+		self.eventListener(state.FinalState)
+	} else if state.ChangeType == EntityDeleted && genext.Contains(self.changeTypes, EntityDeleted) {
+		self.eventListener(state.InitialState)
+	}
+}
+
+type untypedEventListenerWrapper[E Entity] struct {
 	eventListener func(Entity)
 	changeTypes   []EntityEventType
 }
 
-func (self *untypedEntityConstraintWrapper[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+func (self *untypedEventListenerWrapper[E]) ProcessPreCommit(*EntityChangeState[E]) error {
 	return nil
 }
 
-func (self *untypedEntityConstraintWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+func (self *untypedEventListenerWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
 	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
 		self.eventListener(state.FinalState)
 	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
@@ -611,10 +653,22 @@ func (self *ChildStoreUpdateHandler[E, C]) HandleUpdate(ctx MutateContext, entit
 	return false, nil
 }
 
-func (self *ChildStoreUpdateHandler[E, C]) HandleDelete(ctx MutateContext, entity E) error {
+func (self *ChildStoreUpdateHandler[E, C]) HandleDelete(MutateContext, E) error {
 	return nil
 }
 
 func (self *ChildStoreUpdateHandler[E, C]) GetStore() CrudBaseStore {
 	return self.Store
+}
+
+type untypedEntityConstraintWrapper[E Entity] struct {
+	constraint UntypedEntityConstraint
+}
+
+func (self *untypedEntityConstraintWrapper[E]) ProcessPreCommit(state *EntityChangeState[E]) error {
+	return self.constraint.ProcessPreCommit(state)
+}
+
+func (self *untypedEntityConstraintWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	self.constraint.ProcessPostCommit(state)
 }
