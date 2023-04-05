@@ -66,6 +66,16 @@ func newManagerStore(parent *employeeStoreImpl) *managerStoreImpl {
 		BaseStore: NewBaseStore(storeDef),
 	}
 	store.InitImpl(store)
+	parent.RegisterChildStoreStrategy(&ChildStoreUpdateHandler[*Employee, *Manager]{
+		Store: store,
+		Mapper: func(ctx MutateContext, parent *Employee) (*Manager, bool) {
+			mgr, _, _ := store.FindById(ctx.Tx(), parent.Id)
+			if mgr != nil {
+				return mgr, true
+			}
+			return nil, false
+		},
+	})
 	return store
 }
 

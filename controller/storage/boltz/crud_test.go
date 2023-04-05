@@ -560,7 +560,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	employee6 := newEmployee("Joe Hill")
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext(context.Background()).setTx(tx)
+		ctx := NewMutateContext("test", context.Background()).setTx(tx)
 		return test.empStore.Create(ctx, employee6)
 	})
 	test.EqualError(err, "duplicate value 'Joe Hill' in unique index on employees store")
@@ -580,7 +580,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	employee5.Name = "Bob MacBobface"
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext(context.Background()).setTx(tx)
+		ctx := NewMutateContext("test", context.Background()).setTx(tx)
 		test.NoError(test.empStore.Update(ctx, employee1, nil))
 		test.NoError(test.empStore.Update(ctx, employee3, nil))
 		test.NoError(test.empStore.Update(ctx, employee5, nil))
@@ -606,7 +606,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	test.NoError(err)
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext(context.Background()).setTx(tx)
+		ctx := NewMutateContext("test", context.Background()).setTx(tx)
 		test.NoError(test.empStore.DeleteWhere(ctx, "true"))
 		return nil
 	})
@@ -1089,7 +1089,7 @@ func TestEvents(t *testing.T) {
 		return test.empStore.Create(newTestMutateContext(tx), first)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, first, EventCreate)
+	eventChecker.RequireEvent(TestEntityTypeParent, first, EntityCreated)
 	eventChecker.RequireNoEvent()
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
@@ -1097,14 +1097,14 @@ func TestEvents(t *testing.T) {
 		return test.empStore.Update(newTestMutateContext(tx), first, nil)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, first, EventUpdate)
+	eventChecker.RequireEvent(TestEntityTypeParent, first, EntityUpdated)
 	eventChecker.RequireNoEvent()
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
 		return test.empStore.DeleteById(newTestMutateContext(tx), first.Id)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, first, EventDelete)
+	eventChecker.RequireEvent(TestEntityTypeParent, first, EntityDeleted)
 	eventChecker.RequireNoEvent()
 }
 
@@ -1129,8 +1129,8 @@ func TestParentChildEvents(t *testing.T) {
 		return test.mgrStore.Create(newTestMutateContext(tx), mgr)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventCreate)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventCreate)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityCreated)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityCreated)
 	eventChecker.RequireNoEvent()
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
@@ -1138,8 +1138,8 @@ func TestParentChildEvents(t *testing.T) {
 		return test.mgrStore.Update(newTestMutateContext(tx), mgr, nil)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventUpdate)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventUpdate)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityUpdated)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityUpdated)
 	eventChecker.RequireNoEvent()
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
@@ -1147,15 +1147,15 @@ func TestParentChildEvents(t *testing.T) {
 		return test.empStore.Update(newTestMutateContext(tx), &mgr.Employee, nil)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventUpdate)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventUpdate)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityUpdated)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityUpdated)
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
 		return test.mgrStore.DeleteById(newTestMutateContext(tx), mgr.Id)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventDelete)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventDelete)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityDeleted)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityDeleted)
 	eventChecker.RequireNoEvent()
 
 	// check delete again, this time invoked from the child store
@@ -1170,15 +1170,15 @@ func TestParentChildEvents(t *testing.T) {
 		return test.mgrStore.Create(newTestMutateContext(tx), mgr)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventCreate)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventCreate)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityCreated)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityCreated)
 	eventChecker.RequireNoEvent()
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
 		return test.empStore.DeleteById(newTestMutateContext(tx), mgr.Id)
 	})
 	test.NoError(err)
-	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EventDelete)
-	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EventDelete)
+	eventChecker.RequireEvent(TestEntityTypeParent, mgr, EntityDeleted)
+	eventChecker.RequireEvent(TestEntityTypeChild, mgr, EntityDeleted)
 	eventChecker.RequireNoEvent()
 }
