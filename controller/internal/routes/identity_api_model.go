@@ -246,6 +246,21 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		return nil
 	})
 
+	var authPolicyRef *rest_model.EntityRef
+
+	if identity.AuthPolicyId != "" {
+		authPolicy, err := ae.Managers.AuthPolicy.Read(identity.AuthPolicyId)
+
+		if err == nil {
+			authPolicyRef = ToEntityRef(authPolicy.Name, authPolicy, AuthPolicyLinkFactory)
+		} else {
+			pfxlog.Logger().
+				WithField("identityId", identity.Id).
+				WithField("authPolicyId", identity.AuthPolicyId).
+				Errorf("reading identity, detected auth policy id but failed to find it")
+		}
+	}
+
 	if err != nil {
 		pfxlog.Logger().Errorf("error attempting to determine identity id's [%s] API session existence: %v", identity.Id, err)
 	}
@@ -293,6 +308,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		IsMfaEnabled:              &isMfaEnabled,
 		AppData:                   &appData,
 		AuthPolicyID:              &identity.AuthPolicyId,
+		AuthPolicy:                authPolicyRef,
 		Disabled:                  &identity.Disabled,
 		DisabledAt:                disabledAt,
 		DisabledUntil:             disabledUntil,
