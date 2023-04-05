@@ -19,6 +19,7 @@ package boltz
 import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"go.etcd.io/bbolt"
+	"reflect"
 	"strings"
 )
 
@@ -75,6 +76,49 @@ type EntityChangeState[E Entity] struct {
 	InitialState E
 	FinalState   E
 	store        *BaseStore[E]
+	ChangeType   EntityEventType
+}
+
+func (self *EntityChangeState[E]) GetId() string {
+	return self.Id
+}
+
+func (self *EntityChangeState[E]) GetCtx() MutateContext {
+	return self.Ctx
+}
+
+func (self *EntityChangeState[E]) GetChangeType() EntityEventType {
+	return self.ChangeType
+}
+
+func (self *EntityChangeState[E]) GetInitialParentEntity() Entity {
+	var tmp Entity = self.InitialState
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
+		return nil
+	}
+	return self.store.parentMapper(self.InitialState)
+}
+
+func (self *EntityChangeState[E]) GetFinalParentEntity() Entity {
+	var tmp Entity = self.FinalState
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
+		return nil
+	}
+	return self.store.parentMapper(self.FinalState)
+}
+
+func (self *EntityChangeState[E]) InitFromChild(flow EntityChangeFlow) {
+	self.Id = flow.GetId()
+	self.Ctx = flow.GetCtx()
+	self.ChangeType = flow.GetChangeType()
+
+	if parentEntity := flow.GetInitialParentEntity(); parentEntity != nil {
+		self.InitialState = parentEntity.(E)
+	}
+
+	if parentEntity := flow.GetFinalParentEntity(); parentEntity != nil {
+		self.FinalState = parentEntity.(E)
+	}
 }
 
 func (self *EntityChangeState[E]) Init(ctx MutateContext) (bool, error) {
@@ -89,6 +133,15 @@ func (self *EntityChangeState[E]) LoadFinalState() error {
 	var err error
 	self.FinalState, _, err = self.store.impl.FindById(self.Ctx.Tx(), self.Id)
 	return err
+}
+
+func (self *EntityChangeState[E]) FireEvents() error {
+	if err := self.ProcessPreCommit(); err != nil {
+		return err
+	}
+
+	self.Ctx.Tx().OnCommit(self.ProcessPostCommit)
+	return nil
 }
 
 func (self *EntityChangeState[E]) ProcessPreCommit() error {
@@ -108,14 +161,17 @@ func (self *EntityChangeState[E]) ProcessPostCommit() {
 
 type EntityChangeFlow interface {
 	Init(ctx MutateContext) (bool, error)
+	InitFromChild(flow EntityChangeFlow)
 	LoadFinalState() error
 	ProcessPreCommit() error
 	ProcessPostCommit()
-}
+	FireEvents() error
 
-type EntityConstraint[E Entity] interface {
-	ProcessPreCommit(state *EntityChangeState[E]) error
-	ProcessPostCommit(state *EntityChangeState[E])
+	GetId() string
+	GetCtx() MutateContext
+	GetChangeType() EntityEventType
+	GetInitialParentEntity() Entity
+	GetFinalParentEntity() Entity
 }
 
 type BaseStore[E Entity] struct {

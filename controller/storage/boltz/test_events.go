@@ -1,8 +1,6 @@
 package boltz
 
 import (
-	"github.com/kataras/go-events"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 	"time"
 )
@@ -27,16 +25,16 @@ type TestEventChecker struct {
 }
 
 func (self *TestEventChecker) AddHandlers(store CrudBaseStore) {
-	for _, eventType := range []events.EventName{EventCreate, EventUpdate, EventDelete} {
+	for _, eventType := range []EntityEventType{EntityCreated, EntityUpdated, EntityDeleted} {
 		entityType := TestEntityTypeParent
 		if store.IsChildStore() {
 			entityType = TestEntityTypeChild
 		}
-		store.AddListener(eventType, self.newHandler(entityType, eventType).accept)
+		store.AddListener(self.newHandler(entityType, eventType).accept, eventType)
 	}
 }
 
-func (self *TestEventChecker) newHandler(entityType string, eventType events.EventName) *testEventHandler {
+func (self *TestEventChecker) newHandler(entityType string, eventType EntityEventType) *testEventHandler {
 	return &testEventHandler{
 		entityType:   entityType,
 		eventType:    eventType,
@@ -44,7 +42,7 @@ func (self *TestEventChecker) newHandler(entityType string, eventType events.Eve
 	}
 }
 
-func (self *TestEventChecker) RequireEvent(entityType string, entity Entity, eventType events.EventName) Entity {
+func (self *TestEventChecker) RequireEvent(entityType string, entity Entity, eventType EntityEventType) Entity {
 	select {
 	case event := <-self.eventC:
 		self.NotNil(event)
@@ -72,22 +70,11 @@ func (self *TestEventChecker) RequireNoEvent() {
 
 type testEventHandler struct {
 	entityType   string
-	eventType    events.EventName
+	eventType    EntityEventType
 	eventChecker *TestEventChecker
 }
 
-func (self *testEventHandler) accept(i ...interface{}) {
-	var entity Entity
-	if len(i) != 1 {
-		self.eventChecker.errC <- errors.Errorf("expected 1 entity, got %v", len(i))
-	}
-	ok := false
-	entity, ok = i[0].(Entity)
-
-	if !ok {
-		self.eventChecker.errC <- errors.Errorf("expected Entity, got %T", i[0])
-		return
-	}
+func (self *testEventHandler) accept(entity Entity) {
 	self.eventChecker.eventC <- &TestEvent{
 		EntityType: self.entityType,
 		Entity:     entity,
@@ -98,5 +85,5 @@ func (self *testEventHandler) accept(i ...interface{}) {
 type TestEvent struct {
 	EntityType string
 	Entity     Entity
-	eventType  events.EventName
+	eventType  EntityEventType
 }

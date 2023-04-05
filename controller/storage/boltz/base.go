@@ -17,7 +17,6 @@
 package boltz
 
 import (
-	"github.com/kataras/go-events"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
@@ -29,10 +28,6 @@ const (
 )
 
 const (
-	EventCreate events.EventName = "CREATE"
-	EventDelete events.EventName = "DELETE"
-	EventUpdate events.EventName = "UPDATE"
-
 	FieldId             = "id"
 	FieldCreatedAt      = "createdAt"
 	FieldUpdatedAt      = "updatedAt"
@@ -109,24 +104,10 @@ type ListStore interface {
 	IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor
 }
 
-type EntityChangeHandler func(ctx MutateContext, entityId string) error
-
-type EntityCreateHandler[E Entity] interface {
-	HandleEntityCreate(ctx MutateContext, entity Entity)
-}
-
-type EntityUpdateHandler[E Entity] interface {
-	HandleEntityUpdate(ctx MutateContext, old, new Entity)
-}
-
-type EntityDeleteHandler[E Entity] interface {
-	HandleEntityDelete(ctx MutateContext, entity Entity)
-}
-
 type ChildStoreStrategy[E Entity] interface {
-	CrudBaseStore
-	HandleUpdate(ctx MutateContext, E Entity, checker FieldChecker) (bool, error)
-	HandleDelete(ctx MutateContext, E Entity) error
+	HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error)
+	HandleDelete(ctx MutateContext, entity E) error
+	GetStore() CrudBaseStore
 }
 
 type CrudBaseStore interface {
@@ -137,27 +118,32 @@ type CrudBaseStore interface {
 
 	DeleteById(ctx MutateContext, id string) error
 	DeleteWhere(ctx MutateContext, query string) error
-	processDeleteConstraints(ctx MutateContext, id string) error
+	processDeleteConstraints(ctx MutateContext, id string) (EntityChangeFlow, error)
 
 	NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
+	newEntityChangeFlow() EntityChangeFlow
 
 	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
 
-	// CreateChild is used to create child entities
-	//
-	// Deprecated: only used in spot, which will be gone soon
-	CreateChild(ctx MutateContext, parentId string, entity ChildEntity) error
-
-	// ListChildIds is used to list child entities
-	//
-	// Deprecated: only used in spot, which will be gone soon
-	ListChildIds(tx *bbolt.Tx, parentId string, childType string) []string
-
-	// BaseLoadOneChildById is used to load child entities
-	//
-	// Deprecated: only used in spot, which will be gone soon
-	BaseLoadOneChildById(tx *bbolt.Tx, id string, childId string, entity ChildEntity) (bool, error)
+	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
 }
+
+type EntityConstraint[E Entity] interface {
+	ProcessPreCommit(state *EntityChangeState[E]) error
+	ProcessPostCommit(state *EntityChangeState[E])
+}
+
+type EntityEventListener[E Entity] interface {
+	HandleEntityEvent(entity E)
+}
+
+type EntityEventType byte
+
+const (
+	EntityCreated EntityEventType = 1
+	EntityUpdated EntityEventType = 2
+	EntityDeleted EntityEventType = 3
+)
 
 type CrudStore[E Entity] interface {
 	CrudBaseStore
@@ -172,6 +158,8 @@ type CrudStore[E Entity] interface {
 	LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, error)
 
 	GetEntityStrategy() EntityStrategy[E]
+	AddEntityConstraint(constraint EntityConstraint[E])
+	AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType)
 	NewStoreEntity() E
 }
 
@@ -277,15 +265,6 @@ type Entity interface {
 	//	LoadValues(store CrudStore, bucket *TypedBucket)
 	//	SetValues(ctx *PersistContext)
 	GetEntityType() string
-}
-
-// ChildEntity is an Entity that can be loaded and persisted
-//
-// Deprecated: Only used by Child entity functionality which is going away
-type ChildEntity interface {
-	Entity
-	LoadValues(bucket *TypedBucket)
-	SetValues(ctx *PersistContext)
 }
 
 type ExtEntity interface {

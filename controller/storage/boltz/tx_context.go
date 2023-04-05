@@ -18,7 +18,6 @@ package boltz
 
 import (
 	"context"
-	"github.com/kataras/go-events"
 	"go.etcd.io/bbolt"
 )
 
@@ -34,21 +33,6 @@ type MutateContext interface {
 	Context() context.Context
 	UpdateContext(func(ctx context.Context) context.Context) MutateContext
 	GetChangeAuthor() string
-}
-
-type mutateEvent struct {
-	em     events.EventEmmiter
-	entity Entity
-	name   events.EventName
-	ctx    context.Context
-}
-
-func (self *mutateEvent) Exec() {
-	self.em.Emit(self.name, self.entity)
-}
-
-func (self *mutateEvent) Matches(interface{}) bool {
-	return false
 }
 
 func NewMutateContext(changeAuthor string, context context.Context) MutateContext {
@@ -69,7 +53,6 @@ func NewTxMutateContext(context context.Context, tx *bbolt.Tx) MutateContext {
 
 type mutateContext struct {
 	tx           *bbolt.Tx
-	events       []CommitAction
 	ctx          context.Context
 	changeAuthor string
 }
@@ -88,7 +71,6 @@ func (self *mutateContext) Tx() *bbolt.Tx {
 
 func (self *mutateContext) setTx(tx *bbolt.Tx) MutateContext {
 	self.tx = tx
-	tx.OnCommit(self.handleCommit)
 	return self
 }
 
@@ -103,22 +85,6 @@ func (self *mutateContext) GetChangeAuthor() string {
 func (self *mutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
 	self.ctx = f(self.ctx)
 	return self
-}
-
-func (self *mutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
-	self.events = append(self.events, &mutateEvent{
-		em:     em,
-		entity: entity,
-		name:   name,
-	})
-}
-
-func (self *mutateContext) handleCommit() {
-	go func() {
-		for _, event := range self.events {
-			event.Exec()
-		}
-	}()
 }
 
 func NewSystemMutateContext(ctx MutateContext) MutateContext {
@@ -159,5 +125,5 @@ func (self *systemMutateContext) UpdateContext(f func(context.Context) context.C
 }
 
 func (self *systemMutateContext) GetChangeAuthor() string {
-	return self.GetChangeAuthor()
+	return self.wrapped.GetChangeAuthor()
 }
