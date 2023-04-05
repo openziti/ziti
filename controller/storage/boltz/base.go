@@ -35,6 +35,24 @@ const (
 	FieldIsSystemEntity = "isSystem"
 )
 
+const (
+	ContextChangeAuthorIdKey   = "changeAuthorId"
+	ContextChangeAuthorNameKey = "changeAuthorName"
+	ContextChangeTraceId       = "traceId"
+)
+
+type EntityEventType byte
+
+const (
+	EntityCreated EntityEventType = 1
+	EntityUpdated EntityEventType = 2
+	EntityDeleted EntityEventType = 3
+)
+
+type Checkable interface {
+	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
+}
+
 type ListStore interface {
 	ast.SymbolTypes
 
@@ -111,6 +129,7 @@ type ChildStoreStrategy[E Entity] interface {
 }
 
 type CrudBaseStore interface {
+	Checkable
 	ListStore
 	Constrained
 
@@ -123,9 +142,9 @@ type CrudBaseStore interface {
 	NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
 	newEntityChangeFlow() EntityChangeFlow
 
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
-
 	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
+	AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType)
+	AddUntypedEntityConstraint(constraint UntypedEntityConstraint)
 }
 
 type EntityConstraint[E Entity] interface {
@@ -133,17 +152,14 @@ type EntityConstraint[E Entity] interface {
 	ProcessPostCommit(state *EntityChangeState[E])
 }
 
+type UntypedEntityConstraint interface {
+	ProcessPreCommit(state UntypedEntityChangeState) error
+	ProcessPostCommit(state UntypedEntityChangeState)
+}
+
 type EntityEventListener[E Entity] interface {
 	HandleEntityEvent(entity E)
 }
-
-type EntityEventType byte
-
-const (
-	EntityCreated EntityEventType = 1
-	EntityUpdated EntityEventType = 2
-	EntityDeleted EntityEventType = 3
-)
 
 type CrudStore[E Entity] interface {
 	CrudBaseStore
@@ -160,6 +176,8 @@ type CrudStore[E Entity] interface {
 	GetEntityStrategy() EntityStrategy[E]
 	AddEntityConstraint(constraint EntityConstraint[E])
 	AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType)
+	AddEntityEventListenerF(listener func(E), changeType EntityEventType, changeTypes ...EntityEventType)
+
 	NewStoreEntity() E
 }
 

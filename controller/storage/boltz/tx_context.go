@@ -27,18 +27,19 @@ type CommitAction interface {
 
 type MutateContext interface {
 	Tx() *bbolt.Tx
+	AddPreCommitAction(func(ctx MutateContext) error)
+	RunPreCommitActions() error
+	AddCommitAction(func())
 	setTx(tx *bbolt.Tx) MutateContext
 	IsSystemContext() bool
 	GetSystemContext() MutateContext
 	Context() context.Context
 	UpdateContext(func(ctx context.Context) context.Context) MutateContext
-	GetChangeAuthor() string
 }
 
-func NewMutateContext(changeAuthor string, context context.Context) MutateContext {
+func NewMutateContext(context context.Context) MutateContext {
 	ctx := &mutateContext{
-		ctx:          context,
-		changeAuthor: changeAuthor,
+		ctx: context,
 	}
 	return ctx
 }
@@ -52,9 +53,10 @@ func NewTxMutateContext(context context.Context, tx *bbolt.Tx) MutateContext {
 }
 
 type mutateContext struct {
-	tx           *bbolt.Tx
-	ctx          context.Context
-	changeAuthor string
+	tx               *bbolt.Tx
+	ctx              context.Context
+	preCommitActions []func(MutateContext) error
+	commitActions    []func()
 }
 
 func (self *mutateContext) GetSystemContext() MutateContext {
@@ -71,15 +73,37 @@ func (self *mutateContext) Tx() *bbolt.Tx {
 
 func (self *mutateContext) setTx(tx *bbolt.Tx) MutateContext {
 	self.tx = tx
+	tx.OnCommit(self.handleCommit)
 	return self
+}
+
+func (self *mutateContext) AddCommitAction(f func()) {
+	self.commitActions = append(self.commitActions, f)
+}
+
+func (self *mutateContext) AddPreCommitAction(f func(MutateContext) error) {
+	self.preCommitActions = append(self.preCommitActions, f)
+}
+
+func (self *mutateContext) RunPreCommitActions() error {
+	for _, action := range self.preCommitActions {
+		if err := action(self); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *mutateContext) handleCommit() {
+	go func() {
+		for _, hook := range self.commitActions {
+			hook()
+		}
+	}()
 }
 
 func (self *mutateContext) Context() context.Context {
 	return self.ctx
-}
-
-func (self *mutateContext) GetChangeAuthor() string {
-	return self.changeAuthor
 }
 
 func (self *mutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
@@ -98,6 +122,18 @@ func NewSystemMutateContext(ctx MutateContext) MutateContext {
 
 type systemMutateContext struct {
 	wrapped MutateContext
+}
+
+func (self *systemMutateContext) AddPreCommitAction(f func(MutateContext) error) {
+	self.wrapped.AddPreCommitAction(f)
+}
+
+func (self *systemMutateContext) AddCommitAction(f func()) {
+	self.wrapped.AddCommitAction(f)
+}
+
+func (self *systemMutateContext) RunPreCommitActions() error {
+	return self.wrapped.RunPreCommitActions()
 }
 
 func (self *systemMutateContext) GetSystemContext() MutateContext {
@@ -122,8 +158,4 @@ func (self *systemMutateContext) Context() context.Context {
 
 func (self *systemMutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
 	return self.wrapped.UpdateContext(f)
-}
-
-func (self *systemMutateContext) GetChangeAuthor() string {
-	return self.wrapped.GetChangeAuthor()
 }

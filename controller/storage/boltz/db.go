@@ -108,7 +108,7 @@ func (self *DbImpl) Close() error {
 
 func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) error {
 	if ctx == nil {
-		ctx = NewMutateContext("unknown", context.Background())
+		ctx = NewMutateContext(context.Background())
 	}
 
 	if ctx.Tx() == nil {
@@ -119,7 +119,10 @@ func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) 
 
 		return self.db.Update(func(tx *bbolt.Tx) error {
 			ctx.setTx(tx)
-			return fn(ctx)
+			if err := fn(ctx); err != nil {
+				return err
+			}
+			return ctx.RunPreCommitActions()
 		})
 	}
 

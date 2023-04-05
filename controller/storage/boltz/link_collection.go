@@ -25,6 +25,7 @@ import (
 )
 
 type LinkCollection interface {
+	Checkable
 	AddLinks(tx *bbolt.Tx, id string, keys ...string) error
 	AddLink(tx *bbolt.Tx, id []byte, key []byte) (bool, error)
 	RemoveLinks(tx *bbolt.Tx, id string, keys ...string) error
@@ -36,7 +37,6 @@ type LinkCollection interface {
 	EntityDeleted(tx *bbolt.Tx, id string) error
 	GetFieldSymbol() EntitySymbol
 	GetLinkedSymbol() EntitySymbol
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
 }
 
 type linkCollectionImpl struct {
@@ -198,7 +198,8 @@ func (collection *linkCollectionImpl) IterateLinks(tx *bbolt.Tx, id []byte) ast.
 	return ast.EmptyCursor
 }
 
-func (collection *linkCollectionImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
+func (collection *linkCollectionImpl) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
+	tx := ctx.Tx()
 	foundInverse := false
 	for _, lc := range collection.otherField.GetStore().getLinks() {
 		if collection.GetFieldSymbol().GetName() == lc.GetLinkedSymbol().GetName() &&

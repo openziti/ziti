@@ -18,7 +18,6 @@ package boltz
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
@@ -249,11 +248,11 @@ type SetReadIndex interface {
 }
 
 type Constraint interface {
+	Checkable
 	ProcessBeforeUpdate(ctx *IndexingContext)
 	ProcessAfterUpdate(ctx *IndexingContext)
 	ProcessBeforeDelete(ctx *IndexingContext)
 	Initialize(tx *bbolt.Tx, errorHolder errorz.ErrorHolder)
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
 }
 
 type uniqueIndex struct {
@@ -339,8 +338,8 @@ func (index *uniqueIndex) ProcessBeforeDelete(ctx *IndexingContext) {
 	}
 }
 
-func (index *uniqueIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
-	mutateCtx := NewMutateContext("db-integrity-check", context.Background()).setTx(tx)
+func (index *uniqueIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(error, bool)) error {
+	tx := ctx.Tx()
 	indexBucket := index.getIndexBucket(tx)
 	cursor := indexBucket.Cursor()
 	store := index.symbol.GetStore()
@@ -377,7 +376,7 @@ func (index *uniqueIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(
 
 		if idxId == nil {
 			if fix {
-				ctx := store.(CrudBaseStore).NewIndexingContext(false, mutateCtx, string(id), nil)
+				ctx := store.(CrudBaseStore).NewIndexingContext(false, ctx, string(id), nil)
 				if err := index.processIntegrityFix(ctx); err != nil {
 					return err
 				}
@@ -561,7 +560,8 @@ func (index *setIndex) deleteIndexKey(tx *bbolt.Tx, key []byte) error {
 	return indexBucket.DeleteBucket(key)
 }
 
-func (index *setIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
+func (index *setIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(error, bool)) error {
+	tx := ctx.Tx()
 	if indexBaseBucket := Path(tx, index.indexPath...); indexBaseBucket != nil {
 		cursor := indexBaseBucket.Cursor()
 		for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
@@ -705,7 +705,8 @@ func (index *fkIndex) Initialize(_ *bbolt.Tx, _ errorz.ErrorHolder) {
 	// nothing to do, as this index has no static location
 }
 
-func (index *fkIndex) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
+func (index *fkIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(error, bool)) error {
+	tx := ctx.Tx()
 	for idsCursor := index.fkSymbol.GetStore().IterateValidIds(tx, ast.BoolNodeTrue); idsCursor.IsValid(); idsCursor.Next() {
 		id := idsCursor.Current()
 		entityBucket := index.fkSymbol.GetStore().GetEntityBucket(tx, id)
@@ -825,7 +826,7 @@ func (index *fkDeleteConstraint) Initialize(*bbolt.Tx, errorz.ErrorHolder) {
 	// nothing to do, as this index has no static location
 }
 
-func (index *fkDeleteConstraint) CheckIntegrity(*bbolt.Tx, bool, func(error, bool)) error {
+func (index *fkDeleteConstraint) CheckIntegrity(MutateContext, bool, func(error, bool)) error {
 	return nil
 }
 
@@ -878,7 +879,8 @@ func (index *fkConstraint) Initialize(*bbolt.Tx, errorz.ErrorHolder) {
 	// nothing to do, as this index has no static location
 }
 
-func (index *fkConstraint) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
+func (index *fkConstraint) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(error, bool)) error {
+	tx := ctx.Tx()
 	for idsCursor := index.symbol.GetStore().IterateValidIds(tx, ast.BoolNodeTrue); idsCursor.IsValid(); idsCursor.Next() {
 		id := idsCursor.Current()
 		_, key := index.symbol.Eval(tx, id)
@@ -931,7 +933,8 @@ func (index *fkDeleteCascadeConstraint) ProcessBeforeDelete(ctx *IndexingContext
 		targetStore := index.symbol.GetStore().(CrudBaseStore)
 
 		if index.cascadeType == CascadeNone {
-			for cursor := targetStore.IterateValidIds(ctx.Tx(), filter); cursor.IsValid(); cursor.Next() {
+			cursor := targetStore.IterateValidIds(ctx.Tx(), filter)
+			if cursor.IsValid() {
 				ctx.ErrHolder.SetError(NewReferenceByIdError(
 					index.symbol.GetLinkedType().GetSingularEntityType(),
 					string(ctx.RowId),
@@ -961,6 +964,6 @@ func (index *fkDeleteCascadeConstraint) Initialize(*bbolt.Tx, errorz.ErrorHolder
 	// nothing to do, as this index has no static location
 }
 
-func (index *fkDeleteCascadeConstraint) CheckIntegrity(*bbolt.Tx, bool, func(error, bool)) error {
+func (index *fkDeleteCascadeConstraint) CheckIntegrity(MutateContext, bool, func(error, bool)) error {
 	return nil
 }

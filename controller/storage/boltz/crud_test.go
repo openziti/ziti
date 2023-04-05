@@ -470,7 +470,8 @@ func (test *crudTest) initStoresForIntegrityChecks() ([]*Employee, []*Location) 
 func (test *crudTest) requireNoErrors(store CrudBaseStore) {
 	var validateError error
 	err := test.db.View(func(tx *bbolt.Tx) error {
-		return store.CheckIntegrity(tx, false, func(err error, fixed bool) {
+		ctx := NewTxMutateContext(context.Background(), tx)
+		return store.CheckIntegrity(ctx, false, func(err error, fixed bool) {
 			validateError = err
 			test.False(fixed)
 		})
@@ -496,7 +497,8 @@ func (test *crudTest) readEmployeeNameIndex(name string) *string {
 func (test *crudTest) requireIntegrityError(store CrudBaseStore, errMsg string) {
 	var validateError error
 	err := test.db.View(func(tx *bbolt.Tx) error {
-		return store.CheckIntegrity(tx, false, func(err error, fixed bool) {
+		ctx := NewTxMutateContext(context.Background(), tx)
+		return store.CheckIntegrity(ctx, false, func(err error, fixed bool) {
 			validateError = err
 			test.False(fixed)
 		})
@@ -511,7 +513,8 @@ func (test *crudTest) requireIntegrityErrorAndFixResult(store CrudBaseStore, err
 	var validateError error
 	var didFix bool
 	err := test.db.Update(func(tx *bbolt.Tx) error {
-		return store.CheckIntegrity(tx, true, func(err error, fixed bool) {
+		ctx := NewTxMutateContext(context.Background(), tx)
+		return store.CheckIntegrity(ctx, true, func(err error, fixed bool) {
 			validateError = err
 			didFix = fixed
 		})
@@ -560,7 +563,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	employee6 := newEmployee("Joe Hill")
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext("test", context.Background()).setTx(tx)
+		ctx := NewTxMutateContext(context.Background(), tx)
 		return test.empStore.Create(ctx, employee6)
 	})
 	test.EqualError(err, "duplicate value 'Joe Hill' in unique index on employees store")
@@ -580,7 +583,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	employee5.Name = "Bob MacBobface"
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext("test", context.Background()).setTx(tx)
+		ctx := NewTxMutateContext(context.Background(), tx)
 		test.NoError(test.empStore.Update(ctx, employee1, nil))
 		test.NoError(test.empStore.Update(ctx, employee3, nil))
 		test.NoError(test.empStore.Update(ctx, employee5, nil))
@@ -606,7 +609,7 @@ func (test *crudTest) testUniqueIndex(t *testing.T) {
 	test.NoError(err)
 
 	err = test.db.Update(func(tx *bbolt.Tx) error {
-		ctx := NewMutateContext("test", context.Background()).setTx(tx)
+		ctx := NewTxMutateContext(context.Background(), tx)
 		test.NoError(test.empStore.DeleteWhere(ctx, "true"))
 		return nil
 	})
