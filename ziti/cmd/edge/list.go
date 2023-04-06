@@ -983,12 +983,18 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
+		authPolicy := wrapper.String("authPolicy.name")
+
+		if authPolicy == "" {
+			authPolicy = wrapper.String("authPolicyId")
+		}
+
 		t.AppendRow(table.Row{
 			wrapper.String("id"),
 			wrapper.String("name"),
 			wrapper.String("type.name"),
 			strings.Join(wrapper.StringSlice("roleAttributes"), ","),
-			wrapper.String("authPolicyId")})
+			authPolicy})
 	}
 	api.RenderTable(o, t, pagingInfo)
 
