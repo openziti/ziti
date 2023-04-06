@@ -18,6 +18,7 @@ package fabric
 
 import (
 	"github.com/Jeffail/gabs"
+	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
@@ -110,4 +111,12 @@ func patchEntityOfType(entityType string, body string, options *api.Options) (*g
 // updateEntityOfType updates an entity of the given type on the Ziti Edge Controller
 func updateEntityOfType(entityType string, body string, options *api.Options, method string) (*gabs.Container, error) {
 	return util.ControllerUpdate(util.FabricAPI, entityType, body, options.Out, method, options.OutputJSONRequest, options.OutputJSONResponse, options.Timeout, options.Verbose)
+}
+
+func WithFabricClient(clientOpts util.ClientOpts, f func(client *fabric_rest_client.ZitiFabric) error) error {
+	client, err := util.NewFabricManagementClient(clientOpts)
+	if err != nil {
+		return err
+	}
+	return f(client)
 }

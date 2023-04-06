@@ -67,6 +67,8 @@ func newDeleteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newDeleteCmdForEntityType("session", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("terminator", newOptions()))
 	cmd.AddCommand(newDeleteCmdForEntityType("transit-router", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("auth-policy", newOptions()))
+	cmd.AddCommand(newDeleteCmdForEntityType("external-jwt-signer", newOptions(), "ext-jwt-signer", "ext-jwt-signers", "external-jwt-signers"))
 
 	return cmd
 }

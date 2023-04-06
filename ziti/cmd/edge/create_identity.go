@@ -43,6 +43,7 @@ type createIdentityOptions struct {
 	servicePrecedences       map[string]string
 	appData                  map[string]string
 	externalId               string
+	authPolicyNameOrId       string
 }
 
 // newCreateIdentityCmd creates the 'edge controller create identity' command
@@ -93,6 +94,7 @@ func newCreateIdentityOfTypeCmd(idType string, options *createIdentityOptions) *
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().StringVarP(&options.authPolicyNameOrId, "auth-policy", "P", "default", "The name or id of the auth policy to assign to the identity")
 
 	options.AddCommonFlags(cmd)
 
@@ -156,7 +158,21 @@ func runCreateIdentity(idType string, o *createIdentityOptions) error {
 		delete(o.servicePrecedences, k)
 		o.servicePrecedences[id] = prec
 	}
+
 	api.SetJSONValue(entityData, o.servicePrecedences, "serviceHostingPrecedences")
+
+	authPolicyId, err := mapNameToID("auth-policies", o.authPolicyNameOrId, o.Options)
+
+	if err != nil {
+		return fmt.Errorf("could not fetch auth policy by name or id: %w", err)
+	}
+
+	if authPolicyId == "" {
+		return fmt.Errorf("authentication policy id or name '%s' is not found", o.authPolicyNameOrId)
+	}
+
+	api.SetJSONValue(entityData, authPolicyId, "authPolicyId")
+
 	o.SetTags(entityData)
 
 	result, err := CreateEntityOfType("identities", entityData.String(), &o.Options)

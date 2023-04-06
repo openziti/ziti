@@ -36,17 +36,6 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
-  #metrics:
-  #file:
-  #path: /tmp/ziti-controller-metrics.log
-  #maxsizemb: 100:wq
-  # Supported formats: json, plain
-  # Defaults to json
-  #format: plain
-  #influxdb:
-  #url:                http://localhost:8086
-  #database:           ziti
-
 #events:
 #  jsonLogger:
 #    subscriptions:
