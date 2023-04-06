@@ -28,13 +28,13 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.5
-	github.com/openziti/channel/v2 v2.0.54
+	github.com/openziti/channel/v2 v2.0.55
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.79
-	github.com/openziti/foundation/v2 v2.0.19
+	github.com/openziti/fabric v0.22.80
+	github.com/openziti/foundation/v2 v2.0.20
 	github.com/openziti/identity v1.0.43
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.17
+	github.com/openziti/metrics v1.2.18
 	github.com/openziti/sdk-golang v0.18.76
 	github.com/openziti/storage v0.1.46
 	github.com/openziti/transport/v2 v2.0.69
@@ -45,7 +45,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
@@ -93,7 +93,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/hashicorp/raft v1.4.0 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.0.0 // indirect
