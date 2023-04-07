@@ -135,16 +135,11 @@ type interceptor struct {
 }
 
 func (self *interceptor) Stop() {
-	servicesRemoved := false
 	self.serviceProxies.IterCb(func(key string, proxy *tProxy) {
 		proxy.Stop(alwaysRemoveAddressTracker{})
-		servicesRemoved = true
 	})
 	self.serviceProxies.Clear()
-
-	if servicesRemoved {
-		self.cleanupChains()
-	}
+	self.cleanupChains()
 }
 
 func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resolver, tracker intercept.AddressTracker) error {
@@ -160,7 +155,6 @@ func (self *interceptor) StopIntercepting(serviceName string, tracker intercept.
 	if proxy, found := self.serviceProxies.Get(serviceName); found {
 		proxy.Stop(tracker)
 		self.serviceProxies.Remove(serviceName)
-		self.cleanupChains()
 	}
 	return nil
 }
