@@ -72,7 +72,7 @@ func (self *createTerminatorHandler) handleCreateTerminator(msg *channel.Message
 		Cost:           uint16(request.Cost),
 	}
 
-	if err := self.network.Terminators.Create(terminator, self.newChangeContext(ch)); err == nil {
+	if err := self.network.Terminators.Create(terminator, self.newChangeContext(ch, "fabric.create.terminator")); err == nil {
 		pfxlog.Logger().Infof("created terminator [t/%s]", terminator.Id)
 		handler_common.SendSuccess(msg, ch, terminator.Id)
 	} else {

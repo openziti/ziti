@@ -42,16 +42,16 @@ const (
 
 type Terminator struct {
 	boltz.BaseExtEntity
-	Service        string
-	Router         string
-	Binding        string
-	Address        string
-	InstanceId     string
-	InstanceSecret []byte
-	Cost           uint16
-	Precedence     string
-	PeerData       xt.PeerData
-	HostId         string
+	Service        string      `json:"service"`
+	Router         string      `json:"router"`
+	Binding        string      `json:"binding"`
+	Address        string      `json:"address"`
+	InstanceId     string      `json:"instance_id"`
+	InstanceSecret []byte      `json:"instance_secret"`
+	Cost           uint16      `json:"cost"`
+	Precedence     string      `json:"precedence"`
+	PeerData       xt.PeerData `json:"peer_data"`
+	HostId         string      `json:"host_id"`
 }
 
 func (entity *Terminator) GetCost() uint16 {

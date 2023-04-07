@@ -185,6 +185,16 @@ func (event *JsonClusterEvent) Format() ([]byte, error) {
 	return MarshalJson(event)
 }
 
+type JsonEntityChangeEvent event.EntityChangeEvent
+
+func (event *JsonEntityChangeEvent) GetEventType() string {
+	return "entity.change"
+}
+
+func (event *JsonEntityChangeEvent) Format() ([]byte, error) {
+	return MarshalJson(event)
+}
+
 func NewJsonFormatter(queueDepth int, sink event.FormattedEventSink) *JsonFormatter {
 	result := &JsonFormatter{
 		BaseFormatter: BaseFormatter{
@@ -235,6 +245,10 @@ func (formatter *JsonFormatter) AcceptUsageEventV3(evt *event.UsageEventV3) {
 
 func (formatter *JsonFormatter) AcceptClusterEvent(evt *event.ClusterEvent) {
 	formatter.AcceptLoggingEvent((*JsonClusterEvent)(evt))
+}
+
+func (formatter *JsonFormatter) AcceptEntityChangeEvent(evt *event.EntityChangeEvent) {
+	formatter.AcceptLoggingEvent((*JsonEntityChangeEvent)(evt))
 }
 
 var histogramBuckets = map[string]string{"p50": "0.50", "p75": "0.75", "p95": "0.95", "p99": "0.99", "p999": "0.999", "p9999": "0.9999"}

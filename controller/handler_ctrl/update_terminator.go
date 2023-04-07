@@ -97,7 +97,7 @@ func (self *updateTerminatorHandler) handleUpdateTerminator(msg *channel.Message
 		checker[db.FieldTerminatorPrecedence] = struct{}{}
 	}
 
-	if err := self.network.Terminators.Update(terminator, checker, self.newChangeContext(ch)); err != nil {
+	if err := self.network.Terminators.Update(terminator, checker, self.newChangeContext(ch, "fabric.update.terminator")); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}

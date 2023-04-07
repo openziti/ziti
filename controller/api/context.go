@@ -79,11 +79,22 @@ func (rc *RequestContextImpl) GetEntitySubId() (string, error) {
 }
 
 func (rc *RequestContextImpl) NewChangeContext() *change.Context {
-	src := fmt.Sprintf("rest[auth=fabric/host=%v/method=%v/remote=%v]", rc.GetRequest().Host, rc.GetRequest().Method, rc.GetRequest().RemoteAddr)
-	changeCtx := change.New().SetSource(src).SetChangeAuthorType("fabric.admin")
-	if rc.Request.Form.Has("traceId") {
-		changeCtx.SetChangeAuthorId(rc.Request.Form.Get("traceId"))
+	changeCtx := change.New().SetSourceType(change.SourceTypeRest).
+		SetSourceAuth("fabric").
+		SetSourceMethod(rc.GetRequest().Method).
+		SetSourceLocal(rc.GetRequest().Host).
+		SetSourceRemote(rc.GetRequest().RemoteAddr)
+
+	changeCtx.SetChangeAuthorType(change.AuthorTypeCert)
+
+	if rc.Request.TLS != nil {
+		for _, cert := range rc.Request.TLS.PeerCertificates {
+			if !cert.IsCA {
+				changeCtx.SetChangeAuthorId(cert.Subject.CommonName)
+			}
+		}
 	}
+
 	return changeCtx
 }
 

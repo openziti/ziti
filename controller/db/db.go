@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	RootBucket = "ziti"
+	RootBucket     = "ziti"
+	MetadataBucket = "metadata"
 )
 
 func Open(path string) (boltz.Db, error) {

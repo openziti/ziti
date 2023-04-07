@@ -63,7 +63,7 @@ func (self *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message
 		return
 	}
 
-	if err := self.network.Terminators.Delete(request.TerminatorId, self.newChangeContext(ch)); err == nil {
+	if err := self.network.Terminators.Delete(request.TerminatorId, self.newChangeContext(ch, "fabric.remove.terminator")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("serviceId", terminator.Service).

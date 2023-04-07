@@ -165,8 +165,15 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 				changeCtx := change.New().
 					SetChangeAuthorId(status.Router.Id).
 					SetChangeAuthorName(status.Router.Name).
-					SetChangeAuthorType("router").
-					SetSource("router reported invalid terminator")
+					SetChangeAuthorType(change.AuthorTypeRouter).
+					SetSourceType(change.SourceTypeControlChannel).
+					SetSourceMethod("route.response")
+				if ch := status.Router.Control; ch != nil {
+					changeCtx.
+						SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
+						SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
+				}
+
 				if err := self.terminators.Delete(terminator.GetId(), changeCtx); err != nil {
 					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
 				}
