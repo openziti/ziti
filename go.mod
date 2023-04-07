@@ -28,16 +28,16 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.5
-	github.com/openziti/channel/v2 v2.0.57
+	github.com/openziti/channel/v2 v2.0.58
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.86
+	github.com/openziti/fabric v0.22.87
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.45
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.19
 	github.com/openziti/sdk-golang v0.18.76
 	github.com/openziti/storage v0.1.49
-	github.com/openziti/transport/v2 v2.0.71
+	github.com/openziti/transport/v2 v2.0.72
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
