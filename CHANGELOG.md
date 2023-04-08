@@ -1,3 +1,13 @@
+# Release 0.27.9
+
+## What's New
+
+* CLI additions for `ziti` to login with certificates or external-jwt-signers
+
+## Component Updates and Bug Fixes
+
+* none yet
+
 # Release 0.27.8
 
 ## What's New
