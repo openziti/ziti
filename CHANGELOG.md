@@ -3,6 +3,12 @@
 ## What's New
 
 * CLI additions for `ziti` to login with certificates or external-jwt-signers
+* NOTE: ziti edge login flag changes:
+  * `-c` flag has been changed to map to `--client-cert`
+  * `--cert` is now `--ca` and has no short flag representation
+  * `-e/--ext-jwt` allows a user to supply a file containing a jwt used with ext-jwt-signers to login
+  * `-c/--client-cert` allows a certificate to be supplied to login (used with `-k/--client-key`)
+  * `-k/--client-key` allows a key to be supplied to login (used with `-c/--client-cert`)
 
 ## Component Updates and Bug Fixes
 
