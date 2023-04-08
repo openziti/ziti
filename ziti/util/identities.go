@@ -102,7 +102,7 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
-	client := newClient()
+	client := NewClient()
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}
@@ -198,7 +198,7 @@ func (self *RestClientFabricIdentity) NewClient(timeout time.Duration, verbose b
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to load identity")
 	}
-	client := newClient()
+	client := NewClient()
 	client.SetTLSClientConfig(id.ClientTLSConfig())
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)

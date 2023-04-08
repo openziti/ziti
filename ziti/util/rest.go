@@ -81,7 +81,7 @@ func DownloadFile(filepath string, url string) (err error) {
 }
 
 // Use a 2-second timeout with a retry count of 5
-func newClient() *resty.Client {
+func NewClient() *resty.Client {
 	return resty.
 		New().
 		SetTimeout(2 * time.Second).
@@ -90,7 +90,7 @@ func newClient() *resty.Client {
 }
 
 func getRequest(verbose bool) *resty.Request {
-	return newClient().
+	return NewClient().
 		SetDebug(verbose).
 		R()
 }
@@ -569,44 +569,7 @@ func Unzip(src, dest string) error {
 	return nil
 }
 
-// EdgeControllerLogin will authenticate to the given Edge Controller
-func EdgeControllerLogin(url string, cert string, authentication string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	client := newClient()
-
-	if cert != "" {
-		client.SetRootCertificate(cert)
-	}
-
-	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
-		SetDebug(verbose).
-		R().
-		SetQueryParam("method", "password").
-		SetHeader("Content-Type", "application/json").
-		SetBody(authentication).
-		Post(url + "/authenticate")
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", url, err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), prettyPrintResponse(resp))
-	}
-
-	if logJSON {
-		outputJson(out, resp.Body())
-	}
-
-	jsonParsed, err := gabs.ParseJSON(resp.Body())
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
-	}
-
-	return jsonParsed, nil
-}
-
-func prettyPrintResponse(resp *resty.Response) string {
+func PrettyPrintResponse(resp *resty.Response) string {
 	out := resp.String()
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, []byte(out), "", "    "); err == nil {
@@ -615,7 +578,7 @@ func prettyPrintResponse(resp *resty.Response) string {
 	return out
 }
 
-func outputJson(out io.Writer, data []byte) {
+func OutputJson(out io.Writer, data []byte) {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, data, "", "    "); err == nil {
 		if _, err := fmt.Fprint(out, prettyJSON.String()); err != nil {
@@ -654,11 +617,11 @@ func ControllerDetailEntity(api API, entityType, entityId string, logJSON bool, 
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), prettyPrintResponse(resp))
+			queryUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -715,11 +678,11 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), prettyPrintResponse(resp))
+			queryUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -850,7 +813,7 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 	url := baseUrl + "/" + entityType
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", "POST", url)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -862,11 +825,11 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 
 	if resp.StatusCode() != http.StatusCreated {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJson {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -900,7 +863,7 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", "POST", fullUrl)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -916,11 +879,11 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJson {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	return nil
@@ -947,7 +910,7 @@ func ControllerUpdate(api API, entityType string, body string, out io.Writer, me
 
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", method, url)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -959,11 +922,11 @@ func ControllerUpdate(api API, entityType string, body string, out io.Writer, me
 
 	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	if len(resp.Body()) == 0 {
@@ -1009,11 +972,11 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error verifying %v instance (%v) in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, id, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, id, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	return nil
@@ -1043,11 +1006,11 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			request.Method, entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			request.Method, entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	if resp.Body() == nil {
@@ -1068,7 +1031,7 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 // on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
 // `/edge/management/<version>` and `/edge/client/<version>`.
 func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
-	client := newClient()
+	client := NewClient()
 
 	client.SetHostURL(host)
 
