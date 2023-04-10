@@ -44,7 +44,7 @@ func (s *scanner) setPaging(query ast.Query) {
 
 type uniqueIndexScanner struct {
 	scanner
-	store     ListStore
+	store     Store
 	forward   bool
 	offset    int64
 	count     int64
@@ -56,7 +56,7 @@ type uniqueIndexScanner struct {
 	current   []byte
 }
 
-func newCursorScanner(tx *bbolt.Tx, store ListStore, cursor ast.SetCursor, query ast.Query) ast.SetCursor {
+func newCursorScanner(tx *bbolt.Tx, store Store, cursor ast.SetCursor, query ast.Query) ast.SetCursor {
 	result := &uniqueIndexScanner{
 		store:     store,
 		forward:   true,
@@ -69,7 +69,7 @@ func newCursorScanner(tx *bbolt.Tx, store ListStore, cursor ast.SetCursor, query
 	return result
 }
 
-func newFilteredCursor(tx *bbolt.Tx, store ListStore, cursor ast.SeekableSetCursor, filter ast.BoolNode) ast.SeekableSetCursor {
+func newFilteredCursor(tx *bbolt.Tx, store Store, cursor ast.SeekableSetCursor, filter ast.BoolNode) ast.SeekableSetCursor {
 	result := &uniqueIndexScanner{
 		scanner: scanner{
 			targetOffset: 0,
@@ -203,7 +203,7 @@ func (scanner *uniqueIndexScanner) Seek(val []byte) {
 
 type sortingScanner struct {
 	scanner
-	store  ListStore
+	store  Store
 	offset int64
 	count  int64
 }
@@ -218,7 +218,7 @@ func (scanner *sortingScanner) Scan(tx *bbolt.Tx, query ast.Query) ([]string, in
 
 func (scanner *sortingScanner) ScanCursor(tx *bbolt.Tx, cursorProvider ast.SetCursorProvider, query ast.Query) ([]string, int64, error) {
 	scanner.setPaging(query)
-	comparator, err := scanner.store.NewRowComparator(query.GetSortFields())
+	comparator, err := scanner.store.newRowComparator(query.GetSortFields())
 	if err != nil {
 		return nil, 0, err
 	}

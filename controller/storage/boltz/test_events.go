@@ -24,7 +24,7 @@ type TestEventChecker struct {
 	eventC chan *TestEvent
 }
 
-func (self *TestEventChecker) AddHandlers(store CrudBaseStore) {
+func (self *TestEventChecker) AddHandlers(store Store) {
 	for _, eventType := range []EntityEventType{EntityCreated, EntityUpdated, EntityDeleted} {
 		entityType := TestEntityTypeParent
 		if store.IsChildStore() {

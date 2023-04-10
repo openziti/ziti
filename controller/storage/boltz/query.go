@@ -17,8 +17,8 @@
 package boltz
 
 import (
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
 )
 
@@ -41,8 +41,8 @@ type RowCursor interface {
 }
 
 type EntitySymbol interface {
-	GetStore() ListStore
-	GetLinkedType() ListStore
+	GetStore() Store
+	GetLinkedType() Store
 	GetPath() []string
 	GetType() ast.NodeType
 	GetName() string

@@ -6,7 +6,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func NewSystemEntityEnforcementConstraint(store ListStore) Constraint {
+func NewSystemEntityEnforcementConstraint(store Store) Constraint {
 	symbol := store.GetSymbol(FieldIsSystemEntity)
 	return &systemEntityConstraint{
 		systemFlagSymbol: symbol,

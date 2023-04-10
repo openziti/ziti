@@ -33,13 +33,13 @@ import (
 
 type TestContext interface {
 	GetDb() boltz.Db
-	GetStoreForEntity(entity boltz.Entity) boltz.CrudBaseStore
+	GetStoreForEntity(entity boltz.Entity) boltz.Store
 	NextTest(t *testing.T)
 	Require() *require.Assertions
 	GetReferenceTime() time.Time
 }
 
-type StoreFunc func(entity boltz.Entity) boltz.CrudBaseStore
+type StoreFunc func(entity boltz.Entity) boltz.Store
 
 type BaseTestContext struct {
 	require.Assertions
@@ -106,7 +106,7 @@ func (ctx *BaseTestContext) GetDbFile() *os.File {
 	return ctx.dbFile
 }
 
-func (ctx *BaseTestContext) GetStoreForEntity(entity boltz.Entity) boltz.CrudBaseStore {
+func (ctx *BaseTestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	store := ctx.storeF(entity)
 	ctx.NotNil(store, "no store found for entity of type: %v", entity.GetEntityType())
 	return store
@@ -129,9 +129,9 @@ func Delete[E boltz.Entity](ctx TestContext, entity E) error {
 	})
 }
 
-func GetStoreForEntity[E boltz.Entity](ctx TestContext, entity E) boltz.CrudStore[E] {
+func GetStoreForEntity[E boltz.Entity](ctx TestContext, entity E) boltz.EntityStore[E] {
 	store := ctx.GetStoreForEntity(entity)
-	v, ok := store.(boltz.CrudStore[E])
+	v, ok := store.(boltz.EntityStore[E])
 	if !ok {
 		panic(errors.Errorf("store for entity type %v is of wrong type %T", entity.GetEntityType(), store))
 	}

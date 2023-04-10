@@ -26,7 +26,7 @@ import (
 	"reflect"
 )
 
-func (store *BaseStore[E]) GetParentStore() CrudBaseStore {
+func (store *BaseStore[E]) GetParentStore() Store {
 	return store.parent
 }
 
@@ -642,7 +642,7 @@ func (self *untypedEventListenerWrapper[E]) ProcessPostCommit(state *EntityChang
 }
 
 type ChildStoreUpdateHandler[E Entity, C Entity] struct {
-	Store  CrudStore[C]
+	Store  EntityStore[C]
 	Mapper func(ctx MutateContext, parent E) (C, bool)
 }
 
@@ -657,7 +657,7 @@ func (self *ChildStoreUpdateHandler[E, C]) HandleDelete(MutateContext, E) error 
 	return nil
 }
 
-func (self *ChildStoreUpdateHandler[E, C]) GetStore() CrudBaseStore {
+func (self *ChildStoreUpdateHandler[E, C]) GetStore() Store {
 	return self.Store
 }
 

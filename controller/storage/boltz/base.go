@@ -53,8 +53,10 @@ type Checkable interface {
 	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
 }
 
-type ListStore interface {
+type Store interface {
 	ast.SymbolTypes
+	Checkable
+	Constrained
 
 	GetEntityType() string
 	GetSingularEntityType() string
@@ -71,25 +73,25 @@ type ListStore interface {
 
 	GetSymbol(name string) EntitySymbol
 	MapSymbol(name string, wrapper SymbolMapper)
-	GrantSymbols(child ListStore)
+	GrantSymbols(child Store)
 	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
 	inheritMapSymbol(symbol *entityMapSymbol)
 	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
 	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
-	AddFkSymbol(name string, linkedType ListStore, path ...string) EntitySymbol
+	AddFkSymbol(name string, linkedType Store, path ...string) EntitySymbol
 	AddSymbolWithKey(name string, nodeType ast.NodeType, key string, path ...string) EntitySymbol
-	AddFkSymbolWithKey(name string, key string, linkedType ListStore, path ...string) EntitySymbol
+	AddFkSymbolWithKey(name string, key string, linkedType Store, path ...string) EntitySymbol
 	AddMapSymbol(name string, nodeType ast.NodeType, key string, path ...string)
 	AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
 	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
-	AddFkSetSymbol(name string, linkedType ListStore) EntitySetSymbol
+	AddFkSetSymbol(name string, linkedType Store) EntitySetSymbol
 	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
-	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType ListStore, prefix ...string) *entitySymbol
+	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType Store, prefix ...string) *entitySymbol
 
 	AddExtEntitySymbols()
 	MakeSymbolPublic(name string)
 
-	NewRowComparator(sort []ast.SortField) (RowComparator, error)
+	newRowComparator(sort []ast.SortField) (RowComparator, error)
 	GetPublicSymbols() []string
 	IsPublicSymbol(symbol string) bool
 
@@ -120,20 +122,8 @@ type ListStore interface {
 
 	// IterateValidIds skips non-present entities in extended stores
 	IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor
-}
 
-type ChildStoreStrategy[E Entity] interface {
-	HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error)
-	HandleDelete(ctx MutateContext, entity E) error
-	GetStore() CrudBaseStore
-}
-
-type CrudBaseStore interface {
-	Checkable
-	ListStore
-	Constrained
-
-	GetParentStore() CrudBaseStore
+	GetParentStore() Store
 
 	DeleteById(ctx MutateContext, id string) error
 	DeleteWhere(ctx MutateContext, query string) error
@@ -145,6 +135,12 @@ type CrudBaseStore interface {
 	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddUntypedEntityConstraint(constraint UntypedEntityConstraint)
+}
+
+type ChildStoreStrategy[E Entity] interface {
+	HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error)
+	HandleDelete(ctx MutateContext, entity E) error
+	GetStore() Store
 }
 
 type EntityConstraint[E Entity] interface {
@@ -161,8 +157,8 @@ type EntityEventListener[E Entity] interface {
 	HandleEntityEvent(entity E)
 }
 
-type CrudStore[E Entity] interface {
-	CrudBaseStore
+type EntityStore[E Entity] interface {
+	Store
 
 	RegisterChildStoreStrategy(childStoreStrategy ChildStoreStrategy[E])
 
@@ -190,7 +186,7 @@ type EntityStrategy[E Entity] interface {
 type PersistContext struct {
 	MutateContext
 	Id           string
-	Store        CrudBaseStore
+	Store        Store
 	Bucket       *TypedBucket
 	FieldChecker FieldChecker
 	IsCreate     bool
@@ -280,7 +276,7 @@ func (ctx *PersistContext) ProceedWithSet(field string) bool {
 type Entity interface {
 	GetId() string
 	SetId(id string)
-	//	LoadValues(store CrudStore, bucket *TypedBucket)
+	//	LoadValues(store EntityStore, bucket *TypedBucket)
 	//	SetValues(ctx *PersistContext)
 	GetEntityType() string
 }

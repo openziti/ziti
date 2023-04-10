@@ -28,12 +28,12 @@ var _ ast.Symbols = (*rowCursorImpl)(nil)
 
 type rowCursorImpl struct {
 	symbolCache map[string]EntitySymbol
-	entity      ListStore
+	entity      Store
 	currentRow  []byte
 	tx          *bbolt.Tx
 }
 
-func newRowCursor(entity ListStore, tx *bbolt.Tx) *rowCursorImpl {
+func newRowCursor(entity Store, tx *bbolt.Tx) *rowCursorImpl {
 	return &rowCursorImpl{
 		symbolCache: map[string]EntitySymbol{},
 		entity:      entity,

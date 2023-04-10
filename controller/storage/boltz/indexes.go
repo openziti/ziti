@@ -376,7 +376,7 @@ func (index *uniqueIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink 
 
 		if idxId == nil {
 			if fix {
-				ctx := store.(CrudBaseStore).NewIndexingContext(false, ctx, string(id), nil)
+				ctx := store.NewIndexingContext(false, ctx, string(id), nil)
 				if err := index.processIntegrityFix(ctx); err != nil {
 					return err
 				}
@@ -930,7 +930,7 @@ func (index *fkDeleteCascadeConstraint) ProcessBeforeDelete(ctx *IndexingContext
 			return
 		}
 
-		targetStore := index.symbol.GetStore().(CrudBaseStore)
+		targetStore := index.symbol.GetStore()
 
 		if index.cascadeType == CascadeNone {
 			cursor := targetStore.IterateValidIds(ctx.Tx(), filter)
