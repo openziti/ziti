@@ -190,7 +190,7 @@ func (store *BaseStore[E]) inheritMapSymbol(symbol *entityMapSymbol) {
 	store.mapSymbols[symbol.key] = symbol
 }
 
-func (store *BaseStore[E]) GrantSymbols(child ListStore) {
+func (store *BaseStore[E]) GrantSymbols(child Store) {
 	for name, value := range store.symbols {
 		child.addSymbol(name, store.IsPublicSymbol(name), value)
 	}
@@ -223,14 +223,14 @@ func (store *BaseStore[E]) AddSymbol(name string, nodeType ast.NodeType, prefix 
 	return store.AddSymbolWithKey(name, nodeType, name, prefix...)
 }
 
-func (store *BaseStore[E]) AddFkSymbol(name string, linkedStore ListStore, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddFkSymbol(name string, linkedStore Store, prefix ...string) EntitySymbol {
 	return store.AddFkSymbolWithKey(name, name, linkedStore, prefix...)
 }
 func (store *BaseStore[E]) AddSymbolWithKey(name string, nodeType ast.NodeType, key string, prefix ...string) EntitySymbol {
 	return store.addSymbol(name, true, store.newEntitySymbol(name, nodeType, key, nil, prefix...))
 }
 
-func (store *BaseStore[E]) AddFkSymbolWithKey(name string, key string, linkedStore ListStore, prefix ...string) EntitySymbol {
+func (store *BaseStore[E]) AddFkSymbolWithKey(name string, key string, linkedStore Store, prefix ...string) EntitySymbol {
 	return store.addSymbol(name, true, store.newEntitySymbol(name, ast.NodeTypeString, key, linkedStore, prefix...))
 }
 
@@ -247,7 +247,7 @@ func (store *BaseStore[E]) NewEntitySymbol(name string, nodeType ast.NodeType) E
 	return store.newEntitySymbol(name, nodeType, name, nil)
 }
 
-func (store *BaseStore[E]) newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType ListStore, prefix ...string) *entitySymbol {
+func (store *BaseStore[E]) newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType Store, prefix ...string) *entitySymbol {
 	var path []string
 	var bucketF func(entityBucket *TypedBucket) *TypedBucket
 
@@ -289,11 +289,11 @@ func (store *BaseStore[E]) AddPublicSetSymbol(name string, nodeType ast.NodeType
 	return result
 }
 
-func (store *BaseStore[E]) AddFkSetSymbol(name string, listStore ListStore) EntitySetSymbol {
+func (store *BaseStore[E]) AddFkSetSymbol(name string, listStore Store) EntitySetSymbol {
 	return store.addSetSymbol(name, ast.NodeTypeString, listStore)
 }
 
-func (store *BaseStore[E]) addSetSymbol(name string, nodeType ast.NodeType, listStore ListStore) EntitySetSymbol {
+func (store *BaseStore[E]) addSetSymbol(name string, nodeType ast.NodeType, listStore Store) EntitySetSymbol {
 	entitySymbol := store.newEntitySymbol(name, nodeType, name, listStore)
 	result := &entitySetSymbolImpl{
 		entitySymbol: entitySymbol,
@@ -345,7 +345,7 @@ func (sortField *sortFieldImpl) String() string {
 	return fmt.Sprintf("%v DESC", sortField.name)
 }
 
-func (store *BaseStore[E]) NewRowComparator(sort []ast.SortField) (RowComparator, error) {
+func (store *BaseStore[E]) newRowComparator(sort []ast.SortField) (RowComparator, error) {
 	// always have id as last sort element. this way if other sorts come out equal, we still
 	// can order on something, instead of having duplicates which causes rows to get discarded
 	sort = append(sort, &sortFieldImpl{name: "id", isAsc: true})
@@ -431,7 +431,7 @@ func (store *BaseStore[E]) QueryWithCursorC(tx *bbolt.Tx, cursorProvider ast.Set
 
 type ValidIdsCursors struct {
 	tx      *bbolt.Tx
-	store   ListStore
+	store   Store
 	wrapped ast.SeekableSetCursor
 }
 

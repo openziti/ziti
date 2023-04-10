@@ -73,7 +73,9 @@ func (self *mutateContext) Tx() *bbolt.Tx {
 
 func (self *mutateContext) setTx(tx *bbolt.Tx) MutateContext {
 	self.tx = tx
-	tx.OnCommit(self.handleCommit)
+	if tx != nil {
+		tx.OnCommit(self.handleCommit)
+	}
 	return self
 }
 

@@ -27,7 +27,7 @@ type StoreDefinition[E Entity] struct {
 	EntityType      string
 	EntityStrategy  EntityStrategy[E]
 	BasePath        []string
-	Parent          CrudBaseStore
+	Parent          Store
 	ParentMapper    func(Entity) Entity
 	EntityNotFoundF func(id string) error
 }
@@ -190,7 +190,7 @@ type EntityChangeFlow interface {
 type BaseStore[E Entity] struct {
 	entityStrategy     EntityStrategy[E]
 	childStoreStragies []ChildStoreStrategy[E]
-	parent             CrudBaseStore
+	parent             Store
 	parentMapper       func(childEntity Entity) Entity
 	entityType         string
 	entityPath         []string
@@ -207,10 +207,10 @@ type BaseStore[E Entity] struct {
 
 	// We track the actual implementation here to ensure that when methods that are overridden from BaseStore
 	// we call the override instead of the base method
-	impl CrudStore[E]
+	impl EntityStore[E]
 }
 
-func (store *BaseStore[E]) InitImpl(impl CrudStore[E]) {
+func (store *BaseStore[E]) InitImpl(impl EntityStore[E]) {
 	if store.impl == nil {
 		store.impl = impl
 	}

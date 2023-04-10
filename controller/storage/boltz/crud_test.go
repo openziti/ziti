@@ -467,7 +467,7 @@ func (test *crudTest) initStoresForIntegrityChecks() ([]*Employee, []*Location) 
 	return employees, locations
 }
 
-func (test *crudTest) requireNoErrors(store CrudBaseStore) {
+func (test *crudTest) requireNoErrors(store Store) {
 	var validateError error
 	err := test.db.View(func(tx *bbolt.Tx) error {
 		ctx := NewTxMutateContext(context.Background(), tx)
@@ -494,7 +494,7 @@ func (test *crudTest) readEmployeeNameIndex(name string) *string {
 	return result
 }
 
-func (test *crudTest) requireIntegrityError(store CrudBaseStore, errMsg string) {
+func (test *crudTest) requireIntegrityError(store Store, errMsg string) {
 	var validateError error
 	err := test.db.View(func(tx *bbolt.Tx) error {
 		ctx := NewTxMutateContext(context.Background(), tx)
@@ -507,7 +507,7 @@ func (test *crudTest) requireIntegrityError(store CrudBaseStore, errMsg string) 
 	test.EqualError(validateError, errMsg)
 }
 
-func (test *crudTest) requireIntegrityErrorAndFixResult(store CrudBaseStore, errMsg string, shouldFix bool) {
+func (test *crudTest) requireIntegrityErrorAndFixResult(store Store, errMsg string, shouldFix bool) {
 	test.requireIntegrityError(store, errMsg)
 
 	var validateError error
