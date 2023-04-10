@@ -39,7 +39,7 @@ const (
 type Db interface {
 	io.Closer
 	Update(ctx MutateContext, fn func(ctx MutateContext) error) error
-	Batch(fn func(tx *bbolt.Tx) error) error
+	Batch(ctx MutateContext, fn func(ctx MutateContext) error) error
 	View(fn func(tx *bbolt.Tx) error) error
 	RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error)
 
@@ -129,11 +129,27 @@ func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) 
 	return fn(ctx)
 }
 
-func (self *DbImpl) Batch(fn func(tx *bbolt.Tx) error) error {
-	self.reloadLock.RLock()
-	defer self.reloadLock.RUnlock()
+func (self *DbImpl) Batch(ctx MutateContext, fn func(ctx MutateContext) error) error {
+	if ctx == nil {
+		ctx = NewMutateContext(context.Background())
+	}
 
-	return self.db.Batch(fn)
+	if ctx.Tx() == nil {
+		self.reloadLock.RLock()
+		defer self.reloadLock.RUnlock()
+
+		defer ctx.setTx(nil)
+
+		return self.db.Batch(func(tx *bbolt.Tx) error {
+			ctx.setTx(tx)
+			if err := fn(ctx); err != nil {
+				return err
+			}
+			return ctx.RunPreCommitActions()
+		})
+	}
+
+	return fn(ctx)
 }
 
 func (self *DbImpl) View(fn func(tx *bbolt.Tx) error) error {
