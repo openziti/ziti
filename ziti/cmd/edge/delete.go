@@ -89,7 +89,7 @@ func newDeleteCmdForEntityType(entityType string, options *api.Options, aliases 
 		SuggestFor: []string{},
 	}
 
-	// allow interspersing positional args and flags
+	// allow interspersing positional args and flagsziti-tun
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
 
@@ -124,10 +124,9 @@ func runDeleteEntityOfType(o *api.Options, entityType string) error {
 	var err error
 	ids := o.Args
 	if entityType != "terminators" && entityType != "api-sessions" && entityType != "sessions" && entityType != "authenticators" && entityType != "enrollments" {
-		ids, err = mapNamesToIDs(entityType, *o, ids...)
-	}
-	if err != nil {
-		return err
+		if ids, err = mapNamesToIDs(entityType, *o, true, ids...); err != nil {
+			return err
+		}
 	}
 	return deleteEntitiesOfType(o, entityType, ids)
 }
