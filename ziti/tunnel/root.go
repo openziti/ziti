@@ -148,7 +148,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 				if err != nil {
 					log.Fatalf("failed to listing file %s: %v", file.Name(), err)
 				}
-				startIdentity(cmd, serviceListenerGroup, fn)
+				go startIdentity(cmd, serviceListenerGroup, fn)
 			}
 		}
 	} else {
@@ -192,7 +192,12 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 
 	rootPrivateContext := ziti.NewContextWithOpts(zitiCfg, options)
 
-	if err = rootPrivateContext.Authenticate(); err != nil {
-		log.WithError(err).Fatal("failed to authenticate")
+	for {
+		if err = rootPrivateContext.Authenticate(); err != nil {
+			log.WithError(err).Error("failed to authenticate")
+			time.Sleep(30 * time.Second)
+		} else {
+			return
+		}
 	}
 }
