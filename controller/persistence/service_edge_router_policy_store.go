@@ -4,11 +4,10 @@ import (
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
-	"go.etcd.io/bbolt"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"sort"
 )
 
@@ -36,7 +35,63 @@ func (entity *ServiceEdgeRouterPolicy) GetSemantic() string {
 	return entity.Semantic
 }
 
-func (entity *ServiceEdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *ServiceEdgeRouterPolicy) GetEntityType() string {
+	return EntityTypeServiceEdgeRouterPolicies
+}
+
+var _ ServiceEdgeRouterPolicyStore = (*serviceEdgeRouterPolicyStoreImpl)(nil)
+
+type ServiceEdgeRouterPolicyStore interface {
+	NameIndexed
+	Store[*ServiceEdgeRouterPolicy]
+}
+
+func newServiceEdgeRouterPolicyStore(stores *stores) *serviceEdgeRouterPolicyStoreImpl {
+	store := &serviceEdgeRouterPolicyStoreImpl{}
+	store.baseStore = newBaseStore[*ServiceEdgeRouterPolicy](stores, store)
+	store.InitImpl(store)
+	return store
+}
+
+type serviceEdgeRouterPolicyStoreImpl struct {
+	*baseStore[*ServiceEdgeRouterPolicy]
+
+	indexName             boltz.ReadIndex
+	symbolSemantic        boltz.EntitySymbol
+	symbolServiceRoles    boltz.EntitySetSymbol
+	symbolEdgeRouterRoles boltz.EntitySetSymbol
+	symbolServices        boltz.EntitySetSymbol
+	symbolEdgeRouters     boltz.EntitySetSymbol
+
+	serviceCollection    boltz.LinkCollection
+	edgeRouterCollection boltz.LinkCollection
+}
+
+func (store *serviceEdgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
+}
+
+func (store *serviceEdgeRouterPolicyStoreImpl) NewEntity() *ServiceEdgeRouterPolicy {
+	return &ServiceEdgeRouterPolicy{}
+}
+
+func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+
+	store.indexName = store.addUniqueNameField()
+	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
+	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
+	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
+	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
+	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
+}
+
+func (store *serviceEdgeRouterPolicyStoreImpl) initializeLinked() {
+	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServiceEdgeRouterPolicies)
+	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolServiceEdgeRouterPolicies)
+}
+
+func (store *serviceEdgeRouterPolicyStoreImpl) FillEntity(entity *ServiceEdgeRouterPolicy, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
@@ -44,7 +99,7 @@ func (entity *ServiceEdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *bol
 	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterRoles)
 }
 
-func (entity *ServiceEdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
+func (store *serviceEdgeRouterPolicyStoreImpl) PersistEntity(entity *ServiceEdgeRouterPolicy, ctx *boltz.PersistContext) {
 	if err := validateRolesAndIds(FieldServiceRoles, entity.ServiceRoles); err != nil {
 		ctx.Bucket.SetError(err)
 	}
@@ -77,84 +132,12 @@ func (entity *ServiceEdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *ServiceEdgeRouterPolicy) GetEntityType() string {
-	return EntityTypeServiceEdgeRouterPolicies
-}
-
-type ServiceEdgeRouterPolicyStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*ServiceEdgeRouterPolicy, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*ServiceEdgeRouterPolicy, error)
-}
-
-func newServiceEdgeRouterPolicyStore(stores *stores) *serviceEdgeRouterPolicyStoreImpl {
-	store := &serviceEdgeRouterPolicyStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeServiceEdgeRouterPolicies),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type serviceEdgeRouterPolicyStoreImpl struct {
-	*baseStore
-
-	indexName             boltz.ReadIndex
-	symbolSemantic        boltz.EntitySymbol
-	symbolServiceRoles    boltz.EntitySetSymbol
-	symbolEdgeRouterRoles boltz.EntitySetSymbol
-	symbolServices        boltz.EntitySetSymbol
-	symbolEdgeRouters     boltz.EntitySetSymbol
-
-	serviceCollection    boltz.LinkCollection
-	edgeRouterCollection boltz.LinkCollection
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
-	return store.indexName
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ServiceEdgeRouterPolicy{}
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-
-	store.indexName = store.addUniqueNameField()
-	store.symbolSemantic = store.AddSymbol(FieldSemantic, ast.NodeTypeString)
-	store.symbolServiceRoles = store.AddPublicSetSymbol(FieldServiceRoles, ast.NodeTypeString)
-	store.symbolEdgeRouterRoles = store.AddPublicSetSymbol(FieldEdgeRouterRoles, ast.NodeTypeString)
-	store.symbolServices = store.AddFkSetSymbol(db.EntityTypeServices, store.stores.edgeService)
-	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) initializeLinked() {
-	store.edgeRouterCollection = store.AddLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServiceEdgeRouterPolicies)
-	store.serviceCollection = store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolServiceEdgeRouterPolicies)
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ServiceEdgeRouterPolicy, error) {
-	entity := &ServiceEdgeRouterPolicy{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *serviceEdgeRouterPolicyStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ServiceEdgeRouterPolicy, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
 /*
 Optimizations
-1. When changing policies if only ids have changed, only add/remove ids from groups as needed
-2. When related entities added/changed, only evaluate policies against that one entity (service/edge router/service),
-   and just add/remove/ignore
-3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
+ 1. When changing policies if only ids have changed, only add/remove ids from groups as needed
+ 2. When related entities added/changed, only evaluate policies against that one entity (service/edge router/service),
+    and just add/remove/ignore
+ 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
 func (store *serviceEdgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *ServiceEdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
@@ -194,10 +177,10 @@ func (store *serviceEdgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContex
 	return store.BaseStore.DeleteById(ctx, id)
 }
 
-func (store *serviceEdgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
+func (store *serviceEdgeRouterPolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
 	ctx := &denormCheckCtx{
 		name:                   "service-edge-router-policies",
-		tx:                     tx,
+		mutateCtx:              mutateCtx,
 		sourceStore:            store.stores.edgeService,
 		targetStore:            store.stores.edgeRouter,
 		policyStore:            store,
@@ -211,5 +194,5 @@ func (store *serviceEdgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix 
 		return err
 	}
 
-	return store.BaseStore.CheckIntegrity(tx, fix, errorSink)
+	return store.BaseStore.CheckIntegrity(mutateCtx, fix, errorSink)
 }

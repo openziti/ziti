@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -38,13 +39,13 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.CleanupAll()
 
 	configType := newConfigType(eid.New())
-	ctx.RequireCreate(configType)
+	boltztest.RequireCreate(ctx, configType)
 
 	config := newConfig(eid.New(), "", map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	err := ctx.Create(config)
+	err := boltztest.Create(ctx, config)
 	ctx.EqualError(err, "index on configs.type does not allow null or empty values")
 
 	invalidId := eid.New()
@@ -52,18 +53,18 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	err = ctx.Create(config)
+	err = boltztest.Create(ctx, config)
 	ctx.EqualError(err, fmt.Sprintf("configType with id %v not found", invalidId))
 
 	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	ctx.RequireCreate(config)
-	ctx.ValidateBaseline(config)
+	boltztest.RequireCreate(ctx, config)
+	boltztest.ValidateBaseline(ctx, config)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
-		testConfig, err := ctx.stores.Config.LoadOneByName(tx, config.Name)
+		testConfig, err := ctx.stores.Config.LoadOneById(tx, config.Id)
 		ctx.NoError(err)
 		ctx.NotNil(testConfig)
 		ctx.Equal(config.Name, testConfig.Name)
@@ -73,7 +74,7 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.NoError(err)
 
 	config.Id = eid.New()
-	err = ctx.Create(config)
+	err = boltztest.Create(ctx, config)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on configs store", config.Name))
 
 	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
@@ -86,8 +87,8 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 			"count":    1000.32,
 		},
 	})
-	ctx.RequireCreate(config)
-	ctx.ValidateBaseline(config)
+	boltztest.RequireCreate(ctx, config)
+	boltztest.ValidateBaseline(ctx, config)
 
 	config = newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
@@ -106,8 +107,8 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 			},
 		},
 	})
-	ctx.RequireCreate(config)
-	ctx.ValidateBaseline(config)
+	boltztest.RequireCreate(ctx, config)
+	boltztest.ValidateBaseline(ctx, config)
 
 	configValue := `
 		{
@@ -122,8 +123,8 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	ctx.NoError(err)
 
 	config = newConfig(eid.New(), configType.Id, configMap)
-	ctx.RequireCreate(config)
-	ctx.ValidateBaseline(config)
+	boltztest.RequireCreate(ctx, config)
+	boltztest.ValidateBaseline(ctx, config)
 
 	config.Data = map[string]interface{}{
 		"dnsHostname": "ssh.mycompany.com",
@@ -131,17 +132,17 @@ func (ctx *TestContext) testConfigCrud(*testing.T) {
 	}
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
-	ctx.RequireUpdate(config)
-	ctx.ValidateUpdated(config)
+	boltztest.RequireUpdate(ctx, config)
+	boltztest.ValidateUpdated(ctx, config)
 
-	ctx.RequireDelete(config)
+	boltztest.RequireDelete(ctx, config)
 }
 
 func (ctx *TestContext) testConfigQuery(*testing.T) {
 	ctx.CleanupAll()
 
 	configType := newConfigType(eid.New())
-	ctx.RequireCreate(configType)
+	boltztest.RequireCreate(ctx, configType)
 
 	config := newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
@@ -160,7 +161,7 @@ func (ctx *TestContext) testConfigQuery(*testing.T) {
 			},
 		},
 	})
-	ctx.RequireCreate(config)
+	boltztest.RequireCreate(ctx, config)
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ids, _, err := ctx.stores.Config.QueryIds(tx, `data.enabled and data.nested.hello = "hi"`)
@@ -180,5 +181,5 @@ func (ctx *TestContext) testConfigQuery(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	ctx.RequireDelete(config)
+	boltztest.RequireDelete(ctx, config)
 }

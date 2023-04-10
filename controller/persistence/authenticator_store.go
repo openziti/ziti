@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -83,75 +82,16 @@ type Authenticator struct {
 	SubType    AuthenticatorSubType
 }
 
+func (entity *Authenticator) GetEntityType() string {
+	return EntityTypeAuthenticators
+}
+
 var authenticatorFieldMappings = map[string]string{
 	FieldAuthenticatorIdentity:        "identityId",
 	FieldAuthenticatorUpdbPassword:    "password",
 	FieldAuthenticatorUpdbUsername:    "username",
 	FieldAuthenticatorUpdbSalt:        "salt",
 	FieldAuthenticatorCertFingerprint: "fingerprint"}
-
-func (entity *Authenticator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.Type = bucket.GetStringOrError(FieldAuthenticatorMethod)
-	entity.IdentityId = bucket.GetStringOrError(FieldAuthenticatorIdentity)
-
-	if entity.Type == MethodAuthenticatorCert {
-		authCert := &AuthenticatorCert{}
-		authCert.Fingerprint = bucket.GetStringWithDefault(FieldAuthenticatorCertFingerprint, "")
-		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
-
-		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
-		authCert.UnverifiedFingerprint = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertFingerprint, "")
-		entity.SubType = authCert
-	} else if entity.Type == MethodAuthenticatorUpdb {
-		authUpdb := &AuthenticatorUpdb{}
-		authUpdb.Username = bucket.GetStringWithDefault(FieldAuthenticatorUpdbUsername, "")
-		authUpdb.Password = bucket.GetStringWithDefault(FieldAuthenticatorUpdbPassword, "")
-		authUpdb.Salt = bucket.GetStringWithDefault(FieldAuthenticatorUpdbSalt, "")
-		entity.SubType = authUpdb
-	}
-}
-
-func (entity *Authenticator) SetValues(ctx *boltz.PersistContext) {
-	ctx.WithFieldOverrides(authenticatorFieldMappings)
-
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldAuthenticatorMethod, entity.Type)
-	ctx.SetString(FieldAuthenticatorIdentity, entity.IdentityId)
-
-	if entity.Type == MethodAuthenticatorCert {
-		if authCert, ok := entity.SubType.(*AuthenticatorCert); ok {
-			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
-			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
-
-			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
-			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)
-		} else {
-			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
-		}
-	} else if entity.Type == MethodAuthenticatorUpdb {
-		if authUpdb, ok := entity.SubType.(*AuthenticatorUpdb); ok {
-			ctx.SetString(FieldAuthenticatorUpdbPassword, authUpdb.Password)
-			ctx.SetString(FieldAuthenticatorUpdbUsername, authUpdb.Username)
-			ctx.SetString(FieldAuthenticatorUpdbSalt, authUpdb.Salt)
-		} else {
-			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorUpdb")
-		}
-	}
-
-	store := ctx.Store.(*authenticatorStoreImpl)
-	_, identityId := store.symbolIdentityId.Eval(ctx.Tx(), []byte(entity.Id))
-	if identityId != nil {
-		identityType := boltz.FieldToString(store.stores.identity.symbolIdentityTypeId.Eval(ctx.Tx(), identityId))
-		if identityType != nil && *identityType == RouterIdentityType {
-			err := errorz.NewFieldError("may not create authenticators for router identities", "identityId", string(identityId))
-			ctx.Bucket.SetError(errorz.NewFieldApiError(err))
-		}
-	}
-}
-
-func (entity *Authenticator) GetEntityType() string {
-	return EntityTypeAuthenticators
-}
 
 func (entity *Authenticator) ToUpdb() *AuthenticatorUpdb {
 	if updb, ok := entity.SubType.(*AuthenticatorUpdb); ok {
@@ -181,28 +121,22 @@ func (entity *Authenticator) ToSubType() AuthenticatorSubType {
 	return nil
 }
 
+var _ ApiSessionStore = (*apiSessionStoreImpl)(nil)
+
 type AuthenticatorStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Authenticator, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Authenticator, error)
+	Store[*Authenticator]
 }
 
 func newAuthenticatorStore(stores *stores) *authenticatorStoreImpl {
-	store := &authenticatorStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeAuthenticators),
-	}
+	store := &authenticatorStoreImpl{}
+	store.baseStore = newBaseStore[*Authenticator](stores, store)
 	store.InitImpl(store)
-
 	return store
 }
 
 type authenticatorStoreImpl struct {
-	*baseStore
+	*baseStore[*Authenticator]
 	symbolIdentityId boltz.EntitySymbol
-}
-
-func (store *authenticatorStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Authenticator{}
 }
 
 func (store *authenticatorStoreImpl) initializeLocal() {
@@ -222,20 +156,66 @@ func (store *authenticatorStoreImpl) initializeLinked() {
 	store.AddFkIndex(store.symbolIdentityId, store.stores.identity.symbolAuthenticators)
 }
 
-func (store *authenticatorStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Authenticator, error) {
-	entity := &Authenticator{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *authenticatorStoreImpl) NewEntity() *Authenticator {
+	return &Authenticator{}
 }
 
-func (store *authenticatorStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Authenticator, error) {
-	entity := &Authenticator{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
+func (store *authenticatorStoreImpl) FillEntity(entity *Authenticator, bucket *boltz.TypedBucket) {
+	entity.Type = bucket.GetStringOrError(FieldAuthenticatorMethod)
+	entity.IdentityId = bucket.GetStringOrError(FieldAuthenticatorIdentity)
+
+	if entity.Type == MethodAuthenticatorCert {
+		authCert := &AuthenticatorCert{}
+		authCert.Fingerprint = bucket.GetStringWithDefault(FieldAuthenticatorCertFingerprint, "")
+		authCert.Pem = bucket.GetStringWithDefault(FieldAuthenticatorCertPem, "")
+
+		authCert.UnverifiedPem = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertPem, "")
+		authCert.UnverifiedFingerprint = bucket.GetStringWithDefault(FieldAuthenticatorUnverifiedCertFingerprint, "")
+		entity.SubType = authCert
+	} else if entity.Type == MethodAuthenticatorUpdb {
+		authUpdb := &AuthenticatorUpdb{}
+		authUpdb.Username = bucket.GetStringWithDefault(FieldAuthenticatorUpdbUsername, "")
+		authUpdb.Password = bucket.GetStringWithDefault(FieldAuthenticatorUpdbPassword, "")
+		authUpdb.Salt = bucket.GetStringWithDefault(FieldAuthenticatorUpdbSalt, "")
+		entity.SubType = authUpdb
 	}
-	return entity, nil
+}
+
+func (store *authenticatorStoreImpl) PersistEntity(entity *Authenticator, ctx *boltz.PersistContext) {
+	ctx.WithFieldOverrides(authenticatorFieldMappings)
+
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldAuthenticatorMethod, entity.Type)
+	ctx.SetString(FieldAuthenticatorIdentity, entity.IdentityId)
+
+	if entity.Type == MethodAuthenticatorCert {
+		if authCert, ok := entity.SubType.(*AuthenticatorCert); ok {
+			ctx.SetString(FieldAuthenticatorCertFingerprint, authCert.Fingerprint)
+			ctx.SetString(FieldAuthenticatorCertPem, authCert.Pem)
+
+			ctx.SetString(FieldAuthenticatorUnverifiedCertFingerprint, authCert.UnverifiedFingerprint)
+			ctx.SetString(FieldAuthenticatorUnverifiedCertPem, authCert.UnverifiedPem)
+		} else {
+			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorCert")
+		}
+	} else if entity.Type == MethodAuthenticatorUpdb {
+		if authUpdb, ok := entity.SubType.(*AuthenticatorUpdb); ok {
+			ctx.SetString(FieldAuthenticatorUpdbPassword, authUpdb.Password)
+			ctx.SetString(FieldAuthenticatorUpdbUsername, authUpdb.Username)
+			ctx.SetString(FieldAuthenticatorUpdbSalt, authUpdb.Salt)
+		} else {
+			pfxlog.Logger().Panic("type conversion error setting values for AuthenticatorUpdb")
+		}
+	}
+
+	_, identityId := store.symbolIdentityId.Eval(ctx.Tx(), []byte(entity.Id))
+	if identityId != nil {
+		identityType := boltz.FieldToString(store.stores.identity.symbolIdentityTypeId.Eval(ctx.Tx(), identityId))
+		if identityType != nil && *identityType == RouterIdentityType {
+			err := errorz.NewFieldError("may not create authenticators for router identities", "identityId", string(identityId))
+			ctx.Bucket.SetError(errorz.NewFieldApiError(err))
+		}
+	}
 }
 
 func (store *authenticatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

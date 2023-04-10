@@ -51,67 +51,27 @@ type Session struct {
 	ServicePolicies []string
 }
 
-func (entity *Session) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Token = bucket.GetStringOrError(FieldSessionToken)
-	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
-	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
-	entity.IdentityId = bucket.GetStringWithDefault(FieldSessionIdentity, "")
-	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
-	entity.ServicePolicies = bucket.GetStringList(FieldSessionServicePolicies)
-}
-
-func (entity *Session) SetValues(ctx *boltz.PersistContext) {
-	if entity.Type == "" {
-		entity.Type = SessionTypeDial
-	}
-
-	if !stringz.Contains(validSessionTypes, entity.Type) {
-		ctx.Bucket.SetError(errorz.NewFieldError("invalid session type", FieldSessionType, entity.Type))
-		return
-	}
-
-	entity.SetBaseValues(ctx)
-	if ctx.IsCreate {
-		ctx.SetString(FieldSessionToken, entity.Token)
-		ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
-		ctx.SetString(FieldSessionService, entity.ServiceId)
-
-		sessionStore := ctx.Store.(*sessionStoreImpl)
-		_, identityId := sessionStore.stores.apiSession.symbolIdentity.Eval(ctx.Tx(), []byte(entity.ApiSessionId))
-		entity.IdentityId = string(identityId)
-
-		ctx.SetString(FieldSessionIdentity, entity.IdentityId)
-		ctx.SetString(FieldSessionType, entity.Type)
-	}
-	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
-
-	if entity.ApiSession == nil {
-		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadOneById(ctx.Bucket.Tx(), entity.ApiSessionId)
-	}
-}
-
 func (entity *Session) GetEntityType() string {
 	return EntityTypeSessions
 }
 
+var _ SessionStore = (*sessionStoreImpl)(nil)
+
 type SessionStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Session, error)
+	Store[*Session]
 	LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error)
 	GetTokenIndex() boltz.ReadIndex
 }
 
 func newSessionStore(stores *stores) *sessionStoreImpl {
-	store := &sessionStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeSessions),
-	}
+	store := &sessionStoreImpl{}
+	store.baseStore = newBaseStore[*Session](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type sessionStoreImpl struct {
-	*baseStore
+	*baseStore[*Session]
 
 	indexToken            boltz.ReadIndex
 	symbolApiSession      boltz.EntitySymbol
@@ -119,7 +79,7 @@ type sessionStoreImpl struct {
 	symbolServicePolicies boltz.EntitySetSymbol
 }
 
-func (store *sessionStoreImpl) NewStoreEntity() boltz.Entity {
+func (store *sessionStoreImpl) NewEntity() *Session {
 	return &Session{}
 }
 
@@ -150,12 +110,44 @@ func (store *sessionStoreImpl) initializeLocal() {
 
 func (store *sessionStoreImpl) initializeLinked() {}
 
-func (store *sessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Session, error) {
-	entity := &Session{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
+func (*sessionStoreImpl) FillEntity(entity *Session, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Token = bucket.GetStringOrError(FieldSessionToken)
+	entity.ApiSessionId = bucket.GetStringOrError(FieldSessionApiSession)
+	entity.ServiceId = bucket.GetStringOrError(FieldSessionService)
+	entity.IdentityId = bucket.GetStringWithDefault(FieldSessionIdentity, "")
+	entity.Type = bucket.GetStringWithDefault(FieldSessionType, "Dial")
+	entity.ServicePolicies = bucket.GetStringList(FieldSessionServicePolicies)
+}
+
+func (*sessionStoreImpl) PersistEntity(entity *Session, ctx *boltz.PersistContext) {
+	if entity.Type == "" {
+		entity.Type = SessionTypeDial
 	}
-	return entity, nil
+
+	if !stringz.Contains(validSessionTypes, entity.Type) {
+		ctx.Bucket.SetError(errorz.NewFieldError("invalid session type", FieldSessionType, entity.Type))
+		return
+	}
+
+	entity.SetBaseValues(ctx)
+	if ctx.IsCreate {
+		ctx.SetString(FieldSessionToken, entity.Token)
+		ctx.SetString(FieldSessionApiSession, entity.ApiSessionId)
+		ctx.SetString(FieldSessionService, entity.ServiceId)
+
+		sessionStore := ctx.Store.(*sessionStoreImpl)
+		_, identityId := sessionStore.stores.apiSession.symbolIdentity.Eval(ctx.Tx(), []byte(entity.ApiSessionId))
+		entity.IdentityId = string(identityId)
+
+		ctx.SetString(FieldSessionIdentity, entity.IdentityId)
+		ctx.SetString(FieldSessionType, entity.Type)
+	}
+	ctx.SetStringList(FieldSessionServicePolicies, entity.ServicePolicies)
+
+	if entity.ApiSession == nil {
+		entity.ApiSession, _ = ctx.Store.(*sessionStoreImpl).stores.apiSession.LoadOneById(ctx.Bucket.Tx(), entity.ApiSessionId)
+	}
 }
 
 func (store *sessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Session, error) {
@@ -170,7 +162,7 @@ type sessionApiSessionIndex struct {
 	apiSessionSymbol  boltz.EntitySymbol
 	serviceSymbol     boltz.EntitySymbol
 	sessionTypeSymbol boltz.EntitySymbol
-	apiSessionStore   boltz.ListStore
+	apiSessionStore   boltz.Store
 }
 
 func (self *sessionApiSessionIndex) ProcessBeforeUpdate(*boltz.IndexingContext) {}
@@ -212,6 +204,6 @@ func (self *sessionApiSessionIndex) ProcessBeforeDelete(*boltz.IndexingContext) 
 
 func (self *sessionApiSessionIndex) Initialize(*bbolt.Tx, errorz.ErrorHolder) {}
 
-func (self *sessionApiSessionIndex) CheckIntegrity(*bbolt.Tx, bool, func(err error, fixed bool)) error {
+func (self *sessionApiSessionIndex) CheckIntegrity(boltz.MutateContext, bool, func(err error, fixed bool)) error {
 	return nil
 }

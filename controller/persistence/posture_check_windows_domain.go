@@ -34,7 +34,7 @@ func newPostureCheckWindowsDomain() PostureCheckSubType {
 	}
 }
 
-func (entity *PostureCheckWindowsDomains) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheckWindowsDomains) LoadValues(bucket *boltz.TypedBucket) {
 	entity.Domains = bucket.GetStringList(FieldPostureCheckDomains)
 }
 

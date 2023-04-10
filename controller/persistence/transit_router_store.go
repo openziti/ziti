@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -38,43 +37,15 @@ type TransitRouter struct {
 	UnverifiedFingerprint *string
 }
 
-func (entity *TransitRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
-	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Router)
-	bucket.SetError(err)
-
-	if bucket.Bucket == nil {
-		entity.IsVerified = true
-		entity.IsBase = true
-		return
-	}
-
-	entity.IsVerified = bucket.GetBoolWithDefault(FieldTransitRouterIsVerified, false)
-	entity.Enrollments = bucket.GetStringList(FieldTransitRouterEnrollments)
-	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
-	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
-}
-
-func (entity *TransitRouter) SetValues(ctx *boltz.PersistContext) {
-	entity.Router.SetValues(ctx.GetParentContext())
-	if ctx.Bucket != nil {
-		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)
-		ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
-		ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
-	}
-}
-
-func (entity *TransitRouter) GetEntityType() string {
-	return db.EntityTypeRouters
-}
-
 func (entity *TransitRouter) GetName() string {
 	return entity.Name
 }
 
+var _ TransitRouterStore = (*transitRouterStoreImpl)(nil)
+
 type TransitRouterStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*TransitRouter, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*TransitRouter, error)
+	NameIndexed
+	Store[*TransitRouter]
 }
 
 func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
@@ -86,20 +57,42 @@ func newTransitRouterStore(stores *stores) *transitRouterStoreImpl {
 	}
 
 	store := &transitRouterStoreImpl{}
-	stores.Router.AddDeleteHandler(store.cleanupEnrollments) // do cleanup first
-	store.baseStore = newExtendedBaseStore(stores, stores.Router, parentMapper, TransitRouterPath)
+	store.baseStore = newChildBaseStore[*TransitRouter](stores, parentMapper, store, stores.Router, TransitRouterPath)
+	store.Extended()
+
 	store.InitImpl(store)
 
 	return store
 }
 
 type transitRouterStoreImpl struct {
-	*baseStore
+	*baseStore[*TransitRouter]
 	indexName         boltz.ReadIndex
 	symbolEnrollments boltz.EntitySetSymbol
 }
 
-func (store *transitRouterStoreImpl) NewStoreEntity() boltz.Entity {
+func (store *transitRouterStoreImpl) HandleUpdate(ctx boltz.MutateContext, entity *db.Router, checker boltz.FieldChecker) (bool, error) {
+	er, found, err := store.FindById(ctx.Tx(), entity.Id)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+
+	er.Router = *entity
+	return true, store.Update(ctx, er, checker)
+}
+
+func (store *transitRouterStoreImpl) HandleDelete(ctx boltz.MutateContext, entity *db.Router) error {
+	return store.cleanupEnrollments(ctx, entity.Id)
+}
+
+func (store *transitRouterStoreImpl) GetStore() boltz.Store {
+	return store
+}
+
+func (store *transitRouterStoreImpl) NewEntity() *TransitRouter {
 	return &TransitRouter{}
 }
 
@@ -116,28 +109,28 @@ func (store *transitRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *transitRouterStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*TransitRouter, error) {
-	entity := &TransitRouter{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
+func (store *transitRouterStoreImpl) FillEntity(entity *TransitRouter, bucket *boltz.TypedBucket) {
+	store.stores.Router.FillEntity(&entity.Router, store.getParentBucket(entity, bucket))
+
+	if bucket.Bucket == nil {
+		entity.IsVerified = true
+		entity.IsBase = true
+		return
 	}
-	return entity, nil
+
+	entity.IsVerified = bucket.GetBoolWithDefault(FieldTransitRouterIsVerified, false)
+	entity.Enrollments = bucket.GetStringList(FieldTransitRouterEnrollments)
+	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
+	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
 }
 
-func (store *transitRouterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*TransitRouter, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
+func (store *transitRouterStoreImpl) PersistEntity(entity *TransitRouter, ctx *boltz.PersistContext) {
+	store.stores.Router.PersistEntity(&entity.Router, ctx.GetParentContext())
+	if ctx.Bucket != nil {
+		ctx.SetBool(FieldTransitRouterIsVerified, entity.IsVerified)
+		ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
+		ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
 	}
-	return nil, nil
-}
-
-func (store *transitRouterStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*TransitRouter, error) {
-	entity := &TransitRouter{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *transitRouterStoreImpl) cleanupEnrollments(ctx boltz.MutateContext, id string) error {

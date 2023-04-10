@@ -42,11 +42,11 @@ func NewApiSessionManager(env Env) *ApiSessionManager {
 }
 
 type ApiSessionManager struct {
-	baseEntityManager
+	baseEntityManager[*ApiSession, *persistence.ApiSession]
 	HeartbeatCollector *HeartbeatCollector
 }
 
-func (self *ApiSessionManager) newModelEntity() edgeEntity {
+func (self *ApiSessionManager) newModelEntity() *ApiSession {
 	return &ApiSession{}
 }
 

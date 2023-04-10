@@ -19,7 +19,9 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/storage/boltztest"
 	"testing"
 	"time"
 
@@ -48,7 +50,7 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 		Name:          eid.New(),
 	}
 
-	ctx.RequireCreate(fabricService)
+	boltztest.RequireCreate(ctx, fabricService)
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ctx.False(ctx.stores.EdgeService.IsEntityPresent(tx, fabricService.GetId()))
 
@@ -65,7 +67,7 @@ func (ctx *TestContext) testServiceParentChild(_ *testing.T) {
 
 	// Supporting extending a base type gets complicated with lower level indexes, since you're mixing an update
 	// in the parent with a create in the child. Not worth fixing right now
-	ctx.Error(ctx.Update(edgeService))
+	ctx.Error(boltztest.Update(ctx, edgeService))
 	//
 	//err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 	//	query := fmt.Sprintf(`id = "%v" and name = "%v"`, fabricService.Id, edgeService.Name)
@@ -85,7 +87,7 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 
 	identity := ctx.RequireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 
 	edgeService := &EdgeService{
 		Service: db.Service{
@@ -94,18 +96,18 @@ func (ctx *TestContext) testCreateInvalidServices(_ *testing.T) {
 		},
 	}
 
-	ctx.RequireCreate(edgeService)
-	err := ctx.Create(edgeService)
+	boltztest.RequireCreate(ctx, edgeService)
+	err := boltztest.Create(ctx, edgeService)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type service already exists with id %v", edgeService.Id))
 
 	edgeService.Id = eid.New()
-	err = ctx.Create(edgeService)
+	err = boltztest.Create(ctx, edgeService)
 	ctx.EqualError(err, fmt.Sprintf("duplicate value '%v' in unique index on services store", edgeService.Name))
 
 	edgeService.Id = eid.New()
 	edgeService.Name = eid.New()
 	edgeService.TerminatorStrategy = eid.New()
-	err = ctx.Create(edgeService)
+	err = boltztest.Create(ctx, edgeService)
 	ctx.EqualError(err, fmt.Sprintf("terminatorStrategy with name %v not found", edgeService.TerminatorStrategy))
 }
 
@@ -118,8 +120,8 @@ func (ctx *TestContext) testCreateServices(_ *testing.T) {
 			Name:          eid.New(),
 		},
 	}
-	ctx.RequireCreate(edgeService)
-	ctx.ValidateBaseline(edgeService)
+	boltztest.RequireCreate(ctx, edgeService)
+	boltztest.ValidateBaseline(ctx, edgeService)
 }
 
 type serviceTestEntities struct {
@@ -139,7 +141,7 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 
 	role := eid.New()
 
-	ctx.RequireCreate(apiSession1)
+	boltztest.RequireCreate(ctx, apiSession1)
 	servicePolicy := ctx.requireNewServicePolicy(PolicyTypeDial, ss(), ss(roleRef(role)))
 
 	service1 := &EdgeService{
@@ -150,18 +152,18 @@ func (ctx *TestContext) createServiceTestEntities() *serviceTestEntities {
 		RoleAttributes: []string{role},
 	}
 
-	ctx.RequireCreate(service1)
+	boltztest.RequireCreate(ctx, service1)
 	service2 := ctx.RequireNewService(eid.New())
 	service2.Tags = map[string]interface{}{
 		"location": "NY",
 	}
-	ctx.RequireUpdate(service2)
+	boltztest.RequireUpdate(ctx, service2)
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
-	ctx.RequireCreate(session1)
+	boltztest.RequireCreate(ctx, session1)
 
 	session2 := NewSession(apiSession1.Id, service2.Id)
-	ctx.RequireCreate(session2)
+	boltztest.RequireCreate(ctx, session2)
 
 	return &serviceTestEntities{
 		servicePolicy: servicePolicy,
@@ -181,11 +183,6 @@ func (ctx *TestContext) testLoadQueryServices(_ *testing.T) {
 
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		service, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
-		ctx.NoError(err)
-		ctx.NotNil(service)
-		ctx.EqualValues(entities.service1.Id, service.Id)
-
-		service, err = ctx.stores.EdgeService.LoadOneByName(tx, entities.service1.Name)
 		ctx.NoError(err)
 		ctx.NotNil(service)
 		ctx.EqualValues(entities.service1.Id, service.Id)
@@ -218,7 +215,9 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		original, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
@@ -234,7 +233,7 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 		service.CreatedAt = now
 		service.Tags = tags
 
-		err = ctx.stores.EdgeService.Update(boltz.NewMutateContext(tx), service, nil)
+		err = ctx.stores.EdgeService.Update(mutateCtx, service, nil)
 		ctx.NoError(err)
 		loaded, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)
 		ctx.NoError(err)
@@ -252,6 +251,6 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 func (ctx *TestContext) testDeleteServices(_ *testing.T) {
 	ctx.CleanupAll()
 	entities := ctx.createServiceTestEntities()
-	ctx.RequireDelete(entities.service1, apiSessionsSessionsIdxPath)
-	ctx.RequireDelete(entities.service2, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.service1, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.service2, apiSessionsSessionsIdxPath)
 }

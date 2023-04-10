@@ -20,7 +20,9 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/openziti/edge/controller/apierror"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"go.etcd.io/bbolt"
 	"time"
@@ -28,7 +30,7 @@ import (
 
 func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {
 	manager := &ApiSessionCertificateManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ApiSessionCertificate),
+		baseEntityManager: newBaseEntityManager[*ApiSessionCertificate, *persistence.ApiSessionCertificate](env, env.GetStores().ApiSessionCertificate),
 	}
 	manager.impl = manager
 
@@ -36,18 +38,18 @@ func NewApiSessionCertificateManager(env Env) *ApiSessionCertificateManager {
 }
 
 type ApiSessionCertificateManager struct {
-	baseEntityManager
+	baseEntityManager[*ApiSessionCertificate, *persistence.ApiSessionCertificate]
 }
 
-func (self *ApiSessionCertificateManager) newModelEntity() edgeEntity {
+func (self *ApiSessionCertificateManager) newModelEntity() *ApiSessionCertificate {
 	return &ApiSessionCertificate{}
 }
 
-func (self *ApiSessionCertificateManager) Create(entity *ApiSessionCertificate) (string, error) {
-	return self.createEntity(entity)
+func (self *ApiSessionCertificateManager) Create(entity *ApiSessionCertificate, ctx *change.Context) (string, error) {
+	return self.createEntity(entity, ctx)
 }
 
-func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte) (string, error) {
+func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte, ctx *change.Context) (string, error) {
 	notBefore := time.Now()
 	notAfter := time.Now().Add(lifespan)
 
@@ -88,7 +90,7 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lif
 		PEM:          string(certPem),
 	}
 
-	return self.Create(entity)
+	return self.Create(entity, ctx)
 }
 
 func (self *ApiSessionCertificateManager) Read(id string) (*ApiSessionCertificate, error) {
@@ -111,8 +113,8 @@ func (self *ApiSessionCertificateManager) IsUpdated(_ string) bool {
 	return false
 }
 
-func (self *ApiSessionCertificateManager) Delete(id string) error {
-	return self.deleteEntity(id)
+func (self *ApiSessionCertificateManager) Delete(id string, ctx *change.Context) error {
+	return self.deleteEntity(id, ctx)
 }
 
 func (self *ApiSessionCertificateManager) Query(tx *bbolt.Tx, query string) (*ApiSessionCertificateListResult, error) {

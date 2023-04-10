@@ -55,13 +55,23 @@ type Enrollment struct {
 	Jwt             string
 }
 
+func (entity *Enrollment) GetEntityType() string {
+	return EntityTypeEnrollments
+}
+
 var enrollmentFieldMappings = map[string]string{
 	FieldEnrollIdentity:      "identityId",
 	FieldEnrollEdgeRouter:    "edgeRouterId",
 	FieldEnrollTransitRouter: "transitRouterId",
 }
 
-func (entity *Enrollment) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+type enrollmentEntityStrategy struct{}
+
+func (enrollmentEntityStrategy) NewEntity() *Enrollment {
+	return &Enrollment{}
+}
+
+func (enrollmentEntityStrategy) FillEntity(entity *Enrollment, bucket *boltz.TypedBucket) {
 	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
 	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
 	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
@@ -74,7 +84,7 @@ func (entity *Enrollment) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	entity.Jwt = bucket.GetStringOrError(FieldEnrollmentJwt)
 }
 
-func (entity *Enrollment) SetValues(ctx *boltz.PersistContext) {
+func (enrollmentEntityStrategy) PersistEntity(entity *Enrollment, ctx *boltz.PersistContext) {
 	ctx.WithFieldOverrides(enrollmentFieldMappings)
 
 	ctx.SetString(FieldEnrollmentToken, entity.Token)
@@ -89,20 +99,16 @@ func (entity *Enrollment) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldEnrollmentJwt, entity.Jwt)
 }
 
-func (entity *Enrollment) GetEntityType() string {
-	return EntityTypeEnrollments
-}
+var _ EnrollmentStore = (*enrollmentStoreImpl)(nil)
 
 type EnrollmentStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error)
+	Store[*Enrollment]
 	LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Enrollment, error)
 }
 
 func newEnrollmentStore(stores *stores) *enrollmentStoreImpl {
 	store := &enrollmentStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeEnrollments),
+		baseStore: newBaseStore[*Enrollment](stores, enrollmentEntityStrategy{}),
 	}
 	store.InitImpl(store)
 
@@ -110,16 +116,12 @@ func newEnrollmentStore(stores *stores) *enrollmentStoreImpl {
 }
 
 type enrollmentStoreImpl struct {
-	*baseStore
+	*baseStore[*Enrollment]
 	tokenIndex          boltz.ReadIndex
 	symbolIdentity      boltz.EntitySymbol
 	symbolEdgeRouter    boltz.EntitySymbol
 	symbolTransitRouter boltz.EntitySymbol
 	symbolCa            boltz.EntitySymbol
-}
-
-func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Enrollment{}
 }
 
 func (store *enrollmentStoreImpl) initializeLocal() {
@@ -140,26 +142,10 @@ func (store *enrollmentStoreImpl) initializeLinked() {
 	store.AddNullableFkIndex(store.symbolCa, store.stores.ca.symbolEnrollments)
 }
 
-func (store *enrollmentStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error) {
-	entity := &Enrollment{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
 func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error) {
 	id := store.tokenIndex.Read(tx, []byte(token))
 	if id != nil {
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, nil
-}
-
-func (store *enrollmentStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Enrollment, error) {
-	entity := &Enrollment{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }

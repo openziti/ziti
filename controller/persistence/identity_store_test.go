@@ -3,7 +3,9 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"
@@ -22,14 +24,14 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	identity := ctx.RequireNewIdentity(eid.New(), false)
 
 	clientConfigTypeId := ""
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		clientConfigTypeId = string(ctx.stores.ConfigType.GetNameIndex().Read(tx, []byte("ziti-tunneler-client.v1")))
 		return nil
 	})
 	ctx.NoError(err)
 
 	serverConfigTypeId := ""
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		serverConfigTypeId = string(ctx.stores.ConfigType.GetNameIndex().Read(tx, []byte("ziti-tunneler-server.v1")))
 		return nil
 	})
@@ -39,22 +41,23 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 		"hostname": "foo.yourcompany.com",
 		"port":     int64(22),
 	})
-	ctx.RequireCreate(config)
+	boltztest.RequireCreate(ctx, config)
 
 	config2 := newConfig(eid.New(), clientConfigTypeId, map[string]interface{}{
 		"hostname": "bar.yourcompany.com",
 		"port":     int64(23),
 	})
-	ctx.RequireCreate(config2)
+	boltztest.RequireCreate(ctx, config2)
 
 	config3 := newConfig(eid.New(), serverConfigTypeId, map[string]interface{}{
 		"hostname": "baz.yourcompany.com",
 		"port":     int64(24),
 	})
-	ctx.RequireCreate(config3)
+	boltztest.RequireCreate(ctx, config3)
 
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id,
+	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		err := ctx.stores.Identity.AssignServiceConfigs(mutateCtx.Tx(), identity.Id,
 			ServiceConfig{ServiceId: service.Id, ConfigId: config.Id},
 			ServiceConfig{ServiceId: service.Id, ConfigId: config2.Id})
 		ctx.EqualError(err, fmt.Sprintf("multiple service configs provided for identity %v of config type %v", identity.Id, clientConfigTypeId))
@@ -62,7 +65,9 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
 		ctx.NoError(err)
 
@@ -83,7 +88,9 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.RemoveServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
 		ctx.NoError(err)
 
@@ -96,17 +103,19 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	ctx.RequireDelete(config)
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	boltztest.RequireDelete(ctx, config)
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		serviceConfigs := ctx.getServiceConfigs(tx, identity.Id, "all")
 		ctx.Equal(0, len(serviceConfigs))
 		return nil
 	})
 	ctx.NoError(err)
 
-	ctx.RequireCreate(config)
+	boltztest.RequireCreate(ctx, config)
 
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id,
 			ServiceConfig{ServiceId: service.Id, ConfigId: config.Id},
 			ServiceConfig{ServiceId: service.Id, ConfigId: config3.Id})
@@ -139,9 +148,9 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	ctx.RequireDelete(identity)
+	boltztest.RequireDelete(ctx, identity)
 
-	err = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		identityServices := ctx.getIdentityServices(tx, config.Id)
 		ctx.Equal(0, len(identityServices))
 

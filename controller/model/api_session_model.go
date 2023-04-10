@@ -22,9 +22,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 	"time"
 )
 
@@ -43,8 +41,8 @@ type ApiSession struct {
 	AuthenticatorId    string
 }
 
-func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	if !manager.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
+func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.ApiSession, error) {
+	if !env.GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
@@ -63,19 +61,15 @@ func (entity *ApiSession) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (bol
 	return boltEntity, nil
 }
 
-func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *ApiSession) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.ApiSession, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *ApiSession) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.ApiSession, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *ApiSession) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltApiSession, ok := boltEntity.(*persistence.ApiSession)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model ApiSession", reflect.TypeOf(boltEntity))
-	}
+func (entity *ApiSession) fillFrom(env Env, tx *bbolt.Tx, boltApiSession *persistence.ApiSession) error {
 	entity.FillCommon(boltApiSession)
 	entity.Token = boltApiSession.Token
 	entity.IdentityId = boltApiSession.IdentityId
@@ -83,17 +77,17 @@ func (entity *ApiSession) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEnti
 	entity.IPAddress = boltApiSession.IPAddress
 	entity.MfaRequired = boltApiSession.MfaRequired
 	entity.MfaComplete = boltApiSession.MfaComplete
-	entity.ExpiresAt = entity.UpdatedAt.Add(manager.GetEnv().GetConfig().Api.SessionTimeout)
-	entity.ExpirationDuration = manager.GetEnv().GetConfig().Api.SessionTimeout
+	entity.ExpiresAt = entity.UpdatedAt.Add(env.GetConfig().Api.SessionTimeout)
+	entity.ExpirationDuration = env.GetConfig().Api.SessionTimeout
 	entity.LastActivityAt = boltApiSession.LastActivityAt
 	entity.AuthenticatorId = boltApiSession.AuthenticatorId
 
-	boltIdentity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
+	boltIdentity, err := env.GetStores().Identity.LoadOneById(tx, boltApiSession.IdentityId)
 	if err != nil {
 		return err
 	}
 	modelIdentity := &Identity{}
-	if err := modelIdentity.fillFrom(manager, tx, boltIdentity); err != nil {
+	if err := modelIdentity.fillFrom(env, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity

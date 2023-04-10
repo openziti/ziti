@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -432,7 +433,7 @@ func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, 
 	return self.queryRoleAttributes(index, queryString)
 }
 
-func (self *IdentityManager) PatchInfo(identity *Identity) error {
+func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Context) error {
 	start := time.Now()
 	checker := boltz.MapFieldChecker{
 		persistence.FieldIdentityEnvInfoArch:       struct{}{},
@@ -447,7 +448,7 @@ func (self *IdentityManager) PatchInfo(identity *Identity) error {
 		persistence.FieldIdentitySdkInfoAppVersion: struct{}{},
 	}
 
-	err := self.updateEntityBatch(identity, checker)
+	err := self.updateEntityBatch(identity, checker, changeCtx)
 
 	self.updateSdkInfoTimer.UpdateSince(start)
 

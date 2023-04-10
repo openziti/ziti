@@ -19,6 +19,7 @@ package persistence
 import (
 	"encoding/json"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
@@ -46,7 +47,17 @@ func (entity *ConfigType) GetName() string {
 	return entity.Name
 }
 
-func (entity *ConfigType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *ConfigType) GetEntityType() string {
+	return EntityTypeConfigTypes
+}
+
+type configTypeEntityStrategy struct{}
+
+func (configTypeEntityStrategy) NewEntity() *ConfigType {
+	return &ConfigType{}
+}
+
+func (configTypeEntityStrategy) FillEntity(entity *ConfigType, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	marshalledSchema := bucket.GetString(FieldConfigTypeSchema)
@@ -56,7 +67,7 @@ func (entity *ConfigType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	}
 }
 
-func (entity *ConfigType) SetValues(ctx *boltz.PersistContext) {
+func (configTypeEntityStrategy) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 
@@ -72,27 +83,28 @@ func (entity *ConfigType) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *ConfigType) GetEntityType() string {
-	return EntityTypeConfigTypes
-}
+var _ ConfigTypeStore = (*configTypeStoreImpl)(nil)
 
 type ConfigTypeStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*ConfigType, error)
+	Store[*ConfigType]
+	NameIndexed
 	LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error)
 	GetName(tx *bbolt.Tx, id string) *string
 }
 
 func newConfigTypesStore(stores *stores) *configTypeStoreImpl {
 	store := &configTypeStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeConfigTypes),
+		baseStore: &baseStore[*ConfigType]{
+			stores:    stores,
+			BaseStore: boltz.NewBaseStore(db.NewStoreDefinition[*ConfigType](configTypeEntityStrategy{})),
+		},
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type configTypeStoreImpl struct {
-	*baseStore
+	*baseStore[*ConfigType]
 
 	indexName     boltz.ReadIndex
 	symbolConfigs boltz.EntitySetSymbol
@@ -110,18 +122,6 @@ func (store *configTypeStoreImpl) initializeLocal() {
 }
 
 func (store *configTypeStoreImpl) initializeLinked() {
-}
-
-func (store *configTypeStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ConfigType{}
-}
-
-func (store *configTypeStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ConfigType, error) {
-	entity := &ConfigType{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {

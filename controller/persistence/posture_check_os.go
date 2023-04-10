@@ -41,7 +41,7 @@ func newPostureCheckOperatingSystem() PostureCheckSubType {
 	}
 }
 
-func (entity *PostureCheckOperatingSystem) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheckOperatingSystem) LoadValues(bucket *boltz.TypedBucket) {
 
 	cursor := bucket.Cursor()
 

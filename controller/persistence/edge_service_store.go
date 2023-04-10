@@ -48,43 +48,12 @@ func newEdgeService(name string, roleAttributes ...string) *EdgeService {
 	}
 }
 
-func (entity *EdgeService) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
-	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Service)
-	bucket.SetError(err)
-
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
-	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
-
-	//default to true for old services w/o any value explicitly set
-	entity.EncryptionRequired = bucket.GetBoolWithDefault(FieldServiceEncryptionRequired, true)
-}
-
-func (entity *EdgeService) SetValues(ctx *boltz.PersistContext) {
-	entity.Service.SetValues(ctx.GetParentContext())
-
-	store := ctx.Store.(*edgeServiceStoreImpl)
-	ctx.SetString(FieldName, entity.Name)
-	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
-	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
-	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
-	ctx.SetBool(FieldServiceEncryptionRequired, entity.EncryptionRequired)
-
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
-	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
-	}
-}
-
-func (entity *EdgeService) GetName() string {
-	return entity.Name
-}
+var _ EdgeServiceStore = (*edgeServiceStoreImpl)(nil)
 
 type EdgeServiceStore interface {
-	NameIndexedStore
+	NameIndexed
+	Store[*EdgeService]
 
-	LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeService, error)
 	IsBindableByIdentity(tx *bbolt.Tx, id string, identityId string) bool
 	IsDialableByIdentity(tx *bbolt.Tx, id string, identityId string) bool
 	GetRoleAttributesIndex() boltz.SetReadIndex
@@ -100,15 +69,16 @@ func newEdgeServiceStore(stores *stores) *edgeServiceStoreImpl {
 	}
 
 	store := &edgeServiceStoreImpl{}
-	stores.Service.AddDeleteHandler(store.cleanupEdgeService)
-	store.baseStore = newChildBaseStore(stores, stores.Service, parentMapper)
+	store.baseStore = newChildBaseStore[*EdgeService](stores, parentMapper, store, stores.Service, EdgeBucket)
 	store.InitImpl(store)
+
+	stores.Service.RegisterChildStoreStrategy(store)
 
 	return store
 }
 
 type edgeServiceStoreImpl struct {
-	*baseStore
+	*baseStore[*EdgeService]
 
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
@@ -128,8 +98,25 @@ type edgeServiceStoreImpl struct {
 	edgeRoutersCollection    boltz.RefCountedLinkCollection
 }
 
-func (store *edgeServiceStoreImpl) NewStoreEntity() boltz.Entity {
-	return &EdgeService{}
+func (store *edgeServiceStoreImpl) HandleUpdate(ctx boltz.MutateContext, entity *db.Service, checker boltz.FieldChecker) (bool, error) {
+	edgeService, found, err := store.FindById(ctx.Tx(), entity.Id)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+
+	edgeService.Service = *entity
+	return true, store.Update(ctx, edgeService, checker)
+}
+
+func (store *edgeServiceStoreImpl) HandleDelete(ctx boltz.MutateContext, entity *db.Service) error {
+	return store.cleanupEdgeService(ctx, entity.Id)
+}
+
+func (store *edgeServiceStoreImpl) GetStore() boltz.Store {
+	return store
 }
 
 func (store *edgeServiceStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
@@ -168,6 +155,35 @@ func (store *edgeServiceStoreImpl) initializeLinked() {
 	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolServices)
 }
 
+func (self *edgeServiceStoreImpl) NewEntity() *EdgeService {
+	return &EdgeService{}
+}
+
+func (store *edgeServiceStoreImpl) FillEntity(entity *EdgeService, bucket *boltz.TypedBucket) {
+	store.stores.Service.FillEntity(&entity.Service, store.getParentBucket(entity, bucket))
+
+	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.Configs = bucket.GetStringList(EntityTypeConfigs)
+
+	//default to true for old services w/o any value explicitly set
+	entity.EncryptionRequired = bucket.GetBoolWithDefault(FieldServiceEncryptionRequired, true)
+}
+
+func (store *edgeServiceStoreImpl) PersistEntity(entity *EdgeService, ctx *boltz.PersistContext) {
+	store.stores.Service.PersistEntity(&entity.Service, ctx.GetParentContext())
+
+	ctx.SetString(FieldName, entity.Name)
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
+	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetLinkedIds(EntityTypeConfigs, entity.Configs)
+	ctx.SetBool(FieldServiceEncryptionRequired, entity.EncryptionRequired)
+
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
+	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
+	}
+}
+
 func (store *edgeServiceStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate service policy links
 	ctx := &roleAttributeChangeContext{
@@ -195,31 +211,7 @@ func (store *edgeServiceStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *edgeServiceStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EdgeService, error) {
-	entity := &EdgeService{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *edgeServiceStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*EdgeService, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *edgeServiceStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*EdgeService, error) {
-	entity := &EdgeService{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+func (store *edgeServiceStoreImpl) Update(ctx boltz.MutateContext, entity *EdgeService, checker boltz.FieldChecker) error {
 	if result := store.baseStore.Update(ctx, entity, checker); result != nil {
 		return result
 	}

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/storage/ast"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"sort"
 )
@@ -36,7 +36,17 @@ func (entity *EdgeRouterPolicy) GetSemantic() string {
 	return entity.Semantic
 }
 
-func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *EdgeRouterPolicy) GetEntityType() string {
+	return EntityTypeEdgeRouterPolicies
+}
+
+type edgeRouterPolicyEntityStrategy struct{}
+
+func (edgeRouterPolicyEntityStrategy) NewEntity() *EdgeRouterPolicy {
+	return &EdgeRouterPolicy{}
+}
+
+func (edgeRouterPolicyEntityStrategy) FillEntity(entity *EdgeRouterPolicy, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
@@ -44,7 +54,7 @@ func (entity *EdgeRouterPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.Type
 	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterRoles)
 }
 
-func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
+func (edgeRouterPolicyEntityStrategy) PersistEntity(entity *EdgeRouterPolicy, ctx *boltz.PersistContext) {
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
 		ctx.Bucket.SetError(err)
 	}
@@ -78,26 +88,24 @@ func (entity *EdgeRouterPolicy) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *EdgeRouterPolicy) GetEntityType() string {
-	return EntityTypeEdgeRouterPolicies
-}
+var _ EdgeRouterPolicyStore = (*edgeRouterPolicyStoreImpl)(nil)
 
 type EdgeRouterPolicyStore interface {
-	NameIndexedStore
+	NameIndexed
+	Store[*EdgeRouterPolicy]
 	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 }
 
 func newEdgeRouterPolicyStore(stores *stores) *edgeRouterPolicyStoreImpl {
 	store := &edgeRouterPolicyStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeEdgeRouterPolicies),
+		baseStore: newBaseStore[*EdgeRouterPolicy](stores, edgeRouterPolicyEntityStrategy{}),
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type edgeRouterPolicyStoreImpl struct {
-	*baseStore
+	*baseStore[*EdgeRouterPolicy]
 
 	indexName             boltz.ReadIndex
 	symbolSemantic        boltz.EntitySymbol
@@ -108,10 +116,6 @@ type edgeRouterPolicyStoreImpl struct {
 
 	identityCollection   boltz.LinkCollection
 	edgeRouterCollection boltz.LinkCollection
-}
-
-func (store *edgeRouterPolicyStoreImpl) NewStoreEntity() boltz.Entity {
-	return &EdgeRouterPolicy{}
 }
 
 func (store *edgeRouterPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
@@ -144,20 +148,12 @@ func (store *edgeRouterPolicyStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*E
 	return entity, nil
 }
 
-func (store *edgeRouterPolicyStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*EdgeRouterPolicy, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
 /*
 Optimizations
-1. When changing policies if only ids have changed, only add/remove ids from groups as needed
-2. When related entities added/changed, only evaluate policies against that one entity (identity/edge router/service),
-   and just add/remove/ignore
-3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
+ 1. When changing policies if only ids have changed, only add/remove ids from groups as needed
+ 2. When related entities added/changed, only evaluate policies against that one entity (identity/edge router/service),
+    and just add/remove/ignore
+ 3. Related entity deletes should be handled automatically by FK Indexes on those entities (need to verify the reverse as well/deleting policy)
 */
 func (store *edgeRouterPolicyStoreImpl) edgeRouterRolesUpdated(persistCtx *boltz.PersistContext, policy *EdgeRouterPolicy) {
 	ctx := &roleAttributeChangeContext{
@@ -199,10 +195,10 @@ func (store *edgeRouterPolicyStoreImpl) DeleteById(ctx boltz.MutateContext, id s
 	return store.BaseStore.DeleteById(ctx, id)
 }
 
-func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(error, bool)) error {
-	ctx := &denormCheckCtx{
+func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(ctx boltz.MutateContext, fix bool, errorSink func(error, bool)) error {
+	checkCtx := &denormCheckCtx{
 		name:                   "edge-router-policies",
-		tx:                     tx,
+		mutateCtx:              ctx,
 		sourceStore:            store.stores.identity,
 		targetStore:            store.stores.edgeRouter,
 		policyStore:            store,
@@ -212,9 +208,9 @@ func (store *edgeRouterPolicyStoreImpl) CheckIntegrity(tx *bbolt.Tx, fix bool, e
 		repair:                 fix,
 		errorSink:              errorSink,
 	}
-	if err := validatePolicyDenormalization(ctx); err != nil {
+	if err := validatePolicyDenormalization(checkCtx); err != nil {
 		return err
 	}
 
-	return store.BaseStore.CheckIntegrity(tx, fix, errorSink)
+	return store.BaseStore.CheckIntegrity(ctx, fix, errorSink)
 }

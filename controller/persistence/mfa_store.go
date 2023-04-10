@@ -20,7 +20,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -49,7 +48,17 @@ func NewMfa(identityId string) *Mfa {
 	}
 }
 
-func (entity *Mfa) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Mfa) GetEntityType() string {
+	return EntityTypeMfas
+}
+
+type mfaEntityStrategy struct{}
+
+func (mfaEntityStrategy) NewEntity() *Mfa {
+	return &Mfa{}
+}
+
+func (mfaEntityStrategy) FillEntity(entity *Mfa, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.IdentityId = bucket.GetStringOrError(FieldMfaIdentity)
 	entity.IsVerified = bucket.GetBoolWithDefault(FieldMfaIsVerified, false)
@@ -58,7 +67,7 @@ func (entity *Mfa) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Secret = bucket.GetStringWithDefault(FieldMfaSecret, "")
 }
 
-func (entity *Mfa) SetValues(ctx *boltz.PersistContext) {
+func (mfaEntityStrategy) PersistEntity(entity *Mfa, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldMfaIdentity, entity.IdentityId)
 	ctx.SetBool(FieldMfaIsVerified, entity.IsVerified)
@@ -67,19 +76,15 @@ func (entity *Mfa) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldMfaSecret, entity.Secret)
 }
 
-func (entity *Mfa) GetEntityType() string {
-	return EntityTypeMfas
-}
+var _ MfaStore = (*MfaStoreImpl)(nil)
 
 type MfaStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Mfa, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Mfa, error)
+	Store[*Mfa]
 }
 
 func newMfaStore(stores *stores) *MfaStoreImpl {
 	store := &MfaStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeMfas),
+		baseStore: newBaseStore[*Mfa](stores, mfaEntityStrategy{}),
 	}
 
 	store.InitImpl(store)
@@ -88,16 +93,11 @@ func newMfaStore(stores *stores) *MfaStoreImpl {
 
 type SecretStore interface {
 	GetSecret() []byte
-
 }
 
 type MfaStoreImpl struct {
-	*baseStore
+	*baseStore[*Mfa]
 	symbolIdentity boltz.EntitySymbol
-}
-
-func (store *MfaStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Mfa{}
 }
 
 func (store *MfaStoreImpl) initializeLocal() {
@@ -107,21 +107,4 @@ func (store *MfaStoreImpl) initializeLocal() {
 	store.AddFkConstraint(store.symbolIdentity, false, boltz.CascadeDelete)
 }
 
-func (store *MfaStoreImpl) initializeLinked() {
-}
-
-func (store *MfaStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Mfa, error) {
-	entity := &Mfa{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *MfaStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Mfa, error) {
-	entity := &Mfa{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
+func (store *MfaStoreImpl) initializeLinked() {}

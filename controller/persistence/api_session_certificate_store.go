@@ -17,10 +17,8 @@
 package persistence
 
 import (
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"time"
 )
 
@@ -43,15 +41,17 @@ type ApiSessionCertificate struct {
 	PEM          string
 }
 
-func NewApiSessionCertificate(apiSessionId string) *ApiSessionCertificate {
-	return &ApiSessionCertificate{
-		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
-		ApiSessionId:  apiSessionId,
-		Subject:       eid.New(),
-	}
+func (entity *ApiSessionCertificate) GetEntityType() string {
+	return EntityTypeApiSessionCertificates
 }
 
-func (entity *ApiSessionCertificate) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+type apiSessionCertificateEntityStrategy struct{}
+
+func (apiSessionCertificateEntityStrategy) NewEntity() *ApiSessionCertificate {
+	return &ApiSessionCertificate{}
+}
+
+func (apiSessionCertificateEntityStrategy) FillEntity(entity *ApiSessionCertificate, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.ApiSessionId = bucket.GetStringOrError(FieldApiSessionCertificateApiSession)
 	entity.Subject = bucket.GetStringOrError(FieldApiSessionCertificateSubject)
@@ -61,7 +61,7 @@ func (entity *ApiSessionCertificate) LoadValues(_ boltz.CrudStore, bucket *boltz
 	entity.PEM = bucket.GetStringOrError(FieldApiSessionCertificatePem)
 }
 
-func (entity *ApiSessionCertificate) SetValues(ctx *boltz.PersistContext) {
+func (apiSessionCertificateEntityStrategy) PersistEntity(entity *ApiSessionCertificate, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldApiSessionCertificateApiSession, entity.ApiSessionId)
 	ctx.SetString(FieldApiSessionCertificateSubject, entity.Subject)
@@ -71,31 +71,23 @@ func (entity *ApiSessionCertificate) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldApiSessionCertificatePem, entity.PEM)
 }
 
-func (entity *ApiSessionCertificate) GetEntityType() string {
-	return EntityTypeApiSessionCertificates
-}
+var _ ApiSessionCertificateStore = (*ApiSessionCertificateStoreImpl)(nil)
 
 type ApiSessionCertificateStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error)
+	Store[*ApiSessionCertificate]
 }
 
 func newApiSessionCertificateStore(stores *stores) *ApiSessionCertificateStoreImpl {
 	store := &ApiSessionCertificateStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeApiSessionCertificates),
+		baseStore: newBaseStore[*ApiSessionCertificate](stores, apiSessionCertificateEntityStrategy{}),
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type ApiSessionCertificateStoreImpl struct {
-	*baseStore
+	*baseStore[*ApiSessionCertificate]
 	symbolApiSession boltz.EntitySymbol
-}
-
-func (store *ApiSessionCertificateStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ApiSessionCertificate{}
 }
 
 func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
@@ -109,20 +101,4 @@ func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
 }
 
 func (store *ApiSessionCertificateStoreImpl) initializeLinked() {
-}
-
-func (store *ApiSessionCertificateStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
-	entity := &ApiSessionCertificate{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *ApiSessionCertificateStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error) {
-	entity := &ApiSessionCertificate{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }

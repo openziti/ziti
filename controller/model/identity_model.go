@@ -230,7 +230,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManage
 	return boltEntity, nil
 }
 
-func (entity *Identity) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
+func (entity *Identity) fillFrom(env Env, tx *bbolt.Tx, boltEntity boltz.Entity) error {
 	boltIdentity, ok := boltEntity.(*persistence.Identity)
 	if !ok {
 		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
@@ -242,7 +242,7 @@ func (entity *Identity) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
-	entity.HasHeartbeat = manager.GetEnv().GetManagers().Identity.IsActive(entity.Id)
+	entity.HasHeartbeat = env.GetManagers().Identity.IsActive(entity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences

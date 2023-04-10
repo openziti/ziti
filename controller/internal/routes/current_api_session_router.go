@@ -142,7 +142,7 @@ func (router *CurrentSessionRouter) ListCertificates(ae *env.AppEnv, rc *respons
 func (router *CurrentSessionRouter) CreateCertificate(ae *env.AppEnv, rc *response.RequestContext, params clientCurrentApiSession.CreateCurrentAPISessionCertificateParams) {
 	responder := &ApiSessionCertificateCreateResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, CurrentApiSessionCertificateLinkFactory, func() (string, error) {
-		return ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr))
+		return ae.GetManagers().ApiSessionCertificate.CreateFromCSR(rc.ApiSession.Id, 12*time.Hour, []byte(*params.SessionCertificate.Csr), rc.NewChangeContext())
 	})
 }
 
@@ -184,7 +184,7 @@ func (router *CurrentSessionRouter) DeleteCertificate(ae *env.AppEnv, rc *respon
 		return
 	}
 
-	if err := ae.GetManagers().ApiSessionCertificate.Delete(certId); err != nil {
+	if err := ae.GetManagers().ApiSessionCertificate.Delete(certId, rc.NewChangeContext()); err != nil {
 		rc.RespondWithError(err)
 		return
 	}

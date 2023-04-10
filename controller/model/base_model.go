@@ -22,9 +22,9 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-type edgeEntity interface {
+type edgeEntity[PE boltz.ExtEntity] interface {
 	models.Entity
-	fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error
-	toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error)
-	toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error)
+	fillFrom(env Env, tx *bbolt.Tx, boltEntity PE) error
+	toBoltEntityForCreate(tx *bbolt.Tx, env Env) (PE, error)
+	toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (PE, error)
 }

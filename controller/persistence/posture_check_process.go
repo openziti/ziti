@@ -44,7 +44,7 @@ func newPostureCheckProcess() PostureCheckSubType {
 	}
 }
 
-func (entity *PostureCheckProcess) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheckProcess) LoadValues(bucket *boltz.TypedBucket) {
 	entity.OperatingSystem = bucket.GetStringOrError(FieldPostureCheckProcessOs)
 	entity.Path = bucket.GetStringOrError(FieldPostureCheckProcessPath)
 	entity.Hashes = bucket.GetStringList(FieldPostureCheckProcessHashes)

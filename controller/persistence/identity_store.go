@@ -110,6 +110,14 @@ type Identity struct {
 	Disabled                  bool
 }
 
+func (entity *Identity) GetEntityType() string {
+	return EntityTypeIdentities
+}
+
+func (entity *Identity) GetName() string {
+	return entity.Name
+}
+
 type ServiceConfig struct {
 	ServiceId string
 	ConfigId  string
@@ -117,7 +125,13 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+type identityEntityStrategy struct{}
+
+func (identityEntityStrategy) NewEntity() *Identity {
+	return &Identity{}
+}
+
+func (identityEntityStrategy) FillEntity(entity *Identity, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
@@ -169,7 +183,7 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	}
 }
 
-func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
+func (identityEntityStrategy) PersistEntity(entity *Identity, ctx *boltz.PersistContext) {
 	ctx.WithFieldOverrides(identityFieldMappings)
 
 	entity.SetBaseValues(ctx)
@@ -255,18 +269,11 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *Identity) GetEntityType() string {
-	return EntityTypeIdentities
-}
-
-func (entity *Identity) GetName() string {
-	return entity.Name
-}
+var _ IdentityStore = (*identityStoreImpl)(nil)
 
 type IdentityStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
+	NameIndexed
+	Store[*Identity]
 
 	GetRoleAttributesIndex() boltz.SetReadIndex
 	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
@@ -280,14 +287,14 @@ type IdentityStore interface {
 
 func newIdentityStore(stores *stores) *identityStoreImpl {
 	store := &identityStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeIdentities),
+		baseStore: newBaseStore[*Identity](stores, identityEntityStrategy{}),
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type identityStoreImpl struct {
-	*baseStore
+	*baseStore[*Identity]
 
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
@@ -309,10 +316,6 @@ type identityStoreImpl struct {
 	dialServicesCollection boltz.RefCountedLinkCollection
 	symbolExternalId       boltz.EntitySymbol
 	externalIdIndex        boltz.ReadIndex
-}
-
-func (store *identityStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Identity{}
 }
 
 func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
@@ -381,23 +384,6 @@ func (store *identityStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *identityStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Identity, error) {
-	entity := &Identity{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-
-	return entity, nil
-}
-
-func (store *identityStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Identity, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
 func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	for _, enrollmentId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldIdentityEnrollments) {
 		if err := store.stores.enrollment.DeleteById(ctx, enrollmentId); err != nil {
@@ -417,8 +403,12 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 		if entity.IdentityTypeId == RouterIdentityType {
 			if !ctx.IsSystemContext() {
-				if router, _ := store.stores.Router.LoadOneByName(ctx.Tx(), entity.Name); router != nil {
-					err := errors.Errorf("cannot delete router identity %v until associated router is deleted", entity.Name)
+				router, err := store.stores.Router.FindByName(ctx.Tx(), entity.Name)
+				if err != nil {
+					return errorz.NewEntityCanNotBeDeletedFrom(err)
+				}
+				if router != nil {
+					err = errors.Errorf("cannot delete router identity %v until associated router is deleted", entity.Name)
 					return errorz.NewEntityCanNotBeDeletedFrom(err)
 				}
 			}

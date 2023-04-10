@@ -32,60 +32,43 @@ type DbProvider interface {
 	GetManagers() *network.Managers
 }
 
-type Store interface {
-	boltz.CrudStore
+type initializableStore interface {
+	boltz.Store
 	initializeLocal()
 	initializeLinked()
 	initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder)
 }
 
-func newBaseStore(stores *stores, entityType string) *baseStore {
-	singularEntityType := boltz.GetSingularEntityType(entityType)
-	return &baseStore{
-		stores: stores,
-		BaseStore: boltz.NewBaseStore(entityType, func(id string) error {
-			return boltz.NewNotFoundError(singularEntityType, "id", id)
-		}, db.RootBucket),
-	}
+type Store[E boltz.ExtEntity] interface {
+	boltz.EntityStore[E]
+	initializableStore
+	LoadOneById(tx *bbolt.Tx, id string) (E, error)
 }
 
-func newChildBaseStore(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity) *baseStore {
-	return newChildBaseStoreWithPath(stores, parent, parentMapper, EdgeBucket)
-}
-
-func newChildBaseStoreWithPath(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity, path string) *baseStore {
-	entityNotFoundF := func(id string) error {
-		return boltz.NewNotFoundError(parent.GetSingularEntityType(), "id", id)
-	}
-
-	return &baseStore{
-		stores:    stores,
-		BaseStore: boltz.NewChildBaseStore(parent, parentMapper, entityNotFoundF, path),
-	}
-}
-
-func newExtendedBaseStore(stores *stores, parent boltz.CrudStore, parentMapper func(entity boltz.Entity) boltz.Entity, path string) *baseStore {
-	store := newChildBaseStoreWithPath(stores, parent, parentMapper, path)
-	store.BaseStore.Extended()
-	return store
-}
-
-type baseStore struct {
+type baseStore[E boltz.ExtEntity] struct {
 	stores *stores
-	*boltz.BaseStore
+	*boltz.BaseStore[E]
 }
 
-func (store *baseStore) addUniqueNameField() boltz.ReadIndex {
+func (store *baseStore[E]) addUniqueNameField() boltz.ReadIndex {
 	symbolName := store.AddSymbol(FieldName, ast.NodeTypeString)
 	return store.AddUniqueIndex(symbolName)
 }
 
-func (store *baseStore) initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder) {
+func (store *baseStore[E]) initializeIndexes(tx *bbolt.Tx, errorHolder errorz.ErrorHolder) {
 	store.InitializeIndexes(tx, errorHolder)
 }
 
-func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.Entity) error {
-	found, err := store.BaseLoadOneById(tx, id, entity)
+func (store *baseStore[E]) LoadOneById(tx *bbolt.Tx, id string) (E, error) {
+	entity := store.NewStoreEntity()
+	if err := store.baseLoadOneById(tx, id, entity); err != nil {
+		return *new(E), err
+	}
+	return entity, nil
+}
+
+func (store *baseStore[E]) baseLoadOneById(tx *bbolt.Tx, id string, entity E) error {
+	found, err := store.LoadEntity(tx, id, entity)
 	if err != nil {
 		return err
 	}
@@ -95,7 +78,7 @@ func (store *baseStore) baseLoadOneById(tx *bbolt.Tx, id string, entity boltz.En
 	return nil
 }
 
-func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {
+func (store *baseStore[E]) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedExtEntity, rolesSymbol boltz.EntitySetSymbol) error {
 	idRef := entityRef(entity.GetId())
 
 	for _, policyHolderId := range store.GetRelatedEntitiesIdList(tx, entity.GetId(), rolesSymbol.GetStore().GetEntityType()) {
@@ -111,12 +94,17 @@ func (store *baseStore) deleteEntityReferences(tx *bbolt.Tx, entity boltz.NamedE
 	return nil
 }
 
-type NameIndexedStore interface {
-	Store
+func (store *baseStore[E]) getParentBucket(entity boltz.Entity, childBucket *boltz.TypedBucket) *boltz.TypedBucket {
+	parentBucket := store.GetParentStore().GetEntityBucket(childBucket.Tx(), []byte(entity.GetId()))
+	parentBucket.ErrorHolderImpl = childBucket.ErrorHolderImpl
+	return parentBucket
+}
+
+type NameIndexed interface {
 	GetNameIndex() boltz.ReadIndex
 }
 
-func (store *baseStore) GetName(tx *bbolt.Tx, id string) *string {
+func (store *baseStore[E]) GetName(tx *bbolt.Tx, id string) *string {
 	symbol := store.GetSymbol(FieldName)
 	if symbol == nil {
 		return nil
@@ -129,7 +117,7 @@ func (store *baseStore) GetName(tx *bbolt.Tx, id string) *string {
 	return nil
 }
 
-func (store *baseStore) getRoleAttributesCursorProvider(index boltz.SetReadIndex, values []string, semantic string) (ast.SetCursorProvider, error) {
+func (store *baseStore[E]) getRoleAttributesCursorProvider(index boltz.SetReadIndex, values []string, semantic string) (ast.SetCursorProvider, error) {
 	if semantic == "" {
 		semantic = SemanticAllOf
 	}

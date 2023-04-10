@@ -18,15 +18,15 @@ type serviceEventHandler struct {
 	events []*ServiceEvent
 }
 
-func (self *serviceEventHandler) addServiceUpdatedEvent(store *baseStore, tx *bbolt.Tx, serviceId []byte) {
-	cursor := store.stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
+func (self *serviceEventHandler) addServiceUpdatedEvent(stores *stores, tx *bbolt.Tx, serviceId []byte) {
+	cursor := stores.edgeService.bindIdentitiesCollection.IterateLinks(tx, serviceId, true)
 
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
 	}
 
-	cursor = store.stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId, true)
+	cursor = stores.edgeService.dialIdentitiesCollection.IterateLinks(tx, serviceId, true)
 	for cursor != nil && cursor.IsValid() {
 		self.addServiceEvent(tx, cursor.Current(), serviceId, ServiceUpdated)
 		cursor.Next()
@@ -79,7 +79,7 @@ func (self *roleAttributeChangeContext) addServicePolicyEvent(identityId, servic
 	self.addServiceEvent(self.tx, identityId, serviceId, eventType)
 }
 
-func (store *baseStore) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
+func (store *baseStore[E]) validateRoleAttributes(attributes []string, holder errorz.ErrorHolder) {
 	for _, attr := range attributes {
 		if strings.HasPrefix(attr, "#") {
 			holder.SetError(errorz.NewFieldError("role attributes may not be prefixed with #", "roleAttributes", attr))
@@ -92,7 +92,7 @@ func (store *baseStore) validateRoleAttributes(attributes []string, holder error
 	}
 }
 
-func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
+func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeChangeContext, entityId []byte, newRoleAttributes []boltz.FieldTypeAndValue) {
 	cursor := ctx.rolesSymbol.GetStore().IterateIds(ctx.tx, ast.BoolNodeTrue)
 
 	entityRoles := FieldValuesToIds(newRoleAttributes)
@@ -135,7 +135,7 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 				ctx.denormLinkCollection = store.stores.postureCheck.dialServicesCollection
 				ctx.changeHandler = func(fromId, toId []byte, add bool) {
 					pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-					ctx.addServiceUpdatedEvent(store, ctx.tx, toId)
+					ctx.addServiceUpdatedEvent(store.stores, ctx.tx, toId)
 				}
 			}
 		} else if isServices {
@@ -152,7 +152,7 @@ func (store *baseStore) updateServicePolicyRelatedRoles(ctx *roleAttributeChange
 			ctx.denormLinkCollection = store.stores.postureCheck.bindServicesCollection
 			ctx.changeHandler = func(fromId, toId []byte, add bool) {
 				pfxlog.Logger().Warnf("posture check %v -> service %v - included? %v", string(fromId), string(toId), add)
-				ctx.addServiceUpdatedEvent(store, ctx.tx, toId)
+				ctx.addServiceUpdatedEvent(store.stores, ctx.tx, toId)
 			}
 		}
 		evaluatePolicyAgainstEntity(ctx, semantic, entityId, policyId, ids, roles, entityRoles)
@@ -199,7 +199,7 @@ func EvaluatePolicy(ctx *roleAttributeChangeContext, policy Policy, roleAttribut
 	}
 }
 
-func validateEntityIds(tx *bbolt.Tx, store boltz.ListStore, field string, ids []string) error {
+func validateEntityIds(tx *bbolt.Tx, store boltz.Store, field string, ids []string) error {
 	var invalid []string
 	for _, val := range ids {
 		if !store.IsEntityPresent(tx, val) {
@@ -297,10 +297,10 @@ func ProcessEntityPolicyUnmatched(ctx *roleAttributeChangeContext, entityId, pol
 
 type denormCheckCtx struct {
 	name                   string
-	tx                     *bbolt.Tx
-	sourceStore            boltz.CrudStore
-	targetStore            boltz.CrudStore
-	policyStore            boltz.CrudStore
+	mutateCtx              boltz.MutateContext
+	sourceStore            boltz.Store
+	targetStore            boltz.Store
+	policyStore            boltz.Store
 	sourceCollection       boltz.LinkCollection
 	targetCollection       boltz.LinkCollection
 	targetDenormCollection boltz.RefCountedLinkCollection
@@ -310,18 +310,19 @@ type denormCheckCtx struct {
 }
 
 func validatePolicyDenormalization(ctx *denormCheckCtx) error {
-	for sourceCursor := ctx.sourceStore.IterateIds(ctx.tx, ast.BoolNodeTrue); sourceCursor.IsValid(); sourceCursor.Next() {
+	tx := ctx.mutateCtx.Tx()
+	for sourceCursor := ctx.sourceStore.IterateIds(tx, ast.BoolNodeTrue); sourceCursor.IsValid(); sourceCursor.Next() {
 		sourceEntityId := sourceCursor.Current()
-		for targetCursor := ctx.targetStore.IterateIds(ctx.tx, ast.BoolNodeTrue); targetCursor.IsValid(); targetCursor.Next() {
+		for targetCursor := ctx.targetStore.IterateIds(tx, ast.BoolNodeTrue); targetCursor.IsValid(); targetCursor.Next() {
 			targetEntityId := targetCursor.Current()
 
 			var relatedPolicies []string
 
-			for policyCursor := ctx.policyStore.IterateIds(ctx.tx, ast.BoolNodeTrue); policyCursor.IsValid(); policyCursor.Next() {
+			for policyCursor := ctx.policyStore.IterateIds(tx, ast.BoolNodeTrue); policyCursor.IsValid(); policyCursor.Next() {
 				policyId := policyCursor.Current()
 				if ctx.policyFilter == nil || ctx.policyFilter(policyId) {
-					sourceRelated := isRelatedByLinkCollection(ctx.tx, ctx.sourceCollection, policyId, sourceEntityId)
-					targetRelated := isRelatedByLinkCollection(ctx.tx, ctx.targetCollection, policyId, targetEntityId)
+					sourceRelated := isRelatedByLinkCollection(tx, ctx.sourceCollection, policyId, sourceEntityId)
+					targetRelated := isRelatedByLinkCollection(tx, ctx.targetCollection, policyId, targetEntityId)
 					if sourceRelated && targetRelated {
 						relatedPolicies = append(relatedPolicies, string(policyId))
 					}
@@ -331,9 +332,9 @@ func validatePolicyDenormalization(ctx *denormCheckCtx) error {
 			var sourceLinkCount, targetLinkCount *int32
 			var err error
 			if ctx.repair {
-				sourceLinkCount, targetLinkCount, err = ctx.targetDenormCollection.SetLinkCount(ctx.tx, sourceEntityId, targetEntityId, linkCount)
+				sourceLinkCount, targetLinkCount, err = ctx.targetDenormCollection.SetLinkCount(tx, sourceEntityId, targetEntityId, linkCount)
 			} else {
-				sourceLinkCount, targetLinkCount = ctx.targetDenormCollection.GetLinkCounts(ctx.tx, sourceEntityId, targetEntityId)
+				sourceLinkCount, targetLinkCount = ctx.targetDenormCollection.GetLinkCounts(tx, sourceEntityId, targetEntityId)
 			}
 			if err != nil {
 				return err

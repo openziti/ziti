@@ -2,6 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"math"
 	"time"
@@ -422,6 +423,16 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 		}
 	}
 	return circuit, returnPeerData
+}
+
+func (self *baseSessionRequestContext) NewChangeContext() *change.Context {
+	changeCtx := change.New().SetSource("ctrl[edge]")
+
+	if self.sourceRouter != nil {
+		changeCtx.SetChangeAuthorId(self.sourceRouter.Id).SetChangeAuthorName(self.sourceRouter.Name)
+	}
+
+	return changeCtx
 }
 
 type circuitParams struct {

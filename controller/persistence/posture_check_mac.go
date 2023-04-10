@@ -36,7 +36,7 @@ type PostureCheckMacAddresses struct {
 	MacAddresses []string
 }
 
-func (entity *PostureCheckMacAddresses) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheckMacAddresses) LoadValues(bucket *boltz.TypedBucket) {
 	for _, macAddress := range bucket.GetStringList(FieldPostureCheckMacAddresses) {
 		macAddress = cleanMacAddress(macAddress)
 		entity.MacAddresses = append(entity.MacAddresses, macAddress)
