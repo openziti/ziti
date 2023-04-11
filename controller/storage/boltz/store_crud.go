@@ -31,7 +31,7 @@ func (store *BaseStore[E]) GetParentStore() Store {
 }
 
 func (store *BaseStore[E]) NewStoreEntity() E {
-	return store.entityStrategy.New()
+	return store.entityStrategy.NewEntity()
 }
 
 func (store *BaseStore[E]) GetEntityStrategy() EntityStrategy[E] {
@@ -80,7 +80,7 @@ func (store *BaseStore[E]) LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, 
 	}
 
 	entity.SetId(id)
-	store.entityStrategy.LoadEntity(entity, bucket)
+	store.entityStrategy.FillEntity(entity, bucket)
 	if bucket.HasError() {
 		return false, bucket.GetError()
 	}
@@ -93,9 +93,9 @@ func (store *BaseStore[E]) FindById(tx *bbolt.Tx, id string) (E, bool, error) {
 		return store.defaultEntityValue(), false, nil
 	}
 
-	entity := store.entityStrategy.New()
+	entity := store.entityStrategy.NewEntity()
 	entity.SetId(id)
-	store.entityStrategy.LoadEntity(entity, bucket)
+	store.entityStrategy.FillEntity(entity, bucket)
 	if bucket.HasError() {
 		return store.defaultEntityValue(), false, bucket.GetError()
 	}
@@ -582,6 +582,10 @@ func (store *BaseStore[E]) AddEntityIdListener(listener func(string), changeType
 		},
 		changeTypes: append([]EntityEventType{changeType}, changeTypes...),
 	})
+}
+
+func (store *BaseStore[E]) GetEntityReflectType() reflect.Type {
+	return reflect.TypeOf(store.GetEntityStrategy().NewEntity())
 }
 
 type entityListenerAdapter[E Entity] struct {

@@ -38,11 +38,11 @@ func (entity *Location) GetEntityType() string {
 
 type locationEntityStrategy struct{}
 
-func (self locationEntityStrategy) New() *Location {
+func (self locationEntityStrategy) NewEntity() *Location {
 	return new(Location)
 }
 
-func (self locationEntityStrategy) LoadEntity(*Location, *TypedBucket) {
+func (self locationEntityStrategy) FillEntity(*Location, *TypedBucket) {
 }
 
 func (self locationEntityStrategy) PersistEntity(*Location, *PersistContext) {
