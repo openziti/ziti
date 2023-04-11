@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
+	"reflect"
 	"time"
 )
 
@@ -135,6 +136,7 @@ type Store interface {
 	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddUntypedEntityConstraint(constraint UntypedEntityConstraint)
+	GetEntityReflectType() reflect.Type
 }
 
 type ChildStoreStrategy[E Entity] interface {
@@ -173,13 +175,11 @@ type EntityStore[E Entity] interface {
 	AddEntityConstraint(constraint EntityConstraint[E])
 	AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType)
 	AddEntityEventListenerF(listener func(E), changeType EntityEventType, changeTypes ...EntityEventType)
-
-	NewStoreEntity() E
 }
 
 type EntityStrategy[E Entity] interface {
-	New() E
-	LoadEntity(entity E, bucket *TypedBucket)
+	NewEntity() E
+	FillEntity(entity E, bucket *TypedBucket)
 	PersistEntity(entity E, ctx *PersistContext)
 }
 

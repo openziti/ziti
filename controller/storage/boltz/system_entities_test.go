@@ -41,11 +41,11 @@ func (entity *foo) GetEntityType() string {
 
 type fooEntityStrategy struct{}
 
-func (self fooEntityStrategy) New() *foo {
+func (self fooEntityStrategy) NewEntity() *foo {
 	return new(foo)
 }
 
-func (self fooEntityStrategy) LoadEntity(entity *foo, bucket *TypedBucket) {
+func (self fooEntityStrategy) FillEntity(entity *foo, bucket *TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(fieldName)
 }

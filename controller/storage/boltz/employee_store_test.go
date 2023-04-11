@@ -43,11 +43,11 @@ func (entity *Employee) GetEntityType() string {
 
 type employeeEntityStrategy struct{}
 
-func (self employeeEntityStrategy) New() *Employee {
+func (self employeeEntityStrategy) NewEntity() *Employee {
 	return new(Employee)
 }
 
-func (self employeeEntityStrategy) LoadEntity(entity *Employee, bucket *TypedBucket) {
+func (self employeeEntityStrategy) FillEntity(entity *Employee, bucket *TypedBucket) {
 	entity.Name = bucket.GetStringOrError(fieldName)
 	entity.ManagerId = bucket.GetString(fieldManager)
 	entity.RoleAttributes = bucket.GetStringList(fieldRoleAttributes)

@@ -112,10 +112,10 @@ func (ctx *BaseTestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return store
 }
 
-func RequireDelete[E boltz.Entity](ctx TestContext, entity E) {
+func RequireDelete[E boltz.Entity](ctx TestContext, entity E, ignorePaths ...string) {
 	err := Delete[E](ctx, entity)
 	ctx.Require().NoError(err)
-	ValidateDeleted(ctx, entity.GetId())
+	ValidateDeleted(ctx, entity.GetId(), ignorePaths...)
 }
 
 func RequireReload[E boltz.Entity](ctx TestContext, entity E) {
@@ -225,7 +225,7 @@ func ValidateBaseline[E boltz.ExtEntity](ctx TestContext, entity E, opts ...cmp.
 
 func ValidateUpdated[E boltz.ExtEntity](ctx TestContext, entity E) {
 	store := GetStoreForEntity(ctx, entity)
-	loaded := store.NewStoreEntity()
+	loaded := store.GetEntityStrategy().NewEntity()
 
 	var found bool
 	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {

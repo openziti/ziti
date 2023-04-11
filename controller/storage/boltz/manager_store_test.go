@@ -29,11 +29,11 @@ type managerEntityStrategy struct {
 	employeeStore *employeeStoreImpl
 }
 
-func (self *managerEntityStrategy) New() *Manager {
+func (self *managerEntityStrategy) NewEntity() *Manager {
 	return new(Manager)
 }
 
-func (self *managerEntityStrategy) LoadEntity(entity *Manager, bucket *TypedBucket) {
+func (self *managerEntityStrategy) FillEntity(entity *Manager, bucket *TypedBucket) {
 	_, err := self.employeeStore.LoadEntity(bucket.Tx(), entity.Id, &entity.Employee)
 	bucket.SetError(err)
 	entity.IsTechLead = bucket.GetBoolWithDefault("isTechLead", false)
