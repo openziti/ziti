@@ -189,12 +189,11 @@ func (self *SessionManager) Create(entity *Session) (string, error) {
 		return "", apierror.NewInvalidPosture(policyResult.Cause)
 	}
 
-	maxRows := 1
-	result, err := self.GetEnv().GetManagers().EdgeRouter.ListForIdentityAndService(apiSession.IdentityId, entity.ServiceId, &maxRows)
+	edgeRouterAvailable, err := self.GetEnv().GetManagers().EdgeRouter.IsSharedEdgeRouterPresent(apiSession.IdentityId, entity.ServiceId)
 	if err != nil {
 		return "", err
 	}
-	if result.Count < 1 {
+	if !edgeRouterAvailable {
 		return "", apierror.NewNoEdgeRoutersAvailable()
 	}
 
