@@ -19,7 +19,9 @@ package model
 import (
 	"encoding/json"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -35,7 +37,7 @@ const (
 
 func NewConfigTypeManager(env Env) *ConfigTypeManager {
 	manager := &ConfigTypeManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ConfigType),
+		baseEntityManager: newBaseEntityManager[*ConfigType, *persistence.ConfigType](env, env.GetStores().ConfigType),
 	}
 	manager.impl = manager
 
@@ -45,28 +47,28 @@ func NewConfigTypeManager(env Env) *ConfigTypeManager {
 }
 
 type ConfigTypeManager struct {
-	baseEntityManager
+	baseEntityManager[*ConfigType, *persistence.ConfigType]
 }
 
-func (self *ConfigTypeManager) newModelEntity() edgeEntity {
+func (self *ConfigTypeManager) newModelEntity() *ConfigType {
 	return &ConfigType{}
 }
 
-func (self *ConfigTypeManager) Create(entity *ConfigType) error {
-	return network.DispatchCreate[*ConfigType](self, entity)
+func (self *ConfigTypeManager) Create(entity *ConfigType, ctx *change.Context) error {
+	return network.DispatchCreate[*ConfigType](self, entity, ctx)
 }
 
 func (self *ConfigTypeManager) ApplyCreate(cmd *command.CreateEntityCommand[*ConfigType]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *ConfigTypeManager) Update(entity *ConfigType, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*ConfigType](self, entity, checker)
+func (self *ConfigTypeManager) Update(entity *ConfigType, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*ConfigType](self, entity, checker, ctx)
 }
 
 func (self *ConfigTypeManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ConfigType]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
 }
 
 func (self *ConfigTypeManager) Read(id string) (*ConfigType, error) {

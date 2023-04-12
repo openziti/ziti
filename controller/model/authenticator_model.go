@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
 )
@@ -52,11 +51,7 @@ func (entity *Authenticator) Fingerprints() []string {
 	}
 }
 
-func (entity *Authenticator) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltAuthenticator, ok := boltEntity.(*persistence.Authenticator)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model authenticator", reflect.TypeOf(boltEntity))
-	}
+func (entity *Authenticator) fillFrom(_ Env, _ *bbolt.Tx, boltAuthenticator *persistence.Authenticator) error {
 	entity.FillCommon(boltAuthenticator)
 	entity.Method = boltAuthenticator.Type
 	entity.IdentityId = boltAuthenticator.IdentityId
@@ -87,7 +82,7 @@ func (entity *Authenticator) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity b
 	return nil
 }
 
-func (entity *Authenticator) toBoltEntity() (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntity() (*persistence.Authenticator, error) {
 	boltEntity := &persistence.Authenticator{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Type:          entity.Method,
@@ -134,11 +129,11 @@ func (entity *Authenticator) toBoltEntity() (boltz.Entity, error) {
 	return boltEntity, nil
 }
 
-func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.Authenticator, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Authenticator) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.Authenticator, error) {
 	return entity.toBoltEntity()
 }
 

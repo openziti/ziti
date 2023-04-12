@@ -109,7 +109,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 
 func (r *EnrollmentRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params enrollment.CreateEnrollmentParams) {
 	Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment))
+		return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment), rc)
 	})
 
 }

@@ -18,7 +18,6 @@ package events
 
 import (
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
@@ -44,22 +43,11 @@ func (self *Dispatcher) RemoveApiSessionEventHandler(handler ApiSessionEventHand
 }
 
 func (self *Dispatcher) initApiSessionEvents(stores *persistence.Stores) {
-	stores.ApiSession.AddListener(boltz.EventCreate, self.apiSessionCreated)
-	stores.ApiSession.AddListener(boltz.EventDelete, self.apiSessionDeleted)
+	stores.ApiSession.AddEntityEventListenerF(self.apiSessionCreated, boltz.EntityCreated)
+	stores.ApiSession.AddEntityEventListenerF(self.apiSessionDeleted, boltz.EntityDeleted)
 }
 
-func (self *Dispatcher) apiSessionCreated(args ...interface{}) {
-	var apiSession *persistence.ApiSession
-	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
-	}
-
-	if apiSession == nil {
-		log := pfxlog.Logger()
-		log.Error("could not cast event args to event details")
-		return
-	}
-
+func (self *Dispatcher) apiSessionCreated(apiSession *persistence.ApiSession) {
 	event := &ApiSessionEvent{
 		Namespace:  ApiSessionEventNS,
 		EventType:  ApiSessionEventTypeCreated,
@@ -75,18 +63,7 @@ func (self *Dispatcher) apiSessionCreated(args ...interface{}) {
 	}
 }
 
-func (self *Dispatcher) apiSessionDeleted(args ...interface{}) {
-	var apiSession *persistence.ApiSession
-	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
-	}
-
-	if apiSession == nil {
-		log := pfxlog.Logger()
-		log.Error("could not cast event args to event details")
-		return
-	}
-
+func (self *Dispatcher) apiSessionDeleted(apiSession *persistence.ApiSession) {
 	event := &ApiSessionEvent{
 		Namespace:  ApiSessionEventNS,
 		EventType:  ApiSessionEventTypeDeleted,

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/internal/jwtsigner"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
@@ -143,11 +144,7 @@ func NewTestContext(t *testing.T) *TestContext {
 	return context
 }
 func (ctx *TestContext) Init() {
-	ctx.InitWithDbFile("")
-}
-
-func (ctx *TestContext) InitWithDbFile(dbPath string) {
-	ctx.TestContext.InitWithDbFile(dbPath)
+	ctx.TestContext.Init()
 	ctx.config = &config.Config{
 		Enrollment: config.Enrollment{
 			EdgeRouter: config.EnrollmentOption{
@@ -173,7 +170,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
-	ctx.NoError(ctx.managers.Identity.Create(identity))
+	ctx.NoError(ctx.managers.Identity.Create(identity, change.New().SetSource("test")))
 	return identity
 }
 
@@ -181,7 +178,7 @@ func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
 		Name: eid.New(),
 	}
-	ctx.NoError(ctx.managers.EdgeService.Create(service))
+	ctx.NoError(ctx.managers.EdgeService.Create(service, change.New().SetSource("test")))
 	return service
 }
 
@@ -189,7 +186,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	edgeRouter := &EdgeRouter{
 		Name: eid.New(),
 	}
-	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter))
+	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter, change.New().SetSource("test")))
 	return edgeRouter
 }
 
@@ -213,7 +210,7 @@ func (ctx *TestContext) requireNewSession(apiSession *ApiSession, serviceId stri
 		ServiceId:    serviceId,
 		Type:         sessionType,
 	}
-	_, err := ctx.managers.Session.Create(entity)
+	_, err := ctx.managers.Session.Create(entity, change.New().SetSource("test"))
 	ctx.NoError(err)
 	return entity
 }
@@ -226,7 +223,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType string, identityRoles
 		ServiceRoles:  serviceRoles,
 		PolicyType:    policyType,
 	}
-	ctx.NoError(ctx.managers.ServicePolicy.Create(policy))
+	ctx.NoError(ctx.managers.ServicePolicy.Create(policy, change.New().SetSource("test")))
 	return policy
 }
 
@@ -237,7 +234,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.managers.EdgeRouterPolicy.Create(policy))
+	ctx.NoError(ctx.managers.EdgeRouterPolicy.Create(policy, change.New().SetSource("test")))
 	return policy
 }
 
@@ -248,7 +245,7 @@ func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeR
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Create(policy))
+	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Create(policy, change.New().SetSource("test")))
 	return policy
 }
 

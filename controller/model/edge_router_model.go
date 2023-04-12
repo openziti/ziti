@@ -17,14 +17,11 @@
 package model
 
 import (
-	"github.com/openziti/foundation/v2/versions"
-	"reflect"
-
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -46,7 +43,7 @@ type EdgeRouter struct {
 	Disabled              bool
 }
 
-func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeRouter, error) {
 	boltEntity := &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -64,7 +61,7 @@ func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz
 	return boltEntity, nil
 }
 
-func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.EdgeRouter, error) {
 	return &persistence.EdgeRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -84,12 +81,7 @@ func (entity *EdgeRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.
 	}, nil
 }
 
-func (entity *EdgeRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltEdgeRouter, ok := boltEntity.(*persistence.EdgeRouter)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model edge router", reflect.TypeOf(boltEntity))
-	}
-
+func (entity *EdgeRouter) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouter *persistence.EdgeRouter) error {
 	entity.FillCommon(boltEdgeRouter)
 	entity.Name = boltEdgeRouter.Name
 	entity.RoleAttributes = boltEdgeRouter.RoleAttributes

@@ -123,7 +123,8 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	if authPolicy.Primary.Updb.MaxAttempts != persistence.UpdbUnlimitedAttemptsLimit && attempts > authPolicy.Primary.Updb.MaxAttempts {
 		logger.WithField("attempts", attempts).WithField("maxAttempts", authPolicy.Primary.Updb.MaxAttempts).Error("updb auth failed, max attempts exceeded")
 
-		if err = module.env.GetManagers().Identity.Disable(authenticator.IdentityId, time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes)*time.Minute); err != nil {
+		duration := time.Duration(authPolicy.Primary.Updb.LockoutDurationMinutes) * time.Minute
+		if err = module.env.GetManagers().Identity.Disable(authenticator.IdentityId, duration, context.GetChangeContext()); err != nil {
 			logger.WithError(err).Error("could not lock identity, unhandled error")
 		}
 

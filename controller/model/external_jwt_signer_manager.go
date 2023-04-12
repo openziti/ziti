@@ -17,7 +17,9 @@
 package model
 
 import (
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -30,7 +32,7 @@ import (
 
 func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 	manager := &ExternalJwtSignerManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ExternalJwtSigner),
+		baseEntityManager: newBaseEntityManager[*ExternalJwtSigner, *persistence.ExternalJwtSigner](env, env.GetStores().ExternalJwtSigner),
 	}
 	manager.impl = manager
 
@@ -40,36 +42,28 @@ func NewExternalJwtSignerManager(env Env) *ExternalJwtSignerManager {
 }
 
 type ExternalJwtSignerManager struct {
-	baseEntityManager
+	baseEntityManager[*ExternalJwtSigner, *persistence.ExternalJwtSigner]
 }
 
-func (self *ExternalJwtSignerManager) newModelEntity() edgeEntity {
+func (self *ExternalJwtSignerManager) newModelEntity() *ExternalJwtSigner {
 	return &ExternalJwtSigner{}
 }
 
-func (self *ExternalJwtSignerManager) Create(entity *ExternalJwtSigner) error {
-	return network.DispatchCreate[*ExternalJwtSigner](self, entity)
+func (self *ExternalJwtSignerManager) Create(entity *ExternalJwtSigner, ctx *change.Context) error {
+	return network.DispatchCreate[*ExternalJwtSigner](self, entity, ctx)
 }
 
 func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityCommand[*ExternalJwtSigner]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *ExternalJwtSignerManager) Update(entity *ExternalJwtSigner, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*ExternalJwtSigner](self, entity, checker)
+func (self *ExternalJwtSignerManager) Update(entity *ExternalJwtSigner, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*ExternalJwtSigner](self, entity, checker, ctx)
 }
 
 func (self *ExternalJwtSignerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ExternalJwtSigner]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
-}
-
-func (self *ExternalJwtSignerManager) Read(id string) (*ExternalJwtSigner, error) {
-	modelEntity := &ExternalJwtSigner{}
-	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
 }
 
 func (self *ExternalJwtSignerManager) Marshall(entity *ExternalJwtSigner) ([]byte, error) {
@@ -156,12 +150,7 @@ func (self *ExternalJwtSignerManager) PublicQuery(query ast.Query) (*ListExtJwtS
 	result := &ListExtJwtSignerResult{
 		manager:       self,
 		QueryMetaData: entityResult.QueryMetaData,
-	}
-
-	for _, entity := range entityResult.Entities {
-		if extJwtSigner, ok := entity.(*ExternalJwtSigner); ok {
-			result.ExtJwtSigners = append(result.ExtJwtSigners, extJwtSigner)
-		}
+		ExtJwtSigners: entityResult.Entities,
 	}
 
 	return result, nil

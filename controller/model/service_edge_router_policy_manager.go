@@ -17,18 +17,19 @@
 package model
 
 import (
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
-	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewServiceEdgeRouterPolicyManager(env Env) *ServiceEdgeRouterPolicyManager {
 	manager := &ServiceEdgeRouterPolicyManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ServiceEdgeRouterPolicy),
+		baseEntityManager: newBaseEntityManager[*ServiceEdgeRouterPolicy, *persistence.ServiceEdgeRouterPolicy](env, env.GetStores().ServiceEdgeRouterPolicy),
 	}
 	manager.impl = manager
 
@@ -38,44 +39,28 @@ func NewServiceEdgeRouterPolicyManager(env Env) *ServiceEdgeRouterPolicyManager 
 }
 
 type ServiceEdgeRouterPolicyManager struct {
-	baseEntityManager
+	baseEntityManager[*ServiceEdgeRouterPolicy, *persistence.ServiceEdgeRouterPolicy]
 }
 
-func (self *ServiceEdgeRouterPolicyManager) newModelEntity() edgeEntity {
+func (self *ServiceEdgeRouterPolicyManager) newModelEntity() *ServiceEdgeRouterPolicy {
 	return &ServiceEdgeRouterPolicy{}
 }
 
-func (self *ServiceEdgeRouterPolicyManager) Create(entity *ServiceEdgeRouterPolicy) error {
-	return network.DispatchCreate[*ServiceEdgeRouterPolicy](self, entity)
+func (self *ServiceEdgeRouterPolicyManager) Create(entity *ServiceEdgeRouterPolicy, ctx *change.Context) error {
+	return network.DispatchCreate[*ServiceEdgeRouterPolicy](self, entity, ctx)
 }
 
 func (self *ServiceEdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServiceEdgeRouterPolicy]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *ServiceEdgeRouterPolicyManager) Update(entity *ServiceEdgeRouterPolicy, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*ServiceEdgeRouterPolicy](self, entity, checker)
+func (self *ServiceEdgeRouterPolicyManager) Update(entity *ServiceEdgeRouterPolicy, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*ServiceEdgeRouterPolicy](self, entity, checker, ctx)
 }
 
 func (self *ServiceEdgeRouterPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServiceEdgeRouterPolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
-}
-
-func (self *ServiceEdgeRouterPolicyManager) Read(id string) (*ServiceEdgeRouterPolicy, error) {
-	modelEntity := &ServiceEdgeRouterPolicy{}
-	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-func (self *ServiceEdgeRouterPolicyManager) readInTx(tx *bbolt.Tx, id string) (*ServiceEdgeRouterPolicy, error) {
-	modelEntity := &ServiceEdgeRouterPolicy{}
-	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
 }
 
 func (self *ServiceEdgeRouterPolicyManager) Marshall(entity *ServiceEdgeRouterPolicy) ([]byte, error) {

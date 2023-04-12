@@ -21,6 +21,7 @@ import (
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -31,7 +32,7 @@ import (
 
 func NewApiSessionManager(env Env) *ApiSessionManager {
 	manager := &ApiSessionManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ApiSession),
+		baseEntityManager: newBaseEntityManager[*ApiSession, *persistence.ApiSession](env, env.GetStores().ApiSession),
 	}
 
 	manager.HeartbeatCollector = NewHeartbeatCollector(env, env.GetConfig().Api.ActivityUpdateBatchSize, env.GetConfig().Api.ActivityUpdateInterval, manager.heartbeatFlush)
@@ -51,21 +52,16 @@ func (self *ApiSessionManager) newModelEntity() *ApiSession {
 }
 
 func (self *ApiSessionManager) Create(ctx boltz.MutateContext, entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
-	if ctx == nil {
-		var apiSessionId string
-		err := self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
-			ctx = boltz.NewMutateContext(tx)
-			var err error
-			apiSessionId, err = self.CreateInCtx(ctx, entity, sessionCerts)
-			return err
-		})
-		if err != nil {
-			return "", err
-		}
-		return apiSessionId, nil
+	var apiSessionId string
+	err := self.env.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
+		var err error
+		apiSessionId, err = self.CreateInCtx(ctx, entity, sessionCerts)
+		return err
+	})
+	if err != nil {
+		return "", err
 	}
-
-	return self.CreateInCtx(ctx, entity, sessionCerts)
+	return apiSessionId, nil
 }
 
 func (self *ApiSessionManager) CreateInCtx(ctx boltz.MutateContext, entity *ApiSession, sessionCerts []*ApiSessionCertificate) (string, error) {
@@ -117,25 +113,25 @@ func (self *ApiSessionManager) IsUpdated(_ string) bool {
 	return false
 }
 
-func (self *ApiSessionManager) Update(apiSession *ApiSession) error {
-	return self.updateEntity(apiSession, self)
+func (self *ApiSessionManager) Update(apiSession *ApiSession, ctx *change.Context) error {
+	return self.updateEntity(apiSession, self, ctx)
 }
 
-func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fieldChecker boltz.FieldChecker) error {
-	return self.updateEntity(apiSession, fieldChecker)
+func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fieldChecker boltz.FieldChecker, ctx *change.Context) error {
+	return self.updateEntity(apiSession, fieldChecker, ctx)
 }
 
-func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession) error {
+func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
 	apiSession.MfaComplete = true
-	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self})
+	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self}, ctx)
 }
 
-func (self *ApiSessionManager) Delete(id string) error {
-	return self.deleteEntity(id)
+func (self *ApiSessionManager) Delete(id string, ctx *change.Context) error {
+	return self.deleteEntity(id, ctx)
 }
 
-func (self *ApiSessionManager) DeleteBatch(id []string) error {
-	return self.deleteEntityBatch(id)
+func (self *ApiSessionManager) DeleteBatch(id []string, ctx *change.Context) error {
+	return self.deleteEntityBatch(id, ctx)
 }
 
 func (self *ApiSessionManager) MarkActivityById(apiSessionId string) {
@@ -173,12 +169,12 @@ func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string,
 }
 
 func (self *ApiSessionManager) heartbeatFlush(beats []*Heartbeat) {
-	err := self.GetDb().Batch(func(tx *bbolt.Tx) error {
+	changeCtx := change.New().SetSource("heartbeat.flush")
+	err := self.GetDb().Batch(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		store := self.Store.(persistence.ApiSessionStore)
-		mutCtx := boltz.NewMutateContext(tx)
 
 		for _, beat := range beats {
-			err := store.Update(mutCtx, &persistence.ApiSession{
+			err := store.Update(ctx, &persistence.ApiSession{
 				BaseExtEntity: boltz.BaseExtEntity{
 					Id: beat.ApiSessionId,
 				},
@@ -279,10 +275,10 @@ func (self *ApiSessionManager) VisitFingerprintsForApiSession(tx *bbolt.Tx, iden
 	return nil
 }
 
-func (self *ApiSessionManager) DeleteByIdentityId(identityId string) error {
-	return self.GetEnv().GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
+func (self *ApiSessionManager) DeleteByIdentityId(identityId string, changeCtx *change.Context) error {
+	return self.GetEnv().GetDbProvider().GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		query := fmt.Sprintf(`%s = "%s"`, persistence.FieldApiSessionIdentity, identityId)
-		return self.Store.DeleteWhere(boltz.NewMutateContext(tx), query)
+		return self.Store.DeleteWhere(ctx, query)
 	})
 }
 

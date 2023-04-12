@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
@@ -208,9 +209,8 @@ func (self *PostureResponseManager) postureDataUpdated(env Env, identityId strin
 
 	for _, sessionId := range sessionIdsToDelete {
 		//todo: delete batch?
-		_ = self.env.GetManagers().Session.Delete(sessionId)
+		_ = self.env.GetManagers().Session.Delete(sessionId, change.New().SetSource("posture.cache"))
 	}
-
 }
 
 func (self *PostureResponseManager) Evaluate(identityId, apiSessionId string, check *PostureCheck) (bool, *PostureCheckFailure) {
@@ -325,7 +325,7 @@ func (self *PostureResponseManager) GetEndpointStateChangeAffectedServices(timeS
 							service, err := self.env.GetStores().EdgeService.LoadOneById(tx, string(serviceCursor.Current()))
 							if err == nil {
 								modelService := &Service{}
-								if err := modelService.fillFrom(self.env.GetManagers().EdgeService, tx, service); err == nil {
+								if err := modelService.fillFrom(self.env, tx, service); err == nil {
 									//use the lowest configured timeout (which is some timeout or no timeout)
 									if existingService, ok := services[service.Id]; !ok || timeout < existingService.Timeout {
 										services[service.Id] = &ServiceWithTimeout{

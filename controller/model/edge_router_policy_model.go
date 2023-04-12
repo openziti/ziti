@@ -20,9 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type EdgeRouterPolicy struct {
@@ -33,7 +31,7 @@ type EdgeRouterPolicy struct {
 	EdgeRouterRoles []string
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntity() (*persistence.EdgeRouterPolicy, error) {
 	return &persistence.EdgeRouterPolicy{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:            entity.Name,
@@ -43,19 +41,15 @@ func (entity *EdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeRouterPolicy, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *EdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.EdgeRouterPolicy, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *EdgeRouterPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltEdgeRouterPolicy, ok := boltEntity.(*persistence.EdgeRouterPolicy)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))
-	}
+func (entity *EdgeRouterPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltEdgeRouterPolicy *persistence.EdgeRouterPolicy) error {
 	entity.FillCommon(boltEdgeRouterPolicy)
 	entity.Name = boltEdgeRouterPolicy.Name
 	entity.Semantic = boltEdgeRouterPolicy.Semantic

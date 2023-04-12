@@ -91,7 +91,7 @@ func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext
 			return "", err
 		}
 
-		return MapCreate(ae.Managers.Authenticator.Create, authenticator)
+		return MapCreate(ae.Managers.Authenticator.Create, authenticator, rc)
 	})
 }
 
@@ -101,7 +101,7 @@ func (r *AuthenticatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *AuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params authenticator.UpdateAuthenticatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator), false, nil)
+		return ae.Managers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator), false, nil, rc.NewChangeContext())
 	})
 }
 
@@ -113,7 +113,7 @@ func (r *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext,
 			fields.AddField("salt")
 		}
 
-		return ae.Managers.Authenticator.Update(model, false, fields.FilterMaps("tags"))
+		return ae.Managers.Authenticator.Update(model, false, fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 

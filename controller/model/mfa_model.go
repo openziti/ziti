@@ -21,9 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 const (
@@ -40,8 +38,8 @@ type Mfa struct {
 	RecoveryCodes []string
 }
 
-func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	if !manager.GetEnv().GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
+func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.Mfa, error) {
+	if !env.GetStores().Identity.IsEntityPresent(tx, entity.IdentityId) {
 		return nil, errorz.NewFieldError("identity not found", "IdentityId", entity.IdentityId)
 	}
 
@@ -56,30 +54,26 @@ func (entity *Mfa) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Enti
 	return boltEntity, nil
 }
 
-func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *Mfa) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.Mfa, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *Mfa) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.Mfa, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Mfa) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltMfa, ok := boltEntity.(*persistence.Mfa)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model Mfa", reflect.TypeOf(boltEntity))
-	}
+func (entity *Mfa) fillFrom(env Env, tx *bbolt.Tx, boltMfa *persistence.Mfa) error {
 	entity.FillCommon(boltMfa)
 	entity.IsVerified = boltMfa.IsVerified
 	entity.IdentityId = boltMfa.IdentityId
 	entity.RecoveryCodes = boltMfa.RecoveryCodes
 	entity.Secret = boltMfa.Secret
-	boltIdentity, err := manager.GetEnv().GetStores().Identity.LoadOneById(tx, boltMfa.IdentityId)
+	boltIdentity, err := env.GetStores().Identity.LoadOneById(tx, boltMfa.IdentityId)
 	if err != nil {
 		return err
 	}
 	modelIdentity := &Identity{}
-	if err := modelIdentity.fillFrom(manager, tx, boltIdentity); err != nil {
+	if err = modelIdentity.fillFrom(env, tx, boltIdentity); err != nil {
 		return err
 	}
 	entity.Identity = modelIdentity

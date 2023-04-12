@@ -16,35 +16,20 @@
 
 package model
 
+import "github.com/openziti/edge/controller/persistence"
+
 func NewPostureCheckTypeManager(env Env) *PostureCheckTypeManager {
 	manager := &PostureCheckTypeManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheckType),
+		baseEntityManager: newBaseEntityManager[*PostureCheckType, *persistence.PostureCheckType](env, env.GetStores().PostureCheckType),
 	}
 	manager.impl = manager
 	return manager
 }
 
 type PostureCheckTypeManager struct {
-	baseEntityManager
+	baseEntityManager[*PostureCheckType, *persistence.PostureCheckType]
 }
 
-func (self *PostureCheckTypeManager) newModelEntity() edgeEntity {
+func (self *PostureCheckTypeManager) newModelEntity() *PostureCheckType {
 	return &PostureCheckType{}
-}
-
-func (self *PostureCheckTypeManager) Read(id string) (*PostureCheckType, error) {
-	modelEntity := &PostureCheckType{}
-	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-func (self *PostureCheckTypeManager) ReadByName(name string) (*PostureCheckType, error) {
-	modelPostureCheckType := &PostureCheckType{}
-	nameIndex := self.env.GetStores().PostureCheckType.GetNameIndex()
-	if err := self.readEntityWithIndex("name", []byte(name), nameIndex, modelPostureCheckType); err != nil {
-		return nil, err
-	}
-	return modelPostureCheckType, nil
 }

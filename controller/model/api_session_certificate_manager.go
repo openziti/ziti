@@ -93,22 +93,6 @@ func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lif
 	return self.Create(entity, ctx)
 }
 
-func (self *ApiSessionCertificateManager) Read(id string) (*ApiSessionCertificate, error) {
-	modelApiSessionCertificate := &ApiSessionCertificate{}
-	if err := self.readEntity(id, modelApiSessionCertificate); err != nil {
-		return nil, err
-	}
-	return modelApiSessionCertificate, nil
-}
-
-func (self *ApiSessionCertificateManager) readInTx(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
-	modelApiSessionCertificate := &ApiSessionCertificate{}
-	if err := self.readEntityInTx(tx, id, modelApiSessionCertificate); err != nil {
-		return nil, err
-	}
-	return modelApiSessionCertificate, nil
-}
-
 func (self *ApiSessionCertificateManager) IsUpdated(_ string) bool {
 	return false
 }

@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
@@ -33,17 +34,17 @@ import (
 
 func NewSessionManager(env Env) *SessionManager {
 	manager := &SessionManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().Session),
+		baseEntityManager: newBaseEntityManager[*Session, *persistence.Session](env, env.GetStores().Session),
 	}
 	manager.impl = manager
 	return manager
 }
 
 type SessionManager struct {
-	baseEntityManager
+	baseEntityManager[*Session, *persistence.Session]
 }
 
-func (self *SessionManager) newModelEntity() edgeEntity {
+func (self *SessionManager) newModelEntity() *Session {
 	return &Session{}
 }
 
@@ -150,7 +151,7 @@ func (self *SessionManager) EvaluatePostureForService(identityId, apiSessionId, 
 	}
 }
 
-func (self *SessionManager) Create(entity *Session) (string, error) {
+func (self *SessionManager) Create(entity *Session, ctx *change.Context) (string, error) {
 	if self.getExistingSessionEntity(entity) {
 		return entity.Id, nil
 	}
@@ -199,19 +200,19 @@ func (self *SessionManager) Create(entity *Session) (string, error) {
 
 	entity.ServicePolicies = policyResult.PassingPolicyIds
 
-	return self.createSessionEntity(entity)
+	return self.createSessionEntity(entity, ctx)
 }
 
-func (self *SessionManager) createSessionEntity(session *Session) (string, error) {
+func (self *SessionManager) createSessionEntity(session *Session, ctx *change.Context) (string, error) {
 	var id string
-	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
-		if self.getExistingSessionEntityInTx(tx, session) {
+	err := self.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		if self.getExistingSessionEntityInTx(ctx.Tx(), session) {
 			id = session.Id
 			return nil
 		}
 
 		var err error
-		id, err = self.createEntityInTx(boltz.NewMutateContext(tx), session)
+		id, err = self.createEntityInTx(ctx, session)
 		return err
 	})
 	if err != nil {
@@ -280,15 +281,7 @@ func (self *SessionManager) Read(id string) (*Session, error) {
 	return entity, nil
 }
 
-func (self *SessionManager) readInTx(tx *bbolt.Tx, id string) (*Session, error) {
-	entity := &Session{}
-	if err := self.readEntityInTx(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (self *SessionManager) DeleteForIdentity(id, identityId string) error {
+func (self *SessionManager) DeleteForIdentity(id, identityId string, ctx *change.Context) error {
 	session, err := self.ReadForIdentity(id, identityId)
 	if err != nil {
 		return err
@@ -296,11 +289,11 @@ func (self *SessionManager) DeleteForIdentity(id, identityId string) error {
 	if session == nil {
 		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
 	}
-	return self.deleteEntity(id)
+	return self.deleteEntity(id, ctx)
 }
 
-func (self *SessionManager) Delete(id string) error {
-	return self.deleteEntity(id)
+func (self *SessionManager) Delete(id string, ctx *change.Context) error {
+	return self.deleteEntity(id, ctx)
 }
 
 func (self *SessionManager) PublicQueryForIdentity(sessionIdentity *Identity, query ast.Query) (*SessionListResult, error) {

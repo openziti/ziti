@@ -18,7 +18,9 @@ package model
 
 import (
 	"encoding/json"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -31,7 +33,7 @@ import (
 
 func NewConfigManager(env Env) *ConfigManager {
 	manager := &ConfigManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().Config),
+		baseEntityManager: newBaseEntityManager[*Config, *persistence.Config](env, env.GetStores().Config),
 	}
 	manager.impl = manager
 
@@ -41,24 +43,24 @@ func NewConfigManager(env Env) *ConfigManager {
 }
 
 type ConfigManager struct {
-	baseEntityManager
+	baseEntityManager[*Config, *persistence.Config]
 }
 
-func (self *ConfigManager) newModelEntity() edgeEntity {
+func (self *ConfigManager) newModelEntity() *Config {
 	return &Config{}
 }
 
-func (self *ConfigManager) Create(entity *Config) error {
-	return network.DispatchCreate[*Config](self, entity)
+func (self *ConfigManager) Create(entity *Config, ctx *change.Context) error {
+	return network.DispatchCreate[*Config](self, entity, ctx)
 }
 
 func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *ConfigManager) Update(entity *Config, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*Config](self, entity, checker)
+func (self *ConfigManager) Update(entity *Config, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*Config](self, entity, checker, ctx)
 }
 
 func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
@@ -66,7 +68,7 @@ func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker)
+	return self.updateEntity(cmd.Entity, checker, cmd.Context)
 }
 
 func (self *ConfigManager) Read(id string) (*Config, error) {

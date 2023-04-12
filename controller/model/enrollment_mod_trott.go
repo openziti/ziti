@@ -133,11 +133,11 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	txRouter.IsVerified = true
 	txRouter.Fingerprint = &cltFp
 
-	if err := module.env.GetManagers().TransitRouter.Update(txRouter, true, nil); err != nil {
+	if err := module.env.GetManagers().TransitRouter.Update(txRouter, true, nil, context.GetChangeContext()); err != nil {
 		return nil, fmt.Errorf("could not update edge router: %s", err)
 	}
 
-	if err := module.env.GetManagers().Enrollment.Delete(enrollment.Id); err != nil {
+	if err := module.env.GetManagers().Enrollment.Delete(enrollment.Id, context.GetChangeContext()); err != nil {
 		return nil, fmt.Errorf("could not delete enrollment: %s", err)
 	}
 

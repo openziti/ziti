@@ -53,14 +53,14 @@ const (
 )
 
 type IdentityManager struct {
-	baseEntityManager
+	baseEntityManager[*Identity, *persistence.Identity]
 	updateSdkInfoTimer metrics.Timer
 	identityStatusMap  *identityStatusMap
 }
 
 func NewIdentityManager(env Env) *IdentityManager {
 	manager := &IdentityManager{
-		baseEntityManager:  newBaseEntityManager(env, env.GetStores().Identity),
+		baseEntityManager:  newBaseEntityManager[*Identity, *persistence.Identity](env, env.GetStores().Identity),
 		updateSdkInfoTimer: env.GetMetricsRegistry().Timer("identity.update-sdk-info"),
 		identityStatusMap:  newIdentityStatusMap(IdentityActiveIntervalSeconds * time.Second),
 	}
@@ -72,20 +72,20 @@ func NewIdentityManager(env Env) *IdentityManager {
 	return manager
 }
 
-func (self *IdentityManager) newModelEntity() edgeEntity {
+func (self *IdentityManager) newModelEntity() *Identity {
 	return &Identity{}
 }
 
-func (self *IdentityManager) Create(entity *Identity) error {
-	return network.DispatchCreate[*Identity](self, entity)
+func (self *IdentityManager) Create(entity *Identity, ctx *change.Context) error {
+	return network.DispatchCreate[*Identity](self, entity, ctx)
 }
 
 func (self *IdentityManager) ApplyCreate(cmd *command.CreateEntityCommand[*Identity]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment) error {
+func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enrollmentsModels []*Enrollment, ctx *change.Context) error {
 	if identityModel.Id == "" {
 		identityModel.Id = eid.New()
 	}
@@ -101,6 +101,7 @@ func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enro
 		manager:     self,
 		identity:    identityModel,
 		enrollments: enrollmentsModels,
+		ctx:         ctx,
 	}
 
 	return self.Dispatch(cmd)
@@ -110,9 +111,8 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 	identityModel := cmd.identity
 	enrollmentsModels := cmd.enrollments
 
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := identityModel.toBoltEntityForCreate(tx, self.impl)
+	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		boltEntity, err := identityModel.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
 			return err
 		}
@@ -136,8 +136,8 @@ func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithE
 	})
 }
 
-func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*Identity](self, entity, checker)
+func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*Identity](self, entity, checker, ctx)
 }
 
 func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity]) error {
@@ -145,19 +145,11 @@ func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ident
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker)
+	return self.updateEntity(cmd.Entity, checker, cmd.Context)
 }
 
 func (self *IdentityManager) IsUpdated(field string) bool {
 	return field != persistence.FieldIdentityAuthenticators && field != persistence.FieldIdentityEnrollments && field != persistence.FieldIdentityIsDefaultAdmin
-}
-
-func (self *IdentityManager) Read(id string) (*Identity, error) {
-	entity := &Identity{}
-	if err := self.readEntity(id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (self *IdentityManager) ReadByName(name string) (*Identity, error) {
@@ -167,14 +159,6 @@ func (self *IdentityManager) ReadByName(name string) (*Identity, error) {
 		return nil, err
 	}
 	return entity, nil
-}
-
-func (self *IdentityManager) readInTx(tx *bbolt.Tx, id string) (*Identity, error) {
-	identity := &Identity{}
-	if err := self.readEntityInTx(tx, id, identity); err != nil {
-		return nil, err
-	}
-	return identity, nil
 }
 
 func (self *IdentityManager) ReadDefaultAdmin() (*Identity, error) {
@@ -254,11 +238,12 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		},
 	}
 
-	if err = self.Create(defaultAdmin); err != nil {
+	ctx := change.New().SetSource("cli.init")
+	if err = self.Create(defaultAdmin, ctx); err != nil {
 		return err
 	}
 
-	if err = self.env.GetManagers().Authenticator.Create(authenticator); err != nil {
+	if err = self.env.GetManagers().Authenticator.Create(authenticator, ctx); err != nil {
 		return err
 	}
 
@@ -332,7 +317,7 @@ func (self *IdentityManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string, col
 	return nil
 }
 
-func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authenticator *Authenticator) (string, string, error) {
+func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authenticator *Authenticator, ctx *change.Context) (string, string, error) {
 	if identity.Id == "" {
 		identity.Id = eid.New()
 	}
@@ -358,9 +343,8 @@ func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authent
 		return "", "", apiErr
 	}
 
-	err = self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltIdentity, err := identity.toBoltEntityForCreate(tx, self)
+	err = self.env.GetDbProvider().GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		boltIdentity, err := identity.toBoltEntityForCreate(ctx.Tx(), self.env)
 
 		if err != nil {
 			return err
@@ -370,7 +354,7 @@ func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authent
 			return err
 		}
 
-		boltAuthenticator, err := authenticator.toBoltEntityForCreate(tx, self.env.GetManagers().Authenticator)
+		boltAuthenticator, err := authenticator.toBoltEntityForCreate(ctx.Tx(), self.env)
 
 		if err != nil {
 			return err
@@ -392,7 +376,7 @@ func (self *IdentityManager) CreateWithAuthenticator(identity *Identity, authent
 
 func (self *IdentityManager) GetServiceConfigs(id string) ([]ServiceConfig, error) {
 	var result []ServiceConfig
-	err := self.GetDb().Update(func(tx *bbolt.Tx) error {
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		configs, err := self.env.GetStores().Identity.GetServiceConfigs(tx, id)
 		if err != nil {
 			return err
@@ -408,24 +392,47 @@ func (self *IdentityManager) GetServiceConfigs(id string) ([]ServiceConfig, erro
 	return result, nil
 }
 
-func (self *IdentityManager) AssignServiceConfigs(id string, serviceConfigs []ServiceConfig) error {
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		boltServiceConfigs, err := toBoltServiceConfigs(tx, self, serviceConfigs)
-		if err != nil {
-			return err
-		}
-		return self.env.GetStores().Identity.AssignServiceConfigs(tx, id, boltServiceConfigs...)
-	})
+func (self *IdentityManager) AssignServiceConfigs(id string, serviceConfigs []ServiceConfig, ctx *change.Context) error {
+	cmd := &UpdateServiceConfigsCmd{
+		manager:        self,
+		identityId:     id,
+		add:            true,
+		serviceConfigs: serviceConfigs,
+		ctx:            ctx,
+	}
+	return self.Dispatch(cmd)
 }
 
-func (self *IdentityManager) RemoveServiceConfigs(id string, serviceConfigs []ServiceConfig) error {
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		boltServiceConfigs, err := toBoltServiceConfigs(tx, self, serviceConfigs)
+func (self *IdentityManager) RemoveServiceConfigs(id string, serviceConfigs []ServiceConfig, ctx *change.Context) error {
+	cmd := &UpdateServiceConfigsCmd{
+		manager:        self,
+		identityId:     id,
+		add:            false,
+		serviceConfigs: serviceConfigs,
+		ctx:            ctx,
+	}
+	return self.Dispatch(cmd)
+}
+
+func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigsCmd) error {
+	if cmd.add {
+		return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+			boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
+			if err != nil {
+				return err
+			}
+			return self.env.GetStores().Identity.AssignServiceConfigs(ctx.Tx(), cmd.identityId, boltServiceConfigs...)
+		})
+	}
+
+	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
 		if err != nil {
 			return err
 		}
-		return self.env.GetStores().Identity.RemoveServiceConfigs(tx, id, boltServiceConfigs...)
+		return self.env.GetStores().Identity.RemoveServiceConfigs(ctx.Tx(), cmd.identityId, boltServiceConfigs...)
 	})
+
 }
 
 func (self *IdentityManager) QueryRoleAttributes(queryString string) ([]string, *models.QueryMetaData, error) {
@@ -499,7 +506,7 @@ func (self *IdentityManager) ReadByExternalId(externalId string) (*Identity, err
 	return identity, nil
 }
 
-func (self *IdentityManager) Disable(identityId string, duration time.Duration) error {
+func (self *IdentityManager) Disable(identityId string, duration time.Duration, ctx *change.Context) error {
 	if duration < 0 {
 		duration = 0
 	}
@@ -523,16 +530,16 @@ func (self *IdentityManager) Disable(identityId string, duration time.Duration) 
 		},
 		DisabledAt:    &lockedAt,
 		DisabledUntil: lockedUntil,
-	}, fieldMap)
+	}, fieldMap, ctx)
 
 	if err != nil {
 		return err
 	}
 
-	return self.GetEnv().GetManagers().ApiSession.DeleteByIdentityId(identityId)
+	return self.GetEnv().GetManagers().ApiSession.DeleteByIdentityId(identityId, ctx)
 }
 
-func (self *IdentityManager) Enable(identityId string) error {
+func (self *IdentityManager) Enable(identityId string, ctx *change.Context) error {
 	fieldMap := fields.UpdatedFieldsMap{
 		persistence.FieldIdentityDisabledAt:    struct{}{},
 		persistence.FieldIdentityDisabledUntil: struct{}{},
@@ -544,7 +551,7 @@ func (self *IdentityManager) Enable(identityId string) error {
 		},
 		DisabledAt:    nil,
 		DisabledUntil: nil,
-	}, fieldMap)
+	}, fieldMap, ctx)
 }
 
 func (self *IdentityManager) IdentityToProtobuf(entity *Identity) (*edge_cmd_pb.Identity, error) {
@@ -698,9 +705,11 @@ type CreateIdentityWithEnrollmentsCmd struct {
 	manager     *IdentityManager
 	identity    *Identity
 	enrollments []*Enrollment
+	ctx         *change.Context
 }
 
-func (self *CreateIdentityWithEnrollmentsCmd) Apply() error {
+func (self *CreateIdentityWithEnrollmentsCmd) Apply(raftIndex uint64) error {
+	self.ctx.RaftIndex = raftIndex
 	return self.manager.ApplyCreateWithEnrollments(self)
 }
 
@@ -712,6 +721,7 @@ func (self *CreateIdentityWithEnrollmentsCmd) Encode() ([]byte, error) {
 
 	cmd := &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{
 		Identity: identityMsg,
+		Ctx:      ContextToProtobuf(self.ctx),
 	}
 
 	for _, enrollment := range self.enrollments {
@@ -733,7 +743,7 @@ func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.C
 		return err
 	}
 	self.identity = identity
-
+	self.ctx = ProtobufToContext(msg.Ctx)
 	for _, enrollmentMsg := range msg.Enrollments {
 		enrollment, err := self.manager.GetEnv().GetManagers().Enrollment.ProtobufToEnrollment(enrollmentMsg)
 		if err != nil {
@@ -794,4 +804,51 @@ func (statusMap *identityStatusMap) start() {
 			}
 		}
 	}()
+}
+
+type UpdateServiceConfigsCmd struct {
+	manager        *IdentityManager
+	identityId     string
+	add            bool
+	serviceConfigs []ServiceConfig
+	ctx            *change.Context
+}
+
+func (self *UpdateServiceConfigsCmd) Apply(raftIndex uint64) error {
+	self.ctx.RaftIndex = raftIndex
+	return self.manager.ApplyUpdateServiceConfigs(self)
+}
+
+func (self *UpdateServiceConfigsCmd) Encode() ([]byte, error) {
+	cmd := &edge_cmd_pb.UpdateServiceConfigsCmd{
+		IdentityId: self.identityId,
+		Add:        self.add,
+		Ctx:        ContextToProtobuf(self.ctx),
+	}
+
+	for _, serviceConfig := range self.serviceConfigs {
+		cmd.ServiceConfigs = append(cmd.ServiceConfigs, &edge_cmd_pb.UpdateServiceConfigsCmd_ServiceConfig{
+			ServiceId: serviceConfig.Service,
+			ConfigId:  serviceConfig.Config,
+		})
+	}
+
+	return cmd_pb.EncodeProtobuf(cmd)
+}
+
+func (self *UpdateServiceConfigsCmd) Decode(env Env, msg *edge_cmd_pb.UpdateServiceConfigsCmd) error {
+	self.manager = env.GetManagers().Identity
+
+	self.identityId = msg.IdentityId
+	self.add = msg.Add
+	self.ctx = ProtobufToContext(msg.Ctx)
+
+	for _, serviceConfig := range msg.ServiceConfigs {
+		self.serviceConfigs = append(self.serviceConfigs, ServiceConfig{
+			Service: serviceConfig.ServiceId,
+			Config:  serviceConfig.ConfigId,
+		})
+	}
+
+	return nil
 }

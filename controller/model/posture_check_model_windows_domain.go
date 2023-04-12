@@ -102,7 +102,7 @@ func newPostureCheckWindowsDomains() PostureCheckSubType {
 	return &PostureCheckDomains{}
 }
 
-func (p *PostureCheckDomains) fillFrom(_ EntityManager, _ *bbolt.Tx, _ *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckDomains) fillFrom(_ Env, _ *bbolt.Tx, _ *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckWindowsDomains)
 
 	if subCheck == nil {
@@ -113,7 +113,7 @@ func (p *PostureCheckDomains) fillFrom(_ EntityManager, _ *bbolt.Tx, _ *persiste
 	return nil
 }
 
-func (p *PostureCheckDomains) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckDomains) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckWindowsDomains{
 		Domains: p.Domains,
 	}, nil

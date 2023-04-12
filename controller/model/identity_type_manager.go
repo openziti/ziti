@@ -17,12 +17,13 @@
 package model
 
 import (
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/storage/boltz"
 )
 
 func NewIdentityTypeManager(env Env) *IdentityTypeManager {
 	manager := &IdentityTypeManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().IdentityType),
+		baseEntityManager: newBaseEntityManager[*IdentityType, *persistence.IdentityType](env, env.GetStores().IdentityType),
 	}
 	manager.impl = manager
 
@@ -30,19 +31,11 @@ func NewIdentityTypeManager(env Env) *IdentityTypeManager {
 }
 
 type IdentityTypeManager struct {
-	baseEntityManager
+	baseEntityManager[*IdentityType, *persistence.IdentityType]
 }
 
-func (self *IdentityTypeManager) newModelEntity() edgeEntity {
+func (self *IdentityTypeManager) newModelEntity() *IdentityType {
 	return &IdentityType{}
-}
-
-func (self *IdentityTypeManager) Read(id string) (*IdentityType, error) {
-	modelEntity := &IdentityType{}
-	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
 }
 
 func (self *IdentityTypeManager) ReadByIdOrName(idOrName string) (*IdentityType, error) {

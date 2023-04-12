@@ -30,7 +30,6 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"net/url"
-	"reflect"
 )
 
 type Ca struct {
@@ -59,11 +58,7 @@ type ExternalIdClaim struct {
 
 type ExternalIdFieldType string
 
-func (entity *Ca) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltCa, ok := boltEntity.(*persistence.Ca)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
-	}
+func (entity *Ca) fillFrom(_ Env, _ *bbolt.Tx, boltCa *persistence.Ca) error {
 	entity.FillCommon(boltCa)
 	entity.Name = boltCa.Name
 	entity.Fingerprint = boltCa.Fingerprint
@@ -89,7 +84,7 @@ func (entity *Ca) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity
 	return nil
 }
 
-func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.Ca, error) {
 	if entity.IdentityNameFormat == "" {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}
@@ -137,7 +132,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (bo
 	}
 
 	query := fmt.Sprintf(`fingerprint = "%v"`, fp)
-	queryResults, _, err := manager.GetEnv().GetStores().Ca.QueryIds(tx, query)
+	queryResults, _, err := env.GetStores().Ca.QueryIds(tx, query)
 
 	if err != nil {
 		return nil, err
@@ -174,7 +169,7 @@ func (entity *Ca) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (bo
 	return boltEntity, nil
 }
 
-func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Ca) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.Ca, error) {
 	if entity.IdentityNameFormat == "" {
 		entity.IdentityNameFormat = DefaultCaIdentityNameFormat
 	}

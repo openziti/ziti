@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -33,7 +34,7 @@ import (
 
 func NewCaManager(env Env) *CaManager {
 	manager := &CaManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().Ca),
+		baseEntityManager: newBaseEntityManager[*Ca, *persistence.Ca](env, env.GetStores().Ca),
 	}
 	manager.impl = manager
 
@@ -43,27 +44,27 @@ func NewCaManager(env Env) *CaManager {
 }
 
 type CaManager struct {
-	baseEntityManager
+	baseEntityManager[*Ca, *persistence.Ca]
 }
 
-func (self *CaManager) newModelEntity() edgeEntity {
+func (self *CaManager) newModelEntity() *Ca {
 	return &Ca{}
 }
 
-func (self *CaManager) Create(entity *Ca) error {
-	return network.DispatchCreate[*Ca](self, entity)
+func (self *CaManager) Create(entity *Ca, ctx *change.Context) error {
+	return network.DispatchCreate[*Ca](self, entity, ctx)
 }
 
 func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca]) error {
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, cmd.Context)
 	return err
 }
 
-func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields) error {
+func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields, ctx *change.Context) error {
 	if checker != nil {
 		checker.RemoveFields(persistence.FieldCaIsVerified)
 	}
-	return network.DispatchUpdate[*Ca](self, entity, checker)
+	return network.DispatchUpdate[*Ca](self, entity, checker, ctx)
 }
 
 func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca]) error {
@@ -79,7 +80,7 @@ func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca]) error 
 		}
 	}
 
-	return self.updateEntity(cmd.Entity, checker)
+	return self.updateEntity(cmd.Entity, checker, cmd.Context)
 }
 
 func (self *CaManager) Read(id string) (*Ca, error) {
@@ -109,12 +110,12 @@ func (self *CaManager) IsUpdated(field string) bool {
 		strings.HasPrefix(field, persistence.FieldCaExternalIdClaim+".")
 }
 
-func (self *CaManager) Verified(ca *Ca) error {
+func (self *CaManager) Verified(ca *Ca, ctx *change.Context) error {
 	ca.IsVerified = true
 	checker := &fields.UpdatedFieldsMap{
 		persistence.FieldCaIsVerified: struct{}{},
 	}
-	return network.DispatchUpdate[*Ca](self, ca, checker)
+	return network.DispatchUpdate[*Ca](self, ca, checker, ctx)
 }
 
 func (self *CaManager) Query(query string) (*CaListResult, error) {

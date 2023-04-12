@@ -246,8 +246,11 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 			panic(errors.New("programming error"))
 		},
 	}
-	externalStores.Index = boltz.NewBaseStore(indexStoreDef)
-	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
+
+	indexStore := boltz.NewBaseStore(indexStoreDef)
+	indexStore.AddIdSymbol("id", ast.NodeTypeString)
+
+	externalStores.Index = indexStore
 
 	externalStores.buildStoreMap()
 	storeList := externalStores.getStoresForInit()

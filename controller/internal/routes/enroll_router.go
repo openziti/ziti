@@ -131,7 +131,7 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContext) {
 
 	enrollContext := &model.EnrollmentContextHttp{}
-	err := enrollContext.FillFromHttpRequest(rc.Request)
+	err := enrollContext.FillFromHttpRequest(rc.Request, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)

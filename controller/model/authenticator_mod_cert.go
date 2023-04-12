@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	nfpem "github.com/openziti/foundation/v2/pem"
@@ -220,7 +221,7 @@ func (module *AuthModuleCert) Process(context AuthContext) (AuthResult, error) {
 	}
 
 	if authenticator.Method == persistence.MethodAuthenticatorCert {
-		module.ensureAuthenticatorCertPem(authenticator, clientCert)
+		module.ensureAuthenticatorCertPem(authenticator, clientCert, context.GetChangeContext())
 	}
 
 	return &AuthResultBase{
@@ -322,7 +323,7 @@ func (module *AuthModuleCert) getClientCerts(ctx AuthContext) ([]*x509.Certifica
 
 // ensureAuthenticatorCertPem ensures that a client's certificate is stored in `cert` authenticators. Older versions
 // of Ziti did not store this information on enrollment.
-func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenticator, clientCert *x509.Certificate) {
+func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenticator, clientCert *x509.Certificate, ctx *change.Context) {
 	if authCert, ok := authenticator.SubType.(*AuthenticatorCert); ok {
 		if authCert.Pem == "" {
 			certPem := pem.EncodeToMemory(&pem.Block{
@@ -331,7 +332,7 @@ func (module *AuthModuleCert) ensureAuthenticatorCertPem(authenticator *Authenti
 			})
 
 			authCert.Pem = string(certPem)
-			if err := module.env.GetManagers().Authenticator.Update(authenticator, false, nil); err != nil {
+			if err := module.env.GetManagers().Authenticator.Update(authenticator, false, nil, ctx); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("error during cert auth attempting to update PEM")
 			}
 		}

@@ -22,6 +22,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -56,12 +57,11 @@ func newPostureCache(env Env) *PostureCache {
 
 	pc.run(env.GetHostController().GetCloseNotifyChannel())
 
-	env.GetStores().ApiSession.AddListener(boltz.EventCreate, pc.ApiSessionCreated)
-	env.GetStores().ApiSession.AddListener(boltz.EventDelete, pc.ApiSessionDeleted)
-	env.GetStores().Identity.AddListener(boltz.EventDelete, pc.IdentityDeleted)
+	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionCreated, boltz.EntityCreatedAsync)
+	env.GetStores().ApiSession.AddEntityEventListenerF(pc.ApiSessionDeleted, boltz.EntityDeletedAsync)
+	env.GetStores().Identity.AddEntityEventListenerF(pc.IdentityDeleted, boltz.EntityDeletedAsync)
 
-	env.GetStores().PostureCheckType.AddListener(boltz.EventCreate, pc.PostureCheckChanged)
-	env.GetStores().PostureCheckType.AddListener(boltz.EventUpdate, pc.PostureCheckChanged)
+	env.GetStores().PostureCheckType.AddListener(pc.PostureCheckChanged, boltz.EntityCreatedAsync, boltz.EntityUpdatedAsync)
 
 	return pc
 }
@@ -153,7 +153,7 @@ func (pc *PostureCache) evaluate() {
 
 		//delete sessions that failed pc checks, clear list
 		for _, sessionId := range toDeleteSessionIds {
-			err := pc.env.GetManagers().Session.Delete(sessionId)
+			err := pc.env.GetManagers().Session.Delete(sessionId, change.New().SetSource("posture.cache"))
 			if err != nil {
 				log.WithError(err).Errorf("error removing session [%s] due to posture check failure, delete error: %v", sessionId, err)
 			}
@@ -277,37 +277,11 @@ func (pc *PostureCache) WithPostureData(identityId string, f func(data *PostureD
 	})
 }
 
-func (pc *PostureCache) ApiSessionCreated(args ...interface{}) {
-	var apiSession *persistence.ApiSession
-	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
-	} else {
-		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
-		return
-	}
-
-	if apiSession == nil {
-		pfxlog.Logger().Error("api session create event trigger with args[0] not convertible to *persistence.ApiSession")
-		return
-	}
-
+func (pc *PostureCache) ApiSessionCreated(apiSession *persistence.ApiSession) {
 	pc.apiSessionIdToIdentityId.Set(apiSession.Id, apiSession.IdentityId)
 }
 
-func (pc *PostureCache) ApiSessionDeleted(args ...interface{}) {
-	var apiSession *persistence.ApiSession
-	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
-	} else {
-		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
-		return
-	}
-
-	if apiSession == nil {
-		pfxlog.Logger().Error("api session delete event trigger with args[0] not convertible to *persistence.ApiSession")
-		return
-	}
-
+func (pc *PostureCache) ApiSessionDeleted(apiSession *persistence.ApiSession) {
 	pc.identityToPostureData.Upsert(apiSession.IdentityId, newPostureData(), func(exist bool, valueInMap *PostureData, newValue *PostureData) *PostureData {
 		if exist {
 			if valueInMap != nil && valueInMap.ApiSessions != nil {
@@ -323,39 +297,13 @@ func (pc *PostureCache) ApiSessionDeleted(args ...interface{}) {
 	pc.apiSessionIdToIdentityId.Remove(apiSession.Id)
 }
 
-func (pc *PostureCache) IdentityDeleted(args ...interface{}) {
-	var identity *persistence.Identity
-	if len(args) == 1 {
-		identity, _ = args[0].(*persistence.Identity)
-	} else {
-		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
-		return
-	}
-
-	if identity == nil {
-		pfxlog.Logger().Error("identity delete event trigger with args[0] not convertible to *persistence.ApiSession")
-		return
-	}
-
+func (pc *PostureCache) IdentityDeleted(identity *persistence.Identity) {
 	pc.identityToPostureData.Remove(identity.Id)
 }
 
 // PostureCheckChanged notifies all associated identities that posture configuration has changed
 // and that endpoints may need to reevaluate posture queries.
-func (pc *PostureCache) PostureCheckChanged(args ...interface{}) {
-	var entity boltz.Entity
-	if len(args) == 1 {
-		var ok bool
-		entity, ok = args[0].(boltz.Entity)
-
-		if !ok {
-			pfxlog.Logger().Errorf("unexpected type [%T] expected boltz.Entity: %v", args[0], args[0])
-		}
-	} else {
-		pfxlog.Logger().Errorf("unexpected number of args [%d]", len(args))
-		return
-	}
-
+func (pc *PostureCache) PostureCheckChanged(entity boltz.Entity) {
 	servicePolicyLinks := pc.env.GetStores().PostureCheck.GetLinkCollection(persistence.EntityTypeServicePolicies)
 
 	if servicePolicyLinks == nil {

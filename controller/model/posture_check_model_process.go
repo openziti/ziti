@@ -148,7 +148,7 @@ func newPostureCheckProcess() PostureCheckSubType {
 	return &PostureCheckProcess{}
 }
 
-func (p *PostureCheckProcess) fillFrom(_ EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckProcess) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckProcess)
 
 	if subCheck == nil {
@@ -163,7 +163,7 @@ func (p *PostureCheckProcess) fillFrom(_ EntityManager, tx *bbolt.Tx, check *per
 	return nil
 }
 
-func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckProcess) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckProcess{
 		OperatingSystem: p.OsType,
 		Path:            p.Path,

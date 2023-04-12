@@ -20,9 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type ServiceEdgeRouterPolicy struct {
@@ -33,7 +31,7 @@ type ServiceEdgeRouterPolicy struct {
 	EdgeRouterRoles []string
 }
 
-func (entity *ServiceEdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
+func (entity *ServiceEdgeRouterPolicy) toBoltEntity() (*persistence.ServiceEdgeRouterPolicy, error) {
 	return &persistence.ServiceEdgeRouterPolicy{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:            entity.Name,
@@ -43,19 +41,15 @@ func (entity *ServiceEdgeRouterPolicy) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *ServiceEdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ServiceEdgeRouterPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ServiceEdgeRouterPolicy, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ServiceEdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ServiceEdgeRouterPolicy) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.ServiceEdgeRouterPolicy, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ServiceEdgeRouterPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltServiceEdgeRouterPolicy, ok := boltEntity.(*persistence.ServiceEdgeRouterPolicy)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model edge router policy", reflect.TypeOf(boltEntity))
-	}
+func (entity *ServiceEdgeRouterPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltServiceEdgeRouterPolicy *persistence.ServiceEdgeRouterPolicy) error {
 	entity.FillCommon(boltServiceEdgeRouterPolicy)
 	entity.Name = boltServiceEdgeRouterPolicy.Name
 	entity.Semantic = boltServiceEdgeRouterPolicy.Semantic

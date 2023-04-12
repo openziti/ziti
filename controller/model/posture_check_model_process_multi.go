@@ -184,7 +184,7 @@ func newPostureCheckProcessMulti() PostureCheckSubType {
 	return &PostureCheckProcessMulti{}
 }
 
-func (p *PostureCheckProcessMulti) fillFrom(_ EntityManager, _ *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckProcessMulti) fillFrom(_ Env, _ *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckProcessMulti)
 
 	if subCheck == nil {
@@ -208,7 +208,7 @@ func (p *PostureCheckProcessMulti) fillFrom(_ EntityManager, _ *bbolt.Tx, check 
 	return nil
 }
 
-func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckProcessMulti) toBoltEntityForCreate(_ *bbolt.Tx, _ Env) (persistence.PostureCheckSubType, error) {
 	ret := &persistence.PostureCheckProcessMulti{
 		Semantic: p.Semantic,
 	}

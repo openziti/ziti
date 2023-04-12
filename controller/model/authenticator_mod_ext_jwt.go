@@ -56,9 +56,9 @@ func NewAuthModuleExtJwt(env Env) *AuthModuleExtJwt {
 		signers: cmap.New[*signerRecord](),
 	}
 
-	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventCreate, ret.onExternalSignerCreate)
-	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventUpdate, ret.onExternalSignerUpdate)
-	env.GetStores().ExternalJwtSigner.AddListener(boltz.EventDelete, ret.onExternalSignerDelete)
+	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(ret.addSigner, boltz.EntityCreatedAsync)
+	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(ret.onExternalSignerUpdate, boltz.EntityUpdatedAsync)
+	env.GetStores().ExternalJwtSigner.AddEntityEventListenerF(ret.onExternalSignerDelete, boltz.EntityDeletedAsync)
 
 	ret.loadExistingSigners()
 
@@ -496,19 +496,11 @@ func (a *AuthModuleExtJwt) onExternalSignerCreate(args ...interface{}) {
 	a.addSigner(signer)
 }
 
-func (a *AuthModuleExtJwt) onExternalSignerUpdate(args ...interface{}) {
-	signer, ok := args[0].(*persistence.ExternalJwtSigner)
-
-	if !ok {
-		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
-		return
-	}
-
+func (a *AuthModuleExtJwt) onExternalSignerUpdate(signer *persistence.ExternalJwtSigner) {
 	//read on update because patches can pass partial data
 	err := a.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		var err error
-		signer, err = a.env.GetStores().ExternalJwtSigner.LoadOneById(tx, signer.Id)
-
+		signer, _, err = a.env.GetStores().ExternalJwtSigner.FindById(tx, signer.Id)
 		return err
 	})
 
@@ -546,14 +538,7 @@ func (a *AuthModuleExtJwt) addSigner(signer *persistence.ExternalJwtSigner) {
 
 }
 
-func (a *AuthModuleExtJwt) onExternalSignerDelete(args ...interface{}) {
-	signer, ok := args[0].(*persistence.ExternalJwtSigner)
-
-	if !ok {
-		pfxlog.Logger().Errorf("error on external signature update for authentication module %T: expected %T got %T", a, signer, args[0])
-		return
-	}
-
+func (a *AuthModuleExtJwt) onExternalSignerDelete(signer *persistence.ExternalJwtSigner) {
 	logger := pfxlog.Logger().WithFields(map[string]interface{}{
 		"id":           signer.Id,
 		"name":         signer.Name,

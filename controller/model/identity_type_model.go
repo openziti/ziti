@@ -20,9 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 const (
@@ -34,26 +32,22 @@ type IdentityType struct {
 	Name string `json:"name"`
 }
 
-func (entity *IdentityType) toBoltEntity() (boltz.Entity, error) {
+func (entity *IdentityType) toBoltEntity() (*persistence.IdentityType, error) {
 	return &persistence.IdentityType{
 		Name:          entity.Name,
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *IdentityType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.IdentityType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *IdentityType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.IdentityType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *IdentityType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltIdentityType, ok := boltEntity.(*persistence.IdentityType)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model IdentityType", reflect.TypeOf(boltEntity))
-	}
+func (entity *IdentityType) fillFrom(_ Env, _ *bbolt.Tx, boltIdentityType *persistence.IdentityType) error {
 	entity.FillCommon(boltIdentityType)
 	entity.Name = boltIdentityType.Name
 	return nil

@@ -76,9 +76,11 @@ func (ro *AuthRouter) Register(ae *env.AppEnv) {
 func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, httpRequest *http.Request, method string, auth *rest_model.Authenticate) {
 	start := time.Now()
 	logger := pfxlog.Logger()
-	authContext := model.NewAuthContextHttp(httpRequest, method, auth)
+	authContext := model.NewAuthContextHttp(httpRequest, method, auth, rc.NewChangeContext())
 
 	authResult, err := ae.Managers.Authenticator.Authorize(authContext)
+
+	changeCtx := rc.NewChangeContext()
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -124,7 +126,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		}
 
 		if shouldUpdate {
-			if err := ae.GetManagers().Identity.PatchInfo(identity); err != nil {
+			if err := ae.GetManagers().Identity.PatchInfo(identity, changeCtx); err != nil {
 				logger.WithError(err).Errorf("failed to update sdk/env info on identity [%s] auth", identity.Id)
 			}
 		}
@@ -170,7 +172,7 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		sessionCerts = append(sessionCerts, sessionCert)
 	}
 
-	sessionId, err := ae.Managers.ApiSession.Create(nil, newApiSession, sessionCerts)
+	sessionId, err := ae.Managers.ApiSession.Create(changeCtx.NewMutateContext(), newApiSession, sessionCerts)
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -222,7 +224,7 @@ func (ro *AuthRouter) authMfa(ae *env.AppEnv, rc *response.RequestContext, mfaCo
 		return
 	}
 
-	if err := ae.Managers.ApiSession.MfaCompleted(rc.ApiSession); err != nil {
+	if err := ae.Managers.ApiSession.MfaCompleted(rc.ApiSession, rc.NewChangeContext()); err != nil {
 		rc.RespondWithError(err)
 		return
 	}

@@ -92,24 +92,24 @@ func (self *baseEntityManager[ME, PE]) BaseLoadInTx(tx *bbolt.Tx, id string) (ME
 	return entity, nil
 }
 
-func (self *baseEntityManager[ME, PE]) BaseList(query string) (*models.EntityListResult[models.Entity], error) {
-	result := &models.EntityListResult[models.Entity]{Loader: self}
+func (self *baseEntityManager[ME, PE]) BaseList(query string) (*models.EntityListResult[ME], error) {
+	result := &models.EntityListResult[ME]{Loader: self}
 	if err := self.ListWithHandler(query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (self *baseEntityManager[ME, PE]) BasePreparedList(query ast.Query) (*models.EntityListResult[models.Entity], error) {
-	result := &models.EntityListResult[models.Entity]{Loader: self}
+func (self *baseEntityManager[ME, PE]) BasePreparedList(query ast.Query) (*models.EntityListResult[ME], error) {
+	result := &models.EntityListResult[ME]{Loader: self}
 	if err := self.PreparedListWithHandler(query, result.Collect); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
-func (self *baseEntityManager[ME, PE]) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[models.Entity], error) {
-	result := &models.EntityListResult[models.Entity]{Loader: self}
+func (self *baseEntityManager[ME, PE]) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[ME], error) {
+	result := &models.EntityListResult[ME]{Loader: self}
 	if err := self.PreparedListIndexed(cursorProvider, query, result.Collect); err != nil {
 		return nil, err
 	}
@@ -225,13 +225,32 @@ func (self *baseEntityManager[ME, PE]) updateEntity(modelEntity ME, checker bolt
 	})
 }
 
-func (self *baseEntityManager[ME, PE]) readEntity(id string, modelEntity edgeEntity[PE]) error {
+func (self *baseEntityManager[ME, PE]) Read(id string) (ME, error) {
+	modelEntity := self.impl.newModelEntity()
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		return self.readEntityInTx(tx, id, modelEntity)
+	})
+	if err != nil {
+		return *new(ME), err
+	}
+	return modelEntity, nil
+}
+
+func (self *baseEntityManager[ME, PE]) readInTx(tx *bbolt.Tx, id string) (ME, error) {
+	modelEntity := self.impl.newModelEntity()
+	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
+		return *new(ME), err
+	}
+	return modelEntity, nil
+}
+
+func (self *baseEntityManager[ME, PE]) readEntity(id string, modelEntity ME) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTx(tx, id, modelEntity)
 	})
 }
 
-func (self *baseEntityManager[ME, PE]) readEntityInTx(tx *bbolt.Tx, id string, modelEntity edgeEntity[PE]) error {
+func (self *baseEntityManager[ME, PE]) readEntityInTx(tx *bbolt.Tx, id string, modelEntity ME) error {
 	boltEntity := self.GetStore().GetEntityStrategy().NewEntity()
 	found, err := self.GetStore().LoadEntity(tx, id, boltEntity)
 	if err != nil {
@@ -244,13 +263,13 @@ func (self *baseEntityManager[ME, PE]) readEntityInTx(tx *bbolt.Tx, id string, m
 	return modelEntity.fillFrom(self.env, tx, boltEntity)
 }
 
-func (self *baseEntityManager[ME, PE]) readEntityWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity edgeEntity[PE]) error {
+func (self *baseEntityManager[ME, PE]) readEntityWithIndex(name string, key []byte, index boltz.ReadIndex, modelEntity ME) error {
 	return self.GetDb().View(func(tx *bbolt.Tx) error {
 		return self.readEntityInTxWithIndex(name, tx, key, index, modelEntity)
 	})
 }
 
-func (self *baseEntityManager[ME, PE]) readEntityInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity edgeEntity[PE]) error {
+func (self *baseEntityManager[ME, PE]) readEntityInTxWithIndex(name string, tx *bbolt.Tx, key []byte, index boltz.ReadIndex, modelEntity ME) error {
 	id := index.Read(tx, key)
 	if id == nil {
 		return boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), name, string(key))
@@ -269,8 +288,9 @@ func (self *baseEntityManager[ME, PE]) readEntityByQuery(query string) (models.E
 	return nil, nil
 }
 
-func (self *baseEntityManager[ME, PE]) Delete(id string) error {
+func (self *baseEntityManager[ME, PE]) Delete(id string, ctx *change.Context) error {
 	cmd := &command.DeleteEntityCommand{
+		Context: ctx,
 		Deleter: self.impl, // needs to be impl, otherwise we will miss overrides to GetEntityTypeId
 		Id:      id,
 	}

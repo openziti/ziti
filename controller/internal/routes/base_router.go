@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
@@ -236,12 +237,12 @@ func Detail(rc *response.RequestContext, f ModelDetailF) {
 type ModelDeleteF func(rc *response.RequestContext, id string) error
 
 type DeleteHandler interface {
-	Delete(id string) error
+	Delete(id string, ctx *change.Context) error
 }
 
 func DeleteWithHandler(rc *response.RequestContext, deleteHandler DeleteHandler) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		return deleteHandler.Delete(id)
+		return deleteHandler.Delete(id, rc.NewChangeContext())
 	})
 }
 
@@ -539,8 +540,8 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 	rc.RespondWithOk(result.Result, meta)
 }
 
-func MapCreate[T models.Entity](f func(T) error, entity T) (string, error) {
-	err := f(entity)
+func MapCreate[T models.Entity](f func(T, *change.Context) error, entity T, rc *response.RequestContext) (string, error) {
+	err := f(entity, rc.NewChangeContext())
 	if err != nil {
 		return "", err
 	}

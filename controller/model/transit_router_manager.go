@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/fields"
@@ -37,7 +38,7 @@ import (
 
 func NewTransitRouterManager(env Env) *TransitRouterManager {
 	manager := &TransitRouterManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().TransitRouter),
+		baseEntityManager: newBaseEntityManager[*TransitRouter, *persistence.TransitRouter](env, env.GetStores().TransitRouter),
 		allowedFields: boltz.MapFieldChecker{
 			persistence.FieldName: struct{}{},
 			boltz.FieldTags:       struct{}{},
@@ -53,7 +54,7 @@ func NewTransitRouterManager(env Env) *TransitRouterManager {
 }
 
 type TransitRouterManager struct {
-	baseEntityManager
+	baseEntityManager[*TransitRouter, *persistence.TransitRouter]
 	allowedFields boltz.FieldChecker
 }
 
@@ -61,11 +62,11 @@ func (self *TransitRouterManager) GetEntityTypeId() string {
 	return "transitRouters"
 }
 
-func (self *TransitRouterManager) newModelEntity() edgeEntity {
+func (self *TransitRouterManager) newModelEntity() *TransitRouter {
 	return &TransitRouter{}
 }
 
-func (self *TransitRouterManager) Create(txRouter *TransitRouter) error {
+func (self *TransitRouterManager) Create(txRouter *TransitRouter, ctx *change.Context) error {
 	if txRouter.Id == "" {
 		txRouter.Id = eid.New()
 	}
@@ -80,6 +81,7 @@ func (self *TransitRouterManager) Create(txRouter *TransitRouter) error {
 		manager:    self,
 		router:     txRouter,
 		enrollment: enrollment,
+		ctx:        ctx,
 	}
 
 	return self.Dispatch(cmd)
@@ -89,9 +91,8 @@ func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd) error
 	txRouter := cmd.router
 	enrollment := cmd.enrollment
 
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-		boltEntity, err := txRouter.toBoltEntityForCreate(tx, self.impl)
+	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		boltEntity, err := txRouter.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
 			return err
 		}
@@ -109,7 +110,7 @@ func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd) error
 	})
 }
 
-func (self *TransitRouterManager) Update(entity *TransitRouter, unrestricted bool, checker fields.UpdatedFields) error {
+func (self *TransitRouterManager) Update(entity *TransitRouter, unrestricted bool, checker fields.UpdatedFields, ctx *change.Context) error {
 	curEntity, err := self.Read(entity.Id)
 
 	if err != nil {
@@ -124,6 +125,7 @@ func (self *TransitRouterManager) Update(entity *TransitRouter, unrestricted boo
 		Updater:       self,
 		Entity:        entity,
 		UpdatedFields: checker,
+		Context:       ctx,
 	}
 	if unrestricted {
 		cmd.Flags = updateUnrestricted
@@ -140,7 +142,7 @@ func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 			checker = &AndFieldChecker{first: self.allowedFields, second: cmd.UpdatedFields}
 		}
 	}
-	return self.updateEntity(cmd.Entity, checker)
+	return self.updateEntity(cmd.Entity, checker, cmd.Context)
 }
 
 func (self *TransitRouterManager) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {
@@ -156,24 +158,6 @@ func (self *TransitRouterManager) ReadOneByQuery(query string) (*TransitRouter, 
 		return nil, nil
 	}
 	return result.(*TransitRouter), nil
-}
-
-func (self *TransitRouterManager) Read(id string) (*TransitRouter, error) {
-	result := &TransitRouter{}
-
-	if err := self.readEntity(id, result); err != nil {
-		return nil, err
-	}
-
-	return result, nil
-}
-
-func (self *TransitRouterManager) readInTx(tx *bbolt.Tx, id string) (*TransitRouter, error) {
-	modelEntity := &TransitRouter{}
-	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
 }
 
 func (self *TransitRouterManager) CollectEnrollments(id string, collector func(entity *Enrollment) error) error {
@@ -203,7 +187,7 @@ func (self *TransitRouterManager) collectEnrollmentsInTx(tx *bbolt.Tx, id string
 	return nil
 }
 
-func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte, ctx *change.Context) (*ExtendedCerts, error) {
 	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
@@ -233,7 +217,7 @@ func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, client
 	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterCertPEM: struct{}{},
 		db.FieldRouterFingerprint:          struct{}{},
-	})
+	}, ctx)
 
 	if err != nil {
 		return nil, err
@@ -245,7 +229,7 @@ func (self *TransitRouterManager) ExtendEnrollment(router *TransitRouter, client
 	}, nil
 }
 
-func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte) (*ExtendedCerts, error) {
+func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRouter, clientCsrPem []byte, serverCertCsrPem []byte, ctx *change.Context) (*ExtendedCerts, error) {
 	enrollmentModule := self.env.GetEnrollRegistry().GetByMethod("erott").(*EnrollModuleEr)
 
 	clientCertRaw, err := enrollmentModule.ProcessClientCsrPem(clientCsrPem, router.Id)
@@ -275,7 +259,7 @@ func (self *TransitRouterManager) ExtendEnrollmentWithVerify(router *TransitRout
 	err = self.Update(router, true, &fields.UpdatedFieldsMap{
 		persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 		persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-	})
+	}, ctx)
 
 	if err != nil {
 		return nil, err
@@ -291,7 +275,7 @@ func (self *TransitRouterManager) ReadOneByUnverifiedFingerprint(fingerprint str
 	return self.ReadOneByQuery(fmt.Sprintf(`%s = "%v"`, persistence.FieldEdgeRouterUnverifiedFingerprint, fingerprint))
 }
 
-func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter) error {
+func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter, ctx *change.Context) error {
 	if router.UnverifiedFingerprint != nil && router.UnverifiedCertPem != nil {
 		router.Fingerprint = router.UnverifiedFingerprint
 
@@ -302,7 +286,7 @@ func (self *TransitRouterManager) ExtendEnrollmentVerify(router *TransitRouter) 
 			db.FieldRouterFingerprint:                        struct{}{},
 			persistence.FieldEdgeRouterUnverifiedCertPEM:     struct{}{},
 			persistence.FieldEdgeRouterUnverifiedFingerprint: struct{}{},
-		})
+		}, ctx)
 	}
 
 	return errors.New("no outstanding verification necessary")
@@ -365,9 +349,11 @@ type CreateTransitRouterCmd struct {
 	manager    *TransitRouterManager
 	router     *TransitRouter
 	enrollment *Enrollment
+	ctx        *change.Context
 }
 
-func (self *CreateTransitRouterCmd) Apply() error {
+func (self *CreateTransitRouterCmd) Apply(raftIndex uint64) error {
+	self.ctx.RaftIndex = raftIndex
 	return self.manager.ApplyCreate(self)
 }
 
@@ -385,6 +371,7 @@ func (self *CreateTransitRouterCmd) Encode() ([]byte, error) {
 	cmd := &edge_cmd_pb.CreateTransitRouterCmd{
 		Router:     transitRouterMsg,
 		Enrollment: enrollment,
+		Ctx:        ContextToProtobuf(self.ctx),
 	}
 
 	return cmd_pb.EncodeProtobuf(cmd)
@@ -405,6 +392,7 @@ func (self *CreateTransitRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateTrans
 
 	self.router = router
 	self.enrollment = enrollment
+	self.ctx = ProtobufToContext(msg.Ctx)
 
 	return nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -37,13 +38,13 @@ import (
 )
 
 type EnrollmentManager struct {
-	baseEntityManager
+	baseEntityManager[*Enrollment, *persistence.Enrollment]
 	enrollmentStore persistence.EnrollmentStore
 }
 
 func NewEnrollmentManager(env Env) *EnrollmentManager {
 	manager := &EnrollmentManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().Enrollment),
+		baseEntityManager: newBaseEntityManager[*Enrollment, *persistence.Enrollment](env, env.GetStores().Enrollment),
 		enrollmentStore:   env.GetStores().Enrollment,
 	}
 
@@ -55,8 +56,8 @@ func NewEnrollmentManager(env Env) *EnrollmentManager {
 	return manager
 }
 
-func (self *EnrollmentManager) Create(entity *Enrollment) error {
-	return network.DispatchCreate[*Enrollment](self, entity)
+func (self *EnrollmentManager) Create(entity *Enrollment, ctx *change.Context) error {
+	return network.DispatchCreate[*Enrollment](self, entity, ctx)
 }
 
 func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment]) error {
@@ -115,19 +116,19 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 		return err
 	}
 
-	_, err = self.createEntity(model)
+	_, err = self.createEntity(model, cmd.Context)
 	return err
 }
 
-func (self *EnrollmentManager) Update(entity *Enrollment, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*Enrollment](self, entity, checker)
+func (self *EnrollmentManager) Update(entity *Enrollment, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*Enrollment](self, entity, checker, ctx)
 }
 
 func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enrollment]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
 }
 
-func (self *EnrollmentManager) newModelEntity() edgeEntity {
+func (self *EnrollmentManager) newModelEntity() *Enrollment {
 	return &Enrollment{}
 }
 
@@ -187,7 +188,7 @@ func (self *EnrollmentManager) ReadByToken(token string) (*Enrollment, error) {
 			return nil
 		}
 
-		return enrollment.fillFrom(self, tx, boltEntity)
+		return enrollment.fillFrom(self.env, tx, boltEntity)
 	})
 
 	if err != nil {
@@ -226,9 +227,7 @@ func (self *EnrollmentManager) GetClientCertChain(certRaw []byte) (string, error
 }
 
 func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd) error {
-	return self.env.GetDbProvider().GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
-
+	return self.env.GetDbProvider().GetDb().Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		err := self.env.GetStores().Enrollment.DeleteById(ctx, cmd.enrollmentId)
 		if err != nil {
 			return err
@@ -255,7 +254,7 @@ func (self *EnrollmentManager) Read(id string) (*Enrollment, error) {
 	return entity, nil
 }
 
-func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time) error {
+func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time, ctx *change.Context) error {
 	enrollment, err := self.Read(id)
 
 	if err != nil {
@@ -274,17 +273,15 @@ func (self *EnrollmentManager) RefreshJwt(id string, expiresAt time.Time) error 
 		return errorz.NewFieldError("must be after the current date and time", "expiresAt", expiresAt)
 	}
 
-	if err := enrollment.FillJwtInfoWithExpiresAt(self.env, *enrollment.IdentityId, expiresAt); err != nil {
+	if err = enrollment.FillJwtInfoWithExpiresAt(self.env, *enrollment.IdentityId, expiresAt); err != nil {
 		return err
 	}
 
-	err = self.Update(enrollment, fields.UpdatedFieldsMap{
+	return self.Update(enrollment, fields.UpdatedFieldsMap{
 		persistence.FieldEnrollmentJwt:       struct{}{},
 		persistence.FieldEnrollmentExpiresAt: struct{}{},
 		persistence.FieldEnrollmentIssuedAt:  struct{}{},
-	})
-
-	return err
+	}, ctx)
 }
 
 func (self *EnrollmentManager) Query(query string) ([]*Enrollment, error) {
@@ -366,12 +363,14 @@ func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
 }
 
 type ReplaceEnrollmentWithAuthenticatorCmd struct {
+	Context       *change.Context
 	manager       *EnrollmentManager
 	enrollmentId  string
 	authenticator *Authenticator
 }
 
-func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply() error {
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply(raftIndex uint64) error {
+	self.Context.RaftIndex = raftIndex
 	return self.manager.ApplyReplaceEncoderWithAuthenticatorCommand(self)
 }
 
@@ -382,6 +381,7 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
 	}
 
 	cmd := &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{
+		Ctx:           ContextToProtobuf(self.Context),
 		EnrollmentId:  self.enrollmentId,
 		Authenticator: authMsg,
 	}
@@ -389,6 +389,7 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
 }
 
 func (self *ReplaceEnrollmentWithAuthenticatorCmd) Decode(env Env, msg *edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd) error {
+	self.Context = ProtobufToContext(msg.Ctx)
 	self.manager = env.GetManagers().Enrollment
 	self.enrollmentId = msg.EnrollmentId
 	authenticator, err := env.GetManagers().Authenticator.ProtobufToAuthenticator(msg.Authenticator)

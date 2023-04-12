@@ -17,6 +17,8 @@
 package model
 
 import (
+	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
@@ -35,4 +37,24 @@ func pbTimeToTimePtr(pb *timestamppb.Timestamp) *time.Time {
 	}
 	result := pb.AsTime()
 	return &result
+}
+
+func ContextToProtobuf(context *change.Context) *edge_cmd_pb.ChangeContext {
+	if context == nil {
+		return nil
+	}
+	return &edge_cmd_pb.ChangeContext{
+		Attributes: context.Attributes,
+		RaftIndex:  context.RaftIndex,
+	}
+}
+
+func ProtobufToContext(context *edge_cmd_pb.ChangeContext) *change.Context {
+	if context == nil {
+		return nil
+	}
+	return &change.Context{
+		Attributes: context.Attributes,
+		RaftIndex:  context.RaftIndex,
+	}
 }
