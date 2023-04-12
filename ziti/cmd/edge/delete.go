@@ -89,7 +89,7 @@ func newDeleteCmdForEntityType(entityType string, options *api.Options, aliases 
 		SuggestFor: []string{},
 	}
 
-	// allow interspersing positional args and flagsziti-tun
+	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	options.AddCommonFlags(cmd)
 
