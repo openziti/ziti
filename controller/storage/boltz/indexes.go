@@ -376,7 +376,7 @@ func (index *uniqueIndex) CheckIntegrity(ctx MutateContext, fix bool, errorSink 
 
 		if idxId == nil {
 			if fix {
-				ctx := store.NewIndexingContext(false, ctx, string(id), nil)
+				ctx := store.newIndexingContext(false, ctx, string(id), nil)
 				if err := index.processIntegrityFix(ctx); err != nil {
 					return err
 				}

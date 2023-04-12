@@ -62,8 +62,8 @@ func (p *testPerson) String() string {
 type boltTest struct {
 	dbTest
 	referenceTime time.Time
-	placesStore   Store
-	peopleStore   Store
+	placesStore   ConfigurableStore
+	peopleStore   ConfigurableStore
 }
 
 func (test *boltTest) createTestSchema() {
