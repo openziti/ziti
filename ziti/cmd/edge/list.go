@@ -761,7 +761,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if len(configTypes) == 1 && strings.EqualFold("all", configTypes[0]) {
 		params.Add("configTypes", "all")
 	} else {
-		if configTypes, err := mapNamesToIDs("config-types", *options, configTypes...); err != nil {
+		if configTypes, err := mapNamesToIDs("config-types", *options, false, configTypes...); err != nil {
 			return err
 		} else {
 			for _, configType := range configTypes {

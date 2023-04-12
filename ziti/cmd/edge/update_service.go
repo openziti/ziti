@@ -101,7 +101,7 @@ func runUpdateService(o *updateServiceOptions) error {
 	}
 
 	if o.Cmd.Flags().Changed("configs") {
-		configs, err := mapNamesToIDs("configs", o.Options, o.configs...)
+		configs, err := mapNamesToIDs("configs", o.Options, false, o.configs...)
 		if err != nil {
 			return err
 		}

@@ -70,7 +70,7 @@ func mapIdToName(entityType string, val string, o api.Options) (string, error) {
 	return name, nil
 }
 
-func mapNamesToIDs(entityType string, o api.Options, list ...string) ([]string, error) {
+func mapNamesToIDs(entityType string, o api.Options, skipNotFound bool, list ...string) ([]string, error) {
 	var result []string
 	for _, val := range list {
 		if strings.HasPrefix(val, "id:") {
@@ -89,6 +89,9 @@ func mapNamesToIDs(entityType string, o api.Options, list ...string) ([]string, 
 
 			if len(list) == 0 {
 				fmt.Printf("Found 0 %v with id or name matching %v\n", entityType, val)
+				if skipNotFound {
+					continue
+				}
 				return nil, errors.Errorf("no %v with id or name matching %v", entityType, val)
 			}
 
@@ -97,12 +100,10 @@ func mapNamesToIDs(entityType string, o api.Options, list ...string) ([]string, 
 				return nil, errors.Errorf("ambigous if %v is id or name", val)
 			}
 
-			for _, entity := range list {
-				entityId, _ := entity.Path("id").Data().(string)
-				result = append(result, entityId)
-				if val, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", val) {
-					fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
-				}
+			entityId, _ := list[0].Path("id").Data().(string)
+			result = append(result, entityId)
+			if val, found := os.LookupEnv("ZITI_CLI_DEBUG"); found && strings.EqualFold("true", val) {
+				fmt.Printf("Found %v with id %v for name %v\n", entityType, entityId, val)
 			}
 		}
 	}
