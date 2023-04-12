@@ -241,11 +241,11 @@ func (store *BaseStore[E]) GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
 	return store.parent.GetEntitiesBucket(tx)
 }
 
-func (store *BaseStore[E]) GetOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
+func (store *BaseStore[E]) getOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
 	if store.parent == nil {
 		return GetOrCreatePath(tx, store.entityPath...)
 	}
-	return store.parent.GetOrCreateEntitiesBucket(tx)
+	return store.parent.getOrCreateEntitiesBucket(tx)
 }
 
 func (store *BaseStore[E]) GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
@@ -262,43 +262,13 @@ func (store *BaseStore[E]) GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
 	return entityBucket.GetPath(store.entityPath...)
 }
 
-func (store *BaseStore[E]) GetOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
-	entityBaseBucket := store.GetOrCreateEntitiesBucket(tx)
+func (store *BaseStore[E]) getOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
+	entityBaseBucket := store.getOrCreateEntitiesBucket(tx)
 	entityBucket := entityBaseBucket.GetOrCreateBucket(string(id))
 	if store.parent == nil {
 		return entityBucket
 	}
 	return entityBucket.GetOrCreatePath(store.entityPath...)
-}
-
-func (store *BaseStore[E]) GetValue(tx *bbolt.Tx, id []byte, path ...string) []byte {
-	entityBucket := store.GetEntityBucket(tx, id)
-	if entityBucket == nil {
-		return nil
-	}
-	if len(path) == 0 {
-		return id
-	}
-	if len(path) == 1 {
-		return entityBucket.Get([]byte(path[0]))
-	}
-	valueBucket := entityBucket.GetPath(path[:len(path)-1]...)
-	if valueBucket == nil {
-		return nil
-	}
-	return valueBucket.Get([]byte(path[len(path)-1]))
-}
-
-func (store *BaseStore[E]) GetValueCursor(tx *bbolt.Tx, id []byte, path ...string) *bbolt.Cursor {
-	entityBucket := store.GetEntityBucket(tx, id)
-	if entityBucket == nil {
-		return nil
-	}
-	bucket := entityBucket.GetPath(path...)
-	if bucket == nil {
-		return nil
-	}
-	return bucket.Cursor()
 }
 
 func (store *BaseStore[E]) GetSingularEntityType() string {

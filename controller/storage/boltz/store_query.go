@@ -190,7 +190,7 @@ func (store *BaseStore[E]) inheritMapSymbol(symbol *entityMapSymbol) {
 	store.mapSymbols[symbol.key] = symbol
 }
 
-func (store *BaseStore[E]) GrantSymbols(child Store) {
+func (store *BaseStore[E]) GrantSymbols(child ConfigurableStore) {
 	for name, value := range store.symbols {
 		child.addSymbol(name, store.IsPublicSymbol(name), value)
 	}
@@ -380,10 +380,6 @@ func (store *BaseStore[E]) newRowComparator(sort []ast.SortField) (RowComparator
 	}
 
 	return &rowComparatorImpl{symbols: symbolsComparators}, nil
-}
-
-func (store *BaseStore[E]) QueryIdsf(tx *bbolt.Tx, queryString string, args ...interface{}) ([]string, int64, error) {
-	return store.QueryIds(tx, fmt.Sprintf(queryString, args...))
 }
 
 func (store *BaseStore[E]) QueryIds(tx *bbolt.Tx, queryString string) ([]string, int64, error) {

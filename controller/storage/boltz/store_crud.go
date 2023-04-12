@@ -131,10 +131,10 @@ func (store *BaseStore[E]) FindOneByQuery(tx *bbolt.Tx, query string) (E, bool, 
 	return entity, found, err
 }
 
-func (store *BaseStore[E]) NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext {
+func (store *BaseStore[E]) newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext {
 	var parentContext *IndexingContext
 	if store.parent != nil {
-		parentContext = store.parent.NewIndexingContext(isCreate, ctx, id, holder)
+		parentContext = store.parent.newIndexingContext(isCreate, ctx, id, holder)
 	}
 	return &IndexingContext{
 		Parent:     parentContext,
@@ -186,7 +186,7 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 		return errors.Errorf("an entity of type %v already exists with id %v", store.GetSingularEntityType(), entity.GetId())
 	}
 
-	bucket := store.GetOrCreateEntityBucket(ctx.Tx(), []byte(entity.GetId()))
+	bucket := store.getOrCreateEntityBucket(ctx.Tx(), []byte(entity.GetId()))
 	persistCtx := &PersistContext{
 		MutateContext: ctx,
 		Id:            entity.GetId(),
@@ -198,7 +198,7 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 	if bucket.HasError() {
 		return bucket.GetError()
 	}
-	indexingContext := store.NewIndexingContext(true, ctx, entity.GetId(), bucket)
+	indexingContext := store.newIndexingContext(true, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessAfterUpdate()
 
 	changeFlow := &EntityChangeState[E]{
@@ -259,7 +259,7 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 		return store.entityNotFoundF(entity.GetId())
 	}
 
-	indexingContext := store.NewIndexingContext(false, ctx, entity.GetId(), bucket)
+	indexingContext := store.newIndexingContext(false, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessBeforeUpdate() // remove old values, using existing values in store
 	persistCtx := &PersistContext{
 		MutateContext: ctx,
@@ -369,7 +369,7 @@ func (store *BaseStore[E]) processDeleteConstraints(ctx MutateContext, id string
 
 	errHolder := &errorz.ErrorHolderImpl{}
 
-	indexingContext := store.NewIndexingContext(false, ctx, id, errHolder)
+	indexingContext := store.newIndexingContext(false, ctx, id, errHolder)
 	indexingContext.ProcessBeforeDelete()
 	store.cleanupLinks(ctx.Tx(), id, errHolder)
 

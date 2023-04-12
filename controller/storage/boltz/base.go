@@ -36,12 +36,6 @@ const (
 	FieldIsSystemEntity = "isSystem"
 )
 
-const (
-	ContextChangeAuthorIdKey   = "changeAuthorId"
-	ContextChangeAuthorNameKey = "changeAuthorName"
-	ContextChangeTraceId       = "traceId"
-)
-
 type EntityEventType byte
 
 const (
@@ -54,7 +48,24 @@ type Checkable interface {
 	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
 }
 
+type storeInternal interface {
+	getOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
+	getOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
+
+	newRowComparator(sort []ast.SortField) (RowComparator, error)
+	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
+	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType Store, prefix ...string) *entitySymbol
+
+	getLinks() map[string]LinkCollection
+	inheritMapSymbol(symbol *entityMapSymbol)
+	processDeleteConstraints(ctx MutateContext, id string) (EntityChangeFlow, error)
+	newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
+	newEntityChangeFlow() EntityChangeFlow
+}
+
 type Store interface {
+	storeInternal
+
 	ast.SymbolTypes
 	Checkable
 	Constrained
@@ -63,46 +74,20 @@ type Store interface {
 	GetSingularEntityType() string
 	GetRootPath() []string
 	GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket
-	GetOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
 	GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
-	GetOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
-	GetValue(tx *bbolt.Tx, id []byte, path ...string) []byte
-	GetValueCursor(tx *bbolt.Tx, id []byte, path ...string) *bbolt.Cursor
 	IsChildStore() bool
 	IsEntityPresent(tx *bbolt.Tx, id string) bool
 	IsExtended() bool
 
 	GetSymbol(name string) EntitySymbol
-	MapSymbol(name string, wrapper SymbolMapper)
-	GrantSymbols(child Store)
-	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
-	inheritMapSymbol(symbol *entityMapSymbol)
-	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
-	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
-	AddFkSymbol(name string, linkedType Store, path ...string) EntitySymbol
-	AddSymbolWithKey(name string, nodeType ast.NodeType, key string, path ...string) EntitySymbol
-	AddFkSymbolWithKey(name string, key string, linkedType Store, path ...string) EntitySymbol
-	AddMapSymbol(name string, nodeType ast.NodeType, key string, path ...string)
-	AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
-	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
-	AddFkSetSymbol(name string, linkedType Store) EntitySetSymbol
-	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
-	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType Store, prefix ...string) *entitySymbol
 
-	AddExtEntitySymbols()
-	MakeSymbolPublic(name string)
-
-	newRowComparator(sort []ast.SortField) (RowComparator, error)
 	GetPublicSymbols() []string
 	IsPublicSymbol(symbol string) bool
 
 	FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string
 
-	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
-	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
 	GetLinkCollection(name string) LinkCollection
 	GetRefCountedLinkCollection(name string) RefCountedLinkCollection
-	getLinks() map[string]LinkCollection
 
 	GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field string) []string
 	GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field string, forward bool) ast.SetCursor
@@ -110,9 +95,6 @@ type Store interface {
 
 	// QueryIds compiles the query and runs it against the store
 	QueryIds(tx *bbolt.Tx, query string) ([]string, int64, error)
-
-	// QueryIdsf compiles the query with the given params and runs it against the store
-	QueryIdsf(tx *bbolt.Tx, query string, args ...interface{}) ([]string, int64, error)
 
 	// QueryIdsC executes a compile query against the store
 	QueryIdsC(tx *bbolt.Tx, query ast.Query) ([]string, int64, error)
@@ -125,18 +107,37 @@ type Store interface {
 	IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor
 
 	GetParentStore() Store
+	GrantSymbols(child ConfigurableStore)
 
 	DeleteById(ctx MutateContext, id string) error
 	DeleteWhere(ctx MutateContext, query string) error
-	processDeleteConstraints(ctx MutateContext, id string) (EntityChangeFlow, error)
-
-	NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
-	newEntityChangeFlow() EntityChangeFlow
 
 	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType)
 	AddUntypedEntityConstraint(constraint UntypedEntityConstraint)
 	GetEntityReflectType() reflect.Type
+}
+
+// ConfigurableStore has all the APIs that store implementations need to configure themselves
+type ConfigurableStore interface {
+	Store
+	MapSymbol(name string, wrapper SymbolMapper)
+	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
+	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
+	AddFkSymbol(name string, linkedType Store, path ...string) EntitySymbol
+	AddSymbolWithKey(name string, nodeType ast.NodeType, key string, path ...string) EntitySymbol
+	AddFkSymbolWithKey(name string, key string, linkedType Store, path ...string) EntitySymbol
+	AddMapSymbol(name string, nodeType ast.NodeType, key string, path ...string)
+	AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
+	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
+	AddFkSetSymbol(name string, linkedType Store) EntitySetSymbol
+	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
+
+	AddExtEntitySymbols()
+	MakeSymbolPublic(name string)
+
+	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
+	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
 }
 
 type ChildStoreStrategy[E Entity] interface {
