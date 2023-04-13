@@ -80,6 +80,7 @@ type Network struct {
 	routerPresenceHandlers []RouterPresenceHandler
 	capabilities           []string
 	closeNotify            <-chan struct{}
+	watchdogCh             chan struct{}
 	lock                   sync.Mutex
 	strategyRegistry       xt.Registry
 	lastSnapshot           time.Time
@@ -125,6 +126,7 @@ func NewNetwork(config Config) (*Network, error) {
 		eventDispatcher:       config.GetEventDispatcher(),
 		traceController:       trace.NewController(config.GetCloseNotify()),
 		closeNotify:           config.GetCloseNotify(),
+		watchdogCh:            make(chan struct{}, 1),
 		strategyRegistry:      xt.GlobalRegistry(),
 		lastSnapshot:          time.Now().Add(-time.Hour),
 		metricsRegistry:       config.GetMetricsRegistry(),
@@ -819,6 +821,8 @@ func (network *Network) Run() {
 	defer logrus.Info("exited")
 	logrus.Info("started")
 
+	go network.watchdog()
+
 	for {
 		select {
 		case r := <-network.routerChanged:
@@ -842,6 +846,37 @@ func (network *Network) Run() {
 			network.eventDispatcher.RemoveMetricsMessageHandler(network)
 			network.metricsRegistry.DisposeAll()
 			return
+		}
+
+		// notify the watchdog that we're processing
+		select {
+		case network.watchdogCh <- struct{}{}:
+		default:
+		}
+	}
+}
+
+func (network *Network) watchdog() {
+	watchdogInterval := 2 * time.Duration(network.options.CycleSeconds) * time.Second
+	consecutiveFails := 0
+	for {
+		// check every 2x cycle seconds
+		time.Sleep(watchdogInterval)
+		select {
+		case <-network.watchdogCh:
+			consecutiveFails = 0
+			continue
+		default:
+			consecutiveFails++
+			// network.Run didn't complete, something is stalling it
+			pfxlog.Logger().
+				WithField("watchdogInterval", watchdogInterval.String()).
+				WithField("consecutiveFails", consecutiveFails).
+				Warn("network.Run did not finish within watchdog interval")
+
+			if consecutiveFails == 3 {
+				debugz.DumpStack()
+			}
 		}
 	}
 }
