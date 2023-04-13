@@ -18,13 +18,14 @@ package events
 
 import (
 	"fmt"
+	"io"
+	"strings"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/pkg/errors"
-	"io"
-	"strings"
 )
 
 type delegatingRegistrar struct {
@@ -61,6 +62,7 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 
 	result.RegisterEventHandlerFactory("file", FileEventLoggerFactory{})
 	result.RegisterEventHandlerFactory("stdout", StdOutLoggerFactory{})
+	result.RegisterEventHandlerFactory("amqp", AMQPEventLoggerFactory{})
 
 	go result.eventLoop()
 
