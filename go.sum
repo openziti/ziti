@@ -457,8 +457,8 @@ github.com/openziti/channel/v2 v2.0.58 h1:j9baDM8nEAgHNhJ9n1h+WWbFSgCQCjvNB3KCr5
 github.com/openziti/channel/v2 v2.0.58/go.mod h1:Wa3TS5o4pBFSGnDb9zRCGww29ZVXk0GnupwNpb/2DWE=
 github.com/openziti/edge-api v0.25.11 h1:HHjDgoybPZGRZ+tM2udehI+U5Xv991iGED8E6CtDb9w=
 github.com/openziti/edge-api v0.25.11/go.mod h1:PBFMYELgr7JUuaCqHobq1U+WESsutzgEDoELU/9qFOg=
-github.com/openziti/fabric v0.22.88 h1:+UZz9ofCd0d+muUXyeFScAerZ8AZ9GId647hmMVpwqs=
-github.com/openziti/fabric v0.22.88/go.mod h1:w/cleYmpE/coUjjCzoRbpO648QWwSee0V4H8mfyqCdg=
+github.com/openziti/fabric v0.22.89 h1:6s4zrvKfSqwsCF74KxV3LEh7/qKFPJEaYNcjLauXANo=
+github.com/openziti/fabric v0.22.89/go.mod h1:LI8A9Sf012ICzFQERh9zHzvKMdjcMcW2sPFCzKTsW9E=
 github.com/openziti/foundation/v2 v2.0.21 h1:3EDDmSunsbd2DlULuY/vqj12LHRZOknH/m3lf6Ws5Nw=
 github.com/openziti/foundation/v2 v2.0.21/go.mod h1:02GW3jFSSlfLwYwuTIldP/S4w7eCKqlzL6ajFSGHNPA=
 github.com/openziti/identity v1.0.45 h1:e2kXoMCPcaUXy+k6GwasuKeGSJwavFEr+eOvUA228UY=
@@ -512,6 +512,8 @@ github.com/prometheus/procfs v0.0.0-20181005140218-185b4288413d/go.mod h1:c3At6R
 github.com/prometheus/procfs v0.0.0-20181204211112-1dc9a6cbc91a/go.mod h1:c3At6R/oaqEKCNdg8wHV1ftS6bRYblBhIjjI8uT2IGk=
 github.com/prometheus/procfs v0.0.2/go.mod h1:TjEm7ze935MbeOT/UhFTIMYKhuLP4wbCsTZCD3I8kEA=
 github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+GxbHq6oeK9A=
+github.com/rabbitmq/amqp091-go v1.8.0 h1:GBFy5PpLQ5jSVVSYv8ecHGqeX7UTLYR4ItQbDCss9MM=
+github.com/rabbitmq/amqp091-go v1.8.0/go.mod h1:+jPrT9iY2eLjRaMSRHUhc3z14E/l85kv/f+6luSD3pc=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 h1:N/ElC8H3+5XpJzTSTfLsJV/mx9Q9g7kxmchpfZyxgzM=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
@@ -622,6 +624,8 @@ go.opentelemetry.io/otel/sdk v1.11.1 h1:F7KmQgoHljhUuJyA+9BiU+EkJfyX5nVVF4wyzWZp
 go.opentelemetry.io/otel/trace v1.14.0 h1:wp2Mmvj41tDsyAJXiWDWpfNsOiIyd38fy85pyKcFq/M=
 go.opentelemetry.io/otel/trace v1.14.0/go.mod h1:8avnQLK+CG77yNLUae4ea2JDQ6iT+gozhnZjy/rw9G8=
 go.uber.org/atomic v1.7.0/go.mod h1:fEN4uk6kAWBTFdckzkM89CLk9XfWZrxpCo0nPH17wJc=
+go.uber.org/goleak v1.2.1 h1:NBol2c7O1ZokfZ0LEU9K6Whx/KnwvepVetCUhtKja4A=
+go.uber.org/goleak v1.2.1/go.mod h1:qlT2yGI9QafXHhZZLxlSuNsMw3FFLxBr+tBRlmO1xH4=
 go.uber.org/multierr v1.6.0/go.mod h1:cdWPpRnG4AhwMwsgIHip0KRBQjJy5kYEpYjJxpXp9iU=
 go.uber.org/zap v1.17.0/go.mod h1:MXVU+bhUf/A7Xi2HNOnopQOrmycQ5Ih87HtOu4q5SSo=
 golang.org/x/crypto v0.0.0-20180904163835-0709b304e793/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=

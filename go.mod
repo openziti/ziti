@@ -30,7 +30,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.58
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.88
+	github.com/openziti/fabric v0.22.89
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.45
 	github.com/openziti/jwks v1.0.3
@@ -111,6 +111,7 @@ require (
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
+	github.com/rabbitmq/amqp091-go v1.8.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.23.2 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
