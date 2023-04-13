@@ -35,7 +35,7 @@ type dialer struct {
 	options *Options
 }
 
-func (dialer dialer) IsTerminatorValid(id string, destination string) bool {
+func (dialer *dialer) IsTerminatorValid(id string, destination string) bool {
 	destParts := strings.Split(destination, ":")
 	if len(destParts) != 2 {
 		return false

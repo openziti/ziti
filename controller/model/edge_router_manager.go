@@ -227,7 +227,7 @@ func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId
 		return nil
 	})
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	return result, nil
 }
@@ -249,7 +249,7 @@ func (self *EdgeRouterManager) IsSharedEdgeRouterPresent(identityId, serviceId s
 		return nil
 	})
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	return result, nil
 }

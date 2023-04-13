@@ -61,7 +61,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, err
 	}
 
-	log.Infof("successful connection %v->%v for destination %v", conn.LocalAddr(), conn.RemoteAddr(), destination)
+	log.Debugf("successful connection %v->%v for destination %v", conn.LocalAddr(), conn.RemoteAddr(), destination)
 
 	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
 	peerData := make(xt.PeerData, 3)
