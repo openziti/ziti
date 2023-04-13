@@ -273,12 +273,17 @@ func SetOriginatorFlag(flags uint32, originator Originator) uint32 {
 }
 
 func (payload *Payload) GetLoggerFields() logrus.Fields {
-	return logrus.Fields{
+	result := logrus.Fields{
 		"circuitId": payload.CircuitId,
 		"seq":       payload.Sequence,
 		"origin":    payload.GetOriginator(),
-		"uuid":      uuidz.ToString(payload.Headers[HeaderKeyUUID]),
 	}
+
+	if uuidVal, found := payload.Headers[HeaderKeyUUID]; found {
+		result["uuid"] = uuidz.ToString(uuidVal)
+	}
+
+	return result
 }
 
 type ControlType byte
@@ -361,11 +366,16 @@ func (self *Control) CreateTraceResponse(hopType, hopId string) *Control {
 }
 
 func (self *Control) GetLoggerFields() logrus.Fields {
-	return logrus.Fields{
+	result := logrus.Fields{
 		"circuitId": self.CircuitId,
 		"type":      self.Type,
-		"uuid":      uuidz.ToString(self.Headers[HeaderKeyUUID]),
 	}
+
+	if uuidVal, found := self.Headers[HeaderKeyUUID]; found {
+		result["uuid"] = uuidz.ToString(uuidVal)
+	}
+
+	return result
 }
 
 func RespondToTraceRequest(headers channel.Headers, hopType, hopId string, response ControlReceiver) {
