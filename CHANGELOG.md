@@ -1,3 +1,9 @@
+# Release 0.27.10
+
+## What's New
+
+* Added AMQP event writter for events
+
 # Release 0.27.9
 
 ## What's New

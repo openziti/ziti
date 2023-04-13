@@ -24,7 +24,7 @@ require (
 	github.com/openziti/channel/v2 v2.0.58
 	github.com/openziti/edge v0.24.239
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.87
+	github.com/openziti/fabric v0.22.89
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.45
 	github.com/openziti/runzmd v1.0.20
@@ -151,6 +151,7 @@ require (
 	github.com/pkg/term v1.2.0-beta.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
+	github.com/rabbitmq/amqp091-go v1.8.0 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/shoenig/go-m1cpu v0.1.5 // indirect

@@ -67,6 +67,19 @@ ctrl:
 #      type: file
 #      format: json
 #      path: /tmp/ziti-events.log
+#  usageLogger:
+#    subscriptions:
+#      - type: fabric.usage
+#        interval: 5s
+#    handler:
+#      type: amqp
+#      format: json
+#      url: "amqp://localhost:5672" 
+#      queue: ziti
+#      durable: true      //default:true
+#      autoDelete: false  //default:false
+#      exclusive: false   //default:false
+#      noWait: false      //default:false
 
 # xctrl_example
 #
