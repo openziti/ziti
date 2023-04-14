@@ -108,9 +108,24 @@ type baseSessionRequestContext struct {
 	err          controllerError
 	sourceRouter *network.Router
 	session      *model.Session
+	apiSession   *model.ApiSession
 	service      *model.Service
 	newSession   bool
 	logContext   logcontext.Context
+}
+
+func (self *baseSessionRequestContext) newChangeContext() *change.Context {
+	return change.New().
+		SetChangeAuthorId(self.session.IdentityId).
+		SetChangeAuthorName(self.apiSession.Identity.Name).
+		SetSource(fmt.Sprintf("ctrl[edge/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
+}
+
+func (self *baseSessionRequestContext) newTunnelChangeContext() *change.Context {
+	return change.New().
+		SetChangeAuthorId(self.sourceRouter.Id).
+		SetChangeAuthorName(self.sourceRouter.Name).
+		SetSource(fmt.Sprintf("ctrl[edge:tunnel/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
 }
 
 func (self *baseSessionRequestContext) GetMessage() *channel.Message {
@@ -166,6 +181,7 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 				WithError(self.err).Errorf("invalid api-session")
 			return
 		}
+		self.apiSession = apiSession
 
 		self.logContext = logcontext.NewContext()
 		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(apiSession.IdentityId)
@@ -332,7 +348,7 @@ func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, bin
 	return nil
 }
 
-func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest) {
+func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {
 	if self.err == nil {
 		checker := fields.UpdatedFieldsMap{}
 
@@ -360,7 +376,7 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 			checker[db.FieldTerminatorPrecedence] = struct{}{}
 		}
 
-		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker))
+		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker, ctx))
 	}
 }
 
@@ -423,16 +439,6 @@ func (self *baseSessionRequestContext) createCircuit(terminatorInstanceId string
 		}
 	}
 	return circuit, returnPeerData
-}
-
-func (self *baseSessionRequestContext) NewChangeContext() *change.Context {
-	changeCtx := change.New().SetSource("ctrl[edge]")
-
-	if self.sourceRouter != nil {
-		changeCtx.SetChangeAuthorId(self.sourceRouter.Id).SetChangeAuthorName(self.sourceRouter.Name)
-	}
-
-	return changeCtx
 }
 
 type circuitParams struct {

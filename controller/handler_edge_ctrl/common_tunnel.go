@@ -151,7 +151,7 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			IPAddress:      self.handler.getChannel().Underlay().GetRemoteAddr().String(),
 		}
 
-		err := self.handler.getAppEnv().GetDbProvider().GetDb().Update(self.NewChangeContext().NewMutateContext(), func(ctx boltz.MutateContext) error {
+		err := self.handler.getAppEnv().GetDbProvider().GetDb().Update(self.newTunnelChangeContext().NewMutateContext(), func(ctx boltz.MutateContext) error {
 			var err error
 			apiSession.Id, err = self.handler.getAppEnv().GetManagers().ApiSession.Create(ctx, apiSession, nil)
 			if err != nil {
@@ -269,7 +269,7 @@ func (self *baseTunnelRequestContext) ensureSessionForService(sessionId, session
 			Type:         sessionType,
 		}
 
-		id, err := self.handler.getAppEnv().Managers.Session.Create(session)
+		id, err := self.handler.getAppEnv().Managers.Session.Create(session, self.newTunnelChangeContext())
 		if err != nil {
 			self.err = internalError(err)
 			return
@@ -359,7 +359,7 @@ func (self *baseTunnelRequestContext) updateIdentityInfo(envInfo *edge_ctrl_pb.E
 		}
 
 		if envInfo != nil || sdkInfo != nil {
-			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, self.NewChangeContext()))
+			self.err = internalError(self.handler.getAppEnv().GetManagers().Identity.PatchInfo(self.identity, self.newTunnelChangeContext()))
 		}
 	}
 }

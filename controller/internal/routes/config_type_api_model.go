@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -78,25 +76,8 @@ func MapPatchConfigTypeToModel(id string, configType *rest_model.ConfigTypePatch
 	return ret
 }
 
-func MapConfigTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	configType, ok := e.(*model.ConfigType)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a ConfigType \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapConfigTypeToRestModel(configType)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapConfigTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, configType *model.ConfigType) (interface{}, error) {
+	return MapConfigTypeToRestModel(configType)
 }
 
 func MapConfigTypeToRestModel(configType *model.ConfigType) (*rest_model.ConfigTypeDetail, error) {

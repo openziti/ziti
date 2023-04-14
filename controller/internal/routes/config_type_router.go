@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/config"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -72,11 +73,11 @@ func (r *ConfigTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ConfigTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
+	ListWithHandler[*model.ConfigType](ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
 }
 
 func (r *ConfigTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
+	DetailWithHandler[*model.ConfigType](ae, rc, ae.Managers.ConfigType, MapConfigTypeToRestEntity)
 }
 
 func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params config.CreateConfigTypeParams) {
@@ -88,7 +89,7 @@ func (r *ConfigTypeRouter) Create(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Create(rc, rc, ConfigTypeLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.ConfigType.Create, MapCreateConfigTypeToModel(params.ConfigType))
+		return MapCreate(ae.Managers.ConfigType.Create, MapCreateConfigTypeToModel(params.ConfigType), rc)
 	})
 }
 
@@ -105,7 +106,7 @@ func (r *ConfigTypeRouter) Update(ae *env.AppEnv, rc *response.RequestContext, p
 	}
 
 	Update(rc, func(id string) error {
-		return ae.Managers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType), nil)
+		return ae.Managers.ConfigType.Update(MapUpdateConfigTypeToModel(params.ID, params.ConfigType), nil, rc.NewChangeContext())
 	})
 }
 
@@ -120,10 +121,10 @@ func (r *ConfigTypeRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, pa
 	}
 
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.ConfigType.Update(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"))
+		return ae.Managers.ConfigType.Update(MapPatchConfigTypeToModel(params.ID, params.ConfigType), fields.FilterMaps("tags", "schema"), rc.NewChangeContext())
 	})
 }
 
 func (r *ConfigTypeRouter) ListConfigs(ae *env.AppEnv, rc *response.RequestContext, params config.ListConfigsForConfigTypeParams) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.ConfigType, ae.Managers.Config, MapConfigToRestEntity)
+	ListAssociationWithHandler[*model.ConfigType, *model.Config](ae, rc, ae.Managers.ConfigType, ae.Managers.Config, MapConfigToRestEntity)
 }

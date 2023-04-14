@@ -17,32 +17,18 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/fabric/controller/models"
 )
 
 const EntityNameIdentityType = "identity-types"
 
 var IdentityTypeLinkFactory = NewBasicLinkFactory(EntityNameIdentityType)
 
-func MapIdentityTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, identityTypeModel models.Entity) (interface{}, error) {
-	identityType, ok := identityTypeModel.(*model.IdentityType)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an identity type \"%s\"", identityTypeModel.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel := MapIdentityTypeToRestModel(identityType)
-
-	return restModel, nil
+func MapIdentityTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, identityType *model.IdentityType) (interface{}, error) {
+	return MapIdentityTypeToRestModel(identityType), nil
 }
 
 func MapIdentityTypeToRestModel(identityType *model.IdentityType) *rest_model.IdentityTypeDetail {

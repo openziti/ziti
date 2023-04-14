@@ -108,25 +108,8 @@ func (TerminatorModelMapper) ToApi(n *network.Network, _ api.RequestContext, ter
 	return restModel, nil
 }
 
-func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	terminator, ok := e.(*network.Terminator)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Terminator \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapTerminatorToRestModel(ae.GetHostController().GetNetwork(), terminator)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, terminator *network.Terminator) (interface{}, error) {
+	return MapTerminatorToRestModel(ae.GetHostController().GetNetwork(), terminator)
 }
 
 func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator) (*rest_model.TerminatorDetail, error) {
@@ -172,25 +155,8 @@ func MapTerminatorToRestModel(n *network.Network, terminator *network.Terminator
 	return ret, nil
 }
 
-func MapClientTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	terminator, ok := e.(*network.Terminator)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Terminator \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapLimitedTerminatorToRestModel(ae, terminator)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapClientTerminatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, terminator *network.Terminator) (interface{}, error) {
+	return MapLimitedTerminatorToRestModel(ae, terminator)
 }
 
 func MapLimitedTerminatorToRestModel(ae *env.AppEnv, terminator *network.Terminator) (*rest_model.TerminatorClientDetail, error) {

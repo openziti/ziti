@@ -17,36 +17,21 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
-	"github.com/openziti/fabric/controller/models"
 )
 
 const EntityNamePostureCheckType = "posture-check-types"
 
 var PostureCheckTypeLinkFactory = NewBasicLinkFactory(EntityNamePostureCheckType)
 
-func MapPostureCheckTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, postureCheckTypeModel models.Entity) (interface{}, error) {
-	postureCheckType, ok := postureCheckTypeModel.(*model.PostureCheckType)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a posture check type \"%s\"", postureCheckTypeModel.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel := MapPostureCheckTypeToRestModel(postureCheckType)
-
-	return restModel, nil
+func MapPostureCheckTypeToRestEntity(_ *env.AppEnv, _ *response.RequestContext, postureCheckType *model.PostureCheckType) (interface{}, error) {
+	return MapPostureCheckTypeToRestModel(postureCheckType), nil
 }
 
 func MapPostureCheckTypeToRestModel(postureCheckType *model.PostureCheckType) *rest_model.PostureCheckTypeDetail {
-
 	operatingSystems := []*rest_model.OperatingSystem{}
 
 	for _, os := range postureCheckType.OperatingSystems {

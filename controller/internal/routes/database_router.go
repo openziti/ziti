@@ -91,7 +91,7 @@ func (r *DatabaseRouter) CreateSnapshot(ae *env.AppEnv, rc *response.RequestCont
 func (r *DatabaseRouter) CheckDatastoreIntegrity(ae *env.AppEnv, rc *response.RequestContext, fixErrors bool) {
 	if r.integrityCheck.running.CompareAndSwap(false, true) {
 		r.integrityCheck.fixingErrors = fixErrors
-		go r.runDataIntegrityCheck(ae, fixErrors)
+		go r.runDataIntegrityCheck(ae, rc, fixErrors)
 		rc.Respond(&rest_model.Empty{Data: map[string]interface{}{}, Meta: &rest_model.Meta{}}, http.StatusAccepted)
 	} else {
 		rc.RespondWithApiError(apierror.NewRateLimited())
@@ -139,7 +139,7 @@ func (r *DatabaseRouter) GetCheckProgress(rc *response.RequestContext) {
 	rc.Respond(result, http.StatusOK)
 }
 
-func (r *DatabaseRouter) runDataIntegrityCheck(ae *env.AppEnv, fixErrors bool) {
+func (r *DatabaseRouter) runDataIntegrityCheck(ae *env.AppEnv, rc *response.RequestContext, fixErrors bool) {
 	defer func() {
 		r.integrityCheck.lock.Lock()
 		now := time.Now()
@@ -176,5 +176,5 @@ func (r *DatabaseRouter) runDataIntegrityCheck(ae *env.AppEnv, fixErrors bool) {
 		}
 	}
 
-	r.integrityCheck.err = ae.GetDbProvider().GetStores().CheckIntegrity(ae.GetDbProvider().GetDb(), fixErrors, errorHandler)
+	r.integrityCheck.err = ae.GetDbProvider().GetStores().CheckIntegrity(ae.GetDbProvider().GetDb(), rc.NewChangeContext().GetContext(), fixErrors, errorHandler)
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/edge_router_policy"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -77,16 +78,16 @@ func (r *EdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *EdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	ListWithHandler[*model.EdgeRouterPolicy](ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	DetailWithHandler[*model.EdgeRouterPolicy](ae, rc, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.CreateEdgeRouterPolicyParams) {
 	Create(rc, rc, EdgeRouterPolicyLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.EdgeRouterPolicy.Create, MapCreateEdgeRouterPolicyToModel(params.Policy))
+		return MapCreate(ae.Managers.EdgeRouterPolicy.Create, MapCreateEdgeRouterPolicyToModel(params.Policy), rc)
 	})
 }
 
@@ -96,20 +97,20 @@ func (r *EdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestCont
 
 func (r *EdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.UpdateEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Policy), nil)
+		return ae.Managers.EdgeRouterPolicy.Update(MapUpdateEdgeRouterPolicyToModel(params.ID, params.Policy), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router_policy.PatchEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeRouterPolicy.Update(MapPatchEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.EdgeRouterPolicy.Update(MapPatchEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
 func (r *EdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationWithHandler[*model.EdgeRouterPolicy, *model.EdgeRouter](ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *EdgeRouterPolicyRouter) ListIdentities(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.Identity, MapIdentityToRestEntity)
+	ListAssociationWithHandler[*model.EdgeRouterPolicy, *model.Identity](ae, rc, ae.Managers.EdgeRouterPolicy, ae.Managers.Identity, MapIdentityToRestEntity)
 }

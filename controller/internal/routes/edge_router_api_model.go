@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/openziti/foundation/v2/versions"
 
 	"strings"
@@ -107,25 +106,8 @@ func MapPatchEdgeRouterToModel(id string, router *rest_model.EdgeRouterPatch) *m
 	return ret
 }
 
-func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	router, ok := e.(*model.EdgeRouter)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a EdgeRouter \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapEdgeRouterToRestModel(ae, router)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapEdgeRouterToRestEntity(ae *env.AppEnv, _ *response.RequestContext, router *model.EdgeRouter) (interface{}, error) {
+	return MapEdgeRouterToRestModel(ae, router)
 }
 
 func MapVersionInfoToRestModel(versionInfo versions.VersionInfo) *rest_model.VersionInfo {

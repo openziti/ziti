@@ -37,6 +37,10 @@ type TransitRouter struct {
 	Disabled              bool
 }
 
+func (self *TransitRouter) GetName() string {
+	return self.Name
+}
+
 func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.TransitRouter, error) {
 	boltEntity := &persistence.TransitRouter{
 		Router: db.Router{

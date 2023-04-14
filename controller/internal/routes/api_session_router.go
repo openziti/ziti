@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/api_session"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 )
 
@@ -54,11 +55,11 @@ func (ir *ApiSessionHandler) Register(ae *env.AppEnv) {
 }
 
 func (ir *ApiSessionHandler) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
+	ListWithHandler[*model.ApiSession](ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
 }
 
 func (ir *ApiSessionHandler) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
+	DetailWithHandler[*model.ApiSession](ae, rc, ae.Managers.ApiSession, MapApiSessionToRestInterface)
 }
 
 func (ir *ApiSessionHandler) Delete(ae *env.AppEnv, rc *response.RequestContext) {

@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/auth_policy"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -67,11 +68,11 @@ func (r *AuthPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *AuthPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
+	ListWithHandler[*model.AuthPolicy](ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
+	DetailWithHandler[*model.AuthPolicy](ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.CreateAuthPolicyParams) {

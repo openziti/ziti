@@ -35,8 +35,10 @@ import (
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 	manager := &EdgeServiceManager{
 		baseEntityManager: newBaseEntityManager[*Service, *persistence.EdgeService](env, env.GetStores().EdgeService),
+		detailLister:      &ServiceDetailLister{},
 	}
 	manager.impl = manager
+	manager.detailLister.manager = manager
 
 	network.RegisterManagerDecoder[*Service](env.GetHostController().GetNetwork().Managers, manager)
 
@@ -45,6 +47,11 @@ func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 
 type EdgeServiceManager struct {
 	baseEntityManager[*Service, *persistence.EdgeService]
+	detailLister *ServiceDetailLister
+}
+
+func (self *EdgeServiceManager) GetDetailLister() *ServiceDetailLister {
+	return self.detailLister
 }
 
 func (self *EdgeServiceManager) GetEntityTypeId() string {
@@ -370,4 +377,40 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	})
 
 	return policyIdToChecks
+}
+
+type ServiceDetailLister struct {
+	manager *EdgeServiceManager
+}
+
+func (self *ServiceDetailLister) GetListStore() boltz.Store {
+	return self.manager.GetListStore()
+}
+
+func (self *ServiceDetailLister) BaseLoadInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
+	return self.manager.readInTx(tx, id)
+}
+
+func (self *ServiceDetailLister) BasePreparedList(query ast.Query) (*models.EntityListResult[*ServiceDetail], error) {
+	result := &models.EntityListResult[*ServiceDetail]{
+		Loader: self,
+	}
+
+	if err := self.manager.PreparedListWithHandler(query, result.Collect); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (self *ServiceDetailLister) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[*ServiceDetail], error) {
+	result := &models.EntityListResult[*ServiceDetail]{
+		Loader: self,
+	}
+
+	if err := self.manager.PreparedListIndexed(cursorProvider, query, result.Collect); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

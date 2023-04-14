@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -102,25 +100,8 @@ func MapPatchEdgeRouterPolicyToModel(id string, policy *rest_model.EdgeRouterPol
 	return ret
 }
 
-func MapEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	policy, ok := e.(*model.EdgeRouterPolicy)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a EdgeRouterPolicy \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapEdgeRouterPolicyToRestModel(ae, policy)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapEdgeRouterPolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, policy *model.EdgeRouterPolicy) (interface{}, error) {
+	return MapEdgeRouterPolicyToRestModel(ae, policy)
 }
 
 func MapEdgeRouterPolicyToRestModel(ae *env.AppEnv, policy *model.EdgeRouterPolicy) (*rest_model.EdgeRouterPolicyDetail, error) {

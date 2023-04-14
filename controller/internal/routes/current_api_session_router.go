@@ -108,7 +108,7 @@ func (router *CurrentSessionRouter) Detail(ae *env.AppEnv, rc *response.RequestC
 }
 
 func (router *CurrentSessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
-	err := ae.GetManagers().ApiSession.Delete(rc.ApiSession.Id)
+	err := ae.GetManagers().ApiSession.Delete(rc.ApiSession.Id, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)

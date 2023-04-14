@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -94,16 +95,16 @@ func (r *TransitRouterRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *TransitRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.TransitRouter, MapTransitRouterToRestEntity)
+	ListWithHandler[*model.TransitRouter](ae, rc, ae.Managers.TransitRouter, MapTransitRouterToRestEntity)
 }
 
 func (r *TransitRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.TransitRouter, MapTransitRouterToRestEntity)
+	DetailWithHandler[*model.TransitRouter](ae, rc, ae.Managers.TransitRouter, MapTransitRouterToRestEntity)
 }
 
 func (r *TransitRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, router *rest_model.RouterCreate) {
 	Create(rc, rc, TransitRouterLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.TransitRouter.Create, MapCreateRouterToModel(router))
+		return MapCreate(ae.Managers.TransitRouter.Create, MapCreateRouterToModel(router), rc)
 	})
 }
 
@@ -113,12 +114,12 @@ func (r *TransitRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *TransitRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterUpdate) {
 	Update(rc, func(id string) error {
-		return ae.Managers.TransitRouter.Update(MapUpdateTransitRouterToModel(routerId, router), false, nil)
+		return ae.Managers.TransitRouter.Update(MapUpdateTransitRouterToModel(routerId, router), false, nil, rc.NewChangeContext())
 	})
 }
 
 func (r *TransitRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, routerId string, router *rest_model.RouterPatch) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.FilterMaps("tags"))
+		return ae.Managers.TransitRouter.Update(MapPatchTransitRouterToModel(routerId, router), false, fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }

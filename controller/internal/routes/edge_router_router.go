@@ -98,7 +98,7 @@ func (r *EdgeRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 	roleSemantic := rc.Request.URL.Query().Get("roleSemantic")
 
 	if len(roleFilters) > 0 {
-		ListWithQueryF(ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity, func(query ast.Query) (*models.EntityListResult[models.Entity], error) {
+		ListWithQueryF[*model.EdgeRouter](ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity, func(query ast.Query) (*models.EntityListResult[*model.EdgeRouter], error) {
 			cursorProvider, err := ae.GetStores().EdgeRouter.GetRoleAttributesCursorProvider(roleFilters, roleSemantic)
 			if err != nil {
 				return nil, err
@@ -106,17 +106,17 @@ func (r *EdgeRouterRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 			return ae.Managers.EdgeRouter.BasePreparedListIndexed(cursorProvider, query)
 		})
 	} else {
-		ListWithHandler(ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+		ListWithHandler[*model.EdgeRouter](ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 	}
 }
 
 func (r *EdgeRouterRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+	DetailWithHandler[*model.EdgeRouter](ae, rc, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *EdgeRouterRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params edge_router.CreateEdgeRouterParams) {
 	Create(rc, rc, EdgeRouterLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.EdgeRouter.Create, MapCreateEdgeRouterToModel(params.EdgeRouter))
+		return MapCreate(ae.Managers.EdgeRouter.Create, MapCreateEdgeRouterToModel(params.EdgeRouter), rc)
 	})
 }
 
@@ -126,32 +126,32 @@ func (r *EdgeRouterRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *EdgeRouterRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params edge_router.UpdateEdgeRouterParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.EdgeRouter.Update(MapUpdateEdgeRouterToModel(params.ID, params.EdgeRouter), false, nil)
+		return ae.Managers.EdgeRouter.Update(MapUpdateEdgeRouterToModel(params.ID, params.EdgeRouter), false, nil, rc.NewChangeContext())
 	})
 }
 
 func (r *EdgeRouterRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params edge_router.PatchEdgeRouterParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fields.FilterMaps("tags"))
+		return ae.Managers.EdgeRouter.Update(MapPatchEdgeRouterToModel(params.ID, params.EdgeRouter), false, fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
 func (r *EdgeRouterRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouter, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	ListAssociationWithHandler[*model.EdgeRouter, *model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.EdgeRouter, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterRouter) listEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeRouter, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
+	ListAssociationWithHandler[*model.EdgeRouter, *model.EdgeRouterPolicy](ae, rc, ae.Managers.EdgeRouter, ae.Managers.EdgeRouterPolicy, MapEdgeRouterPolicyToRestEntity)
 }
 
 func (r *EdgeRouterRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from edgeRouterPolicies where anyOf(routers) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
+	ListAssociationsWithFilter[*model.Identity](ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 
 func (r *EdgeRouterRouter) listServices(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(routers) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeService, MapServiceToRestEntity)
+	ListAssociationsWithFilter[*model.ServiceDetail](ae, rc, filterTemplate, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
 }
 
 func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext) {
@@ -170,7 +170,7 @@ func (r *EdgeRouterRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestContext)
 		return
 	}
 
-	if err := ae.GetManagers().EdgeRouter.ReEnroll(router); err != nil {
+	if err := ae.GetManagers().EdgeRouter.ReEnroll(router, rc.NewChangeContext()); err != nil {
 		rc.RespondWithApiError(apierror.NewEdgeRouterFailedReEnrollment(err))
 		return
 	}

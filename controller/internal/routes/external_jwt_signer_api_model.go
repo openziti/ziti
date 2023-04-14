@@ -17,9 +17,7 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/strfmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -32,19 +30,8 @@ const EntityNameExternalJwtSigner = "external-jwt-signers"
 
 var ExternalJwtSignerLinkFactory = NewBasicLinkFactory(EntityNameExternalJwtSigner)
 
-func MapExternalJwtSignerToRestEntity(_ *env.AppEnv, _ *response.RequestContext, ExternalJwtSignerModel models.Entity) (interface{}, error) {
-	externalJwtSigner, ok := ExternalJwtSignerModel.(*model.ExternalJwtSigner)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an identity type \"%s\"", ExternalJwtSignerModel.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel := MapExternalJwtSignerToRestModel(externalJwtSigner)
-
-	return restModel, nil
+func MapExternalJwtSignerToRestEntity(_ *env.AppEnv, _ *response.RequestContext, externalJwtSigner *model.ExternalJwtSigner) (interface{}, error) {
+	return MapExternalJwtSignerToRestModel(externalJwtSigner), nil
 }
 
 func MapClientExtJwtSignersToRestEntity(_ *env.AppEnv, _ *response.RequestContext, signers []*model.ExternalJwtSigner) ([]*rest_model.ClientExternalJWTSignerDetail, error) {

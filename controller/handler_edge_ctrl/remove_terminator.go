@@ -104,7 +104,7 @@ func (self *removeTerminatorHandler) RemoveTerminator(ctx *RemoveTerminatorReque
 		return
 	}
 
-	err := self.getNetwork().Terminators.Delete(ctx.req.TerminatorId)
+	err := self.getNetwork().Terminators.Delete(ctx.req.TerminatorId, ctx.newChangeContext())
 	if err != nil {
 		self.returnError(ctx, internalError(err))
 		return

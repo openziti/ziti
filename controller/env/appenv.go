@@ -467,13 +467,7 @@ func (ae *AppEnv) InitPersistence() error {
 	ae.EventDispatcher = events.NewDispatcher(ae.GetHostController().GetNetwork(), ae.GetDbProvider(), ae.BoltStores, ae.GetHostController().GetCloseNotifyChannel())
 
 	persistence.ServiceEvents.AddServiceEventHandler(ae.HandleServiceEvent)
-	ae.BoltStores.Identity.AddListener(boltz.EventDelete, func(i ...interface{}) {
-		for _, val := range i {
-			if identity, ok := val.(*persistence.Identity); ok {
-				ae.IdentityRefreshMap.Remove(identity.Id)
-			}
-		}
-	})
+	ae.BoltStores.Identity.AddEntityIdListener(ae.IdentityRefreshMap.Remove, boltz.EntityDeletedAsync)
 
 	return err
 }

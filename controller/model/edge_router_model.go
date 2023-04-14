@@ -43,6 +43,10 @@ type EdgeRouter struct {
 	Disabled              bool
 }
 
+func (self *EdgeRouter) GetName() string {
+	return self.Name
+}
+
 func (entity *EdgeRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeRouter, error) {
 	boltEntity := &persistence.EdgeRouter{
 		Router: db.Router{

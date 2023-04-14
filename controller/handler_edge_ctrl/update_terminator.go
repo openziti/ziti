@@ -83,7 +83,8 @@ func (self *updateTerminatorHandler) UpdateTerminator(ctx *UpdateTerminatorReque
 	ctx.checkSessionType(persistence.SessionTypeBind)
 	ctx.checkSessionFingerprints(ctx.req.Fingerprints)
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.EdgeBinding)
-	ctx.updateTerminator(terminator, ctx.req)
+
+	ctx.updateTerminator(terminator, ctx.req, ctx.newChangeContext())
 
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)

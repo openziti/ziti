@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -142,25 +140,8 @@ func MapPatchAuthenticatorToModel(id string, in *rest_model.AuthenticatorPatch) 
 	return result
 }
 
-func MapAuthenticatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	i, ok := e.(*model.Authenticator)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an authenticator \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	al, err := MapAuthenticatorToRestModel(ae, i)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
+func MapAuthenticatorToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e *model.Authenticator) (interface{}, error) {
+	return MapAuthenticatorToRestModel(ae, e)
 }
 
 func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_model.AuthenticatorDetail, error) {
@@ -191,7 +172,7 @@ func MapAuthenticatorToRestModel(ae *env.AppEnv, i *model.Authenticator) (*rest_
 	return result, nil
 }
 
-func MapAuthenticatorsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, es []*model.Authenticator) ([]*rest_model.AuthenticatorDetail, error) {
+func MapAuthenticatorsToRestEntities(ae *env.AppEnv, _ *response.RequestContext, es []*model.Authenticator) ([]*rest_model.AuthenticatorDetail, error) {
 	apiEntities := make([]*rest_model.AuthenticatorDetail, 0)
 
 	for _, e := range es {

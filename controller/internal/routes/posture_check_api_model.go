@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -283,25 +282,8 @@ func MapPostureChecksToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e
 	return restModel, nil
 }
 
-func MapPostureCheckToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (interface{}, error) {
-	i, ok := e.(*model.PostureCheck)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Posture Check \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	al, err := MapPostureCheckToRestModel(ae, rc, i)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
+func MapPostureCheckToRestEntity(ae *env.AppEnv, rc *response.RequestContext, i *model.PostureCheck) (interface{}, error) {
+	return MapPostureCheckToRestModel(ae, rc, i)
 }
 
 func MapPostureCheckToRestModel(ae *env.AppEnv, rc *response.RequestContext, i *model.PostureCheck) (rest_model.PostureCheckDetail, error) {

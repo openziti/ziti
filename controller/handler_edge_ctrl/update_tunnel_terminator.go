@@ -77,7 +77,7 @@ func (self *updateTunnelTerminatorHandler) UpdateTerminator(ctx *UpdateTunnelTer
 	logrus.Debug("update request received")
 
 	terminator := ctx.verifyTerminator(ctx.req.TerminatorId, edge_common.TunnelBinding)
-	ctx.updateTerminator(terminator, ctx.req)
+	ctx.updateTerminator(terminator, ctx.req, ctx.newTunnelChangeContext())
 	if ctx.err != nil {
 		self.returnError(ctx, ctx.err)
 		return

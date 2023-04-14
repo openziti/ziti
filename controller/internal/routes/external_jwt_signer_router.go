@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/external_jwt_signer"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
@@ -44,7 +45,6 @@ func NewExternalJwtSignerRouter() *ExternalJwtSignerRouter {
 
 func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 	// client
-
 	ae.ManagementApi.ExternalJWTSignerListExternalJWTSignersHandler = external_jwt_signer.ListExternalJWTSignersHandlerFunc(func(params external_jwt_signer.ListExternalJWTSignersParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.ListClient, params.HTTPRequest, "", "", permissions.Always())
 	})
@@ -76,16 +76,16 @@ func (r *ExternalJwtSignerRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ExternalJwtSignerRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+	ListWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
 }
 
 func (r *ExternalJwtSignerRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
+	DetailWithHandler[*model.ExternalJwtSigner](ae, rc, ae.Managers.ExternalJwtSigner, MapExternalJwtSignerToRestEntity)
 }
 
 func (r *ExternalJwtSignerRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.CreateExternalJWTSignerParams) {
 	Create(rc, rc, ExternalJwtSignerLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.ExternalJwtSigner.Create, MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner))
+		return MapCreate(ae.Managers.ExternalJwtSigner.Create, MapCreateExternalJwtSignerToModel(params.ExternalJWTSigner), rc)
 	})
 }
 
@@ -95,7 +95,7 @@ func (r *ExternalJwtSignerRouter) Delete(ae *env.AppEnv, rc *response.RequestCon
 
 func (r *ExternalJwtSignerRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params external_jwt_signer.UpdateExternalJWTSignerParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), nil)
+		return ae.Managers.ExternalJwtSigner.Update(MapUpdateExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), nil, rc.NewChangeContext())
 	})
 }
 
@@ -109,13 +109,13 @@ func (r *ExternalJwtSignerRouter) Patch(ae *env.AppEnv, rc *response.RequestCont
 			fields.AddField(persistence.FieldExternalJwtSignerFingerprint)
 		}
 
-		return ae.Managers.ExternalJwtSigner.Update(MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner), fields.FilterMaps("tags", "data"))
+		externalJwtSigner := MapPatchExternalJwtSignerToModel(params.ID, params.ExternalJWTSigner)
+		return ae.Managers.ExternalJwtSigner.Update(externalJwtSigner, fields.FilterMaps("tags", "data"), rc.NewChangeContext())
 	})
 }
 
 func (r *ExternalJwtSignerRouter) ListClient(ae *env.AppEnv, rc *response.RequestContext) {
 	List(rc, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-
 		query, err := queryOptions.getFullQuery(ae.Managers.EdgeService.GetStore())
 		if err != nil {
 			return nil, err

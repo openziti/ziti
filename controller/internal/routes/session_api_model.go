@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -65,25 +63,8 @@ func MapCreateSessionToModel(identityId, apiSessionId string, session *rest_mode
 	return ret
 }
 
-func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	session, ok := e.(*model.Session)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Session \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapSessionToRestModel(ae, session)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapSessionToRestEntity(ae *env.AppEnv, _ *response.RequestContext, session *model.Session) (interface{}, error) {
+	return MapSessionToRestModel(ae, session)
 }
 
 func MapSessionToRestModel(ae *env.AppEnv, sessionModel *model.Session) (*rest_model.SessionManagementDetail, error) {

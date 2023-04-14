@@ -62,11 +62,11 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 		routerMsgBufferSize: 100,
 	}
 
-	broker.ae.GetStores().Session.AddListener(boltz.EventDelete, broker.sessionDeleted)
-	broker.ae.GetStores().ApiSession.AddListener(persistence.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
-	broker.ae.GetStores().ApiSession.AddListener(boltz.EventDelete, broker.apiSessionDeleted)
-	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventCreate, broker.apiSessionCertificateCreated)
-	broker.ae.GetStores().ApiSessionCertificate.AddListener(boltz.EventDelete, broker.apiSessionCertificateDeleted)
+	broker.ae.GetStores().Session.AddEntityEventListenerF(broker.routerSyncStrategy.SessionDeleted, boltz.EntityDeletedAsync)
+	broker.ae.GetStores().ApiSession.AddEntityEventListenerF(broker.routerSyncStrategy.ApiSessionDeleted, boltz.EntityDeletedAsync)
+	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(persistence.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
+	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateCreated, boltz.EntityCreatedAsync)
+	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityCreatedAsync)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 
@@ -124,52 +124,15 @@ func (broker *Broker) apiSessionFullyAuthenticated(args ...interface{}) {
 	go broker.routerSyncStrategy.ApiSessionAdded(apiSession)
 }
 
-func (broker *Broker) apiSessionDeleted(args ...interface{}) {
-	var apiSession *persistence.ApiSession
-	if len(args) == 1 {
-		apiSession, _ = args[0].(*persistence.ApiSession)
-	}
-
-	if apiSession == nil {
-		pfxlog.Logger().Error("during broker apiSessionDeleted could not cast arg[0] to *persistence.ApiSession")
-		return
-	}
-
-	go broker.routerSyncStrategy.ApiSessionDeleted(apiSession)
+func (broker *Broker) apiSessionCertificateCreated(entity *persistence.ApiSessionCertificate) {
+	go broker.apiSessionCertificateHandler(false, entity)
 }
 
-func (broker *Broker) sessionDeleted(args ...interface{}) {
-	var session *persistence.Session
-	if len(args) == 1 {
-		session, _ = args[0].(*persistence.Session)
-	}
-
-	if session == nil {
-		pfxlog.Logger().Error("during broker sessionDeleted could not cast arg[0] to *persistence.Session")
-		return
-	}
-
-	go broker.routerSyncStrategy.SessionDeleted(session)
+func (broker *Broker) apiSessionCertificateDeleted(entity *persistence.ApiSessionCertificate) {
+	go broker.apiSessionCertificateHandler(true, entity)
 }
 
-func (broker *Broker) apiSessionCertificateCreated(args ...interface{}) {
-	go broker.apiSessionCertificateHandler(false, args...)
-}
-
-func (broker *Broker) apiSessionCertificateDeleted(args ...interface{}) {
-	go broker.apiSessionCertificateHandler(true, args...)
-}
-
-func (broker *Broker) apiSessionCertificateHandler(delete bool, args ...interface{}) {
-	var apiSessionCert *persistence.ApiSessionCertificate
-	if len(args) == 1 {
-		apiSessionCert, _ = args[0].(*persistence.ApiSessionCertificate)
-	}
-
-	if apiSessionCert == nil {
-		pfxlog.Logger().Error("during broker apiSessionCertificateEvent could not cast arg[0] to *persistence.ApiSessionCertificate")
-		return
-	}
+func (broker *Broker) apiSessionCertificateHandler(delete bool, apiSessionCert *persistence.ApiSessionCertificate) {
 	var apiSession *persistence.ApiSession
 	var err error
 	err = broker.ae.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {

@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -110,28 +108,11 @@ func MapPatchServicePolicyToModel(id string, policy *rest_model.ServicePolicyPat
 	return ret
 }
 
-func MapServicePolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	policy, ok := e.(*model.ServicePolicy)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a ServicePolicy \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapServicePolicyToRestModel(ae, policy)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapServicePolicyToRestEntity(ae *env.AppEnv, _ *response.RequestContext, policy *model.ServicePolicy) (interface{}, error) {
+	return MapServicePolicyToRestModel(ae, policy), nil
 }
 
-func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*rest_model.ServicePolicyDetail, error) {
+func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) *rest_model.ServicePolicyDetail {
 	semantic := rest_model.Semantic(policy.Semantic)
 	dialBindType := rest_model.DialBind(policy.PolicyType)
 
@@ -148,5 +129,5 @@ func MapServicePolicyToRestModel(ae *env.AppEnv, policy *model.ServicePolicy) (*
 		PostureCheckRolesDisplay: GetNamedPostureCheckRoles(ae.GetManagers().PostureCheck, policy.PostureCheckRoles),
 	}
 
-	return ret, nil
+	return ret
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/identity"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 )
 
@@ -51,9 +52,9 @@ func (r *IdentityTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *IdentityTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
+	ListWithHandler[*model.IdentityType](ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
 }
 
 func (r *IdentityTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
+	DetailWithHandler[*model.IdentityType](ae, rc, ae.Managers.IdentityType, MapIdentityTypeToRestEntity)
 }

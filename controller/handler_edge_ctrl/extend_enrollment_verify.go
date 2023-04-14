@@ -90,7 +90,8 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 				return
 			}
 
-			err := h.appEnv.Managers.EdgeRouter.ExtendEnrollmentVerify(edgeRouter)
+			changeCtx := newRouterChangeContext(edgeRouter, ch)
+			err := h.appEnv.Managers.EdgeRouter.ExtendEnrollmentVerify(edgeRouter, changeCtx)
 			if err != nil {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "VERIFY_ERROR",
@@ -122,7 +123,8 @@ func (h *extendEnrollmentVerifyHandler) HandleReceive(msg *channel.Message, ch c
 				return
 			}
 
-			err := h.appEnv.Managers.TransitRouter.ExtendEnrollmentVerify(router)
+			changeCtx := newRouterChangeContext(router, ch)
+			err := h.appEnv.Managers.TransitRouter.ExtendEnrollmentVerify(router, changeCtx)
 			if err != nil {
 				h.respond(&edge_ctrl_pb.Error{
 					Code:    "VERIFY_ERROR",

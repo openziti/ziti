@@ -21,6 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	clientService "github.com/openziti/edge-api/rest_client_api_server/operations/service"
 	managementService "github.com/openziti/edge-api/rest_management_api_server/operations/service"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/metrics"
@@ -154,7 +155,7 @@ func (r *ServiceRouter) ListManagementServices(ae *env.AppEnv, rc *response.Requ
 				return nil, err
 			}
 
-			result, err := ae.Managers.EdgeService.BasePreparedListIndexed(cursorProvider, query)
+			result, err := ae.Managers.EdgeService.GetDetailLister().BasePreparedListIndexed(cursorProvider, query)
 
 			if err != nil {
 				return nil, err
@@ -228,7 +229,7 @@ func (r *ServiceRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ServiceRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params managementService.CreateServiceParams) {
 	Create(rc, rc, ServiceLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.EdgeService.Create, MapCreateServiceToModel(params.Service))
+		return MapCreate(ae.Managers.EdgeService.Create, MapCreateServiceToModel(params.Service), rc)
 	})
 }
 
@@ -238,26 +239,26 @@ func (r *ServiceRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *ServiceRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params managementService.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Service), nil)
+		return ae.Managers.EdgeService.Update(MapUpdateServiceToModel(params.ID, params.Service), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params managementService.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"))
+		return ae.Managers.EdgeService.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceRouter) listServiceEdgeRouterPolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	ListAssociationWithHandler[*model.Service, *model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listServicePolicies(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
+	ListAssociationWithHandler[*model.Service, *model.ServicePolicy](ae, rc, ae.Managers.EdgeService, ae.Managers.ServicePolicy, MapServicePolicyToRestEntity)
 }
 
 func (r *ServiceRouter) listConfigs(ae *env.AppEnv, rc *response.RequestContext) {
-	r.listAssociations(ae, rc, ae.Managers.Config, MapConfigToRestEntity)
+	ListAssociationWithHandler[*model.Service, *model.Config](ae, rc, ae.Managers.EdgeService, ae.Managers.Config, MapConfigToRestEntity)
 }
 
 func (r *ServiceRouter) listManagementTerminators(ae *env.AppEnv, rc *response.RequestContext) {
@@ -291,16 +292,12 @@ func (r *ServiceRouter) listClientTerminators(ae *env.AppEnv, rc *response.Reque
 	ListTerminatorAssociations(ae, rc, ae.Managers.EdgeService, ae.Managers.Terminator, MapClientTerminatorToRestEntity)
 }
 
-func (r *ServiceRouter) listAssociations(ae *env.AppEnv, rc *response.RequestContext, associationLoader models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.EdgeService, associationLoader, mapper)
-}
-
 func (r *ServiceRouter) listIdentities(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from servicePolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
+	ListAssociationsWithFilter[*model.Identity](ae, rc, filterTemplate, ae.Managers.Identity, MapIdentityToRestEntity)
 }
 
 func (r *ServiceRouter) listEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
 	filterTemplate := `not isEmpty(from serviceEdgeRouterPolicies where anyOf(services) = "%v")`
-	ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
