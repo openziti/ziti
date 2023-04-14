@@ -63,6 +63,11 @@ func (self *EnrollmentManager) Create(entity *Enrollment, ctx *change.Context) e
 func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment]) error {
 	model := cmd.Entity
 
+	if model.EdgeRouterId != nil || model.TransitRouterId != nil {
+		_, err := self.createEntity(model, cmd.Context)
+		return err
+	}
+
 	if model.IdentityId == nil {
 		return apierror.NewBadRequestFieldError(*errorz.NewFieldError("identity not found", "identityId", model.IdentityId))
 	}
@@ -198,11 +203,12 @@ func (self *EnrollmentManager) ReadByToken(token string) (*Enrollment, error) {
 	return enrollment, nil
 }
 
-func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator) error {
+func (self *EnrollmentManager) ReplaceWithAuthenticator(enrollmentId string, authenticator *Authenticator, ctx *change.Context) error {
 	return self.Dispatch(&ReplaceEnrollmentWithAuthenticatorCmd{
 		manager:       self,
 		enrollmentId:  enrollmentId,
 		authenticator: authenticator,
+		ctx:           ctx,
 	})
 }
 
@@ -227,7 +233,7 @@ func (self *EnrollmentManager) GetClientCertChain(certRaw []byte) (string, error
 }
 
 func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd) error {
-	return self.env.GetDbProvider().GetDb().Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.env.GetDbProvider().GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		err := self.env.GetStores().Enrollment.DeleteById(ctx, cmd.enrollmentId)
 		if err != nil {
 			return err
@@ -363,14 +369,14 @@ func (self *EnrollmentManager) Unmarshall(bytes []byte) (*Enrollment, error) {
 }
 
 type ReplaceEnrollmentWithAuthenticatorCmd struct {
-	Context       *change.Context
+	ctx           *change.Context
 	manager       *EnrollmentManager
 	enrollmentId  string
 	authenticator *Authenticator
 }
 
 func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply(raftIndex uint64) error {
-	self.Context.RaftIndex = raftIndex
+	self.ctx.RaftIndex = raftIndex
 	return self.manager.ApplyReplaceEncoderWithAuthenticatorCommand(self)
 }
 
@@ -381,7 +387,7 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
 	}
 
 	cmd := &edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd{
-		Ctx:           ContextToProtobuf(self.Context),
+		Ctx:           ContextToProtobuf(self.ctx),
 		EnrollmentId:  self.enrollmentId,
 		Authenticator: authMsg,
 	}
@@ -389,7 +395,7 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
 }
 
 func (self *ReplaceEnrollmentWithAuthenticatorCmd) Decode(env Env, msg *edge_cmd_pb.ReplaceEnrollmentWithAuthenticatorCmd) error {
-	self.Context = ProtobufToContext(msg.Ctx)
+	self.ctx = ProtobufToContext(msg.Ctx)
 	self.manager = env.GetManagers().Enrollment
 	self.enrollmentId = msg.EnrollmentId
 	authenticator, err := env.GetManagers().Authenticator.ProtobufToAuthenticator(msg.Authenticator)

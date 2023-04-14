@@ -68,13 +68,39 @@ func (entity *ApiSession) GetEntityType() string {
 	return EntityTypeApiSessions
 }
 
-type apiSessionEntityStrategy struct{}
+var _ ApiSessionStore = (*apiSessionStoreImpl)(nil)
 
-func (apiSessionEntityStrategy) NewEntity() *ApiSession {
+type ApiSessionStore interface {
+	Store[*ApiSession]
+	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
+	GetTokenIndex() boltz.ReadIndex
+	GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string
+	GetEventsEmitter() events.EventEmmiter
+}
+
+func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
+	store := &apiSessionStoreImpl{
+		eventsEmitter: events.New(),
+	}
+	store.baseStore = newBaseStore[*ApiSession](stores, store)
+	stores.EventualEventer.AddEventualListener(EventualEventApiSessionDelete, store.onEventualDelete)
+	store.InitImpl(store)
+	return store
+}
+
+type apiSessionStoreImpl struct {
+	*baseStore[*ApiSession]
+
+	indexToken     boltz.ReadIndex
+	symbolIdentity boltz.EntitySymbol
+	eventsEmitter  events.EventEmmiter
+}
+
+func (store *apiSessionStoreImpl) NewEntity() *ApiSession {
 	return &ApiSession{}
 }
 
-func (apiSessionEntityStrategy) FillEntity(entity *ApiSession, bucket *boltz.TypedBucket) {
+func (store *apiSessionStoreImpl) FillEntity(entity *ApiSession, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.IdentityId = bucket.GetStringOrError(FieldApiSessionIdentity)
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
@@ -90,7 +116,7 @@ func (apiSessionEntityStrategy) FillEntity(entity *ApiSession, bucket *boltz.Typ
 	}
 }
 
-func (apiSessionEntityStrategy) PersistEntity(entity *ApiSession, ctx *boltz.PersistContext) {
+func (store *apiSessionStoreImpl) PersistEntity(entity *ApiSession, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldApiSessionIdentity, entity.IdentityId)
 	ctx.SetString(FieldApiSessionToken, entity.Token)
@@ -100,35 +126,6 @@ func (apiSessionEntityStrategy) PersistEntity(entity *ApiSession, ctx *boltz.Per
 	ctx.SetBool(FieldApiSessionMfaRequired, entity.MfaRequired)
 	ctx.SetString(FieldApiSessionAuthenticator, entity.AuthenticatorId)
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
-}
-
-var _ ApiSessionStore = (*apiSessionStoreImpl)(nil)
-
-type ApiSessionStore interface {
-	Store[*ApiSession]
-	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
-	GetTokenIndex() boltz.ReadIndex
-	GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string
-	GetEventsEmitter() events.EventEmmiter
-}
-
-func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
-	store := &apiSessionStoreImpl{
-		baseStore:     newBaseStore[*ApiSession](stores, apiSessionEntityStrategy{}),
-		eventsEmitter: events.New(),
-	}
-
-	stores.EventualEventer.AddEventualListener(EventualEventApiSessionDelete, store.onEventualDelete)
-	store.InitImpl(store)
-	return store
-}
-
-type apiSessionStoreImpl struct {
-	*baseStore[*ApiSession]
-
-	indexToken     boltz.ReadIndex
-	symbolIdentity boltz.EntitySymbol
-	eventsEmitter  events.EventEmmiter
 }
 
 func (store *apiSessionStoreImpl) GetEventsEmitter() events.EventEmmiter {
@@ -154,7 +151,7 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 	}
 
 	for _, id := range idCollector.ids {
-		changeContext := change.New().SetSource("events.emitter").SetChangeAuthorId("events.emitter")
+		changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
 		err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
 			if err := store.stores.session.DeleteById(ctx, id); err != nil {
 				if boltz.IsErrNotFoundErr(err) {
@@ -174,7 +171,7 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 		}
 	}
 
-	changeContext := change.New().SetSource("events.emitter").SetChangeAuthorId("events.emitter")
+	changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
 	err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		if bucket := boltz.Path(ctx.Tx(), indexPath...); bucket != nil {
 			if err := bucket.DeleteBucket(apiSessionId); err != nil {

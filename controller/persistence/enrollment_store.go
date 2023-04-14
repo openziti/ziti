@@ -65,40 +65,6 @@ var enrollmentFieldMappings = map[string]string{
 	FieldEnrollTransitRouter: "transitRouterId",
 }
 
-type enrollmentEntityStrategy struct{}
-
-func (enrollmentEntityStrategy) NewEntity() *Enrollment {
-	return &Enrollment{}
-}
-
-func (enrollmentEntityStrategy) FillEntity(entity *Enrollment, bucket *boltz.TypedBucket) {
-	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
-	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
-	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
-	entity.EdgeRouterId = bucket.GetString(FieldEnrollEdgeRouter)
-	entity.TransitRouterId = bucket.GetString(FieldEnrollTransitRouter)
-	entity.ExpiresAt = bucket.GetTime(FieldEnrollmentExpiresAt)
-	entity.IssuedAt = bucket.GetTime(FieldEnrollmentIssuedAt)
-	entity.CaId = bucket.GetString(FieldEnrollmentCaId)
-	entity.Username = bucket.GetString(FieldEnrollmentUsername)
-	entity.Jwt = bucket.GetStringOrError(FieldEnrollmentJwt)
-}
-
-func (enrollmentEntityStrategy) PersistEntity(entity *Enrollment, ctx *boltz.PersistContext) {
-	ctx.WithFieldOverrides(enrollmentFieldMappings)
-
-	ctx.SetString(FieldEnrollmentToken, entity.Token)
-	ctx.SetString(FieldEnrollmentMethod, entity.Method)
-	ctx.SetTimeP(FieldEnrollmentExpiresAt, entity.ExpiresAt)
-	ctx.SetStringP(FieldEnrollIdentity, entity.IdentityId)
-	ctx.SetStringP(FieldEnrollEdgeRouter, entity.EdgeRouterId)
-	ctx.SetStringP(FieldEnrollTransitRouter, entity.TransitRouterId)
-	ctx.SetStringP(FieldEnrollmentCaId, entity.CaId)
-	ctx.SetStringP(FieldEnrollmentUsername, entity.Username)
-	ctx.SetTimeP(FieldEnrollmentIssuedAt, entity.IssuedAt)
-	ctx.SetString(FieldEnrollmentJwt, entity.Jwt)
-}
-
 var _ EnrollmentStore = (*enrollmentStoreImpl)(nil)
 
 type EnrollmentStore interface {
@@ -107,9 +73,8 @@ type EnrollmentStore interface {
 }
 
 func newEnrollmentStore(stores *stores) *enrollmentStoreImpl {
-	store := &enrollmentStoreImpl{
-		baseStore: newBaseStore[*Enrollment](stores, enrollmentEntityStrategy{}),
-	}
+	store := &enrollmentStoreImpl{}
+	store.baseStore = newBaseStore[*Enrollment](stores, store)
 	store.InitImpl(store)
 
 	return store
@@ -140,6 +105,38 @@ func (store *enrollmentStoreImpl) initializeLinked() {
 	store.AddNullableFkIndex(store.symbolEdgeRouter, store.stores.edgeRouter.symbolEnrollments)
 	store.AddNullableFkIndex(store.symbolTransitRouter, store.stores.transitRouter.symbolEnrollments)
 	store.AddNullableFkIndex(store.symbolCa, store.stores.ca.symbolEnrollments)
+}
+
+func (store *enrollmentStoreImpl) NewEntity() *Enrollment {
+	return &Enrollment{}
+}
+
+func (store *enrollmentStoreImpl) FillEntity(entity *Enrollment, bucket *boltz.TypedBucket) {
+	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
+	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
+	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
+	entity.EdgeRouterId = bucket.GetString(FieldEnrollEdgeRouter)
+	entity.TransitRouterId = bucket.GetString(FieldEnrollTransitRouter)
+	entity.ExpiresAt = bucket.GetTime(FieldEnrollmentExpiresAt)
+	entity.IssuedAt = bucket.GetTime(FieldEnrollmentIssuedAt)
+	entity.CaId = bucket.GetString(FieldEnrollmentCaId)
+	entity.Username = bucket.GetString(FieldEnrollmentUsername)
+	entity.Jwt = bucket.GetStringOrError(FieldEnrollmentJwt)
+}
+
+func (store *enrollmentStoreImpl) PersistEntity(entity *Enrollment, ctx *boltz.PersistContext) {
+	ctx.WithFieldOverrides(enrollmentFieldMappings)
+
+	ctx.SetString(FieldEnrollmentToken, entity.Token)
+	ctx.SetString(FieldEnrollmentMethod, entity.Method)
+	ctx.SetTimeP(FieldEnrollmentExpiresAt, entity.ExpiresAt)
+	ctx.SetStringP(FieldEnrollIdentity, entity.IdentityId)
+	ctx.SetStringP(FieldEnrollEdgeRouter, entity.EdgeRouterId)
+	ctx.SetStringP(FieldEnrollTransitRouter, entity.TransitRouterId)
+	ctx.SetStringP(FieldEnrollmentCaId, entity.CaId)
+	ctx.SetStringP(FieldEnrollmentUsername, entity.Username)
+	ctx.SetTimeP(FieldEnrollmentIssuedAt, entity.IssuedAt)
+	ctx.SetString(FieldEnrollmentJwt, entity.Jwt)
 }
 
 func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error) {

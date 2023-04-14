@@ -36,24 +36,6 @@ func (entity *EventualEvent) GetEntityType() string {
 	return EntityTypeEventualEvents
 }
 
-type eventualEventEntityStrategy struct{}
-
-func (eventualEventEntityStrategy) NewEntity() *EventualEvent {
-	return &EventualEvent{}
-}
-
-func (eventualEventEntityStrategy) FillEntity(entity *EventualEvent, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Type = bucket.GetStringOrError(FieldEventualEventType)
-	entity.Data = bucket.Get([]byte(FieldEventualEventData))
-}
-
-func (eventualEventEntityStrategy) PersistEntity(entity *EventualEvent, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldEventualEventType, entity.Type)
-	ctx.Bucket.SetError(ctx.Bucket.Put([]byte(FieldEventualEventData), entity.Data))
-}
-
 var _ EventualEventStore = (*eventualEventStoreImpl)(nil)
 
 type EventualEventStore interface {
@@ -61,9 +43,8 @@ type EventualEventStore interface {
 }
 
 func newEventualEventStore(stores *stores) *eventualEventStoreImpl {
-	store := &eventualEventStoreImpl{
-		baseStore: newBaseStore[*EventualEvent](stores, eventualEventEntityStrategy{}),
-	}
+	store := &eventualEventStoreImpl{}
+	store.baseStore = newBaseStore[*EventualEvent](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -77,5 +58,20 @@ func (store *eventualEventStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldEventualEventData, ast.NodeTypeOther)
 }
 
-func (store *eventualEventStoreImpl) initializeLinked() {
+func (store *eventualEventStoreImpl) initializeLinked() {}
+
+func (store *eventualEventStoreImpl) NewEntity() *EventualEvent {
+	return &EventualEvent{}
+}
+
+func (store *eventualEventStoreImpl) FillEntity(entity *EventualEvent, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Type = bucket.GetStringOrError(FieldEventualEventType)
+	entity.Data = bucket.Get([]byte(FieldEventualEventData))
+}
+
+func (store *eventualEventStoreImpl) PersistEntity(entity *EventualEvent, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldEventualEventType, entity.Type)
+	ctx.Bucket.SetError(ctx.Bucket.Put([]byte(FieldEventualEventData), entity.Data))
 }

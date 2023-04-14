@@ -32,6 +32,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/stretchr/testify/require"
@@ -96,7 +97,7 @@ func (test *authCertTests) testAuthenticateCertStoresAndFillsFullCert(t *testing
 
 		certAuth.Pem = ""
 
-		err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.Update(authenticator, false, nil)
+		err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.Update(authenticator, false, nil, change.New().SetSource("test"))
 		r.NoError(err)
 
 		authenticator, err = test.ctx.EdgeController.AppEnv.Managers.Authenticator.ReadByFingerprint(test.certAuthenticator.Fingerprint())

@@ -237,6 +237,7 @@ func (store *edgeRouterStoreImpl) cleanupEdgeRouter(ctx boltz.MutateContext, id 
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
 		}
+
 		// Remove entity from EdgeRouterRoles in service edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err

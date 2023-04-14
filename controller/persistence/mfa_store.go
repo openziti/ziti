@@ -52,30 +52,6 @@ func (entity *Mfa) GetEntityType() string {
 	return EntityTypeMfas
 }
 
-type mfaEntityStrategy struct{}
-
-func (mfaEntityStrategy) NewEntity() *Mfa {
-	return &Mfa{}
-}
-
-func (mfaEntityStrategy) FillEntity(entity *Mfa, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.IdentityId = bucket.GetStringOrError(FieldMfaIdentity)
-	entity.IsVerified = bucket.GetBoolWithDefault(FieldMfaIsVerified, false)
-	entity.RecoveryCodes = bucket.GetStringList(FieldMfaRecoveryCodes)
-	entity.Salt = bucket.GetStringOrError(FieldMfaSalt)
-	entity.Secret = bucket.GetStringWithDefault(FieldMfaSecret, "")
-}
-
-func (mfaEntityStrategy) PersistEntity(entity *Mfa, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldMfaIdentity, entity.IdentityId)
-	ctx.SetBool(FieldMfaIsVerified, entity.IsVerified)
-	ctx.SetStringList(FieldMfaRecoveryCodes, entity.RecoveryCodes)
-	ctx.SetString(FieldMfaSalt, entity.Salt)
-	ctx.SetString(FieldMfaSecret, entity.Secret)
-}
-
 var _ MfaStore = (*MfaStoreImpl)(nil)
 
 type MfaStore interface {
@@ -83,10 +59,8 @@ type MfaStore interface {
 }
 
 func newMfaStore(stores *stores) *MfaStoreImpl {
-	store := &MfaStoreImpl{
-		baseStore: newBaseStore[*Mfa](stores, mfaEntityStrategy{}),
-	}
-
+	store := &MfaStoreImpl{}
+	store.baseStore = newBaseStore[*Mfa](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -108,3 +82,25 @@ func (store *MfaStoreImpl) initializeLocal() {
 }
 
 func (store *MfaStoreImpl) initializeLinked() {}
+
+func (store *MfaStoreImpl) NewEntity() *Mfa {
+	return &Mfa{}
+}
+
+func (store *MfaStoreImpl) FillEntity(entity *Mfa, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.IdentityId = bucket.GetStringOrError(FieldMfaIdentity)
+	entity.IsVerified = bucket.GetBoolWithDefault(FieldMfaIsVerified, false)
+	entity.RecoveryCodes = bucket.GetStringList(FieldMfaRecoveryCodes)
+	entity.Salt = bucket.GetStringOrError(FieldMfaSalt)
+	entity.Secret = bucket.GetStringWithDefault(FieldMfaSecret, "")
+}
+
+func (store *MfaStoreImpl) PersistEntity(entity *Mfa, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldMfaIdentity, entity.IdentityId)
+	ctx.SetBool(FieldMfaIsVerified, entity.IsVerified)
+	ctx.SetStringList(FieldMfaRecoveryCodes, entity.RecoveryCodes)
+	ctx.SetString(FieldMfaSalt, entity.Salt)
+	ctx.SetString(FieldMfaSecret, entity.Secret)
+}

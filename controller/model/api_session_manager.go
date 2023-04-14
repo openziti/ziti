@@ -169,7 +169,7 @@ func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string,
 }
 
 func (self *ApiSessionManager) heartbeatFlush(beats []*Heartbeat) {
-	changeCtx := change.New().SetSource("heartbeat.flush")
+	changeCtx := change.New().SetSource("heartbeat.flush").SetChangeAuthorType("controller")
 	err := self.GetDb().Batch(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		store := self.Store.(persistence.ApiSessionStore)
 

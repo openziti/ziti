@@ -255,7 +255,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	externalStores.buildStoreMap()
 	storeList := externalStores.getStoresForInit()
 
-	mutateCtx := change.New().SetSource("system.initialization").NewMutateContext()
+	mutateCtx := change.New().SetSource("system.initialization").SetChangeAuthorType("controller").NewMutateContext()
 	err := dbProvider.GetDb().Update(mutateCtx, func(ctx boltz.MutateContext) error {
 		for _, store := range storeList {
 			store.initializeLocal()

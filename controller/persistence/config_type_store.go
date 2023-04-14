@@ -19,7 +19,6 @@ package persistence
 import (
 	"encoding/json"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
@@ -51,38 +50,6 @@ func (entity *ConfigType) GetEntityType() string {
 	return EntityTypeConfigTypes
 }
 
-type configTypeEntityStrategy struct{}
-
-func (configTypeEntityStrategy) NewEntity() *ConfigType {
-	return &ConfigType{}
-}
-
-func (configTypeEntityStrategy) FillEntity(entity *ConfigType, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	marshalledSchema := bucket.GetString(FieldConfigTypeSchema)
-	if marshalledSchema != nil {
-		entity.Schema = map[string]interface{}{}
-		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
-	}
-}
-
-func (configTypeEntityStrategy) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-
-	if len(entity.Schema) > 0 {
-		marshalled, err := json.Marshal(entity.Schema)
-		if err != nil {
-			ctx.Bucket.SetError(err)
-			return
-		}
-		ctx.SetString(FieldConfigTypeSchema, string(marshalled))
-	} else {
-		ctx.SetStringP(FieldConfigTypeSchema, nil)
-	}
-}
-
 var _ ConfigTypeStore = (*configTypeStoreImpl)(nil)
 
 type ConfigTypeStore interface {
@@ -93,12 +60,8 @@ type ConfigTypeStore interface {
 }
 
 func newConfigTypesStore(stores *stores) *configTypeStoreImpl {
-	store := &configTypeStoreImpl{
-		baseStore: &baseStore[*ConfigType]{
-			stores:    stores,
-			BaseStore: boltz.NewBaseStore(db.NewStoreDefinition[*ConfigType](configTypeEntityStrategy{})),
-		},
-	}
+	store := &configTypeStoreImpl{}
+	store.baseStore = newBaseStore[*ConfigType](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -122,6 +85,36 @@ func (store *configTypeStoreImpl) initializeLocal() {
 }
 
 func (store *configTypeStoreImpl) initializeLinked() {
+}
+
+func (store *configTypeStoreImpl) NewEntity() *ConfigType {
+	return &ConfigType{}
+}
+
+func (store *configTypeStoreImpl) FillEntity(entity *ConfigType, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	marshalledSchema := bucket.GetString(FieldConfigTypeSchema)
+	if marshalledSchema != nil {
+		entity.Schema = map[string]interface{}{}
+		bucket.SetError(json.Unmarshal([]byte(*marshalledSchema), &entity.Schema))
+	}
+}
+
+func (store *configTypeStoreImpl) PersistEntity(entity *ConfigType, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
+
+	if len(entity.Schema) > 0 {
+		marshalled, err := json.Marshal(entity.Schema)
+		if err != nil {
+			ctx.Bucket.SetError(err)
+			return
+		}
+		ctx.SetString(FieldConfigTypeSchema, string(marshalled))
+	} else {
+		ctx.SetStringP(FieldConfigTypeSchema, nil)
+	}
 }
 
 func (store *configTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ConfigType, error) {

@@ -68,6 +68,7 @@ func NewIdentityManager(env Env) *IdentityManager {
 
 	network.RegisterManagerDecoder[*Identity](env.GetHostController().GetNetwork().GetManagers(), manager)
 	RegisterCommand(env, &CreateIdentityWithEnrollmentsCmd{}, &edge_cmd_pb.CreateIdentityWithEnrollmentsCmd{})
+	RegisterCommand(env, &UpdateServiceConfigsCmd{}, &edge_cmd_pb.UpdateServiceConfigsCmd{})
 
 	return manager
 }
@@ -238,7 +239,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		},
 	}
 
-	ctx := change.New().SetSource("cli.init")
+	ctx := change.New().SetSource("cli.init").SetChangeAuthorType("cli")
 	if err = self.Create(defaultAdmin, ctx); err != nil {
 		return err
 	}

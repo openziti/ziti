@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
 	"github.com/sirupsen/logrus"
 	"testing"
 	"time"
@@ -49,25 +50,25 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 
 	identity := ctx.RequireNewIdentity("Jojo", false)
 	apiSession := persistence.NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 	service := ctx.RequireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
-	ctx.RequireCreate(session)
-	ctx.ValidateBaseline(session, compareOpts)
+	boltztest.RequireCreate(ctx, session)
+	boltztest.ValidateBaseline(ctx, session, compareOpts)
 
 	session2 := NewSession(apiSession.Id, service.Id)
 	session2.Type = persistence.PolicyTypeBindName
-	ctx.RequireCreate(session2)
-	ctx.ValidateBaseline(session2, compareOpts)
+	boltztest.RequireCreate(ctx, session2)
+	boltztest.ValidateBaseline(ctx, session2, compareOpts)
 
 	service2 := ctx.RequireNewService("test-service-2")
 	session3 := NewSession(apiSession.Id, service2.Id)
 	session3.Tags = ctx.CreateTags()
-	ctx.RequireCreate(session3)
-	ctx.ValidateBaseline(session3, compareOpts)
+	boltztest.RequireCreate(ctx, session3)
+	boltztest.ValidateBaseline(ctx, session3, compareOpts)
 
-	ctx.RequireReload(session)
-	ctx.RequireReload(session2)
+	boltztest.RequireReload(ctx, session)
+	boltztest.RequireReload(ctx, session2)
 
 	enforcer := &ApiSessionEnforcer{
 		appEnv:         ctx,
@@ -85,10 +86,10 @@ func (ctx *enforcerTestContext) testSessionsCleanup() {
 		ctx.Fail("did not receive done notification from eventual eventer")
 	}
 
-	ctx.ValidateDeleted(apiSession.Id)
-	ctx.ValidateDeleted(session.Id)
-	ctx.ValidateDeleted(session2.Id)
-	ctx.ValidateDeleted(session3.Id)
+	boltztest.ValidateDeleted(ctx, apiSession.Id)
+	boltztest.ValidateDeleted(ctx, session.Id)
+	boltztest.ValidateDeleted(ctx, session2.Id)
+	boltztest.ValidateDeleted(ctx, session3.Id)
 }
 
 func NewSession(apiSessionId, serviceId string) *persistence.Session {

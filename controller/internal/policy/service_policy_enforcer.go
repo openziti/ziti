@@ -102,7 +102,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 		}
 	}
 
-	ctx := change.New().SetSource("service-policy.enforcer")
+	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
 	for _, sessionId := range sessionsToDelete {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 		log.Debugf("session %v deleted", sessionId)
@@ -168,7 +168,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		return err
 	}
 
-	ctx := change.New().SetSource("service-policy.enforcer")
+	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
 	for _, sessionId := range sessionsToRemove {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 	}

@@ -8,7 +8,6 @@ import (
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"sort"
 )
 
@@ -40,66 +39,16 @@ func (entity *EdgeRouterPolicy) GetEntityType() string {
 	return EntityTypeEdgeRouterPolicies
 }
 
-type edgeRouterPolicyEntityStrategy struct{}
-
-func (edgeRouterPolicyEntityStrategy) NewEntity() *EdgeRouterPolicy {
-	return &EdgeRouterPolicy{}
-}
-
-func (edgeRouterPolicyEntityStrategy) FillEntity(entity *EdgeRouterPolicy, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
-	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
-	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterRoles)
-}
-
-func (edgeRouterPolicyEntityStrategy) PersistEntity(entity *EdgeRouterPolicy, ctx *boltz.PersistContext) {
-	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
-		ctx.Bucket.SetError(err)
-	}
-
-	if err := validateRolesAndIds(FieldEdgeRouterRoles, entity.EdgeRouterRoles); err != nil {
-		ctx.Bucket.SetError(err)
-	}
-
-	entity.SetBaseValues(ctx)
-	ctx.SetRequiredString(FieldName, entity.Name)
-	if ctx.ProceedWithSet(FieldSemantic) {
-		if !isSemanticValid(entity.Semantic) {
-			ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
-			return
-		}
-		ctx.SetRequiredString(FieldSemantic, entity.Semantic)
-	}
-
-	edgeRouterPolicyStore := ctx.Store.(*edgeRouterPolicyStoreImpl)
-
-	sort.Strings(entity.EdgeRouterRoles)
-	sort.Strings(entity.IdentityRoles)
-
-	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
-	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
-		edgeRouterPolicyStore.identityRolesUpdated(ctx, entity)
-	}
-	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterRoles, entity.EdgeRouterRoles)
-	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
-		edgeRouterPolicyStore.edgeRouterRolesUpdated(ctx, entity)
-	}
-}
-
 var _ EdgeRouterPolicyStore = (*edgeRouterPolicyStoreImpl)(nil)
 
 type EdgeRouterPolicyStore interface {
 	NameIndexed
 	Store[*EdgeRouterPolicy]
-	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error)
 }
 
 func newEdgeRouterPolicyStore(stores *stores) *edgeRouterPolicyStoreImpl {
-	store := &edgeRouterPolicyStoreImpl{
-		baseStore: newBaseStore[*EdgeRouterPolicy](stores, edgeRouterPolicyEntityStrategy{}),
-	}
+	store := &edgeRouterPolicyStoreImpl{}
+	store.baseStore = newBaseStore[*EdgeRouterPolicy](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -140,12 +89,48 @@ func (store *edgeRouterPolicyStoreImpl) initializeLinked() {
 	store.identityCollection = store.AddLinkCollection(store.symbolIdentities, store.stores.identity.symbolEdgeRouterPolicies)
 }
 
-func (store *edgeRouterPolicyStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouterPolicy, error) {
-	entity := &EdgeRouterPolicy{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
+func (store *edgeRouterPolicyStoreImpl) NewEntity() *EdgeRouterPolicy {
+	return &EdgeRouterPolicy{}
+}
+
+func (store *edgeRouterPolicyStoreImpl) FillEntity(entity *EdgeRouterPolicy, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
+	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
+	entity.EdgeRouterRoles = bucket.GetStringList(FieldEdgeRouterRoles)
+}
+
+func (store *edgeRouterPolicyStoreImpl) PersistEntity(entity *EdgeRouterPolicy, ctx *boltz.PersistContext) {
+	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
+		ctx.Bucket.SetError(err)
 	}
-	return entity, nil
+
+	if err := validateRolesAndIds(FieldEdgeRouterRoles, entity.EdgeRouterRoles); err != nil {
+		ctx.Bucket.SetError(err)
+	}
+
+	entity.SetBaseValues(ctx)
+	ctx.SetRequiredString(FieldName, entity.Name)
+	if ctx.ProceedWithSet(FieldSemantic) {
+		if !isSemanticValid(entity.Semantic) {
+			ctx.Bucket.SetError(errorz.NewFieldError("invalid semantic", FieldSemantic, entity.Semantic))
+			return
+		}
+		ctx.SetRequiredString(FieldSemantic, entity.Semantic)
+	}
+
+	sort.Strings(entity.EdgeRouterRoles)
+	sort.Strings(entity.IdentityRoles)
+
+	oldIdentityRoles, valueSet := ctx.GetAndSetStringList(FieldIdentityRoles, entity.IdentityRoles)
+	if valueSet && !stringz.EqualSlices(oldIdentityRoles, entity.IdentityRoles) {
+		store.identityRolesUpdated(ctx, entity)
+	}
+	oldEdgeRouterRoles, valueSet := ctx.GetAndSetStringList(FieldEdgeRouterRoles, entity.EdgeRouterRoles)
+	if valueSet && !stringz.EqualSlices(oldEdgeRouterRoles, entity.EdgeRouterRoles) {
+		store.edgeRouterRolesUpdated(ctx, entity)
+	}
 }
 
 /*

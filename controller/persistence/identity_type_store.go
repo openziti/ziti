@@ -37,22 +37,6 @@ func (entity *IdentityType) GetEntityType() string {
 	return EntityTypeIdentityTypes
 }
 
-type identityTypeEntityStrategy struct{}
-
-func (identityTypeEntityStrategy) NewEntity() *IdentityType {
-	return &IdentityType{}
-}
-
-func (identityTypeEntityStrategy) FillEntity(entity *IdentityType, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-}
-
-func (identityTypeEntityStrategy) PersistEntity(entity *IdentityType, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-}
-
 var _ IdentityTypeStore = (*IdentityTypeStoreImpl)(nil)
 
 type IdentityTypeStore interface {
@@ -61,9 +45,8 @@ type IdentityTypeStore interface {
 }
 
 func newIdentityTypeStore(stores *stores) *IdentityTypeStoreImpl {
-	store := &IdentityTypeStoreImpl{
-		baseStore: newBaseStore[*IdentityType](stores, identityTypeEntityStrategy{}),
-	}
+	store := &IdentityTypeStoreImpl{}
+	store.baseStore = newBaseStore[*IdentityType](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -84,4 +67,18 @@ func (store *IdentityTypeStoreImpl) initializeLinked() {
 
 func (store *IdentityTypeStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
+}
+
+func (store *IdentityTypeStoreImpl) NewEntity() *IdentityType {
+	return &IdentityType{}
+}
+
+func (store *IdentityTypeStoreImpl) FillEntity(entity *IdentityType, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+}
+
+func (store *IdentityTypeStoreImpl) PersistEntity(entity *IdentityType, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
 }

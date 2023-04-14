@@ -104,7 +104,7 @@ func (rc *RequestContext) NewChangeContext() *change.Context {
 	}
 
 	if rc.Request.Form.Has("traceId") {
-		changeCtx.SetChangeAuthorId(rc.Request.Form.Get("traceId"))
+		changeCtx.SetTraceId(rc.Request.Form.Get("traceId"))
 	}
 	return changeCtx
 }

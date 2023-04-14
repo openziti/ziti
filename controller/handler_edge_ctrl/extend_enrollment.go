@@ -36,6 +36,7 @@ func newRouterChangeContext(router interface {
 	return change.New().
 		SetChangeAuthorId(router.GetId()).
 		SetChangeAuthorName(router.GetName()).
+		SetChangeAuthorType("router").
 		SetSource(fmt.Sprintf("ctrl[edge/%v]", ch.Underlay().GetRemoteAddr().String()))
 }
 

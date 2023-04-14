@@ -56,7 +56,7 @@ func (self *Dispatcher) sessionCreated(session *persistence.Session) {
 		Timestamp:    time.Now(),
 		Token:        session.Token,
 		ApiSessionId: session.ApiSessionId,
-		IdentityId:   session.ApiSession.IdentityId,
+		IdentityId:   session.IdentityId,
 		ServiceId:    session.ServiceId,
 	}
 

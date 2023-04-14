@@ -115,16 +115,26 @@ type baseSessionRequestContext struct {
 }
 
 func (self *baseSessionRequestContext) newChangeContext() *change.Context {
-	return change.New().
-		SetChangeAuthorId(self.session.IdentityId).
-		SetChangeAuthorName(self.apiSession.Identity.Name).
-		SetSource(fmt.Sprintf("ctrl[edge/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
+	result := change.New().SetSource(fmt.Sprintf("ctrl[edge/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
+	if self.session != nil {
+		result.
+			SetChangeAuthorId(self.session.IdentityId).
+			SetChangeAuthorName(self.apiSession.Identity.Name).
+			SetChangeAuthorType("identity")
+	} else if self.sourceRouter != nil {
+		result.
+			SetChangeAuthorId(self.sourceRouter.Id).
+			SetChangeAuthorName(self.sourceRouter.Name).
+			SetChangeAuthorType("router")
+	}
+	return result
 }
 
 func (self *baseSessionRequestContext) newTunnelChangeContext() *change.Context {
 	return change.New().
 		SetChangeAuthorId(self.sourceRouter.Id).
 		SetChangeAuthorName(self.sourceRouter.Name).
+		SetChangeAuthorType("router").
 		SetSource(fmt.Sprintf("ctrl[edge:tunnel/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
 }
 

@@ -86,62 +86,6 @@ func (entity *Ca) GetEntityType() string {
 	return EntityTypeCas
 }
 
-type caEntityStrategy struct{}
-
-func (caEntityStrategy) NewEntity() *Ca {
-	return &Ca{}
-}
-
-func (c caEntityStrategy) FillEntity(entity *Ca, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Fingerprint = bucket.GetStringOrError(FieldCaFingerprint)
-	entity.CertPem = bucket.GetStringOrError(FieldCaCertPem)
-	entity.IsVerified = bucket.GetBoolWithDefault(FieldCaIsVerified, false)
-	entity.VerificationToken = bucket.GetStringOrError(FieldCaVerificationToken)
-	entity.IsAutoCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsAutoCaEnrollmentEnabled, false)
-	entity.IsOttCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsOttCaEnrollmentEnabled, false)
-	entity.IsAuthEnabled = bucket.GetBoolWithDefault(FieldCaIsAuthEnabled, false)
-	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
-	entity.IdentityNameFormat = bucket.GetStringWithDefault(FieldCaIdentityNameFormat, "")
-
-	if externalField := bucket.GetBucket(FieldCaExternalIdClaim); externalField != nil {
-		entity.ExternalIdClaim = &ExternalIdClaim{}
-		entity.ExternalIdClaim.Location = externalField.GetStringWithDefault(FieldCaExternalIdClaimLocation, "")
-		entity.ExternalIdClaim.Matcher = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcher, "")
-		entity.ExternalIdClaim.MatcherCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcherCriteria, "")
-		entity.ExternalIdClaim.Parser = externalField.GetStringWithDefault(FieldCaExternalIdClaimParser, "")
-		entity.ExternalIdClaim.ParserCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimParserCriteria, "")
-		entity.ExternalIdClaim.Index = externalField.GetInt64WithDefault(FieldCaExternalIdClaimIndex, 0)
-	}
-}
-
-func (c caEntityStrategy) PersistEntity(entity *Ca, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldCaFingerprint, entity.Fingerprint)
-	ctx.SetString(FieldCaCertPem, entity.CertPem)
-	ctx.SetBool(FieldCaIsVerified, entity.IsVerified)
-	ctx.SetString(FieldCaVerificationToken, entity.VerificationToken)
-	ctx.SetBool(FieldCaIsAutoCaEnrollmentEnabled, entity.IsAutoCaEnrollmentEnabled)
-	ctx.SetBool(FieldCaIsOttCaEnrollmentEnabled, entity.IsOttCaEnrollmentEnabled)
-	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
-	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
-	ctx.SetString(FieldCaIdentityNameFormat, entity.IdentityNameFormat)
-
-	if entity.ExternalIdClaim != nil {
-		externalField := ctx.Bucket.GetOrCreateBucket(FieldCaExternalIdClaim)
-		externalField.SetString(FieldCaExternalIdClaimLocation, entity.ExternalIdClaim.Location, ctx.FieldChecker)
-		externalField.SetString(FieldCaExternalIdClaimMatcher, entity.ExternalIdClaim.Matcher, ctx.FieldChecker)
-		externalField.SetString(FieldCaExternalIdClaimMatcherCriteria, entity.ExternalIdClaim.MatcherCriteria, ctx.FieldChecker)
-		externalField.SetString(FieldCaExternalIdClaimParser, entity.ExternalIdClaim.Parser, ctx.FieldChecker)
-		externalField.SetString(FieldCaExternalIdClaimParserCriteria, entity.ExternalIdClaim.ParserCriteria, ctx.FieldChecker)
-		externalField.SetInt64(FieldCaExternalIdClaimIndex, entity.ExternalIdClaim.Index, ctx.FieldChecker)
-	} else {
-		_ = ctx.Bucket.DeleteBucket([]byte(FieldCaExternalIdClaim))
-	}
-}
-
 var _ CaStore = (*caStoreImpl)(nil)
 
 type CaStore interface {
@@ -149,9 +93,8 @@ type CaStore interface {
 }
 
 func newCaStore(stores *stores) *caStoreImpl {
-	store := &caStoreImpl{
-		baseStore: newBaseStore[*Ca](stores, caEntityStrategy{}),
-	}
+	store := &caStoreImpl{}
+	store.baseStore = newBaseStore[*Ca](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -176,7 +119,60 @@ func (store *caStoreImpl) initializeLocal() {
 
 }
 
-func (store *caStoreImpl) initializeLinked() {
+func (store *caStoreImpl) initializeLinked() {}
+
+func (store *caStoreImpl) NewEntity() *Ca {
+	return &Ca{}
+}
+
+func (store *caStoreImpl) FillEntity(entity *Ca, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Fingerprint = bucket.GetStringOrError(FieldCaFingerprint)
+	entity.CertPem = bucket.GetStringOrError(FieldCaCertPem)
+	entity.IsVerified = bucket.GetBoolWithDefault(FieldCaIsVerified, false)
+	entity.VerificationToken = bucket.GetStringOrError(FieldCaVerificationToken)
+	entity.IsAutoCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsAutoCaEnrollmentEnabled, false)
+	entity.IsOttCaEnrollmentEnabled = bucket.GetBoolWithDefault(FieldCaIsOttCaEnrollmentEnabled, false)
+	entity.IsAuthEnabled = bucket.GetBoolWithDefault(FieldCaIsAuthEnabled, false)
+	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
+	entity.IdentityNameFormat = bucket.GetStringWithDefault(FieldCaIdentityNameFormat, "")
+
+	if externalField := bucket.GetBucket(FieldCaExternalIdClaim); externalField != nil {
+		entity.ExternalIdClaim = &ExternalIdClaim{}
+		entity.ExternalIdClaim.Location = externalField.GetStringWithDefault(FieldCaExternalIdClaimLocation, "")
+		entity.ExternalIdClaim.Matcher = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcher, "")
+		entity.ExternalIdClaim.MatcherCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimMatcherCriteria, "")
+		entity.ExternalIdClaim.Parser = externalField.GetStringWithDefault(FieldCaExternalIdClaimParser, "")
+		entity.ExternalIdClaim.ParserCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimParserCriteria, "")
+		entity.ExternalIdClaim.Index = externalField.GetInt64WithDefault(FieldCaExternalIdClaimIndex, 0)
+	}
+}
+
+func (store *caStoreImpl) PersistEntity(entity *Ca, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
+	ctx.SetString(FieldCaFingerprint, entity.Fingerprint)
+	ctx.SetString(FieldCaCertPem, entity.CertPem)
+	ctx.SetBool(FieldCaIsVerified, entity.IsVerified)
+	ctx.SetString(FieldCaVerificationToken, entity.VerificationToken)
+	ctx.SetBool(FieldCaIsAutoCaEnrollmentEnabled, entity.IsAutoCaEnrollmentEnabled)
+	ctx.SetBool(FieldCaIsOttCaEnrollmentEnabled, entity.IsOttCaEnrollmentEnabled)
+	ctx.SetBool(FieldCaIsAuthEnabled, entity.IsAuthEnabled)
+	ctx.SetStringList(FieldIdentityRoles, entity.IdentityRoles)
+	ctx.SetString(FieldCaIdentityNameFormat, entity.IdentityNameFormat)
+
+	if entity.ExternalIdClaim != nil {
+		externalField := ctx.Bucket.GetOrCreateBucket(FieldCaExternalIdClaim)
+		externalField.SetString(FieldCaExternalIdClaimLocation, entity.ExternalIdClaim.Location, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimMatcher, entity.ExternalIdClaim.Matcher, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimMatcherCriteria, entity.ExternalIdClaim.MatcherCriteria, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimParser, entity.ExternalIdClaim.Parser, ctx.FieldChecker)
+		externalField.SetString(FieldCaExternalIdClaimParserCriteria, entity.ExternalIdClaim.ParserCriteria, ctx.FieldChecker)
+		externalField.SetInt64(FieldCaExternalIdClaimIndex, entity.ExternalIdClaim.Index, ctx.FieldChecker)
+	} else {
+		_ = ctx.Bucket.DeleteBucket([]byte(FieldCaExternalIdClaim))
+	}
 }
 
 func (store *caStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {

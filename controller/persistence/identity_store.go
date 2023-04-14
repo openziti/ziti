@@ -125,150 +125,6 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-type identityEntityStrategy struct{}
-
-func (identityEntityStrategy) NewEntity() *Identity {
-	return &Identity{}
-}
-
-func (identityEntityStrategy) FillEntity(entity *Identity, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
-	entity.AuthPolicyId = bucket.GetStringWithDefault(FieldIdentityAuthPolicyId, DefaultAuthPolicyId)
-	entity.IsDefaultAdmin = bucket.GetBoolWithDefault(FieldIdentityIsDefaultAdmin, false)
-	entity.IsAdmin = bucket.GetBoolWithDefault(FieldIdentityIsAdmin, false)
-	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
-	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
-	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
-	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
-	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
-	entity.AppData = bucket.GetMap(FieldIdentityAppData)
-	entity.ExternalId = bucket.GetString(FieldIdentityExternalId)
-
-	entity.Disabled = false
-	entity.DisabledAt = bucket.GetTime(FieldIdentityDisabledAt)
-	entity.DisabledUntil = bucket.GetTime(FieldIdentityDisabledUntil)
-
-	if entity.DisabledAt != nil {
-		if entity.DisabledUntil == nil || entity.DisabledUntil.After(time.Now()) {
-			entity.Disabled = true
-		}
-	}
-
-	entity.SdkInfo = &SdkInfo{
-		Branch:     bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
-		Revision:   bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
-		Type:       bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
-		Version:    bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
-		AppId:      bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
-		AppVersion: bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
-	}
-
-	entity.EnvInfo = &EnvInfo{
-		Arch:      bucket.GetStringWithDefault(FieldIdentityEnvInfoArch, ""),
-		Os:        bucket.GetStringWithDefault(FieldIdentityEnvInfoOs, ""),
-		OsRelease: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsRelease, ""),
-		OsVersion: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsVersion, ""),
-	}
-
-	entity.ServiceHostingPrecedences = map[string]ziti.Precedence{}
-	for k, v := range bucket.GetMap(FieldIdentityServiceHostingPrecedences) {
-		entity.ServiceHostingPrecedences[k] = ziti.Precedence(v.(int32))
-	}
-
-	entity.ServiceHostingCosts = map[string]uint16{}
-	for k, v := range bucket.GetMap(FieldIdentityServiceHostingCosts) {
-		entity.ServiceHostingCosts[k] = uint16(v.(int32))
-	}
-}
-
-func (identityEntityStrategy) PersistEntity(entity *Identity, ctx *boltz.PersistContext) {
-	ctx.WithFieldOverrides(identityFieldMappings)
-
-	entity.SetBaseValues(ctx)
-
-	store := ctx.Store.(*identityStoreImpl)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
-	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
-	if oldValue, changed := ctx.GetAndSetString(FieldIdentityType, entity.IdentityTypeId); changed {
-		if oldValue != nil && *oldValue == RouterIdentityType {
-			ctx.Bucket.SetError(errors.New("cannot change type of router identity"))
-		}
-	}
-	if strings.TrimSpace(entity.AuthPolicyId) == "" {
-		entity.AuthPolicyId = DefaultAuthPolicyId
-	}
-	ctx.SetString(FieldIdentityAuthPolicyId, entity.AuthPolicyId)
-	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
-	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
-	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
-	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
-	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, false)
-
-	ctx.SetTimeP(FieldIdentityDisabledAt, entity.DisabledAt)
-	ctx.SetTimeP(FieldIdentityDisabledUntil, entity.DisabledUntil)
-
-	//treat empty string and white space like nil
-	if entity.ExternalId != nil && len(strings.TrimSpace(*entity.ExternalId)) == 0 {
-		entity.ExternalId = nil
-	}
-	ctx.SetStringP(FieldIdentityExternalId, entity.ExternalId)
-
-	if entity.EnvInfo != nil {
-		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)
-		ctx.SetString(FieldIdentityEnvInfoOs, entity.EnvInfo.Os)
-		ctx.SetString(FieldIdentityEnvInfoOsRelease, entity.EnvInfo.OsRelease)
-		ctx.SetString(FieldIdentityEnvInfoOsVersion, entity.EnvInfo.OsVersion)
-	}
-
-	if entity.SdkInfo != nil {
-		ctx.SetString(FieldIdentitySdkInfoBranch, entity.SdkInfo.Branch)
-		ctx.SetString(FieldIdentitySdkInfoRevision, entity.SdkInfo.Revision)
-		ctx.SetString(FieldIdentitySdkInfoType, entity.SdkInfo.Type)
-		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
-		ctx.SetString(FieldIdentitySdkInfoAppId, entity.SdkInfo.AppId)
-		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
-	}
-
-	serviceStore := ctx.Store.(*identityStoreImpl).stores.Service
-
-	if ctx.ProceedWithSet(FieldIdentityServiceHostingPrecedences) {
-		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingPrecedences)
-		if !ctx.Bucket.SetError(err) {
-			for k, v := range entity.ServiceHostingPrecedences {
-				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
-					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
-					return
-				}
-				mapBucket.SetInt32(k, int32(v), nil)
-			}
-			ctx.Bucket.SetError(mapBucket.Err)
-		}
-	}
-
-	if ctx.ProceedWithSet(FieldIdentityServiceHostingCosts) {
-		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingCosts)
-		if !ctx.Bucket.SetError(err) {
-			for k, v := range entity.ServiceHostingCosts {
-				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
-					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
-					return
-				}
-
-				mapBucket.SetInt32(k, int32(v), nil)
-			}
-			ctx.Bucket.SetError(mapBucket.Err)
-		}
-	}
-
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
-	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
-	}
-}
-
 var _ IdentityStore = (*identityStoreImpl)(nil)
 
 type IdentityStore interface {
@@ -286,9 +142,8 @@ type IdentityStore interface {
 }
 
 func newIdentityStore(stores *stores) *identityStoreImpl {
-	store := &identityStoreImpl{
-		baseStore: newBaseStore[*Identity](stores, identityEntityStrategy{}),
-	}
+	store := &identityStoreImpl{}
+	store.baseStore = newBaseStore[*Identity](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -357,6 +212,147 @@ func (store *identityStoreImpl) initializeLinked() {
 	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolIdentities)
 	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
 	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
+}
+
+func (store *identityStoreImpl) NewEntity() *Identity {
+	return &Identity{}
+}
+
+func (store *identityStoreImpl) FillEntity(entity *Identity, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
+	entity.AuthPolicyId = bucket.GetStringWithDefault(FieldIdentityAuthPolicyId, DefaultAuthPolicyId)
+	entity.IsDefaultAdmin = bucket.GetBoolWithDefault(FieldIdentityIsDefaultAdmin, false)
+	entity.IsAdmin = bucket.GetBoolWithDefault(FieldIdentityIsAdmin, false)
+	entity.Authenticators = bucket.GetStringList(FieldIdentityAuthenticators)
+	entity.Enrollments = bucket.GetStringList(FieldIdentityEnrollments)
+	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.DefaultHostingPrecedence = ziti.Precedence(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingPrecedence, 0))
+	entity.DefaultHostingCost = uint16(bucket.GetInt32WithDefault(FieldIdentityDefaultHostingCost, 0))
+	entity.AppData = bucket.GetMap(FieldIdentityAppData)
+	entity.ExternalId = bucket.GetString(FieldIdentityExternalId)
+
+	entity.Disabled = false
+	entity.DisabledAt = bucket.GetTime(FieldIdentityDisabledAt)
+	entity.DisabledUntil = bucket.GetTime(FieldIdentityDisabledUntil)
+
+	if entity.DisabledAt != nil {
+		if entity.DisabledUntil == nil || entity.DisabledUntil.After(time.Now()) {
+			entity.Disabled = true
+		}
+	}
+
+	entity.SdkInfo = &SdkInfo{
+		Branch:     bucket.GetStringWithDefault(FieldIdentitySdkInfoBranch, ""),
+		Revision:   bucket.GetStringWithDefault(FieldIdentitySdkInfoRevision, ""),
+		Type:       bucket.GetStringWithDefault(FieldIdentitySdkInfoType, ""),
+		Version:    bucket.GetStringWithDefault(FieldIdentitySdkInfoVersion, ""),
+		AppId:      bucket.GetStringWithDefault(FieldIdentitySdkInfoAppId, ""),
+		AppVersion: bucket.GetStringWithDefault(FieldIdentitySdkInfoAppVersion, ""),
+	}
+
+	entity.EnvInfo = &EnvInfo{
+		Arch:      bucket.GetStringWithDefault(FieldIdentityEnvInfoArch, ""),
+		Os:        bucket.GetStringWithDefault(FieldIdentityEnvInfoOs, ""),
+		OsRelease: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsRelease, ""),
+		OsVersion: bucket.GetStringWithDefault(FieldIdentityEnvInfoOsVersion, ""),
+	}
+
+	entity.ServiceHostingPrecedences = map[string]ziti.Precedence{}
+	for k, v := range bucket.GetMap(FieldIdentityServiceHostingPrecedences) {
+		entity.ServiceHostingPrecedences[k] = ziti.Precedence(v.(int32))
+	}
+
+	entity.ServiceHostingCosts = map[string]uint16{}
+	for k, v := range bucket.GetMap(FieldIdentityServiceHostingCosts) {
+		entity.ServiceHostingCosts[k] = uint16(v.(int32))
+	}
+}
+
+func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.PersistContext) {
+	ctx.WithFieldOverrides(identityFieldMappings)
+
+	entity.SetBaseValues(ctx)
+
+	ctx.SetString(FieldName, entity.Name)
+	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
+	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
+	if oldValue, changed := ctx.GetAndSetString(FieldIdentityType, entity.IdentityTypeId); changed {
+		if oldValue != nil && *oldValue == RouterIdentityType {
+			ctx.Bucket.SetError(errors.New("cannot change type of router identity"))
+		}
+	}
+	if strings.TrimSpace(entity.AuthPolicyId) == "" {
+		entity.AuthPolicyId = DefaultAuthPolicyId
+	}
+	ctx.SetString(FieldIdentityAuthPolicyId, entity.AuthPolicyId)
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
+	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetInt32(FieldIdentityDefaultHostingPrecedence, int32(entity.DefaultHostingPrecedence))
+	ctx.SetInt32(FieldIdentityDefaultHostingCost, int32(entity.DefaultHostingCost))
+	ctx.Bucket.PutMap(FieldIdentityAppData, entity.AppData, ctx.FieldChecker, false)
+
+	ctx.SetTimeP(FieldIdentityDisabledAt, entity.DisabledAt)
+	ctx.SetTimeP(FieldIdentityDisabledUntil, entity.DisabledUntil)
+
+	//treat empty string and white space like nil
+	if entity.ExternalId != nil && len(strings.TrimSpace(*entity.ExternalId)) == 0 {
+		entity.ExternalId = nil
+	}
+	ctx.SetStringP(FieldIdentityExternalId, entity.ExternalId)
+
+	if entity.EnvInfo != nil {
+		ctx.SetString(FieldIdentityEnvInfoArch, entity.EnvInfo.Arch)
+		ctx.SetString(FieldIdentityEnvInfoOs, entity.EnvInfo.Os)
+		ctx.SetString(FieldIdentityEnvInfoOsRelease, entity.EnvInfo.OsRelease)
+		ctx.SetString(FieldIdentityEnvInfoOsVersion, entity.EnvInfo.OsVersion)
+	}
+
+	if entity.SdkInfo != nil {
+		ctx.SetString(FieldIdentitySdkInfoBranch, entity.SdkInfo.Branch)
+		ctx.SetString(FieldIdentitySdkInfoRevision, entity.SdkInfo.Revision)
+		ctx.SetString(FieldIdentitySdkInfoType, entity.SdkInfo.Type)
+		ctx.SetString(FieldIdentitySdkInfoVersion, entity.SdkInfo.Version)
+		ctx.SetString(FieldIdentitySdkInfoAppId, entity.SdkInfo.AppId)
+		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
+	}
+
+	serviceStore := store.stores.Service
+
+	if ctx.ProceedWithSet(FieldIdentityServiceHostingPrecedences) {
+		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingPrecedences)
+		if !ctx.Bucket.SetError(err) {
+			for k, v := range entity.ServiceHostingPrecedences {
+				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
+					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
+					return
+				}
+				mapBucket.SetInt32(k, int32(v), nil)
+			}
+			ctx.Bucket.SetError(mapBucket.Err)
+		}
+	}
+
+	if ctx.ProceedWithSet(FieldIdentityServiceHostingCosts) {
+		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingCosts)
+		if !ctx.Bucket.SetError(err) {
+			for k, v := range entity.ServiceHostingCosts {
+				if !serviceStore.IsEntityPresent(ctx.Tx(), k) {
+					ctx.Bucket.SetError(boltz.NewNotFoundError(serviceStore.GetEntityType(), "id", k))
+					return
+				}
+
+				mapBucket.SetInt32(k, int32(v), nil)
+			}
+			ctx.Bucket.SetError(mapBucket.Err)
+		}
+	}
+
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
+	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
+	}
 }
 
 func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {

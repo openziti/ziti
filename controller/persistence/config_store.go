@@ -55,30 +55,6 @@ func (entity *Config) GetEntityType() string {
 	return EntityTypeConfigs
 }
 
-type configEntityStrategy struct{}
-
-func (configEntityStrategy) NewEntity() *Config {
-	return &Config{}
-}
-
-func (configEntityStrategy) FillEntity(entity *Config, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Type = bucket.GetStringOrError(FieldConfigType)
-	entity.Data = bucket.GetMap(FieldConfigData)
-}
-
-func (configEntityStrategy) PersistEntity(entity *Config, ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldConfigType, entity.Type)
-	ctx.SetMap(FieldConfigData, entity.Data)
-
-	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
-		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
-	}
-}
-
 var _ ConfigStore = (*configStoreImpl)(nil)
 
 type ConfigStore interface {
@@ -87,9 +63,8 @@ type ConfigStore interface {
 }
 
 func newConfigsStore(stores *stores) *configStoreImpl {
-	store := &configStoreImpl{
-		baseStore: newBaseStore[*Config](stores, configEntityStrategy{}),
-	}
+	store := &configStoreImpl{}
+	store.baseStore = newBaseStore[*Config](stores, store)
 	store.InitImpl(store)
 	return store
 }
@@ -121,6 +96,28 @@ func (store *configStoreImpl) initializeLocal() {
 func (store *configStoreImpl) initializeLinked() {
 	store.AddFkIndex(store.symbolType, store.stores.configType.symbolConfigs)
 	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolConfigs)
+}
+
+func (store *configStoreImpl) NewEntity() *Config {
+	return &Config{}
+}
+
+func (store *configStoreImpl) FillEntity(entity *Config, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Type = bucket.GetStringOrError(FieldConfigType)
+	entity.Data = bucket.GetMap(FieldConfigData)
+}
+
+func (store *configStoreImpl) PersistEntity(entity *Config, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
+	ctx.SetString(FieldConfigType, entity.Type)
+	ctx.SetMap(FieldConfigData, entity.Data)
+
+	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
+		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
+	}
 }
 
 func (store *configStoreImpl) Update(ctx boltz.MutateContext, entity *Config, checker boltz.FieldChecker) error {
