@@ -18,7 +18,6 @@ package boltz
 
 import (
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
@@ -392,13 +391,13 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 
 	var changeFlows = []EntityChangeFlow{nil}
 	for _, handler := range store.childStoreStragies {
+		if err = handler.HandleDelete(ctx, entity); err != nil {
+			return err
+		}
 		if changeFlow, err := handler.GetStore().processDeleteConstraints(ctx, id); err != nil {
 			return err
 		} else if changeFlow != nil {
 			changeFlows = append(changeFlows, changeFlow)
-		}
-		if err = handler.HandleDelete(ctx, entity); err != nil {
-			return err
 		}
 	}
 
@@ -598,12 +597,26 @@ func (self *entityListenerAdapter[E]) ProcessPreCommit(*EntityChangeState[E]) er
 }
 
 func (self *entityListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
-	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
-		self.eventListener.HandleEntityEvent(state.FinalState)
-	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
-		self.eventListener.HandleEntityEvent(state.FinalState)
-	} else if state.ChangeType == EntityDeleted && genext.Contains(self.changeTypes, EntityDeleted) {
-		self.eventListener.HandleEntityEvent(state.InitialState)
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.FinalState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.FinalState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.InitialState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.InitialState)
+			}
+		}
 	}
 }
 
@@ -617,12 +630,26 @@ func (self *entityFunctionListenerAdapter[E]) ProcessPreCommit(*EntityChangeStat
 }
 
 func (self *entityFunctionListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
-	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
-		self.eventListener(state.FinalState)
-	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
-		self.eventListener(state.FinalState)
-	} else if state.ChangeType == EntityDeleted && genext.Contains(self.changeTypes, EntityDeleted) {
-		self.eventListener(state.InitialState)
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.InitialState)
+			} else {
+				self.eventListener(state.InitialState)
+			}
+		}
 	}
 }
 
@@ -636,12 +663,26 @@ func (self *untypedEventListenerWrapper[E]) ProcessPreCommit(*EntityChangeState[
 }
 
 func (self *untypedEventListenerWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
-	if state.ChangeType == EntityCreated && genext.Contains(self.changeTypes, EntityCreated) {
-		self.eventListener(state.FinalState)
-	} else if state.ChangeType == EntityUpdated && genext.Contains(self.changeTypes, EntityUpdated) {
-		self.eventListener(state.FinalState)
-	} else if state.ChangeType == EntityDeleted && genext.Contains(self.changeTypes, EntityDeleted) {
-		self.eventListener(state.InitialState)
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.InitialState)
+			} else {
+				self.eventListener(state.InitialState)
+			}
+		}
 	}
 }
 
