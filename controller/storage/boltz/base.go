@@ -42,7 +42,27 @@ const (
 	EntityCreated EntityEventType = 1
 	EntityUpdated EntityEventType = 2
 	EntityDeleted EntityEventType = 3
+
+	EntityCreatedAsync EntityEventType = 4
+	EntityUpdatedAsync EntityEventType = 5
+	EntityDeletedAsync EntityEventType = 6
 )
+
+func (self EntityEventType) IsCreate() bool {
+	return self == EntityCreated || self == EntityCreatedAsync
+}
+
+func (self EntityEventType) IsUpdate() bool {
+	return self == EntityUpdated || self == EntityUpdatedAsync
+}
+
+func (self EntityEventType) IsDelete() bool {
+	return self == EntityDeleted || self == EntityDeletedAsync
+}
+
+func (self EntityEventType) IsAsync() bool {
+	return self == EntityCreatedAsync || self == EntityUpdatedAsync || self == EntityDeletedAsync
+}
 
 type Checkable interface {
 	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
