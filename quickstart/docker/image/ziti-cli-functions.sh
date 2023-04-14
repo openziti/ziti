@@ -45,7 +45,7 @@ function BLUE {
 }
 
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y"
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
@@ -1146,8 +1146,8 @@ function ziti_createEnvFile {
   echo "export PFXLOG_NO_JSON=true" >> "${ENV_FILE}"
 
   echo "alias zec='ziti edge'" >> "${ENV_FILE}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\"' -y" >> "${ENV_FILE}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\"' -y" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path
