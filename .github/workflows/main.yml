@@ -29,6 +29,7 @@ env:
 jobs:
   mac-os-build:
     name: Build Mac OS binaries
+    if: github.repository_owner == 'openziti'
     runs-on: macos-11
     steps:
       - name: Git Checkout
@@ -59,6 +60,7 @@ jobs:
 
   windows-build:
     name: Build Windows binaries
+    if: github.repository_owner == 'openziti'
     runs-on: windows-2019
     steps:
       - name: Git Checkout
@@ -155,6 +157,11 @@ jobs:
 
   publish:
     name: Publish Binaries
+    if: |
+      always()
+      && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
+      && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
+      && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
     runs-on: ubuntu-20.04
     needs: [ mac-os-build, windows-build, fablab-smoketest ]
     outputs:
@@ -202,19 +209,21 @@ jobs:
           retention-days: 5
 
       - name: Download darwin release artifact
+        if: needs.mac-os-build.result == 'success'
         uses: actions/download-artifact@v3
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
+        if: needs.windows-build.result == 'success'
         uses: actions/download-artifact@v3
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
 
       - name: Install Jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v2
+        uses: jfrog/setup-jfrog-cli@v3
         with:
           version: 1.51.1
 
@@ -271,14 +280,20 @@ jobs:
     needs: publish
     name: Call the On-Demand Smoketest Workflow
     # not applicable to forks
-    if: github.repository_owner == 'openziti'
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.repository_owner == 'openziti'
     uses: ./.github/workflows/jenkins-smoketest.yml
     secrets: inherit
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
   call-publish-prerelease-docker-images:
-    if: github.ref == 'refs/heads/release-next'
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.ref == 'refs/heads/release-next'
     name: Publish Pre-Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
@@ -287,7 +302,10 @@ jobs:
       ziti-version: release-next
 
   call-publish-release-docker-images:
-    if: github.ref == 'refs/heads/main'
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.ref == 'refs/heads/main'
     name: Publish Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
