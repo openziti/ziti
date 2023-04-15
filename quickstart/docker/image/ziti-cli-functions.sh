@@ -276,7 +276,7 @@ function getZiti {
 }
 
 function checkPrereqs {
-  commands_to_test=(curl jq tar)
+  commands_to_test=(curl jq tar hostname)
   missing_requirements=""
   # verify all the commands required in the automation exist before trying to run the full suite
   for cmd in "${commands_to_test[@]}"
