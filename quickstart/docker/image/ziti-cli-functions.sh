@@ -283,7 +283,8 @@ function checkPrereqs {
   do
       # checking all commands are on the path before continuing...
       if ! [[ -x "$(command -v "${cmd}")" ]]; then
-          missing_requirements="${missing_requirements}    * ${cmd}\n"
+          missing_requirements="${missing_requirements}    * ${cmd}
+"
       fi
   done
   # are requirements ? if yes, stop here and help 'em out
