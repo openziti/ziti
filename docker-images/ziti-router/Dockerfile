@@ -16,6 +16,6 @@ LABEL name="openziti/ziti-router" \
 USER root
 COPY ./entrypoint.sh /
 RUN chmod +x /entrypoint.sh
-USER nobody
+USER ziggy
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]
