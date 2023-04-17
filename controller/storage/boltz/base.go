@@ -188,8 +188,13 @@ type EntityStore[E Entity] interface {
 	Create(ctx MutateContext, entity E) error
 	Update(ctx MutateContext, entity E, checker FieldChecker) error
 
+	// FindById returns the entity for the given Id and true if the eneity exists. If the entity
+	// doesn't exist it returns the default value (usually nil) and a false
 	FindById(tx *bbolt.Tx, id string) (E, bool, error)
-	FindOneByQuery(tx *bbolt.Tx, query string) (E, bool, error)
+
+	// LoadById return the entity for the given Id if it exists, otherwise it returns nil and a
+	// RecordNotFoundError
+	LoadById(tx *bbolt.Tx, id string) (E, error)
 	LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, error)
 
 	GetEntityStrategy() EntityStrategy[E]
@@ -297,8 +302,6 @@ func (ctx *PersistContext) ProceedWithSet(field string) bool {
 type Entity interface {
 	GetId() string
 	SetId(id string)
-	//	LoadValues(store EntityStore, bucket *TypedBucket)
-	//	SetValues(ctx *PersistContext)
 	GetEntityType() string
 }
 

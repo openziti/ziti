@@ -122,7 +122,7 @@ func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) 
 			if err := fn(ctx); err != nil {
 				return err
 			}
-			return ctx.RunPreCommitActions()
+			return ctx.runPreCommitActions()
 		})
 	}
 
@@ -145,7 +145,7 @@ func (self *DbImpl) Batch(ctx MutateContext, fn func(ctx MutateContext) error) e
 			if err := fn(ctx); err != nil {
 				return err
 			}
-			return ctx.RunPreCommitActions()
+			return ctx.runPreCommitActions()
 		})
 	}
 
