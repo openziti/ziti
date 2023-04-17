@@ -32,5 +32,6 @@ func (self *baseHandler) newChangeContext(ch channel.Channel) *change.Context {
 	return change.New().
 		SetChangeAuthorId(self.router.Id).
 		SetChangeAuthorName(self.router.Name).
+		SetChangeAuthorType("router").
 		SetSource(fmt.Sprintf("ctrl[%v]", ch.Underlay().GetRemoteAddr().String()))
 }

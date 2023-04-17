@@ -196,7 +196,7 @@ func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, prece
 		db.FieldTerminatorPrecedence: struct{}{},
 	}
 
-	if err = self.Update(terminator, checker, change.New().SetChangeAuthorId("system-xt")); err != nil {
+	if err = self.Update(terminator, checker, change.New().SetChangeAuthorId("xt").SetChangeAuthorType("controller")); err != nil {
 		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)", terminatorId, precedence, err)
 	}
 }

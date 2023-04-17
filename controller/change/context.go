@@ -29,6 +29,7 @@ const (
 
 	AuthorIdKey   = "authorId"
 	AuthorNameKey = "authorName"
+	AuthorTypeKey = "authorType"
 	TraceIdKey    = "traceId"
 	Source        = "source"
 )
@@ -51,6 +52,11 @@ func (self *Context) SetChangeAuthorId(val string) *Context {
 
 func (self *Context) SetChangeAuthorName(val string) *Context {
 	self.Attributes[AuthorNameKey] = val
+	return self
+}
+
+func (self *Context) SetChangeAuthorType(val string) *Context {
+	self.Attributes[AuthorTypeKey] = val
 	return self
 }
 

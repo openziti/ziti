@@ -80,7 +80,7 @@ func (rc *RequestContextImpl) GetEntitySubId() (string, error) {
 
 func (rc *RequestContextImpl) NewChangeContext() *change.Context {
 	src := fmt.Sprintf("rest[auth=fabric/host=%v/method=%v/remote=%v]", rc.GetRequest().Host, rc.GetRequest().Method, rc.GetRequest().RemoteAddr)
-	changeCtx := change.New().SetSource(src)
+	changeCtx := change.New().SetSource(src).SetChangeAuthorType("fabric.admin")
 	if rc.Request.Form.Has("traceId") {
 		changeCtx.SetChangeAuthorId(rc.Request.Form.Get("traceId"))
 	}
