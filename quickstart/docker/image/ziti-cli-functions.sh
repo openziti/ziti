@@ -2,14 +2,6 @@
 
 set -uo pipefail
 
-# the default ZITI_NETWORK (network name) is the short hostname
-: "${DEFAULT_ZITI_NETWORK:="$(hostname -s)"}"
-
-# shellcheck disable=SC2155
-export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWORK}"
-
-export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
-
 ASCI_WHITE='\033[01;37m'
 ASCI_RESTORE='\033[0m'
 ASCI_RED='\033[00;31m'
@@ -43,6 +35,38 @@ function YELLOW {
 function BLUE {
   echo "${ASCI_BLUE}${1-}${ASCI_RESTORE}"
 }
+
+function checkPrereqs {
+  commands_to_test=(curl jq tar hostname)
+  missing_requirements=""
+  # verify all the commands required in the automation exist before trying to run the full suite
+  for cmd in "${commands_to_test[@]}"
+  do
+      # checking all commands are on the path before continuing...
+      if ! [[ -x "$(command -v "${cmd}")" ]]; then
+          missing_requirements="${missing_requirements}    * ${cmd}
+"
+      fi
+  done
+  # are requirements ? if yes, stop here and help 'em out
+  if ! [[ "" = "${missing_requirements}" ]]; then
+      echo " "
+      echo "You're missing one or more commands that are used in this script."
+      echo "Please ensure the commands listed are on the path and then try again."
+      echo "${missing_requirements}"
+      echo " "
+      return 1
+  fi
+}
+
+checkPrereqs
+
+# the default ZITI_NETWORK (network name) is the short hostname
+: "${DEFAULT_ZITI_NETWORK:="$(hostname -s)"}"
+
+# shellcheck disable=SC2155
+export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWORK}"
+export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
 function zitiLogin {
   "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
@@ -272,32 +296,6 @@ function getZiti {
       echo -e "adding $(RED "${ZITI_BIN_DIR}") to the path"
       export PATH=$PATH:"${ZITI_BIN_DIR}"
     fi
-  fi
-}
-
-function checkPrereqs {
-  commands_to_test=(curl jq tar hostname)
-  missing_requirements=""
-  # verify all the commands required in the automation exist before trying to run the full suite
-  for cmd in "${commands_to_test[@]}"
-  do
-      # checking all commands are on the path before continuing...
-      if ! [[ -x "$(command -v "${cmd}")" ]]; then
-          missing_requirements="${missing_requirements}    * ${cmd}
-"
-      fi
-  done
-  # are requirements ? if yes, stop here and help 'em out
-  if ! [[ "" = "${missing_requirements}" ]]; then
-      echo " "
-      echo "You're missing one or more commands that are used in this script."
-      echo "Please ensure the commands listed are on the path and then try again."
-      echo "${missing_requirements}"
-      echo " "
-      echo " "
-      return 1
-  else
-    echo -e "$(GREEN "Prerequisites confirmed")"
   fi
 }
 
