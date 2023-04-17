@@ -229,7 +229,8 @@ func (self *baseSessionRequestContext) checkSessionFingerprints(fingerprints []s
 func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 	if self.err == nil {
 		// validate edge router
-		result, err := self.handler.getAppEnv().Managers.EdgeRouter.ListForSession(self.session.Id)
+		erMgr := self.handler.getAppEnv().Managers.EdgeRouter
+		edgeRouterAllowed, err := erMgr.IsAccessToEdgeRouterAllowed(self.session.IdentityId, self.session.ServiceId, self.sourceRouter.Id)
 		if err != nil {
 			self.err = internalError(err)
 			logrus.
@@ -237,14 +238,6 @@ func (self *baseSessionRequestContext) verifyEdgeRouterAccess() {
 				WithField("operation", self.handler.Label()).
 				WithError(err).Error("unable to verify edge router access")
 			return
-		}
-
-		edgeRouterAllowed := false
-		for _, er := range result.EdgeRouters {
-			if er.Id == self.sourceRouter.Id {
-				edgeRouterAllowed = true
-				break
-			}
 		}
 
 		if !edgeRouterAllowed {

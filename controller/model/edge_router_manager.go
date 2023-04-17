@@ -188,27 +188,6 @@ func (self *EdgeRouterManager) Query(query string) (*EdgeRouterListResult, error
 	return result, nil
 }
 
-func (self *EdgeRouterManager) ListForSession(sessionId string) (*EdgeRouterListResult, error) {
-	var result *EdgeRouterListResult
-
-	err := self.env.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		session, err := self.env.GetStores().Session.LoadOneById(tx, sessionId)
-		if err != nil {
-			return err
-		}
-		apiSession, err := self.env.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
-		if err != nil {
-			return err
-		}
-
-		limit := -1
-
-		result, err = self.ListForIdentityAndServiceWithTx(tx, apiSession.IdentityId, session.ServiceId, &limit)
-		return err
-	})
-	return result, err
-}
-
 func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
 	var list *EdgeRouterListResult
 	var err error
@@ -223,23 +202,54 @@ func (self *EdgeRouterManager) ListForIdentityAndService(identityId, serviceId s
 }
 
 func (self *EdgeRouterManager) ListForIdentityAndServiceWithTx(tx *bbolt.Tx, identityId, serviceId string, limit *int) (*EdgeRouterListResult, error) {
-	service, err := self.env.GetStores().EdgeService.LoadOneById(tx, serviceId)
-	if err != nil {
-		return nil, err
-	}
-	if service == nil {
-		return nil, errors.Errorf("no service with id %v found", serviceId)
-	}
-
-	query := fmt.Sprintf(`anyOf(identities) = "%v" and anyOf(services) = "%v"`, identityId, service.Id)
+	query := fmt.Sprintf(`anyOf(identities) = "%v" and anyOf(services) = "%v"`, identityId, serviceId)
 
 	if limit != nil {
 		query += " limit " + strconv.Itoa(*limit)
 	}
 
 	result := &EdgeRouterListResult{manager: self}
-	if err = self.ListWithTx(tx, query, result.collect); err != nil {
+	if err := self.ListWithTx(tx, query, result.collect); err != nil {
 		return nil, err
+	}
+	return result, nil
+}
+
+func (self *EdgeRouterManager) IsAccessToEdgeRouterAllowed(identityId, serviceId, edgeRouterId string) (bool, error) {
+	var result bool
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
+		serviceEdgeRouters := self.env.GetStores().EdgeService.GetRefCountedLinkCollection(persistence.FieldEdgeRouters)
+
+		identityCount := identityEdgeRouters.GetLinkCount(tx, []byte(identityId), []byte(edgeRouterId))
+		serviceCount := serviceEdgeRouters.GetLinkCount(tx, []byte(serviceId), []byte(edgeRouterId))
+		result = identityCount != nil && *identityCount > 0 && serviceCount != nil && *serviceCount > 0
+		return nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return result, nil
+}
+
+func (self *EdgeRouterManager) IsSharedEdgeRouterPresent(identityId, serviceId string) (bool, error) {
+	var result bool
+	err := self.GetDb().View(func(tx *bbolt.Tx) error {
+		identityEdgeRouters := self.env.GetStores().Identity.GetRefCountedLinkCollection(db.EntityTypeRouters)
+		serviceEdgeRouters := self.env.GetStores().EdgeService.GetRefCountedLinkCollection(persistence.FieldEdgeRouters)
+
+		cursor := identityEdgeRouters.IterateLinks(tx, []byte(identityId), true)
+		for cursor.IsValid() {
+			serviceCount := serviceEdgeRouters.GetLinkCount(tx, []byte(serviceId), cursor.Current())
+			if result = serviceCount != nil && *serviceCount > 0; result {
+				return nil
+			}
+			cursor.Next()
+		}
+		return nil
+	})
+	if err != nil {
+		return false, err
 	}
 	return result, nil
 }

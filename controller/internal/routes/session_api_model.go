@@ -166,7 +166,7 @@ func MapSessionsToRestEntities(ae *env.AppEnv, rc *response.RequestContext, sess
 func getSessionEdgeRouters(ae *env.AppEnv, ns *model.Session) ([]*rest_model.SessionEdgeRouter, error) {
 	var edgeRouters []*rest_model.SessionEdgeRouter
 
-	edgeRoutersForSession, err := ae.Managers.EdgeRouter.ListForSession(ns.Id)
+	edgeRoutersForSession, err := ae.Managers.EdgeRouter.ListForIdentityAndService(ns.IdentityId, ns.ServiceId, nil)
 	if err != nil {
 		return nil, err
 	}
