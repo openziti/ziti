@@ -28,7 +28,7 @@ type CommitAction interface {
 type MutateContext interface {
 	Tx() *bbolt.Tx
 	AddPreCommitAction(func(ctx MutateContext) error)
-	RunPreCommitActions() error
+	runPreCommitActions() error
 	AddCommitAction(func())
 	setTx(tx *bbolt.Tx) MutateContext
 	IsSystemContext() bool
@@ -87,7 +87,7 @@ func (self *mutateContext) AddPreCommitAction(f func(MutateContext) error) {
 	self.preCommitActions = append(self.preCommitActions, f)
 }
 
-func (self *mutateContext) RunPreCommitActions() error {
+func (self *mutateContext) runPreCommitActions() error {
 	for _, action := range self.preCommitActions {
 		if err := action(self); err != nil {
 			return err
@@ -134,8 +134,8 @@ func (self *systemMutateContext) AddCommitAction(f func()) {
 	self.wrapped.AddCommitAction(f)
 }
 
-func (self *systemMutateContext) RunPreCommitActions() error {
-	return self.wrapped.RunPreCommitActions()
+func (self *systemMutateContext) runPreCommitActions() error {
+	return self.wrapped.runPreCommitActions()
 }
 
 func (self *systemMutateContext) GetSystemContext() MutateContext {

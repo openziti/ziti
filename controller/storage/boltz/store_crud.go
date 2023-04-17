@@ -101,6 +101,21 @@ func (store *BaseStore[E]) FindById(tx *bbolt.Tx, id string) (E, bool, error) {
 	return entity, true, nil
 }
 
+func (store *BaseStore[E]) LoadById(tx *bbolt.Tx, id string) (E, error) {
+	bucket := store.getEntityBucketForLoad(tx, id)
+	if bucket == nil {
+		return *new(E), NewNotFoundError(store.GetEntityType(), "id", id)
+	}
+
+	entity := store.entityStrategy.NewEntity()
+	entity.SetId(id)
+	store.entityStrategy.FillEntity(entity, bucket)
+	if bucket.HasError() {
+		return *new(E), bucket.GetError()
+	}
+	return entity, nil
+}
+
 func (store *BaseStore[E]) getEntityBucketForLoad(tx *bbolt.Tx, id string) *TypedBucket {
 	bucket := store.GetEntityBucket(tx, []byte(id))
 	if bucket == nil {
@@ -113,21 +128,6 @@ func (store *BaseStore[E]) getEntityBucketForLoad(tx *bbolt.Tx, id string) *Type
 		}
 	}
 	return bucket
-}
-
-func (store *BaseStore[E]) FindOneByQuery(tx *bbolt.Tx, query string) (E, bool, error) {
-	ids, _, err := store.QueryIds(tx, query)
-	if err != nil {
-		return store.defaultEntityValue(), false, err
-	}
-	if len(ids) == 0 {
-		return store.defaultEntityValue(), false, nil
-	}
-	entity, found, err := store.FindById(tx, ids[0])
-	if !found || err != nil {
-		return store.defaultEntityValue(), found, err
-	}
-	return entity, found, err
 }
 
 func (store *BaseStore[E]) newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext {
