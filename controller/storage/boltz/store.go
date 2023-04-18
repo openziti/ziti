@@ -71,16 +71,22 @@ func NewBaseStore[E Entity](definition StoreDefinition[E]) *BaseStore[E] {
 }
 
 type EntityChangeState[E Entity] struct {
-	Id           string
+	EventId      string
+	EntityId     string
 	Ctx          MutateContext
 	InitialState E
 	FinalState   E
 	store        *BaseStore[E]
 	ChangeType   EntityEventType
+	ParentEvent  bool
 }
 
-func (self *EntityChangeState[E]) GetId() string {
-	return self.Id
+func (self *EntityChangeState[E]) GetEventId() string {
+	return self.EventId
+}
+
+func (self *EntityChangeState[E]) GetEntityId() string {
+	return self.EntityId
 }
 
 func (self *EntityChangeState[E]) GetCtx() MutateContext {
@@ -99,6 +105,18 @@ func (self *EntityChangeState[E]) GetFinalState() Entity {
 	return self.FinalState
 }
 
+func (self *EntityChangeState[E]) GetStore() Store {
+	return self.store
+}
+
+func (self *EntityChangeState[E]) IsParentEvent() bool {
+	return self.ParentEvent
+}
+
+func (self *EntityChangeState[E]) MarkParentEvent() {
+	self.ParentEvent = true
+}
+
 func (self *EntityChangeState[E]) GetInitialParentEntity() Entity {
 	var tmp Entity = self.InitialState
 	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
@@ -115,10 +133,11 @@ func (self *EntityChangeState[E]) GetFinalParentEntity() Entity {
 	return self.store.parentMapper(self.FinalState)
 }
 
-func (self *EntityChangeState[E]) InitFromChild(flow EntityChangeFlow) {
-	self.Id = flow.GetId()
+func (self *EntityChangeState[E]) initFromChild(flow entityChangeFlow) {
+	self.EntityId = flow.GetEntityId()
 	self.Ctx = flow.GetCtx()
 	self.ChangeType = flow.GetChangeType()
+	self.ParentEvent = true
 
 	if parentEntity := flow.GetInitialParentEntity(); parentEntity != nil {
 		self.InitialState = parentEntity.(E)
@@ -129,30 +148,30 @@ func (self *EntityChangeState[E]) InitFromChild(flow EntityChangeFlow) {
 	}
 }
 
-func (self *EntityChangeState[E]) Init(ctx MutateContext) (bool, error) {
+func (self *EntityChangeState[E]) init(ctx MutateContext) (bool, error) {
 	self.Ctx = ctx
 	var err error
 	var found bool
-	self.InitialState, found, err = self.store.impl.FindById(ctx.Tx(), self.Id)
+	self.InitialState, found, err = self.store.impl.FindById(ctx.Tx(), self.EntityId)
 	return found, err
 }
 
-func (self *EntityChangeState[E]) LoadFinalState() error {
+func (self *EntityChangeState[E]) loadFinalState() error {
 	var err error
-	self.FinalState, _, err = self.store.impl.FindById(self.Ctx.Tx(), self.Id)
+	self.FinalState, _, err = self.store.impl.FindById(self.Ctx.Tx(), self.EntityId)
 	return err
 }
 
-func (self *EntityChangeState[E]) FireEvents() error {
-	if err := self.ProcessPreCommit(); err != nil {
+func (self *EntityChangeState[E]) fireEvents() error {
+	if err := self.processPreCommit(); err != nil {
 		return err
 	}
 
-	self.Ctx.Tx().OnCommit(self.ProcessPostCommit)
+	self.Ctx.Tx().OnCommit(self.processPostCommit)
 	return nil
 }
 
-func (self *EntityChangeState[E]) ProcessPreCommit() error {
+func (self *EntityChangeState[E]) processPreCommit() error {
 	for _, constraint := range self.store.entityConstraints.Value() {
 		if err := constraint.ProcessPreCommit(self); err != nil {
 			return err
@@ -161,30 +180,21 @@ func (self *EntityChangeState[E]) ProcessPreCommit() error {
 	return nil
 }
 
-func (self *EntityChangeState[E]) ProcessPostCommit() {
+func (self *EntityChangeState[E]) processPostCommit() {
 	for _, constraint := range self.store.entityConstraints.Value() {
 		constraint.ProcessPostCommit(self)
 	}
 }
 
-type UntypedEntityChangeState interface {
-	GetId() string
-	GetCtx() MutateContext
-	GetChangeType() EntityEventType
-	GetInitialState() Entity
-	GetFinalState() Entity
-	GetInitialParentEntity() Entity
-	GetFinalParentEntity() Entity
-}
-
-type EntityChangeFlow interface {
+type entityChangeFlow interface {
 	UntypedEntityChangeState
-	Init(ctx MutateContext) (bool, error)
-	InitFromChild(flow EntityChangeFlow)
-	LoadFinalState() error
-	ProcessPreCommit() error
-	ProcessPostCommit()
-	FireEvents() error
+	init(ctx MutateContext) (bool, error)
+	initFromChild(flow entityChangeFlow)
+	loadFinalState() error
+	processPreCommit() error
+	processPostCommit()
+	fireEvents() error
+	MarkParentEvent()
 }
 
 type BaseStore[E Entity] struct {
