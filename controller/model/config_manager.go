@@ -54,8 +54,8 @@ func (self *ConfigManager) Create(entity *Config, ctx *change.Context) error {
 	return network.DispatchCreate[*Config](self, entity, ctx)
 }
 
-func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *ConfigManager) ApplyCreate(cmd *command.CreateEntityCommand[*Config], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -63,12 +63,12 @@ func (self *ConfigManager) Update(entity *Config, checker fields.UpdatedFields, 
 	return network.DispatchUpdate[*Config](self, entity, checker, ctx)
 }
 
-func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config]) error {
+func (self *ConfigManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Config], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *ConfigManager) Read(id string) (*Config, error) {

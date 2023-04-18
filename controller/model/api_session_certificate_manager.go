@@ -46,7 +46,7 @@ func (self *ApiSessionCertificateManager) newModelEntity() *ApiSessionCertificat
 }
 
 func (self *ApiSessionCertificateManager) Create(entity *ApiSessionCertificate, ctx *change.Context) (string, error) {
-	return self.createEntity(entity, ctx)
+	return self.createEntity(entity, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionCertificateManager) CreateFromCSR(apiSessionId string, lifespan time.Duration, csrPem []byte, ctx *change.Context) (string, error) {

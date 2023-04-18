@@ -134,9 +134,9 @@ func (self *baseEntityManager[ME, PE]) PreparedListAssociatedWithHandler(id stri
 	})
 }
 
-func (self *baseEntityManager[ME, PE]) createEntity(modelEntity edgeEntity[PE], ctx *change.Context) (string, error) {
+func (self *baseEntityManager[ME, PE]) createEntity(modelEntity edgeEntity[PE], ctx boltz.MutateContext) (string, error) {
 	var id string
-	err := self.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	err := self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		var err error
 		id, err = self.createEntityInTx(ctx, modelEntity)
 		return err
@@ -198,8 +198,8 @@ func (self *baseEntityManager[ME, PE]) updateEntityBatch(modelEntity edgeEntity[
 	})
 }
 
-func (self *baseEntityManager[ME, PE]) updateEntity(modelEntity ME, checker boltz.FieldChecker, changeCtx *change.Context) error {
-	return self.GetDb().Update(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+func (self *baseEntityManager[ME, PE]) updateEntity(modelEntity ME, checker boltz.FieldChecker, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		existing, found, err := self.GetStore().FindById(ctx.Tx(), modelEntity.GetId())
 		if err != nil {
 			return err
@@ -297,8 +297,8 @@ func (self *baseEntityManager[ME, PE]) Delete(id string, ctx *change.Context) er
 	return self.Dispatch(cmd)
 }
 
-func (self *baseEntityManager[ME, PE]) ApplyDelete(cmd *command.DeleteEntityCommand) error {
-	return self.GetDb().Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
+func (self *baseEntityManager[ME, PE]) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		return self.Store.DeleteById(ctx, cmd.Id)
 	})
 }

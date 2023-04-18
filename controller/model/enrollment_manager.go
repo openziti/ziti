@@ -60,11 +60,11 @@ func (self *EnrollmentManager) Create(entity *Enrollment, ctx *change.Context) e
 	return network.DispatchCreate[*Enrollment](self, entity, ctx)
 }
 
-func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment]) error {
+func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enrollment], ctx boltz.MutateContext) error {
 	model := cmd.Entity
 
 	if model.EdgeRouterId != nil || model.TransitRouterId != nil {
-		_, err := self.createEntity(model, cmd.Context)
+		_, err := self.createEntity(model, ctx)
 		return err
 	}
 
@@ -121,7 +121,7 @@ func (self *EnrollmentManager) ApplyCreate(cmd *command.CreateEntityCommand[*Enr
 		return err
 	}
 
-	_, err = self.createEntity(model, cmd.Context)
+	_, err = self.createEntity(model, ctx)
 	return err
 }
 
@@ -129,8 +129,8 @@ func (self *EnrollmentManager) Update(entity *Enrollment, checker fields.Updated
 	return network.DispatchUpdate[*Enrollment](self, entity, checker, ctx)
 }
 
-func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enrollment]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *EnrollmentManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Enrollment], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *EnrollmentManager) newModelEntity() *Enrollment {
@@ -232,8 +232,8 @@ func (self *EnrollmentManager) GetClientCertChain(certRaw []byte) (string, error
 	return string(clientChainPem), nil
 }
 
-func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd) error {
-	return self.env.GetDbProvider().GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+func (self *EnrollmentManager) ApplyReplaceEncoderWithAuthenticatorCommand(cmd *ReplaceEnrollmentWithAuthenticatorCmd, ctx boltz.MutateContext) error {
+	return self.env.GetDbProvider().GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		err := self.env.GetStores().Enrollment.DeleteById(ctx, cmd.enrollmentId)
 		if err != nil {
 			return err
@@ -375,9 +375,8 @@ type ReplaceEnrollmentWithAuthenticatorCmd struct {
 	authenticator *Authenticator
 }
 
-func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply(raftIndex uint64) error {
-	self.ctx.RaftIndex = raftIndex
-	return self.manager.ApplyReplaceEncoderWithAuthenticatorCommand(self)
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyReplaceEncoderWithAuthenticatorCommand(self, ctx)
 }
 
 func (self *ReplaceEnrollmentWithAuthenticatorCmd) Encode() ([]byte, error) {
@@ -404,4 +403,8 @@ func (self *ReplaceEnrollmentWithAuthenticatorCmd) Decode(env Env, msg *edge_cmd
 	}
 	self.authenticator = authenticator
 	return nil
+}
+
+func (self *ReplaceEnrollmentWithAuthenticatorCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }

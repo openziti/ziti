@@ -111,7 +111,7 @@ func (self *AuthenticatorManager) Create(entity *Authenticator, ctx *change.Cont
 	return network.DispatchCreate[*Authenticator](self, entity, ctx)
 }
 
-func (self *AuthenticatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Authenticator]) error {
+func (self *AuthenticatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Authenticator], ctx boltz.MutateContext) error {
 	authenticator := cmd.Entity
 	if authenticator.Method != persistence.MethodAuthenticatorUpdb && authenticator.Method != persistence.MethodAuthenticatorCert {
 		return errorz.NewFieldError("method must be updb or cert", "method", authenticator.Method)
@@ -166,7 +166,7 @@ func (self *AuthenticatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*
 		}
 	}
 
-	_, err = self.createEntity(authenticator, cmd.Context)
+	_, err = self.createEntity(authenticator, ctx)
 	return err
 }
 
@@ -183,7 +183,7 @@ func (self *AuthenticatorManager) Update(entity *Authenticator, unrestricted boo
 	return self.Dispatch(cmd)
 }
 
-func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Authenticator]) error {
+func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Authenticator], ctx boltz.MutateContext) error {
 	authenticator := cmd.Entity
 	if updb := authenticator.ToUpdb(); updb != nil {
 		if cmd.UpdatedFields == nil || cmd.UpdatedFields.IsUpdated("password") {
@@ -209,7 +209,7 @@ func (self *AuthenticatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 			checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 		}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *AuthenticatorManager) getRootPool() *x509.CertPool {
@@ -609,7 +609,11 @@ func (self *AuthenticatorManager) ReEnroll(id string, expiresAt time.Time, ctx *
 		return "", err
 	}
 
+	enrollmentId := eid.New()
 	enrollment := &Enrollment{
+		BaseEntity: models.BaseEntity{
+			Id: enrollmentId,
+		},
 		IdentityId: &authenticator.IdentityId,
 		Token:      uuid.NewString(),
 	}
@@ -638,8 +642,7 @@ func (self *AuthenticatorManager) ReEnroll(id string, expiresAt time.Time, ctx *
 		return "", err
 	}
 
-	enrollmentId, err := self.env.GetManagers().Enrollment.createEntity(enrollment, ctx)
-	if err != nil {
+	if err = self.env.GetManagers().Enrollment.Create(enrollment, ctx); err != nil {
 		return "", err
 	}
 

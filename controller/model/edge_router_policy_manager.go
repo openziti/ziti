@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -50,8 +51,8 @@ func (self *EdgeRouterPolicyManager) Create(entity *EdgeRouterPolicy, ctx *chang
 	return network.DispatchCreate[*EdgeRouterPolicy](self, entity, ctx)
 }
 
-func (self *EdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*EdgeRouterPolicy]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *EdgeRouterPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*EdgeRouterPolicy], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -59,8 +60,8 @@ func (self *EdgeRouterPolicyManager) Update(entity *EdgeRouterPolicy, checker fi
 	return network.DispatchUpdate[*EdgeRouterPolicy](self, entity, checker, ctx)
 }
 
-func (self *EdgeRouterPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouterPolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *EdgeRouterPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouterPolicy], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *EdgeRouterPolicyManager) Marshall(entity *EdgeRouterPolicy) ([]byte, error) {

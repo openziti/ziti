@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"google.golang.org/protobuf/proto"
 )
@@ -58,8 +59,8 @@ func (self *ConfigTypeManager) Create(entity *ConfigType, ctx *change.Context) e
 	return network.DispatchCreate[*ConfigType](self, entity, ctx)
 }
 
-func (self *ConfigTypeManager) ApplyCreate(cmd *command.CreateEntityCommand[*ConfigType]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *ConfigTypeManager) ApplyCreate(cmd *command.CreateEntityCommand[*ConfigType], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -67,8 +68,8 @@ func (self *ConfigTypeManager) Update(entity *ConfigType, checker fields.Updated
 	return network.DispatchUpdate[*ConfigType](self, entity, checker, ctx)
 }
 
-func (self *ConfigTypeManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ConfigType]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *ConfigTypeManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ConfigType], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *ConfigTypeManager) Read(id string) (*ConfigType, error) {

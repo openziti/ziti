@@ -21,15 +21,14 @@ type CreateEdgeTerminatorCmd struct {
 	Context *change.Context
 }
 
-func (self *CreateEdgeTerminatorCmd) Apply(raftIndex uint64) error {
+func (self *CreateEdgeTerminatorCmd) Apply(ctx boltz.MutateContext) error {
 	createCmd := &command.CreateEntityCommand[*network.Terminator]{
 		Creator:        self.Env.GetManagers().Terminator,
 		Entity:         self.Entity,
 		PostCreateHook: self.validateTerminatorIdentity,
 		Context:        self.Context,
 	}
-	createCmd.Context.RaftIndex = raftIndex
-	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd)
+	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd, ctx)
 }
 
 func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.MutateContext, terminator *network.Terminator) error {
@@ -61,6 +60,10 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.Mutate
 	}
 
 	return nil
+}
+
+func (self *CreateEdgeTerminatorCmd) GetChangeContext() *change.Context {
+	return self.Context
 }
 
 type terminator interface {

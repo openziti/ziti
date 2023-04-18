@@ -114,16 +114,16 @@ func (self *ApiSessionManager) IsUpdated(_ string) bool {
 }
 
 func (self *ApiSessionManager) Update(apiSession *ApiSession, ctx *change.Context) error {
-	return self.updateEntity(apiSession, self, ctx)
+	return self.updateEntity(apiSession, self, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionManager) UpdateWithFieldChecker(apiSession *ApiSession, fieldChecker boltz.FieldChecker, ctx *change.Context) error {
-	return self.updateEntity(apiSession, fieldChecker, ctx)
+	return self.updateEntity(apiSession, fieldChecker, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionManager) MfaCompleted(apiSession *ApiSession, ctx *change.Context) error {
 	apiSession.MfaComplete = true
-	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self}, ctx)
+	return self.updateEntity(apiSession, &OrFieldChecker{NewFieldChecker(persistence.FieldApiSessionMfaComplete), self}, ctx.NewMutateContext())
 }
 
 func (self *ApiSessionManager) Delete(id string, ctx *change.Context) error {

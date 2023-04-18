@@ -97,11 +97,11 @@ func (self *EdgeRouterManager) Create(edgeRouter *EdgeRouter, ctx *change.Contex
 	return self.Dispatch(cmd)
 }
 
-func (self *EdgeRouterManager) ApplyCreate(cmd *CreateEdgeRouterCmd) error {
+func (self *EdgeRouterManager) ApplyCreate(cmd *CreateEdgeRouterCmd, ctx boltz.MutateContext) error {
 	edgeRouter := cmd.edgeRouter
 	enrollment := cmd.enrollment
 
-	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		boltEdgeRouter, err := edgeRouter.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
 			return err
@@ -138,7 +138,7 @@ func (self *EdgeRouterManager) Update(entity *EdgeRouter, unrestricted bool, che
 	return self.Dispatch(cmd)
 }
 
-func (self *EdgeRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouter]) error {
+func (self *EdgeRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*EdgeRouter], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = cmd.UpdatedFields
 	if cmd.Flags != updateUnrestricted {
 		if checker == nil {
@@ -147,7 +147,7 @@ func (self *EdgeRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Edg
 			checker = &AndFieldChecker{first: self.allowedFieldsChecker, second: cmd.UpdatedFields}
 		}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *EdgeRouterManager) Read(id string) (*EdgeRouter, error) {
@@ -557,9 +557,8 @@ type CreateEdgeRouterCmd struct {
 	ctx        *change.Context
 }
 
-func (self *CreateEdgeRouterCmd) Apply(raftIndex uint64) error {
-	self.ctx.RaftIndex = raftIndex
-	return self.manager.ApplyCreate(self)
+func (self *CreateEdgeRouterCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyCreate(self, ctx)
 }
 
 func (self *CreateEdgeRouterCmd) Encode() ([]byte, error) {
@@ -599,4 +598,8 @@ func (self *CreateEdgeRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdgeRout
 	self.ctx = ProtobufToContext(msg.Ctx)
 
 	return nil
+}
+
+func (self *CreateEdgeRouterCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -50,8 +51,8 @@ func (self *ServicePolicyManager) Create(entity *ServicePolicy, ctx *change.Cont
 	return network.DispatchCreate[*ServicePolicy](self, entity, ctx)
 }
 
-func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServicePolicy]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -59,8 +60,8 @@ func (self *ServicePolicyManager) Update(entity *ServicePolicy, checker fields.U
 	return network.DispatchUpdate[*ServicePolicy](self, entity, checker, ctx)
 }
 
-func (self *ServicePolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServicePolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *ServicePolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *ServicePolicyManager) Marshall(entity *ServicePolicy) ([]byte, error) {

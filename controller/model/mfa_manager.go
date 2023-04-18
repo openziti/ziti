@@ -91,8 +91,8 @@ func (self *MfaManager) Create(entity *Mfa, ctx *change.Context) error {
 	return network.DispatchCreate[*Mfa](self, entity, ctx)
 }
 
-func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa]) error {
-	return self.GetDb().Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
+func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		result := &MfaListResult{manager: self}
 		err := self.ListWithTx(ctx.Tx(), fmt.Sprintf(`identity = "%s"`, cmd.Entity.IdentityId), result.collect)
 
@@ -114,12 +114,12 @@ func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields, ctx *c
 	return network.DispatchUpdate[*Mfa](self, entity, checker, ctx)
 }
 
-func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa]) error {
+func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *MfaManager) IsUpdated(field string) bool {

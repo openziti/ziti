@@ -50,7 +50,7 @@ func (self *AuthPolicyManager) Create(entity *AuthPolicy, ctx *change.Context) e
 	return network.DispatchCreate[*AuthPolicy](self, entity, ctx)
 }
 
-func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*AuthPolicy]) error {
+func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {
 	entity := cmd.Entity
 	if entity.Secondary.RequiredExtJwtSigner != nil {
 		if err := self.verifyExtJwt(*entity.Secondary.RequiredExtJwtSigner, "secondary.requiredExtJwtSigner"); err != nil {
@@ -64,7 +64,7 @@ func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*Aut
 		}
 	}
 
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -72,8 +72,8 @@ func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker fields.Updated
 	return network.DispatchUpdate[*AuthPolicy](self, entity, checker, ctx)
 }
 
-func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*AuthPolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *AuthPolicyManager) newModelEntity() *AuthPolicy {

@@ -87,11 +87,11 @@ func (self *TransitRouterManager) Create(txRouter *TransitRouter, ctx *change.Co
 	return self.Dispatch(cmd)
 }
 
-func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd) error {
+func (self *TransitRouterManager) ApplyCreate(cmd *CreateTransitRouterCmd, ctx boltz.MutateContext) error {
 	txRouter := cmd.router
 	enrollment := cmd.enrollment
 
-	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		boltEntity, err := txRouter.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
 			return err
@@ -133,7 +133,7 @@ func (self *TransitRouterManager) Update(entity *TransitRouter, unrestricted boo
 	return self.Dispatch(cmd)
 }
 
-func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*TransitRouter]) error {
+func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*TransitRouter], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = cmd.UpdatedFields
 	if cmd.Flags != updateUnrestricted {
 		if checker == nil {
@@ -142,7 +142,7 @@ func (self *TransitRouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*
 			checker = &AndFieldChecker{first: self.allowedFields, second: cmd.UpdatedFields}
 		}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *TransitRouterManager) ReadOneByFingerprint(fingerprint string) (*TransitRouter, error) {
@@ -352,9 +352,8 @@ type CreateTransitRouterCmd struct {
 	ctx        *change.Context
 }
 
-func (self *CreateTransitRouterCmd) Apply(raftIndex uint64) error {
-	self.ctx.RaftIndex = raftIndex
-	return self.manager.ApplyCreate(self)
+func (self *CreateTransitRouterCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyCreate(self, ctx)
 }
 
 func (self *CreateTransitRouterCmd) Encode() ([]byte, error) {
@@ -395,4 +394,8 @@ func (self *CreateTransitRouterCmd) Decode(env Env, msg *edge_cmd_pb.CreateTrans
 	self.ctx = ProtobufToContext(msg.Ctx)
 
 	return nil
+}
+
+func (self *CreateTransitRouterCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }

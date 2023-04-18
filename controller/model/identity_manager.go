@@ -81,8 +81,8 @@ func (self *IdentityManager) Create(entity *Identity, ctx *change.Context) error
 	return network.DispatchCreate[*Identity](self, entity, ctx)
 }
 
-func (self *IdentityManager) ApplyCreate(cmd *command.CreateEntityCommand[*Identity]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *IdentityManager) ApplyCreate(cmd *command.CreateEntityCommand[*Identity], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -108,11 +108,11 @@ func (self *IdentityManager) CreateWithEnrollments(identityModel *Identity, enro
 	return self.Dispatch(cmd)
 }
 
-func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithEnrollmentsCmd) error {
+func (self *IdentityManager) ApplyCreateWithEnrollments(cmd *CreateIdentityWithEnrollmentsCmd, ctx boltz.MutateContext) error {
 	identityModel := cmd.identity
 	enrollmentsModels := cmd.enrollments
 
-	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		boltEntity, err := identityModel.toBoltEntityForCreate(ctx.Tx(), self.env)
 		if err != nil {
 			return err
@@ -141,12 +141,12 @@ func (self *IdentityManager) Update(entity *Identity, checker fields.UpdatedFiel
 	return network.DispatchUpdate[*Identity](self, entity, checker, ctx)
 }
 
-func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity]) error {
+func (self *IdentityManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Identity], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *IdentityManager) IsUpdated(field string) bool {
@@ -415,9 +415,9 @@ func (self *IdentityManager) RemoveServiceConfigs(id string, serviceConfigs []Se
 	return self.Dispatch(cmd)
 }
 
-func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigsCmd) error {
+func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigsCmd, ctx boltz.MutateContext) error {
 	if cmd.add {
-		return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 			boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
 			if err != nil {
 				return err
@@ -426,7 +426,7 @@ func (self *IdentityManager) ApplyUpdateServiceConfigs(cmd *UpdateServiceConfigs
 		})
 	}
 
-	return self.GetDb().Update(cmd.ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		boltServiceConfigs, err := toBoltServiceConfigs(ctx.Tx(), self.env, cmd.serviceConfigs)
 		if err != nil {
 			return err
@@ -709,9 +709,8 @@ type CreateIdentityWithEnrollmentsCmd struct {
 	ctx         *change.Context
 }
 
-func (self *CreateIdentityWithEnrollmentsCmd) Apply(raftIndex uint64) error {
-	self.ctx.RaftIndex = raftIndex
-	return self.manager.ApplyCreateWithEnrollments(self)
+func (self *CreateIdentityWithEnrollmentsCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyCreateWithEnrollments(self, ctx)
 }
 
 func (self *CreateIdentityWithEnrollmentsCmd) Encode() ([]byte, error) {
@@ -754,6 +753,10 @@ func (self *CreateIdentityWithEnrollmentsCmd) Decode(env Env, msg *edge_cmd_pb.C
 	}
 
 	return nil
+}
+
+func (self *CreateIdentityWithEnrollmentsCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }
 
 type identityStatusMap struct {
@@ -815,9 +818,8 @@ type UpdateServiceConfigsCmd struct {
 	ctx            *change.Context
 }
 
-func (self *UpdateServiceConfigsCmd) Apply(raftIndex uint64) error {
-	self.ctx.RaftIndex = raftIndex
-	return self.manager.ApplyUpdateServiceConfigs(self)
+func (self *UpdateServiceConfigsCmd) Apply(ctx boltz.MutateContext) error {
+	return self.manager.ApplyUpdateServiceConfigs(self, ctx)
 }
 
 func (self *UpdateServiceConfigsCmd) Encode() ([]byte, error) {
@@ -852,4 +854,8 @@ func (self *UpdateServiceConfigsCmd) Decode(env Env, msg *edge_cmd_pb.UpdateServ
 	}
 
 	return nil
+}
+
+func (self *UpdateServiceConfigsCmd) GetChangeContext() *change.Context {
+	return self.ctx
 }

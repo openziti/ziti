@@ -66,8 +66,8 @@ func (self *EdgeServiceManager) Create(entity *Service, ctx *change.Context) err
 	return network.DispatchCreate[*Service](self, entity, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -78,8 +78,8 @@ func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFi
 	return network.DispatchUpdate[*Service](self, entity, checker, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *EdgeServiceManager) ReadByName(name string) (*Service, error) {

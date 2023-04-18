@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/ast"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -53,8 +54,8 @@ func (self *ExternalJwtSignerManager) Create(entity *ExternalJwtSigner, ctx *cha
 	return network.DispatchCreate[*ExternalJwtSigner](self, entity, ctx)
 }
 
-func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityCommand[*ExternalJwtSigner]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *ExternalJwtSignerManager) ApplyCreate(cmd *command.CreateEntityCommand[*ExternalJwtSigner], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -62,8 +63,8 @@ func (self *ExternalJwtSignerManager) Update(entity *ExternalJwtSigner, checker 
 	return network.DispatchUpdate[*ExternalJwtSigner](self, entity, checker, ctx)
 }
 
-func (self *ExternalJwtSignerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ExternalJwtSigner]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, cmd.Context)
+func (self *ExternalJwtSignerManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ExternalJwtSigner], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *ExternalJwtSignerManager) Marshall(entity *ExternalJwtSigner) ([]byte, error) {

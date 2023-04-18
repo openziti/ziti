@@ -71,8 +71,8 @@ func (self *PostureCheckManager) Create(entity *PostureCheck, ctx *change.Contex
 	return network.DispatchCreate[*PostureCheck](self, entity, ctx)
 }
 
-func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -80,12 +80,12 @@ func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.Upd
 	return network.DispatchUpdate[*PostureCheck](self, entity, checker, ctx)
 }
 
-func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck]) error {
+func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {

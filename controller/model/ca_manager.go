@@ -55,8 +55,8 @@ func (self *CaManager) Create(entity *Ca, ctx *change.Context) error {
 	return network.DispatchCreate[*Ca](self, entity, ctx)
 }
 
-func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca]) error {
-	_, err := self.createEntity(cmd.Entity, cmd.Context)
+func (self *CaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Ca], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
@@ -67,7 +67,7 @@ func (self *CaManager) Update(entity *Ca, checker fields.UpdatedFields, ctx *cha
 	return network.DispatchUpdate[*Ca](self, entity, checker, ctx)
 }
 
-func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca]) error {
+func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 
 	// isVerified should only be set by the Verified method. We remove isVerified
@@ -80,7 +80,7 @@ func (self *CaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Ca]) error 
 		}
 	}
 
-	return self.updateEntity(cmd.Entity, checker, cmd.Context)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *CaManager) Read(id string) (*Ca, error) {
