@@ -78,9 +78,22 @@ type storeInternal interface {
 
 	getLinks() map[string]LinkCollection
 	inheritMapSymbol(symbol *entityMapSymbol)
-	processDeleteConstraints(ctx MutateContext, id string) (EntityChangeFlow, error)
+	processDeleteConstraints(ctx MutateContext, id string) (entityChangeFlow, error)
 	newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
-	newEntityChangeFlow() EntityChangeFlow
+	newEntityChangeFlow() entityChangeFlow
+}
+
+type UntypedEntityChangeState interface {
+	GetEventId() string
+	GetEntityId() string
+	GetCtx() MutateContext
+	GetChangeType() EntityEventType
+	GetInitialState() Entity
+	GetFinalState() Entity
+	GetInitialParentEntity() Entity
+	GetFinalParentEntity() Entity
+	GetStore() Store
+	IsParentEvent() bool
 }
 
 type Store interface {
@@ -330,12 +343,12 @@ func NewExtEntity(id string, tags map[string]interface{}) *BaseExtEntity {
 }
 
 type BaseExtEntity struct {
-	Id        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Tags      map[string]interface{}
-	IsSystem  bool
-	Migrate   bool
+	Id        string                 `json:"id"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
+	Tags      map[string]interface{} `json:"tags"`
+	IsSystem  bool                   `json:"is_system"`
+	Migrate   bool                   `json:"-"`
 }
 
 func (entity *BaseExtEntity) GetId() string {

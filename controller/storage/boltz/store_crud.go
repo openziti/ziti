@@ -17,6 +17,7 @@
 package boltz
 
 import (
+	"github.com/google/uuid"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
@@ -147,17 +148,18 @@ func (store *BaseStore[E]) newIndexingContext(isCreate bool, ctx MutateContext, 
 	}
 }
 
-func (store *BaseStore[E]) newEntityChangeFlow() EntityChangeFlow {
+func (store *BaseStore[E]) newEntityChangeFlow() entityChangeFlow {
 	return &EntityChangeState[E]{
-		store: store,
+		EventId: uuid.NewString(),
+		store:   store,
 	}
 }
 
-func (store *BaseStore[E]) fireParentEvent(changeFlow EntityChangeFlow) error {
+func (store *BaseStore[E]) fireParentEvent(changeFlow entityChangeFlow) error {
 	if store.parent != nil {
 		parentEntityChangeFlow := store.parent.newEntityChangeFlow()
-		parentEntityChangeFlow.InitFromChild(changeFlow)
-		return parentEntityChangeFlow.FireEvents()
+		parentEntityChangeFlow.initFromChild(changeFlow)
+		return parentEntityChangeFlow.fireEvents()
 	}
 	return nil
 }
@@ -201,14 +203,15 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 	indexingContext.ProcessAfterUpdate()
 
 	changeFlow := &EntityChangeState[E]{
+		EventId:    uuid.NewString(),
 		ChangeType: EntityCreated,
-		Id:         entity.GetId(),
+		EntityId:   entity.GetId(),
 		Ctx:        ctx,
 		FinalState: entity,
 		store:      store,
 	}
 
-	if err := changeFlow.LoadFinalState(); err != nil {
+	if err := changeFlow.loadFinalState(); err != nil {
 		return err
 	}
 
@@ -216,7 +219,7 @@ func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
 		return err
 	}
 
-	if err := changeFlow.FireEvents(); err != nil {
+	if err := changeFlow.fireEvents(); err != nil {
 		return err
 	}
 
@@ -272,14 +275,15 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 	indexingContext.ProcessAfterUpdate() // add new values, using updated values in store
 
 	changeFlow := &EntityChangeState[E]{
+		EventId:      uuid.NewString(),
 		ChangeType:   EntityUpdated,
-		Id:           entity.GetId(),
+		EntityId:     entity.GetId(),
 		Ctx:          ctx,
 		InitialState: baseEntity,
 		store:        store,
 	}
 
-	if err = changeFlow.LoadFinalState(); err != nil {
+	if err = changeFlow.loadFinalState(); err != nil {
 		return err
 	}
 
@@ -287,7 +291,7 @@ func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChec
 		return err
 	}
 
-	if err = changeFlow.FireEvents(); err != nil {
+	if err = changeFlow.fireEvents(); err != nil {
 		return err
 	}
 
@@ -350,14 +354,15 @@ func (store *BaseStore[E]) cleanupLinks(tx *bbolt.Tx, id string, holder errorz.E
 	}
 }
 
-func (store *BaseStore[E]) processDeleteConstraints(ctx MutateContext, id string) (EntityChangeFlow, error) {
+func (store *BaseStore[E]) processDeleteConstraints(ctx MutateContext, id string) (entityChangeFlow, error) {
 	changeFlow := &EntityChangeState[E]{
+		EventId:    uuid.NewString(),
 		ChangeType: EntityDeleted,
-		Id:         id,
+		EntityId:   id,
 		store:      store,
 	}
 
-	found, err := changeFlow.Init(ctx)
+	found, err := changeFlow.init(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +394,8 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 		return store.entityNotFoundF(id)
 	}
 
-	var changeFlows = []EntityChangeFlow{nil}
+	hasChildren := false
+	var changeFlows = []entityChangeFlow{nil}
 	for _, handler := range store.childStoreStragies {
 		if err = handler.HandleDelete(ctx, entity); err != nil {
 			return err
@@ -398,11 +404,16 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 			return err
 		} else if changeFlow != nil {
 			changeFlows = append(changeFlows, changeFlow)
+			hasChildren = true
 		}
 	}
 
 	if changeFlows[0], err = store.impl.processDeleteConstraints(ctx, id); err != nil {
 		return err
+	}
+
+	if hasChildren {
+		changeFlows[0].MarkParentEvent()
 	}
 
 	// delete entity
@@ -417,7 +428,7 @@ func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 	}
 
 	for _, changeFlow := range changeFlows {
-		if err = changeFlow.FireEvents(); err != nil {
+		if err = changeFlow.fireEvents(); err != nil {
 			return nil
 		}
 	}
