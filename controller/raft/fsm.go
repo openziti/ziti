@@ -21,15 +21,22 @@ import (
 	"compress/gzip"
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.etcd.io/bbolt"
 	"io"
 	"os"
 	"path"
+)
+
+const (
+	bucketName = "raft"
+	fieldIndex = "index"
 )
 
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
@@ -48,20 +55,12 @@ type BoltDbFsm struct {
 	indexTracker    IndexTracker
 	eventDispatcher event.Dispatcher
 	currentState    *raft.Configuration
+	index           uint64
 }
 
 func (self *BoltDbFsm) Init() error {
 	log := pfxlog.Logger()
-	log.Info("initializing fsm")
-
-	if _, err := os.Stat(self.dbPath); err == nil {
-		backup := self.dbPath + ".previous"
-		log.Infof("moving previous db to %v", backup)
-		err := os.Rename(self.dbPath, backup)
-		if err != nil {
-			return err
-		}
-	}
+	log.WithField("dbPath", self.dbPath).Info("initializing fsm")
 
 	var err error
 	self.db, err = db.Open(self.dbPath)
@@ -69,11 +68,46 @@ func (self *BoltDbFsm) Init() error {
 		return err
 	}
 
+	index, err := self.loadCurrentIndex()
+	if err != nil {
+		return err
+	}
+	self.index = index
+	self.indexTracker.NotifyOfIndex(index)
+
 	return nil
 }
 
 func (self *BoltDbFsm) GetDb() boltz.Db {
 	return self.db
+}
+
+func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
+	var result uint64
+	err := self.db.View(func(tx *bbolt.Tx) error {
+		if raftBucket := boltz.Path(tx, db.RootBucket, bucketName); raftBucket != nil {
+			if val := raftBucket.GetInt64(fieldIndex); val != nil {
+				result = uint64(*val)
+			}
+		}
+		return nil
+	})
+	return result, err
+}
+
+func (self *BoltDbFsm) updateIndexInTx(tx *bbolt.Tx, index uint64) error {
+	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, bucketName)
+	raftBucket.SetInt64(fieldIndex, int64(index), nil)
+	return raftBucket.GetError()
+}
+
+func (self *BoltDbFsm) updateIndex(index uint64) {
+	err := self.db.Update(nil, func(ctx boltz.MutateContext) error {
+		return self.updateIndexInTx(ctx.Tx(), index)
+	})
+	if err != nil {
+		pfxlog.Logger().WithError(err).Error("unable to update raft index in database")
+	}
 }
 
 func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
@@ -101,9 +135,16 @@ func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Confi
 }
 
 func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
-	logger := pfxlog.Logger()
+	logger := pfxlog.Logger().WithField("index", log.Index)
 	if log.Type == raft.LogCommand {
 		defer self.indexTracker.NotifyOfIndex(log.Index)
+
+		if log.Index <= self.index {
+			logger.Debug("skipping replay of command")
+			return nil
+		}
+
+		self.index = log.Index
 
 		if len(log.Data) >= 4 {
 			cmd, err := self.decoders.Decode(log.Data)
@@ -112,10 +153,22 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 				return err
 			}
 
-			logger.Infof("[%v] apply log with type %T", log.Index, cmd)
+			logger.Infof("apply log with type %T", cmd)
+			changeCtx := cmd.GetChangeContext()
+			if changeCtx == nil {
+				changeCtx = change.New().SetSource("untracked")
+			}
+			changeCtx.RaftIndex = log.Index
 
-			if err = cmd.Apply(log.Index); err != nil {
+			ctx := changeCtx.NewMutateContext()
+			ctx.AddPreCommitAction(func(ctx boltz.MutateContext) error {
+				return self.updateIndexInTx(ctx.Tx(), log.Index)
+			})
+
+			if err = cmd.Apply(ctx); err != nil {
 				logger.WithError(err).Error("applying log resulted in error")
+				// if this errored, assume that we haven't updated the index in the db
+				self.updateIndex(log.Index)
 			}
 
 			return err

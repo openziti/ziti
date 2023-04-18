@@ -487,7 +487,7 @@ func (self *Controller) Init() error {
 	localAddr := raft.ServerAddress(raftConfig.AdvertiseAddress.String())
 	conf := raft.DefaultConfig()
 	conf.LocalID = raft.ServerID(self.env.GetId().Token)
-	conf.NoSnapshotRestoreOnStart = false
+	conf.NoSnapshotRestoreOnStart = true
 	raftConfig.Configure(conf)
 
 	// Create the log store and stable store.

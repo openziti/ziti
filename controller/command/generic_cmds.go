@@ -29,7 +29,7 @@ type EntityCreator[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyCreate creates the entity described by the given command
-	ApplyCreate(cmd *CreateEntityCommand[T]) error
+	ApplyCreate(cmd *CreateEntityCommand[T], ctx boltz.MutateContext) error
 }
 
 // EntityUpdater instances can apply an update entity command to update entities of a given type
@@ -37,7 +37,7 @@ type EntityUpdater[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyUpdate updates the entity described by the given command
-	ApplyUpdate(cmd *UpdateEntityCommand[T]) error
+	ApplyUpdate(cmd *UpdateEntityCommand[T], ctx boltz.MutateContext) error
 }
 
 // EntityDeleter instances can apply a delete entity command to delete entities of a given type
@@ -45,7 +45,7 @@ type EntityDeleter interface {
 	GetEntityTypeId() string
 
 	// ApplyDelete deletes the entity described by the given command
-	ApplyDelete(cmd *DeleteEntityCommand) error
+	ApplyDelete(cmd *DeleteEntityCommand, ctx boltz.MutateContext) error
 }
 
 // EntityManager instances can handle create, update and delete entities of a specific type
@@ -63,9 +63,8 @@ type CreateEntityCommand[T models.Entity] struct {
 	Flags          uint32
 }
 
-func (self *CreateEntityCommand[T]) Apply(raftIndex uint64) error {
-	self.Context.RaftIndex = raftIndex
-	return self.Creator.ApplyCreate(self)
+func (self *CreateEntityCommand[T]) Apply(ctx boltz.MutateContext) error {
+	return self.Creator.ApplyCreate(self, ctx)
 }
 
 func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
@@ -82,6 +81,10 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 	})
 }
 
+func (self *CreateEntityCommand[T]) GetChangeContext() *change.Context {
+	return self.Context
+}
+
 type UpdateEntityCommand[T models.Entity] struct {
 	Context       *change.Context
 	Updater       EntityUpdater[T]
@@ -90,9 +93,8 @@ type UpdateEntityCommand[T models.Entity] struct {
 	Flags         uint32
 }
 
-func (self *UpdateEntityCommand[T]) Apply(raftIndex uint64) error {
-	self.Context.RaftIndex = raftIndex
-	return self.Updater.ApplyUpdate(self)
+func (self *UpdateEntityCommand[T]) Apply(ctx boltz.MutateContext) error {
+	return self.Updater.ApplyUpdate(self, ctx)
 }
 
 func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
@@ -122,9 +124,12 @@ type DeleteEntityCommand struct {
 	Id      string
 }
 
-func (self *DeleteEntityCommand) Apply(raftIndex uint64) error {
-	self.Context.RaftIndex = raftIndex
-	return self.Deleter.ApplyDelete(self)
+func (self *UpdateEntityCommand[T]) GetChangeContext() *change.Context {
+	return self.Context
+}
+
+func (self *DeleteEntityCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Deleter.ApplyDelete(self, ctx)
 }
 
 func (self *DeleteEntityCommand) Encode() ([]byte, error) {
@@ -135,13 +140,17 @@ func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 	})
 }
 
+func (self *DeleteEntityCommand) GetChangeContext() *change.Context {
+	return self.Context
+}
+
 type SyncSnapshotCommand struct {
 	SnapshotId   string
 	Snapshot     []byte
 	SnapshotSink func(cmd *SyncSnapshotCommand) error
 }
 
-func (self *SyncSnapshotCommand) Apply(uint64) error {
+func (self *SyncSnapshotCommand) Apply(boltz.MutateContext) error {
 	return self.SnapshotSink(self)
 }
 
@@ -150,4 +159,8 @@ func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
 		SnapshotId: self.SnapshotId,
 		Snapshot:   self.Snapshot,
 	})
+}
+
+func (self *SyncSnapshotCommand) GetChangeContext() *change.Context {
+	return nil
 }

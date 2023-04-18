@@ -128,8 +128,8 @@ func (self *TerminatorManager) Create(entity *Terminator, ctx *change.Context) e
 	return DispatchCreate[*Terminator](self, entity, ctx)
 }
 
-func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator]) error {
-	return self.db.Update(boltz.NewMutateContext(cmd.Context.GetContext()), func(ctx boltz.MutateContext) error {
+func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
+	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		if cmd.Entity.IsSystemEntity() {
 			ctx = ctx.GetSystemContext()
 		}
@@ -155,9 +155,9 @@ func (self *TerminatorManager) DeleteBatch(ids []string, ctx *change.Context) er
 	return self.Managers.Dispatch(cmd)
 }
 
-func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand) error {
+func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand, ctx boltz.MutateContext) error {
 	var errorList errorz.MultipleErrors
-	err := self.db.Update(boltz.NewMutateContext(cmd.Context.GetContext()), func(ctx boltz.MutateContext) error {
+	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		for _, id := range cmd.Ids {
 			if self.Store.IsEntityPresent(ctx.Tx(), id) {
 				if err := self.Store.DeleteById(ctx, id); err != nil {
@@ -205,9 +205,9 @@ func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.U
 	return DispatchUpdate[*Terminator](self, entity, updatedFields, ctx)
 }
 
-func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator]) error {
+func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
 	terminator := cmd.Entity
-	return self.db.Update(cmd.Context.NewMutateContext(), func(ctx boltz.MutateContext) error {
+	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		if cmd.Entity.IsSystemEntity() {
 			ctx = ctx.GetSystemContext()
 		}
@@ -365,9 +365,8 @@ type DeleteTerminatorsBatchCommand struct {
 	Ids     []string
 }
 
-func (self *DeleteTerminatorsBatchCommand) Apply(raftIndex uint64) error {
-	self.Context.RaftIndex = raftIndex
-	return self.Manager.ApplyDeleteBatch(self)
+func (self *DeleteTerminatorsBatchCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Manager.ApplyDeleteBatch(self, ctx)
 }
 
 func (self *DeleteTerminatorsBatchCommand) Encode() ([]byte, error) {
@@ -380,4 +379,8 @@ func (self *DeleteTerminatorsBatchCommand) Decode(n *Network, msg *cmd_pb.Delete
 	self.Manager = n.Terminators
 	self.Ids = msg.EntityIds
 	return nil
+}
+
+func (self *DeleteTerminatorsBatchCommand) GetChangeContext() *change.Context {
+	return self.Context
 }

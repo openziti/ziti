@@ -19,7 +19,9 @@ package command
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/foundation/v2/debugz"
+	"github.com/openziti/storage/boltz"
 	"github.com/sirupsen/logrus"
 	"reflect"
 )
@@ -28,7 +30,10 @@ import (
 // so they can be shipped from one controller for RAFT coordination
 type Command interface {
 	// Apply runs the commands
-	Apply(raftIndex uint64) error
+	Apply(ctx boltz.MutateContext) error
+
+	// GetChangeContext returns the change context associated with the command
+	GetChangeContext() *change.Context
 
 	// Encode returns a serialized representation of the command
 	Encode() ([]byte, error)
@@ -82,10 +87,10 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		return cmd.Apply(0)
+		return cmd.Apply(change.New().NewMutateContext())
 	}
 
-	return command.Apply(0)
+	return command.Apply(change.New().NewMutateContext())
 }
 
 // Decoder instances know how to decode encoded commands

@@ -256,6 +256,9 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	bindHandler := channel.BindHandlerF(func(binding channel.Binding) error {
+		if self.bindHandler == nil {
+			return errors.New("bindHandler not initialized, cannot initialize new channels")
+		}
 		if err := self.bindHandler.BindChannel(binding); err != nil {
 			return err
 		}

@@ -221,8 +221,7 @@ func (self *baseEntityManager[ME, PE]) Delete(id string, ctx *change.Context) er
 	return self.Managers.Dispatch(cmd)
 }
 
-func (self *baseEntityManager[ME, PE]) ApplyDelete(cmd *command.DeleteEntityCommand) error {
-	ctx := boltz.NewMutateContext(cmd.Context.GetContext())
+func (self *baseEntityManager[ME, PE]) ApplyDelete(cmd *command.DeleteEntityCommand, ctx boltz.MutateContext) error {
 	return self.db.Update(ctx, func(mutateCtx boltz.MutateContext) error {
 		return self.Store.DeleteById(ctx, cmd.Id)
 	})

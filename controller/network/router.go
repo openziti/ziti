@@ -169,9 +169,9 @@ func (self *RouterManager) Create(entity *Router, ctx *change.Context) error {
 	return DispatchCreate[*Router](self, entity, ctx)
 }
 
-func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]) error {
+func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router], ctx boltz.MutateContext) error {
 	router := cmd.Entity
-	err := self.db.Update(boltz.NewMutateContext(cmd.Context.GetContext()), func(ctx boltz.MutateContext) error {
+	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		return self.store.Create(ctx, router.toBolt())
 	})
 	if err != nil {
@@ -234,8 +234,8 @@ func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFi
 	return DispatchUpdate[*Router](self, entity, updatedFields, ctx)
 }
 
-func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]) error {
-	return self.updateGeneral(boltz.NewMutateContext(cmd.Context.GetContext()), cmd.Entity, cmd.UpdatedFields)
+func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router], ctx boltz.MutateContext) error {
+	return self.updateGeneral(ctx, cmd.Entity, cmd.UpdatedFields)
 }
 
 func (self *RouterManager) HandleRouterDelete(id string) {
