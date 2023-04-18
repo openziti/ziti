@@ -2,6 +2,8 @@
 
 ## What's New
 
+* github.com/openziti/ziti: [v0.27.9 -> v0.27.10](https://github.com/openziti/ziti/compare/v0.27.9...v0.27.10)
+  * [Issue #1013](https://github.com/openziti/ziti/issues/1013) - Stop regenerating a new password with each container 'down/up' cycle
 * Added AMQP event writter for events
 
 # Release 0.27.9
