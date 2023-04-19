@@ -7,8 +7,11 @@ export ZITI_EDGE_CONTROLLER_RAWNAME=ziti-edge-controller
 
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
-generateEnvFile
-. ${ZITI_HOME}/ziti.env
+# access-control.init is created by ziti-controller-init-container after initial controller startup
+if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
+  generateEnvFile
+fi
+. "${ZITI_HOME}/ziti.env"
 
 # create pki
 createPki
