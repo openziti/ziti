@@ -72,42 +72,42 @@ func newIdentity(name string, identityTypeId string, roleAttributes ...string) *
 }
 
 type EnvInfo struct {
-	Arch      string
-	Os        string
-	OsRelease string
-	OsVersion string
+	Arch      string `json:"arch"`
+	Os        string `json:"os"`
+	OsRelease string `json:"osRelease"`
+	OsVersion string `json:"osVersion"`
 }
 
 type SdkInfo struct {
-	Branch     string
-	Revision   string
-	Type       string
-	Version    string
-	AppId      string
-	AppVersion string
+	Branch     string `json:"branch"`
+	Revision   string `json:"revision"`
+	Type       string `json:"type"`
+	Version    string `json:"version"`
+	AppId      string `json:"appId"`
+	AppVersion string `json:"appVersion"`
 }
 
 type Identity struct {
 	boltz.BaseExtEntity
-	Name                      string
-	IdentityTypeId            string
-	IsDefaultAdmin            bool
-	IsAdmin                   bool
-	Enrollments               []string
-	Authenticators            []string
-	RoleAttributes            []string
-	SdkInfo                   *SdkInfo
-	EnvInfo                   *EnvInfo
-	DefaultHostingPrecedence  ziti.Precedence
-	DefaultHostingCost        uint16
-	ServiceHostingPrecedences map[string]ziti.Precedence
-	ServiceHostingCosts       map[string]uint16
-	AppData                   map[string]interface{}
-	AuthPolicyId              string
-	ExternalId                *string
-	DisabledAt                *time.Time
-	DisabledUntil             *time.Time
-	Disabled                  bool
+	Name                      string                     `json:"name"`
+	IdentityTypeId            string                     `json:"identityTypeId"`
+	IsDefaultAdmin            bool                       `json:"isDefaultAdmin"`
+	IsAdmin                   bool                       `json:"isAdmin"`
+	Enrollments               []string                   `json:"enrollments"`
+	Authenticators            []string                   `json:"authenticators"`
+	RoleAttributes            []string                   `json:"roleAttributes"`
+	SdkInfo                   *SdkInfo                   `json:"sdkInfo"`
+	EnvInfo                   *EnvInfo                   `json:"envInfo"`
+	DefaultHostingPrecedence  ziti.Precedence            `json:"defaultHostingPrecedence"`
+	DefaultHostingCost        uint16                     `json:"defaultHostingCost"`
+	ServiceHostingPrecedences map[string]ziti.Precedence `json:"serviceHostingPrecedences"`
+	ServiceHostingCosts       map[string]uint16          `json:"serviceHostingCosts"`
+	AppData                   map[string]interface{}     `json:"appData"`
+	AuthPolicyId              string                     `json:"authPolicyId"`
+	ExternalId                *string                    `json:"externalId"`
+	DisabledAt                *time.Time                 `json:"disabledAt"`
+	DisabledUntil             *time.Time                 `json:"disabledUntil"`
+	Disabled                  bool                       `json:"disabled"`
 }
 
 func (entity *Identity) GetEntityType() string {

@@ -33,9 +33,9 @@ const (
 
 type EdgeService struct {
 	db.Service
-	RoleAttributes     []string
-	Configs            []string
-	EncryptionRequired bool
+	RoleAttributes     []string `json:"roleAttributes"`
+	Configs            []string `json:"configs"`
+	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
 func newEdgeService(name string, roleAttributes ...string) *EdgeService {

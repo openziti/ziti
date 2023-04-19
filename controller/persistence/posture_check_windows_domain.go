@@ -25,7 +25,7 @@ const (
 )
 
 type PostureCheckWindowsDomains struct {
-	Domains []string
+	Domains []string `json:"domains"`
 }
 
 func newPostureCheckWindowsDomain() PostureCheckSubType {

@@ -170,7 +170,7 @@ func (ctx *TestContext) requireNewIdentity(isAdmin bool) *Identity {
 		IsAdmin:        isAdmin,
 		IdentityTypeId: identityType.Id,
 	}
-	ctx.NoError(ctx.managers.Identity.Create(identity, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.Identity.Create(identity, change.New()))
 	return identity
 }
 
@@ -178,7 +178,7 @@ func (ctx *TestContext) requireNewService() *Service {
 	service := &Service{
 		Name: eid.New(),
 	}
-	ctx.NoError(ctx.managers.EdgeService.Create(service, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.EdgeService.Create(service, change.New()))
 	return service
 }
 
@@ -186,7 +186,7 @@ func (ctx *TestContext) requireNewEdgeRouter() *EdgeRouter {
 	edgeRouter := &EdgeRouter{
 		Name: eid.New(),
 	}
-	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.EdgeRouter.Create(edgeRouter, change.New()))
 	return edgeRouter
 }
 
@@ -210,7 +210,7 @@ func (ctx *TestContext) requireNewSession(apiSession *ApiSession, serviceId stri
 		ServiceId:    serviceId,
 		Type:         sessionType,
 	}
-	_, err := ctx.managers.Session.Create(entity, change.New().SetSource("test"))
+	_, err := ctx.managers.Session.Create(entity, change.New())
 	ctx.NoError(err)
 	return entity
 }
@@ -223,7 +223,7 @@ func (ctx *TestContext) requireNewServicePolicy(policyType string, identityRoles
 		ServiceRoles:  serviceRoles,
 		PolicyType:    policyType,
 	}
-	ctx.NoError(ctx.managers.ServicePolicy.Create(policy, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.ServicePolicy.Create(policy, change.New()))
 	return policy
 }
 
@@ -234,7 +234,7 @@ func (ctx *TestContext) requireNewEdgeRouterPolicy(identityRoles, edgeRouterRole
 		IdentityRoles:   identityRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.managers.EdgeRouterPolicy.Create(policy, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.EdgeRouterPolicy.Create(policy, change.New()))
 	return policy
 }
 
@@ -245,7 +245,7 @@ func (ctx *TestContext) requireNewServiceNewEdgeRouterPolicy(serviceRoles, edgeR
 		ServiceRoles:    serviceRoles,
 		EdgeRouterRoles: edgeRouterRoles,
 	}
-	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Create(policy, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Create(policy, change.New()))
 	return policy
 }
 

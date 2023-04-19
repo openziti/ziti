@@ -52,12 +52,12 @@ type AuthenticatorSubType interface {
 }
 
 type AuthenticatorCert struct {
-	Authenticator
-	Fingerprint string
-	Pem         string
+	Authenticator `json:"-"`
+	Fingerprint   string `json:"fingerprint"`
+	Pem           string `json:"pem"`
 
-	UnverifiedPem         string
-	UnverifiedFingerprint string
+	UnverifiedPem         string `json:"unverifiedPem"`
+	UnverifiedFingerprint string `json:"unverifiedFingerprint"`
 }
 
 func (entity *AuthenticatorCert) Fingerprints() []string {
@@ -65,10 +65,10 @@ func (entity *AuthenticatorCert) Fingerprints() []string {
 }
 
 type AuthenticatorUpdb struct {
-	Authenticator
-	Username string
-	Password string
-	Salt     string
+	Authenticator `json:"-"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	Salt          string `json:"salt"`
 }
 
 func (entity *AuthenticatorUpdb) Fingerprints() []string {
@@ -77,9 +77,9 @@ func (entity *AuthenticatorUpdb) Fingerprints() []string {
 
 type Authenticator struct {
 	boltz.BaseExtEntity
-	Type       string
-	IdentityId string
-	SubType    AuthenticatorSubType
+	Type       string               `json:"type"`
+	IdentityId string               `json:"identityId"`
+	SubType    AuthenticatorSubType `json:"subType"`
 }
 
 func (entity *Authenticator) GetEntityType() string {

@@ -348,7 +348,7 @@ func (a *EventualEventerBbolt) AddEventualEventWithCtx(ctx boltz.MutateContext, 
 
 	var err error
 	if ctx == nil {
-		ctx = change.New().SetSource("eventual.eventer").SetChangeAuthorType("controller").NewMutateContext()
+		ctx = change.New().SetSourceType("eventual.eventer").SetChangeAuthorType(change.AuthorTypeController).NewMutateContext()
 		err = a.dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 			return a.store.Create(ctx, event)
 		})
@@ -438,7 +438,7 @@ func (a *EventualEventerBbolt) Trigger() (<-chan struct{}, error) {
 
 // deleteEventualEvent removes an eventual event by id from the bbolt backend store.
 func (a *EventualEventerBbolt) deleteEventualEvent(id string) error {
-	ctx := change.New().SetSource("eventual.eventer").SetChangeAuthorType("controller").NewMutateContext()
+	ctx := change.New().SetSourceType("eventual.eventer").SetChangeAuthorType(change.AuthorTypeController).NewMutateContext()
 	err := a.dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		return a.store.DeleteById(ctx, id)
 	})

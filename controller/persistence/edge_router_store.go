@@ -49,13 +49,13 @@ func newEdgeRouter(name string, roleAttributes ...string) *EdgeRouter {
 
 type EdgeRouter struct {
 	db.Router
-	IsVerified            bool
-	CertPem               *string
-	UnverifiedCertPem     *string
-	UnverifiedFingerprint *string
-	RoleAttributes        []string
-	IsTunnelerEnabled     bool
-	AppData               map[string]interface{}
+	IsVerified            bool                   `json:"isVerified"`
+	CertPem               *string                `json:"certPem"`
+	UnverifiedCertPem     *string                `json:"unverifiedCertPem"`
+	UnverifiedFingerprint *string                `json:"unverifiedFingerprint"`
+	RoleAttributes        []string               `json:"roleAttributes"`
+	IsTunnelerEnabled     bool                   `json:"isTunnelerEnabled"`
+	AppData               map[string]interface{} `json:"appData"`
 }
 
 func (entity *EdgeRouter) GetName() string {

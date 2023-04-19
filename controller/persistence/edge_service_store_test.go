@@ -215,7 +215,7 @@ func (ctx *TestContext) testUpdateServices(_ *testing.T) {
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	mutateCtx := change.New().NewMutateContext()
 	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
 		original, err := ctx.stores.EdgeService.LoadOneById(tx, entities.service1.Id)

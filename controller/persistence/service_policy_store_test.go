@@ -6,8 +6,10 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
 	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
+	"math/rand"
 	"sort"
 	"testing"
 )
@@ -21,6 +23,20 @@ func Test_ServicePolicyStore(t *testing.T) {
 	t.Run("test create/update service policies with invalid entity refs", ctx.testServicePolicyInvalidValues)
 	t.Run("test service policy evaluation", ctx.testServicePolicyRoleEvaluation)
 	t.Run("test update/delete referenced entities", ctx.testServicePolicyUpdateDeleteRefs)
+}
+
+func newServicePolicy(name string) *ServicePolicy {
+	policyType := PolicyTypeDial
+	/* #nosec */
+	if rand.Int()%2 == 0 {
+		policyType = PolicyTypeBind
+	}
+	return &ServicePolicy{
+		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
+		Name:          name,
+		PolicyType:    policyType,
+		Semantic:      SemanticAllOf,
+	}
 }
 
 func (ctx *TestContext) testCreateServicePolicy(_ *testing.T) {

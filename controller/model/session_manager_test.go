@@ -24,7 +24,7 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	service := ctx.requireNewService()
 	service2 := ctx.requireNewService()
 	service.RoleAttributes = []string{eid.New()}
-	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New()))
 
 	ctx.requireNewServicePolicy(persistence.PolicyTypeDialName, ss("#all"), ss("#all"))
 	ctx.requireNewServicePolicy(persistence.PolicyTypeBindName, ss("#all"), ss("#all"))
@@ -69,7 +69,7 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	req.Equal(sessSvc1Dial.Id, sessSvc1Dial3.Id)
 	req.Equal(sessSvc1Bind.Id, sessSvc1Bind3.Id)
 
-	req.NoError(ctx.managers.ApiSession.Delete(apiSession.Id, change.New().SetSource("test")))
+	req.NoError(ctx.managers.ApiSession.Delete(apiSession.Id, change.New()))
 	done, err := ctx.GetStores().EventualEventer.Trigger()
 	ctx.NoError(err)
 

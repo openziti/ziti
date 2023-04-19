@@ -133,6 +133,14 @@ func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return stores.storeMap[reflect.TypeOf(entity)]
 }
 
+func (stores *Stores) GetStores() []boltz.Store {
+	var result []boltz.Store
+	for _, store := range stores.storeMap {
+		result = append(result, store)
+	}
+	return result
+}
+
 type stores struct {
 	DbProvider      DbProvider
 	EventualEventer EventualEventer
@@ -255,7 +263,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 	externalStores.buildStoreMap()
 	storeList := externalStores.getStoresForInit()
 
-	mutateCtx := change.New().SetSource("system.initialization").SetChangeAuthorType("controller").NewMutateContext()
+	mutateCtx := change.New().SetSourceType("system.initialization").SetChangeAuthorType(change.AuthorTypeController).NewMutateContext()
 	err := dbProvider.GetDb().Update(mutateCtx, func(ctx boltz.MutateContext) error {
 		for _, store := range storeList {
 			store.initializeLocal()

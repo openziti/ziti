@@ -26,8 +26,8 @@ const (
 
 type PostureCheckType struct {
 	boltz.BaseExtEntity
-	Name             string
-	OperatingSystems []OperatingSystem
+	Name             string            `json:"name"`
+	OperatingSystems []OperatingSystem `json:"operatingSystems"`
 }
 
 func (entity *PostureCheckType) GetName() string {

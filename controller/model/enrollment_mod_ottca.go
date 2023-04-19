@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -63,6 +64,11 @@ func (module *EnrollModuleOttCa) Process(ctx EnrollmentContext) (*EnrollmentResu
 	if identity == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
+
+	ctx.GetChangeContext().
+		SetChangeAuthorType(change.AuthorTypeIdentity).
+		SetChangeAuthorId(identity.Id).
+		SetChangeAuthorName(identity.Name)
 
 	if enrollment.CaId == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()

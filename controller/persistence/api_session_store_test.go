@@ -175,7 +175,7 @@ func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
 	entities := ctx.createApiSessionTestEntities()
 	earlier := time.Now()
 
-	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	mutateCtx := change.New().NewMutateContext()
 	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
 		original, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)

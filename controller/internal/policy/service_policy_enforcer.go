@@ -102,7 +102,7 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 		}
 	}
 
-	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
+	ctx := change.New().SetSourceType("service-policy.enforcer").SetChangeAuthorType(change.AuthorTypeController)
 	for _, sessionId := range sessionsToDelete {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 		log.Debugf("session %v deleted", sessionId)
@@ -152,7 +152,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 			if session.Type == persistence.SessionTypeBind {
 				policyType = persistence.PolicyTypeBind
 			}
-			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, int32(policyType), session.ServiceId)
+			query := fmt.Sprintf(`id = "%v" and not isEmpty(from servicePolicies where type = %v and anyOf(services) = "%v")`, identity.Id, policyType.Id(), session.ServiceId)
 			_, count, err := enforcer.appEnv.GetStores().Identity.QueryIds(tx, query)
 			if err != nil {
 				return err
@@ -168,7 +168,7 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		return err
 	}
 
-	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
+	ctx := change.New().SetSourceType("service-policy.enforcer").SetChangeAuthorType(change.AuthorTypeController)
 	for _, sessionId := range sessionsToRemove {
 		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 	}

@@ -47,20 +47,20 @@ const (
 
 type ExternalJwtSigner struct {
 	boltz.BaseExtEntity
-	Name            string
-	Fingerprint     *string
-	Kid             *string
-	CertPem         *string
-	JwksEndpoint    *string
-	CommonName      string
-	NotAfter        *time.Time
-	NotBefore       *time.Time
-	Enabled         bool
-	ExternalAuthUrl *string
-	ClaimsProperty  *string
-	UseExternalId   bool
-	Issuer          *string
-	Audience        *string
+	Name            string     `json:"name"`
+	Fingerprint     *string    `json:"fingerprint"`
+	Kid             *string    `json:"kid"`
+	CertPem         *string    `json:"certPem"`
+	JwksEndpoint    *string    `json:"jwksEndpoint"`
+	CommonName      string     `json:"commonName"`
+	NotAfter        *time.Time `json:"notAfter"`
+	NotBefore       *time.Time `json:"notBefore"`
+	Enabled         bool       `json:"enabled"`
+	ExternalAuthUrl *string    `json:"externalAuthUrl"`
+	ClaimsProperty  *string    `json:"claimsProperty"`
+	UseExternalId   bool       `json:"useExternalId"`
+	Issuer          *string    `json:"issuer"`
+	Audience        *string    `json:"audience"`
 }
 
 func (entity *ExternalJwtSigner) GetName() string {

@@ -21,10 +21,10 @@ func newServiceEdgeRouterPolicy(name string) *ServiceEdgeRouterPolicy {
 
 type ServiceEdgeRouterPolicy struct {
 	boltz.BaseExtEntity
-	Name            string
-	Semantic        string
-	ServiceRoles    []string
-	EdgeRouterRoles []string
+	Name            string   `json:"name"`
+	Semantic        string   `json:"semantic"`
+	ServiceRoles    []string `json:"serviceRoles"`
+	EdgeRouterRoles []string `json:"edgeRouterRoles"`
 }
 
 func (entity *ServiceEdgeRouterPolicy) GetName() string {

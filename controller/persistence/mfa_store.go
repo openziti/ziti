@@ -32,11 +32,11 @@ const (
 
 type Mfa struct {
 	boltz.BaseExtEntity
-	IdentityId    string
-	IsVerified    bool
-	Secret        string
-	Salt          string
-	RecoveryCodes []string
+	IdentityId    string   `json:"identityId"`
+	IsVerified    bool     `json:"isVerified"`
+	Secret        string   `json:"secret"`
+	Salt          string   `json:"salt"`
+	RecoveryCodes []string `json:"recoveryCodes"`
 }
 
 func NewMfa(identityId string) *Mfa {

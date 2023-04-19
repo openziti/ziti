@@ -118,7 +118,7 @@ func (store *baseStore[E]) updateServicePolicyRelatedRoles(ctx *roleAttributeCha
 		}
 		policyType := PolicyTypeDial
 		if fieldType, policyTypeValue := policyTypeSymbol.Eval(ctx.tx, policyId); fieldType == boltz.TypeInt32 {
-			policyType = PolicyType(*boltz.BytesToInt32(policyTypeValue))
+			policyType = GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
 		}
 		if policyType == PolicyTypeDial {
 			if isServices {

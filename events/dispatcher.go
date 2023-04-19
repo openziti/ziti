@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/foundation/v2/concurrenz"
+	"github.com/openziti/storage/boltz"
 	"io"
 )
 
@@ -71,4 +72,15 @@ func (self *Dispatcher) InitializeEvents() {
 	self.initSessionEvents(self.stores)
 	self.initEntityEvents()
 
+	fabricStores := map[boltz.Store]struct{}{}
+
+	for _, store := range self.network.GetStores().GetStoreList() {
+		fabricStores[store] = struct{}{}
+	}
+
+	for _, store := range self.stores.GetStores() {
+		if _, found := fabricStores[store]; !found {
+			self.fabricDispatcher.AddEntityChangeSource(store)
+		}
+	}
 }

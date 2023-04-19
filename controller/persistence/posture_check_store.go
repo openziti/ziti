@@ -66,11 +66,11 @@ func newPostureCheck(typeId string) PostureCheckSubType {
 
 type PostureCheck struct {
 	boltz.BaseExtEntity
-	Name           string
-	TypeId         string
-	Version        int64
-	RoleAttributes []string
-	SubType        PostureCheckSubType
+	Name           string              `json:"name"`
+	TypeId         string              `json:"typeId"`
+	Version        int64               `json:"version"`
+	RoleAttributes []string            `json:"roleAttributes"`
+	SubType        PostureCheckSubType `json:"subType"`
 }
 
 func (entity *PostureCheck) GetName() string {

@@ -27,12 +27,12 @@ const (
 )
 
 type PostureCheckOperatingSystem struct {
-	OperatingSystems []OperatingSystem
+	OperatingSystems []OperatingSystem `json:"operatingSystems"`
 }
 
 type OperatingSystem struct {
-	OsType     string
-	OsVersions []string
+	OsType     string   `json:"osType"`
+	OsVersions []string `json:"osVersions"`
 }
 
 func newPostureCheckOperatingSystem() PostureCheckSubType {

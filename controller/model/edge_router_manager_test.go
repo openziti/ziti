@@ -21,7 +21,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	identity := ctx.requireNewIdentity(false)
 	service := ctx.requireNewService()
 	service.RoleAttributes = []string{eid.New()}
-	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New()))
 
 	ctx.requireNewEdgeRouterPolicy(ss("#all"), ss("#all"))
 
@@ -38,7 +38,7 @@ func (ctx *TestContext) testGetEdgeRoutersForServiceAndIdentity(*testing.T) {
 	ctx.False(ctx.managers.EdgeRouter.IsSharedEdgeRouterPresent(identity.Id, service.Id))
 
 	serp.EdgeRouterRoles = []string{"@" + edgeRouter.Id}
-	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Update(serp, nil, change.New().SetSource("test")))
+	ctx.NoError(ctx.managers.ServiceEdgeRouterPolicy.Update(serp, nil, change.New()))
 
 	// should be accessible if we limit to our specific router
 	ctx.True(ctx.isEdgeRouterAccessible(edgeRouter.Id, identity.Id, service.Id))

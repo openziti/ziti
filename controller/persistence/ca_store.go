@@ -56,26 +56,26 @@ const (
 
 type Ca struct {
 	boltz.BaseExtEntity
-	Name                      string
-	Fingerprint               string
-	CertPem                   string
-	IsVerified                bool
-	VerificationToken         string
-	IsAutoCaEnrollmentEnabled bool
-	IsOttCaEnrollmentEnabled  bool
-	IsAuthEnabled             bool
-	IdentityRoles             []string
-	IdentityNameFormat        string
-	ExternalIdClaim           *ExternalIdClaim
+	Name                      string           `json:"name"`
+	Fingerprint               string           `json:"fingerprint"`
+	CertPem                   string           `json:"certPem"`
+	IsVerified                bool             `json:"isVerified"`
+	VerificationToken         string           `json:"verificationToken"`
+	IsAutoCaEnrollmentEnabled bool             `json:"isAutoCaEnrollmentEnabled"`
+	IsOttCaEnrollmentEnabled  bool             `json:"isOttCaEnrollmentEnabled"`
+	IsAuthEnabled             bool             `json:"isAuthEnabled"`
+	IdentityRoles             []string         `json:"identityRoles"`
+	IdentityNameFormat        string           `json:"identityNameFormat"`
+	ExternalIdClaim           *ExternalIdClaim `json:"externalIdClaim"`
 }
 
 type ExternalIdClaim struct {
-	Location        string
-	Matcher         string
-	MatcherCriteria string
-	Parser          string
-	ParserCriteria  string
-	Index           int64
+	Location        string `json:"location"`
+	Matcher         string `json:"matcher"`
+	MatcherCriteria string `json:"matcherCriteria"`
+	Parser          string `json:"parser"`
+	ParserCriteria  string `json:"parserCriteria"`
+	Index           int64  `json:"index"`
 }
 
 func (entity *Ca) GetName() string {

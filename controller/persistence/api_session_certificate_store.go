@@ -33,12 +33,12 @@ const (
 
 type ApiSessionCertificate struct {
 	boltz.BaseExtEntity
-	ApiSessionId string
-	Subject      string
-	Fingerprint  string
-	ValidAfter   *time.Time
-	ValidBefore  *time.Time
-	PEM          string
+	ApiSessionId string     `json:"apiSessionId"`
+	Subject      string     `json:"subject"`
+	Fingerprint  string     `json:"fingerprint"`
+	ValidAfter   *time.Time `json:"validAfter"`
+	ValidBefore  *time.Time `json:"validBefore"`
+	PEM          string     `json:"pem"`
 }
 
 func (entity *ApiSessionCertificate) GetEntityType() string {

@@ -28,10 +28,10 @@ const (
 )
 
 type PostureCheckMfa struct {
-	TimeoutSeconds        int64
-	PromptOnWake          bool
-	PromptOnUnlock        bool
-	IgnoreLegacyEndpoints bool
+	TimeoutSeconds        int64 `json:"timeoutSeconds"`
+	PromptOnWake          bool  `json:"promptOnWake"`
+	PromptOnUnlock        bool  `json:"promptOnUnlock"`
+	IgnoreLegacyEndpoints bool  `json:"ignoreLegacyEndpoints"`
 }
 
 func newPostureCheckMfa() PostureCheckSubType {

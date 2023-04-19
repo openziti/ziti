@@ -43,16 +43,16 @@ const (
 
 type Enrollment struct {
 	boltz.BaseExtEntity
-	Token           string
-	Method          string
-	IdentityId      *string
-	TransitRouterId *string
-	EdgeRouterId    *string
-	ExpiresAt       *time.Time
-	IssuedAt        *time.Time
-	CaId            *string
-	Username        *string
-	Jwt             string
+	Token           string     `json:"token"`
+	Method          string     `json:"method"`
+	IdentityId      *string    `json:"identityId"`
+	TransitRouterId *string    `json:"transitRouterId"`
+	EdgeRouterId    *string    `json:"edgeRouterId"`
+	ExpiresAt       *time.Time `json:"expiresAt"`
+	IssuedAt        *time.Time `json:"issuedAt"`
+	CaId            *string    `json:"caId"`
+	Username        *string    `json:"username"`
+	Jwt             string     `json:"jwt"`
 }
 
 func (entity *Enrollment) GetEntityType() string {

@@ -18,7 +18,6 @@ package response
 
 import (
 	"errors"
-	"fmt"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/fabric/controller/change"
 	"net/http"
@@ -96,11 +95,18 @@ func (rc *RequestContext) GetEntitySubId() (string, error) {
 }
 
 func (rc *RequestContext) NewChangeContext() *change.Context {
-	src := fmt.Sprintf("rest[auth=edge/host=%v/method=%v/remote=%v]", rc.GetRequest().Host, rc.GetRequest().Method, rc.GetRequest().RemoteAddr)
-	changeCtx := change.New().SetSource(src)
+	changeCtx := change.New().SetSourceType(change.SourceTypeRest).
+		SetSourceAuth("edge").
+		SetSourceMethod(rc.GetRequest().Method).
+		SetSourceLocal(rc.GetRequest().Host).
+		SetSourceRemote(rc.GetRequest().RemoteAddr)
 
 	if rc.Identity != nil {
-		changeCtx.SetChangeAuthorId(rc.Identity.Id).SetChangeAuthorName(rc.Identity.Name)
+		changeCtx.SetChangeAuthorType(change.AuthorTypeIdentity).
+			SetChangeAuthorId(rc.Identity.Id).
+			SetChangeAuthorName(rc.Identity.Name)
+	} else {
+		changeCtx.SetChangeAuthorType(change.AuthorTypeUnattributed)
 	}
 
 	if rc.Request.Form.Has("traceId") {

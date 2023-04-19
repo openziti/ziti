@@ -209,7 +209,7 @@ func (self *PostureResponseManager) postureDataUpdated(env Env, identityId strin
 
 	for _, sessionId := range sessionIdsToDelete {
 		//todo: delete batch?
-		_ = self.env.GetManagers().Session.Delete(sessionId, change.New().SetSource("posture.cache").SetChangeAuthorType("controller"))
+		_ = self.env.GetManagers().Session.Delete(sessionId, change.New().SetSourceType("posture.cache").SetChangeAuthorType(change.AuthorTypeController))
 	}
 }
 
