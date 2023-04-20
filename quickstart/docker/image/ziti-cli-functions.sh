@@ -964,7 +964,7 @@ function expressInstall {
   _issue_preamble
 
   # This is redundant but better to check here to prevent going any further
-  _check_prereq curl jq
+  _check_prereq curl jq tar hostname
   retVal=$?
   if [ $retVal -ne 0 ]; then
     return 1

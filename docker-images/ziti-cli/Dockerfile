@@ -28,7 +28,7 @@ LABEL name="openziti/ziti-cli" \
 USER root
 
 ### install packages
-RUN   INSTALL_PKGS="python38 python38-pip tar" && \
+RUN   INSTALL_PKGS="python38 python38-pip tar bash-completion" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
@@ -40,7 +40,7 @@ RUN   INSTALL_PKGS="python38 python38-pip tar" && \
 COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
 
 ### add license in the path prescribed by OpenShift
-RUN mkdir -m0755 /licenses
+RUN mkdir -p -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
 RUN mkdir -p /usr/local/bin

@@ -7,12 +7,6 @@ identity:
   key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/keys/{{ .Component.PublicIdentity }}-server.key
   ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/ctrl/certs/{{ .Component.PublicIdentity }}-server.chain.pem
 
-profile:
-#   cpu:
-#       path: /home/plorenz/tmp/ctrl.cpu.pprof
-#  memory:
-#    path: ctrl.memprof
-
 # the endpoint that routers will connect to the controller over.
 ctrl:
   listener: tls:0.0.0.0:6262
@@ -35,17 +29,6 @@ ctrl:
     # address. If defined, routers will update address configuration to immediately use the new address for future
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
-
-  #metrics:
-  #file:
-  #path: /tmp/ziti-controller-metrics.log
-  #maxsizemb: 100:wq
-  # Supported formats: json, plain
-  # Defaults to json
-  #format: plain
-  #influxdb:
-  #url:                http://localhost:8086
-  #database:           ziti
 
 #events:
 #  jsonLogger:

@@ -41,6 +41,7 @@ type updateIdentityOptions struct {
 	servicePrecedences       map[string]string
 	appData                  map[string]string
 	externalId               string
+	authPolicyIdOrName       string
 }
 
 func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
@@ -66,7 +67,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	// allow interspersing positional args and flags
 	cmd.Flags().SetInterspersed(true)
 	cmd.Flags().StringVarP(&options.name, "name", "n", "", "Set the name of the identity")
-	cmd.Flags().StringVar(&options.externalId, "external-id", "", "an external id to give to the identity")
+	cmd.Flags().StringVarP(&options.externalId, "external-id", "x", "", "an external id to give to the identity")
 	cmd.Flags().StringSliceVarP(&options.roleAttributes, "role-attributes", "a", nil,
 		"Set role attributes of the identity. Use --role-attributes '' to set an empty list")
 	cmd.Flags().StringVarP(&options.defaultHostingPrecedence, "default-hosting-precedence", "p", "", "Default precedence to use when hosting services using this identity [default,required,failed]")
@@ -74,6 +75,7 @@ func newUpdateIdentityCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringToIntVar(&options.serviceCosts, "service-costs", map[string]int{}, "Per-service hosting costs")
 	cmd.Flags().StringToStringVar(&options.servicePrecedences, "service-precedences", map[string]string{}, "Per-service hosting precedences")
 	cmd.Flags().StringToStringVar(&options.appData, "app-data", nil, "Custom application data")
+	cmd.Flags().StringVarP(&options.authPolicyIdOrName, "auth-policy", "P", "", "The auth policy id or name to assign to the identity")
 
 	return cmd
 }
@@ -113,6 +115,19 @@ func runUpdateIdentity(o *updateIdentityOptions) error {
 			return err
 		}
 		api.SetJSONValue(entityData, prec, "defaultHostingPrecedence")
+		change = true
+	}
+
+	if o.Cmd.Flags().Changed("auth-policy") {
+		authPolicyId, err := mapNameToID("auth-policies", o.authPolicyIdOrName, o.Options)
+		if err != nil {
+			return fmt.Errorf("could not fetch auth policy by name or id: %w", err)
+		}
+
+		if authPolicyId == "" {
+			return fmt.Errorf("authentication policy id or name '%s' is not found", o.authPolicyIdOrName)
+		}
+		api.SetJSONValue(entityData, authPolicyId, "authPolicyId")
 		change = true
 	}
 

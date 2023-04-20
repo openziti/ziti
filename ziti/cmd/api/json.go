@@ -49,6 +49,17 @@ func GetJsonString(container *gabs.Container, path string) string {
 	return ""
 }
 
+func GetJsonBool(container *gabs.Container, path string) bool {
+	v := GetJsonValue(container, path)
+	if v == nil {
+		return false
+	}
+	if b, ok := v.(bool); ok {
+		return b
+	}
+	return false
+}
+
 func SetTags(container *gabs.Container, tags map[string]string, tagsJson string, path ...string) {
 	result := map[string]interface{}{}
 	if err := json.Unmarshal([]byte(tagsJson), &result); err != nil {

@@ -22,6 +22,8 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
+	"github.com/openziti/edge-api/rest_management_api_client/auth_policy"
+	"github.com/openziti/edge-api/rest_management_api_client/external_jwt_signer"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
@@ -67,6 +69,7 @@ func newListCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.AddCommand(newListEdgeRoutersCmd(newOptions()))
 	cmd.AddCommand(newListCmdForEntityType("edge-router-policies", runListEdgeRouterPolicies, newOptions(), "erps"))
 	cmd.AddCommand(newListCmdForEntityType("enrollments", runListEnrollments, newOptions()))
+	cmd.AddCommand(newListCmdForEntityType("ext-jwt-signers", runListExtJwtSigners, newOptions(), "external-jwt-signers"))
 	cmd.AddCommand(newListCmdForEntityType("terminators", runListTerminators, newOptions()))
 	cmd.AddCommand(newListIdentitiesCmd(newOptions()))
 	cmd.AddCommand(newListServicesCmd(newOptions()))
@@ -478,15 +481,217 @@ func outputAuthenticators(o *api.Options, children []*gabs.Container, pagingInfo
 	return nil
 }
 
+func runListAuthPolicies(options *api.Options) error {
+
+	client, err := util.NewEdgeManagementClient(options)
+
+	if err != nil {
+		return err
+	}
+
+	var filter *string = nil
+
+	if len(options.Args) > 0 {
+		filter = &options.Args[0]
+	}
+
+	params := auth_policy.NewListAuthPoliciesParams()
+	params.Filter = filter
+
+	result, err := client.AuthPolicy.ListAuthPolicies(params, nil)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+	outTable.Style().Options.SeparateRows = true
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+
+	outTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 2, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 3, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 4, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 5, AutoMerge: true, Align: text.AlignLeft},
+	})
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Section", "Type", "Config", "Config"}, rowConfigAutoMerge)
+
+	for _, entity := range result.GetPayload().Data {
+		id := *entity.ID
+		name := *entity.Name
+
+		maxAttempts := "0 (unlim)"
+
+		if *entity.Primary.Updb.MaxAttempts != 0 {
+			maxAttempts = fmt.Sprintf("%d", *entity.Primary.Updb.MaxAttempts)
+		}
+
+		lockout := "0 (forever)"
+
+		if *entity.Primary.Updb.MaxAttempts != 0 {
+			lockout = fmt.Sprintf("%d", *entity.Primary.Updb.LockoutDurationMinutes)
+		}
+
+		outTable.AppendRow(table.Row{id, name, "Primary", "CERT", "Allowed", *entity.Primary.Cert.Allowed}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "CERT", "Allowed Expired", *entity.Primary.Cert.AllowExpiredCerts}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Allowed", *entity.Primary.Updb.Allowed}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Max Attempts", maxAttempts}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Lockout (M)", lockout}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Min Password Len", *entity.Primary.Updb.MinPasswordLength}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Require Mix Case", *entity.Primary.Updb.RequireMixedCase}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Require Specials", *entity.Primary.Updb.RequireSpecialChar}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "UPDB", "Require Numbers", *entity.Primary.Updb.RequireNumberChar}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Primary", "EXT-JWT", "Allowed", *entity.Primary.ExtJWT.Allowed}, rowConfigAutoMerge)
+
+		if len(entity.Primary.ExtJWT.AllowedSigners) > 0 {
+			for _, signerId := range entity.Primary.ExtJWT.AllowedSigners {
+				outTable.AppendRow(table.Row{id, name, "Primary", "EXT-JWT", "Allowed Signers", signerId}, rowConfigAutoMerge)
+			}
+		} else {
+			outTable.AppendRow(table.Row{id, name, "Primary", "EXT-JWT", "Allowed Signers", "none"}, rowConfigAutoMerge)
+		}
+
+		outTable.AppendRow(table.Row{id, name, "Secondary", "TOTP MFA", "Required", *entity.Secondary.RequireTotp}, rowConfigAutoMerge)
+		outTable.AppendRow(table.Row{id, name, "Secondary", "EXT-JWT", "Required Signer", stringz.OrEmpty(entity.Secondary.RequireExtJWTSigner)}, rowConfigAutoMerge)
+	}
+
+	pagingInfo := newPagingInfo(payload.Meta)
+	api.RenderTable(options, outTable, pagingInfo)
+
+	return nil
+}
+
+func runListExtJwtSigners(options *api.Options) error {
+	client, err := util.NewEdgeManagementClient(options)
+
+	if err != nil {
+		return err
+	}
+
+	var filter *string = nil
+
+	if len(options.Args) > 0 {
+		filter = &options.Args[0]
+	}
+
+	params := external_jwt_signer.NewListExternalJWTSignersParams()
+	params.Filter = filter
+
+	result, err := client.ExternalJWTSigner.ListExternalJWTSigners(params, nil)
+
+	if err != nil {
+		return util.WrapIfApiError(err)
+	}
+
+	if options.OutputJSONResponse {
+		return nil
+	}
+
+	payload := result.GetPayload()
+
+	if payload == nil {
+		return errors.New("unexpected empty response payload")
+	}
+
+	outTable := table.NewWriter()
+	outTable.SetStyle(table.StyleRounded)
+	outTable.Style().Options.SeparateRows = true
+
+	rowConfigAutoMerge := table.RowConfig{AutoMerge: true, AutoMergeAlign: text.AlignLeft}
+
+	outTable.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, AutoMerge: true, Align: text.AlignLeft},
+		{Number: 2, AutoMerge: true, Align: text.AlignLeft},
+	})
+
+	outTable.AppendHeader(table.Row{"ID", "Name", "Config", "Config"}, rowConfigAutoMerge)
+
+	for _, entity := range result.GetPayload().Data {
+		id := *entity.ID
+		name := *entity.Name
+		audience := *entity.Audience
+		isEnabled := *entity.Enabled
+		claimsProperty := *entity.ClaimsProperty
+		useExternalId := *entity.UseExternalID
+		issuer := *entity.Issuer
+
+		if entity.JwksEndpoint != nil {
+			confType := "JWKS"
+			urlStr := entity.JwksEndpoint.String()
+			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "JWKS URL", urlStr}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
+		} else {
+			confType := "CERT"
+			fingerprint := *entity.Fingerprint
+			outTable.AppendRow(table.Row{id, name, "Audience", audience}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Claim Property", claimsProperty}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Enabled", isEnabled}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Issuer", issuer}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Fingerprint", fingerprint}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Type", confType}, rowConfigAutoMerge)
+			outTable.AppendRow(table.Row{id, name, "Use External Id", useExternalId}, rowConfigAutoMerge)
+		}
+
+	}
+
+	pagingInfo := newPagingInfo(payload.Meta)
+	api.RenderTable(options, outTable, pagingInfo)
+
+	return nil
+}
+
+func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+	if o.OutputJSONResponse {
+		return nil
+	}
+
+	t := table.NewWriter()
+	t.SetStyle(table.StyleRounded)
+	t.AppendHeader(table.Row{"ID", "Method", "Identity Id", "Identity Name", "Expires At", "Token", "JWT"})
+
+	for _, entity := range children {
+		id, _ := entity.Path("id").Data().(string)
+		method := entity.Path("method").Data().(string)
+		identityId := entity.Path("identityId").Data().(string)
+		identityName := entity.Path("identity.name").Data().(string)
+		expiresAt := entity.Path("expiresAt").Data().(string)
+		token := entity.Path("token").Data().(string)
+		jwt := "See json"
+
+		t.AppendRow(table.Row{id, method, identityId, identityName, expiresAt, token, jwt})
+	}
+	api.RenderTable(o, t, pagingInfo)
+	return nil
+}
+
 func runListEnrollments(o *api.Options) error {
-	children, pagingInfo, err := listEntitiesWithOptions("enrollments", o)
+	children, pagingInfo, err := listEntitiesWithOptions("ext-jwt-signers", o)
 	if err != nil {
 		return err
 	}
 	return outputEnrollments(o, children, pagingInfo)
 }
 
-func outputEnrollments(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
+func outputExtJwtSigners(o *api.Options, children []*gabs.Container, pagingInfo *api.Paging) error {
 	if o.OutputJSONResponse {
 		return nil
 	}
@@ -556,7 +761,7 @@ func runListServices(asIdentity string, configTypes []string, roleFilters []stri
 	if len(configTypes) == 1 && strings.EqualFold("all", configTypes[0]) {
 		params.Add("configTypes", "all")
 	} else {
-		if configTypes, err := mapNamesToIDs("config-types", *options, configTypes...); err != nil {
+		if configTypes, err := mapNamesToIDs("config-types", *options, false, configTypes...); err != nil {
 			return err
 		} else {
 			for _, configType := range configTypes {
@@ -774,15 +979,22 @@ func outputIdentities(o *api.Options, children []*gabs.Container, pagingInfo *ap
 
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
-	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes"})
+	t.AppendHeader(table.Row{"ID", "Name", "Type", "Attributes", "Auth-Policy"})
 
 	for _, entity := range children {
 		wrapper := api.Wrap(entity)
+		authPolicy := wrapper.String("authPolicy.name")
+
+		if authPolicy == "" {
+			authPolicy = wrapper.String("authPolicyId")
+		}
+
 		t.AppendRow(table.Row{
 			wrapper.String("id"),
 			wrapper.String("name"),
 			wrapper.String("type.name"),
-			strings.Join(wrapper.StringSlice("roleAttributes"), ",")})
+			strings.Join(wrapper.StringSlice("roleAttributes"), ","),
+			authPolicy})
 	}
 	api.RenderTable(o, t, pagingInfo)
 
@@ -1491,51 +1703,4 @@ func postureCheckOsToStrings(osContainers []*gabs.Container) []string {
 	}
 
 	return ret
-}
-
-func runListAuthPolicies(options *api.Options) error {
-	children, pagingInfo, err := listEntitiesWithOptions("auth-policies", options)
-	if err != nil {
-		return err
-	}
-	return outputAuthPolicies(options, children, pagingInfo)
-}
-
-func outputAuthPolicies(options *api.Options, children []*gabs.Container, info *api.Paging) error {
-	if options.OutputJSONResponse {
-		return nil
-	}
-
-	outTable := table.NewWriter()
-	outTable.SetStyle(table.StyleRounded)
-
-	rowConfigAutoMerge := table.RowConfig{AutoMerge: true}
-
-	outTable.AppendHeader(table.Row{"", "", "Primary", "Primary", "Primary", "Primary", "Primary", "Primary", "Primary", "Secondary", "Secondary"}, rowConfigAutoMerge)
-	outTable.AppendHeader(table.Row{"", "", "Cert", "Cert", "ExtJwt", "ExtJwt", "UPDB", "UPDB", "UPDB", "ExtJwt", "TOTP"}, rowConfigAutoMerge)
-	outTable.AppendHeader(table.Row{"ID", "Name", "Allowed", "Allow Expired", "Allowed", "Signers", "Allowed", "Lockout(m)", "Max Attempts", "Signer", "Required"})
-
-	for i, entity := range children {
-		json := entity.EncodeJSON()
-		detail := rest_model.AuthPolicyDetail{}
-		err := detail.UnmarshalJSON(json)
-
-		if err != nil {
-			msg := "Error unmarshalling index " + strconv.Itoa(i) + ": " + err.Error()
-			_, _ = options.ErrOutputWriter().Write([]byte(msg))
-		} else {
-			secondarySigner := "<none>"
-			if detail.Secondary.RequireExtJWTSigner != nil {
-				secondarySigner = *detail.Secondary.RequireExtJWTSigner
-			}
-
-			outTable.AppendRow(table.Row{*detail.ID, *detail.Name,
-				*detail.Primary.Cert.Allowed, *detail.Primary.Cert.AllowExpiredCerts,
-				*detail.Primary.ExtJWT.Allowed, detail.Primary.ExtJWT.AllowedSigners,
-				*detail.Primary.Updb.Allowed, *detail.Primary.Updb.LockoutDurationMinutes, *detail.Primary.Updb.MaxAttempts,
-				secondarySigner, *detail.Secondary.RequireTotp})
-		}
-	}
-	api.RenderTable(options, outTable, info)
-	return nil
 }

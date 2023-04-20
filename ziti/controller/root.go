@@ -58,7 +58,8 @@ func NewControllerCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logFormatter, "log-formatter", "", "Specify log formatter [json|pfxlog|text]")
 
 	cmd.AddCommand(NewRunCmd())
-	cmd.AddCommand(NewDeleteSessionsCmd())
+	cmd.AddCommand(NewDeleteSessionsFromConfigCmd())
+	cmd.AddCommand(NewDeleteSessionsFromDbCmd())
 	cmd.AddCommand(NewVersionCmd())
 
 	edgeSubCmd.AddCommands(cmd, version.GetCmdBuildInfo())

@@ -7,8 +7,10 @@ export ZITI_CTRL_EDGE_ADVERTISED_ADDRESS=ziti-edge-controller
 . "${ZITI_SCRIPTS}/ziti-cli-functions.sh"
 
 echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS is ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
-setupEnvironment
-persistEnvironmentValues
+if [ ! -f "${ZITI_HOME}/access-control.init" ]; then
+  setupEnvironment
+  persistEnvironmentValues
+fi
 . ${ZITI_HOME}/ziti.env
 echo "ZITI_CTRL_EDGE_ADVERTISED_ADDRESS is ${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
 # create pki
