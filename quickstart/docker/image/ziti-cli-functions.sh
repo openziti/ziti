@@ -69,7 +69,7 @@ export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWO
 export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
 
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
