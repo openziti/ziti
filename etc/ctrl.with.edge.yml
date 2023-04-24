@@ -50,6 +50,10 @@ ctrl:
 #events:
 #  jsonLogger:
 #    subscriptions:
+#      - type: entityChange
+#        include:
+#          - services
+#          - identities
 #      - type: fabric.circuits
 #      - type: fabric.links
 #      - type: fabric.routers
@@ -60,6 +64,10 @@ ctrl:
 #      - type: edge.sessions
 #      - type: edge.apiSessions
 #      - type: fabric.usage
+#        version: 3
+#        include:
+#          - ingress.rx
+#          - egress.rx
 #      - type: services
 #      - type: edge.entityCounts
 #        interval: 5s
