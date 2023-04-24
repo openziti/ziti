@@ -26,7 +26,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti"
 	"math/big"
 	"sort"
 	"time"
@@ -261,7 +261,7 @@ type identity struct {
 	defaultHostingCost        int
 	serviceHostingPrecedences map[string]interface{}
 	serviceHostingCosts       map[string]uint16
-	config                    *config.Config
+	config                    *ziti.Config
 	authPolicyId              string
 }
 

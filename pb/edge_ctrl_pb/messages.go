@@ -1,6 +1,7 @@
 package edge_ctrl_pb
 
 import (
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/sdk-golang/ziti"
 )
@@ -114,18 +115,18 @@ func GetPrecedence(p ziti.Precedence) TerminatorPrecedence {
 	return TerminatorPrecedence_Default
 }
 
-func (self TerminatorPrecedence) GetZitiLabel() string {
+func (self TerminatorPrecedence) GetZitiLabel() rest_model.TerminatorPrecedence {
 	if self == TerminatorPrecedence_Default {
-		return ziti.PrecedenceDefaultLabel
+		return rest_model.TerminatorPrecedenceDefault
 	}
 
 	if self == TerminatorPrecedence_Required {
-		return ziti.PrecedenceRequiredLabel
+		return rest_model.TerminatorPrecedenceRequired
 	}
 
 	if self == TerminatorPrecedence_Failed {
-		return ziti.PrecedenceFailedLabel
+		return rest_model.TerminatorPrecedenceFailed
 	}
 
-	return ziti.PrecedenceDefaultLabel
+	return rest_model.TerminatorPrecedenceDefault
 }

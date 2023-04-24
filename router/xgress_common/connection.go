@@ -25,7 +25,7 @@ import (
 	"github.com/openziti/foundation/v2/concurrenz"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/sdk-golang/ziti/edge/impl"
+	"github.com/openziti/sdk-golang/ziti/edge/network"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"io"
@@ -194,7 +194,7 @@ func (self *XgressConn) ReadPayload() ([]byte, map[uint8][]byte, error) {
 			if err == nil {
 				err = cryptoErr
 			} else {
-				err = impl.MultipleErrors{err, cryptoErr}
+				err = network.MultipleErrors{err, cryptoErr}
 			}
 		}
 	}

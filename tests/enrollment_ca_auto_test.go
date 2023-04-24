@@ -130,7 +130,7 @@ func Test_EnrollmetnCaAuto(t *testing.T) {
 
 						identityGet := &rest_model.DetailIdentityEnvelope{}
 
-						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityGet).Get("/identities/" + apiSession.identityId)
+						resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().SetResult(identityGet).Get("/identities/" + *apiSession.AuthResponse.IdentityID)
 						ctx.NoError(err)
 						ctx.Equal(http.StatusOK, resp.StatusCode())
 						ctx.NotNil(identityGet)

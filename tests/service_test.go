@@ -268,14 +268,14 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 	}
 
 	configs1 := []serviceConfig{{ServiceId: service4.Id, ConfigId: config1.Id}, {ServiceId: service4.Id, ConfigId: config5.Id}}
-	ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(session.identityId, configs1...)
+	ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(*session.AuthResponse.IdentityID, configs1...)
 	configs1 = []serviceConfig{{ServiceId: service4.Id, ConfigId: config1.Id}, {ServiceId: service4.Id, ConfigId: config5.Id}}
 	sort.Sort(sortableServiceConfigSlice(configs1))
-	currentConfigs := ctx.AdminManagementSession.listIdentityServiceConfigs(session.identityId)
+	currentConfigs := ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
 	ctx.Req.Equal(configs1, currentConfigs)
 
 	configs2 := []serviceConfig{{ServiceId: service1.Id, ConfigId: config5.Id}, {ServiceId: service3.Id, ConfigId: config1.Id}, {ServiceId: service3.Id, ConfigId: config4.Id}}
-	ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(session.identityId, configs2...)
+	ctx.AdminManagementSession.requireAssignIdentityServiceConfigs(*session.AuthResponse.IdentityID, configs2...)
 	checkConfigs := []serviceConfig{
 		{ServiceId: service4.Id, ConfigId: config1.Id},
 		{ServiceId: service4.Id, ConfigId: config5.Id},
@@ -284,7 +284,7 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		{ServiceId: service3.Id, ConfigId: config4.Id},
 	}
 	sort.Sort(sortableServiceConfigSlice(checkConfigs))
-	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(session.identityId)
+	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
 	ctx.Req.Equal(checkConfigs, currentConfigs)
 
 	service1V.configs[configType3.Name] = config5
@@ -297,8 +297,8 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		service.configs = map[string]*Config{}
 	}
 
-	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(session.identityId, serviceConfig{ServiceId: service1.Id, ConfigId: config5.Id}, serviceConfig{ServiceId: service3.Id, ConfigId: config1.Id})
-	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(session.identityId)
+	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(*session.AuthResponse.IdentityID, serviceConfig{ServiceId: service1.Id, ConfigId: config5.Id}, serviceConfig{ServiceId: service3.Id, ConfigId: config1.Id})
+	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
 	checkConfigs = []serviceConfig{
 		{ServiceId: service4.Id, ConfigId: config1.Id},
 		{ServiceId: service4.Id, ConfigId: config5.Id},
@@ -317,8 +317,8 @@ func Test_ServiceListWithConfigs(t *testing.T) {
 		service.configs = map[string]*Config{}
 	}
 
-	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(session.identityId)
-	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(session.identityId)
+	ctx.AdminManagementSession.requireRemoveIdentityServiceConfigs(*session.AuthResponse.IdentityID)
+	currentConfigs = ctx.AdminManagementSession.listIdentityServiceConfigs(*session.AuthResponse.IdentityID)
 	ctx.Req.Equal(0, len(currentConfigs))
 
 	service2V.configs[configType1.Name] = config1

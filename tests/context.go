@@ -41,7 +41,7 @@ import (
 	nfPem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity/certtools"
-	sdkConfig "github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	sdkEnroll "github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
@@ -86,6 +86,10 @@ func init() {
 
 	transport.AddAddressParser(tls.AddressParser{})
 	transport.AddAddressParser(tcp.AddressParser{})
+}
+
+func ToPtr[T any](in T) *T {
+	return &in
 }
 
 func S(s string) *string {
@@ -382,7 +386,7 @@ func (ctx *TestContext) requireEnrollEdgeRouter(tunneler bool, routerId string) 
 
 	enroller := enroll.NewRestEnroller()
 	ctx.Req.NoError(enroller.LoadConfig(configMap))
-	var keyAlg sdkConfig.KeyAlgVar
+	var keyAlg ziti.KeyAlgVar
 	_ = keyAlg.Set("RSA")
 	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, "", keyAlg))
 }
@@ -404,7 +408,7 @@ func (ctx *TestContext) createAndEnrollTransitRouter() *transitRouter {
 
 	enroller := enroll.NewRestEnroller()
 	ctx.Req.NoError(enroller.LoadConfig(configMap))
-	var keyAlg sdkConfig.KeyAlgVar
+	var keyAlg ziti.KeyAlgVar
 	_ = keyAlg.Set("RSA")
 	ctx.Req.NoError(enroller.Enroll([]byte(jwt), true, "", keyAlg))
 
@@ -464,7 +468,7 @@ func (ctx *TestContext) startEdgeRouter() {
 	ctx.Req.NoError(ctx.router.Start())
 }
 
-func (ctx *TestContext) EnrollIdentity(identityId string) *sdkConfig.Config {
+func (ctx *TestContext) EnrollIdentity(identityId string) *ziti.Config {
 	jwt := ctx.AdminManagementSession.getIdentityJwt(identityId)
 	tkn, _, err := sdkEnroll.ParseToken(jwt)
 	ctx.Req.NoError(err)
@@ -840,28 +844,28 @@ func (ctx *TestContext) requireNListener(count int, l edge.Listener, timeout tim
 	}
 }
 
-func (ctx *TestContext) WrapNetConn(conn edge.Conn, err error) *testConn {
+func (ctx *TestContext) WrapNetConn(conn edge.Conn, err error) *TestConn {
 	ctx.Req.NoError(err)
-	return &testConn{
+	return &TestConn{
 		Conn: conn,
 		ctx:  ctx,
 	}
 }
 
-func (ctx *TestContext) WrapConn(conn edge.Conn, err error) *testConn {
+func (ctx *TestContext) WrapConn(conn edge.Conn, err error) *TestConn {
 	ctx.Req.NoError(err)
-	return &testConn{
+	return &TestConn{
 		Conn: conn,
 		ctx:  ctx,
 	}
 }
 
-type testConn struct {
+type TestConn struct {
 	edge.Conn
 	ctx *TestContext
 }
 
-func (conn *testConn) WriteString(val string, timeout time.Duration) {
+func (conn *TestConn) WriteString(val string, timeout time.Duration) {
 	conn.ctx.Req.NoError(conn.SetWriteDeadline(time.Now().Add(timeout)))
 	defer func() { _ = conn.SetWriteDeadline(time.Time{}) }()
 
@@ -871,7 +875,7 @@ func (conn *testConn) WriteString(val string, timeout time.Duration) {
 	conn.ctx.Req.Equal(n, len(buf))
 }
 
-func (conn *testConn) ReadString(maxSize int, timeout time.Duration) string {
+func (conn *TestConn) ReadString(maxSize int, timeout time.Duration) string {
 	conn.ctx.Req.NoError(conn.SetReadDeadline(time.Now().Add(timeout)))
 	defer func() { _ = conn.SetReadDeadline(time.Time{}) }()
 
@@ -881,12 +885,12 @@ func (conn *testConn) ReadString(maxSize int, timeout time.Duration) string {
 	return string(buf[:n])
 }
 
-func (conn *testConn) ReadExpected(expected string, timeout time.Duration) {
+func (conn *TestConn) ReadExpected(expected string, timeout time.Duration) {
 	val := conn.ReadString(len(expected)+1, timeout)
 	conn.ctx.Req.Equal(expected, val, "read failure on connId=%v", conn.Id())
 }
 
-func (conn *testConn) RequireClose() {
+func (conn *TestConn) RequireClose() {
 	conn.ctx.Req.NoError(conn.Close())
 }
 

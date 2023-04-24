@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
-	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"
@@ -264,7 +264,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 
 	method := "ca"
 
-	claims := &config.EnrollmentClaims{
+	claims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: method,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: notAfter,
@@ -278,7 +278,7 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	jwt, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, mapClaims)
+	jwtStr, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, mapClaims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))
@@ -287,5 +287,5 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 
 	rc.ResponseWriter.Header().Set("content-type", "application/jwt")
 	rc.ResponseWriter.WriteHeader(http.StatusOK)
-	_, _ = rc.ResponseWriter.Write([]byte(jwt))
+	_, _ = rc.ResponseWriter.Write([]byte(jwtStr))
 }

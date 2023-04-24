@@ -1,3 +1,4 @@
+//go:build apitests && perftests
 // +build apitests,perftests
 
 /*
@@ -19,13 +20,8 @@
 package tests
 
 import (
-	identity2 "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/sdk-golang/ziti/edge/api"
-	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	"github.com/rcrowley/go-metrics"
-	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -48,25 +44,14 @@ func Test_AuthPerformance(t *testing.T) {
 	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
-	context := ziti.NewContextWithConfig(config)
-	_, _ = context.GetServices()
-
-	ctrlUrl, err := url.Parse(config.ZtAPI)
-	ctx.Req.NoError(err)
-	id, err := identity2.LoadIdentity(config.ID)
-	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
-	ctx.Req.NoError(err)
-
-	info := sdkinfo.GetSdkInfo()
-	_, err = client.Login(info)
+	context, err := ziti.NewContext(config)
 	ctx.Req.NoError(err)
 
 	for i := 0; i < 25; i++ {
 		go func() {
 			for {
 				start := time.Now()
-				_, err := client.Login(info)
+				err := context.Authenticate()
 				ctx.Req.NoError(err)
 				meter.Mark(1)
 				done := time.Now()
@@ -103,19 +88,13 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
-	context := ziti.NewContextWithConfig(config)
-	_, _ = context.GetServices()
-
-	ctrlUrl, err := url.Parse(config.ZtAPI)
-	ctx.Req.NoError(err)
-	id, err := identity2.LoadIdentity(config.ID)
-	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
+	context, err := ziti.NewContext(config)
 	ctx.Req.NoError(err)
 
-	info := sdkinfo.GetSdkInfo()
-	_, err = client.Login(info)
+	err = context.Authenticate()
 	ctx.Req.NoError(err)
+
+	client := context.(*ziti.ContextImpl).CtrlClt
 
 	service := ctx.AdminManagementSession.RequireNewServiceAccessibleToAll("smartrouting")
 
@@ -123,7 +102,7 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 		go func() {
 			for {
 				start := time.Now()
-				_, err := client.Login(info)
+				err := context.Authenticate()
 				ctx.Req.NoError(err)
 				apiSessionCreateMeter.Mark(1)
 				done := time.Now()
@@ -131,7 +110,8 @@ func Test_CombinedSessionCreatePerformance(t *testing.T) {
 				apiSessionCreateHistogram.Update(diff.Milliseconds())
 
 				start = time.Now()
-				_, err = client.CreateSession(service.Id, edge.SessionDial)
+
+				_, err = client.CreateSession(service.Id, ziti.SessionType(ziti.SessionDial))
 				ctx.Req.NoError(err)
 				sessionCreateMeter.Mark(1)
 				done = time.Now()
@@ -165,25 +145,19 @@ func Test_SessionCreatePerformance(t *testing.T) {
 	identity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	config := ctx.AdminManagementSession.testContext.EnrollIdentity(identity.Id)
 
-	context := ziti.NewContextWithConfig(config)
-	_, _ = context.GetServices()
-
-	ctrlUrl, err := url.Parse(config.ZtAPI)
-	ctx.Req.NoError(err)
-	id, err := identity2.LoadIdentity(config.ID)
-	ctx.Req.NoError(err)
-	client, err := api.NewClient(ctrlUrl, id.ClientTLSConfig(), s("all"))
+	context, err := ziti.NewContext(config)
 	ctx.Req.NoError(err)
 
-	info := sdkinfo.GetSdkInfo()
-	_, err = client.Login(info)
+	err = context.Authenticate()
 	ctx.Req.NoError(err)
+
+	client := context.(*ziti.ContextImpl).CtrlClt
 
 	for i := 0; i < 50; i++ {
 		go func() {
 			for {
 				start := time.Now()
-				_, err := client.CreateSession(service.Id, edge.SessionDial)
+				_, err := client.CreateSession(service.Id, ziti.SessionType(ziti.SessionDial))
 				ctx.Req.NoError(err)
 				meter.Mark(1)
 				done := time.Now()

@@ -1,3 +1,4 @@
+//go:build dataflow
 // +build dataflow
 
 /*
@@ -68,7 +69,7 @@ func Test_ServerConnClosePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	defer conn.Close()
@@ -133,7 +134,7 @@ func Test_ServerContextClosePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	defer conn.Close()
@@ -201,7 +202,7 @@ func Test_ServerCloseListenerPropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	defer conn.Close()
@@ -233,7 +234,7 @@ func Test_ClientConnClosePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	errC := make(chan error, 1)
 
@@ -295,7 +296,7 @@ func Test_ClientContextClosePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	errC := make(chan error, 1)
 
@@ -358,7 +359,7 @@ func Test_ServerConnCloseWritePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	errC := make(chan error, 1)
 
@@ -452,7 +453,7 @@ func Test_ClientConnCloseWritePropagation(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	conn := ctx.WrapConn(clientContext.Dial(service.Name))
 	name := eid.New()

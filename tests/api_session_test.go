@@ -46,7 +46,7 @@ func Test_ApiSession(t *testing.T) {
 
 		expected := s(configType1.Id, configType2.Id)
 		sort.Strings(expected)
-		sort.Strings(session.configTypes)
-		ctx.Req.Equal(expected, session.configTypes)
+		sort.Strings(session.AuthResponse.ConfigTypes)
+		ctx.Req.Equal(expected, session.AuthResponse.ConfigTypes)
 	})
 }

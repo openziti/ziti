@@ -22,7 +22,7 @@ package tests
 import (
 	"fmt"
 	"github.com/Jeffail/gabs"
-	"github.com/openziti/sdk-golang/ziti/constants"
+	"github.com/openziti/edge/controller/env"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"testing"
@@ -151,7 +151,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T
 	standardJsonResponseTests(resp, http.StatusOK, t)
 
 	t.Run("returns a session token HTTP headers", func(t *testing.T) {
-		require.New(t).NotEmpty(resp.Header().Get(constants.ZitiSession), fmt.Sprintf("HTTP header %s is empty", constants.ZitiSession))
+		require.New(t).NotEmpty(resp.Header().Get(env.ZitiSession), fmt.Sprintf("HTTP header %s is empty", env.ZitiSession))
 	})
 
 	t.Run("returns a session token in body", func(t *testing.T) {
@@ -171,7 +171,7 @@ func (tests *authUpdbTests) testAuthenticateUPDBDefaultAdminSuccess(t *testing.T
 		r.NoError(err)
 
 		bodyToken := data.Path("data.token").Data().(string)
-		headerToken := resp.Header().Get(constants.ZitiSession)
+		headerToken := resp.Header().Get(env.ZitiSession)
 		r.Equal(bodyToken, headerToken)
 	})
 

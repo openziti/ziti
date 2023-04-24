@@ -3,11 +3,12 @@ package entities
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/mitchellh/mapstructure"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/utils"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
 	"reflect"
@@ -358,7 +359,7 @@ type TemplateFunc func(sourceAddr net.Addr, destAddr net.Addr) string
 
 type Service struct {
 	FabricProvider tunnel.FabricProvider
-	edge.Service
+	rest_model.ServiceDetail
 	InterceptV1Config *InterceptV1Config
 	DialTimeout       time.Duration
 
@@ -367,6 +368,23 @@ type Service struct {
 	SourceAddrProvider   TemplateFunc
 	cleanupActions       []func()
 	lock                 sync.Mutex
+}
+
+func (self *Service) GetConfigOfType(configType string, target interface{}) (bool, error) {
+	if self.Configs == nil {
+		pfxlog.Logger().Debugf("no service configs defined for service %v", self.Name)
+		return false, nil
+	}
+	configMap, found := self.Config[configType]
+	if !found {
+		pfxlog.Logger().Debugf("no service config of type %v defined for service %v", configType, self.Name)
+		return false, nil
+	}
+	if err := mapstructure.Decode(configMap, target); err != nil {
+		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, self.Name)
+		return true, errors.Errorf("unable to decode service config structure: %w", err)
+	}
+	return true, nil
 }
 
 func (self *Service) GetFabricProvider() tunnel.FabricProvider {
@@ -398,7 +416,7 @@ func (self *Service) GetSourceAddr(sourceAddr net.Addr, destAddr net.Addr) strin
 }
 
 func (self *Service) GetName() string {
-	return self.Name
+	return *self.ServiceDetail.Name
 }
 
 func (self *Service) GetDialTimeout() time.Duration {

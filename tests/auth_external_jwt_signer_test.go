@@ -151,7 +151,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    *validJwtSigner.Issuer,
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = *validJwtSigner.Kid
@@ -183,7 +183,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "fake.issuer",
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = *notEnabledJwtSigner.Kid
@@ -210,7 +210,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "i will cause this to fail",
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = *validJwtSigner.Kid
@@ -237,7 +237,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    *validJwtSigner.Issuer,
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = *validJwtSigner.Kid
@@ -264,7 +264,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "fake.issuer",
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtStrSigned, err := jwtToken.SignedString(validJwtSignerPrivateKey)
@@ -289,7 +289,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "fake.issuer",
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = *validJwtSigner.Kid
@@ -316,7 +316,7 @@ func Test_Authenticate_External_Jwt(t *testing.T) {
 			IssuedAt:  time.Now().Unix(),
 			Issuer:    "fake.issuer",
 			NotBefore: time.Now().Unix(),
-			Subject:   ctx.AdminManagementSession.identityId,
+			Subject:   *ctx.AdminManagementSession.AuthResponse.IdentityID,
 		}
 
 		jwtToken.Header["kid"] = invalidJwtSignerCertFingerprint

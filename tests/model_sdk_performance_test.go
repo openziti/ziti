@@ -7,16 +7,18 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_client_api_client/current_api_session"
+	service2 "github.com/openziti/edge-api/rest_client_api_client/service"
+	apiClientSession "github.com/openziti/edge-api/rest_client_api_client/session"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	idloader "github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/sdk-golang/ziti/edge"
-	"github.com/openziti/sdk-golang/ziti/edge/api"
-	"github.com/openziti/sdk-golang/ziti/sdkinfo"
+	edge_apis "github.com/openziti/sdk-golang/edge-apis"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/rcrowley/go-metrics"
 	"io"
 	"net/url"
@@ -141,7 +143,7 @@ type perfScenarioSpec struct {
 	identities  []*model.Identity
 	edgeRouters []*model.EdgeRouter
 
-	config *config.Config
+	config *ziti.Config
 }
 
 func (spec *perfScenarioSpec) generateAllRoleAttributes() {
@@ -200,10 +202,10 @@ func (ctx *modelPerf) runScenario(spec *perfScenarioSpec) {
 
 	ctx.createScenario(spec)
 
-	stats := newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
+	stats := newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, rest_model.DialBindDial)
 	stats.collectStats(10)
 
-	stats = newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, edge.SessionDial)
+	stats = newPerfStats(ctx.TestContext, spec.config, spec.name, spec.services[0].Id, rest_model.DialBindBind)
 	stats.collectStats(10)
 
 	ctx.Teardown()
@@ -428,15 +430,21 @@ func newHistogram() metrics.Histogram {
 	return metrics.NewHistogram(metrics.NewExpDecaySample(128, 0.015))
 }
 
-func newPerfStats(ctx *TestContext, config *config.Config, description string, serviceId string, sessionType edge.SessionType) *perfStats {
+func newPerfStats(ctx *TestContext, config *ziti.Config, description string, serviceId string, sessionType rest_model.DialBind) *perfStats {
 	zitiUrl, err := url.Parse(config.ZtAPI)
 	ctx.Req.NoError(err)
 
 	id, err := idloader.LoadIdentity(config.ID)
 	ctx.Req.NoError(err)
 
-	client, err := api.NewClient(zitiUrl, id.ClientTLSConfig(), s("all"))
+	creds := edge_apis.NewIdentityCredentials(id)
+	creds.ConfigTypes = []string{"all"}
+
+	caPool, err := ziti.GetControllerWellKnownCaPool(config.ZtAPI)
+
 	ctx.Req.NoError(err)
+
+	client := edge_apis.NewClientApiClient(zitiUrl, caPool)
 
 	return &perfStats{
 		TestContext:       ctx,
@@ -444,6 +452,7 @@ func newPerfStats(ctx *TestContext, config *config.Config, description string, s
 		description:       description,
 		serviceId:         serviceId,
 		sessionType:       sessionType,
+		credentials:       creds,
 		createApiSession:  newHistogram(),
 		refreshApiSession: newHistogram(),
 		getServices:       newHistogram(),
@@ -456,14 +465,15 @@ type perfStats struct {
 	*TestContext
 	description       string
 	serviceId         string
-	client            api.RestClient
-	sessionType       edge.SessionType
+	client            *edge_apis.ClientApiClient
+	sessionType       rest_model.DialBind
 	sessionId         string
 	createApiSession  metrics.Histogram
 	refreshApiSession metrics.Histogram
 	getServices       metrics.Histogram
 	createSession     metrics.Histogram
 	refreshSession    metrics.Histogram
+	credentials       *edge_apis.IdentityCredentials
 }
 
 func (s *perfStats) dumpStatsToStdOut() {
@@ -497,7 +507,6 @@ func (s *perfStats) collectStats(iterations int) {
 	s.repeat(iterations, s.timeRefreshApiSession)
 	s.repeat(iterations, s.timeGetServices)
 	s.repeat(iterations, s.timeCreateSession)
-	s.repeat(iterations, s.timeRefreshSession)
 }
 
 func (s *perfStats) repeat(n int, f func()) {
@@ -514,38 +523,44 @@ func (s *perfStats) time(h metrics.Histogram, f func()) {
 
 func (s *perfStats) timeCreateApiSession() {
 	s.time(s.createApiSession, func() {
-		info := sdkinfo.GetSdkInfo()
-		_, err := s.client.Login(info)
+		_, err := s.client.Authenticate(s.credentials)
 		s.Req.NoError(err)
 	})
 }
 
 func (s *perfStats) timeRefreshApiSession() {
 	s.time(s.createApiSession, func() {
-		_, err := s.client.Refresh()
+		params := current_api_session.NewGetCurrentAPISessionParams()
+		_, err := s.client.API.CurrentAPISession.GetCurrentAPISession(params, nil)
 		s.Req.NoError(err)
 	})
 }
 
 func (s *perfStats) timeGetServices() {
 	s.time(s.getServices, func() {
-		_, err := s.client.GetServices()
+		params := service2.NewListServicesParams()
+		params.Limit = I(500)
+		_, err := s.client.API.Service.ListServices(params, nil)
 		s.Req.NoError(err)
 	})
 }
 
 func (s *perfStats) timeCreateSession() {
 	s.time(s.createSession, func() {
-		session, err := s.client.CreateSession(s.serviceId, s.sessionType)
-		s.Req.NoError(err)
-		s.sessionId = session.Id
-	})
-}
+		//session, err := s.client.CreateSession(s.serviceId, s.sessionType)
 
-func (s *perfStats) timeRefreshSession() {
-	s.time(s.createSession, func() {
-		_, err := s.client.RefreshSession(s.sessionId)
-		s.Req.NoError(err)
+		params := apiClientSession.NewCreateSessionParams()
+		params.Session = &rest_model.SessionCreate{}
+		params.Session.Type = s.sessionType
+		params.Session.ServiceID = s.serviceId
+
+		sessionDetail, err := s.client.API.Session.CreateSession(params, nil)
+
+		if err != nil {
+			s.Req.NoError(err)
+		}
+
+		s.sessionId = *sessionDetail.Payload.Data.ID
 	})
 }
 

@@ -586,7 +586,7 @@ func Test_Identity(t *testing.T) {
 			apiSession, err := certAuthenticator.AuthenticateClientApi(ctx)
 			ctx.Req.NoError(err)
 			ctx.Req.NotNil(apiSession)
-			ctx.Req.NotEmpty(apiSession.token)
+			ctx.Req.NotEmpty(apiSession.AuthResponse.Token)
 
 			t.Run("identity can be disabled", func(t *testing.T) {
 				ctx.testContextChanged(t)

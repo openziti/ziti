@@ -29,10 +29,10 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/eid"
 	nfpem "github.com/openziti/foundation/v2/pem"
 	"github.com/openziti/identity/certtools"
-	"github.com/openziti/sdk-golang/ziti/constants"
 	"gopkg.in/resty.v1"
 	"net/http"
 	"testing"
@@ -216,7 +216,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 		client := resty.New().SetTLSClientConfig(&tls.Config{
 			InsecureSkipVerify: true,
 		})
-		extendResp, err := client.R().SetHeader(constants.ZitiSession, identityApiSession.token).SetBody(csrRequest).Post(resolvedUrl)
+		extendResp, err := client.R().SetHeader(env.ZitiSession, *identityApiSession.AuthResponse.Token).SetBody(csrRequest).Post(resolvedUrl)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})
@@ -261,7 +261,7 @@ func Test_EnrollmentIdentityExtend(t *testing.T) {
 
 		url := fmt.Sprintf("/current-identity/authenticators/%s/extend", *currentAuthenticator.ID)
 		//use second identity http client w/ first identity's API Session
-		extendResp, err := secondIdentityApiSession.NewRequest().SetHeader(constants.ZitiSession, identityApiSession.token).SetBody(csrRequest).Post(url)
+		extendResp, err := secondIdentityApiSession.NewRequest().SetHeader(env.ZitiSession, *identityApiSession.AuthResponse.Token).SetBody(csrRequest).Post(url)
 		ctx.Req.NoError(err)
 		ctx.Req.Equal(401, extendResp.StatusCode())
 	})

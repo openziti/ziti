@@ -122,7 +122,7 @@ func testClientFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	logger := pfxlog.Logger()
 
@@ -265,7 +265,7 @@ func testServerFirstWithStrategy(t *testing.T, strategy string) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()

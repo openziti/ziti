@@ -112,7 +112,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 			session, err := authenticator.AuthenticateClientApi(ctx)
 
 			req.NoError(err)
-			req.NotEmpty(session.id)
+			req.NotNil(session.AuthResponse)
 
 		})
 	})
@@ -329,7 +329,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 			ctx.NoError(err)
 			ctx.NotNil(session)
-			ctx.NotEmpty(session.token)
+			ctx.NotEmpty(session.AuthResponse.Token)
 		})
 	})
 
@@ -371,7 +371,7 @@ func Test_Authenticators_AdminUsingAdminEndpoints(t *testing.T) {
 
 				ctx.NoError(err)
 				ctx.NotNil(session)
-				ctx.NotEmpty(session.token)
+				ctx.NotEmpty(session.AuthResponse.Token)
 			})
 		})
 	})
@@ -639,7 +639,7 @@ func Test_Authenticators_NonAdminUsingSelfServiceEndpoints(t *testing.T) {
 			id, ok := updbAuthenticatorListBody.Search("data").Index(0).Path("identityId").Data().(string)
 
 			req.True(ok)
-			req.Equal(updbNonAdminSession.identityId, id)
+			req.Equal(*updbNonAdminSession.AuthResponse.IdentityID, id)
 		})
 
 		t.Run("can get the detail of the authenticator", func(t *testing.T) {

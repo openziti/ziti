@@ -18,20 +18,25 @@ package tests
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
+	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
+	"math/big"
 	"net/http"
 	"net/url"
 	"sort"
@@ -116,7 +121,14 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath s
 
 	sess.client.SetHostURL(resolvedUrl)
 
+	apiSession := &rest_model.CurrentAPISessionDetail{}
+
+	envelope := &rest_model.CurrentAPISessionDetailEnvelope{
+		Data: apiSession,
+		Meta: &rest_model.Meta{},
+	}
 	resp, err := sess.client.R().
+		SetResult(envelope).
 		SetHeader("content-type", "application/json").
 		Post("authenticate?method=cert")
 
@@ -128,9 +140,8 @@ func (authenticator *certAuthenticator) Authenticate(ctx *TestContext, apiPath s
 		return nil, errors.Errorf("failed to authenticate via CERT: invalid response code encountered, got %d, expected %d: %s", resp.StatusCode(), http.StatusOK, string(resp.Body()))
 	}
 
-	if err = sess.parseSessionInfoFromResponse(ctx, resp); err != nil {
-		return nil, err
-	}
+	sess.AuthResponse = apiSession
+	sess.lastServiceUpdate = time.Time(*apiSession.CreatedAt)
 
 	return sess, nil
 }
@@ -212,9 +223,17 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext, apiPath s
 		_, _ = body.SetP(authenticator.ConfigTypes, "configTypes")
 	}
 
+	apiSession := &rest_model.CurrentAPISessionDetail{}
+
+	envelope := &rest_model.CurrentAPISessionDetailEnvelope{
+		Data: apiSession,
+		Meta: &rest_model.Meta{},
+	}
+
 	resp, err := sess.client.R().
 		SetHeader("content-type", "application/json").
 		SetBody(body.String()).
+		SetResult(envelope).
 		Post("authenticate?method=password")
 
 	if err != nil {
@@ -225,26 +244,21 @@ func (authenticator *updbAuthenticator) Authenticate(ctx *TestContext, apiPath s
 		return nil, errors.Errorf("failed to authenticate via UPDB as %v: invalid response code encountered, got %d, expected %d", authenticator, resp.StatusCode(), http.StatusOK)
 	}
 
-	if err = sess.parseSessionInfoFromResponse(ctx, resp); err != nil {
-		return nil, err
-	}
+	sess.AuthResponse = apiSession
+	sess.lastServiceUpdate = time.Time(*apiSession.CreatedAt)
 
 	return sess, nil
 }
 
 type session struct {
-	authenticator     authenticator
-	id                string
-	token             string
-	identityId        string
-	createdAt         time.Time
-	lastServiceUpdate time.Time
-	configTypes       []string
-	testContext       *TestContext
-	baseUrl           string
+	authenticator authenticator
+	testContext   *TestContext
+	baseUrl       string
 	authenticatedRequests
-	apiPath string
-	client  *resty.Client
+	apiPath           string
+	client            *resty.Client
+	AuthResponse      *rest_model.CurrentAPISessionDetail
+	lastServiceUpdate time.Time
 }
 
 // Clone allows a session to be cloned with a new internal Resty Client that targets another API. Useful for
@@ -253,15 +267,11 @@ type session struct {
 func (sess *session) Clone(ctx *TestContext, apiPath string) (*session, error) {
 	clone := &session{
 		authenticator:     sess.authenticator,
-		id:                sess.id,
-		token:             sess.token,
-		identityId:        sess.identityId,
-		createdAt:         sess.createdAt,
-		lastServiceUpdate: sess.lastServiceUpdate,
-		configTypes:       sess.configTypes,
+		AuthResponse:      sess.AuthResponse,
 		testContext:       sess.testContext,
 		baseUrl:           sess.baseUrl,
 		apiPath:           apiPath,
+		lastServiceUpdate: sess.lastServiceUpdate,
 		client:            resty.NewWithClient(sess.client.GetClient()),
 	}
 
@@ -294,8 +304,12 @@ func (sess *session) CloneToManagementApi(ctx *TestContext) (*session, error) {
 }
 
 func (sess *session) NewRequest() *resty.Request {
-	sess.client.R()
-	return sess.client.R().SetHeader(constants.ZitiSession, sess.token)
+	if sess.AuthResponse != nil && sess.AuthResponse.Token != nil {
+		return sess.client.R().SetHeader(env.ZitiSession, *sess.AuthResponse.Token)
+	}
+
+	return sess.client.R()
+
 }
 
 // resolveApiUrl takes a URL prefix, apiHost, in the format of "https://domain:port" and joins
@@ -318,50 +332,6 @@ func (sess *session) resolveApiUrl(apiHost string, apiPath string) (string, erro
 	return resolvedUrl.String(), nil
 }
 
-func (sess *session) parseSessionInfoFromResponse(ctx *TestContext, response *resty.Response) error {
-	respBody := response.Body()
-
-	if len(respBody) == 0 {
-		return errors.Errorf("failed to authenticate via UPDB %v: encountered zero length body", sess.authenticator)
-	}
-
-	ctx.logJson(respBody)
-
-	bodyContainer, err := gabs.ParseJSON(respBody)
-
-	if err != nil {
-		return errors.Errorf("failed to authenticate via UPDB as %v: failed to parse response: %s", sess.authenticator, err)
-	}
-
-	if sessionId, ok := bodyContainer.Path("data.id").Data().(string); ok {
-		sess.id = sessionId
-	} else {
-		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find session id", sess.authenticator)
-	}
-
-	if sessionToken, ok := bodyContainer.Path("data.token").Data().(string); ok {
-		sess.token = sessionToken
-	} else {
-		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find session token", sess.authenticator)
-	}
-
-	if identityId, ok := bodyContainer.Path("data.identity.id").Data().(string); ok {
-		sess.identityId = identityId
-	} else {
-		return errors.Errorf("failed to authenticate via UPDB as %v: failed to find identity id", sess.authenticator)
-	}
-
-	if createdAt, ok := bodyContainer.Path("data.createdAt").Data().(string); ok {
-		t, err := time.Parse(time.RFC3339, createdAt)
-		ctx.Req.NoError(err)
-		sess.createdAt = t
-		sess.lastServiceUpdate = t
-	}
-
-	sess.configTypes = ctx.toStringSlice(bodyContainer.Path("data.configTypes"))
-	return nil
-}
-
 func (sess *session) logout() error {
 	resp, err := sess.NewRequest().Delete("current-api-session")
 
@@ -370,7 +340,7 @@ func (sess *session) logout() error {
 	}
 
 	if resp.StatusCode() != http.StatusOK {
-		return errors.Errorf("could not delete current session %s for logout: got status code %d expected %d", sess.token, resp.StatusCode(), http.StatusOK)
+		return errors.Errorf("could not delete current session %s for logout: got status code %d expected %d", *sess.AuthResponse.Token, resp.StatusCode(), http.StatusOK)
 	}
 
 	return nil
@@ -394,7 +364,13 @@ func (request *authenticatedRequests) newAuthenticatedRequestWithBody(body inter
 func (request *authenticatedRequests) RequireCreateSdkContext(roleAttributes ...string) (*identity, ziti.Context) {
 	identity := request.RequireNewIdentityWithOtt(false, roleAttributes...)
 	identity.config = request.testContext.EnrollIdentity(identity.Id)
-	context := ziti.NewContextWithConfig(identity.config)
+
+	context, err := ziti.NewContext(identity.config)
+
+	if err != nil {
+		pfxlog.Logger().Fatalf("could not create new context with config: %v", err)
+	}
+
 	return identity, context
 }
 
@@ -1086,4 +1062,36 @@ func (request *authenticatedRequests) getIdentityJwt(identityId string) string {
 	jsonBody := request.requireQuery("identities/" + identityId)
 	data := request.testContext.RequireGetNonNilPathValue(jsonBody, "data", "enrollment", "ott", "jwt")
 	return data.Data().(string)
+}
+
+func newSelfSignedCert(commonName string) (*x509.Certificate, crypto.PrivateKey) {
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(err)
+	}
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			CommonName:   commonName,
+			Organization: []string{"API Test Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour * 24 * 180),
+
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+	cert, err := x509.ParseCertificate(der)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return cert, priv
 }

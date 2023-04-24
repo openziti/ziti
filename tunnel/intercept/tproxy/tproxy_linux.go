@@ -30,7 +30,7 @@ import (
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/foundation/v2/mempool"
 	"github.com/openziti/foundation/v2/stringz"
-	"github.com/openziti/sdk-golang/ziti/edge/impl"
+	"github.com/openziti/sdk-golang/ziti/edge/network"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -147,7 +147,7 @@ func (self *interceptor) Intercept(service *entities.Service, resolver dns.Resol
 	if err != nil {
 		return err
 	}
-	self.serviceProxies.Set(service.Name, tproxy)
+	self.serviceProxies.Set(*service.Name, tproxy)
 	return nil
 }
 
@@ -505,7 +505,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 		}
 	} else {
 		interceptAddr.TproxySpec = []string{
-			"-m", "comment", "--comment", service.Name,
+			"-m", "comment", "--comment", *service.Name,
 			"-d", ipNet.String(),
 			"-p", interceptAddr.Proto(),
 			"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
@@ -523,7 +523,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 		if self.interceptor.lanIf != "" {
 			interceptAddr.AcceptSpec = []string{
 				"-i", self.interceptor.lanIf,
-				"-m", "comment", "--comment", service.Name,
+				"-m", "comment", "--comment", *service.Name,
 				"-d", ipNet.String(),
 				"-p", interceptAddr.Proto(),
 				"--dport", fmt.Sprintf("%v:%v", interceptAddr.LowPort(), interceptAddr.HighPort()),
@@ -598,7 +598,7 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 	if len(errorList) == 1 {
 		return errorList[0]
 	}
-	return impl.MultipleErrors(errorList)
+	return network.MultipleErrors(errorList)
 }
 
 type IPPortAddr interface {

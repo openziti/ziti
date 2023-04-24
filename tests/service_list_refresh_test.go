@@ -16,7 +16,7 @@ func setupServiceListRefreshTest(ctx *TestContext) (string, *identity, *session)
 	ctx.Req.NoError(err)
 
 	lastUpdate := nonAdminUserSession.getServiceUpdateTime()
-	ctx.Req.Equal(nonAdminUserSession.createdAt, lastUpdate)
+	ctx.Req.Equal(time.Time(*nonAdminUserSession.AuthResponse.CreatedAt), lastUpdate)
 
 	nonAdminUserSession.requireServiceUpdateTimeUnchanged()
 

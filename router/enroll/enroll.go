@@ -29,7 +29,7 @@ import (
 	"github.com/openziti/edge/router/internal/edgerouter"
 	"github.com/openziti/fabric/router"
 	"github.com/openziti/identity/certtools"
-	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"gopkg.in/resty.v1"
 	"net/http"
@@ -44,7 +44,7 @@ type apiPost struct {
 }
 
 type Enroller interface {
-	Enroll(jwt []byte, silent bool, engine string, keyAlg config.KeyAlgVar) error
+	Enroll(jwt []byte, silent bool, engine string, keyAlg ziti.KeyAlgVar) error
 	LoadConfig(cfgmap map[interface{}]interface{}) error
 }
 
@@ -78,7 +78,7 @@ func (re *RestEnroller) LoadConfig(cfgmap map[interface{}]interface{}) error {
 	return nil
 }
 
-func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg config.KeyAlgVar) error {
+func (re *RestEnroller) Enroll(jwtBuf []byte, silent bool, engine string, keyAlg ziti.KeyAlgVar) error {
 	log := pfxlog.Logger()
 
 	if re.config == nil {

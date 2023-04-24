@@ -56,7 +56,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 
 	listener, err := hostContext.Listen(service.Name)
 	ctx.Req.NoError(err)
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	testServer := newTestServer(listener, func(conn *testServerConn) error {
 		for {
@@ -79,14 +79,14 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 	t.Run("a client sdk", func(t *testing.T) {
 		ctx.testContextChanged(t)
 
-		var clientContext *ziti.ContextImplTest
+		var clientContext *ziti.ContextImpl
 
 		t.Run("can be created", func(t *testing.T) {
 			ctx.testContextChanged(t)
 			_, ztx := ctx.AdminManagementSession.RequireCreateSdkContext(dialIdentityRole)
-			clientContext = &ziti.ContextImplTest{
-				Context: ztx,
-			}
+			var ok bool
+			clientContext, ok = ztx.(*ziti.ContextImpl)
+			ctx.Req.True(ok)
 		})
 
 		defer clientContext.Close()
@@ -99,7 +99,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 
 		t.Run("can provide valid posture data and dial the service", func(t *testing.T) {
 			ctx.testContextChanged(t)
-			postureCache, err := clientContext.GetPostureCache()
+			postureCache := clientContext.CtrlClt.PostureCache
 			ctx.Req.NoError(err)
 
 			currentPostureDomain := dialDomain
@@ -108,7 +108,7 @@ func Test_PostureChecks_Sessions(t *testing.T) {
 			}
 
 			clientConn := ctx.WrapConn(clientContext.Dial(service.Name))
-			defer clientConn.Close()
+			defer func() { _ = clientConn.Close() }()
 
 			t.Run("the dialed service can be sent data", func(t *testing.T) {
 				ctx.testContextChanged(t)
