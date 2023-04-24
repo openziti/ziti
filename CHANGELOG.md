@@ -6,6 +6,7 @@
   * [Issue #1013](https://github.com/openziti/ziti/issues/1013) - Stop regenerating a new password with each container 'down/up' cycle
   * Quickstart environment variable names have been cleaned up.
     * IMPORTANT: If you update your OpenZiti binaries to this version or later (which can be done easily with the `getZiti()` function, you will need to migrate any existing network that has been developed using OpenZiti v0.27.5 or earlier binaries as the new binaries will expect the new environment variable names. A function `performMigration()` has been provided in the `ziti-cli-script.sh` for this purpose. Simply source the latest `ziti-cli-script.sh`, and your current network's .env file, then run `performMigration()` to update environment variable name references. If the migration process cannot find your existing environment file in the default location, you will need to provide the path to the migration function, ex: `performMigration <path-to-environment-file>`
+  * [Issue #1030](https://github.com/openziti/ziti/issues/1030) - Provide an upgrade path for quickstart cleanup
 * Added AMQP event writter for events
 
 # Release 0.27.9
@@ -122,7 +123,6 @@
     * [Issue #1041](https://github.com/openziti/ziti/issues/1041) - Add ziti compact command to CLI
     * [Issue #1032](https://github.com/openziti/ziti/issues/1032) - ziti edge create service fails silently if config names don't exist
     * [Issue #1031](https://github.com/openziti/ziti/issues/1031) - Fixed quickstart bug with arm and arm64 ambiguity when running quickstart on arm architecture
-    * [Issue #1030](https://github.com/openziti/ziti/issues/1030) - Provide an upgrade path for quickstart cleanup
 
 # Release 0.27.5
 
