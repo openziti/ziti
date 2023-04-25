@@ -30,7 +30,7 @@ require (
 	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.60
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.93
+	github.com/openziti/fabric v0.22.94
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.47
 	github.com/openziti/jwks v1.0.3
@@ -81,7 +81,7 @@ require (
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
-	github.com/go-openapi/spec v0.20.8 // indirect
+	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
