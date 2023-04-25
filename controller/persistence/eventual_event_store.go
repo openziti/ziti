@@ -19,7 +19,6 @@ package persistence
 import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -33,59 +32,25 @@ type EventualEvent struct {
 	Data []byte
 }
 
-func (entity *EventualEvent) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Type = bucket.GetStringOrError(FieldEventualEventType)
-	entity.Data = bucket.Get([]byte(FieldEventualEventData))
-
-}
-
-func (entity *EventualEvent) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldEventualEventType, entity.Type)
-	ctx.Bucket.SetError(ctx.Bucket.Put([]byte(FieldEventualEventData), entity.Data))
-}
-
 func (entity *EventualEvent) GetEntityType() string {
 	return EntityTypeEventualEvents
 }
 
+var _ EventualEventStore = (*eventualEventStoreImpl)(nil)
+
 type EventualEventStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*EventualEvent, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*EventualEvent, error)
+	Store[*EventualEvent]
 }
 
 func newEventualEventStore(stores *stores) *eventualEventStoreImpl {
-	store := &eventualEventStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeEventualEvents),
-	}
+	store := &eventualEventStoreImpl{}
+	store.baseStore = newBaseStore[*EventualEvent](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type eventualEventStoreImpl struct {
-	*baseStore
-}
-
-func (store *eventualEventStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EventualEvent, error) {
-	entity := &EventualEvent{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *eventualEventStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*EventualEvent, error) {
-	entity := &EventualEvent{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *eventualEventStoreImpl) NewStoreEntity() boltz.Entity {
-	return &EventualEvent{}
+	*baseStore[*EventualEvent]
 }
 
 func (store *eventualEventStoreImpl) initializeLocal() {
@@ -93,5 +58,20 @@ func (store *eventualEventStoreImpl) initializeLocal() {
 	store.AddSymbol(FieldEventualEventData, ast.NodeTypeOther)
 }
 
-func (store *eventualEventStoreImpl) initializeLinked() {
+func (store *eventualEventStoreImpl) initializeLinked() {}
+
+func (store *eventualEventStoreImpl) NewEntity() *EventualEvent {
+	return &EventualEvent{}
+}
+
+func (store *eventualEventStoreImpl) FillEntity(entity *EventualEvent, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Type = bucket.GetStringOrError(FieldEventualEventType)
+	entity.Data = bucket.Get([]byte(FieldEventualEventData))
+}
+
+func (store *eventualEventStoreImpl) PersistEntity(entity *EventualEvent, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldEventualEventType, entity.Type)
+	ctx.Bucket.SetError(ctx.Bucket.Put([]byte(FieldEventualEventData), entity.Data))
 }

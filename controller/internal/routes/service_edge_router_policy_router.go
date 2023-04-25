@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/service_edge_router_policy"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -77,16 +78,16 @@ func (r *ServiceEdgeRouterPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	ListWithHandler[*model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
+	DetailWithHandler[*model.ServiceEdgeRouterPolicy](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, MapServiceEdgeRouterPolicyToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.CreateServiceEdgeRouterPolicyParams) {
 	Create(rc, rc, ServiceEdgeRouterPolicyLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.ServiceEdgeRouterPolicy.Create, MapCreateServiceEdgeRouterPolicyToModel(params.Policy))
+		return MapCreate(ae.Managers.ServiceEdgeRouterPolicy.Create, MapCreateServiceEdgeRouterPolicyToModel(params.Policy), rc)
 	})
 }
 
@@ -96,20 +97,20 @@ func (r *ServiceEdgeRouterPolicyRouter) Delete(ae *env.AppEnv, rc *response.Requ
 
 func (r *ServiceEdgeRouterPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.UpdateServiceEdgeRouterPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy), nil)
+		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapUpdateServiceEdgeRouterPolicyToModel(params.ID, params.Policy), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params service_edge_router_policy.PatchServiceEdgeRouterPolicyParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"))
+		return ae.Managers.ServiceEdgeRouterPolicy.Update(MapPatchServiceEdgeRouterPolicyToModel(params.ID, params.Policy), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) ListEdgeRouters(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
+	ListAssociationWithHandler[*model.ServiceEdgeRouterPolicy, *model.EdgeRouter](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeRouter, MapEdgeRouterToRestEntity)
 }
 
 func (r *ServiceEdgeRouterPolicyRouter) ListServices(ae *env.AppEnv, rc *response.RequestContext) {
-	ListAssociationWithHandler(ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeService, MapServiceToRestEntity)
+	ListAssociationWithHandler[*model.ServiceEdgeRouterPolicy, *model.ServiceDetail](ae, rc, ae.Managers.ServiceEdgeRouterPolicy, ae.Managers.EdgeService.GetDetailLister(), MapServiceToRestEntity)
 }

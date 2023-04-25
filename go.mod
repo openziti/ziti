@@ -28,16 +28,16 @@ require (
 	github.com/miekg/dns v1.1.53
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/netfoundry/secretstream v0.1.5
-	github.com/openziti/channel/v2 v2.0.60
+	github.com/openziti/channel/v2 v2.0.62
 	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.94
+	github.com/openziti/fabric v0.23.0
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.47
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.19
 	github.com/openziti/sdk-golang v0.18.76
-	github.com/openziti/storage v0.1.49
-	github.com/openziti/transport/v2 v2.0.74
+	github.com/openziti/storage v0.2.0
+	github.com/openziti/transport/v2 v2.0.75
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -112,7 +112,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
 	github.com/rabbitmq/amqp091-go v1.8.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.2 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.3 // indirect
+	github.com/shoenig/go-m1cpu v0.1.5 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
@@ -123,7 +124,7 @@ require (
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.9.0 // indirect
 	golang.org/x/term v0.7.0 // indirect

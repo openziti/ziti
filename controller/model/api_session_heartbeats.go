@@ -18,7 +18,6 @@ package model
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"sync/atomic"
@@ -52,7 +51,7 @@ func NewHeartbeatCollector(env Env, batchSize int, updateInterval time.Duration,
 		closeNotify:                 make(chan struct{}),
 	}
 
-	env.GetStores().ApiSession.AddListener(boltz.EventDelete, collector.onApiSessionDelete)
+	env.GetStores().ApiSession.AddEntityIdListener(collector.Remove, boltz.EntityDeleted)
 
 	collector.Start()
 
@@ -139,15 +138,6 @@ func (self *HeartbeatCollector) flush() {
 
 	} else {
 		pfxlog.Logger().Warn("attempting to flush heartbeats from collector, a flush is already in progress, skipping")
-	}
-}
-
-func (self *HeartbeatCollector) onApiSessionDelete(i ...interface{}) {
-	if len(i) > 0 {
-		apiSession := i[0].(*persistence.ApiSession)
-		if apiSession != nil && apiSession.Id != "" {
-			self.Remove(apiSession.Id)
-		}
 	}
 }
 

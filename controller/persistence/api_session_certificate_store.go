@@ -17,10 +17,8 @@
 package persistence
 
 import (
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"time"
 )
 
@@ -43,59 +41,26 @@ type ApiSessionCertificate struct {
 	PEM          string
 }
 
-func NewApiSessionCertificate(apiSessionId string) *ApiSessionCertificate {
-	return &ApiSessionCertificate{
-		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
-		ApiSessionId:  apiSessionId,
-		Subject:       eid.New(),
-	}
-}
-
-func (entity *ApiSessionCertificate) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.ApiSessionId = bucket.GetStringOrError(FieldApiSessionCertificateApiSession)
-	entity.Subject = bucket.GetStringOrError(FieldApiSessionCertificateSubject)
-	entity.Fingerprint = bucket.GetStringOrError(FieldApiSessionCertificateFingerprint)
-	entity.ValidAfter = bucket.GetTime(FieldApiSessionCertificateValidAfter)
-	entity.ValidBefore = bucket.GetTime(FieldApiSessionCertificateValidBefore)
-	entity.PEM = bucket.GetStringOrError(FieldApiSessionCertificatePem)
-}
-
-func (entity *ApiSessionCertificate) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldApiSessionCertificateApiSession, entity.ApiSessionId)
-	ctx.SetString(FieldApiSessionCertificateSubject, entity.Subject)
-	ctx.SetString(FieldApiSessionCertificateFingerprint, entity.Fingerprint)
-	ctx.SetTimeP(FieldApiSessionCertificateValidAfter, entity.ValidAfter)
-	ctx.SetTimeP(FieldApiSessionCertificateValidBefore, entity.ValidBefore)
-	ctx.SetString(FieldApiSessionCertificatePem, entity.PEM)
-}
-
 func (entity *ApiSessionCertificate) GetEntityType() string {
 	return EntityTypeApiSessionCertificates
 }
 
+var _ ApiSessionCertificateStore = (*ApiSessionCertificateStoreImpl)(nil)
+
 type ApiSessionCertificateStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error)
+	Store[*ApiSessionCertificate]
 }
 
 func newApiSessionCertificateStore(stores *stores) *ApiSessionCertificateStoreImpl {
-	store := &ApiSessionCertificateStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeApiSessionCertificates),
-	}
+	store := &ApiSessionCertificateStoreImpl{}
+	store.baseStore = newBaseStore[*ApiSessionCertificate](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type ApiSessionCertificateStoreImpl struct {
-	*baseStore
+	*baseStore[*ApiSessionCertificate]
 	symbolApiSession boltz.EntitySymbol
-}
-
-func (store *ApiSessionCertificateStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ApiSessionCertificate{}
 }
 
 func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
@@ -111,18 +76,26 @@ func (store *ApiSessionCertificateStoreImpl) initializeLocal() {
 func (store *ApiSessionCertificateStoreImpl) initializeLinked() {
 }
 
-func (store *ApiSessionCertificateStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ApiSessionCertificate, error) {
-	entity := &ApiSessionCertificate{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *ApiSessionCertificateStoreImpl) NewEntity() *ApiSessionCertificate {
+	return &ApiSessionCertificate{}
 }
 
-func (store *ApiSessionCertificateStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSessionCertificate, error) {
-	entity := &ApiSessionCertificate{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *ApiSessionCertificateStoreImpl) FillEntity(entity *ApiSessionCertificate, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.ApiSessionId = bucket.GetStringOrError(FieldApiSessionCertificateApiSession)
+	entity.Subject = bucket.GetStringOrError(FieldApiSessionCertificateSubject)
+	entity.Fingerprint = bucket.GetStringOrError(FieldApiSessionCertificateFingerprint)
+	entity.ValidAfter = bucket.GetTime(FieldApiSessionCertificateValidAfter)
+	entity.ValidBefore = bucket.GetTime(FieldApiSessionCertificateValidBefore)
+	entity.PEM = bucket.GetStringOrError(FieldApiSessionCertificatePem)
+}
+
+func (store *ApiSessionCertificateStoreImpl) PersistEntity(entity *ApiSessionCertificate, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldApiSessionCertificateApiSession, entity.ApiSessionId)
+	ctx.SetString(FieldApiSessionCertificateSubject, entity.Subject)
+	ctx.SetString(FieldApiSessionCertificateFingerprint, entity.Fingerprint)
+	ctx.SetTimeP(FieldApiSessionCertificateValidAfter, entity.ValidAfter)
+	ctx.SetTimeP(FieldApiSessionCertificateValidBefore, entity.ValidBefore)
+	ctx.SetString(FieldApiSessionCertificatePem, entity.PEM)
 }

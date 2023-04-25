@@ -1,3 +1,4 @@
+//go:build apitests
 // +build apitests
 
 /*
@@ -74,7 +75,7 @@ func TestEdgeRouterIdentities(t *testing.T) {
 	resp = ctx.AdminManagementSession.deleteEntityOfType("edge-router-policies", edgeRouterPolicy1.id)
 	ctx.Req.Equal(http.StatusBadRequest, resp.StatusCode())
 
-	// deleting edge router should remove all three entitie
+	// deleting edge router should remove all three entities
 	ctx.AdminManagementSession.requireDeleteEntity(edgeRouter1)
 	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("edge-routers/" + edgeRouter1.id))
 	ctx.RequireNotFoundError(ctx.AdminManagementSession.query("identities/" + identity1.Id))

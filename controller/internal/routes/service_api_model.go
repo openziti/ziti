@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
@@ -100,25 +99,8 @@ func MapPatchServiceToModel(id string, service *rest_model.ServicePatch) *model.
 	return ret
 }
 
-func MapServiceToRestEntity(ae *env.AppEnv, rc *response.RequestContext, e models.Entity) (interface{}, error) {
-	service, ok := e.(*model.ServiceDetail)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Service \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapServiceToRestModel(ae, rc, service)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapServiceToRestEntity(ae *env.AppEnv, rc *response.RequestContext, service *model.ServiceDetail) (interface{}, error) {
+	return MapServiceToRestModel(ae, rc, service)
 }
 
 func MapServicesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, es []*model.ServiceDetail) ([]interface{}, error) {

@@ -17,9 +17,7 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/strfmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -58,25 +56,8 @@ func (factory *ApiSessionLinkFactoryImpl) Links(entity models.Entity) rest_model
 	}
 }
 
-func MapApiSessionToRestInterface(ae *env.AppEnv, _ *response.RequestContext, apiSessionEntity models.Entity) (interface{}, error) {
-	apiSession, ok := apiSessionEntity.(*model.ApiSession)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an ApiSession \"%s\"", apiSessionEntity.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapApiSessionToRestModel(ae, apiSession)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", apiSessionEntity.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapApiSessionToRestInterface(ae *env.AppEnv, _ *response.RequestContext, apiSession *model.ApiSession) (interface{}, error) {
+	return MapApiSessionToRestModel(ae, apiSession)
 }
 
 func MapApiSessionToRestModel(ae *env.AppEnv, apiSession *model.ApiSession) (*rest_model.APISessionDetail, error) {

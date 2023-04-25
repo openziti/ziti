@@ -21,6 +21,7 @@ import (
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -42,51 +43,49 @@ func NewPostureCheckManager(env Env) *PostureCheckManager {
 		panic(err)
 	}
 	manager := &PostureCheckManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().PostureCheck),
+		baseEntityManager: newBaseEntityManager[*PostureCheck, *persistence.PostureCheck](env, env.GetStores().PostureCheck),
 		cache:             cache,
 	}
 	manager.impl = manager
 	network.RegisterManagerDecoder[*PostureCheck](env.GetHostController().GetNetwork().GetManagers(), manager)
 
-	evictF := func(i ...interface{}) {
-		postureCheck := i[0].(*persistence.PostureCheck)
-		manager.cache.Remove(postureCheck.Id)
+	evictF := func(postureCheckId string) {
+		manager.cache.Remove(postureCheckId)
 	}
 
-	manager.Store.AddListener(boltz.EventUpdate, evictF)
-	manager.Store.AddListener(boltz.EventDelete, evictF)
+	manager.Store.AddEntityIdListener(evictF, boltz.EntityUpdated, boltz.EntityDeleted)
 
 	return manager
 }
 
 type PostureCheckManager struct {
-	baseEntityManager
+	baseEntityManager[*PostureCheck, *persistence.PostureCheck]
 	cache *lru.Cache[string, *PostureCheck]
 }
 
-func (self *PostureCheckManager) newModelEntity() edgeEntity {
+func (self *PostureCheckManager) newModelEntity() *PostureCheck {
 	return &PostureCheck{}
 }
 
-func (self *PostureCheckManager) Create(entity *PostureCheck) error {
-	return network.DispatchCreate[*PostureCheck](self, entity)
+func (self *PostureCheckManager) Create(entity *PostureCheck, ctx *change.Context) error {
+	return network.DispatchCreate[*PostureCheck](self, entity, ctx)
 }
 
-func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck]) error {
-	_, err := self.createEntity(cmd.Entity)
+func (self *PostureCheckManager) ApplyCreate(cmd *command.CreateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
-func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*PostureCheck](self, entity, checker)
+func (self *PostureCheckManager) Update(entity *PostureCheck, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*PostureCheck](self, entity, checker, ctx)
 }
 
-func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck]) error {
+func (self *PostureCheckManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*PostureCheck], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker)
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *PostureCheckManager) Read(id string) (*PostureCheck, error) {

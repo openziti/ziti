@@ -53,7 +53,7 @@ var postureCheckSubTypeMap = map[string]newPostureCheckSubType{
 type newPostureCheckSubType func() PostureCheckSubType
 
 type PostureCheckSubType interface {
-	LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket)
+	LoadValues(bucket *boltz.TypedBucket)
 	SetValues(ctx *boltz.PersistContext, bucket *boltz.TypedBucket)
 }
 
@@ -77,7 +77,43 @@ func (entity *PostureCheck) GetName() string {
 	return entity.Name
 }
 
-func (entity *PostureCheck) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheck) GetEntityType() string {
+	return EntityTypePostureChecks
+}
+
+type PostureCheckStore interface {
+	Store[*PostureCheck]
+	LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error)
+	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(filters []string, semantic string) (ast.SetCursorProvider, error)
+}
+
+func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
+	store := &postureCheckStoreImpl{}
+	store.baseStore = newBaseStore[*PostureCheck](stores, store)
+	store.InitImpl(store)
+	return store
+}
+
+type postureCheckStoreImpl struct {
+	*baseStore[*PostureCheck]
+	indexName           boltz.ReadIndex
+	indexRoleAttributes boltz.SetReadIndex
+
+	symbolServicePolicies boltz.EntitySetSymbol
+	symbolRoleAttributes  boltz.EntitySetSymbol
+	symbolBindServices    boltz.EntitySetSymbol
+	symbolDialServices    boltz.EntitySetSymbol
+
+	bindServicesCollection boltz.RefCountedLinkCollection
+	dialServicesCollection boltz.RefCountedLinkCollection
+}
+
+func (store *postureCheckStoreImpl) NewEntity() *PostureCheck {
+	return &PostureCheck{}
+}
+
+func (store *postureCheckStoreImpl) FillEntity(entity *PostureCheck, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.TypeId = bucket.GetStringOrError(FieldPostureCheckTypeId)
@@ -91,10 +127,10 @@ func (entity *PostureCheck) LoadValues(store boltz.CrudStore, bucket *boltz.Type
 
 	childBucket := bucket.GetOrCreateBucket(entity.TypeId)
 
-	entity.SubType.LoadValues(store, childBucket)
+	entity.SubType.LoadValues(childBucket)
 }
 
-func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
+func (store *postureCheckStoreImpl) PersistEntity(entity *PostureCheck, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldPostureCheckTypeId, entity.TypeId)
@@ -106,49 +142,9 @@ func (entity *PostureCheck) SetValues(ctx *boltz.PersistContext) {
 	entity.SubType.SetValues(ctx, childBucket)
 
 	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
-	store := ctx.Store.(*postureCheckStoreImpl)
 	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
 		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
 	}
-}
-
-func (entity *PostureCheck) GetEntityType() string {
-	return EntityTypePostureChecks
-}
-
-type PostureCheckStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*PostureCheck, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*PostureCheck, error)
-	GetRoleAttributesIndex() boltz.SetReadIndex
-	GetRoleAttributesCursorProvider(filters []string, semantic string) (ast.SetCursorProvider, error)
-}
-
-func newPostureCheckStore(stores *stores) *postureCheckStoreImpl {
-	store := &postureCheckStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypePostureChecks),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type postureCheckStoreImpl struct {
-	*baseStore
-	indexName           boltz.ReadIndex
-	indexRoleAttributes boltz.SetReadIndex
-
-	symbolServicePolicies boltz.EntitySetSymbol
-	symbolRoleAttributes  boltz.EntitySetSymbol
-	symbolBindServices    boltz.EntitySetSymbol
-	symbolDialServices    boltz.EntitySetSymbol
-
-	bindServicesCollection boltz.RefCountedLinkCollection
-	dialServicesCollection boltz.RefCountedLinkCollection
-}
-
-func (store *postureCheckStoreImpl) NewStoreEntity() boltz.Entity {
-	return &PostureCheck{}
 }
 
 func (store *postureCheckStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
@@ -183,30 +179,6 @@ func (store *postureCheckStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *postureCheckStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*PostureCheck, error) {
-	entity := &PostureCheck{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *postureCheckStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*PostureCheck, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *postureCheckStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*PostureCheck, error) {
-	entity := &PostureCheck{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
 func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from PostureCheckRoles in service policies
@@ -219,7 +191,7 @@ func (store *postureCheckStoreImpl) DeleteById(ctx boltz.MutateContext, id strin
 	return store.baseStore.DeleteById(ctx, id)
 }
 
-func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+func (store *postureCheckStoreImpl) Update(ctx boltz.MutateContext, entity *PostureCheck, checker boltz.FieldChecker) error {
 	store.createServiceChangeEvents(ctx.Tx(), entity.GetId())
 	return store.baseStore.Update(ctx, entity, checker)
 }
@@ -229,13 +201,13 @@ func (store *postureCheckStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, id s
 
 	cursor := store.bindServicesCollection.IterateLinks(tx, []byte(id), true)
 	for cursor.IsValid() {
-		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
+		eh.addServiceUpdatedEvent(store.stores, tx, cursor.Current())
 		cursor.Next()
 	}
 
 	cursor = store.dialServicesCollection.IterateLinks(tx, []byte(id), true)
 	for cursor.IsValid() {
-		eh.addServiceUpdatedEvent(store.baseStore, tx, cursor.Current())
+		eh.addServiceUpdatedEvent(store.stores, tx, cursor.Current())
 		cursor.Next()
 	}
 }

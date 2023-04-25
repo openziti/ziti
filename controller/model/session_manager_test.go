@@ -3,6 +3,8 @@ package model
 import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/storage/boltztest"
 	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -22,7 +24,7 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	service := ctx.requireNewService()
 	service2 := ctx.requireNewService()
 	service.RoleAttributes = []string{eid.New()}
-	ctx.NoError(ctx.managers.EdgeService.Update(service, nil))
+	ctx.NoError(ctx.managers.EdgeService.Update(service, nil, change.New().SetSource("test")))
 
 	ctx.requireNewServicePolicy(persistence.PolicyTypeDialName, ss("#all"), ss("#all"))
 	ctx.requireNewServicePolicy(persistence.PolicyTypeBindName, ss("#all"), ss("#all"))
@@ -67,7 +69,7 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 	req.Equal(sessSvc1Dial.Id, sessSvc1Dial3.Id)
 	req.Equal(sessSvc1Bind.Id, sessSvc1Bind3.Id)
 
-	req.NoError(ctx.managers.ApiSession.Delete(apiSession.Id))
+	req.NoError(ctx.managers.ApiSession.Delete(apiSession.Id, change.New().SetSource("test")))
 	done, err := ctx.GetStores().EventualEventer.Trigger()
 	ctx.NoError(err)
 
@@ -77,9 +79,9 @@ func (ctx *TestContext) testSessionIdempotency(t *testing.T) {
 		ctx.Fail("did not receive done notification from eventual eventer")
 	}
 
-	ctx.ValidateDeleted(apiSession.Id)
-	ctx.ValidateDeleted(sessSvc1Dial.Id)
-	ctx.ValidateDeleted(sessSvc1Dial2.Id)
-	ctx.ValidateDeleted(sessSvc1Bind.Id)
-	ctx.ValidateDeleted(sessSvc1Bind2.Id)
+	boltztest.ValidateDeleted(ctx, apiSession.Id)
+	boltztest.ValidateDeleted(ctx, sessSvc1Dial.Id)
+	boltztest.ValidateDeleted(ctx, sessSvc1Dial2.Id)
+	boltztest.ValidateDeleted(ctx, sessSvc1Bind.Id)
+	boltztest.ValidateDeleted(ctx, sessSvc1Bind2.Id)
 }

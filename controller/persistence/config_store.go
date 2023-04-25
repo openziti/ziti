@@ -51,44 +51,26 @@ func (entity *Config) GetName() string {
 	return entity.Name
 }
 
-func (entity *Config) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Type = bucket.GetStringOrError(FieldConfigType)
-	entity.Data = bucket.GetMap(FieldConfigData)
-}
-
-func (entity *Config) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-	ctx.SetString(FieldConfigType, entity.Type)
-	ctx.SetMap(FieldConfigData, entity.Data)
-
-	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
-		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
-	}
-}
-
 func (entity *Config) GetEntityType() string {
 	return EntityTypeConfigs
 }
 
+var _ ConfigStore = (*configStoreImpl)(nil)
+
 type ConfigStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*Config, error)
-	LoadOneByName(tx *bbolt.Tx, name string) (*Config, error)
+	Store[*Config]
+	NameIndexed
 }
 
 func newConfigsStore(stores *stores) *configStoreImpl {
-	store := &configStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeConfigs),
-	}
+	store := &configStoreImpl{}
+	store.baseStore = newBaseStore[*Config](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type configStoreImpl struct {
-	*baseStore
+	*baseStore[*Config]
 
 	indexName              boltz.ReadIndex
 	symbolType             boltz.EntitySymbol
@@ -116,27 +98,29 @@ func (store *configStoreImpl) initializeLinked() {
 	store.AddLinkCollection(store.symbolServices, store.stores.edgeService.symbolConfigs)
 }
 
-func (store *configStoreImpl) NewStoreEntity() boltz.Entity {
+func (store *configStoreImpl) NewEntity() *Config {
 	return &Config{}
 }
 
-func (store *configStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Config, error) {
-	entity := &Config{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *configStoreImpl) FillEntity(entity *Config, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Type = bucket.GetStringOrError(FieldConfigType)
+	entity.Data = bucket.GetMap(FieldConfigData)
 }
 
-func (store *configStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Config, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
+func (store *configStoreImpl) PersistEntity(entity *Config, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
+	ctx.SetString(FieldConfigType, entity.Type)
+	ctx.SetMap(FieldConfigData, entity.Data)
+
+	if ctx.ProceedWithSet(FieldConfigData) && entity.Data == nil {
+		ctx.Bucket.SetError(errorz.NewFieldError("data is required", "data", nil))
 	}
-	return nil, nil
 }
 
-func (store *configStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+func (store *configStoreImpl) Update(ctx boltz.MutateContext, entity *Config, checker boltz.FieldChecker) error {
 	if err := store.createServiceChangeEvents(ctx.Tx(), entity.GetId()); err != nil {
 		return err
 	}
@@ -175,7 +159,7 @@ func (store *configStoreImpl) createServiceChangeEvents(tx *bbolt.Tx, configId s
 
 	id := []byte(configId)
 	err := store.symbolServices.Map(tx, id, func(ctx *boltz.MapContext) {
-		eh.addServiceUpdatedEvent(store.baseStore, tx, ctx.Value())
+		eh.addServiceUpdatedEvent(store.stores, tx, ctx.Value())
 	})
 
 	if err != nil {

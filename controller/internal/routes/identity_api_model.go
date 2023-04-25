@@ -204,25 +204,8 @@ func MapPatchIdentityToModel(id string, identity *rest_model.IdentityPatch, iden
 	return ret
 }
 
-func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	identity, ok := e.(*model.Identity)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a Identity \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapIdentityToRestModel(ae, identity)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return restModel, nil
+func MapIdentityToRestEntity(ae *env.AppEnv, _ *response.RequestContext, entity *model.Identity) (interface{}, error) {
+	return MapIdentityToRestModel(ae, entity)
 }
 
 func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_model.IdentityDetail, error) {

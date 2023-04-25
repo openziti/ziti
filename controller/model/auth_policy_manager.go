@@ -18,7 +18,9 @@ package model
 
 import (
 	"fmt"
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -31,7 +33,7 @@ import (
 
 func NewAuthPolicyManager(env Env) *AuthPolicyManager {
 	manager := &AuthPolicyManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().AuthPolicy),
+		baseEntityManager: newBaseEntityManager[*AuthPolicy, *persistence.AuthPolicy](env, env.GetStores().AuthPolicy),
 	}
 	manager.impl = manager
 
@@ -41,14 +43,14 @@ func NewAuthPolicyManager(env Env) *AuthPolicyManager {
 }
 
 type AuthPolicyManager struct {
-	baseEntityManager
+	baseEntityManager[*AuthPolicy, *persistence.AuthPolicy]
 }
 
-func (self *AuthPolicyManager) Create(entity *AuthPolicy) error {
-	return network.DispatchCreate[*AuthPolicy](self, entity)
+func (self *AuthPolicyManager) Create(entity *AuthPolicy, ctx *change.Context) error {
+	return network.DispatchCreate[*AuthPolicy](self, entity, ctx)
 }
 
-func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*AuthPolicy]) error {
+func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {
 	entity := cmd.Entity
 	if entity.Secondary.RequiredExtJwtSigner != nil {
 		if err := self.verifyExtJwt(*entity.Secondary.RequiredExtJwtSigner, "secondary.requiredExtJwtSigner"); err != nil {
@@ -62,19 +64,19 @@ func (self *AuthPolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*Aut
 		}
 	}
 
-	_, err := self.createEntity(cmd.Entity)
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
-func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*AuthPolicy](self, entity, checker)
+func (self *AuthPolicyManager) Update(entity *AuthPolicy, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*AuthPolicy](self, entity, checker, ctx)
 }
 
-func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*AuthPolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
+func (self *AuthPolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*AuthPolicy], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
-func (self *AuthPolicyManager) newModelEntity() edgeEntity {
+func (self *AuthPolicyManager) newModelEntity() *AuthPolicy {
 	return &AuthPolicy{}
 }
 

@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
@@ -43,7 +44,7 @@ const (
 
 func NewMfaManager(env Env) *MfaManager {
 	manager := &MfaManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().Mfa),
+		baseEntityManager: newBaseEntityManager[*Mfa, *persistence.Mfa](env, env.GetStores().Mfa),
 	}
 	manager.impl = manager
 
@@ -53,14 +54,14 @@ func NewMfaManager(env Env) *MfaManager {
 }
 
 type MfaManager struct {
-	baseEntityManager
+	baseEntityManager[*Mfa, *persistence.Mfa]
 }
 
-func (self *MfaManager) newModelEntity() edgeEntity {
+func (self *MfaManager) newModelEntity() *Mfa {
 	return &Mfa{}
 }
 
-func (self *MfaManager) CreateForIdentity(identity *Identity) (string, error) {
+func (self *MfaManager) CreateForIdentity(identity *Identity, ctx *change.Context) (string, error) {
 	secretBytes := make([]byte, 10)
 	_, _ = rand.Read(secretBytes)
 	secret := base32.StdEncoding.EncodeToString(secretBytes)
@@ -79,22 +80,21 @@ func (self *MfaManager) CreateForIdentity(identity *Identity) (string, error) {
 		RecoveryCodes: recoveryCodes,
 	}
 
-	err = self.Create(mfa)
+	err = self.Create(mfa, ctx)
 	if err != nil {
 		return "", err
 	}
 	return mfa.Id, err
 }
 
-func (self *MfaManager) Create(entity *Mfa) error {
-	return network.DispatchCreate[*Mfa](self, entity)
+func (self *MfaManager) Create(entity *Mfa, ctx *change.Context) error {
+	return network.DispatchCreate[*Mfa](self, entity, ctx)
 }
 
-func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa]) error {
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
+func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
+	return self.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		result := &MfaListResult{manager: self}
-		err := self.ListWithTx(tx, fmt.Sprintf(`identity = "%s"`, cmd.Entity.IdentityId), result.collect)
+		err := self.ListWithTx(ctx.Tx(), fmt.Sprintf(`identity = "%s"`, cmd.Entity.IdentityId), result.collect)
 
 		if err != nil {
 			return err
@@ -110,32 +110,16 @@ func (self *MfaManager) ApplyCreate(cmd *command.CreateEntityCommand[*Mfa]) erro
 	})
 }
 
-func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*Mfa](self, entity, checker)
+func (self *MfaManager) Update(entity *Mfa, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*Mfa](self, entity, checker, ctx)
 }
 
-func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa]) error {
+func (self *MfaManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Mfa], ctx boltz.MutateContext) error {
 	var checker boltz.FieldChecker = self
 	if cmd.UpdatedFields != nil {
 		checker = &AndFieldChecker{first: self, second: cmd.UpdatedFields}
 	}
-	return self.updateEntity(cmd.Entity, checker)
-}
-
-func (self *MfaManager) Read(id string) (*Mfa, error) {
-	modelMfa := &Mfa{}
-	if err := self.readEntity(id, modelMfa); err != nil {
-		return nil, err
-	}
-	return modelMfa, nil
-}
-
-func (self *MfaManager) readInTx(tx *bbolt.Tx, id string) (*Mfa, error) {
-	modelMfa := &Mfa{}
-	if err := self.readEntityInTx(tx, id, modelMfa); err != nil {
-		return nil, err
-	}
-	return modelMfa, nil
+	return self.updateEntity(cmd.Entity, checker, ctx)
 }
 
 func (self *MfaManager) IsUpdated(field string) bool {
@@ -171,12 +155,12 @@ func (self *MfaManager) ReadOneByIdentityId(identityId string) (*Mfa, error) {
 	return resultList.Mfas[0], nil
 }
 
-func (self *MfaManager) Verify(mfa *Mfa, code string) (bool, error) {
+func (self *MfaManager) Verify(mfa *Mfa, code string, ctx *change.Context) (bool, error) {
 	//check recovery codes
 	for i, recoveryCode := range mfa.RecoveryCodes {
 		if recoveryCode == code {
 			mfa.RecoveryCodes = append(mfa.RecoveryCodes[:i], mfa.RecoveryCodes[i+1:]...)
-			if err := self.Update(mfa, nil); err != nil {
+			if err := self.Update(mfa, nil, ctx); err != nil {
 				return false, err
 			}
 			return true, nil
@@ -197,7 +181,7 @@ func (self *MfaManager) VerifyTOTP(mfa *Mfa, code string) (bool, error) {
 	return otp.Authenticate(code)
 }
 
-func (self *MfaManager) DeleteForIdentity(identity *Identity, code string) error {
+func (self *MfaManager) DeleteForIdentity(identity *Identity, code string, ctx *change.Context) error {
 	mfa, err := self.ReadOneByIdentityId(identity.Id)
 
 	if err != nil {
@@ -210,14 +194,14 @@ func (self *MfaManager) DeleteForIdentity(identity *Identity, code string) error
 
 	if mfa.IsVerified {
 		//if MFA is enabled require a valid code
-		valid, err := self.Verify(mfa, code)
+		valid, err := self.Verify(mfa, code, ctx)
 
 		if err != nil || !valid {
 			return apierror.NewInvalidMfaTokenError()
 		}
 	}
 
-	if err = self.Delete(mfa.Id); err != nil {
+	if err = self.Delete(mfa.Id, ctx); err != nil {
 		return err
 	}
 
@@ -243,7 +227,7 @@ func (self *MfaManager) GetProvisioningUrl(mfa *Mfa) string {
 	return otcConfig.ProvisionURIWithIssuer(mfa.Identity.Name, "ziti.dev")
 }
 
-func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa) error {
+func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa, ctx *change.Context) error {
 	newCodes, err := self.generateRecoveryCodes()
 	if err != nil {
 		return err
@@ -251,7 +235,7 @@ func (self *MfaManager) RecreateRecoveryCodes(mfa *Mfa) error {
 
 	mfa.RecoveryCodes = newCodes
 
-	return self.Update(mfa, nil)
+	return self.Update(mfa, nil, ctx)
 }
 
 func (self *MfaManager) generateRecoveryCodes() ([]string, error) {
@@ -313,9 +297,8 @@ func (self *MfaManager) Unmarshall(bytes []byte) (*Mfa, error) {
 }
 
 // DeleteAllForIdentity is meant for administrators to remove all MFAs (enrolled or not) from an identity
-func (self *MfaManager) DeleteAllForIdentity(id string) error {
-	return self.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
+func (self *MfaManager) DeleteAllForIdentity(id string, ctx *change.Context) error {
+	return self.GetDb().Update(ctx.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		return self.Store.DeleteWhere(ctx, fmt.Sprintf("identity = \"%s\"", id))
 	})
 }

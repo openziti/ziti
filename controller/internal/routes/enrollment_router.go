@@ -44,7 +44,6 @@ func NewEnrollmentRouter() *EnrollmentRouter {
 }
 
 func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
-
 	ae.ManagementApi.EnrollmentDeleteEnrollmentHandler = enrollment.DeleteEnrollmentHandlerFunc(func(params enrollment.DeleteEnrollmentParams, _ interface{}) middleware.Responder {
 		return ae.IsAllowed(r.Delete, params.HTTPRequest, params.ID, "", permissions.IsAdmin())
 	})
@@ -71,11 +70,11 @@ func (r *EnrollmentRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *EnrollmentRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
+	ListWithHandler[*model.Enrollment](ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *EnrollmentRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
+	DetailWithHandler[*model.Enrollment](ae, rc, ae.Managers.Enrollment, MapEnrollmentToRestEntity)
 }
 
 func (r *EnrollmentRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
@@ -95,7 +94,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 		return
 	}
 
-	if err := ae.Managers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt)); err != nil {
+	if err := ae.Managers.Enrollment.RefreshJwt(id, time.Time(*params.Refresh.ExpiresAt), rc.NewChangeContext()); err != nil {
 		if fe, ok := err.(*errorz.FieldError); ok {
 			rc.RespondWithFieldError(fe)
 			return
@@ -109,7 +108,7 @@ func (r *EnrollmentRouter) Refresh(ae *env.AppEnv, rc *response.RequestContext, 
 
 func (r *EnrollmentRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params enrollment.CreateEnrollmentParams) {
 	Create(rc, rc, EnrollmentLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment))
+		return MapCreate(ae.Managers.Enrollment.Create, MapCreateEnrollmentToModel(params.Enrollment), rc)
 	})
 
 }

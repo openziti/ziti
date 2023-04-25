@@ -131,7 +131,7 @@ func (ro *EnrollRouter) getCaCerts(ae *env.AppEnv, rc *response.RequestContext) 
 func (ro *EnrollRouter) enrollHandler(ae *env.AppEnv, rc *response.RequestContext) {
 
 	enrollContext := &model.EnrollmentContextHttp{}
-	err := enrollContext.FillFromHttpRequest(rc.Request)
+	err := enrollContext.FillFromHttpRequest(rc.Request, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -221,8 +221,11 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 		return
 	}
 
+	certCsr := []byte(*params.RouterExtendEnrollmentRequest.CertCsr)
+	serverCertCsr := []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr)
+
 	if edgeRouter, _ := ae.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); edgeRouter != nil {
-		certs, err := ae.Managers.EdgeRouter.ExtendEnrollment(edgeRouter, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+		certs, err := ae.Managers.EdgeRouter.ExtendEnrollment(edgeRouter, certCsr, serverCertCsr, rc.NewChangeContext())
 
 		if err != nil {
 			rc.RespondWithError(err)
@@ -251,7 +254,7 @@ func (ro *EnrollRouter) extendRouterEnrollment(ae *env.AppEnv, rc *response.Requ
 	}
 
 	if router, _ := ae.Managers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
-		certs, err := ae.Managers.TransitRouter.ExtendEnrollment(router, []byte(*params.RouterExtendEnrollmentRequest.CertCsr), []byte(*params.RouterExtendEnrollmentRequest.ServerCertCsr))
+		certs, err := ae.Managers.TransitRouter.ExtendEnrollment(router, certCsr, serverCertCsr, rc.NewChangeContext())
 
 		if err != nil {
 			rc.RespondWithError(err)

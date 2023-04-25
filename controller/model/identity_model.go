@@ -22,9 +22,7 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 	"time"
 )
 
@@ -66,8 +64,8 @@ type Identity struct {
 	DisabledUntil             *time.Time
 }
 
-func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	identityType, err := manager.GetEnv().GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
+func (entity *Identity) toBoltEntityForCreate(_ *bbolt.Tx, env Env) (*persistence.Identity, error) {
+	identityType, err := env.GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
 
 	if err != nil && !boltz.IsErrNotFoundErr(err) {
 		return nil, err
@@ -173,9 +171,9 @@ func fillPersistenceInfo(identity *persistence.Identity, envInfo *EnvInfo, sdkIn
 	}
 }
 
-func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, checker boltz.FieldChecker) (*persistence.Identity, error) {
 	if checker == nil || checker.IsUpdated("type") {
-		identityType, err := manager.GetEnv().GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
+		identityType, err := env.GetManagers().IdentityType.ReadByIdOrName(entity.IdentityTypeId)
 
 		if err != nil && !boltz.IsErrNotFoundErr(err) {
 			return nil, err
@@ -208,14 +206,15 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManage
 		IsAdmin:                   entity.IsAdmin,
 	}
 
-	_, currentType := manager.GetStore().GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
+	identityStore := env.GetManagers().Identity.GetStore()
+	_, currentType := identityStore.GetSymbol(persistence.FieldIdentityType).Eval(tx, []byte(entity.Id))
 	if string(currentType) == persistence.RouterIdentityType {
 		if (checker == nil || checker.IsUpdated("identityTypeId")) && entity.IdentityTypeId != persistence.RouterIdentityType {
 			fieldErr := errorz.NewFieldError("may not change type of router identities", "typeId", entity.IdentityTypeId)
 			return nil, errorz.NewFieldApiError(fieldErr)
 		}
 
-		_, currentName := manager.GetStore().GetSymbol(persistence.FieldName).Eval(tx, []byte(entity.Id))
+		_, currentName := identityStore.GetSymbol(persistence.FieldName).Eval(tx, []byte(entity.Id))
 		if (checker == nil || checker.IsUpdated(persistence.FieldName)) && string(currentName) != entity.Name {
 			fieldErr := errorz.NewFieldError("may not change name of router identities", "name", entity.Name)
 			return nil, errorz.NewFieldApiError(fieldErr)
@@ -230,11 +229,7 @@ func (entity *Identity) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManage
 	return boltEntity, nil
 }
 
-func (entity *Identity) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltIdentity, ok := boltEntity.(*persistence.Identity)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model identity", reflect.TypeOf(boltEntity))
-	}
+func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *persistence.Identity) error {
 	entity.FillCommon(boltIdentity)
 	entity.Name = boltIdentity.Name
 	entity.IdentityTypeId = boltIdentity.IdentityTypeId
@@ -242,7 +237,7 @@ func (entity *Identity) fillFrom(manager EntityManager, tx *bbolt.Tx, boltEntity
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
-	entity.HasHeartbeat = manager.GetEnv().GetManagers().Identity.IsActive(entity.Id)
+	entity.HasHeartbeat = env.GetManagers().Identity.IsActive(entity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences
@@ -262,9 +257,9 @@ type ServiceConfig struct {
 	Config  string
 }
 
-func toBoltServiceConfigs(tx *bbolt.Tx, manager EntityManager, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
-	serviceStore := manager.GetEnv().GetStores().EdgeService
-	configStore := manager.GetEnv().GetStores().Config
+func toBoltServiceConfigs(tx *bbolt.Tx, env Env, serviceConfigs []ServiceConfig) ([]persistence.ServiceConfig, error) {
+	serviceStore := env.GetStores().EdgeService
+	configStore := env.GetStores().Config
 
 	var boltServiceConfigs []persistence.ServiceConfig
 	for _, serviceConfig := range serviceConfigs {

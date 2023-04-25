@@ -27,6 +27,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/sdk-golang/ziti/config"
@@ -90,16 +91,16 @@ func (r *CaRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *CaRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.Ca, MapCaToRestEntity)
+	ListWithHandler[*model.Ca](ae, rc, ae.Managers.Ca, MapCaToRestEntity)
 }
 
 func (r *CaRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.Ca, MapCaToRestEntity)
+	DetailWithHandler[*model.Ca](ae, rc, ae.Managers.Ca, MapCaToRestEntity)
 }
 
 func (r *CaRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.CreateCaParams) {
 	Create(rc, rc, CaLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.Ca.Create, MapCreateCaToModel(params.Ca))
+		return MapCreate(ae.Managers.Ca.Create, MapCreateCaToModel(params.Ca), rc)
 	})
 }
 
@@ -109,13 +110,13 @@ func (r *CaRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *CaRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.UpdateCaParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca), nil)
+		return ae.Managers.Ca.Update(MapUpdateCaToModel(params.ID, params.Ca), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *CaRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params certificate_authority.PatchCaParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.Ca.Update(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"))
+		return ae.Managers.Ca.Update(MapPatchCaToModel(params.ID, params.Ca), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
@@ -219,7 +220,7 @@ func (r *CaRouter) VerifyCert(ae *env.AppEnv, rc *response.RequestContext, param
 		return
 	}
 
-	err = ae.Managers.Ca.Verified(ca)
+	err = ae.Managers.Ca.Verified(ca, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)

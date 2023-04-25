@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/auth_policy"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 )
@@ -67,16 +68,16 @@ func (r *AuthPolicyRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *AuthPolicyRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
+	ListWithHandler[*model.AuthPolicy](ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
+	DetailWithHandler[*model.AuthPolicy](ae, rc, ae.Managers.AuthPolicy, MapAuthPolicyToRestEntity)
 }
 
 func (r *AuthPolicyRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.CreateAuthPolicyParams) {
 	Create(rc, rc, AuthPolicyLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.AuthPolicy.Create, MapCreateAuthPolicyToModel(params.AuthPolicy))
+		return MapCreate(ae.Managers.AuthPolicy.Create, MapCreateAuthPolicyToModel(params.AuthPolicy), rc)
 	})
 }
 
@@ -86,12 +87,12 @@ func (r *AuthPolicyRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *AuthPolicyRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.UpdateAuthPolicyParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.AuthPolicy.Update(MapUpdateAuthPolicyToModel(params.ID, params.AuthPolicy), nil)
+		return ae.Managers.AuthPolicy.Update(MapUpdateAuthPolicyToModel(params.ID, params.AuthPolicy), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *AuthPolicyRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params auth_policy.PatchAuthPolicyParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.AuthPolicy.Update(MapPatchAuthPolicyToModel(params.ID, params.AuthPolicy), fields.FilterMaps("tags"))
+		return ae.Managers.AuthPolicy.Update(MapPatchAuthPolicyToModel(params.ID, params.AuthPolicy), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }

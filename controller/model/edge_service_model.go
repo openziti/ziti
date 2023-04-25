@@ -23,9 +23,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type Service struct {
@@ -37,8 +35,8 @@ type Service struct {
 	EncryptionRequired bool     `json:"encryptionRequired"`
 }
 
-func (entity *Service) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	if err := entity.validateConfigs(tx, manager); err != nil {
+func (entity *Service) toBoltEntity(tx *bbolt.Tx, env Env) (*persistence.EdgeService, error) {
+	if err := entity.validateConfigs(tx, env); err != nil {
 		return nil, err
 	}
 
@@ -55,13 +53,13 @@ func (entity *Service) toBoltEntity(tx *bbolt.Tx, manager EntityManager) (boltz.
 	return edgeService, nil
 }
 
-func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *Service) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.EdgeService, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Service) validateConfigs(tx *bbolt.Tx, manager EntityManager) error {
+func (entity *Service) validateConfigs(tx *bbolt.Tx, env Env) error {
 	typeMap := map[string]*persistence.Config{}
-	configStore := manager.GetEnv().GetStores().Config
+	configStore := env.GetStores().Config
 	for _, id := range entity.Configs {
 		config, _ := configStore.LoadOneById(tx, id)
 		if config == nil {
@@ -70,7 +68,7 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, manager EntityManager) erro
 		conflictConfig, found := typeMap[config.Type]
 		if found {
 			configTypeName := "<not found>"
-			if configType, _ := manager.GetEnv().GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
+			if configType, _ := env.GetStores().ConfigType.LoadOneById(tx, config.Type); configType != nil {
 				configTypeName = configType.Name
 			}
 			msg := fmt.Sprintf("duplicate configs named %v and %v found for config type %v. Only one config of a given typed is allowed per service ",
@@ -82,15 +80,11 @@ func (entity *Service) validateConfigs(tx *bbolt.Tx, manager EntityManager) erro
 	return nil
 }
 
-func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntity(tx, manager)
+func (entity *Service) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.EdgeService, error) {
+	return entity.toBoltEntity(tx, env)
 }
 
-func (entity *Service) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltService, ok := boltEntity.(*persistence.EdgeService)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
-	}
+func (entity *Service) fillFrom(_ Env, _ *bbolt.Tx, boltService *persistence.EdgeService) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy
@@ -111,19 +105,15 @@ type ServiceDetail struct {
 	EncryptionRequired bool                              `json:"encryptionRequired"`
 }
 
-func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ServiceDetail) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.EdgeService, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ServiceDetail) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.EdgeService, error) {
 	panic("should never be called")
 }
 
-func (entity *ServiceDetail) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltService, ok := boltEntity.(*persistence.EdgeService)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
-	}
+func (entity *ServiceDetail) fillFrom(_ Env, _ *bbolt.Tx, boltService *persistence.EdgeService) error {
 	entity.FillCommon(boltService)
 	entity.Name = boltService.Name
 	entity.TerminatorStrategy = boltService.TerminatorStrategy

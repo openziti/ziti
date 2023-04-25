@@ -20,8 +20,10 @@ import (
 	"fmt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/edge/eid"
-	"github.com/openziti/storage/boltz"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -44,24 +46,24 @@ func (ctx *TestContext) testCreateInvalidApiSessions(t *testing.T) {
 	defer ctx.CleanupAll()
 
 	apiSession := NewApiSession(eid.New())
-	err := ctx.Create(apiSession)
+	err := boltztest.Create(ctx, apiSession)
 	ctx.EqualError(err, fmt.Sprintf("identity with id %v not found", apiSession.IdentityId))
 
 	apiSession.IdentityId = ""
-	err = ctx.Create(apiSession)
+	err = boltztest.Create(ctx, apiSession)
 	ctx.EqualError(err, "fk constraint on apiSessions.identity does not allow null or empty values")
 
 	identity := ctx.RequireNewIdentity("user1", false)
 	apiSession.Token = ""
 	apiSession.IdentityId = identity.Id
 
-	err = ctx.Create(apiSession)
+	err = boltztest.Create(ctx, apiSession)
 	ctx.EqualError(err, "index on apiSessions.token does not allow null or empty values")
 
 	apiSession.Token = eid.New()
-	err = ctx.Create(apiSession)
+	err = boltztest.Create(ctx, apiSession)
 	ctx.NoError(err)
-	err = ctx.Create(apiSession)
+	err = boltztest.Create(ctx, apiSession)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type apiSession already exists with id %v", apiSession.GetId()))
 }
 
@@ -72,19 +74,19 @@ func (ctx *TestContext) testCreateApiSessions(t *testing.T) {
 	identity := ctx.RequireNewIdentity("Jojo", false)
 
 	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 
-	ctx.ValidateBaseline(apiSession)
+	boltztest.ValidateBaseline(ctx, apiSession)
 
 	apiSession2 := NewApiSession(identity.Id)
 	apiSession2.Tags = ctx.CreateTags()
-	ctx.RequireCreate(apiSession2)
+	boltztest.RequireCreate(ctx, apiSession2)
 
-	ctx.ValidateBaseline(apiSession2)
+	boltztest.ValidateBaseline(ctx, apiSession2)
 
-	err := ctx.Delete(apiSession)
+	err := boltztest.Delete(ctx, apiSession)
 	ctx.NoError(err)
-	ctx.RequireDelete(identity)
+	boltztest.RequireDelete(ctx, identity)
 
 	done, err := ctx.GetStores().EventualEventer.Trigger()
 	ctx.NoError(err)
@@ -96,8 +98,8 @@ func (ctx *TestContext) testCreateApiSessions(t *testing.T) {
 
 	}
 
-	ctx.ValidateDeleted(apiSession.Id)
-	ctx.ValidateDeleted(apiSession2.Id)
+	boltztest.ValidateDeleted(ctx, apiSession.Id)
+	boltztest.ValidateDeleted(ctx, apiSession2.Id)
 }
 
 type apiSessionTestEntities struct {
@@ -115,13 +117,13 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 	identity2 := ctx.RequireNewIdentity("user1", false)
 
 	apiSession1 := NewApiSession(identity1.Id)
-	ctx.RequireCreate(apiSession1)
+	boltztest.RequireCreate(ctx, apiSession1)
 
 	apiSession2 := NewApiSession(identity2.Id)
-	ctx.RequireCreate(apiSession2)
+	boltztest.RequireCreate(ctx, apiSession2)
 
 	apiSession3 := NewApiSession(identity2.Id)
-	ctx.RequireCreate(apiSession3)
+	boltztest.RequireCreate(ctx, apiSession3)
 
 	service := ctx.RequireNewService("test-service")
 	session := &Session{
@@ -130,7 +132,7 @@ func (ctx *TestContext) createApiSessionTestEntities() *apiSessionTestEntities {
 		ApiSessionId:  apiSession2.Id,
 		ServiceId:     service.Id,
 	}
-	ctx.RequireCreate(session)
+	boltztest.RequireCreate(ctx, session)
 
 	return &apiSessionTestEntities{
 		identity1:   identity1,
@@ -155,13 +157,7 @@ func (ctx *TestContext) testLoadQueryApiSessions(t *testing.T) {
 		ctx.NotNil(apiSession)
 		ctx.EqualValues(entities.apiSession1.Id, apiSession.Id)
 
-		query := fmt.Sprintf(`identity = "%v"`, entities.identity1.Id)
-		apiSession, err = ctx.stores.ApiSession.LoadOneByQuery(tx, query)
-		ctx.NoError(err)
-		ctx.NotNil(apiSession)
-		ctx.EqualValues(entities.apiSession1.Id, apiSession.Id)
-
-		query = fmt.Sprintf(`identity = "%v"`, entities.identity2.Id)
+		query := fmt.Sprintf(`identity = "%v"`, entities.identity2.Id)
 		ids, _, err := ctx.stores.ApiSession.QueryIds(tx, query)
 		ctx.NoError(err)
 		ctx.EqualValues(2, len(ids))
@@ -179,7 +175,9 @@ func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
 	entities := ctx.createApiSessionTestEntities()
 	earlier := time.Now()
 
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		original, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
@@ -196,7 +194,7 @@ func (ctx *TestContext) testUpdateApiSessions(t *testing.T) {
 		apiSession.IdentityId = entities.identity2.Id
 		apiSession.Tags = tags
 
-		err = ctx.stores.ApiSession.Update(boltz.NewMutateContext(tx), apiSession, nil)
+		err = ctx.stores.ApiSession.Update(mutateCtx, apiSession, nil)
 		ctx.NoError(err)
 		loaded, err := ctx.stores.ApiSession.LoadOneById(tx, entities.apiSession1.Id)
 		ctx.NoError(err)
@@ -216,13 +214,13 @@ func (ctx *TestContext) testDeleteApiSessions(t *testing.T) {
 	ctx.CleanupAll()
 	entities := ctx.createApiSessionTestEntities()
 
-	err := ctx.Delete(entities.apiSession1)
+	err := boltztest.Delete(ctx, entities.apiSession1)
 	ctx.NoError(err)
 
-	err = ctx.Delete(entities.apiSession2)
+	err = boltztest.Delete(ctx, entities.apiSession2)
 	ctx.NoError(err)
 
-	err = ctx.Delete(entities.apiSession3)
+	err = boltztest.Delete(ctx, entities.apiSession3)
 	ctx.NoError(err)
 
 	done, err := ctx.GetStores().EventualEventer.Trigger()
@@ -235,7 +233,7 @@ func (ctx *TestContext) testDeleteApiSessions(t *testing.T) {
 
 	}
 
-	ctx.ValidateDeleted(entities.apiSession1.GetId())
-	ctx.ValidateDeleted(entities.apiSession2.GetId())
-	ctx.ValidateDeleted(entities.apiSession3.GetId())
+	boltztest.ValidateDeleted(ctx, entities.apiSession1.GetId())
+	boltztest.ValidateDeleted(ctx, entities.apiSession2.GetId())
+	boltztest.ValidateDeleted(ctx, entities.apiSession3.GetId())
 }

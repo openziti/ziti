@@ -17,7 +17,6 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
@@ -79,25 +78,8 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 	return ret
 }
 
-func MapApiSessionCertificateToRestEntity(appEnv *env.AppEnv, context *response.RequestContext, e models.Entity) (interface{}, error) {
-	i, ok := e.(*model.ApiSessionCertificate)
-
-	if !ok {
-		err := fmt.Errorf("entity is not an API Session Certificate \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	al, err := MapApiSessionCertificateToRestModel(i)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
+func MapApiSessionCertificateToRestEntity(appEnv *env.AppEnv, context *response.RequestContext, i *model.ApiSessionCertificate) (interface{}, error) {
+	return MapApiSessionCertificateToRestModel(i)
 }
 
 func MapApiSessionCertificateToRestModel(apiSessionCert *model.ApiSessionCertificate) (*rest_model.CurrentAPISessionCertificateDetail, error) {

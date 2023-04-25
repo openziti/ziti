@@ -20,6 +20,10 @@ func (x *CreateIdentityWithEnrollmentsCmd) GetCommandType() int32 {
 	return int32(CommandType_CreateIdentityWithEnrollmentsType)
 }
 
+func (x *UpdateServiceConfigsCmd) GetCommandType() int32 {
+	return int32(CommandType_UpdateServiceConfigsType)
+}
+
 func EncodeTags(tags map[string]interface{}) (map[string]*TagValue, error) {
 	if len(tags) == 0 {
 		return nil, nil

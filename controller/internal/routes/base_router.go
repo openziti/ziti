@@ -22,15 +22,19 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	edgeApiError "github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
+	"github.com/pkg/errors"
+	"go.etcd.io/bbolt"
 	"net/http"
 	"reflect"
 	"strings"
@@ -40,13 +44,19 @@ const (
 	EntityNameSelf = "self"
 )
 
-func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMapper, es []models.Entity) ([]interface{}, error) {
+func modelToApi[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error), es []E) ([]interface{}, error) {
 	apiEntities := make([]interface{}, 0)
 
 	for _, e := range es {
 		al, err := mapper(ae, rc, e)
 
 		if err != nil {
+			pfxlog.Logger().
+				WithError(err).
+				WithField("entityId", e.GetId()).
+				WithField("entityType", reflect.TypeOf(e).String()).
+				Error("could not convert to API entity")
+			err = errors.Wrapf(err, "could not convert %T with id [%v] to API entity", e, e.GetId())
 			return nil, err
 		}
 
@@ -56,13 +66,16 @@ func modelToApi(ae *env.AppEnv, rc *response.RequestContext, mapper ModelToApiMa
 	return apiEntities, nil
 }
 
-func ListWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
+func ListWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[E],
+	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	ListWithQueryF(ae, rc, lister, mapper, lister.BasePreparedList)
 }
 
-type queryF func(query ast.Query) (*models.EntityListResult[models.Entity], error)
-
-func ListWithQueryF(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[models.Entity], mapper ModelToApiMapper, qf queryF) {
+func ListWithQueryF[E models.Entity](ae *env.AppEnv,
+	rc *response.RequestContext,
+	lister models.EntityRetriever[E],
+	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
+	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithQueryFAndCollector(ae, rc, lister, mapper, defaultToListEnvelope, qf)
 }
 
@@ -76,11 +89,16 @@ func defaultToListEnvelope(data []interface{}, meta *rest_model.Meta) interface{
 type ApiListEnvelopeFactory func(data []interface{}, meta *rest_model.Meta) interface{}
 type ApiEntityEnvelopeFactory func(data interface{}, meta *rest_model.Meta) interface{}
 
-func ListWithQueryFAndCollector(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[models.Entity], mapper ModelToApiMapper, toEnvelope ApiListEnvelopeFactory, qf queryF) {
+func ListWithQueryFAndCollector[E models.Entity](ae *env.AppEnv,
+	rc *response.RequestContext,
+	lister models.EntityRetriever[E],
+	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error),
+	toEnvelope ApiListEnvelopeFactory,
+	qf func(query ast.Query) (*models.EntityListResult[E], error)) {
 	ListWithEnvelopeFactory(rc, toEnvelope, func(rc *response.RequestContext, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(lister.GetStore())
+		query, err := queryOptions.getFullQuery(lister.GetListStore())
 		if err != nil {
 			return nil, err
 		}
@@ -196,7 +214,8 @@ func CreateWithResponder(rc *response.RequestContext, rsp response.Responder, li
 	rsp.RespondWithCreatedId(id, linkFactory.SelfLinkFromId(id))
 }
 
-func DetailWithHandler(ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
+func DetailWithHandler[E models.Entity](ae *env.AppEnv, rc *response.RequestContext, loader models.EntityRetriever[E],
+	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	Detail(rc, func(rc *response.RequestContext, id string) (interface{}, error) {
 		entity, err := loader.BaseLoad(id)
 		if err != nil {
@@ -236,12 +255,12 @@ func Detail(rc *response.RequestContext, f ModelDetailF) {
 type ModelDeleteF func(rc *response.RequestContext, id string) error
 
 type DeleteHandler interface {
-	Delete(id string) error
+	Delete(id string, ctx *change.Context) error
 }
 
 func DeleteWithHandler(rc *response.RequestContext, deleteHandler DeleteHandler) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		return deleteHandler.Delete(id)
+		return deleteHandler.Delete(id, rc.NewChangeContext())
 	})
 }
 
@@ -397,9 +416,19 @@ func listWithId(rc *response.RequestContext, f func(id string) ([]interface{}, e
 // type ListAssocF func(string, func(models.Entity)) error
 type listAssocF func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error)
 
-func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, filterTemplate string, entityController models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
+type AssociationLister[E models.Entity] interface {
+	GetListStore() boltz.Store
+	BasePreparedList(query ast.Query) (*models.EntityListResult[E], error)
+	BaseLoadInTx(tx *bbolt.Tx, id string) (E, error)
+}
+
+func ListAssociationsWithFilter[E models.Entity](ae *env.AppEnv,
+	rc *response.RequestContext,
+	filterTemplate string,
+	entityController AssociationLister[E],
+	mapper func(*env.AppEnv, *response.RequestContext, E) (interface{}, error)) {
 	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
-		query, err := queryOptions.getFullQuery(entityController.GetStore())
+		query, err := queryOptions.getFullQuery(entityController.GetListStore())
 		if err != nil {
 			return nil, err
 		}
@@ -409,7 +438,7 @@ func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, fil
 			filter = fmt.Sprintf(filterTemplate, id)
 		}
 
-		filterQuery, err := ast.Parse(entityController.GetStore(), filter)
+		filterQuery, err := ast.Parse(entityController.GetListStore(), filter)
 		if err != nil {
 			return nil, err
 		}
@@ -430,19 +459,23 @@ func ListAssociationsWithFilter(ae *env.AppEnv, rc *response.RequestContext, fil
 	})
 }
 
-func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, lister models.EntityRetriever[models.Entity], associationLoader models.EntityRetriever[models.Entity], mapper ModelToApiMapper) {
+func ListAssociationWithHandler[E models.Entity, A models.Entity](ae *env.AppEnv,
+	rc *response.RequestContext,
+	lister models.EntityRetriever[E],
+	associationLoader AssociationLister[A],
+	mapper func(*env.AppEnv, *response.RequestContext, A) (interface{}, error)) {
 	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
-		query, err := queryOptions.getFullQuery(associationLoader.GetStore())
+		query, err := queryOptions.getFullQuery(associationLoader.GetListStore())
 		if err != nil {
 			return nil, err
 		}
 
-		result := models.EntityListResult[models.Entity]{
+		result := models.EntityListResult[A]{
 			Loader: associationLoader,
 		}
-		err = lister.PreparedListAssociatedWithHandler(id, associationLoader.GetStore().GetEntityType(), query, result.Collect)
+		err = lister.PreparedListAssociatedWithHandler(id, associationLoader.GetListStore().GetEntityType(), query, result.Collect)
 		if err != nil {
 			return nil, err
 		}
@@ -457,9 +490,9 @@ func ListAssociationWithHandler(ae *env.AppEnv, rc *response.RequestContext, lis
 }
 
 func ListTerminatorAssociations(ae *env.AppEnv, rc *response.RequestContext,
-	lister models.EntityRetriever[models.Entity],
+	lister models.EntityRetriever[*model.Service],
 	associationLoader *network.TerminatorManager,
-	mapper ModelToApiMapper) {
+	mapper func(ae *env.AppEnv, _ *response.RequestContext, terminator *network.Terminator) (interface{}, error)) {
 	ListAssociations(rc, func(rc *response.RequestContext, id string, queryOptions *PublicQueryOptions) (*QueryResult, error) {
 		// validate that the submitted query is only using public symbols. The query options may contain an final
 		// query which has been modified with additional filters
@@ -539,8 +572,8 @@ func ListAssociations(rc *response.RequestContext, listF listAssocF) {
 	rc.RespondWithOk(result.Result, meta)
 }
 
-func MapCreate[T models.Entity](f func(T) error, entity T) (string, error) {
-	err := f(entity)
+func MapCreate[T models.Entity](f func(T, *change.Context) error, entity T, rc *response.RequestContext) (string, error) {
+	err := f(entity, rc.NewChangeContext())
 	if err != nil {
 		return "", err
 	}

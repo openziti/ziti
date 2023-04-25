@@ -19,7 +19,6 @@ package persistence
 import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -83,7 +82,50 @@ func (entity *Ca) GetName() string {
 	return entity.Name
 }
 
-func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Ca) GetEntityType() string {
+	return EntityTypeCas
+}
+
+var _ CaStore = (*caStoreImpl)(nil)
+
+type CaStore interface {
+	Store[*Ca]
+}
+
+func newCaStore(stores *stores) *caStoreImpl {
+	store := &caStoreImpl{}
+	store.baseStore = newBaseStore[*Ca](stores, store)
+	store.InitImpl(store)
+	return store
+}
+
+type caStoreImpl struct {
+	*baseStore[*Ca]
+	indexName         boltz.ReadIndex
+	symbolEnrollments boltz.EntitySetSymbol
+}
+
+func (store *caStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+	store.indexName = store.addUniqueNameField()
+	store.AddSymbol(FieldCaFingerprint, ast.NodeTypeString)
+	store.AddSymbol(FieldCaIsVerified, ast.NodeTypeBool)
+	store.AddSymbol(FieldCaVerificationToken, ast.NodeTypeString)
+	store.AddSymbol(FieldCaIsAutoCaEnrollmentEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldCaIsOttCaEnrollmentEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldCaIsAuthEnabled, ast.NodeTypeBool)
+	store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
+	store.symbolEnrollments = store.AddFkSetSymbol(FieldCaEnrollments, store.stores.enrollment)
+
+}
+
+func (store *caStoreImpl) initializeLinked() {}
+
+func (store *caStoreImpl) NewEntity() *Ca {
+	return &Ca{}
+}
+
+func (store *caStoreImpl) FillEntity(entity *Ca, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetStringOrError(FieldCaFingerprint)
@@ -105,10 +147,9 @@ func (entity *Ca) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 		entity.ExternalIdClaim.ParserCriteria = externalField.GetStringWithDefault(FieldCaExternalIdClaimParserCriteria, "")
 		entity.ExternalIdClaim.Index = externalField.GetInt64WithDefault(FieldCaExternalIdClaimIndex, 0)
 	}
-
 }
 
-func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
+func (store *caStoreImpl) PersistEntity(entity *Ca, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetString(FieldCaFingerprint, entity.Fingerprint)
@@ -132,77 +173,6 @@ func (entity *Ca) SetValues(ctx *boltz.PersistContext) {
 	} else {
 		_ = ctx.Bucket.DeleteBucket([]byte(FieldCaExternalIdClaim))
 	}
-
-}
-
-func (entity *Ca) GetEntityType() string {
-	return EntityTypeCas
-}
-
-type CaStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Ca, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Ca, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Ca, error)
-}
-
-func newCaStore(stores *stores) *caStoreImpl {
-	store := &caStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeCas),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type caStoreImpl struct {
-	*baseStore
-	indexName         boltz.ReadIndex
-	symbolEnrollments boltz.EntitySetSymbol
-}
-
-func (store *caStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Ca{}
-}
-
-func (store *caStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-	store.indexName = store.addUniqueNameField()
-	store.AddSymbol(FieldCaFingerprint, ast.NodeTypeString)
-	store.AddSymbol(FieldCaIsVerified, ast.NodeTypeBool)
-	store.AddSymbol(FieldCaVerificationToken, ast.NodeTypeString)
-	store.AddSymbol(FieldCaIsAutoCaEnrollmentEnabled, ast.NodeTypeBool)
-	store.AddSymbol(FieldCaIsOttCaEnrollmentEnabled, ast.NodeTypeBool)
-	store.AddSymbol(FieldCaIsAuthEnabled, ast.NodeTypeBool)
-	store.AddSetSymbol(FieldIdentityRoles, ast.NodeTypeString)
-	store.symbolEnrollments = store.AddFkSetSymbol(FieldCaEnrollments, store.stores.enrollment)
-
-}
-
-func (store *caStoreImpl) initializeLinked() {
-}
-
-func (store *caStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Ca, error) {
-	entity := &Ca{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *caStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Ca, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *caStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Ca, error) {
-	entity := &Ca{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *caStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
@@ -213,8 +183,4 @@ func (store *caStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
-}
-
-func (store *caStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
-	return store.baseStore.Update(ctx, entity, checker)
 }

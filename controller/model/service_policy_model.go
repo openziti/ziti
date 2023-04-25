@@ -22,9 +22,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 	"strings"
 )
 
@@ -46,7 +44,7 @@ func (entity *ServicePolicy) validatePolicyType() error {
 	return nil
 }
 
-func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (*persistence.ServicePolicy, error) {
 	if checker == nil || checker.IsUpdated(persistence.FieldServicePolicyType) {
 		if err := entity.validatePolicyType(); err != nil {
 			return nil, err
@@ -71,20 +69,15 @@ func (entity *ServicePolicy) toBoltEntity(checker boltz.FieldChecker) (boltz.Ent
 	}, nil
 }
 
-func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ServicePolicy, error) {
 	return entity.toBoltEntity(nil)
 }
 
-func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ Env, checker boltz.FieldChecker) (*persistence.ServicePolicy, error) {
 	return entity.toBoltEntity(checker)
 }
 
-func (entity *ServicePolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltServicePolicy, ok := boltEntity.(*persistence.ServicePolicy)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model service policy", reflect.TypeOf(boltEntity))
-	}
-
+func (entity *ServicePolicy) fillFrom(_ Env, _ *bbolt.Tx, boltServicePolicy *persistence.ServicePolicy) error {
 	policyType := "Invalid"
 	if boltServicePolicy.PolicyType == persistence.PolicyTypeDial {
 		policyType = persistence.PolicyTypeDialName

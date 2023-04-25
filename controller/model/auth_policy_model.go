@@ -20,9 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type AuthPolicy struct {
@@ -64,11 +62,7 @@ type AuthPolicyUpdb struct {
 	LockoutDurationMinutes int64
 }
 
-func (entity *AuthPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltAuthPolicy, ok := boltEntity.(*persistence.AuthPolicy)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model ca", reflect.TypeOf(boltEntity))
-	}
+func (entity *AuthPolicy) fillFrom(_ Env, _ *bbolt.Tx, boltAuthPolicy *persistence.AuthPolicy) error {
 	entity.FillCommon(boltAuthPolicy)
 	entity.Name = boltAuthPolicy.Name
 	entity.Primary = AuthPolicyPrimary{
@@ -98,7 +92,7 @@ func (entity *AuthPolicy) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity bolt
 	return nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.AuthPolicy, error) {
 	boltEntity := &persistence.AuthPolicy{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
@@ -130,6 +124,6 @@ func (entity *AuthPolicy) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz
 	return boltEntity, nil
 }
 
-func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, manager EntityManager, checker boltz.FieldChecker) (boltz.Entity, error) {
-	return entity.toBoltEntityForCreate(tx, manager)
+func (entity *AuthPolicy) toBoltEntityForUpdate(tx *bbolt.Tx, env Env, _ boltz.FieldChecker) (*persistence.AuthPolicy, error) {
+	return entity.toBoltEntityForCreate(tx, env)
 }

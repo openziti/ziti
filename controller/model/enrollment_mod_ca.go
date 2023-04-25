@@ -201,7 +201,7 @@ func (module *EnrollModuleCa) completeCertAuthenticatorEnrollment(log *logrus.En
 		},
 	}
 
-	_, authenticatorId, err := module.env.GetManagers().Identity.CreateWithAuthenticator(identity, newAuthenticator)
+	_, authenticatorId, err := module.env.GetManagers().Identity.CreateWithAuthenticator(identity, newAuthenticator, context.GetChangeContext())
 
 	if err != nil {
 		log.WithError(err).Error("failed to create identity with authenticator")
@@ -264,7 +264,7 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 
 	identity.ExternalId = &externalId
 
-	if err = module.env.GetManagers().Identity.Create(identity); err != nil {
+	if err = module.env.GetManagers().Identity.Create(identity, context.GetChangeContext()); err != nil {
 		log.WithError(err).Error("failed to create identity, enrollment failed")
 		return nil, err
 	}
@@ -281,13 +281,16 @@ func (module *EnrollModuleCa) completeExternalIdEnrollment(log *logrus.Entry, co
 }
 
 // getIdentityName returns a unique identity name based taking into account:
-//	1) the requested name from the enrolling identity
-//  2) the name formatting requirements determined by the enrolling CA
-//  3) the uniqueness of the name that is a result of 1 and 2
 //
-//  The requested name is only used if the CA's name format allows it to be used.
+//  1. the requested name from the enrolling identity
 //
-//  If the resulting name is not unique a six digit zero-padded numerical suffix is appended (i.e. 000001).
+//  2. the name formatting requirements determined by the enrolling CA
+//
+//  3. the uniqueness of the name that is a result of 1 and 2
+//
+//     The requested name is only used if the CA's name format allows it to be used.
+//
+//     If the resulting name is not unique a six digit zero-padded numerical suffix is appended (i.e. 000001).
 func (module *EnrollModuleCa) getIdentityName(ca *Ca, enrollmentCert *x509.Certificate, requestedName string, identityId string) string {
 	formatter := NewIdentityNameFormatter(ca, enrollmentCert, requestedName, identityId)
 	nameFormat := ca.IdentityNameFormat

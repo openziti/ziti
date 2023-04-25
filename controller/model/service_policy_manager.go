@@ -17,18 +17,20 @@
 package model
 
 import (
+	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
-	"go.etcd.io/bbolt"
+	"github.com/openziti/storage/boltz"
 	"google.golang.org/protobuf/proto"
 )
 
 func NewServicePolicyManager(env Env) *ServicePolicyManager {
 	manager := &ServicePolicyManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().ServicePolicy),
+		baseEntityManager: newBaseEntityManager[*ServicePolicy, *persistence.ServicePolicy](env, env.GetStores().ServicePolicy),
 	}
 	manager.impl = manager
 
@@ -38,44 +40,28 @@ func NewServicePolicyManager(env Env) *ServicePolicyManager {
 }
 
 type ServicePolicyManager struct {
-	baseEntityManager
+	baseEntityManager[*ServicePolicy, *persistence.ServicePolicy]
 }
 
-func (self *ServicePolicyManager) newModelEntity() edgeEntity {
+func (self *ServicePolicyManager) newModelEntity() *ServicePolicy {
 	return &ServicePolicy{}
 }
 
-func (self *ServicePolicyManager) Create(entity *ServicePolicy) error {
-	return network.DispatchCreate[*ServicePolicy](self, entity)
+func (self *ServicePolicyManager) Create(entity *ServicePolicy, ctx *change.Context) error {
+	return network.DispatchCreate[*ServicePolicy](self, entity, ctx)
 }
 
-func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServicePolicy]) error {
-	_, err := self.createEntity(cmd.Entity)
+func (self *ServicePolicyManager) ApplyCreate(cmd *command.CreateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
-func (self *ServicePolicyManager) Update(entity *ServicePolicy, checker fields.UpdatedFields) error {
-	return network.DispatchUpdate[*ServicePolicy](self, entity, checker)
+func (self *ServicePolicyManager) Update(entity *ServicePolicy, checker fields.UpdatedFields, ctx *change.Context) error {
+	return network.DispatchUpdate[*ServicePolicy](self, entity, checker, ctx)
 }
 
-func (self *ServicePolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServicePolicy]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
-}
-
-func (self *ServicePolicyManager) Read(id string) (*ServicePolicy, error) {
-	modelEntity := &ServicePolicy{}
-	if err := self.readEntity(id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
-}
-
-func (self *ServicePolicyManager) readInTx(tx *bbolt.Tx, id string) (*ServicePolicy, error) {
-	modelEntity := &ServicePolicy{}
-	if err := self.readEntityInTx(tx, id, modelEntity); err != nil {
-		return nil, err
-	}
-	return modelEntity, nil
+func (self *ServicePolicyManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*ServicePolicy], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *ServicePolicyManager) Marshall(entity *ServicePolicy) ([]byte, error) {

@@ -45,7 +45,7 @@ func Test_load(t *testing.T) {
 		})
 
 		t.Run("has ConnectTimeout value set", func(t *testing.T) {
-			require.New(t).Equal(connectTimeout, options.channelOptions.ConnectTimeout)
+			require.New(t).Equal(connectTimeout*time.Millisecond, options.channelOptions.ConnectTimeout)
 		})
 	})
 
@@ -108,7 +108,7 @@ func Test_load(t *testing.T) {
 const (
 	connectMaxQueuedConnections   = 50
 	connectMaxOutstandingConnects = 100
-	connectTimeout                = 1000 * time.Millisecond
+	connectTimeout                = 1000
 )
 
 func newTestConfigWithConnectOptions() xgress.OptionsData {
@@ -119,7 +119,7 @@ func newTestConfigWithConnectOptions() xgress.OptionsData {
 			"advertise":              "127.0.0.1:3022",
 			"maxQueuedConnects":      connectMaxQueuedConnections,
 			"maxOutstandingConnects": connectMaxOutstandingConnects,
-			"connectTimeout":         connectTimeout.String(),
+			"connectTimeoutMs":       connectTimeout,
 		},
 	}
 }

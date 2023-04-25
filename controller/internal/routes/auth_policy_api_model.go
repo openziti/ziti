@@ -17,8 +17,6 @@
 package routes
 
 import (
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -31,26 +29,8 @@ const EntityNameAuthPolicy = "auth-policies"
 
 var AuthPolicyLinkFactory = NewBasicLinkFactory(EntityNameAuthPolicy)
 
-func MapAuthPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, entity models.Entity) (interface{}, error) {
-	authPolicyModel, ok := entity.(*model.AuthPolicy)
-
-	if !ok {
-		err := fmt.Errorf("could not convert to %T to %T: \"%s\"", entity, authPolicyModel, entity.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	restModel, err := MapAuthPolicyToRestModel(authPolicyModel)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to %T to %T: \"%s\": %s", authPolicyModel, restModel, entity.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	return restModel, err
+func MapAuthPolicyToRestEntity(_ *env.AppEnv, _ *response.RequestContext, authPolicyModel *model.AuthPolicy) (interface{}, error) {
+	return MapAuthPolicyToRestModel(authPolicyModel)
 }
 
 func MapAuthPolicyToRestModel(model *model.AuthPolicy) (*rest_model.AuthPolicyDetail, error) {

@@ -19,7 +19,6 @@ package persistence
 import (
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -91,90 +90,29 @@ func (entity *AuthPolicy) GetName() string {
 	return entity.Name
 }
 
-func (entity *AuthPolicy) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-
-	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.Primary.Updb.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbAllowed, true)
-	entity.Primary.Updb.MinPasswordLength = bucket.GetInt64WithDefault(FiledAuthPolicyPrimaryUpdbMinPasswordLength, DefaultUpdbMinPasswordLength)
-	entity.Primary.Updb.RequireSpecialChar = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireSpecialChar, false)
-	entity.Primary.Updb.RequireNumberChar = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireNumberChar, false)
-	entity.Primary.Updb.RequireMixedCase = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireMixedCase, false)
-	entity.Primary.Updb.MaxAttempts = bucket.GetInt64WithDefault(FieldAuthPolicyPrimaryUpdbMaxAttempts, DefaultUpdbMaxAttempts)
-	entity.Primary.Updb.LockoutDurationMinutes = bucket.GetInt64WithDefault(FieldAuthPolicyPrimaryUpdbLockoutDurationMinutes, 0)
-
-	entity.Primary.Cert.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryCertAllowed, true)
-	entity.Primary.Cert.AllowExpiredCerts = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryCertAllowExpiredCerts, true)
-
-	entity.Primary.ExtJwt.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryExtJwtAllowed, true)
-	entity.Primary.ExtJwt.AllowedExtJwtSigners = bucket.GetStringList(FieldAuthPolicyPrimaryExtJwtAllowedSigners)
-
-	entity.Secondary.RequireTotp = bucket.GetBoolWithDefault(FieldAuthSecondaryPolicyRequireTotp, false)
-	entity.Secondary.RequiredExtJwtSigner = bucket.GetString(FieldAuthSecondaryPolicyRequiredExtJwtSigner)
-}
-
-func (entity *AuthPolicy) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-
-	if entity.Primary.Updb.LockoutDurationMinutes < 0 {
-		entity.Primary.Updb.LockoutDurationMinutes = UpdbIndefiniteLockout
-	}
-
-	if entity.Primary.Updb.MaxAttempts < 0 {
-		entity.Primary.Updb.MaxAttempts = UpdbUnlimitedAttemptsLimit
-	}
-
-	if entity.Primary.Updb.MinPasswordLength < DefaultUpdbMinPasswordLength {
-		entity.Primary.Updb.MinPasswordLength = DefaultUpdbMinPasswordLength
-	}
-
-	ctx.SetString(FieldName, entity.Name)
-
-	ctx.SetBool(FieldAuthPolicyPrimaryCertAllowed, entity.Primary.Cert.Allowed)
-	ctx.SetBool(FieldAuthPolicyPrimaryCertAllowExpiredCerts, entity.Primary.Cert.AllowExpiredCerts)
-
-	ctx.SetBool(FieldAuthPolicyPrimaryUpdbAllowed, entity.Primary.Updb.Allowed)
-	ctx.SetInt64(FiledAuthPolicyPrimaryUpdbMinPasswordLength, entity.Primary.Updb.MinPasswordLength)
-	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireSpecialChar, entity.Primary.Updb.RequireSpecialChar)
-	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireNumberChar, entity.Primary.Updb.RequireNumberChar)
-	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireMixedCase, entity.Primary.Updb.RequireMixedCase)
-	ctx.SetInt64(FieldAuthPolicyPrimaryUpdbMaxAttempts, entity.Primary.Updb.MaxAttempts)
-	ctx.SetInt64(FieldAuthPolicyPrimaryUpdbLockoutDurationMinutes, entity.Primary.Updb.LockoutDurationMinutes)
-
-	ctx.SetBool(FieldAuthPolicyPrimaryExtJwtAllowed, entity.Primary.ExtJwt.Allowed)
-	ctx.SetStringList(FieldAuthPolicyPrimaryExtJwtAllowedSigners, entity.Primary.ExtJwt.AllowedExtJwtSigners)
-
-	ctx.SetBool(FieldAuthSecondaryPolicyRequireTotp, entity.Secondary.RequireTotp)
-	ctx.SetStringP(FieldAuthSecondaryPolicyRequiredExtJwtSigner, entity.Secondary.RequiredExtJwtSigner)
-}
-
 func (entity *AuthPolicy) GetEntityType() string {
 	return EntityTypeAuthPolicies
 }
 
+var _ AuthPolicyStore = (*AuthPolicyStoreImpl)(nil)
+
 type AuthPolicyStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*AuthPolicy, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*AuthPolicy, error)
+	NameIndexed
+	Store[*AuthPolicy]
 }
 
 func newAuthPolicyStore(stores *stores) *AuthPolicyStoreImpl {
-	store := &AuthPolicyStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeAuthPolicies),
-	}
+	store := &AuthPolicyStoreImpl{}
+	store.baseStore = newBaseStore[*AuthPolicy](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type AuthPolicyStoreImpl struct {
-	*baseStore
+	*baseStore[*AuthPolicy]
 	indexName                             boltz.ReadIndex
 	symbolPrimaryAllowedExtJwtSigners     boltz.EntitySetSymbol
 	symbolSecondaryRequiredExtJwtSignerId boltz.EntitySymbol
-}
-
-func (store *AuthPolicyStoreImpl) NewStoreEntity() boltz.Entity {
-	return &AuthPolicy{}
 }
 
 func (store *AuthPolicyStoreImpl) initializeLocal() {
@@ -210,26 +148,63 @@ func (store *AuthPolicyStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *AuthPolicyStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*AuthPolicy, error) {
-	entity := &AuthPolicy{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *AuthPolicyStoreImpl) NewEntity() *AuthPolicy {
+	return &AuthPolicy{}
 }
 
-func (store *AuthPolicyStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*AuthPolicy, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
+func (store *AuthPolicyStoreImpl) FillEntity(entity *AuthPolicy, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+
+	entity.Name = bucket.GetStringOrError(FieldName)
+	entity.Primary.Updb.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbAllowed, true)
+	entity.Primary.Updb.MinPasswordLength = bucket.GetInt64WithDefault(FiledAuthPolicyPrimaryUpdbMinPasswordLength, DefaultUpdbMinPasswordLength)
+	entity.Primary.Updb.RequireSpecialChar = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireSpecialChar, false)
+	entity.Primary.Updb.RequireNumberChar = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireNumberChar, false)
+	entity.Primary.Updb.RequireMixedCase = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryUpdbRequireMixedCase, false)
+	entity.Primary.Updb.MaxAttempts = bucket.GetInt64WithDefault(FieldAuthPolicyPrimaryUpdbMaxAttempts, DefaultUpdbMaxAttempts)
+	entity.Primary.Updb.LockoutDurationMinutes = bucket.GetInt64WithDefault(FieldAuthPolicyPrimaryUpdbLockoutDurationMinutes, 0)
+
+	entity.Primary.Cert.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryCertAllowed, true)
+	entity.Primary.Cert.AllowExpiredCerts = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryCertAllowExpiredCerts, true)
+
+	entity.Primary.ExtJwt.Allowed = bucket.GetBoolWithDefault(FieldAuthPolicyPrimaryExtJwtAllowed, true)
+	entity.Primary.ExtJwt.AllowedExtJwtSigners = bucket.GetStringList(FieldAuthPolicyPrimaryExtJwtAllowedSigners)
+
+	entity.Secondary.RequireTotp = bucket.GetBoolWithDefault(FieldAuthSecondaryPolicyRequireTotp, false)
+	entity.Secondary.RequiredExtJwtSigner = bucket.GetString(FieldAuthSecondaryPolicyRequiredExtJwtSigner)
 }
 
-func (store *AuthPolicyStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*AuthPolicy, error) {
-	entity := &AuthPolicy{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
+func (store *AuthPolicyStoreImpl) PersistEntity(entity *AuthPolicy, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+
+	if entity.Primary.Updb.LockoutDurationMinutes < 0 {
+		entity.Primary.Updb.LockoutDurationMinutes = UpdbIndefiniteLockout
 	}
-	return entity, nil
+
+	if entity.Primary.Updb.MaxAttempts < 0 {
+		entity.Primary.Updb.MaxAttempts = UpdbUnlimitedAttemptsLimit
+	}
+
+	if entity.Primary.Updb.MinPasswordLength < DefaultUpdbMinPasswordLength {
+		entity.Primary.Updb.MinPasswordLength = DefaultUpdbMinPasswordLength
+	}
+
+	ctx.SetString(FieldName, entity.Name)
+
+	ctx.SetBool(FieldAuthPolicyPrimaryCertAllowed, entity.Primary.Cert.Allowed)
+	ctx.SetBool(FieldAuthPolicyPrimaryCertAllowExpiredCerts, entity.Primary.Cert.AllowExpiredCerts)
+
+	ctx.SetBool(FieldAuthPolicyPrimaryUpdbAllowed, entity.Primary.Updb.Allowed)
+	ctx.SetInt64(FiledAuthPolicyPrimaryUpdbMinPasswordLength, entity.Primary.Updb.MinPasswordLength)
+	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireSpecialChar, entity.Primary.Updb.RequireSpecialChar)
+	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireNumberChar, entity.Primary.Updb.RequireNumberChar)
+	ctx.SetBool(FieldAuthPolicyPrimaryUpdbRequireMixedCase, entity.Primary.Updb.RequireMixedCase)
+	ctx.SetInt64(FieldAuthPolicyPrimaryUpdbMaxAttempts, entity.Primary.Updb.MaxAttempts)
+	ctx.SetInt64(FieldAuthPolicyPrimaryUpdbLockoutDurationMinutes, entity.Primary.Updb.LockoutDurationMinutes)
+
+	ctx.SetBool(FieldAuthPolicyPrimaryExtJwtAllowed, entity.Primary.ExtJwt.Allowed)
+	ctx.SetStringList(FieldAuthPolicyPrimaryExtJwtAllowedSigners, entity.Primary.ExtJwt.AllowedExtJwtSigners)
+
+	ctx.SetBool(FieldAuthSecondaryPolicyRequireTotp, entity.Secondary.RequireTotp)
+	ctx.SetStringP(FieldAuthSecondaryPolicyRequiredExtJwtSigner, entity.Secondary.RequiredExtJwtSigner)
 }

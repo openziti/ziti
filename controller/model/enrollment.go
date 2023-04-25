@@ -22,6 +22,7 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/edge/controller/apierror"
 	fabricApiError "github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"io"
 	"net/http"
 	"strings"
@@ -72,15 +73,17 @@ type EnrollmentContext interface {
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
 	GetMethod() string
+	GetChangeContext() *change.Context
 }
 
 type EnrollmentContextHttp struct {
-	Headers    map[string]interface{}
-	Parameters map[string]interface{}
-	Data       interface{}
-	Certs      []*x509.Certificate
-	Token      string
-	Method     string
+	Headers       map[string]interface{}
+	Parameters    map[string]interface{}
+	Data          interface{}
+	Certs         []*x509.Certificate
+	Token         string
+	Method        string
+	ChangeContext *change.Context
 }
 
 func (context *EnrollmentContextHttp) GetToken() string {
@@ -127,7 +130,11 @@ func (context *EnrollmentContextHttp) GetHeaders() map[string]interface{} {
 	return context.Headers
 }
 
-func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request) error {
+func (context *EnrollmentContextHttp) GetChangeContext() *change.Context {
+	return context.ChangeContext
+}
+
+func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request, changeCtx *change.Context) error {
 	queryValues := request.URL.Query()
 	parameters := map[string]interface{}{}
 
@@ -179,6 +186,7 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request)
 	context.Data = enrollData
 	context.Certs = request.TLS.PeerCertificates
 	context.Headers = headers
+	context.ChangeContext = changeCtx
 
 	return nil
 }

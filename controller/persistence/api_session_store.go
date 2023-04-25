@@ -20,6 +20,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
@@ -63,7 +64,43 @@ func NewApiSession(identityId string) *ApiSession {
 	}
 }
 
-func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *ApiSession) GetEntityType() string {
+	return EntityTypeApiSessions
+}
+
+var _ ApiSessionStore = (*apiSessionStoreImpl)(nil)
+
+type ApiSessionStore interface {
+	Store[*ApiSession]
+	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
+	GetTokenIndex() boltz.ReadIndex
+	GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string
+	GetEventsEmitter() events.EventEmmiter
+}
+
+func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
+	store := &apiSessionStoreImpl{
+		eventsEmitter: events.New(),
+	}
+	store.baseStore = newBaseStore[*ApiSession](stores, store)
+	stores.EventualEventer.AddEventualListener(EventualEventApiSessionDelete, store.onEventualDelete)
+	store.InitImpl(store)
+	return store
+}
+
+type apiSessionStoreImpl struct {
+	*baseStore[*ApiSession]
+
+	indexToken     boltz.ReadIndex
+	symbolIdentity boltz.EntitySymbol
+	eventsEmitter  events.EventEmmiter
+}
+
+func (store *apiSessionStoreImpl) NewEntity() *ApiSession {
+	return &ApiSession{}
+}
+
+func (store *apiSessionStoreImpl) FillEntity(entity *ApiSession, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.IdentityId = bucket.GetStringOrError(FieldApiSessionIdentity)
 	entity.Token = bucket.GetStringOrError(FieldApiSessionToken)
@@ -79,7 +116,7 @@ func (entity *ApiSession) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	}
 }
 
-func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
+func (store *apiSessionStoreImpl) PersistEntity(entity *ApiSession, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldApiSessionIdentity, entity.IdentityId)
 	ctx.SetString(FieldApiSessionToken, entity.Token)
@@ -91,34 +128,8 @@ func (entity *ApiSession) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetTimeP(FieldApiSessionLastActivityAt, &entity.LastActivityAt)
 }
 
-func (entity *ApiSession) GetEntityType() string {
-	return EntityTypeApiSessions
-}
-
-type ApiSessionStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*ApiSession, error)
-	LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error)
-	GetTokenIndex() boltz.ReadIndex
-	GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string
-}
-
-func newApiSessionStore(stores *stores) *apiSessionStoreImpl {
-	store := &apiSessionStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeApiSessions),
-	}
-
-	stores.EventualEventer.AddEventualListener(EventualEventApiSessionDelete, store.onEventualDelete)
-	store.InitImpl(store)
-	return store
-}
-
-type apiSessionStoreImpl struct {
-	*baseStore
-
-	indexToken     boltz.ReadIndex
-	symbolIdentity boltz.EntitySymbol
+func (store *apiSessionStoreImpl) GetEventsEmitter() events.EventEmmiter {
+	return store.eventsEmitter
 }
 
 func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []byte) {
@@ -140,8 +151,8 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 	}
 
 	for _, id := range idCollector.ids {
-		err = store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-			ctx := boltz.NewMutateContext(tx)
+		changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
+		err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
 			if err := store.stores.session.DeleteById(ctx, id); err != nil {
 				if boltz.IsErrNotFoundErr(err) {
 					return nil
@@ -160,8 +171,9 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 		}
 	}
 
-	err = store.stores.DbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-		if bucket := boltz.Path(tx, indexPath...); bucket != nil {
+	changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
+	err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
+		if bucket := boltz.Path(ctx.Tx(), indexPath...); bucket != nil {
 			if err := bucket.DeleteBucket(apiSessionId); err != nil {
 				if err != bbolt.ErrBucketNotFound {
 					return err
@@ -179,27 +191,28 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 	}
 }
 
-func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity boltz.Entity) error {
+func (store *apiSessionStoreImpl) Create(ctx boltz.MutateContext, entity *ApiSession) error {
 	err := store.baseStore.Create(ctx, entity)
 
 	if err == nil {
-		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
-			if !apiSession.MfaRequired || apiSession.MfaComplete {
-				ctx.AddEvent(store, EventFullyAuthenticated, apiSession)
-			}
+		if !entity.MfaRequired || entity.MfaComplete {
+			ctx.AddCommitAction(func() {
+				store.eventsEmitter.Emit(EventFullyAuthenticated, entity)
+			})
 		}
+
 	}
 
 	return err
 }
-func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity boltz.Entity, checker boltz.FieldChecker) error {
+func (store *apiSessionStoreImpl) Update(ctx boltz.MutateContext, entity *ApiSession, checker boltz.FieldChecker) error {
 	err := store.baseStore.Update(ctx, entity, checker)
 
 	if err == nil {
-		if apiSession, ok := entity.(*ApiSession); ok && apiSession != nil {
-			if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && apiSession.MfaComplete {
-				ctx.AddEvent(store, EventFullyAuthenticated, apiSession)
-			}
+		if (checker == nil || checker.IsUpdated(FieldApiSessionMfaComplete)) && entity.MfaComplete {
+			ctx.AddCommitAction(func() {
+				store.eventsEmitter.Emit(EventFullyAuthenticated, entity)
+			})
 		}
 	}
 
@@ -218,10 +231,6 @@ func (store *apiSessionStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 	}
 
 	return err
-}
-
-func (store *apiSessionStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ApiSession{}
 }
 
 func (store *apiSessionStoreImpl) GetTokenIndex() boltz.ReadIndex {
@@ -245,28 +254,12 @@ func (store *apiSessionStoreImpl) initializeLocal() {
 func (store *apiSessionStoreImpl) initializeLinked() {
 }
 
-func (store *apiSessionStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ApiSession, error) {
-	entity := &ApiSession{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
 func (store *apiSessionStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*ApiSession, error) {
 	id := store.indexToken.Read(tx, []byte(token))
 	if id != nil {
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, boltz.NewNotFoundError(store.GetSingularEntityType(), "token", token)
-}
-
-func (store *apiSessionStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ApiSession, error) {
-	entity := &ApiSession{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }
 
 func (store *apiSessionStoreImpl) GetCachedSessionId(tx *bbolt.Tx, apiSessionId, sessionType, serviceId string) *string {

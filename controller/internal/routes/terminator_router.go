@@ -79,7 +79,7 @@ func (r *TerminatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 func (r *TerminatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params terminator.CreateTerminatorParams) {
 	Create(rc, rc, TerminatorLinkFactory, func() (string, error) {
 		entity := MapCreateTerminatorToModel(params.Terminator)
-		err := ae.Managers.Terminator.Create(entity)
+		err := ae.Managers.Terminator.Create(entity, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
@@ -93,12 +93,12 @@ func (r *TerminatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *TerminatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params terminator.UpdateTerminatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil)
+		return ae.Managers.Terminator.Update(MapUpdateTerminatorToModel(params.ID, params.Terminator), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *TerminatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, params terminator.PatchTerminatorParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return ae.Managers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"))
+		return ae.Managers.Terminator.Update(MapPatchTerminatorToModel(params.ID, params.Terminator), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }

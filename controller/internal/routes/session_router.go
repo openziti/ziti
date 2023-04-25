@@ -117,7 +117,7 @@ func (r *SessionRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
 
 func (r *SessionRouter) Delete(ae *env.AppEnv, rc *response.RequestContext) {
 	Delete(rc, func(rc *response.RequestContext, id string) error {
-		return ae.Managers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId)
+		return ae.Managers.Session.DeleteForIdentity(id, rc.ApiSession.IdentityId, rc.NewChangeContext())
 	})
 }
 
@@ -125,7 +125,7 @@ func (r *SessionRouter) Create(ae *env.AppEnv, rc *response.RequestContext, para
 	start := time.Now()
 	responder := &SessionRequestResponder{ae: ae, Responder: rc}
 	CreateWithResponder(rc, responder, SessionLinkFactory, func() (string, error) {
-		return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session))
+		return ae.Managers.Session.Create(MapCreateSessionToModel(rc.Identity.Id, rc.ApiSession.Id, params.Session), rc.NewChangeContext())
 	})
 	r.createTimer.UpdateSince(start)
 }

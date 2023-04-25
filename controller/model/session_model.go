@@ -21,9 +21,7 @@ import (
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type Session struct {
@@ -36,8 +34,8 @@ type Session struct {
 	ServicePolicies []string
 }
 
-func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager) (boltz.Entity, error) {
-	apiSession, err := manager.GetEnv().GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
+func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, env Env) (*persistence.Session, error) {
+	apiSession, err := env.GetStores().ApiSession.LoadOneById(tx, entity.ApiSessionId)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +57,7 @@ func (entity *Session) toBoltEntityForCreate(tx *bbolt.Tx, manager EntityManager
 	return boltEntity, nil
 }
 
-func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.Session, error) {
 	return &persistence.Session{
 		BaseExtEntity:   *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Token:           entity.Token,
@@ -71,11 +69,7 @@ func (entity *Session) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.Fie
 	}, nil
 }
 
-func (entity *Session) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltSession, ok := boltEntity.(*persistence.Session)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model Session", reflect.TypeOf(boltEntity))
-	}
+func (entity *Session) fillFrom(_ Env, _ *bbolt.Tx, boltSession *persistence.Session) error {
 	entity.FillCommon(boltSession)
 	entity.Token = boltSession.Token
 	entity.ApiSessionId = boltSession.ApiSessionId

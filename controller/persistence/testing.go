@@ -19,6 +19,7 @@ package persistence
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
@@ -31,6 +32,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"testing"
@@ -115,8 +117,7 @@ func (p *testDbProvider) GetManagers() *network.Managers {
 }
 
 type TestContext struct {
-	boltz.BaseTestContext
-	db          boltz.Db
+	boltztest.BaseTestContext
 	n           *network.Network
 	stores      *Stores
 	closeNotify chan struct{}
@@ -126,11 +127,14 @@ func NewTestContext(t *testing.T) *TestContext {
 	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
 
 	result := &TestContext{
-		BaseTestContext: *boltz.NewTestContext(t),
-		closeNotify:     make(chan struct{}, 1),
+		closeNotify: make(chan struct{}, 1),
 	}
-	result.Impl = result
+	result.BaseTestContext = *boltztest.NewTestContext(t, result.GetStoreForEntity)
 	return result
+}
+
+func (ctx *TestContext) newViewTestCtx(tx *bbolt.Tx) boltz.MutateContext {
+	return boltz.NewTxMutateContext(change.New().SetSource("test").GetContext(), tx)
 }
 
 func (ctx *TestContext) GetNetwork() *network.Network {
@@ -147,10 +151,10 @@ func (ctx *TestContext) GetStores() *Stores {
 }
 
 func (ctx *TestContext) GetDb() boltz.Db {
-	return ctx.db
+	return ctx.BaseTestContext.GetDb()
 }
 
-func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+func (ctx *TestContext) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	if _, ok := entity.(*db.Service); ok {
 		return ctx.n.GetStores().Service
 	}
@@ -162,23 +166,12 @@ func (ctx *TestContext) GetDbProvider() DbProvider {
 }
 
 func (ctx *TestContext) Init() {
-	ctx.BaseTestContext.InitDbFile()
-	ctx.InitWithDbFile(ctx.GetDbFile().Name())
-}
-
-func (ctx *TestContext) InitWithDbFile(path string) {
-	if path == "" {
-		ctx.BaseTestContext.InitDbFile()
-		path = ctx.GetDbFile().Name()
-	}
-
-	var err error
-	ctx.db, err = db.Open(path)
-	ctx.NoError(err)
+	ctx.BaseTestContext.InitDb(db.Open)
 
 	dbProvider := ctx.GetDbProvider()
 
 	config := newTestConfig(ctx)
+	var err error
 	ctx.n, err = network.NewNetwork(config)
 	ctx.NoError(err)
 
@@ -201,18 +194,18 @@ func (ctx *TestContext) requireNewServicePolicy(policyType PolicyType, identityR
 		IdentityRoles: identityRoles,
 		ServiceRoles:  serviceRoles,
 	}
-	ctx.RequireCreate(entity)
+	boltztest.RequireCreate(ctx, entity)
 	return entity
 }
 
 func (ctx *TestContext) RequireNewIdentity(name string, isAdmin bool) *Identity {
-	identity := &Identity{
+	identityEntity := &Identity{
 		BaseExtEntity: *boltz.NewExtEntity(eid.New(), nil),
 		Name:          name,
 		IsAdmin:       isAdmin,
 	}
-	ctx.RequireCreate(identity)
-	return identity
+	boltztest.RequireCreate(ctx, identityEntity)
+	return identityEntity
 }
 
 func (ctx *TestContext) RequireNewService(name string) *EdgeService {
@@ -222,7 +215,7 @@ func (ctx *TestContext) RequireNewService(name string) *EdgeService {
 			Name:          name,
 		},
 	}
-	ctx.RequireCreate(edgeService)
+	boltztest.RequireCreate(ctx, edgeService)
 	return edgeService
 }
 
@@ -241,7 +234,7 @@ func (ctx *TestContext) getRelatedIds(entity boltz.Entity, field string) []strin
 }
 
 func (ctx *TestContext) CleanupAll() {
-	stores := []boltz.CrudStore{
+	stores := []boltz.Store{
 		ctx.stores.Session,
 		ctx.stores.ApiSession,
 		ctx.stores.Service,
@@ -254,10 +247,11 @@ func (ctx *TestContext) CleanupAll() {
 		ctx.stores.ServicePolicy,
 		ctx.stores.ServiceEdgeRouterPolicy,
 	}
-	_ = ctx.GetDb().Update(func(tx *bbolt.Tx) error {
-		mutateContext := boltz.NewMutateContext(tx)
+
+	mutateCtx := change.New().SetSource("test.cleanup").NewMutateContext()
+	_ = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		for _, store := range stores {
-			if err := store.DeleteWhere(mutateContext, `true limit none`); err != nil {
+			if err := store.DeleteWhere(mutateCtx, `true limit none`); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())
 				return err
 			}

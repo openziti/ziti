@@ -2,6 +2,7 @@ package handler_edge_ctrl
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"math"
 	"time"
@@ -107,9 +108,34 @@ type baseSessionRequestContext struct {
 	err          controllerError
 	sourceRouter *network.Router
 	session      *model.Session
+	apiSession   *model.ApiSession
 	service      *model.Service
 	newSession   bool
 	logContext   logcontext.Context
+}
+
+func (self *baseSessionRequestContext) newChangeContext() *change.Context {
+	result := change.New().SetSource(fmt.Sprintf("ctrl[edge/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
+	if self.session != nil {
+		result.
+			SetChangeAuthorId(self.session.IdentityId).
+			SetChangeAuthorName(self.apiSession.Identity.Name).
+			SetChangeAuthorType("identity")
+	} else if self.sourceRouter != nil {
+		result.
+			SetChangeAuthorId(self.sourceRouter.Id).
+			SetChangeAuthorName(self.sourceRouter.Name).
+			SetChangeAuthorType("router")
+	}
+	return result
+}
+
+func (self *baseSessionRequestContext) newTunnelChangeContext() *change.Context {
+	return change.New().
+		SetChangeAuthorId(self.sourceRouter.Id).
+		SetChangeAuthorName(self.sourceRouter.Name).
+		SetChangeAuthorType("router").
+		SetSource(fmt.Sprintf("ctrl[edge:tunnel/%v]", self.handler.getChannel().Underlay().GetRemoteAddr().String()))
 }
 
 func (self *baseSessionRequestContext) GetMessage() *channel.Message {
@@ -165,6 +191,7 @@ func (self *baseSessionRequestContext) loadSession(token string) {
 				WithError(self.err).Errorf("invalid api-session")
 			return
 		}
+		self.apiSession = apiSession
 
 		self.logContext = logcontext.NewContext()
 		traceSpec := self.handler.getAppEnv().TraceManager.GetIdentityTrace(apiSession.IdentityId)
@@ -331,7 +358,7 @@ func (self *baseSessionRequestContext) verifyTerminator(terminatorId string, bin
 	return nil
 }
 
-func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest) {
+func (self *baseSessionRequestContext) updateTerminator(terminator *network.Terminator, request UpdateTerminatorRequest, ctx *change.Context) {
 	if self.err == nil {
 		checker := fields.UpdatedFieldsMap{}
 
@@ -359,7 +386,7 @@ func (self *baseSessionRequestContext) updateTerminator(terminator *network.Term
 			checker[db.FieldTerminatorPrecedence] = struct{}{}
 		}
 
-		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker))
+		self.err = internalError(self.handler.getNetwork().Terminators.Update(terminator, checker, ctx))
 	}
 }
 

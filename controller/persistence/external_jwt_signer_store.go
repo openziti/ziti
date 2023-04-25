@@ -22,7 +22,6 @@ import (
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 	"strings"
 	"time"
 )
@@ -68,7 +67,68 @@ func (entity *ExternalJwtSigner) GetName() string {
 	return entity.Name
 }
 
-func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *ExternalJwtSigner) GetEntityType() string {
+	return EntityTypeExternalJwtSigners
+}
+
+var _ ExternalJwtSignerStore = (*externalJwtSignerStoreImpl)(nil)
+
+type ExternalJwtSignerStore interface {
+	Store[*ExternalJwtSigner]
+}
+
+func newExternalJwtSignerStore(stores *stores) *externalJwtSignerStoreImpl {
+	store := &externalJwtSignerStoreImpl{}
+	store.baseStore = newBaseStore[*ExternalJwtSigner](stores, store)
+	store.InitImpl(store)
+	return store
+}
+
+type externalJwtSignerStoreImpl struct {
+	*baseStore[*ExternalJwtSigner]
+	indexName          boltz.ReadIndex
+	symbolFingerprint  boltz.EntitySymbol
+	symbolAuthPolicies boltz.EntitySetSymbol
+	fingerprintIndex   boltz.ReadIndex
+	symbolKid          boltz.EntitySymbol
+	kidIndex           boltz.ReadIndex
+	symbolIssuer       boltz.EntitySymbol
+	issuerIndex        boltz.ReadIndex
+}
+
+func (store *externalJwtSignerStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+	store.indexName = store.addUniqueNameField()
+
+	store.symbolFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
+	store.fingerprintIndex = store.AddNullableUniqueIndex(store.symbolFingerprint)
+
+	store.symbolKid = store.AddSymbol(FieldExternalJwtSignerKid, ast.NodeTypeString)
+	store.kidIndex = store.AddNullableUniqueIndex(store.symbolKid)
+
+	store.symbolIssuer = store.AddSymbol(FieldExternalJwtSignerIssuer, ast.NodeTypeString)
+	store.issuerIndex = store.AddUniqueIndex(store.symbolIssuer)
+
+	store.AddSymbol(FieldExternalJwtSignerCertPem, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerCommonName, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerNotAfter, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldExternalJwtSignerNotBefore, ast.NodeTypeDatetime)
+	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerClaimsProperty, ast.NodeTypeString)
+	store.AddSymbol(FieldExternalJwtSignerUseExternalId, ast.NodeTypeBool)
+	store.AddSymbol(FieldExternalJwtSignerAudience, ast.NodeTypeString)
+
+	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
+}
+
+func (store *externalJwtSignerStoreImpl) initializeLinked() {
+}
+
+func (store *externalJwtSignerStoreImpl) NewEntity() *ExternalJwtSigner {
+	return &ExternalJwtSigner{}
+}
+
+func (store *externalJwtSignerStoreImpl) FillEntity(entity *ExternalJwtSigner, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringWithDefault(FieldName, "")
 	entity.CertPem = bucket.GetString(FieldExternalJwtSignerCertPem)
@@ -86,7 +146,7 @@ func (entity *ExternalJwtSigner) LoadValues(_ boltz.CrudStore, bucket *boltz.Typ
 	entity.Audience = bucket.GetString(FieldExternalJwtSignerAudience)
 }
 
-func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
+func (store *externalJwtSignerStoreImpl) PersistEntity(entity *ExternalJwtSigner, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldExternalJwtSignerCertPem, entity.CertPem)
@@ -128,102 +188,11 @@ func (entity *ExternalJwtSigner) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	if jwksEndpoint != nil && certPem != nil {
-		existingName := FieldExternalJwtSignerCertPem
-		existingValue := certPem
-		if jwksEndpoint != nil {
-			existingName = FieldExternalJwtSignerJwksEndpoint
-			existingValue = jwksEndpoint
-		}
-		ctx.Bucket.SetError(apierror.NewBadRequestFieldError(*errorz.NewFieldError("only one of jwksEndpoint or certPem may be defined", existingName, existingValue)))
+		ctx.Bucket.SetError(apierror.NewBadRequestFieldError(
+			*errorz.NewFieldError("only one of jwksEndpoint or certPem may be defined", FieldExternalJwtSignerJwksEndpoint, jwksEndpoint)))
 	}
 }
 
-func (entity *ExternalJwtSigner) GetEntityType() string {
-	return EntityTypeExternalJwtSigners
-}
-
-type ExternalJwtSignerStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*ExternalJwtSigner, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*ExternalJwtSigner, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*ExternalJwtSigner, error)
-}
-
-func newExternalJwtSignerStore(stores *stores) *externalJwtSignerStoreImpl {
-	store := &externalJwtSignerStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeExternalJwtSigners),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type externalJwtSignerStoreImpl struct {
-	*baseStore
-	indexName          boltz.ReadIndex
-	symbolFingerprint  boltz.EntitySymbol
-	symbolAuthPolicies boltz.EntitySetSymbol
-	fingerprintIndex   boltz.ReadIndex
-	symbolKid          boltz.EntitySymbol
-	kidIndex           boltz.ReadIndex
-	symbolIssuer       boltz.EntitySymbol
-	issuerIndex        boltz.ReadIndex
-}
-
-func (store *externalJwtSignerStoreImpl) NewStoreEntity() boltz.Entity {
-	return &ExternalJwtSigner{}
-}
-
-func (store *externalJwtSignerStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-	store.indexName = store.addUniqueNameField()
-
-	store.symbolFingerprint = store.AddSymbol(FieldExternalJwtSignerFingerprint, ast.NodeTypeString)
-	store.fingerprintIndex = store.AddNullableUniqueIndex(store.symbolFingerprint)
-
-	store.symbolKid = store.AddSymbol(FieldExternalJwtSignerKid, ast.NodeTypeString)
-	store.kidIndex = store.AddNullableUniqueIndex(store.symbolKid)
-
-	store.symbolIssuer = store.AddSymbol(FieldExternalJwtSignerIssuer, ast.NodeTypeString)
-	store.issuerIndex = store.AddUniqueIndex(store.symbolIssuer)
-
-	store.AddSymbol(FieldExternalJwtSignerCertPem, ast.NodeTypeString)
-	store.AddSymbol(FieldExternalJwtSignerCommonName, ast.NodeTypeString)
-	store.AddSymbol(FieldExternalJwtSignerNotAfter, ast.NodeTypeDatetime)
-	store.AddSymbol(FieldExternalJwtSignerNotBefore, ast.NodeTypeDatetime)
-	store.AddSymbol(FieldExternalJwtSignerEnabled, ast.NodeTypeBool)
-	store.AddSymbol(FieldExternalJwtSignerClaimsProperty, ast.NodeTypeString)
-	store.AddSymbol(FieldExternalJwtSignerUseExternalId, ast.NodeTypeBool)
-	store.AddSymbol(FieldExternalJwtSignerAudience, ast.NodeTypeString)
-
-	store.symbolAuthPolicies = store.AddFkSetSymbol(FieldExternalJwtSignerAuthPolicies, store.stores.authPolicy)
-}
-
-func (store *externalJwtSignerStoreImpl) initializeLinked() {
-}
-
-func (store *externalJwtSignerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*ExternalJwtSigner, error) {
-	entity := &ExternalJwtSigner{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *externalJwtSignerStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*ExternalJwtSigner, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
-func (store *externalJwtSignerStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*ExternalJwtSigner, error) {
-	entity := &ExternalJwtSigner{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
 func (store *externalJwtSignerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	ids, _, err := store.stores.authPolicy.QueryIds(ctx.Tx(), fmt.Sprintf(`anyOf(%s) = "%s"`, FieldAuthPolicyPrimaryExtJwtAllowedSigners, id))
 

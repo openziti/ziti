@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/posture_checks"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 )
 
@@ -52,9 +53,9 @@ func (r *PostureCheckTypeRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *PostureCheckTypeRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
+	ListWithHandler[*model.PostureCheckType](ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
 }
 
 func (r *PostureCheckTypeRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
+	DetailWithHandler[*model.PostureCheckType](ae, rc, ae.Managers.PostureCheckType, MapPostureCheckTypeToRestEntity)
 }

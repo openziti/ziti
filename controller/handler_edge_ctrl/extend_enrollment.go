@@ -17,14 +17,28 @@
 package handler_edge_ctrl
 
 import (
+	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/internal/cert"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/fabric/controller/change"
+	"github.com/openziti/fabric/controller/models"
 	"google.golang.org/protobuf/proto"
 )
+
+func newRouterChangeContext(router interface {
+	models.Named
+	GetId() string
+}, ch channel.Channel) *change.Context {
+	return change.New().
+		SetChangeAuthorId(router.GetId()).
+		SetChangeAuthorName(router.GetName()).
+		SetChangeAuthorType("router").
+		SetSource(fmt.Sprintf("ctrl[edge/%v]", ch.Underlay().GetRemoteAddr().String()))
+}
 
 type extendEnrollmentHandler struct {
 	appEnv *env.AppEnv
@@ -68,6 +82,7 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 			var newCerts *model.ExtendedCerts
 
 			if router, _ := h.appEnv.Managers.EdgeRouter.ReadOneByFingerprint(fingerprint); router != nil {
+				changeCtx := newRouterChangeContext(router, ch)
 
 				log = log.WithFields(map[string]interface{}{
 					"routerId":   router.Id,
@@ -75,9 +90,9 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 				})
 
 				if req.RequireVerification {
-					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr), changeCtx)
 				} else {
-					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.EdgeRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr), changeCtx)
 				}
 
 				if err != nil {
@@ -86,11 +101,12 @@ func (h *extendEnrollmentHandler) HandleReceive(msg *channel.Message, ch channel
 				}
 
 			} else if router, _ := h.appEnv.Managers.TransitRouter.ReadOneByFingerprint(fingerprint); router != nil {
+				changeCtx := newRouterChangeContext(router, ch)
 
 				if req.RequireVerification {
-					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollmentWithVerify(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr), changeCtx)
 				} else {
-					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr))
+					newCerts, err = h.appEnv.Managers.TransitRouter.ExtendEnrollment(router, []byte(req.ClientCertCsr), []byte(req.ServerCertCsr), changeCtx)
 				}
 
 				if err != nil {

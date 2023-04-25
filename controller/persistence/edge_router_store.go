@@ -58,49 +58,15 @@ type EdgeRouter struct {
 	AppData               map[string]interface{}
 }
 
-func (entity *EdgeRouter) LoadValues(store boltz.CrudStore, bucket *boltz.TypedBucket) {
-	_, err := store.GetParentStore().BaseLoadOneById(bucket.Tx(), entity.Id, &entity.Router)
-	bucket.SetError(err)
-
-	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
-	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
-	entity.IsTunnelerEnabled = bucket.GetBoolWithDefault(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
-
-	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
-	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
-
-	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
-	entity.AppData = bucket.GetMap(FieldIdentityAppData)
-}
-
-func (entity *EdgeRouter) SetValues(ctx *boltz.PersistContext) {
-	entity.Router.SetValues(ctx.GetParentContext())
-
-	store := ctx.Store.(*edgeRouterStoreImpl)
-	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
-	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
-	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
-	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
-	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
-	ctx.Bucket.PutMap(FieldEdgeRouterAppData, entity.AppData, ctx.FieldChecker, false)
-
-	ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
-	ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
-
-	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
-	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
-		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
-	}
-}
-
 func (entity *EdgeRouter) GetName() string {
 	return entity.Name
 }
 
+var _ EdgeRouterStore = (*edgeRouterStoreImpl)(nil)
+
 type EdgeRouterStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*EdgeRouter, error)
+	NameIndexed
+	Store[*EdgeRouter]
 	GetRoleAttributesIndex() boltz.SetReadIndex
 	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
 }
@@ -114,14 +80,15 @@ func newEdgeRouterStore(stores *stores) *edgeRouterStoreImpl {
 	}
 
 	store := &edgeRouterStoreImpl{}
-	stores.Router.AddDeleteHandler(store.cleanupEdgeRouter) // do cleanup first
-	store.baseStore = newChildBaseStore(stores, stores.Router, parentMapper)
+	store.baseStore = newChildBaseStore[*EdgeRouter](stores, parentMapper, store, stores.Router, EdgeBucket)
 	store.InitImpl(store)
+
+	stores.Router.RegisterChildStoreStrategy(store) // do cleanup first
 	return store
 }
 
 type edgeRouterStoreImpl struct {
-	*baseStore
+	*baseStore[*EdgeRouter]
 
 	indexName           boltz.ReadIndex
 	indexRoleAttributes boltz.SetReadIndex
@@ -138,8 +105,25 @@ type edgeRouterStoreImpl struct {
 	servicesCollection   boltz.RefCountedLinkCollection
 }
 
-func (store *edgeRouterStoreImpl) NewStoreEntity() boltz.Entity {
-	return &EdgeRouter{}
+func (store *edgeRouterStoreImpl) HandleUpdate(ctx boltz.MutateContext, entity *db.Router, checker boltz.FieldChecker) (bool, error) {
+	er, found, err := store.FindById(ctx.Tx(), entity.Id)
+	if err != nil {
+		return false, err
+	}
+	if !found {
+		return false, nil
+	}
+
+	er.Router = *entity
+	return true, store.Update(ctx, er, checker)
+}
+
+func (store *edgeRouterStoreImpl) HandleDelete(ctx boltz.MutateContext, entity *db.Router) error {
+	return store.cleanupEdgeRouter(ctx, entity.Id)
+}
+
+func (store *edgeRouterStoreImpl) GetStore() boltz.Store {
+	return store
 }
 
 func (store *edgeRouterStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
@@ -181,6 +165,44 @@ func (store *edgeRouterStoreImpl) initializeLinked() {
 	})
 }
 
+func (store *edgeRouterStoreImpl) NewEntity() *EdgeRouter {
+	return &EdgeRouter{}
+}
+
+func (store *edgeRouterStoreImpl) FillEntity(entity *EdgeRouter, bucket *boltz.TypedBucket) {
+	store.stores.Router.FillEntity(&entity.Router, store.getParentBucket(entity, bucket))
+
+	entity.CertPem = bucket.GetString(FieldEdgeRouterCertPEM)
+	entity.IsVerified = bucket.GetBoolWithDefault(FieldEdgeRouterIsVerified, false)
+	entity.IsTunnelerEnabled = bucket.GetBoolWithDefault(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
+
+	entity.UnverifiedFingerprint = bucket.GetString(FieldEdgeRouterUnverifiedFingerprint)
+	entity.UnverifiedCertPem = bucket.GetString(FieldEdgeRouterUnverifiedCertPEM)
+
+	entity.RoleAttributes = bucket.GetStringList(FieldRoleAttributes)
+	entity.AppData = bucket.GetMap(FieldIdentityAppData)
+
+}
+
+func (store *edgeRouterStoreImpl) PersistEntity(entity *EdgeRouter, ctx *boltz.PersistContext) {
+	store.stores.Router.PersistEntity(&entity.Router, ctx.GetParentContext())
+
+	ctx.SetStringP(FieldEdgeRouterCertPEM, entity.CertPem)
+	ctx.SetBool(FieldEdgeRouterIsVerified, entity.IsVerified)
+	store.validateRoleAttributes(entity.RoleAttributes, ctx.Bucket)
+	ctx.SetStringList(FieldRoleAttributes, entity.RoleAttributes)
+	ctx.SetBool(FieldEdgeRouterIsTunnelerEnabled, entity.IsTunnelerEnabled)
+	ctx.Bucket.PutMap(FieldEdgeRouterAppData, entity.AppData, ctx.FieldChecker, false)
+
+	ctx.SetStringP(FieldEdgeRouterUnverifiedFingerprint, entity.UnverifiedFingerprint)
+	ctx.SetStringP(FieldEdgeRouterUnverifiedCertPEM, entity.UnverifiedCertPem)
+
+	// index change won't fire if we don't have any roles on create, but we need to evaluate if we match any #all roles
+	if ctx.IsCreate && len(entity.RoleAttributes) == 0 {
+		store.rolesChanged(ctx.MutateContext, []byte(entity.Id), nil, nil, ctx.Bucket)
+	}
+}
+
 func (store *edgeRouterStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	// Recalculate edge router policy links
 	ctx := &roleAttributeChangeContext{
@@ -209,28 +231,13 @@ func (store *edgeRouterStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *edgeRouterStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*EdgeRouter, error) {
-	entity := &EdgeRouter{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *edgeRouterStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*EdgeRouter, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
 func (store *edgeRouterStoreImpl) cleanupEdgeRouter(ctx boltz.MutateContext, id string) error {
 	if entity, _ := store.LoadOneById(ctx.Tx(), id); entity != nil {
 		// Remove entity from EdgeRouterRoles in edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.edgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
 		}
+
 		// Remove entity from EdgeRouterRoles in service edge router policies
 		if err := store.deleteEntityReferences(ctx.Tx(), entity, store.stores.serviceEdgeRouterPolicy.symbolEdgeRouterRoles); err != nil {
 			return err
@@ -353,7 +360,7 @@ func (self *routerIdentityConstraint) deleteAssociatedEntities(ctx *boltz.Indexi
 
 func (self *routerIdentityConstraint) Initialize(_ *bbolt.Tx, _ errorz.ErrorHolder) {}
 
-func (self *routerIdentityConstraint) CheckIntegrity(_ *bbolt.Tx, _ bool, _ func(err error, fixed bool)) error {
+func (self *routerIdentityConstraint) CheckIntegrity(_ boltz.MutateContext, _ bool, _ func(err error, fixed bool)) error {
 	return nil
 }
 

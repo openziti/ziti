@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/posture_checks"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
@@ -113,12 +114,12 @@ func (r *PostureCheckRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
 }
 
 func (r *PostureCheckRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.PostureCheck, MapPostureCheckToRestEntity)
+	DetailWithHandler[*model.PostureCheck](ae, rc, ae.Managers.PostureCheck, MapPostureCheckToRestEntity)
 }
 
 func (r *PostureCheckRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.CreatePostureCheckParams) {
 	Create(rc, rc, PostureCheckLinkFactory, func() (string, error) {
-		return MapCreate(ae.Managers.PostureCheck.Create, MapCreatePostureCheckToModel(params.PostureCheck))
+		return MapCreate(ae.Managers.PostureCheck.Create, MapCreatePostureCheckToModel(params.PostureCheck), rc)
 	})
 }
 
@@ -128,7 +129,7 @@ func (r *PostureCheckRouter) Delete(ae *env.AppEnv, rc *response.RequestContext)
 
 func (r *PostureCheckRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params posture_checks.UpdatePostureCheckParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.PostureCheck), nil)
+		return ae.Managers.PostureCheck.Update(MapUpdatePostureCheckToModel(params.ID, params.PostureCheck), nil, rc.NewChangeContext())
 	})
 }
 
@@ -163,6 +164,6 @@ func (r *PostureCheckRouter) Patch(ae *env.AppEnv, rc *response.RequestContext, 
 			fields.AddField(persistence.FieldPostureCheckProcessMultiHashes)
 		}
 
-		return ae.Managers.PostureCheck.Update(check, fields.FilterMaps("tags"))
+		return ae.Managers.PostureCheck.Update(check, fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }

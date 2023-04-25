@@ -96,7 +96,7 @@ func newPostureCheckMacAddresses() PostureCheckSubType {
 	return &PostureCheckMacAddresses{}
 }
 
-func (p *PostureCheckMacAddresses) fillFrom(_ EntityManager, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
+func (p *PostureCheckMacAddresses) fillFrom(_ Env, tx *bbolt.Tx, check *persistence.PostureCheck, subType persistence.PostureCheckSubType) error {
 	subCheck := subType.(*persistence.PostureCheckMacAddresses)
 
 	if subCheck == nil {
@@ -107,7 +107,7 @@ func (p *PostureCheckMacAddresses) fillFrom(_ EntityManager, tx *bbolt.Tx, check
 	return nil
 }
 
-func (p *PostureCheckMacAddresses) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (persistence.PostureCheckSubType, error) {
+func (p *PostureCheckMacAddresses) toBoltEntityForCreate(*bbolt.Tx, Env) (persistence.PostureCheckSubType, error) {
 	return &persistence.PostureCheckMacAddresses{
 		MacAddresses: p.MacAddresses,
 	}, nil

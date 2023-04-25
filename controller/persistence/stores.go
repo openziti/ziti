@@ -17,6 +17,7 @@
 package persistence
 
 import (
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
@@ -50,7 +51,7 @@ type Stores struct {
 	EdgeService             EdgeServiceStore
 	Identity                IdentityStore
 	IdentityType            IdentityTypeStore
-	Index                   boltz.ListStore
+	Index                   boltz.Store
 	Session                 SessionStore
 	ServiceEdgeRouterPolicy ServiceEdgeRouterPolicyStore
 	ServicePolicy           ServicePolicyStore
@@ -60,7 +61,7 @@ type Stores struct {
 	PostureCheck            PostureCheckStore
 	PostureCheckType        PostureCheckTypeStore
 	Mfa                     MfaStore
-	storeMap                map[reflect.Type]boltz.CrudStore
+	storeMap                map[reflect.Type]boltz.Store
 }
 
 func (stores *Stores) addStoresToIntegrityCheck(fabricStores *db.Stores) {
@@ -69,7 +70,7 @@ func (stores *Stores) addStoresToIntegrityCheck(fabricStores *db.Stores) {
 		f := val.Field(i)
 		if f.CanInterface() {
 			// filter by the edge Store interface, so we don't recheck fabric stores, which are already being checked
-			if store, ok := f.Interface().(Store); ok {
+			if store, ok := f.Interface().(boltz.Store); ok {
 				fabricStores.AddCheckable(store)
 			}
 		}
@@ -81,8 +82,8 @@ func (stores *Stores) buildStoreMap() {
 	for i := 0; i < val.NumField(); i++ {
 		f := val.Field(i)
 		if f.CanInterface() {
-			if store, ok := f.Interface().(boltz.CrudStore); ok {
-				entityType := reflect.TypeOf(store.NewStoreEntity())
+			if store, ok := f.Interface().(boltz.Store); ok && store.GetEntityType() != "indexes" {
+				entityType := store.GetEntityReflectType()
 				stores.storeMap[entityType] = store
 			}
 		}
@@ -118,17 +119,17 @@ func (stores *Stores) GetEntityCounts(dbProvider DbProvider) (map[string]int64, 
 	return result, nil
 }
 
-func (stores *Stores) getStoresForInit() []Store {
-	var result []Store
+func (stores *Stores) getStoresForInit() []initializableStore {
+	var result []initializableStore
 	for _, crudStore := range stores.storeMap {
-		if store, ok := crudStore.(Store); ok {
+		if store, ok := crudStore.(initializableStore); ok {
 			result = append(result, store)
 		}
 	}
 	return result
 }
 
-func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.Store {
 	return stores.storeMap[reflect.TypeOf(entity)]
 }
 
@@ -231,22 +232,31 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		PostureCheckType:        internalStores.postureCheckType,
 		Mfa:                     internalStores.mfa,
 
-		storeMap: make(map[reflect.Type]boltz.CrudStore),
+		storeMap: make(map[reflect.Type]boltz.Store),
 	}
 
 	externalStores.EventualEventer = internalStores.EventualEventer
 
 	// The Index store is used for querying indexes. It's a convenient store with only a single value (id), which
 	// is only ever queried using an index set cursor
-	externalStores.Index = boltz.NewBaseStore("invalid", func(id string) error {
-		return errors.Errorf("should never happen")
-	})
-	externalStores.Index.AddIdSymbol("id", ast.NodeTypeString)
+	indexStoreDef := boltz.StoreDefinition[boltz.ExtEntity]{
+		EntityType: "indexes",
+		BasePath:   []string{db.RootBucket},
+		EntityNotFoundF: func(id string) error {
+			panic(errors.New("programming error"))
+		},
+	}
+
+	indexStore := boltz.NewBaseStore(indexStoreDef)
+	indexStore.AddIdSymbol("id", ast.NodeTypeString)
+
+	externalStores.Index = indexStore
 
 	externalStores.buildStoreMap()
 	storeList := externalStores.getStoresForInit()
 
-	err := dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx := change.New().SetSource("system.initialization").SetChangeAuthorType("controller").NewMutateContext()
+	err := dbProvider.GetDb().Update(mutateCtx, func(ctx boltz.MutateContext) error {
 		for _, store := range storeList {
 			store.initializeLocal()
 		}
@@ -254,7 +264,7 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 			store.initializeLinked()
 		}
 		for _, store := range storeList {
-			store.initializeIndexes(tx, errorHolder)
+			store.initializeIndexes(ctx.Tx(), errorHolder)
 		}
 		return nil
 	})
@@ -266,4 +276,22 @@ func NewBoltStores(dbProvider DbProvider) (*Stores, error) {
 		return nil, errorHolder.GetError()
 	}
 	return externalStores, nil
+}
+
+func newBaseStore[E boltz.ExtEntity](stores *stores, strategy boltz.EntityStrategy[E]) *baseStore[E] {
+	return &baseStore[E]{
+		stores:    stores,
+		BaseStore: boltz.NewBaseStore(db.NewStoreDefinition[E](strategy)),
+	}
+}
+
+func newChildBaseStore[E boltz.ExtEntity](stores *stores, parentMapper func(entity boltz.Entity) boltz.Entity, strategy boltz.EntityStrategy[E], parent boltz.Store, path string) *baseStore[E] {
+	def := db.NewStoreDefinition[E](strategy)
+	def.BasePath = []string{path}
+	def.Parent = parent
+	def.ParentMapper = parentMapper
+	return &baseStore[E]{
+		stores:    stores,
+		BaseStore: boltz.NewBaseStore[E](def),
+	}
 }

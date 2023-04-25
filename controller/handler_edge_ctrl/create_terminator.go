@@ -115,7 +115,11 @@ func (self *createTerminatorHandler) CreateTerminator(ctx *CreateTerminatorReque
 		HostId:         ctx.session.IdentityId,
 	}
 
-	cmd := &model.CreateEdgeTerminatorCmd{Env: self.appEnv, Entity: terminator}
+	cmd := &model.CreateEdgeTerminatorCmd{
+		Env:     self.appEnv,
+		Entity:  terminator,
+		Context: ctx.newChangeContext(),
+	}
 	err = self.appEnv.GetHostController().GetNetwork().Managers.Command.Dispatch(cmd)
 	if err != nil {
 		self.returnError(ctx, internalError(err))

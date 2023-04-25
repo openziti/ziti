@@ -17,13 +17,10 @@
 package model
 
 import (
-	"reflect"
-
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -40,7 +37,11 @@ type TransitRouter struct {
 	Disabled              bool
 }
 
-func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (self *TransitRouter) GetName() string {
+	return self.Name
+}
+
+func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.TransitRouter, error) {
 	boltEntity := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -56,7 +57,7 @@ func (entity *TransitRouter) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (bo
 	return boltEntity, nil
 }
 
-func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.TransitRouter, error) {
 	ret := &persistence.TransitRouter{
 		Router: db.Router{
 			BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
@@ -74,11 +75,7 @@ func (entity *TransitRouter) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, bol
 	return ret, nil
 }
 
-func (entity *TransitRouter) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltTransitRouter, ok := boltEntity.(*persistence.TransitRouter)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model transitRouter", reflect.TypeOf(boltEntity))
-	}
+func (entity *TransitRouter) fillFrom(_ Env, _ *bbolt.Tx, boltTransitRouter *persistence.TransitRouter) error {
 	entity.FillCommon(boltTransitRouter)
 	entity.Name = boltTransitRouter.Name
 	entity.IsVerified = boltTransitRouter.IsVerified

@@ -125,7 +125,7 @@ func (self *createTunnelTerminatorHandler) CreateTerminator(ctx *CreateTunnelTer
 		}
 
 		n := self.appEnv.GetHostController().GetNetwork()
-		err := n.Terminators.Create(terminator)
+		err := n.Terminators.Create(terminator, ctx.newTunnelChangeContext())
 		if err != nil {
 			// terminator might have been created while we were trying to create.
 			terminator, _ = self.getNetwork().Terminators.Read(ctx.req.Address)

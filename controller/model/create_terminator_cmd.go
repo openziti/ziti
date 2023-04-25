@@ -5,29 +5,34 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/edge_common"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
 )
 
 type CreateEdgeTerminatorCmd struct {
-	Env    Env
-	Entity *network.Terminator
+	Env     Env
+	Entity  *network.Terminator
+	Context *change.Context
 }
 
-func (self *CreateEdgeTerminatorCmd) Apply() error {
+func (self *CreateEdgeTerminatorCmd) Apply(ctx boltz.MutateContext) error {
 	createCmd := &command.CreateEntityCommand[*network.Terminator]{
 		Creator:        self.Env.GetManagers().Terminator,
 		Entity:         self.Entity,
 		PostCreateHook: self.validateTerminatorIdentity,
+		Context:        self.Context,
 	}
-	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd)
+	return self.Env.GetManagers().Terminator.ApplyCreate(createCmd, ctx)
 }
 
-func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, terminator *network.Terminator) error {
+func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(ctx boltz.MutateContext, terminator *network.Terminator) error {
+	tx := ctx.Tx()
 	session, err := self.getTerminatorSession(tx, terminator, "")
 	if err != nil {
 		return err
@@ -55,6 +60,10 @@ func (self *CreateEdgeTerminatorCmd) validateTerminatorIdentity(tx *bbolt.Tx, te
 	}
 
 	return nil
+}
+
+func (self *CreateEdgeTerminatorCmd) GetChangeContext() *change.Context {
+	return self.Context
 }
 
 type terminator interface {
@@ -103,6 +112,7 @@ func (self *CreateEdgeTerminatorCmd) Encode() ([]byte, error) {
 	}
 	cmd := &edge_cmd_pb.CreateEdgeTerminatorCommand{
 		TerminatorData: terminatorData,
+		Ctx:            ContextToProtobuf(self.Context),
 	}
 	return cmd_pb.EncodeProtobuf(cmd)
 }
@@ -111,5 +121,6 @@ func (self *CreateEdgeTerminatorCmd) Decode(env Env, msg *edge_cmd_pb.CreateEdge
 	var err error
 	self.Env = env
 	self.Entity, err = env.GetManagers().Terminator.Unmarshall(msg.TerminatorData)
+	self.Context = ProtobufToContext(msg.Ctx)
 	return err
 }

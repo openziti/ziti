@@ -17,10 +17,8 @@
 package routes
 
 import (
-	"fmt"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
@@ -144,25 +142,8 @@ func MapPatchCaToModel(id string, ca *rest_model.CaPatch) *model.Ca {
 	return ret
 }
 
-func MapCaToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e models.Entity) (interface{}, error) {
-	i, ok := e.(*model.Ca)
-
-	if !ok {
-		err := fmt.Errorf("entity is not a CA \"%s\"", e.GetId())
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-
-	al, err := MapCaToRestModel(i)
-
-	if err != nil {
-		err := fmt.Errorf("could not convert to API entity \"%s\": %s", e.GetId(), err)
-		log := pfxlog.Logger()
-		log.Error(err)
-		return nil, err
-	}
-	return al, nil
+func MapCaToRestEntity(_ *env.AppEnv, _ *response.RequestContext, e *model.Ca) (interface{}, error) {
+	return MapCaToRestModel(e)
 }
 
 func MapCaToRestModel(i *model.Ca) (*rest_model.CaDetail, error) {

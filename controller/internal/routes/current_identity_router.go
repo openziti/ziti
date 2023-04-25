@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/foundation/v2/errorz"
@@ -164,8 +165,9 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 	}
 
 	if ok {
+		changeCtx := rc.NewChangeContext()
 		mfa.IsVerified = true
-		if err := ae.Managers.Mfa.Update(mfa, nil); err != nil {
+		if err := ae.Managers.Mfa.Update(mfa, nil, changeCtx); err != nil {
 			pfxlog.Logger().Errorf("could not update MFA with new MFA status: %v", err)
 			rc.RespondWithApiError(errorz.NewUnhandled(errors.New("could not update MFA status")))
 			return
@@ -174,7 +176,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 		rc.ApiSession.MfaComplete = true
 		rc.ApiSession.MfaRequired = true
 
-		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}); err != nil {
+		if err := ae.Managers.ApiSession.UpdateWithFieldChecker(rc.ApiSession, boltz.MapFieldChecker{persistence.FieldApiSessionMfaComplete: struct{}{}, persistence.FieldApiSessionMfaRequired: struct{}{}}, changeCtx); err != nil {
 			pfxlog.Logger().Errorf("could not update API Session with new MFA status: %v", err)
 		}
 
@@ -189,7 +191,7 @@ func (r *CurrentIdentityRouter) verifyMfa(ae *env.AppEnv, rc *response.RequestCo
 }
 
 func (r *CurrentIdentityRouter) createMfa(ae *env.AppEnv, rc *response.RequestContext) {
-	id, err := ae.Managers.Mfa.CreateForIdentity(rc.Identity)
+	id, err := ae.Managers.Mfa.CreateForIdentity(rc.Identity, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -227,7 +229,7 @@ func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestCo
 		code = *mfaCodeHeader
 	}
 
-	err := ae.Managers.Mfa.DeleteForIdentity(rc.Identity, code)
+	err := ae.Managers.Mfa.DeleteForIdentity(rc.Identity, code, rc.NewChangeContext())
 
 	if err != nil {
 		rc.RespondWithError(err)
@@ -287,14 +289,15 @@ func (r *CurrentIdentityRouter) createMfaRecoveryCodes(ae *env.AppEnv, rc *respo
 		return
 	}
 
-	ok, _ := ae.Managers.Mfa.Verify(mfa, *body.Code)
+	changeCtx := rc.NewChangeContext()
+	ok, _ := ae.Managers.Mfa.Verify(mfa, *body.Code, changeCtx)
 
 	if !ok {
 		rc.RespondWithError(apierror.NewInvalidMfaTokenError())
 		return
 	}
 
-	if err := ae.Managers.Mfa.RecreateRecoveryCodes(mfa); err != nil {
+	if err := ae.Managers.Mfa.RecreateRecoveryCodes(mfa, changeCtx); err != nil {
 		rc.RespondWithError(err)
 		return
 	}
@@ -352,11 +355,11 @@ func (r *CurrentIdentityRouter) listEdgeRouters(ae *env.AppEnv, rc *response.Req
 	if rc.Identity.IsAdmin {
 		filterTemplate := `isVerified = true`
 		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
 	} else {
 		filterTemplate := `isVerified = true and not isEmpty(from edgeRouterPolicies where anyOf(identities) = "%v")`
 		rc.SetEntityId(rc.Identity.Id)
-		ListAssociationsWithFilter(ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
+		ListAssociationsWithFilter[*model.EdgeRouter](ae, rc, filterTemplate, ae.Managers.EdgeRouter, MapCurrentIdentityEdgeRouterToRestEntity)
 	}
 }
 

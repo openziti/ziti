@@ -18,7 +18,6 @@ package persistence
 
 import (
 	"github.com/openziti/storage/boltz"
-	"go.etcd.io/bbolt"
 )
 
 const (
@@ -34,41 +33,27 @@ func (entity *IdentityType) GetName() string {
 	return entity.Name
 }
 
-func (entity *IdentityType) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.LoadBaseValues(bucket)
-	entity.Name = bucket.GetStringOrError(FieldName)
-}
-
-func (entity *IdentityType) SetValues(ctx *boltz.PersistContext) {
-	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldName, entity.Name)
-}
-
 func (entity *IdentityType) GetEntityType() string {
 	return EntityTypeIdentityTypes
 }
 
+var _ IdentityTypeStore = (*IdentityTypeStoreImpl)(nil)
+
 type IdentityTypeStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*IdentityType, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*IdentityType, error)
+	NameIndexed
+	Store[*IdentityType]
 }
 
 func newIdentityTypeStore(stores *stores) *IdentityTypeStoreImpl {
-	store := &IdentityTypeStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeIdentityTypes),
-	}
+	store := &IdentityTypeStoreImpl{}
+	store.baseStore = newBaseStore[*IdentityType](stores, store)
 	store.InitImpl(store)
 	return store
 }
 
 type IdentityTypeStoreImpl struct {
-	*baseStore
+	*baseStore[*IdentityType]
 	indexName boltz.ReadIndex
-}
-
-func (store *IdentityTypeStoreImpl) NewStoreEntity() boltz.Entity {
-	return &IdentityType{}
 }
 
 func (store *IdentityTypeStoreImpl) initializeLocal() {
@@ -84,26 +69,16 @@ func (store *IdentityTypeStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *IdentityTypeStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*IdentityType, error) {
-	entity := &IdentityType{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *IdentityTypeStoreImpl) NewEntity() *IdentityType {
+	return &IdentityType{}
 }
 
-func (store *IdentityTypeStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*IdentityType, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
+func (store *IdentityTypeStoreImpl) FillEntity(entity *IdentityType, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
+	entity.Name = bucket.GetStringOrError(FieldName)
 }
 
-func (store *IdentityTypeStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*IdentityType, error) {
-	entity := &IdentityType{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *IdentityTypeStoreImpl) PersistEntity(entity *IdentityType, ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
+	ctx.SetString(FieldName, entity.Name)
 }

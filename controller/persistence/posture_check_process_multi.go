@@ -48,7 +48,7 @@ func newPostureCheckProcessMulti() PostureCheckSubType {
 	}
 }
 
-func (entity *PostureCheckProcessMulti) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *PostureCheckProcessMulti) LoadValues(bucket *boltz.TypedBucket) {
 	entity.Semantic = bucket.GetStringOrError(FieldSemantic)
 
 	processesBucket := bucket.GetBucket(FieldPostureCheckProcessMultiProcesses)

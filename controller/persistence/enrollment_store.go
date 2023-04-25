@@ -55,71 +55,38 @@ type Enrollment struct {
 	Jwt             string
 }
 
+func (entity *Enrollment) GetEntityType() string {
+	return EntityTypeEnrollments
+}
+
 var enrollmentFieldMappings = map[string]string{
 	FieldEnrollIdentity:      "identityId",
 	FieldEnrollEdgeRouter:    "edgeRouterId",
 	FieldEnrollTransitRouter: "transitRouterId",
 }
 
-func (entity *Enrollment) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
-	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
-	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
-	entity.EdgeRouterId = bucket.GetString(FieldEnrollEdgeRouter)
-	entity.TransitRouterId = bucket.GetString(FieldEnrollTransitRouter)
-	entity.ExpiresAt = bucket.GetTime(FieldEnrollmentExpiresAt)
-	entity.IssuedAt = bucket.GetTime(FieldEnrollmentIssuedAt)
-	entity.CaId = bucket.GetString(FieldEnrollmentCaId)
-	entity.Username = bucket.GetString(FieldEnrollmentUsername)
-	entity.Jwt = bucket.GetStringOrError(FieldEnrollmentJwt)
-}
-
-func (entity *Enrollment) SetValues(ctx *boltz.PersistContext) {
-	ctx.WithFieldOverrides(enrollmentFieldMappings)
-
-	ctx.SetString(FieldEnrollmentToken, entity.Token)
-	ctx.SetString(FieldEnrollmentMethod, entity.Method)
-	ctx.SetTimeP(FieldEnrollmentExpiresAt, entity.ExpiresAt)
-	ctx.SetStringP(FieldEnrollIdentity, entity.IdentityId)
-	ctx.SetStringP(FieldEnrollEdgeRouter, entity.EdgeRouterId)
-	ctx.SetStringP(FieldEnrollTransitRouter, entity.TransitRouterId)
-	ctx.SetStringP(FieldEnrollmentCaId, entity.CaId)
-	ctx.SetStringP(FieldEnrollmentUsername, entity.Username)
-	ctx.SetTimeP(FieldEnrollmentIssuedAt, entity.IssuedAt)
-	ctx.SetString(FieldEnrollmentJwt, entity.Jwt)
-}
-
-func (entity *Enrollment) GetEntityType() string {
-	return EntityTypeEnrollments
-}
+var _ EnrollmentStore = (*enrollmentStoreImpl)(nil)
 
 type EnrollmentStore interface {
-	Store
-	LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error)
+	Store[*Enrollment]
 	LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error)
-	LoadOneByQuery(tx *bbolt.Tx, query string) (*Enrollment, error)
 }
 
 func newEnrollmentStore(stores *stores) *enrollmentStoreImpl {
-	store := &enrollmentStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeEnrollments),
-	}
+	store := &enrollmentStoreImpl{}
+	store.baseStore = newBaseStore[*Enrollment](stores, store)
 	store.InitImpl(store)
 
 	return store
 }
 
 type enrollmentStoreImpl struct {
-	*baseStore
+	*baseStore[*Enrollment]
 	tokenIndex          boltz.ReadIndex
 	symbolIdentity      boltz.EntitySymbol
 	symbolEdgeRouter    boltz.EntitySymbol
 	symbolTransitRouter boltz.EntitySymbol
 	symbolCa            boltz.EntitySymbol
-}
-
-func (store *enrollmentStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Enrollment{}
 }
 
 func (store *enrollmentStoreImpl) initializeLocal() {
@@ -140,12 +107,36 @@ func (store *enrollmentStoreImpl) initializeLinked() {
 	store.AddNullableFkIndex(store.symbolCa, store.stores.ca.symbolEnrollments)
 }
 
-func (store *enrollmentStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Enrollment, error) {
-	entity := &Enrollment{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (store *enrollmentStoreImpl) NewEntity() *Enrollment {
+	return &Enrollment{}
+}
+
+func (store *enrollmentStoreImpl) FillEntity(entity *Enrollment, bucket *boltz.TypedBucket) {
+	entity.Token = bucket.GetStringWithDefault(FieldEnrollmentToken, "")
+	entity.Method = bucket.GetStringWithDefault(FieldEnrollmentMethod, "")
+	entity.IdentityId = bucket.GetString(FieldEnrollIdentity)
+	entity.EdgeRouterId = bucket.GetString(FieldEnrollEdgeRouter)
+	entity.TransitRouterId = bucket.GetString(FieldEnrollTransitRouter)
+	entity.ExpiresAt = bucket.GetTime(FieldEnrollmentExpiresAt)
+	entity.IssuedAt = bucket.GetTime(FieldEnrollmentIssuedAt)
+	entity.CaId = bucket.GetString(FieldEnrollmentCaId)
+	entity.Username = bucket.GetString(FieldEnrollmentUsername)
+	entity.Jwt = bucket.GetStringOrError(FieldEnrollmentJwt)
+}
+
+func (store *enrollmentStoreImpl) PersistEntity(entity *Enrollment, ctx *boltz.PersistContext) {
+	ctx.WithFieldOverrides(enrollmentFieldMappings)
+
+	ctx.SetString(FieldEnrollmentToken, entity.Token)
+	ctx.SetString(FieldEnrollmentMethod, entity.Method)
+	ctx.SetTimeP(FieldEnrollmentExpiresAt, entity.ExpiresAt)
+	ctx.SetStringP(FieldEnrollIdentity, entity.IdentityId)
+	ctx.SetStringP(FieldEnrollEdgeRouter, entity.EdgeRouterId)
+	ctx.SetStringP(FieldEnrollTransitRouter, entity.TransitRouterId)
+	ctx.SetStringP(FieldEnrollmentCaId, entity.CaId)
+	ctx.SetStringP(FieldEnrollmentUsername, entity.Username)
+	ctx.SetTimeP(FieldEnrollmentIssuedAt, entity.IssuedAt)
+	ctx.SetString(FieldEnrollmentJwt, entity.Jwt)
 }
 
 func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*Enrollment, error) {
@@ -154,12 +145,4 @@ func (store *enrollmentStoreImpl) LoadOneByToken(tx *bbolt.Tx, token string) (*E
 		return store.LoadOneById(tx, string(id))
 	}
 	return nil, nil
-}
-
-func (store *enrollmentStoreImpl) LoadOneByQuery(tx *bbolt.Tx, query string) (*Enrollment, error) {
-	entity := &Enrollment{}
-	if found, err := store.BaseLoadOneByQuery(tx, query, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
 }

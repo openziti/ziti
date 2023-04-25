@@ -110,6 +110,14 @@ type Identity struct {
 	Disabled                  bool
 }
 
+func (entity *Identity) GetEntityType() string {
+	return EntityTypeIdentities
+}
+
+func (entity *Identity) GetName() string {
+	return entity.Name
+}
+
 type ServiceConfig struct {
 	ServiceId string
 	ConfigId  string
@@ -117,7 +125,100 @@ type ServiceConfig struct {
 
 var identityFieldMappings = map[string]string{FieldIdentityType: "identityTypeId"}
 
-func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+var _ IdentityStore = (*identityStoreImpl)(nil)
+
+type IdentityStore interface {
+	NameIndexed
+	Store[*Identity]
+
+	GetRoleAttributesIndex() boltz.SetReadIndex
+	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
+
+	AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
+	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
+	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
+	LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{}
+	GetIdentityServicesCursorProvider(identityId string) ast.SetCursorProvider
+}
+
+func newIdentityStore(stores *stores) *identityStoreImpl {
+	store := &identityStoreImpl{}
+	store.baseStore = newBaseStore[*Identity](stores, store)
+	store.InitImpl(store)
+	return store
+}
+
+type identityStoreImpl struct {
+	*baseStore[*Identity]
+
+	indexName           boltz.ReadIndex
+	indexRoleAttributes boltz.SetReadIndex
+
+	symbolRoleAttributes boltz.EntitySetSymbol
+	symbolAuthenticators boltz.EntitySetSymbol
+	symbolIdentityTypeId boltz.EntitySymbol
+	symbolAuthPolicyId   boltz.EntitySymbol
+	symbolEnrollments    boltz.EntitySetSymbol
+
+	symbolEdgeRouterPolicies boltz.EntitySetSymbol
+	symbolServicePolicies    boltz.EntitySetSymbol
+	symbolEdgeRouters        boltz.EntitySetSymbol
+	symbolBindServices       boltz.EntitySetSymbol
+	symbolDialServices       boltz.EntitySetSymbol
+
+	edgeRoutersCollection  boltz.RefCountedLinkCollection
+	bindServicesCollection boltz.RefCountedLinkCollection
+	dialServicesCollection boltz.RefCountedLinkCollection
+	symbolExternalId       boltz.EntitySymbol
+	externalIdIndex        boltz.ReadIndex
+}
+
+func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
+	return store.indexRoleAttributes
+}
+
+func (store *identityStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+
+	store.symbolRoleAttributes = store.AddPublicSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
+	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
+
+	store.indexName = store.addUniqueNameField()
+	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
+	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.edgeService)
+	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.edgeService)
+	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
+	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
+	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
+	store.symbolAuthenticators = store.AddFkSetSymbol(FieldIdentityAuthenticators, store.stores.authenticator)
+	store.symbolExternalId = store.AddSymbol(FieldIdentityExternalId, ast.NodeTypeString)
+	store.externalIdIndex = store.AddNullableUniqueIndex(store.symbolExternalId)
+
+	store.symbolIdentityTypeId = store.AddFkSymbol(FieldIdentityType, store.stores.identityType)
+	store.symbolAuthPolicyId = store.AddFkSymbol(FieldIdentityAuthPolicyId, store.stores.authPolicy)
+
+	store.AddFkConstraint(store.symbolAuthPolicyId, true, boltz.CascadeNone)
+
+	store.AddSymbol(FieldIdentityIsAdmin, ast.NodeTypeBool)
+	store.AddSymbol(FieldIdentityIsDefaultAdmin, ast.NodeTypeBool)
+
+	store.indexRoleAttributes.AddListener(store.rolesChanged)
+}
+
+func (store *identityStoreImpl) initializeLinked() {
+	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
+	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
+
+	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolIdentities)
+	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
+	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
+}
+
+func (store *identityStoreImpl) NewEntity() *Identity {
+	return &Identity{}
+}
+
+func (store *identityStoreImpl) FillEntity(entity *Identity, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.IdentityTypeId = bucket.GetStringWithDefault(FieldIdentityType, "")
@@ -169,12 +270,11 @@ func (entity *Identity) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	}
 }
 
-func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
+func (store *identityStoreImpl) PersistEntity(entity *Identity, ctx *boltz.PersistContext) {
 	ctx.WithFieldOverrides(identityFieldMappings)
 
 	entity.SetBaseValues(ctx)
 
-	store := ctx.Store.(*identityStoreImpl)
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetBool(FieldIdentityIsDefaultAdmin, entity.IsDefaultAdmin)
 	ctx.SetBool(FieldIdentityIsAdmin, entity.IsAdmin)
@@ -218,7 +318,7 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 		ctx.SetString(FieldIdentitySdkInfoAppVersion, entity.SdkInfo.AppVersion)
 	}
 
-	serviceStore := ctx.Store.(*identityStoreImpl).stores.Service
+	serviceStore := store.stores.Service
 
 	if ctx.ProceedWithSet(FieldIdentityServiceHostingPrecedences) {
 		mapBucket, err := ctx.Bucket.EmptyBucket(FieldIdentityServiceHostingPrecedences)
@@ -255,107 +355,6 @@ func (entity *Identity) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *Identity) GetEntityType() string {
-	return EntityTypeIdentities
-}
-
-func (entity *Identity) GetName() string {
-	return entity.Name
-}
-
-type IdentityStore interface {
-	NameIndexedStore
-	LoadOneById(tx *bbolt.Tx, id string) (*Identity, error)
-	LoadOneByName(tx *bbolt.Tx, id string) (*Identity, error)
-
-	GetRoleAttributesIndex() boltz.SetReadIndex
-	GetRoleAttributesCursorProvider(values []string, semantic string) (ast.SetCursorProvider, error)
-
-	AssignServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
-	RemoveServiceConfigs(tx *bbolt.Tx, identityId string, serviceConfigs ...ServiceConfig) error
-	GetServiceConfigs(tx *bbolt.Tx, identityId string) ([]ServiceConfig, error)
-	LoadServiceConfigsByServiceAndType(tx *bbolt.Tx, identityId string, configTypes map[string]struct{}) map[string]map[string]map[string]interface{}
-	GetIdentityServicesCursorProvider(identityId string) ast.SetCursorProvider
-}
-
-func newIdentityStore(stores *stores) *identityStoreImpl {
-	store := &identityStoreImpl{
-		baseStore: newBaseStore(stores, EntityTypeIdentities),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type identityStoreImpl struct {
-	*baseStore
-
-	indexName           boltz.ReadIndex
-	indexRoleAttributes boltz.SetReadIndex
-
-	symbolRoleAttributes boltz.EntitySetSymbol
-	symbolAuthenticators boltz.EntitySetSymbol
-	symbolIdentityTypeId boltz.EntitySymbol
-	symbolAuthPolicyId   boltz.EntitySymbol
-	symbolEnrollments    boltz.EntitySetSymbol
-
-	symbolEdgeRouterPolicies boltz.EntitySetSymbol
-	symbolServicePolicies    boltz.EntitySetSymbol
-	symbolEdgeRouters        boltz.EntitySetSymbol
-	symbolBindServices       boltz.EntitySetSymbol
-	symbolDialServices       boltz.EntitySetSymbol
-
-	edgeRoutersCollection  boltz.RefCountedLinkCollection
-	bindServicesCollection boltz.RefCountedLinkCollection
-	dialServicesCollection boltz.RefCountedLinkCollection
-	symbolExternalId       boltz.EntitySymbol
-	externalIdIndex        boltz.ReadIndex
-}
-
-func (store *identityStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Identity{}
-}
-
-func (store *identityStoreImpl) GetRoleAttributesIndex() boltz.SetReadIndex {
-	return store.indexRoleAttributes
-}
-
-func (store *identityStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-
-	store.symbolRoleAttributes = store.AddPublicSetSymbol(FieldRoleAttributes, ast.NodeTypeString)
-	store.indexRoleAttributes = store.AddSetIndex(store.symbolRoleAttributes)
-
-	store.indexName = store.addUniqueNameField()
-	store.symbolEdgeRouters = store.AddFkSetSymbol(db.EntityTypeRouters, store.stores.edgeRouter)
-	store.symbolBindServices = store.AddFkSetSymbol(FieldIdentityBindServices, store.stores.edgeService)
-	store.symbolDialServices = store.AddFkSetSymbol(FieldIdentityDialServices, store.stores.edgeService)
-	store.symbolEdgeRouterPolicies = store.AddFkSetSymbol(EntityTypeEdgeRouterPolicies, store.stores.edgeRouterPolicy)
-	store.symbolServicePolicies = store.AddFkSetSymbol(EntityTypeServicePolicies, store.stores.servicePolicy)
-	store.symbolEnrollments = store.AddFkSetSymbol(FieldIdentityEnrollments, store.stores.enrollment)
-	store.symbolAuthenticators = store.AddFkSetSymbol(FieldIdentityAuthenticators, store.stores.authenticator)
-	store.symbolExternalId = store.AddSymbol(FieldIdentityExternalId, ast.NodeTypeString)
-	store.externalIdIndex = store.AddNullableUniqueIndex(store.symbolExternalId)
-
-	store.symbolIdentityTypeId = store.AddFkSymbol(FieldIdentityType, store.stores.identityType)
-	store.symbolAuthPolicyId = store.AddFkSymbol(FieldIdentityAuthPolicyId, store.stores.authPolicy)
-
-	store.AddFkConstraint(store.symbolAuthPolicyId, true, boltz.CascadeNone)
-
-	store.AddSymbol(FieldIdentityIsAdmin, ast.NodeTypeBool)
-	store.AddSymbol(FieldIdentityIsDefaultAdmin, ast.NodeTypeBool)
-
-	store.indexRoleAttributes.AddListener(store.rolesChanged)
-}
-
-func (store *identityStoreImpl) initializeLinked() {
-	store.AddLinkCollection(store.symbolEdgeRouterPolicies, store.stores.edgeRouterPolicy.symbolIdentities)
-	store.AddLinkCollection(store.symbolServicePolicies, store.stores.servicePolicy.symbolIdentities)
-
-	store.edgeRoutersCollection = store.AddRefCountedLinkCollection(store.symbolEdgeRouters, store.stores.edgeRouter.symbolIdentities)
-	store.bindServicesCollection = store.AddRefCountedLinkCollection(store.symbolBindServices, store.stores.edgeService.symbolBindIdentities)
-	store.dialServicesCollection = store.AddRefCountedLinkCollection(store.symbolDialServices, store.stores.edgeService.symbolDialIdentities)
-}
-
 func (store *identityStoreImpl) rolesChanged(mutateCtx boltz.MutateContext, rowId []byte, _ []boltz.FieldTypeAndValue, new []boltz.FieldTypeAndValue, holder errorz.ErrorHolder) {
 	ctx := &roleAttributeChangeContext{
 		tx:                    mutateCtx.Tx(),
@@ -381,23 +380,6 @@ func (store *identityStoreImpl) GetNameIndex() boltz.ReadIndex {
 	return store.indexName
 }
 
-func (store *identityStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Identity, error) {
-	entity := &Identity{}
-	if err := store.baseLoadOneById(tx, id, entity); err != nil {
-		return nil, err
-	}
-
-	return entity, nil
-}
-
-func (store *identityStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Identity, error) {
-	id := store.indexName.Read(tx, []byte(name))
-	if id != nil {
-		return store.LoadOneById(tx, string(id))
-	}
-	return nil, nil
-}
-
 func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	for _, enrollmentId := range store.GetRelatedEntitiesIdList(ctx.Tx(), id, FieldIdentityEnrollments) {
 		if err := store.stores.enrollment.DeleteById(ctx, enrollmentId); err != nil {
@@ -417,8 +399,12 @@ func (store *identityStoreImpl) DeleteById(ctx boltz.MutateContext, id string) e
 		}
 		if entity.IdentityTypeId == RouterIdentityType {
 			if !ctx.IsSystemContext() {
-				if router, _ := store.stores.Router.LoadOneByName(ctx.Tx(), entity.Name); router != nil {
-					err := errors.Errorf("cannot delete router identity %v until associated router is deleted", entity.Name)
+				router, err := store.stores.Router.FindByName(ctx.Tx(), entity.Name)
+				if err != nil {
+					return errorz.NewEntityCanNotBeDeletedFrom(err)
+				}
+				if router != nil {
+					err = errors.Errorf("cannot delete router identity %v until associated router is deleted", entity.Name)
 					return errorz.NewEntityCanNotBeDeletedFrom(err)
 				}
 			}

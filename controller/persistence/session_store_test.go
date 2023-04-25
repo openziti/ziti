@@ -21,9 +21,11 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -49,31 +51,31 @@ func (ctx *TestContext) testCreateInvalidSessions(_ *testing.T) {
 
 	identity := ctx.RequireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 
 	service := ctx.RequireNewService("test-service")
 
 	session := NewSession("", service.Id)
-	err := ctx.Create(session)
+	err := boltztest.Create(ctx, session)
 	ctx.EqualError(err, "fk constraint on sessions.apiSession does not allow null or empty values")
 
 	session.ApiSessionId = "invalid-id"
-	err = ctx.Create(session)
+	err = boltztest.Create(ctx, session)
 	ctx.EqualError(err, fmt.Sprintf("apiSession with id %v not found", session.ApiSessionId))
 
 	session.ApiSessionId = apiSession.Id
 	session.ServiceId = ""
-	err = ctx.Create(session)
+	err = boltztest.Create(ctx, session)
 	ctx.EqualError(err, "fk constraint on sessions.service does not allow null or empty values")
 
 	session.ServiceId = "invalid-id"
-	err = ctx.Create(session)
+	err = boltztest.Create(ctx, session)
 	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", session.ServiceId))
 
 	session.ServiceId = service.Id
-	err = ctx.Create(session)
+	err = boltztest.Create(ctx, session)
 	ctx.NoError(err)
-	err = ctx.Create(session)
+	err = boltztest.Create(ctx, session)
 	ctx.EqualError(err, fmt.Sprintf("an entity of type session already exists with id %v", session.Id))
 }
 
@@ -82,12 +84,12 @@ func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
 
 	identity := ctx.RequireNewIdentity("test-user", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 
 	service := ctx.RequireNewService("test-service")
 
 	session := NewSession(apiSession.Id, service.Id)
-	ctx.RequireCreate(session)
+	boltztest.RequireCreate(ctx, session)
 
 	token := session.Token
 
@@ -96,9 +98,9 @@ func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
 	session.Token = "different token"
 	session.IdentityId = "different id"
 	session.Type = PolicyTypeBindName
-	ctx.RequireUpdate(session)
+	boltztest.RequireUpdate(ctx, session)
 
-	err := ctx.db.View(func(tx *bbolt.Tx) error {
+	err := ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		loaded, err := ctx.stores.Session.LoadOneById(tx, session.Id)
 		ctx.NoError(err)
 		ctx.NotNil(loaded)
@@ -111,9 +113,9 @@ func (ctx *TestContext) testUpdateInvalidSessions(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	ctx.RequireDelete(session, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, session, apiSessionsSessionsIdxPath)
 
-	err = ctx.Update(session)
+	err = boltztest.Update(ctx, session)
 	ctx.EqualError(err, fmt.Sprintf("session with id %v not found", session.Id))
 }
 
@@ -124,23 +126,23 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 
 	identity := ctx.RequireNewIdentity("Jojo", false)
 	apiSession := NewApiSession(identity.Id)
-	ctx.RequireCreate(apiSession)
+	boltztest.RequireCreate(ctx, apiSession)
 	service := ctx.RequireNewService("test-service")
 	session := NewSession(apiSession.Id, service.Id)
-	ctx.RequireCreate(session)
-	ctx.ValidateBaseline(session, compareOpts)
+	boltztest.RequireCreate(ctx, session)
+	boltztest.ValidateBaseline(ctx, session, compareOpts)
 
 	service2 := ctx.RequireNewService("test-service-2")
 	session3 := NewSession(apiSession.Id, service2.Id)
 	session3.Tags = ctx.CreateTags()
-	ctx.RequireCreate(session3)
-	ctx.ValidateBaseline(session3, compareOpts)
+	boltztest.RequireCreate(ctx, session3)
+	boltztest.ValidateBaseline(ctx, session3, compareOpts)
 
-	ctx.RequireDelete(service2, apiSessionsSessionsIdxPath)
-	ctx.ValidateDeleted(session3.Id, apiSessionsSessionsIdxPath)
-	ctx.RequireReload(session)
+	boltztest.RequireDelete(ctx, service2, apiSessionsSessionsIdxPath)
+	boltztest.ValidateDeleted(ctx, session3.Id, apiSessionsSessionsIdxPath)
+	boltztest.RequireReload(ctx, session)
 
-	err := ctx.Delete(apiSession)
+	err := boltztest.Delete(ctx, apiSession)
 	ctx.NoError(err)
 
 	done, err := ctx.GetStores().EventualEventer.Trigger()
@@ -153,14 +155,8 @@ func (ctx *TestContext) testCreateSessions(_ *testing.T) {
 
 	}
 
-	ctx.ValidateDeleted(session.Id)
-	ctx.ValidateDeleted(apiSession.GetId())
-}
-
-func (ctx *TestContext) RequireDelete(entity boltz.Entity, ignoredPaths ...string) {
-	err := ctx.Delete(entity)
-	ctx.NoError(err)
-	ctx.ValidateDeleted(entity.GetId(), ignoredPaths...)
+	boltztest.ValidateDeleted(ctx, session.Id)
+	boltztest.ValidateDeleted(ctx, apiSession.GetId())
 }
 
 type sessionTestEntities struct {
@@ -178,24 +174,24 @@ func (ctx *TestContext) createSessionTestEntities() *sessionTestEntities {
 	identity1 := ctx.RequireNewIdentity("admin1", true)
 
 	apiSession1 := NewApiSession(identity1.Id)
-	ctx.RequireCreate(apiSession1)
+	boltztest.RequireCreate(ctx, apiSession1)
 
 	apiSession2 := NewApiSession(identity1.Id)
-	ctx.RequireCreate(apiSession2)
+	boltztest.RequireCreate(ctx, apiSession2)
 
 	service1 := ctx.RequireNewService(eid.New())
 	service2 := ctx.RequireNewService(eid.New())
 
 	session1 := NewSession(apiSession1.Id, service1.Id)
-	ctx.RequireCreate(session1)
+	boltztest.RequireCreate(ctx, session1)
 
 	session2 := NewSession(apiSession2.Id, service2.Id)
-	ctx.RequireCreate(session2)
+	boltztest.RequireCreate(ctx, session2)
 
 	session3 := NewSession(apiSession2.Id, service2.Id)
 	session3.Type = PolicyTypeBindName
 
-	ctx.RequireCreate(session3)
+	boltztest.RequireCreate(ctx, session3)
 
 	return &sessionTestEntities{
 		identity1:   identity1,
@@ -238,7 +234,9 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 	earlier := time.Now()
 	time.Sleep(time.Millisecond * 50)
 
-	err := ctx.GetDb().Update(func(tx *bbolt.Tx) error {
+	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	err := ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+		tx := mutateCtx.Tx()
 		original, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
 		ctx.NoError(err)
 		ctx.NotNil(original)
@@ -253,7 +251,7 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 		session.CreatedAt = now
 		session.Tags = tags
 
-		err = ctx.stores.Session.Update(boltz.NewMutateContext(tx), session, nil)
+		err = ctx.stores.Session.Update(mutateCtx, session, nil)
 		ctx.NoError(err)
 		loaded, err := ctx.stores.Session.LoadOneById(tx, entities.session1.Id)
 		ctx.NoError(err)
@@ -271,9 +269,9 @@ func (ctx *TestContext) testUpdateSessions(_ *testing.T) {
 func (ctx *TestContext) testDeleteSessions(_ *testing.T) {
 	ctx.CleanupAll()
 	entities := ctx.createSessionTestEntities()
-	ctx.RequireDelete(entities.session1, apiSessionsSessionsIdxPath)
-	ctx.RequireDelete(entities.session2, apiSessionsSessionsIdxPath)
-	ctx.RequireDelete(entities.session3, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.session1, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.session2, apiSessionsSessionsIdxPath)
+	boltztest.RequireDelete(ctx, entities.session3, apiSessionsSessionsIdxPath)
 }
 
 func NewSession(apiSessionId, serviceId string) *Session {

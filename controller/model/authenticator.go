@@ -19,6 +19,7 @@ package model
 import (
 	"crypto/x509"
 	"encoding/json"
+	"github.com/openziti/fabric/controller/change"
 	"net/http"
 )
 
@@ -66,16 +67,18 @@ type AuthContext interface {
 	GetData() map[string]interface{}
 	GetCerts() []*x509.Certificate
 	GetHeaders() map[string]interface{}
+	GetChangeContext() *change.Context
 }
 
 type AuthContextHttp struct {
-	Method  string
-	Data    map[string]interface{}
-	Certs   []*x509.Certificate
-	Headers map[string]interface{}
+	Method        string
+	Data          map[string]interface{}
+	Certs         []*x509.Certificate
+	Headers       map[string]interface{}
+	ChangeContext *change.Context
 }
 
-func NewAuthContextHttp(request *http.Request, method string, data interface{}) AuthContext {
+func NewAuthContextHttp(request *http.Request, method string, data interface{}, ctx *change.Context) AuthContext {
 	//TODO: this is a giant hack to not deal w/ removing the AuthContext layer
 	sigh, _ := json.Marshal(data)
 	mapData := map[string]interface{}{}
@@ -87,10 +90,11 @@ func NewAuthContextHttp(request *http.Request, method string, data interface{}) 
 	}
 
 	return &AuthContextHttp{
-		Method:  method,
-		Data:    mapData,
-		Certs:   request.TLS.PeerCertificates,
-		Headers: headers,
+		Method:        method,
+		Data:          mapData,
+		Certs:         request.TLS.PeerCertificates,
+		Headers:       headers,
+		ChangeContext: ctx,
 	}
 }
 
@@ -108,6 +112,10 @@ func (context *AuthContextHttp) GetHeaders() map[string]interface{} {
 
 func (context *AuthContextHttp) GetCerts() []*x509.Certificate {
 	return context.Certs
+}
+
+func (context *AuthContextHttp) GetChangeContext() *change.Context {
+	return context.ChangeContext
 }
 
 var _ AuthResult = &AuthResultBase{}

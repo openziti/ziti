@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/runner"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/sirupsen/logrus"
 	"time"
 )
@@ -97,11 +98,12 @@ func (s *ApiSessionEnforcer) Run() error {
 
 		logrus.Debugf("found %v expired api-sessions to remove", len(ids))
 
-		if err = s.appEnv.GetManagers().ApiSession.DeleteBatch(ids); err != nil {
+		ctx := change.New().SetSource("api-session.enforcer").SetChangeAuthorType("controller")
+		if err = s.appEnv.GetManagers().ApiSession.DeleteBatch(ids, ctx); err != nil {
 			logrus.WithError(err).Error("failure while batch deleting expired api sessions")
 
 			for _, id := range ids {
-				if err = s.appEnv.GetManagers().ApiSession.Delete(id); err != nil {
+				if err = s.appEnv.GetManagers().ApiSession.Delete(id, ctx); err != nil {
 					logrus.WithError(err).Errorf("failure while deleting expired api session: %v", id)
 				}
 			}

@@ -20,9 +20,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/storage/boltz"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type PostureCheckType struct {
@@ -31,7 +29,7 @@ type PostureCheckType struct {
 	OperatingSystems []OperatingSystem
 }
 
-func (entity *PostureCheckType) toBoltEntity() (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntity() (*persistence.PostureCheckType, error) {
 	var operatingSystems []persistence.OperatingSystem
 
 	for _, os := range entity.OperatingSystems {
@@ -41,27 +39,22 @@ func (entity *PostureCheckType) toBoltEntity() (boltz.Entity, error) {
 		})
 	}
 
-	return &persistence.PostureCheckOs{
+	return &persistence.PostureCheckType{
 		Name:             entity.Name,
 		OperatingSystems: operatingSystems,
 		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
 	}, nil
 }
 
-func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.PostureCheckType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *PostureCheckType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.PostureCheckType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *PostureCheckType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltPostureCheckType, ok := boltEntity.(*persistence.PostureCheckOs)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model PostureCheckOs", reflect.TypeOf(boltEntity))
-	}
-
+func (entity *PostureCheckType) fillFrom(_ Env, _ *bbolt.Tx, boltPostureCheckType *persistence.PostureCheckType) error {
 	var operatingSystems []OperatingSystem
 
 	for _, os := range boltPostureCheckType.OperatingSystems {

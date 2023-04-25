@@ -21,6 +21,7 @@ import (
 	"github.com/kataras/go-events"
 	"github.com/lucsky/cuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/storage/boltz"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -347,8 +348,8 @@ func (a *EventualEventerBbolt) AddEventualEventWithCtx(ctx boltz.MutateContext, 
 
 	var err error
 	if ctx == nil {
-		err = a.dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-			ctx := boltz.NewMutateContext(tx)
+		ctx = change.New().SetSource("eventual.eventer").SetChangeAuthorType("controller").NewMutateContext()
+		err = a.dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 			return a.store.Create(ctx, event)
 		})
 	} else {
@@ -437,8 +438,8 @@ func (a *EventualEventerBbolt) Trigger() (<-chan struct{}, error) {
 
 // deleteEventualEvent removes an eventual event by id from the bbolt backend store.
 func (a *EventualEventerBbolt) deleteEventualEvent(id string) error {
-	err := a.dbProvider.GetDb().Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
+	ctx := change.New().SetSource("eventual.eventer").SetChangeAuthorType("controller").NewMutateContext()
+	err := a.dbProvider.GetDb().Update(ctx, func(ctx boltz.MutateContext) error {
 		return a.store.DeleteById(ctx, id)
 	})
 

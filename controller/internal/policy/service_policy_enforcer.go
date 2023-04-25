@@ -19,6 +19,7 @@ package policy
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/change"
 	"time"
 
 	"github.com/openziti/edge/controller/env"
@@ -77,10 +78,8 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 	var sessionsToDelete []string
 
 	err := enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
-		var err error
-		identity := &persistence.Identity{}
-
-		if _, err := enforcer.appEnv.GetStores().Identity.BaseLoadOneById(tx, event.IdentityId, identity); err != nil {
+		identity, err := enforcer.appEnv.GetStores().Identity.LoadOneById(tx, event.IdentityId)
+		if err != nil {
 			return err
 		}
 
@@ -103,8 +102,9 @@ func (enforcer *ServicePolicyEnforcer) handleServiceEvent(event *persistence.Ser
 		}
 	}
 
+	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
 	for _, sessionId := range sessionsToDelete {
-		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId)
+		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 		log.Debugf("session %v deleted", sessionId)
 	}
 
@@ -134,16 +134,12 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 	var sessionsToRemove []string
 	err = enforcer.appEnv.GetDbProvider().GetDb().View(func(tx *bbolt.Tx) error {
 		for _, session := range result.Sessions {
-			apiSession := &persistence.ApiSession{}
-			_, err := enforcer.appEnv.GetStores().ApiSession.BaseLoadOneById(tx, session.ApiSessionId, apiSession)
-
+			apiSession, err := enforcer.appEnv.GetStores().ApiSession.LoadOneById(tx, session.ApiSessionId)
 			if err != nil {
 				return err
 			}
 
-			identity := &persistence.Identity{}
-			_, err = enforcer.appEnv.GetStores().Identity.BaseLoadOneById(tx, apiSession.IdentityId, identity)
-
+			identity, err := enforcer.appEnv.GetStores().Identity.LoadOneById(tx, apiSession.IdentityId)
 			if err != nil {
 				return err
 			}
@@ -172,8 +168,9 @@ func (enforcer *ServicePolicyEnforcer) Run() error {
 		return err
 	}
 
+	ctx := change.New().SetSource("service-policy.enforcer").SetChangeAuthorType("controller")
 	for _, sessionId := range sessionsToRemove {
-		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId)
+		_ = enforcer.appEnv.GetManagers().Session.Delete(sessionId, ctx)
 	}
 
 	enforcer.appEnv.GetMetricsRegistry().Meter(SessionPolicyEnforcerRunDeletes).Mark(int64(len(sessionsToRemove)))

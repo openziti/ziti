@@ -12,10 +12,19 @@ enum CommandType {
   CreateEdgeRouterType = 1002;
   CreateTransitRouterType = 1003;
   CreateIdentityWithEnrollmentsType = 1004;
+  UpdateServiceConfigsType = 1005;
 }
+
+message ChangeContext {
+  map<string, string> attributes = 1;
+  uint64 raftIndex = 2;
+}
+
 
 message CreateEdgeTerminatorCommand {
   bytes terminatorData = 1;
+
+  ChangeContext ctx = 2;
 }
 
 message TagValue {
@@ -177,6 +186,8 @@ message EdgeRouter {
 message CreateEdgeRouterCmd {
   EdgeRouter edgeRouter = 1;
   Enrollment enrollment = 2;
+
+  ChangeContext ctx = 3;
 }
 
 // Edge Router Policies
@@ -208,6 +219,8 @@ message Enrollment {
 message ReplaceEnrollmentWithAuthenticatorCmd {
   string enrollmentId = 1;
   Authenticator authenticator = 2;
+
+  ChangeContext ctx = 3;
 }
 
 // External JWT Signers
@@ -272,6 +285,8 @@ message Identity {
 message CreateIdentityWithEnrollmentsCmd {
   Identity identity = 1;
   repeated Enrollment enrollments = 2;
+
+  ChangeContext ctx = 3;
 }
 
 // MFA
@@ -391,5 +406,18 @@ message TransitRouter {
 message CreateTransitRouterCmd {
   TransitRouter router = 1;
   Enrollment enrollment = 2;
+
+  ChangeContext ctx = 3;
 }
 
+message UpdateServiceConfigsCmd {
+  message ServiceConfig {
+    string serviceId = 1;
+    string configId = 2;
+  }
+
+  string identityId = 1;
+  bool add = 2;
+  repeated ServiceConfig serviceConfigs = 3;
+  ChangeContext ctx = 4;
+}

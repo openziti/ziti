@@ -19,6 +19,7 @@ package persistence
 import (
 	"fmt"
 	"github.com/openziti/edge/eid"
+	"github.com/openziti/storage/boltztest"
 	"go.etcd.io/bbolt"
 	"testing"
 	"time"
@@ -36,12 +37,12 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	ctx.CleanupAll()
 
 	configType := newConfigType("")
-	err := ctx.Create(configType)
+	err := boltztest.Create(ctx, configType)
 	ctx.EqualError(err, "index on configTypes.name does not allow null or empty values")
 
 	configType = newConfigType(eid.New())
-	ctx.RequireCreate(configType)
-	ctx.ValidateBaseline(configType)
+	boltztest.RequireCreate(ctx, configType)
+	boltztest.ValidateBaseline(ctx, configType)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		testConfigType, err := ctx.stores.ConfigType.LoadOneByName(tx, configType.Name)
@@ -55,14 +56,14 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 
 	time.Sleep(10 * time.Millisecond) // ensure updated time is different than created time
 	configType.Name = eid.New()
-	ctx.RequireUpdate(configType)
-	ctx.ValidateUpdated(configType)
+	boltztest.RequireUpdate(ctx, configType)
+	boltztest.ValidateUpdated(ctx, configType)
 
 	config := newConfig(eid.New(), configType.Id, map[string]interface{}{
 		"dnsHostname": "ssh.yourcompany.com",
 		"port":        int64(22),
 	})
-	ctx.RequireCreate(config)
+	boltztest.RequireCreate(ctx, config)
 
 	err = ctx.GetDb().View(func(tx *bbolt.Tx) error {
 		ids := ctx.stores.ConfigType.GetRelatedEntitiesIdList(tx, configType.Id, EntityTypeConfigs)
@@ -71,9 +72,9 @@ func (ctx *TestContext) testConfigTypeCrud(*testing.T) {
 	})
 	ctx.NoError(err)
 
-	err = ctx.Delete(configType)
+	err = boltztest.Delete(ctx, configType)
 	ctx.EqualError(err, fmt.Sprintf("cannot delete config type %v, as configs of that type exist", configType.Id))
 
-	ctx.RequireDelete(config)
-	ctx.RequireDelete(configType)
+	boltztest.RequireDelete(ctx, config)
+	boltztest.RequireDelete(ctx, configType)
 }

@@ -31,7 +31,7 @@ func (m *Migrations) removeOrphanedOttCaEnrollments(step *boltz.MigrationStep) {
 	}
 
 	//clear caIds that are invalid via CheckIntegrity
-	err := m.stores.Enrollment.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+	err := m.stores.Enrollment.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
 		if !fixed {
 			pfxlog.Logger().Errorf("unfixable error during orphaned ottca enrollment integrity check: %v", err)
 		}

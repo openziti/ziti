@@ -25,7 +25,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 	"go.etcd.io/bbolt"
-	"reflect"
 )
 
 type ConfigType struct {
@@ -43,7 +42,7 @@ func (entity *ConfigType) GetCompiledSchema() (*gojsonschema.Schema, error) {
 	return schemaLoader.Compile(entitySchemaLoader)
 }
 
-func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntity() (*persistence.ConfigType, error) {
 	if entity.Name == ConfigTypeAll {
 		return nil, errorz.NewFieldError(fmt.Sprintf("%v is a keyword and may not be used as a config type name", entity.Name), "name", entity.Name)
 	}
@@ -63,20 +62,15 @@ func (entity *ConfigType) toBoltEntity() (boltz.Entity, error) {
 	}, nil
 }
 
-func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, EntityManager) (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntityForCreate(*bbolt.Tx, Env) (*persistence.ConfigType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, EntityManager, boltz.FieldChecker) (boltz.Entity, error) {
+func (entity *ConfigType) toBoltEntityForUpdate(*bbolt.Tx, Env, boltz.FieldChecker) (*persistence.ConfigType, error) {
 	return entity.toBoltEntity()
 }
 
-func (entity *ConfigType) fillFrom(_ EntityManager, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltConfigType, ok := boltEntity.(*persistence.ConfigType)
-	if !ok {
-		return errors.Errorf("unexpected type %v when filling model configType", reflect.TypeOf(boltEntity))
-	}
-
+func (entity *ConfigType) fillFrom(_ Env, _ *bbolt.Tx, boltConfigType *persistence.ConfigType) error {
 	entity.FillCommon(boltConfigType)
 	entity.Name = boltConfigType.Name
 	entity.Schema = boltConfigType.Schema

@@ -20,6 +20,7 @@
 package tests
 
 import (
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/controller/network"
 	"testing"
@@ -115,7 +116,7 @@ func Test_TransitRouters(t *testing.T) {
 			Name:        "uMvqq",
 			Fingerprint: &fp,
 		}
-		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter)
+		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter, change.New().SetSource("test"))
 		ctx.Req.NoError(err, "could not create router at fabric level")
 
 		body := ctx.AdminManagementSession.requireQuery("transit-routers")

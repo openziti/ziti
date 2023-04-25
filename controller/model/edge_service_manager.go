@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/pb/edge_cmd_pb"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/fields"
@@ -33,9 +34,11 @@ import (
 
 func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 	manager := &EdgeServiceManager{
-		baseEntityManager: newBaseEntityManager(env, env.GetStores().EdgeService),
+		baseEntityManager: newBaseEntityManager[*Service, *persistence.EdgeService](env, env.GetStores().EdgeService),
+		detailLister:      &ServiceDetailLister{},
 	}
 	manager.impl = manager
+	manager.detailLister.manager = manager
 
 	network.RegisterManagerDecoder[*Service](env.GetHostController().GetNetwork().Managers, manager)
 
@@ -43,43 +46,40 @@ func NewEdgeServiceManager(env Env) *EdgeServiceManager {
 }
 
 type EdgeServiceManager struct {
-	baseEntityManager
+	baseEntityManager[*Service, *persistence.EdgeService]
+	detailLister *ServiceDetailLister
+}
+
+func (self *EdgeServiceManager) GetDetailLister() *ServiceDetailLister {
+	return self.detailLister
 }
 
 func (self *EdgeServiceManager) GetEntityTypeId() string {
 	return "edgeServices"
 }
 
-func (self *EdgeServiceManager) newModelEntity() edgeEntity {
-	return &ServiceDetail{}
+func (self *EdgeServiceManager) newModelEntity() *Service {
+	return &Service{}
 }
 
-func (self *EdgeServiceManager) Create(entity *Service) error {
-	return network.DispatchCreate[*Service](self, entity)
+func (self *EdgeServiceManager) Create(entity *Service, ctx *change.Context) error {
+	return network.DispatchCreate[*Service](self, entity, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
-	_, err := self.createEntity(cmd.Entity)
+func (self *EdgeServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service], ctx boltz.MutateContext) error {
+	_, err := self.createEntity(cmd.Entity, ctx)
 	return err
 }
 
-func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFields) error {
+func (self *EdgeServiceManager) Update(entity *Service, checker fields.UpdatedFields, ctx *change.Context) error {
 	if checker != nil {
 		checker = checker.RemoveFields("encryptionRequired")
 	}
-	return network.DispatchUpdate[*Service](self, entity, checker)
+	return network.DispatchUpdate[*Service](self, entity, checker, ctx)
 }
 
-func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
-	return self.updateEntity(cmd.Entity, cmd.UpdatedFields)
-}
-
-func (self *EdgeServiceManager) Read(id string) (*Service, error) {
-	entity := &Service{}
-	if err := self.readEntity(id, entity); err != nil {
-		return nil, err
-	}
-	return entity, nil
+func (self *EdgeServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service], ctx boltz.MutateContext) error {
+	return self.updateEntity(cmd.Entity, cmd.UpdatedFields, ctx)
 }
 
 func (self *EdgeServiceManager) ReadByName(name string) (*Service, error) {
@@ -93,7 +93,16 @@ func (self *EdgeServiceManager) ReadByName(name string) (*Service, error) {
 
 func (self *EdgeServiceManager) readInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
 	entity := &ServiceDetail{}
-	if err := self.readEntityInTx(tx, id, entity); err != nil {
+	boltEntity := self.GetStore().GetEntityStrategy().NewEntity()
+	found, err := self.GetStore().LoadEntity(tx, id, boltEntity)
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, boltz.NewNotFoundError(self.GetStore().GetSingularEntityType(), "id", id)
+	}
+
+	if err = entity.fillFrom(self.env, tx, boltEntity); err != nil {
 		return nil, err
 	}
 	return entity, nil
@@ -368,4 +377,40 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 	})
 
 	return policyIdToChecks
+}
+
+type ServiceDetailLister struct {
+	manager *EdgeServiceManager
+}
+
+func (self *ServiceDetailLister) GetListStore() boltz.Store {
+	return self.manager.GetListStore()
+}
+
+func (self *ServiceDetailLister) BaseLoadInTx(tx *bbolt.Tx, id string) (*ServiceDetail, error) {
+	return self.manager.readInTx(tx, id)
+}
+
+func (self *ServiceDetailLister) BasePreparedList(query ast.Query) (*models.EntityListResult[*ServiceDetail], error) {
+	result := &models.EntityListResult[*ServiceDetail]{
+		Loader: self,
+	}
+
+	if err := self.manager.PreparedListWithHandler(query, result.Collect); err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (self *ServiceDetailLister) BasePreparedListIndexed(cursorProvider ast.SetCursorProvider, query ast.Query) (*models.EntityListResult[*ServiceDetail], error) {
+	result := &models.EntityListResult[*ServiceDetail]{
+		Loader: self,
+	}
+
+	if err := self.manager.PreparedListIndexed(cursorProvider, query, result.Collect); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

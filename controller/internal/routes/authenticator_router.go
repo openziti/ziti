@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_management_api_server/operations/authenticator"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/controller/internal/permissions"
+	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/foundation/v2/errorz"
@@ -76,11 +77,11 @@ func (r *AuthenticatorRouter) Register(ae *env.AppEnv) {
 }
 
 func (r *AuthenticatorRouter) List(ae *env.AppEnv, rc *response.RequestContext) {
-	ListWithHandler(ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
+	ListWithHandler[*model.Authenticator](ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
 }
 
 func (r *AuthenticatorRouter) Detail(ae *env.AppEnv, rc *response.RequestContext) {
-	DetailWithHandler(ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
+	DetailWithHandler[*model.Authenticator](ae, rc, ae.Managers.Authenticator, MapAuthenticatorToRestEntity)
 }
 
 func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext, params authenticator.CreateAuthenticatorParams) {
@@ -91,7 +92,7 @@ func (r *AuthenticatorRouter) Create(ae *env.AppEnv, rc *response.RequestContext
 			return "", err
 		}
 
-		return MapCreate(ae.Managers.Authenticator.Create, authenticator)
+		return MapCreate(ae.Managers.Authenticator.Create, authenticator, rc)
 	})
 }
 
@@ -101,7 +102,7 @@ func (r *AuthenticatorRouter) Delete(ae *env.AppEnv, rc *response.RequestContext
 
 func (r *AuthenticatorRouter) Update(ae *env.AppEnv, rc *response.RequestContext, params authenticator.UpdateAuthenticatorParams) {
 	Update(rc, func(id string) error {
-		return ae.Managers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator), false, nil)
+		return ae.Managers.Authenticator.Update(MapUpdateAuthenticatorToModel(params.ID, params.Authenticator), false, nil, rc.NewChangeContext())
 	})
 }
 
@@ -113,7 +114,7 @@ func (r *AuthenticatorRouter) Patch(ae *env.AppEnv, rc *response.RequestContext,
 			fields.AddField("salt")
 		}
 
-		return ae.Managers.Authenticator.Update(model, false, fields.FilterMaps("tags"))
+		return ae.Managers.Authenticator.Update(model, false, fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 
@@ -130,7 +131,7 @@ func (r *AuthenticatorRouter) ReEnroll(ae *env.AppEnv, rc *response.RequestConte
 		return
 	}
 
-	if id, err := ae.Managers.Authenticator.ReEnroll(id, time.Time(*params.ReEnroll.ExpiresAt)); err == nil {
+	if id, err := ae.Managers.Authenticator.ReEnroll(id, time.Time(*params.ReEnroll.ExpiresAt), rc.NewChangeContext()); err == nil {
 		rc.RespondWithCreatedId(id, EnrollmentLinkFactory.SelfLinkFromId(id))
 	} else {
 		if fe, ok := err.(*errorz.FieldError); ok {
