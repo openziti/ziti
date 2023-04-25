@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/change"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -161,7 +162,12 @@ func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt
 		case ctrl_msg.ErrorTypeInvalidTerminator:
 			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
 				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
-				if err := self.terminators.Delete(terminator.GetId()); err != nil {
+				changeCtx := change.New().
+					SetChangeAuthorId(status.Router.Id).
+					SetChangeAuthorName(status.Router.Name).
+					SetChangeAuthorType("router").
+					SetSource("router reported invalid terminator")
+				if err := self.terminators.Delete(terminator.GetId(), changeCtx); err != nil {
 					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
 				}
 				failureCause = CircuitFailureRouterErrInvalidTerminator

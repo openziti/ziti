@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/pb/cmd_pb"
@@ -57,7 +58,7 @@ type Router struct {
 	Disabled    bool
 }
 
-func (entity *Router) toBolt() boltz.Entity {
+func (entity *Router) toBolt() *db.Router {
 	return &db.Router{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
@@ -93,7 +94,7 @@ func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Rou
 }
 
 type RouterManager struct {
-	baseEntityManager[*Router]
+	baseEntityManager[*Router, *db.Router]
 	cache     cmap.ConcurrentMap[string, *Router]
 	connected cmap.ConcurrentMap[string, *Router]
 	store     db.RouterStore
@@ -101,7 +102,7 @@ type RouterManager struct {
 
 func newRouterManager(managers *Managers) *RouterManager {
 	result := &RouterManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Router, func() *Router {
+		baseEntityManager: newBaseEntityManager[*Router, *db.Router](managers, managers.stores.Router, func() *Router {
 			return &Router{}
 		}),
 		cache:     cmap.New[*Router](),
@@ -110,25 +111,8 @@ func newRouterManager(managers *Managers) *RouterManager {
 	}
 	result.populateEntity = result.populateRouter
 
-	managers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
-		for _, val := range i {
-			if router, ok := val.(*db.Router); ok {
-				result.UpdateCachedRouter(router.Id)
-			} else {
-				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
-			}
-		}
-	})
-
-	managers.stores.Router.AddListener(boltz.EventDelete, func(i ...interface{}) {
-		for _, val := range i {
-			if router, ok := val.(*db.Router); ok {
-				result.HandleRouterDelete(router.Id)
-			} else {
-				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
-			}
-		}
-	})
+	managers.stores.Router.AddEntityIdListener(result.UpdateCachedRouter, boltz.EntityUpdated)
+	managers.stores.Router.AddEntityIdListener(result.HandleRouterDelete, boltz.EntityDeleted)
 
 	return result
 }
@@ -181,14 +165,14 @@ func (self *RouterManager) connectedCount() int {
 	return self.connected.Count()
 }
 
-func (self *RouterManager) Create(entity *Router) error {
-	return DispatchCreate[*Router](self, entity)
+func (self *RouterManager) Create(entity *Router, ctx *change.Context) error {
+	return DispatchCreate[*Router](self, entity, ctx)
 }
 
-func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]) error {
+func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router], ctx boltz.MutateContext) error {
 	router := cmd.Entity
-	err := self.db.Update(func(tx *bbolt.Tx) error {
-		return self.store.Create(boltz.NewMutateContext(tx), router.toBolt())
+	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+		return self.store.Create(ctx, router.toBolt())
 	})
 	if err != nil {
 		self.cache.Set(router.Id, router)
@@ -246,12 +230,12 @@ func (self *RouterManager) populateRouter(entity *Router, _ *bbolt.Tx, boltEntit
 	return nil
 }
 
-func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFields) error {
-	return DispatchUpdate[*Router](self, entity, updatedFields)
+func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFields, ctx *change.Context) error {
+	return DispatchUpdate[*Router](self, entity, updatedFields, ctx)
 }
 
-func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]) error {
-	return self.updateGeneral(cmd.Entity, cmd.UpdatedFields)
+func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router], ctx boltz.MutateContext) error {
+	return self.updateGeneral(ctx, cmd.Entity, cmd.UpdatedFields)
 }
 
 func (self *RouterManager) HandleRouterDelete(id string) {

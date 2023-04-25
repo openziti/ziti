@@ -197,10 +197,6 @@ func (network *Network) GetManagers() *Managers {
 	return network.Managers
 }
 
-func (network *Network) CreateRouter(router *Router) error {
-	return network.Routers.Create(router)
-}
-
 func (network *Network) GetConnectedRouter(routerId string) *Router {
 	return network.Routers.getConnected(routerId)
 }

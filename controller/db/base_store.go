@@ -24,11 +24,7 @@ const (
 	FieldName = "name"
 )
 
-type store interface {
-	boltz.CrudStore
-}
-
-type baseStore struct {
+type baseStore[T boltz.ExtEntity] struct {
 	stores *stores
-	*boltz.BaseStore
+	*boltz.BaseStore[T]
 }

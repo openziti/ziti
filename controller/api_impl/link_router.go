@@ -19,6 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
@@ -118,7 +119,7 @@ func (r *LinkRouter) Patch(n *network.Network, rc api.RequestContext, params lin
 }
 
 func (r *LinkRouter) Delete(network *network.Network, rc api.RequestContext) {
-	DeleteWithHandler(rc, DeleteHandlerF(func(id string) error {
+	DeleteWithHandler(rc, DeleteHandlerF(func(id string, _ *change.Context) error {
 		network.RemoveLink(id)
 		return nil
 	}))

@@ -81,7 +81,7 @@ func (r *ServiceRouter) Detail(n *network.Network, rc api.RequestContext) {
 func (r *ServiceRouter) Create(n *network.Network, rc api.RequestContext, params service.CreateServiceParams) {
 	Create(rc, ServiceLinkFactory, func() (string, error) {
 		svc := MapCreateServiceToModel(params.Service)
-		err := n.Services.Create(svc)
+		err := n.Services.Create(svc, rc.NewChangeContext())
 		if err != nil {
 			return "", err
 		}
@@ -95,13 +95,13 @@ func (r *ServiceRouter) Delete(network *network.Network, rc api.RequestContext) 
 
 func (r *ServiceRouter) Update(n *network.Network, rc api.RequestContext, params service.UpdateServiceParams) {
 	Update(rc, func(id string) error {
-		return n.Managers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil)
+		return n.Managers.Services.Update(MapUpdateServiceToModel(params.ID, params.Service), nil, rc.NewChangeContext())
 	})
 }
 
 func (r *ServiceRouter) Patch(n *network.Network, rc api.RequestContext, params service.PatchServiceParams) {
 	Patch(rc, func(id string, fields fields.UpdatedFields) error {
-		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"))
+		return n.Managers.Services.Update(MapPatchServiceToModel(params.ID, params.Service), fields.FilterMaps("tags"), rc.NewChangeContext())
 	})
 }
 

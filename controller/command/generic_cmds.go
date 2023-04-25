@@ -1,11 +1,12 @@
 package command
 
 import (
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/fields"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 )
 
 // EntityMarshaller instances can marshal and unmarshal entities of the type that they manage
@@ -28,7 +29,7 @@ type EntityCreator[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyCreate creates the entity described by the given command
-	ApplyCreate(cmd *CreateEntityCommand[T]) error
+	ApplyCreate(cmd *CreateEntityCommand[T], ctx boltz.MutateContext) error
 }
 
 // EntityUpdater instances can apply an update entity command to update entities of a given type
@@ -36,7 +37,7 @@ type EntityUpdater[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyUpdate updates the entity described by the given command
-	ApplyUpdate(cmd *UpdateEntityCommand[T]) error
+	ApplyUpdate(cmd *UpdateEntityCommand[T], ctx boltz.MutateContext) error
 }
 
 // EntityDeleter instances can apply a delete entity command to delete entities of a given type
@@ -44,7 +45,7 @@ type EntityDeleter interface {
 	GetEntityTypeId() string
 
 	// ApplyDelete deletes the entity described by the given command
-	ApplyDelete(cmd *DeleteEntityCommand) error
+	ApplyDelete(cmd *DeleteEntityCommand, ctx boltz.MutateContext) error
 }
 
 // EntityManager instances can handle create, update and delete entities of a specific type
@@ -55,14 +56,15 @@ type EntityManager[T models.Entity] interface {
 }
 
 type CreateEntityCommand[T models.Entity] struct {
+	Context        *change.Context
 	Creator        EntityCreator[T]
 	Entity         T
-	PostCreateHook func(tx *bbolt.Tx, entity T) error
+	PostCreateHook func(ctx boltz.MutateContext, entity T) error
 	Flags          uint32
 }
 
-func (self *CreateEntityCommand[T]) Apply() error {
-	return self.Creator.ApplyCreate(self)
+func (self *CreateEntityCommand[T]) Apply(ctx boltz.MutateContext) error {
+	return self.Creator.ApplyCreate(self, ctx)
 }
 
 func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
@@ -72,21 +74,27 @@ func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
 		return nil, errors.Wrapf(err, "error mashalling entity of type %T (%v)", self.Entity, entityType)
 	}
 	return cmd_pb.EncodeProtobuf(&cmd_pb.CreateEntityCommand{
+		Ctx:        self.Context.ToProtoBuf(),
 		EntityType: entityType,
 		EntityData: encodedEntity,
 		Flags:      self.Flags,
 	})
 }
 
+func (self *CreateEntityCommand[T]) GetChangeContext() *change.Context {
+	return self.Context
+}
+
 type UpdateEntityCommand[T models.Entity] struct {
+	Context       *change.Context
 	Updater       EntityUpdater[T]
 	Entity        T
 	UpdatedFields fields.UpdatedFields
 	Flags         uint32
 }
 
-func (self *UpdateEntityCommand[T]) Apply() error {
-	return self.Updater.ApplyUpdate(self)
+func (self *UpdateEntityCommand[T]) Apply(ctx boltz.MutateContext) error {
+	return self.Updater.ApplyUpdate(self, ctx)
 }
 
 func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
@@ -102,6 +110,7 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 	}
 
 	return cmd_pb.EncodeProtobuf(&cmd_pb.UpdateEntityCommand{
+		Ctx:           self.Context.ToProtoBuf(),
 		EntityType:    entityType,
 		EntityData:    encodedEntity,
 		UpdatedFields: updatedFields,
@@ -110,19 +119,29 @@ func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
 }
 
 type DeleteEntityCommand struct {
+	Context *change.Context
 	Deleter EntityDeleter
 	Id      string
 }
 
-func (self *DeleteEntityCommand) Apply() error {
-	return self.Deleter.ApplyDelete(self)
+func (self *UpdateEntityCommand[T]) GetChangeContext() *change.Context {
+	return self.Context
+}
+
+func (self *DeleteEntityCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Deleter.ApplyDelete(self, ctx)
 }
 
 func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 	return cmd_pb.EncodeProtobuf(&cmd_pb.DeleteEntityCommand{
+		Ctx:        self.Context.ToProtoBuf(),
 		EntityId:   self.Id,
 		EntityType: self.Deleter.GetEntityTypeId(),
 	})
+}
+
+func (self *DeleteEntityCommand) GetChangeContext() *change.Context {
+	return self.Context
 }
 
 type SyncSnapshotCommand struct {
@@ -131,7 +150,7 @@ type SyncSnapshotCommand struct {
 	SnapshotSink func(cmd *SyncSnapshotCommand) error
 }
 
-func (self *SyncSnapshotCommand) Apply() error {
+func (self *SyncSnapshotCommand) Apply(boltz.MutateContext) error {
 	return self.SnapshotSink(self)
 }
 
@@ -140,4 +159,8 @@ func (self *SyncSnapshotCommand) Encode() ([]byte, error) {
 		SnapshotId: self.SnapshotId,
 		Snapshot:   self.Snapshot,
 	})
+}
+
+func (self *SyncSnapshotCommand) GetChangeContext() *change.Context {
+	return nil
 }

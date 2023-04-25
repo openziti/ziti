@@ -94,7 +94,63 @@ func (entity *Terminator) GetHostId() string {
 	return entity.HostId
 }
 
-func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Terminator) GetEntityType() string {
+	return EntityTypeTerminators
+}
+
+type TerminatorStore interface {
+	boltz.EntityStore[*Terminator]
+	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error)
+}
+
+func newTerminatorStore(stores *stores) *terminatorStoreImpl {
+	store := &terminatorStoreImpl{
+		sequence: sequence.NewSequence(),
+	}
+
+	store.baseStore = baseStore[*Terminator]{
+		stores:    stores,
+		BaseStore: boltz.NewBaseStore(NewStoreDefinition[*Terminator](store)),
+	}
+
+	store.InitImpl(store)
+	return store
+}
+
+type terminatorStoreImpl struct {
+	baseStore[*Terminator]
+	sequence *sequence.Sequence
+
+	serviceSymbol boltz.EntitySymbol
+	routerSymbol  boltz.EntitySymbol
+}
+
+func (store *terminatorStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+	store.AddSymbol(FieldTerminatorBinding, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorInstanceId, ast.NodeTypeString)
+	store.AddSymbol(FieldTerminatorHostId, ast.NodeTypeString)
+
+	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
+	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
+
+	store.AddConstraint(boltz.NewSystemEntityEnforcementConstraint(store))
+}
+
+func (store *terminatorStoreImpl) initializeLinked() {
+	store.AddFkIndex(store.serviceSymbol, store.stores.service.terminatorsSymbol)
+	store.AddFkIndex(store.routerSymbol, store.stores.router.terminatorsSymbol)
+
+	store.MakeSymbolPublic("service.name")
+	store.MakeSymbolPublic("router.name")
+}
+
+func (store *terminatorStoreImpl) NewEntity() *Terminator {
+	return &Terminator{}
+}
+
+func (store *terminatorStoreImpl) FillEntity(entity *Terminator, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Service = bucket.GetStringOrError(FieldTerminatorService)
 	entity.Router = bucket.GetStringOrError(FieldTerminatorRouter)
@@ -115,14 +171,12 @@ func (entity *Terminator) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucke
 	}
 }
 
-func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
+func (store *terminatorStoreImpl) PersistEntity(entity *Terminator, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 
 	if entity.Precedence == "" {
 		entity.Precedence = xt.Precedences.Default.String()
 	}
-
-	terminatorStore := ctx.Store.(*terminatorStoreImpl)
 
 	if ctx.Bucket.HasError() {
 		return
@@ -160,7 +214,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	serviceId := ctx.Bucket.GetStringOrError(FieldTerminatorService) // service won't be passed in on change
-	service, err := terminatorStore.stores.service.LoadOneById(ctx.Bucket.Tx(), serviceId)
+	service, _, err := store.stores.service.FindById(ctx.Bucket.Tx(), serviceId)
 	if err != nil || service == nil {
 		ctx.Bucket.SetError(err)
 		return
@@ -174,7 +228,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	}
 
 	var event xt.StrategyChangeEvent
-	terminators, err := terminatorStore.stores.service.getTerminators(ctx.Bucket.Tx(), serviceId)
+	terminators, err := store.stores.service.getTerminators(ctx.Bucket.Tx(), serviceId)
 	ctx.Bucket.SetError(err)
 	if ctx.IsCreate {
 		event = xt.NewStrategyChangeEvent(entity.Id, terminators, xt.TList(entity), nil, nil)
@@ -184,74 +238,7 @@ func (entity *Terminator) SetValues(ctx *boltz.PersistContext) {
 	ctx.Bucket.SetError(strategy.HandleTerminatorChange(event))
 }
 
-func (entity *Terminator) GetEntityType() string {
-	return EntityTypeTerminators
-}
-
-type TerminatorStore interface {
-	boltz.CrudStore
-	LoadOneById(tx *bbolt.Tx, id string) (*Terminator, error)
-	GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error)
-}
-
-func newTerminatorStore(stores *stores) *terminatorStoreImpl {
-	notFoundErrorFactory := func(id string) error {
-		return boltz.NewNotFoundError(boltz.GetSingularEntityType(EntityTypeTerminators), "id", id)
-	}
-
-	store := &terminatorStoreImpl{
-		baseStore: baseStore{
-			stores:    stores,
-			BaseStore: boltz.NewBaseStore(EntityTypeTerminators, notFoundErrorFactory, RootBucket),
-		},
-		sequence: sequence.NewSequence(),
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type terminatorStoreImpl struct {
-	baseStore
-	sequence *sequence.Sequence
-
-	serviceSymbol boltz.EntitySymbol
-	routerSymbol  boltz.EntitySymbol
-}
-
-func (store *terminatorStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Terminator{}
-}
-
-func (store *terminatorStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-	store.AddSymbol(FieldTerminatorBinding, ast.NodeTypeString)
-	store.AddSymbol(FieldTerminatorAddress, ast.NodeTypeString)
-	store.AddSymbol(FieldTerminatorInstanceId, ast.NodeTypeString)
-	store.AddSymbol(FieldTerminatorHostId, ast.NodeTypeString)
-
-	store.serviceSymbol = store.AddFkSymbol(FieldTerminatorService, store.stores.service)
-	store.routerSymbol = store.AddFkSymbol(FieldTerminatorRouter, store.stores.router)
-
-	store.AddConstraint(boltz.NewSystemEntityEnforcementConstraint(store))
-}
-
-func (store *terminatorStoreImpl) initializeLinked() {
-	store.AddFkIndex(store.serviceSymbol, store.stores.service.terminatorsSymbol)
-	store.AddFkIndex(store.routerSymbol, store.stores.router.terminatorsSymbol)
-
-	store.MakeSymbolPublic("service.name")
-	store.MakeSymbolPublic("router.name")
-}
-
-func (store *terminatorStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Terminator, error) {
-	entity := &Terminator{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.Entity) error {
+func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity *Terminator) error {
 	if entity.GetId() == "" {
 		var err error
 		id, err := store.sequence.NextHash()
@@ -265,8 +252,8 @@ func (store *terminatorStoreImpl) Create(ctx boltz.MutateContext, entity boltz.E
 
 func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
 	ctx = ctx.GetSystemContext()
-	if terminator, err := store.LoadOneById(ctx.Tx(), id); terminator != nil {
-		if service, err := store.stores.service.LoadOneById(ctx.Tx(), terminator.Service); service != nil {
+	if terminator, _, _ := store.FindById(ctx.Tx(), id); terminator != nil {
+		if service, _, err := store.stores.service.FindById(ctx.Tx(), terminator.Service); service != nil {
 			if strategy, err := xt.GlobalRegistry().GetStrategy(service.TerminatorStrategy); strategy != nil {
 				if terminators, err := store.stores.service.getTerminators(ctx.Tx(), service.Id); err == nil {
 					event := xt.NewStrategyChangeEvent(service.Id, terminators, nil, nil, xt.TList(terminator))
@@ -274,25 +261,23 @@ func (store *terminatorStoreImpl) DeleteById(ctx boltz.MutateContext, id string)
 						return err
 					}
 				} else {
-					pfxlog.Logger().Debugf("could not get terminators service %v for terminator %v while deleting terminator (%v)",
-						terminator.Service, id, err)
+					pfxlog.Logger().WithError(err).Errorf("could not get terminators service %v for terminator %v while deleting terminator",
+						terminator.Service, id)
 				}
 			} else {
-				pfxlog.Logger().Debugf("could not find strategy %v on service %v for terminator %v while deleting terminator (%v)",
-					service.TerminatorStrategy, terminator.Service, id, err)
+				pfxlog.Logger().WithError(err).Errorf("could not find strategy %v on service %v for terminator %v while deleting terminator",
+					service.TerminatorStrategy, terminator.Service, id)
 			}
 		} else {
-			pfxlog.Logger().Debugf("could not find service %v for terminator %v while deleting (%v)", terminator.Service, id, err)
+			pfxlog.Logger().WithError(err).Errorf("could not find service %v for terminator %v while deleting", terminator.Service, id)
 		}
-	} else {
-		pfxlog.Logger().Debugf("could not find terminator %v for delete (%v)", id, err)
 	}
 
 	return store.baseStore.DeleteById(ctx, id)
 }
 
 func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, terminatorId string) ([]*Terminator, error) {
-	terminator, err := store.LoadOneById(tx, terminatorId)
+	terminator, _, err := store.FindById(tx, terminatorId)
 	if err != nil {
 		return nil, err
 	}
@@ -307,9 +292,9 @@ func (store *terminatorStoreImpl) GetTerminatorsInIdentityGroup(tx *bbolt.Tx, te
 	var identityTerminators []*Terminator
 	for _, siblingId := range terminatorIds {
 		if siblingId != terminatorId {
-			if terminator, _ := store.LoadOneById(tx, siblingId); terminator != nil {
+			if sibling, _, _ := store.FindById(tx, siblingId); sibling != nil {
 				if identity == terminator.InstanceId {
-					identityTerminators = append(identityTerminators, terminator)
+					identityTerminators = append(identityTerminators, sibling)
 				}
 			}
 		}

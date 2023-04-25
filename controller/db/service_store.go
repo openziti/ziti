@@ -35,13 +35,65 @@ type Service struct {
 	TerminatorStrategy string
 }
 
-func (entity *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+func (entity *Service) GetEntityType() string {
+	return EntityTypeServices
+}
+
+func (entity *Service) GetName() string {
+	return entity.Name
+}
+
+type ServiceStore interface {
+	boltz.EntityStore[*Service]
+	boltz.EntityStrategy[*Service]
+	GetNameIndex() boltz.ReadIndex
+	FindByName(tx *bbolt.Tx, name string) (*Service, error)
+}
+
+func newServiceStore(stores *stores) *serviceStoreImpl {
+	store := &serviceStoreImpl{}
+	store.baseStore = baseStore[*Service]{
+		stores:    stores,
+		BaseStore: boltz.NewBaseStore(NewStoreDefinition[*Service](store)),
+	}
+	store.InitImpl(store)
+	return store
+}
+
+type serviceStoreImpl struct {
+	baseStore[*Service]
+	indexName         boltz.ReadIndex
+	terminatorsSymbol boltz.EntitySetSymbol
+}
+
+func (store *serviceStoreImpl) initializeLocal() {
+	store.AddExtEntitySymbols()
+
+	symbolName := store.AddSymbol(FieldName, ast.NodeTypeString)
+	store.indexName = store.AddUniqueIndex(symbolName)
+
+	store.AddSymbol(FieldServiceTerminatorStrategy, ast.NodeTypeString)
+	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
+}
+
+func (store *serviceStoreImpl) initializeLinked() {
+}
+
+func (store *serviceStoreImpl) GetNameIndex() boltz.ReadIndex {
+	return store.indexName
+}
+
+func (store *serviceStoreImpl) NewEntity() *Service {
+	return &Service{}
+}
+
+func (store *serviceStoreImpl) FillEntity(entity *Service, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.TerminatorStrategy = bucket.GetStringWithDefault(FieldServiceTerminatorStrategy, "")
 }
 
-func (entity *Service) SetValues(ctx *boltz.PersistContext) {
+func (store *serviceStoreImpl) PersistEntity(entity *Service, ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldName, entity.Name)
 
@@ -67,71 +119,11 @@ func (entity *Service) SetValues(ctx *boltz.PersistContext) {
 	}
 }
 
-func (entity *Service) GetEntityType() string {
-	return EntityTypeServices
-}
-
-type ServiceStore interface {
-	store
-	GetNameIndex() boltz.ReadIndex
-	LoadOneById(tx *bbolt.Tx, id string) (*Service, error)
-	LoadOneByName(tx *bbolt.Tx, name string) (*Service, error)
-}
-
-func newServiceStore(stores *stores) *serviceStoreImpl {
-	notFoundErrorFactory := func(id string) error {
-		return boltz.NewNotFoundError(boltz.GetSingularEntityType(EntityTypeServices), "id", id)
-	}
-
-	store := &serviceStoreImpl{
-		baseStore: baseStore{
-			stores:    stores,
-			BaseStore: boltz.NewBaseStore(EntityTypeServices, notFoundErrorFactory, RootBucket),
-		},
-	}
-	store.InitImpl(store)
-	return store
-}
-
-type serviceStoreImpl struct {
-	baseStore
-	indexName         boltz.ReadIndex
-	terminatorsSymbol boltz.EntitySetSymbol
-}
-
-func (store *serviceStoreImpl) initializeLocal() {
-	store.AddExtEntitySymbols()
-
-	symbolName := store.AddSymbol(FieldName, ast.NodeTypeString)
-	store.indexName = store.AddUniqueIndex(symbolName)
-
-	store.AddSymbol(FieldServiceTerminatorStrategy, ast.NodeTypeString)
-	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, store.stores.terminator)
-}
-
-func (store *serviceStoreImpl) initializeLinked() {
-}
-
-func (store *serviceStoreImpl) GetNameIndex() boltz.ReadIndex {
-	return store.indexName
-}
-
-func (store *serviceStoreImpl) NewStoreEntity() boltz.Entity {
-	return &Service{}
-}
-
-func (store *serviceStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Service, error) {
-	entity := &Service{}
-	if found, err := store.BaseLoadOneById(tx, id, entity); !found || err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (store *serviceStoreImpl) LoadOneByName(tx *bbolt.Tx, name string) (*Service, error) {
+func (store *serviceStoreImpl) FindByName(tx *bbolt.Tx, name string) (*Service, error) {
 	id := store.indexName.Read(tx, []byte(name))
 	if id != nil {
-		return store.LoadOneById(tx, string(id))
+		entity, _, err := store.FindById(tx, string(id))
+		return entity, err
 	}
 	return nil, nil
 }
@@ -149,11 +141,13 @@ func (store *serviceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) er
 func (store *serviceStoreImpl) getTerminators(tx *bbolt.Tx, serviceId string) ([]xt.Terminator, error) {
 	var terminators []xt.Terminator
 	for _, tId := range store.GetRelatedEntitiesIdList(tx, serviceId, EntityTypeTerminators) {
-		terminator, err := store.stores.terminator.LoadOneById(tx, tId)
+		terminator, _, err := store.stores.terminator.FindById(tx, tId)
 		if err != nil {
 			return nil, err
 		}
-		terminators = append(terminators, terminator)
+		if terminator != nil {
+			terminators = append(terminators, terminator)
+		}
 	}
 	return terminators, nil
 }

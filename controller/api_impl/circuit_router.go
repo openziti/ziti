@@ -19,6 +19,7 @@ package api_impl
 import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
@@ -96,7 +97,7 @@ func (r *CircuitRouter) Detail(n *network.Network, rc api.RequestContext) {
 }
 
 func (r *CircuitRouter) Delete(network *network.Network, rc api.RequestContext, p circuit.DeleteCircuitParams) {
-	DeleteWithHandler(rc, DeleteHandlerF(func(id string) error {
+	DeleteWithHandler(rc, DeleteHandlerF(func(id string, _ *change.Context) error {
 		return network.RemoveCircuit(id, p.Options.Immediate)
 	}))
 }

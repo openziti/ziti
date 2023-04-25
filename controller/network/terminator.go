@@ -15,6 +15,7 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/fields"
@@ -106,64 +107,59 @@ func (entity *Terminator) toBolt() *db.Terminator {
 
 func newTerminatorManager(managers *Managers) *TerminatorManager {
 	result := &TerminatorManager{
-		baseEntityManager: newBaseEntityManager(managers, managers.stores.Terminator, func() *Terminator {
+		baseEntityManager: newBaseEntityManager[*Terminator, *db.Terminator](managers, managers.stores.Terminator, func() *Terminator {
 			return &Terminator{}
 		}),
 		store: managers.stores.Terminator,
 	}
 	result.populateEntity = result.populateTerminator
 
-	managers.stores.Terminator.On(boltz.EventDelete, func(params ...interface{}) {
-		for _, entity := range params {
-			if terminator, ok := entity.(*db.Terminator); ok {
-				xt.GlobalCosts().ClearCost(terminator.Id)
-			}
-		}
-	})
-
-	xt.GlobalCosts().SetPrecedenceChangeHandler(result.handlePrecedenceChange)
+	managers.stores.Terminator.AddEntityIdListener(xt.GlobalCosts().ClearCost, boltz.EntityDeleted)
 
 	return result
 }
 
 type TerminatorManager struct {
-	baseEntityManager[*Terminator]
+	baseEntityManager[*Terminator, *db.Terminator]
 	store db.TerminatorStore
 }
 
-func (self *TerminatorManager) Create(entity *Terminator) error {
-	return DispatchCreate[*Terminator](self, entity)
+func (self *TerminatorManager) Create(entity *Terminator, ctx *change.Context) error {
+	return DispatchCreate[*Terminator](self, entity, ctx)
 }
 
-func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator]) error {
-	return self.db.Update(func(tx *bbolt.Tx) error {
+func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
+	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+		if cmd.Entity.IsSystemEntity() {
+			ctx = ctx.GetSystemContext()
+		}
 		self.checkBinding(cmd.Entity)
 		boltTerminator := cmd.Entity.toBolt()
-		err := self.GetStore().Create(cmd.Entity.NewMutateContext(tx), boltTerminator)
+		err := self.GetStore().Create(ctx, boltTerminator)
 		if err != nil {
 			return err
 		}
 		if cmd.PostCreateHook != nil {
-			return cmd.PostCreateHook(tx, cmd.Entity)
+			return cmd.PostCreateHook(ctx, cmd.Entity)
 		}
 		return nil
 	})
 }
 
-func (self *TerminatorManager) DeleteBatch(ids []string) error {
+func (self *TerminatorManager) DeleteBatch(ids []string, ctx *change.Context) error {
 	cmd := &DeleteTerminatorsBatchCommand{
+		Context: ctx,
 		Manager: self,
 		Ids:     ids,
 	}
 	return self.Managers.Dispatch(cmd)
 }
 
-func (self *baseEntityManager[T]) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand) error {
+func (self *TerminatorManager) ApplyDeleteBatch(cmd *DeleteTerminatorsBatchCommand, ctx boltz.MutateContext) error {
 	var errorList errorz.MultipleErrors
-	err := self.db.Update(func(tx *bbolt.Tx) error {
-		ctx := boltz.NewMutateContext(tx)
+	err := self.db.Update(ctx, func(ctx boltz.MutateContext) error {
 		for _, id := range cmd.Ids {
-			if self.Store.IsEntityPresent(tx, id) {
+			if self.Store.IsEntityPresent(ctx.Tx(), id) {
 				if err := self.Store.DeleteById(ctx, id); err != nil {
 					errorList = append(errorList, err)
 				}
@@ -200,20 +196,24 @@ func (self *TerminatorManager) handlePrecedenceChange(terminatorId string, prece
 		db.FieldTerminatorPrecedence: struct{}{},
 	}
 
-	if err = self.Update(terminator, checker); err != nil {
+	if err = self.Update(terminator, checker, change.New().SetChangeAuthorId("xt").SetChangeAuthorType("controller")); err != nil {
 		pfxlog.Logger().Errorf("unable to update precedence for terminator %v to %v (%v)", terminatorId, precedence, err)
 	}
 }
 
-func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.UpdatedFields) error {
-	return DispatchUpdate[*Terminator](self, entity, updatedFields)
+func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.UpdatedFields, ctx *change.Context) error {
+	return DispatchUpdate[*Terminator](self, entity, updatedFields, ctx)
 }
 
-func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator]) error {
+func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator], ctx boltz.MutateContext) error {
 	terminator := cmd.Entity
-	return self.db.Update(func(tx *bbolt.Tx) error {
+	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+		if cmd.Entity.IsSystemEntity() {
+			ctx = ctx.GetSystemContext()
+		}
+
 		self.checkBinding(terminator)
-		return self.GetStore().Update(terminator.NewMutateContext(tx), terminator.toBolt(), cmd.UpdatedFields)
+		return self.GetStore().Update(ctx, terminator.toBolt(), cmd.UpdatedFields)
 	})
 }
 
@@ -360,12 +360,13 @@ func (r *RoutingTerminator) GetRouteCost() uint32 {
 }
 
 type DeleteTerminatorsBatchCommand struct {
+	Context *change.Context
 	Manager *TerminatorManager
 	Ids     []string
 }
 
-func (self *DeleteTerminatorsBatchCommand) Apply() error {
-	return self.Manager.ApplyDeleteBatch(self)
+func (self *DeleteTerminatorsBatchCommand) Apply(ctx boltz.MutateContext) error {
+	return self.Manager.ApplyDeleteBatch(self, ctx)
 }
 
 func (self *DeleteTerminatorsBatchCommand) Encode() ([]byte, error) {
@@ -378,4 +379,8 @@ func (self *DeleteTerminatorsBatchCommand) Decode(n *Network, msg *cmd_pb.Delete
 	self.Manager = n.Terminators
 	self.Ids = msg.EntityIds
 	return nil
+}
+
+func (self *DeleteTerminatorsBatchCommand) GetChangeContext() *change.Context {
+	return self.Context
 }

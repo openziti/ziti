@@ -43,7 +43,7 @@ func (qo *PublicQueryOptions) String() string {
 	return fmt.Sprintf("[QueryOption Predicate: '%v', Sort: '%v', Paging: '%v']", qo.Predicate, qo.Sort, qo.Paging)
 }
 
-func (qo *PublicQueryOptions) getFullQuery(store boltz.ListStore) (ast.Query, error) {
+func (qo *PublicQueryOptions) getFullQuery(store boltz.Store) (ast.Query, error) {
 	if qo.Predicate == "" {
 		qo.Predicate = "true"
 	}

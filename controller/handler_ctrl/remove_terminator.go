@@ -26,18 +26,23 @@ import (
 )
 
 type removeTerminatorHandler struct {
-	network *network.Network
+	baseHandler
 }
 
-func newRemoveTerminatorHandler(network *network.Network) *removeTerminatorHandler {
-	return &removeTerminatorHandler{network: network}
+func newRemoveTerminatorHandler(network *network.Network, router *network.Router) *removeTerminatorHandler {
+	return &removeTerminatorHandler{
+		baseHandler: baseHandler{
+			router:  router,
+			network: network,
+		},
+	}
 }
 
-func (h *removeTerminatorHandler) ContentType() int32 {
+func (self *removeTerminatorHandler) ContentType() int32 {
 	return int32(ctrl_pb.ContentType_RemoveTerminatorRequestType)
 }
 
-func (h *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+func (self *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	request := &ctrl_pb.RemoveTerminatorRequest{}
@@ -46,19 +51,19 @@ func (h *removeTerminatorHandler) HandleReceive(msg *channel.Message, ch channel
 		return
 	}
 
-	go h.handleRemoveTerminator(msg, ch, request)
+	go self.handleRemoveTerminator(msg, ch, request)
 }
 
-func (h *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
+func (self *removeTerminatorHandler) handleRemoveTerminator(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	terminator, err := h.network.Terminators.Read(request.TerminatorId)
+	terminator, err := self.network.Terminators.Read(request.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
+	if err := self.network.Terminators.Delete(request.TerminatorId, self.newChangeContext(ch)); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("serviceId", terminator.Service).

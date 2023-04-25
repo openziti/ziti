@@ -19,6 +19,7 @@ package api
 import (
 	"github.com/go-openapi/runtime"
 	"github.com/openziti/fabric/controller/apierror"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/foundation/v2/errorz"
 	"net/http"
 )
@@ -54,4 +55,5 @@ type RequestContext interface {
 	SetEntitySubId(id string)
 	GetEntityId() (string, error)
 	GetEntitySubId() (string, error)
+	NewChangeContext() *change.Context
 }

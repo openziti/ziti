@@ -17,6 +17,7 @@
 package api_impl
 
 import (
+	"context"
 	"errors"
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
@@ -91,7 +92,7 @@ func (r *DatabaseRouter) CreateSnapshot(n *network.Network, rc api.RequestContex
 func (r *DatabaseRouter) CheckDatastoreIntegrity(n *network.Network, rc api.RequestContext, fixErrors bool) {
 	if r.integrityCheck.running.CompareAndSwap(false, true) {
 		r.integrityCheck.fixingErrors = fixErrors
-		go r.runDataIntegrityCheck(n, fixErrors)
+		go r.runDataIntegrityCheck(n, rc.NewChangeContext().GetContext(), fixErrors)
 		rc.Respond(&rest_model.Empty{Data: map[string]interface{}{}, Meta: &rest_model.Meta{}}, http.StatusAccepted)
 	} else {
 		rc.RespondWithApiError(apierror.NewRateLimited())
@@ -139,7 +140,7 @@ func (r *DatabaseRouter) GetCheckProgress(_ *network.Network, rc api.RequestCont
 	rc.Respond(result, http.StatusOK)
 }
 
-func (r *DatabaseRouter) runDataIntegrityCheck(n *network.Network, fixErrors bool) {
+func (r *DatabaseRouter) runDataIntegrityCheck(n *network.Network, ctx context.Context, fixErrors bool) {
 	defer func() {
 		r.integrityCheck.lock.Lock()
 		now := time.Now()
@@ -176,5 +177,5 @@ func (r *DatabaseRouter) runDataIntegrityCheck(n *network.Network, fixErrors boo
 		}
 	}
 
-	r.integrityCheck.err = n.GetStores().CheckIntegrity(n.GetDb(), fixErrors, errorHandler)
+	r.integrityCheck.err = n.GetStores().CheckIntegrity(n.GetDb(), ctx, fixErrors, errorHandler)
 }

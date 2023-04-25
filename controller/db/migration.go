@@ -53,7 +53,7 @@ func (stores *stores) migrateToV1(step *boltz.MigrationStep) {
 	stores.initCreatedAtUpdatedAt(step, now, stores.router)
 }
 
-func (stores *stores) initCreatedAtUpdatedAt(step *boltz.MigrationStep, now time.Time, store boltz.CrudStore) {
+func (stores *stores) initCreatedAtUpdatedAt(step *boltz.MigrationStep, now time.Time, store boltz.Store) {
 	ids, _, err := store.QueryIds(step.Ctx.Tx(), "true")
 	step.SetError(err)
 	for _, id := range ids {
@@ -70,7 +70,7 @@ func (stores *stores) initCreatedAtUpdatedAt(step *boltz.MigrationStep, now time
 	}
 }
 
-func (stores *stores) setNames(step *boltz.MigrationStep, store boltz.CrudStore) {
+func (stores *stores) setNames(step *boltz.MigrationStep, store boltz.Store) {
 	ids, _, err := store.QueryIds(step.Ctx.Tx(), "true")
 	step.SetError(err)
 	for _, id := range ids {
@@ -88,12 +88,12 @@ func (stores *stores) setNames(step *boltz.MigrationStep, store boltz.CrudStore)
 
 func (stores *stores) fixNameIndexes(step *boltz.MigrationStep) {
 	c := stores.service.indexName.(boltz.Constraint)
-	step.SetError(c.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+	step.SetError(c.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
 		log.WithError(err).Debugf("Fixing service name index. Fixed? %v", fixed)
 	}))
 
 	c = stores.router.indexName.(boltz.Constraint)
-	step.SetError(c.CheckIntegrity(step.Ctx.Tx(), true, func(err error, fixed bool) {
+	step.SetError(c.CheckIntegrity(step.Ctx, true, func(err error, fixed bool) {
 		log.WithError(err).Debugf("Fixing router name index. Fixed? %v", fixed)
 	}))
 }
@@ -113,7 +113,7 @@ func (stores *stores) extractTerminators(step *boltz.MigrationStep) {
 	symbolEndpoint := stores.service.AddSymbol(FieldServiceEndpoint, ast.NodeTypeString)
 
 	for _, serviceId := range serviceIds {
-		service, err := stores.service.LoadOneById(step.Ctx.Tx(), serviceId)
+		service, _, err := stores.service.FindById(step.Ctx.Tx(), serviceId)
 		if step.SetError(err) {
 			return
 		}
