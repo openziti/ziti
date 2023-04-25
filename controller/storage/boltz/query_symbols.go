@@ -26,13 +26,13 @@ var _ EntitySymbol = (*entityIdSymbol)(nil)
 var _ EntitySymbol = (*entitySetSymbolImpl)(nil)
 
 type entityMapSymbol struct {
-	store      *BaseStore
+	store      Store
 	key        string
 	symbolType ast.NodeType
 	prefix     []string
 }
 
-func (self *entityMapSymbol) createElementSymbol(name string, parts []string) *entitySymbol {
+func (self *entityMapSymbol) createElementSymbol(name string, parts []string) EntitySymbol {
 	var prefix []string
 	prefix = append(prefix, self.prefix...)
 	prefix = append(prefix, self.key)
@@ -45,21 +45,21 @@ func (self *entityMapSymbol) createElementSymbol(name string, parts []string) *e
 }
 
 type entitySymbol struct {
-	store      ListStore
+	store      Store
 	name       string
 	getBucketF func(entityBucket *TypedBucket) *TypedBucket
 	symbolType ast.NodeType
 	prefix     []string
 	key        string
 	path       []string
-	linkedType ListStore // only set if this is an id field or set
+	linkedType Store // only set if this is an id field or set
 }
 
-func (symbol *entitySymbol) GetStore() ListStore {
+func (symbol *entitySymbol) GetStore() Store {
 	return symbol.store
 }
 
-func (symbol *entitySymbol) GetLinkedType() ListStore {
+func (symbol *entitySymbol) GetLinkedType() Store {
 	return symbol.linkedType
 }
 
@@ -87,7 +87,7 @@ func (symbol *entitySymbol) Eval(tx *bbolt.Tx, rowId []byte) (FieldType, []byte)
 	return entityBucket.getTyped(symbol.key)
 }
 
-func (symbol *entitySymbol) getLinkedType() ListStore {
+func (symbol *entitySymbol) getLinkedType() Store {
 	return symbol.linkedType
 }
 
@@ -112,16 +112,16 @@ func (elem *fkQueryPath) Index() int {
 }
 
 type entityIdSymbol struct {
-	store      ListStore
+	store      Store
 	symbolType ast.NodeType
 	path       []string
 }
 
-func (symbol *entityIdSymbol) GetStore() ListStore {
+func (symbol *entityIdSymbol) GetStore() Store {
 	return symbol.store
 }
 
-func (symbol *entityIdSymbol) GetLinkedType() ListStore {
+func (symbol *entityIdSymbol) GetLinkedType() Store {
 	return nil
 }
 
@@ -316,7 +316,7 @@ type iterableEntitySymbol interface {
 
 type linkedEntitySymbol interface {
 	iterableEntitySymbol
-	getLinkedType() ListStore
+	getLinkedType() Store
 }
 
 type compositeEntitySymbol interface {
@@ -334,11 +334,11 @@ func (symbol *nonSetCompositeEntitySymbol) GetChain() []EntitySymbol {
 	return symbol.chain
 }
 
-func (symbol *nonSetCompositeEntitySymbol) GetStore() ListStore {
+func (symbol *nonSetCompositeEntitySymbol) GetStore() Store {
 	return symbol.chain[0].GetStore()
 }
 
-func (symbol *nonSetCompositeEntitySymbol) GetLinkedType() ListStore {
+func (symbol *nonSetCompositeEntitySymbol) GetLinkedType() Store {
 	return symbol.chain[len(symbol.chain)-1].GetLinkedType()
 }
 
@@ -383,11 +383,11 @@ func (symbol *compositeEntitySetSymbol) getChain() []EntitySymbol {
 	return result
 }
 
-func (symbol *compositeEntitySetSymbol) GetStore() ListStore {
+func (symbol *compositeEntitySetSymbol) GetStore() Store {
 	return symbol.chain[0].GetStore()
 }
 
-func (symbol *compositeEntitySetSymbol) GetLinkedType() ListStore {
+func (symbol *compositeEntitySetSymbol) GetLinkedType() Store {
 	return symbol.chain[len(symbol.chain)-1].GetLinkedType()
 }
 

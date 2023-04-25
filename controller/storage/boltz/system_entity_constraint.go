@@ -6,7 +6,7 @@ import (
 	"go.etcd.io/bbolt"
 )
 
-func NewSystemEntityEnforcementConstraint(store ListStore) Constraint {
+func NewSystemEntityEnforcementConstraint(store Store) Constraint {
 	symbol := store.GetSymbol(FieldIsSystemEntity)
 	return &systemEntityConstraint{
 		systemFlagSymbol: symbol,
@@ -52,6 +52,6 @@ func (self *systemEntityConstraint) ProcessBeforeDelete(ctx *IndexingContext) {
 
 func (self *systemEntityConstraint) Initialize(*bbolt.Tx, errorz.ErrorHolder) {}
 
-func (self *systemEntityConstraint) CheckIntegrity(*bbolt.Tx, bool, func(err error, fixed bool)) error {
+func (self *systemEntityConstraint) CheckIntegrity(MutateContext, bool, func(err error, fixed bool)) error {
 	return nil
 }

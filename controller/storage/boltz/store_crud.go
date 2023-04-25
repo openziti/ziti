@@ -18,19 +18,27 @@ package boltz
 
 import (
 	"github.com/google/uuid"
-	"github.com/kataras/go-events"
-	"github.com/openziti/storage/ast"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
+	"github.com/openziti/storage/ast"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"reflect"
 )
 
-func (store *BaseStore) GetParentStore() CrudStore {
+func (store *BaseStore[E]) GetParentStore() Store {
 	return store.parent
 }
 
-func (store *BaseStore) AddLinkCollection(local EntitySymbol, remote EntitySymbol) LinkCollection {
+func (store *BaseStore[E]) NewStoreEntity() E {
+	return store.entityStrategy.NewEntity()
+}
+
+func (store *BaseStore[E]) GetEntityStrategy() EntityStrategy[E] {
+	return store.entityStrategy
+}
+
+func (store *BaseStore[E]) AddLinkCollection(local EntitySymbol, remote EntitySymbol) LinkCollection {
 	result := &linkCollectionImpl{
 		field:      local,
 		otherField: &LinkedSetSymbol{EntitySymbol: remote},
@@ -39,7 +47,7 @@ func (store *BaseStore) AddLinkCollection(local EntitySymbol, remote EntitySymbo
 	return result
 }
 
-func (store *BaseStore) AddRefCountedLinkCollection(local EntitySymbol, remote EntitySymbol) RefCountedLinkCollection {
+func (store *BaseStore[E]) AddRefCountedLinkCollection(local EntitySymbol, remote EntitySymbol) RefCountedLinkCollection {
 	result := &rcLinkCollectionImpl{
 		field:      local,
 		otherField: &RefCountedLinkedSetSymbol{EntitySymbol: remote},
@@ -48,78 +56,85 @@ func (store *BaseStore) AddRefCountedLinkCollection(local EntitySymbol, remote E
 	return result
 }
 
-func (store *BaseStore) GetLinkCollection(name string) LinkCollection {
+func (store *BaseStore[E]) GetLinkCollection(name string) LinkCollection {
 	return store.links[name]
 }
 
-func (store *BaseStore) GetRefCountedLinkCollection(name string) RefCountedLinkCollection {
+func (store *BaseStore[E]) getLinks() map[string]LinkCollection {
+	return store.links
+}
+
+func (store *BaseStore[E]) GetRefCountedLinkCollection(name string) RefCountedLinkCollection {
 	return store.refCountedLinks[name]
 }
 
-func (store *BaseStore) BaseLoadOneById(tx *bbolt.Tx, id string, entity Entity) (bool, error) {
-	if entity == nil {
-		return false, errors.Errorf("cannot load into nil %v", store.GetEntityType())
+func (store *BaseStore[E]) defaultEntityValue() E {
+	var result E
+	return result
+}
+
+func (store *BaseStore[E]) LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, error) {
+	bucket := store.getEntityBucketForLoad(tx, id)
+	if bucket == nil {
+		return false, nil
 	}
 
+	entity.SetId(id)
+	store.entityStrategy.FillEntity(entity, bucket)
+	if bucket.HasError() {
+		return false, bucket.GetError()
+	}
+	return true, nil
+}
+
+func (store *BaseStore[E]) FindById(tx *bbolt.Tx, id string) (E, bool, error) {
+	bucket := store.getEntityBucketForLoad(tx, id)
+	if bucket == nil {
+		return store.defaultEntityValue(), false, nil
+	}
+
+	entity := store.entityStrategy.NewEntity()
+	entity.SetId(id)
+	store.entityStrategy.FillEntity(entity, bucket)
+	if bucket.HasError() {
+		return store.defaultEntityValue(), false, bucket.GetError()
+	}
+	return entity, true, nil
+}
+
+func (store *BaseStore[E]) LoadById(tx *bbolt.Tx, id string) (E, error) {
+	bucket := store.getEntityBucketForLoad(tx, id)
+	if bucket == nil {
+		return *new(E), NewNotFoundError(store.GetEntityType(), "id", id)
+	}
+
+	entity := store.entityStrategy.NewEntity()
+	entity.SetId(id)
+	store.entityStrategy.FillEntity(entity, bucket)
+	if bucket.HasError() {
+		return *new(E), bucket.GetError()
+	}
+	return entity, nil
+}
+
+func (store *BaseStore[E]) getEntityBucketForLoad(tx *bbolt.Tx, id string) *TypedBucket {
 	bucket := store.GetEntityBucket(tx, []byte(id))
 	if bucket == nil {
 		if store.IsExtended() {
 			bucket = store.parent.GetEntityBucket(tx, []byte(id))
 			if bucket == nil {
-				return false, nil
+				return nil
 			}
-			bucket = newTypedBucket(bucket, nil)
-		} else {
-			return false, nil
+			return NewTypedBucket(bucket, nil)
 		}
 	}
-
-	entity.SetId(id)
-	entity.LoadValues(store.impl, bucket)
-	if bucket.HasError() {
-		return false, bucket.GetError()
-	}
-	return true, nil
+	return bucket
 }
 
-func (store *BaseStore) BaseLoadOneChildById(tx *bbolt.Tx, id string, childId string, entity Entity) (bool, error) {
-	if entity == nil {
-		return false, errors.Errorf("cannot load child into nil %v", store.GetEntityType())
-	}
-
-	parentBucket := store.GetEntityBucket(tx, []byte(id))
-	if parentBucket == nil {
-		return false, nil
-	}
-	bucket := parentBucket.GetPath(entity.GetEntityType(), childId)
-	if bucket == nil {
-		return false, nil
-	}
-
-	entity.SetId(childId)
-
-	entity.LoadValues(store.impl, bucket)
-	if bucket.HasError() {
-		return false, bucket.GetError()
-	}
-	return true, nil
-}
-
-func (store *BaseStore) BaseLoadOneByQuery(tx *bbolt.Tx, query string, entity Entity) (bool, error) {
-	ids, _, err := store.QueryIds(tx, query)
-	if err != nil {
-		return false, err
-	}
-	if len(ids) == 0 {
-		return false, nil
-	}
-	return store.BaseLoadOneById(tx, ids[0], entity)
-}
-
-func (store *BaseStore) NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext {
+func (store *BaseStore[E]) newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext {
 	var parentContext *IndexingContext
 	if store.parent != nil {
-		parentContext = store.parent.NewIndexingContext(isCreate, ctx, id, holder)
+		parentContext = store.parent.newIndexingContext(isCreate, ctx, id, holder)
 	}
 	return &IndexingContext{
 		Parent:     parentContext,
@@ -133,15 +148,29 @@ func (store *BaseStore) NewIndexingContext(isCreate bool, ctx MutateContext, id 
 	}
 }
 
-func (store *BaseStore) AddEvent(ctx MutateContext, entity Entity, name events.EventName) {
-	if store.parent != nil {
-		store.parent.AddEvent(ctx, store.parentMapper(entity), name)
+func (store *BaseStore[E]) newEntityChangeFlow() entityChangeFlow {
+	return &EntityChangeState[E]{
+		EventId: uuid.NewString(),
+		store:   store,
 	}
-	ctx.AddEvent(store, name, entity)
 }
 
-func (store *BaseStore) Create(ctx MutateContext, entity Entity) error {
-	if entity == nil {
+func (store *BaseStore[E]) fireParentEvent(changeFlow entityChangeFlow) error {
+	if store.parent != nil {
+		parentEntityChangeFlow := store.parent.newEntityChangeFlow()
+		parentEntityChangeFlow.initFromChild(changeFlow)
+		return parentEntityChangeFlow.fireEvents()
+	}
+	return nil
+}
+
+// Create stores a new entity in the datastore
+//
+// Creates must be called on the top level, so we don't need to worry about created
+// being called on a parent store.
+func (store *BaseStore[E]) Create(ctx MutateContext, entity E) error {
+	var tmp Entity = entity
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
 		return errors.Errorf("cannot create %v from nil value", store.GetSingularEntityType())
 	}
 
@@ -158,7 +187,7 @@ func (store *BaseStore) Create(ctx MutateContext, entity Entity) error {
 		return errors.Errorf("an entity of type %v already exists with id %v", store.GetSingularEntityType(), entity.GetId())
 	}
 
-	bucket := store.GetOrCreateEntityBucket(ctx.Tx(), []byte(entity.GetId()))
+	bucket := store.getOrCreateEntityBucket(ctx.Tx(), []byte(entity.GetId()))
 	persistCtx := &PersistContext{
 		MutateContext: ctx,
 		Id:            entity.GetId(),
@@ -166,17 +195,47 @@ func (store *BaseStore) Create(ctx MutateContext, entity Entity) error {
 		Bucket:        bucket,
 		IsCreate:      true,
 	}
-	entity.SetValues(persistCtx)
-	indexingContext := store.NewIndexingContext(true, ctx, entity.GetId(), bucket)
+	store.entityStrategy.PersistEntity(entity, persistCtx)
+	if bucket.HasError() {
+		return bucket.GetError()
+	}
+	indexingContext := store.newIndexingContext(true, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessAfterUpdate()
 
-	store.AddEvent(ctx, entity, EventCreate)
+	changeFlow := &EntityChangeState[E]{
+		EventId:    uuid.NewString(),
+		ChangeType: EntityCreated,
+		EntityId:   entity.GetId(),
+		Ctx:        ctx,
+		FinalState: entity,
+		store:      store,
+	}
+
+	if err := changeFlow.loadFinalState(); err != nil {
+		return err
+	}
+
+	if err := store.fireParentEvent(changeFlow); err != nil {
+		return err
+	}
+
+	if err := changeFlow.fireEvents(); err != nil {
+		return err
+	}
+
 	return bucket.Err
 }
 
-func (store *BaseStore) Update(ctx MutateContext, entity Entity, checker FieldChecker) error {
-	if entity == nil {
+func (store *BaseStore[E]) Update(ctx MutateContext, entity E, checker FieldChecker) error {
+	var tmp Entity = entity
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
 		return errors.Errorf("cannot update %v from nil value", store.GetSingularEntityType())
+	}
+
+	for _, childStoreStrategy := range store.childStoreStragies {
+		if handled, err := childStoreStrategy.HandleUpdate(ctx, entity, checker); handled {
+			return err
+		}
 	}
 
 	if entity.GetEntityType() != store.GetEntityType() {
@@ -188,12 +247,21 @@ func (store *BaseStore) Update(ctx MutateContext, entity Entity, checker FieldCh
 		return errors.Errorf("cannot update %v with blank id", store.GetSingularEntityType())
 	}
 
+	baseEntity, found, err := store.FindById(ctx.Tx(), entity.GetId())
+	if err != nil {
+		return err
+	}
+
+	if !found {
+		return store.entityNotFoundF(entity.GetId())
+	}
+
 	bucket := store.GetEntityBucket(ctx.Tx(), []byte(entity.GetId()))
 	if bucket == nil {
 		return store.entityNotFoundF(entity.GetId())
 	}
 
-	indexingContext := store.NewIndexingContext(false, ctx, entity.GetId(), bucket)
+	indexingContext := store.newIndexingContext(false, ctx, entity.GetId(), bucket)
 	indexingContext.ProcessBeforeUpdate() // remove old values, using existing values in store
 	persistCtx := &PersistContext{
 		MutateContext: ctx,
@@ -203,136 +271,34 @@ func (store *BaseStore) Update(ctx MutateContext, entity Entity, checker FieldCh
 		FieldChecker:  checker,
 		IsCreate:      false,
 	}
-	entity.SetValues(persistCtx)
+	store.entityStrategy.PersistEntity(entity, persistCtx)
 	indexingContext.ProcessAfterUpdate() // add new values, using updated values in store
 
-	// for consistent ordering we do this before update handlers,
-	// since child events will be generated there. It's ok to do
-	// this early as if there is an error, the events won't be
-	// propagated
-	store.AddEvent(ctx, entity, EventUpdate)
+	changeFlow := &EntityChangeState[E]{
+		EventId:      uuid.NewString(),
+		ChangeType:   EntityUpdated,
+		EntityId:     entity.GetId(),
+		Ctx:          ctx,
+		InitialState: baseEntity,
+		store:        store,
+	}
 
-	if err := store.updateHandlers.Handle(ctx, entity.GetId()); err != nil {
+	if err = changeFlow.loadFinalState(); err != nil {
+		return err
+	}
+
+	if err = store.fireParentEvent(changeFlow); err != nil {
+		return err
+	}
+
+	if err = changeFlow.fireEvents(); err != nil {
 		return err
 	}
 
 	return bucket.Err
 }
 
-func (store *BaseStore) CreateChild(ctx MutateContext, id string, entity Entity) error {
-	if entity == nil {
-		return errors.Errorf("cannot create child of %v from nil value", store.GetEntityType())
-	}
-
-	if entity.GetId() == "" {
-		entity.SetId(uuid.New().String())
-	}
-
-	parentBucket := store.GetEntityBucket(ctx.Tx(), []byte(id))
-	if parentBucket == nil {
-		return store.entityNotFoundF(id)
-	}
-	bucket := parentBucket.GetOrCreatePath(entity.GetEntityType(), entity.GetId())
-	persistCtx := &PersistContext{
-		MutateContext: ctx,
-		Id:            entity.GetId(),
-		Store:         store.impl,
-		Bucket:        bucket,
-		IsCreate:      true,
-	}
-	entity.SetValues(persistCtx)
-
-	// TODO: Figure out how to handle child entities with emitter
-	//if !bucket.HasError() {
-	//	go store.Emit(EventCreate, entity)
-	//}
-	return bucket.Err
-}
-
-func (store *BaseStore) UpdateChild(ctx MutateContext, id string, entity Entity, checker FieldChecker) error {
-	if entity == nil {
-		return errors.Errorf("cannot update child of %v from nil value", store.GetEntityType())
-	}
-
-	if entity.GetId() == "" {
-		return errors.Errorf("cannot update %v with blank id", entity.GetEntityType())
-	}
-
-	parentBucket := store.GetEntityBucket(ctx.Tx(), []byte(id))
-	if parentBucket == nil {
-		return store.entityNotFoundF(id)
-	}
-	bucket := parentBucket.GetPath(entity.GetEntityType(), entity.GetId())
-	if bucket == nil {
-		return store.entityNotFoundF(entity.GetId())
-	}
-	persistCtx := &PersistContext{
-		MutateContext: ctx,
-		Id:            entity.GetId(),
-		Store:         store.impl,
-		Bucket:        bucket,
-		FieldChecker:  checker,
-		IsCreate:      false,
-	}
-	entity.SetValues(persistCtx)
-
-	// TODO: Figure out how to handle child entities with emitter
-	//if !bucket.HasError() {
-	//	go store.Emit(EventUpdate, entity)
-	//}
-	return bucket.Err
-}
-
-func (store *BaseStore) DeleteChild(ctx MutateContext, id string, entity Entity) error {
-	if entity == nil {
-		return errors.Errorf("cannot update child of %v from nil value", store.GetEntityType())
-	}
-
-	if entity.GetId() == "" {
-		return errors.Errorf("cannot update %v with blank id", entity.GetEntityType())
-	}
-
-	parentBucket := store.GetEntityBucket(ctx.Tx(), []byte(id))
-	if parentBucket == nil {
-		return store.entityNotFoundF(id)
-	}
-	childrenBucket := parentBucket.GetPath(entity.GetEntityType())
-	if childrenBucket == nil {
-		return store.entityNotFoundF(entity.GetId())
-	}
-	bucket := childrenBucket.GetBucket(entity.GetId())
-	if bucket == nil {
-		return store.entityNotFoundF(entity.GetId())
-	}
-	if err := childrenBucket.DeleteBucket([]byte(entity.GetId())); err != nil {
-		return err
-	}
-
-	// TODO: Figure out how to handle child entities with emitter
-	//if !bucket.HasError() {
-	//	go store.Emit(EventDelete, entity)
-	//}
-	return bucket.Err
-}
-
-func (store *BaseStore) ListChildIds(tx *bbolt.Tx, id string, childType string) []string {
-	parentBucket := store.GetEntityBucket(tx, []byte(id))
-	if parentBucket == nil {
-		return nil
-	}
-	childrenBucket := parentBucket.GetPath(childType)
-	if childrenBucket == nil {
-		return nil
-	}
-	var result []string
-	cursor := childrenBucket.Cursor()
-	for key, _ := cursor.First(); key != nil; key, _ = cursor.Next() {
-		result = append(result, string(key))
-	}
-	return result
-}
-
-func (store *BaseStore) GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field string) []string {
+func (store *BaseStore[E]) GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field string) []string {
 	bucket := store.GetEntityBucket(tx, []byte(id))
 	if bucket == nil {
 		return nil
@@ -340,7 +306,7 @@ func (store *BaseStore) GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field 
 	return bucket.GetStringList(field)
 }
 
-func (store *BaseStore) GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field string, forward bool) ast.SetCursor {
+func (store *BaseStore[E]) GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field string, forward bool) ast.SetCursor {
 	bucket := store.GetEntityBucket(tx, []byte(id))
 	if bucket == nil {
 		return ast.NewEmptyCursor()
@@ -352,7 +318,7 @@ func (store *BaseStore) GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field 
 	return listBucket.OpenTypedCursor(tx, forward)
 }
 
-func (store *BaseStore) IsEntityRelated(tx *bbolt.Tx, id string, field string, relatedEntityId string) bool {
+func (store *BaseStore[E]) IsEntityRelated(tx *bbolt.Tx, id string, field string, relatedEntityId string) bool {
 	bucket := store.GetEntityBucket(tx, []byte(id))
 	if bucket == nil {
 		return false
@@ -365,15 +331,15 @@ func (store *BaseStore) IsEntityRelated(tx *bbolt.Tx, id string, field string, r
 	return listBucket.IsKeyPresent(key)
 }
 
-func (store *BaseStore) IsChildStore() bool {
+func (store *BaseStore[E]) IsChildStore() bool {
 	return store.parent != nil
 }
 
-func (store *BaseStore) IsEntityPresent(tx *bbolt.Tx, id string) bool {
+func (store *BaseStore[E]) IsEntityPresent(tx *bbolt.Tx, id string) bool {
 	return nil != store.GetEntityBucket(tx, []byte(id))
 }
 
-func (store *BaseStore) cleanupLinks(tx *bbolt.Tx, id string, holder errorz.ErrorHolder) {
+func (store *BaseStore[E]) cleanupLinks(tx *bbolt.Tx, id string, holder errorz.ErrorHolder) {
 	// cascade delete n-n links
 	for _, val := range store.links {
 		if !holder.HasError() {
@@ -388,22 +354,39 @@ func (store *BaseStore) cleanupLinks(tx *bbolt.Tx, id string, holder errorz.Erro
 	}
 }
 
-func (store *BaseStore) cleanupExternal(ctx MutateContext, id string) error {
+func (store *BaseStore[E]) processDeleteConstraints(ctx MutateContext, id string) (entityChangeFlow, error) {
+	changeFlow := &EntityChangeState[E]{
+		EventId:    uuid.NewString(),
+		ChangeType: EntityDeleted,
+		EntityId:   id,
+		store:      store,
+	}
+
+	found, err := changeFlow.init(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if !found {
+		return nil, nil
+	}
+
 	errHolder := &errorz.ErrorHolderImpl{}
-	indexingContext := store.NewIndexingContext(false, ctx, id, errHolder)
+
+	indexingContext := store.newIndexingContext(false, ctx, id, errHolder)
 	indexingContext.ProcessBeforeDelete()
 	store.cleanupLinks(ctx.Tx(), id, errHolder)
-	return errHolder.Err
+
+	return changeFlow, errHolder.Err
 }
 
-func (store *BaseStore) DeleteById(ctx MutateContext, id string) error {
+func (store *BaseStore[E]) DeleteById(ctx MutateContext, id string) error {
 	if store.parent != nil {
 		// this will trigger call to CleanupExternal here based on delete handlers
 		return store.parent.DeleteById(ctx, id)
 	}
 
-	entity := store.impl.NewStoreEntity()
-	found, err := store.BaseLoadOneById(ctx.Tx(), id, entity)
+	entity, found, err := store.FindById(ctx.Tx(), id)
 	if err != nil {
 		return err
 	}
@@ -411,18 +394,26 @@ func (store *BaseStore) DeleteById(ctx MutateContext, id string) error {
 		return store.entityNotFoundF(id)
 	}
 
-	// for consistent ordering we do this before delete handlers,
-	// since child events will be generated there. It's ok to do
-	// this early as if there is an error, the events won't be
-	// propagated
-	store.AddEvent(ctx, entity, EventDelete)
+	hasChildren := false
+	var changeFlows = []entityChangeFlow{nil}
+	for _, handler := range store.childStoreStragies {
+		if err = handler.HandleDelete(ctx, entity); err != nil {
+			return err
+		}
+		if changeFlow, err := handler.GetStore().processDeleteConstraints(ctx, id); err != nil {
+			return err
+		} else if changeFlow != nil {
+			changeFlows = append(changeFlows, changeFlow)
+			hasChildren = true
+		}
+	}
 
-	if err := store.deleteHandlers.Handle(ctx, id); err != nil {
+	if changeFlows[0], err = store.impl.processDeleteConstraints(ctx, id); err != nil {
 		return err
 	}
 
-	if err := store.impl.cleanupExternal(ctx, id); err != nil {
-		return err
+	if hasChildren {
+		changeFlows[0].MarkParentEvent()
 	}
 
 	// delete entity
@@ -432,10 +423,20 @@ func (store *BaseStore) DeleteById(ctx MutateContext, id string) error {
 	}
 	bucket.DeleteEntity(id)
 
-	return bucket.Err
+	if bucket.Err != nil {
+		return bucket.Err
+	}
+
+	for _, changeFlow := range changeFlows {
+		if err = changeFlow.fireEvents(); err != nil {
+			return nil
+		}
+	}
+
+	return nil
 }
 
-func (store *BaseStore) DeleteWhere(ctx MutateContext, query string) error {
+func (store *BaseStore[E]) DeleteWhere(ctx MutateContext, query string) error {
 	ids, _, err := store.QueryIds(ctx.Tx(), query)
 	if err != nil {
 		return err
@@ -448,7 +449,7 @@ func (store *BaseStore) DeleteWhere(ctx MutateContext, query string) error {
 	return nil
 }
 
-func (*BaseStore) FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string {
+func (*BaseStore[E]) FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string {
 	if len(values) == 0 {
 		return nil
 	}
@@ -472,7 +473,7 @@ func (*BaseStore) FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []st
 	return result
 }
 
-func (*BaseStore) FindMatchingAnyOf(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string {
+func (*BaseStore[E]) FindMatchingAnyOf(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string {
 	if len(values) == 0 {
 		return nil
 	}
@@ -499,7 +500,7 @@ func (*BaseStore) FindMatchingAnyOf(tx *bbolt.Tx, readIndex SetReadIndex, values
 	return result
 }
 
-func (*BaseStore) IteratorMatchingAllOf(readIndex SetReadIndex, values []string) ast.SetCursorProvider {
+func (*BaseStore[E]) IteratorMatchingAllOf(readIndex SetReadIndex, values []string) ast.SetCursorProvider {
 	if len(values) == 0 {
 		return ast.OpenEmptyCursor
 	}
@@ -519,7 +520,7 @@ func (*BaseStore) IteratorMatchingAllOf(readIndex SetReadIndex, values []string)
 	}
 }
 
-func (*BaseStore) IteratorMatchingAnyOf(readIndex SetReadIndex, values []string) ast.SetCursorProvider {
+func (*BaseStore[E]) IteratorMatchingAnyOf(readIndex SetReadIndex, values []string) ast.SetCursorProvider {
 	if len(values) == 0 {
 		return ast.OpenEmptyCursor
 	}
@@ -541,16 +542,189 @@ func (*BaseStore) IteratorMatchingAnyOf(readIndex SetReadIndex, values []string)
 	}
 }
 
-func (store *BaseStore) CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error {
+func (store *BaseStore[E]) CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error {
 	for _, linkCollection := range store.links {
-		if err := linkCollection.CheckIntegrity(tx, fix, errorSink); err != nil {
+		if err := linkCollection.CheckIntegrity(ctx, fix, errorSink); err != nil {
 			return err
 		}
 	}
 	for _, constraint := range store.Indexer.constraints {
-		if err := constraint.CheckIntegrity(tx, fix, errorSink); err != nil {
+		if err := constraint.CheckIntegrity(ctx, fix, errorSink); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (store *BaseStore[E]) AddEntityConstraint(constraint EntityConstraint[E]) {
+	store.entityConstraints.Append(constraint)
+}
+
+func (store *BaseStore[E]) AddUntypedEntityConstraint(constraint UntypedEntityConstraint) {
+	store.entityConstraints.Append(&untypedEntityConstraintWrapper[E]{constraint: constraint})
+}
+
+func (store *BaseStore[E]) AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&entityListenerAdapter[E]{
+		eventListener: listener,
+		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+func (store *BaseStore[E]) AddEntityEventListenerF(listener func(E), changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&entityFunctionListenerAdapter[E]{
+		eventListener: listener,
+		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+func (store *BaseStore[E]) AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&untypedEventListenerWrapper[E]{
+		eventListener: listener,
+		changeTypes:   append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+func (store *BaseStore[E]) AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType) {
+	store.entityConstraints.Append(&untypedEventListenerWrapper[E]{
+		eventListener: func(entity Entity) {
+			listener(entity.GetId())
+		},
+		changeTypes: append([]EntityEventType{changeType}, changeTypes...),
+	})
+}
+
+func (store *BaseStore[E]) GetEntityReflectType() reflect.Type {
+	return reflect.TypeOf(store.GetEntityStrategy().NewEntity())
+}
+
+type entityListenerAdapter[E Entity] struct {
+	eventListener EntityEventListener[E]
+	changeTypes   []EntityEventType
+}
+
+func (self *entityListenerAdapter[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+	return nil
+}
+
+func (self *entityListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.FinalState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.FinalState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener.HandleEntityEvent(state.InitialState)
+			} else {
+				self.eventListener.HandleEntityEvent(state.InitialState)
+			}
+		}
+	}
+}
+
+type entityFunctionListenerAdapter[E Entity] struct {
+	eventListener func(E)
+	changeTypes   []EntityEventType
+}
+
+func (self *entityFunctionListenerAdapter[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+	return nil
+}
+
+func (self *entityFunctionListenerAdapter[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.InitialState)
+			} else {
+				self.eventListener(state.InitialState)
+			}
+		}
+	}
+}
+
+type untypedEventListenerWrapper[E Entity] struct {
+	eventListener func(Entity)
+	changeTypes   []EntityEventType
+}
+
+func (self *untypedEventListenerWrapper[E]) ProcessPreCommit(*EntityChangeState[E]) error {
+	return nil
+}
+
+func (self *untypedEventListenerWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	for _, changeType := range self.changeTypes {
+		if state.ChangeType == EntityCreated && changeType.IsCreate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityUpdated && changeType.IsUpdate() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.FinalState)
+			} else {
+				self.eventListener(state.FinalState)
+			}
+		} else if state.ChangeType == EntityDeleted && changeType.IsDelete() {
+			if changeType.IsAsync() {
+				go self.eventListener(state.InitialState)
+			} else {
+				self.eventListener(state.InitialState)
+			}
+		}
+	}
+}
+
+type ChildStoreUpdateHandler[E Entity, C Entity] struct {
+	Store  EntityStore[C]
+	Mapper func(ctx MutateContext, parent E) (C, bool)
+}
+
+func (self *ChildStoreUpdateHandler[E, C]) HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error) {
+	if child, handle := self.Mapper(ctx, entity); handle {
+		return true, self.Store.Update(ctx, child, checker)
+	}
+	return false, nil
+}
+
+func (self *ChildStoreUpdateHandler[E, C]) HandleDelete(MutateContext, E) error {
+	return nil
+}
+
+func (self *ChildStoreUpdateHandler[E, C]) GetStore() Store {
+	return self.Store
+}
+
+type untypedEntityConstraintWrapper[E Entity] struct {
+	constraint UntypedEntityConstraint
+}
+
+func (self *untypedEntityConstraintWrapper[E]) ProcessPreCommit(state *EntityChangeState[E]) error {
+	return self.constraint.ProcessPreCommit(state)
+}
+
+func (self *untypedEntityConstraintWrapper[E]) ProcessPostCommit(state *EntityChangeState[E]) {
+	self.constraint.ProcessPostCommit(state)
 }

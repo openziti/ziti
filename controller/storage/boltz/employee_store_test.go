@@ -1,8 +1,23 @@
+/*
+	Copyright NetFoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package boltz
 
 import (
 	"github.com/openziti/storage/ast"
-	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"sort"
 )
@@ -22,34 +37,46 @@ func (entity *Employee) SetId(id string) {
 	entity.Id = id
 }
 
-func (entity *Employee) LoadValues(_ CrudStore, bucket *TypedBucket) {
+func (entity *Employee) GetEntityType() string {
+	return entityTypeEmployee
+}
+
+type employeeEntityStrategy struct{}
+
+func (self employeeEntityStrategy) NewEntity() *Employee {
+	return new(Employee)
+}
+
+func (self employeeEntityStrategy) FillEntity(entity *Employee, bucket *TypedBucket) {
 	entity.Name = bucket.GetStringOrError(fieldName)
 	entity.ManagerId = bucket.GetString(fieldManager)
 	entity.RoleAttributes = bucket.GetStringList(fieldRoleAttributes)
 }
 
-func (entity *Employee) SetValues(ctx *PersistContext) {
+func (self employeeEntityStrategy) PersistEntity(entity *Employee, ctx *PersistContext) {
 	ctx.SetString(fieldName, entity.Name)
 	ctx.SetStringP(fieldManager, entity.ManagerId)
 	ctx.SetStringList(fieldRoleAttributes, entity.RoleAttributes)
 }
 
-func (entity *Employee) GetEntityType() string {
-	return entityTypeEmployee
-}
-
 func newEmployeeStore() *employeeStoreImpl {
+	storeDef := StoreDefinition[*Employee]{
+		EntityType:     entityTypeEmployee,
+		EntityStrategy: employeeEntityStrategy{},
+		EntityNotFoundF: func(id string) error {
+			return NewNotFoundError(entityTypeEmployee, "id", id)
+		},
+		BasePath: []string{"stores"},
+	}
 	store := &employeeStoreImpl{
-		BaseStore: NewBaseStore(entityTypeEmployee, func(id string) error {
-			return errors.Errorf("entity of type %v with id %v not found", entityTypeEmployee, id)
-		}, "stores"),
+		BaseStore: NewBaseStore(storeDef),
 	}
 	store.InitImpl(store)
 	return store
 }
 
 type employeeStoreImpl struct {
-	*BaseStore
+	*BaseStore[*Employee]
 	stores *testStores
 
 	symbolLocations EntitySetSymbol
@@ -57,10 +84,6 @@ type employeeStoreImpl struct {
 	indexRoles      SetReadIndex
 
 	locationsCollection LinkCollection
-}
-
-func (store *employeeStoreImpl) NewStoreEntity() Entity {
-	return &Employee{}
 }
 
 func (store *employeeStoreImpl) initializeLocal(constraint bool) {
