@@ -22,7 +22,7 @@ import (
 
 type publicSymbolValidator struct {
 	ast.DefaultVisitor
-	store ListStore
+	store Store
 	err   error
 }
 
@@ -32,7 +32,7 @@ func (visitor *publicSymbolValidator) VisitSymbol(symbol string, _ ast.NodeType)
 	}
 }
 
-func ValidateSymbolsArePublic(query ast.Query, store ListStore) error {
+func ValidateSymbolsArePublic(query ast.Query, store Store) error {
 	visitor := &publicSymbolValidator{store: store}
 	query.Accept(visitor)
 	return visitor.err

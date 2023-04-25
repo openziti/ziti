@@ -17,10 +17,10 @@
 package boltz
 
 import (
-	"github.com/kataras/go-events"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/storage/ast"
 	"go.etcd.io/bbolt"
+	"reflect"
 	"time"
 )
 
@@ -29,10 +29,6 @@ const (
 )
 
 const (
-	EventCreate events.EventName = "CREATE"
-	EventDelete events.EventName = "DELETE"
-	EventUpdate events.EventName = "UPDATE"
-
 	FieldId             = "id"
 	FieldCreatedAt      = "createdAt"
 	FieldUpdatedAt      = "updatedAt"
@@ -40,45 +36,99 @@ const (
 	FieldIsSystemEntity = "isSystem"
 )
 
-type ListStore interface {
+type EntityEventType byte
+
+const (
+	EntityCreated EntityEventType = 1
+	EntityUpdated EntityEventType = 2
+	EntityDeleted EntityEventType = 3
+
+	EntityCreatedAsync EntityEventType = 4
+	EntityUpdatedAsync EntityEventType = 5
+	EntityDeletedAsync EntityEventType = 6
+)
+
+func (self EntityEventType) IsCreate() bool {
+	return self == EntityCreated || self == EntityCreatedAsync
+}
+
+func (self EntityEventType) IsUpdate() bool {
+	return self == EntityUpdated || self == EntityUpdatedAsync
+}
+
+func (self EntityEventType) IsDelete() bool {
+	return self == EntityDeleted || self == EntityDeletedAsync
+}
+
+func (self EntityEventType) IsAsync() bool {
+	return self == EntityCreatedAsync || self == EntityUpdatedAsync || self == EntityDeletedAsync
+}
+
+// A Checkable can be checked for consistency. This could be an index, an FK or something which contains
+// multiple Checkables and can delegate to them
+type Checkable interface {
+	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
+}
+
+// storeInternal contains all the store methods which are only used internally. These are generally called
+// from parent to child or vice-versa, and are thus happening through the interface, rather than directly
+// from a store to itself.
+type storeInternal interface {
+	getOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
+	getOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
+
+	newRowComparator(sort []ast.SortField) (RowComparator, error)
+	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
+	newEntitySymbol(name string, nodeType ast.NodeType, key string, linkedType Store, prefix ...string) *entitySymbol
+
+	getLinks() map[string]LinkCollection
+	inheritMapSymbol(symbol *entityMapSymbol)
+	processDeleteConstraints(ctx MutateContext, id string) (entityChangeFlow, error)
+	newIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
+	newEntityChangeFlow() entityChangeFlow
+}
+
+// UntypedEntityChangeState instances are passed to entity event listeners that don't need the concrete entity types
+type UntypedEntityChangeState interface {
+	GetEventId() string
+	GetEntityId() string
+	GetCtx() MutateContext
+	GetChangeType() EntityEventType
+	GetInitialState() Entity
+	GetFinalState() Entity
+	GetInitialParentEntity() Entity
+	GetFinalParentEntity() Entity
+	GetStore() Store
+	IsParentEvent() bool
+}
+
+// Store contains all the methods for interacting with an entity store that don't require knowedge of the concrete
+// entity type.
+type Store interface {
+	storeInternal
+
 	ast.SymbolTypes
+	Checkable
+	Constrained
 
 	GetEntityType() string
 	GetSingularEntityType() string
 	GetRootPath() []string
 	GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket
-	GetOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
 	GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
-	GetOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
-	GetValue(tx *bbolt.Tx, id []byte, path ...string) []byte
-	GetValueCursor(tx *bbolt.Tx, id []byte, path ...string) *bbolt.Cursor
 	IsChildStore() bool
 	IsEntityPresent(tx *bbolt.Tx, id string) bool
 	IsExtended() bool
 
 	GetSymbol(name string) EntitySymbol
-	MapSymbol(name string, wrapper SymbolMapper)
-	GrantSymbols(child ListStore)
-	addSymbol(name string, public bool, symbol EntitySymbol) EntitySymbol
-	inheritMapSymbol(symbol *entityMapSymbol)
-	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
-	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
-	AddFkSymbol(name string, linkedType ListStore, path ...string) EntitySymbol
-	AddSymbolWithKey(name string, nodeType ast.NodeType, key string, path ...string) EntitySymbol
-	AddFkSymbolWithKey(name string, key string, linkedType ListStore, path ...string) EntitySymbol
-	AddMapSymbol(name string, nodeType ast.NodeType, key string, path ...string)
-	AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
-	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
-	AddFkSetSymbol(name string, linkedType ListStore) EntitySetSymbol
-	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
-	AddExtEntitySymbols()
-	MakeSymbolPublic(name string)
 
-	NewRowComparator(sort []ast.SortField) (RowComparator, error)
 	GetPublicSymbols() []string
 	IsPublicSymbol(symbol string) bool
 
 	FindMatching(tx *bbolt.Tx, readIndex SetReadIndex, values []string) []string
+
+	GetLinkCollection(name string) LinkCollection
+	GetRefCountedLinkCollection(name string) RefCountedLinkCollection
 
 	GetRelatedEntitiesIdList(tx *bbolt.Tx, id string, field string) []string
 	GetRelatedEntitiesCursor(tx *bbolt.Tx, id string, field string, forward bool) ast.SetCursor
@@ -86,9 +136,6 @@ type ListStore interface {
 
 	// QueryIds compiles the query and runs it against the store
 	QueryIds(tx *bbolt.Tx, query string) ([]string, int64, error)
-
-	// QueryIdsf compiles the query with the given params and runs it against the store
-	QueryIdsf(tx *bbolt.Tx, query string, args ...interface{}) ([]string, int64, error)
 
 	// QueryIdsC executes a compile query against the store
 	QueryIdsC(tx *bbolt.Tx, query ast.Query) ([]string, int64, error)
@@ -99,48 +146,101 @@ type ListStore interface {
 
 	// IterateValidIds skips non-present entities in extended stores
 	IterateValidIds(tx *bbolt.Tx, filter ast.BoolNode) ast.SeekableSetCursor
-}
 
-type CrudStore interface {
-	ListStore
-	Constrained
+	GetParentStore() Store
+	GrantSymbols(child ConfigurableStore)
 
-	GetParentStore() CrudStore
-	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
-	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
-	GetLinkCollection(name string) LinkCollection
-	GetRefCountedLinkCollection(name string) RefCountedLinkCollection
-
-	Create(ctx MutateContext, entity Entity) error
-	Update(ctx MutateContext, entity Entity, checker FieldChecker) error
 	DeleteById(ctx MutateContext, id string) error
 	DeleteWhere(ctx MutateContext, query string) error
-	cleanupExternal(ctx MutateContext, id string) error
 
-	CreateChild(ctx MutateContext, parentId string, entity Entity) error
-	UpdateChild(ctx MutateContext, parentId string, entity Entity, checker FieldChecker) error
-	DeleteChild(ctx MutateContext, parentId string, entity Entity) error
-	ListChildIds(tx *bbolt.Tx, parentId string, childType string) []string
-
-	BaseLoadOneById(tx *bbolt.Tx, id string, entity Entity) (bool, error)
-	BaseLoadOneByQuery(tx *bbolt.Tx, query string, entity Entity) (bool, error)
-	BaseLoadOneChildById(tx *bbolt.Tx, id string, childId string, entity Entity) (bool, error)
-	NewStoreEntity() Entity
-
-	AddDeleteHandler(handler EntityChangeHandler)
-	AddUpdateHandler(handler EntityChangeHandler)
-	NewIndexingContext(isCreate bool, ctx MutateContext, id string, holder errorz.ErrorHolder) *IndexingContext
-
-	CheckIntegrity(tx *bbolt.Tx, fix bool, errorSink func(err error, fixed bool)) error
-
-	AddEvent(ctx MutateContext, entity Entity, name events.EventName)
-	events.EventEmmiter
+	AddListener(listener func(Entity), changeType EntityEventType, changeTypes ...EntityEventType)
+	AddEntityIdListener(listener func(string), changeType EntityEventType, changeTypes ...EntityEventType)
+	AddUntypedEntityConstraint(constraint UntypedEntityConstraint)
+	GetEntityReflectType() reflect.Type
 }
 
+// ConfigurableStore has all the APIs that store implementations need to configure themselves
+type ConfigurableStore interface {
+	Store
+	MapSymbol(name string, wrapper SymbolMapper)
+	AddIdSymbol(name string, nodeType ast.NodeType) EntitySymbol
+	AddSymbol(name string, nodeType ast.NodeType, path ...string) EntitySymbol
+	AddFkSymbol(name string, linkedType Store, path ...string) EntitySymbol
+	AddSymbolWithKey(name string, nodeType ast.NodeType, key string, path ...string) EntitySymbol
+	AddFkSymbolWithKey(name string, key string, linkedType Store, path ...string) EntitySymbol
+	AddMapSymbol(name string, nodeType ast.NodeType, key string, path ...string)
+	AddSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
+	AddPublicSetSymbol(name string, nodeType ast.NodeType) EntitySetSymbol
+	AddFkSetSymbol(name string, linkedType Store) EntitySetSymbol
+	NewEntitySymbol(name string, nodeType ast.NodeType) EntitySymbol
+
+	AddExtEntitySymbols()
+	MakeSymbolPublic(name string)
+
+	AddLinkCollection(local EntitySymbol, remove EntitySymbol) LinkCollection
+	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
+}
+
+// ChildStoreStrategy instances are used to allow a parent store to properly delegate to a child store where needed
+type ChildStoreStrategy[E Entity] interface {
+	HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error)
+	HandleDelete(ctx MutateContext, entity E) error
+	GetStore() Store
+}
+
+// EntityConstraint implementations allow reacting to entity changes, both pre and post commit
+type EntityConstraint[E Entity] interface {
+	ProcessPreCommit(state *EntityChangeState[E]) error
+	ProcessPostCommit(state *EntityChangeState[E])
+}
+
+// UntypedEntityConstraint instances can react to entity changes in cases where you don't care about the entity type
+// or need to react to changes of multiple entity types
+type UntypedEntityConstraint interface {
+	ProcessPreCommit(state UntypedEntityChangeState) error
+	ProcessPostCommit(state UntypedEntityChangeState)
+}
+
+// EntityEventListener instances will be notified after an entity change has been committed
+type EntityEventListener[E Entity] interface {
+	HandleEntityEvent(entity E)
+}
+
+// EntityStore extends Store with the methods that need concrete implementation types
+type EntityStore[E Entity] interface {
+	Store
+
+	RegisterChildStoreStrategy(childStoreStrategy ChildStoreStrategy[E])
+
+	Create(ctx MutateContext, entity E) error
+	Update(ctx MutateContext, entity E, checker FieldChecker) error
+
+	// FindById returns the entity for the given Id and true if the eneity exists. If the entity
+	// doesn't exist it returns the default value (usually nil) and a false
+	FindById(tx *bbolt.Tx, id string) (E, bool, error)
+
+	// LoadById return the entity for the given Id if it exists, otherwise it returns nil and a
+	// RecordNotFoundError
+	LoadById(tx *bbolt.Tx, id string) (E, error)
+	LoadEntity(tx *bbolt.Tx, id string, entity E) (bool, error)
+
+	GetEntityStrategy() EntityStrategy[E]
+	AddEntityConstraint(constraint EntityConstraint[E])
+	AddEntityEventListener(listener EntityEventListener[E], changeType EntityEventType, changeTypes ...EntityEventType)
+	AddEntityEventListenerF(listener func(E), changeType EntityEventType, changeTypes ...EntityEventType)
+}
+
+type EntityStrategy[E Entity] interface {
+	NewEntity() E
+	FillEntity(entity E, bucket *TypedBucket)
+	PersistEntity(entity E, ctx *PersistContext)
+}
+
+// A PersistContext wraps all the state needed when persisting an entity to a store
 type PersistContext struct {
 	MutateContext
 	Id           string
-	Store        CrudStore
+	Store        Store
 	Bucket       *TypedBucket
 	FieldChecker FieldChecker
 	IsCreate     bool
@@ -227,14 +327,14 @@ func (ctx *PersistContext) ProceedWithSet(field string) bool {
 	return ctx.Bucket.ProceedWithSet(field, ctx.FieldChecker)
 }
 
+// Entity represents the minimal methods needed for an entity
 type Entity interface {
 	GetId() string
 	SetId(id string)
-	LoadValues(store CrudStore, bucket *TypedBucket)
-	SetValues(ctx *PersistContext)
 	GetEntityType() string
 }
 
+// ExtEntity extends Entity with common additional attributes
 type ExtEntity interface {
 	Entity
 	GetCreatedAt() time.Time
@@ -247,6 +347,7 @@ type ExtEntity interface {
 	SetTags(tags map[string]interface{})
 }
 
+// NamedExtEntity extends ExtEntity with a Name attribute
 type NamedExtEntity interface {
 	ExtEntity
 	GetName() string
@@ -260,12 +361,12 @@ func NewExtEntity(id string, tags map[string]interface{}) *BaseExtEntity {
 }
 
 type BaseExtEntity struct {
-	Id        string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Tags      map[string]interface{}
-	IsSystem  bool
-	Migrate   bool
+	Id        string                 `json:"id"`
+	CreatedAt time.Time              `json:"created_at"`
+	UpdatedAt time.Time              `json:"updated_at"`
+	Tags      map[string]interface{} `json:"tags"`
+	IsSystem  bool                   `json:"is_system"`
+	Migrate   bool                   `json:"-"`
 }
 
 func (entity *BaseExtEntity) GetId() string {

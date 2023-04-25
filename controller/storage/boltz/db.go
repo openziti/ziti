@@ -18,6 +18,7 @@ package boltz
 
 import (
 	"bytes"
+	"context"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/concurrenz"
@@ -37,8 +38,8 @@ const (
 
 type Db interface {
 	io.Closer
-	Update(fn func(tx *bbolt.Tx) error) error
-	Batch(fn func(tx *bbolt.Tx) error) error
+	Update(ctx MutateContext, fn func(ctx MutateContext) error) error
+	Batch(ctx MutateContext, fn func(ctx MutateContext) error) error
 	View(fn func(tx *bbolt.Tx) error) error
 	RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error)
 
@@ -105,18 +106,50 @@ func (self *DbImpl) Close() error {
 	return self.db.Close()
 }
 
-func (self *DbImpl) Update(fn func(tx *bbolt.Tx) error) error {
-	self.reloadLock.RLock()
-	defer self.reloadLock.RUnlock()
+func (self *DbImpl) Update(ctx MutateContext, fn func(ctx MutateContext) error) error {
+	if ctx == nil {
+		ctx = NewMutateContext(context.Background())
+	}
 
-	return self.db.Update(fn)
+	if ctx.Tx() == nil {
+		self.reloadLock.RLock()
+		defer self.reloadLock.RUnlock()
+
+		defer ctx.setTx(nil)
+
+		return self.db.Update(func(tx *bbolt.Tx) error {
+			ctx.setTx(tx)
+			if err := fn(ctx); err != nil {
+				return err
+			}
+			return ctx.runPreCommitActions()
+		})
+	}
+
+	return fn(ctx)
 }
 
-func (self *DbImpl) Batch(fn func(tx *bbolt.Tx) error) error {
-	self.reloadLock.RLock()
-	defer self.reloadLock.RUnlock()
+func (self *DbImpl) Batch(ctx MutateContext, fn func(ctx MutateContext) error) error {
+	if ctx == nil {
+		ctx = NewMutateContext(context.Background())
+	}
 
-	return self.db.Batch(fn)
+	if ctx.Tx() == nil {
+		self.reloadLock.RLock()
+		defer self.reloadLock.RUnlock()
+
+		defer ctx.setTx(nil)
+
+		return self.db.Batch(func(tx *bbolt.Tx) error {
+			ctx.setTx(tx)
+			if err := fn(ctx); err != nil {
+				return err
+			}
+			return ctx.runPreCommitActions()
+		})
+	}
+
+	return fn(ctx)
 }
 
 func (self *DbImpl) View(fn func(tx *bbolt.Tx) error) error {
@@ -246,13 +279,13 @@ func (self *DbImpl) SnapshotToMemory() (string, []byte, error) {
 
 func (self *DbImpl) SnapshotToWriter(w io.Writer) (string, error) {
 	snapshotId := uuid.NewString()
-	err := self.Update(func(tx *bbolt.Tx) error {
-		b := GetOrCreatePath(tx, Metadata)
+	err := self.Update(nil, func(ctx MutateContext) error {
+		b := GetOrCreatePath(ctx.Tx(), Metadata)
 		b.SetString(SnapshotId, snapshotId, nil)
 		if b.HasError() {
 			return b.GetError()
 		}
-		_, err := tx.WriteTo(w)
+		_, err := ctx.Tx().WriteTo(w)
 		return err
 	})
 	if err != nil {

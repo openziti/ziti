@@ -17,106 +17,220 @@
 package boltz
 
 import (
-	"github.com/kataras/go-events"
+	"github.com/openziti/foundation/v2/concurrenz"
 	"go.etcd.io/bbolt"
+	"reflect"
 	"strings"
 )
 
-func NewBaseStore(entityType string, entityNotFoundF func(id string) error, basePath ...string) *BaseStore {
-	return newBaseStore(nil, nil, entityType, entityNotFoundF, basePath...)
+type StoreDefinition[E Entity] struct {
+	EntityType      string
+	EntityStrategy  EntityStrategy[E]
+	BasePath        []string
+	Parent          Store
+	ParentMapper    func(Entity) Entity
+	EntityNotFoundF func(id string) error
 }
 
-func NewChildBaseStore(parent CrudStore, parentMapper func(Entity) Entity, entityNotFoundF func(id string) error, basePath ...string) *BaseStore {
-	return newBaseStore(parent, parentMapper, parent.GetEntityType(), entityNotFoundF, basePath...)
+func (self *StoreDefinition[E]) WithBasePath(basePath ...string) *StoreDefinition[E] {
+	self.BasePath = basePath
+	return self
 }
 
-func newBaseStore(parent CrudStore, parentMapper func(Entity) Entity, entityType string, entityNotFoundF func(id string) error, basePath ...string) *BaseStore {
-	entityPath := append([]string{}, basePath...)
-	if parent == nil {
-		entityPath = append(entityPath, entityType)
+func NewBaseStore[E Entity](definition StoreDefinition[E]) *BaseStore[E] {
+	if definition.EntityType == "" && definition.Parent != nil {
+		definition.EntityType = definition.Parent.GetEntityType()
 	}
 
-	indexPath := basePath
-	if parent != nil {
-		indexPath = parent.GetRootPath()
+	entityPath := append([]string{}, definition.BasePath...)
+	if definition.Parent == nil {
+		entityPath = append(entityPath, definition.EntityType)
 	}
 
-	result := &BaseStore{
-		parent:          parent,
-		parentMapper:    parentMapper,
-		entityType:      entityType,
+	indexPath := definition.BasePath
+	if definition.Parent != nil {
+		indexPath = definition.Parent.GetRootPath()
+	}
+
+	result := &BaseStore[E]{
+		entityType:      definition.EntityType,
 		entityPath:      entityPath,
+		entityStrategy:  definition.EntityStrategy,
+		parent:          definition.Parent,
+		parentMapper:    definition.ParentMapper,
 		symbols:         map[string]EntitySymbol{},
 		mapSymbols:      map[string]*entityMapSymbol{},
 		publicSymbols:   map[string]struct{}{},
 		Indexer:         *NewIndexer(append(indexPath, IndexesBucket)...),
 		links:           map[string]LinkCollection{},
 		refCountedLinks: map[string]RefCountedLinkCollection{},
-		entityNotFoundF: entityNotFoundF,
-		EventEmmiter:    events.New(),
-	}
-
-	if result.parent != nil {
-		// result.impl isn't initialized here, so we need to defer evaluation
-		result.parent.AddDeleteHandler(func(ctx MutateContext, entityId string) error {
-			entity := result.impl.NewStoreEntity()
-			found, err := result.BaseLoadOneById(ctx.Tx(), entityId, entity)
-			if err != nil {
-				return err
-			}
-			if found {
-				ctx.AddEvent(result.impl, EventDelete, entity)
-				return result.impl.cleanupExternal(ctx, entityId)
-			}
-			return nil
-		})
-
-		// result.impl isn't initialized here, so we need to defer evaluation
-		result.parent.AddUpdateHandler(func(ctx MutateContext, entityId string) error {
-			entity := result.impl.NewStoreEntity()
-			found, err := result.BaseLoadOneById(ctx.Tx(), entityId, entity)
-			if err != nil {
-				return err
-			}
-			if found {
-				ctx.AddEvent(result.impl, EventUpdate, entity)
-			}
-			return nil
-		})
+		entityNotFoundF: definition.EntityNotFoundF,
 	}
 
 	return result
 }
 
-type BaseStore struct {
-	parent        CrudStore
-	parentMapper  func(childEntity Entity) Entity
-	entityType    string
-	entityPath    []string
-	symbols       map[string]EntitySymbol
-	publicSymbols map[string]struct{}
-	mapSymbols    map[string]*entityMapSymbol
-	isExtended    bool
+type EntityChangeState[E Entity] struct {
+	EventId      string
+	EntityId     string
+	Ctx          MutateContext
+	InitialState E
+	FinalState   E
+	store        *BaseStore[E]
+	ChangeType   EntityEventType
+	ParentEvent  bool
+}
+
+func (self *EntityChangeState[E]) GetEventId() string {
+	return self.EventId
+}
+
+func (self *EntityChangeState[E]) GetEntityId() string {
+	return self.EntityId
+}
+
+func (self *EntityChangeState[E]) GetCtx() MutateContext {
+	return self.Ctx
+}
+
+func (self *EntityChangeState[E]) GetChangeType() EntityEventType {
+	return self.ChangeType
+}
+
+func (self *EntityChangeState[E]) GetInitialState() Entity {
+	return self.InitialState
+}
+
+func (self *EntityChangeState[E]) GetFinalState() Entity {
+	return self.FinalState
+}
+
+func (self *EntityChangeState[E]) GetStore() Store {
+	return self.store
+}
+
+func (self *EntityChangeState[E]) IsParentEvent() bool {
+	return self.ParentEvent
+}
+
+func (self *EntityChangeState[E]) MarkParentEvent() {
+	self.ParentEvent = true
+}
+
+func (self *EntityChangeState[E]) GetInitialParentEntity() Entity {
+	var tmp Entity = self.InitialState
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
+		return nil
+	}
+	return self.store.parentMapper(self.InitialState)
+}
+
+func (self *EntityChangeState[E]) GetFinalParentEntity() Entity {
+	var tmp Entity = self.FinalState
+	if tmp == nil || reflect.ValueOf(tmp).IsNil() {
+		return nil
+	}
+	return self.store.parentMapper(self.FinalState)
+}
+
+func (self *EntityChangeState[E]) initFromChild(flow entityChangeFlow) {
+	self.EntityId = flow.GetEntityId()
+	self.Ctx = flow.GetCtx()
+	self.ChangeType = flow.GetChangeType()
+	self.ParentEvent = true
+
+	if parentEntity := flow.GetInitialParentEntity(); parentEntity != nil {
+		self.InitialState = parentEntity.(E)
+	}
+
+	if parentEntity := flow.GetFinalParentEntity(); parentEntity != nil {
+		self.FinalState = parentEntity.(E)
+	}
+}
+
+func (self *EntityChangeState[E]) init(ctx MutateContext) (bool, error) {
+	self.Ctx = ctx
+	var err error
+	var found bool
+	self.InitialState, found, err = self.store.impl.FindById(ctx.Tx(), self.EntityId)
+	return found, err
+}
+
+func (self *EntityChangeState[E]) loadFinalState() error {
+	var err error
+	self.FinalState, _, err = self.store.impl.FindById(self.Ctx.Tx(), self.EntityId)
+	return err
+}
+
+func (self *EntityChangeState[E]) fireEvents() error {
+	if err := self.processPreCommit(); err != nil {
+		return err
+	}
+
+	self.Ctx.Tx().OnCommit(self.processPostCommit)
+	return nil
+}
+
+func (self *EntityChangeState[E]) processPreCommit() error {
+	for _, constraint := range self.store.entityConstraints.Value() {
+		if err := constraint.ProcessPreCommit(self); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *EntityChangeState[E]) processPostCommit() {
+	for _, constraint := range self.store.entityConstraints.Value() {
+		constraint.ProcessPostCommit(self)
+	}
+}
+
+type entityChangeFlow interface {
+	UntypedEntityChangeState
+	init(ctx MutateContext) (bool, error)
+	initFromChild(flow entityChangeFlow)
+	loadFinalState() error
+	processPreCommit() error
+	processPostCommit()
+	fireEvents() error
+	MarkParentEvent()
+}
+
+type BaseStore[E Entity] struct {
+	entityStrategy     EntityStrategy[E]
+	childStoreStragies []ChildStoreStrategy[E]
+	parent             Store
+	parentMapper       func(childEntity Entity) Entity
+	entityType         string
+	entityPath         []string
+	symbols            map[string]EntitySymbol
+	publicSymbols      map[string]struct{}
+	mapSymbols         map[string]*entityMapSymbol
+	isExtended         bool
 	Indexer
 	links           map[string]LinkCollection
 	refCountedLinks map[string]RefCountedLinkCollection
 	entityNotFoundF func(id string) error
-	updateHandlers  EntityChangeHandlers
-	deleteHandlers  EntityChangeHandlers
-	events.EventEmmiter
+
+	entityConstraints concurrenz.CopyOnWriteSlice[EntityConstraint[E]]
 
 	// We track the actual implementation here to ensure that when methods that are overridden from BaseStore
 	// we call the override instead of the base method
-	impl CrudStore
+	impl EntityStore[E]
 }
 
-func (store *BaseStore) InitImpl(impl CrudStore) {
+func (store *BaseStore[E]) InitImpl(impl EntityStore[E]) {
 	if store.impl == nil {
 		store.impl = impl
 	}
 }
 
-func (store *BaseStore) GetRootPath() []string {
+func (store *BaseStore[E]) RegisterChildStoreStrategy(childStoreStrategy ChildStoreStrategy[E]) {
+	store.childStoreStragies = append(store.childStoreStragies, childStoreStrategy)
+}
+
+func (store *BaseStore[E]) GetRootPath() []string {
 	if store.parent != nil {
 		return store.parent.GetRootPath()
 	}
@@ -126,25 +240,25 @@ func (store *BaseStore) GetRootPath() []string {
 	return store.basePath[0 : len(store.entityPath)-1]
 }
 
-func (store *BaseStore) GetEntityType() string {
+func (store *BaseStore[E]) GetEntityType() string {
 	return store.entityType
 }
 
-func (store *BaseStore) GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
+func (store *BaseStore[E]) GetEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
 	if store.parent == nil {
 		return Path(tx, store.entityPath...)
 	}
 	return store.parent.GetEntitiesBucket(tx)
 }
 
-func (store *BaseStore) GetOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
+func (store *BaseStore[E]) getOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket {
 	if store.parent == nil {
 		return GetOrCreatePath(tx, store.entityPath...)
 	}
-	return store.parent.GetOrCreateEntitiesBucket(tx)
+	return store.parent.getOrCreateEntitiesBucket(tx)
 }
 
-func (store *BaseStore) GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
+func (store *BaseStore[E]) GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
 	baseBucket := store.GetEntitiesBucket(tx)
 	entityBucket := baseBucket.GetBucket(string(id))
 
@@ -158,8 +272,8 @@ func (store *BaseStore) GetEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
 	return entityBucket.GetPath(store.entityPath...)
 }
 
-func (store *BaseStore) GetOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
-	entityBaseBucket := store.GetOrCreateEntitiesBucket(tx)
+func (store *BaseStore[E]) getOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket {
+	entityBaseBucket := store.getOrCreateEntitiesBucket(tx)
 	entityBucket := entityBaseBucket.GetOrCreateBucket(string(id))
 	if store.parent == nil {
 		return entityBucket
@@ -167,61 +281,16 @@ func (store *BaseStore) GetOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedB
 	return entityBucket.GetOrCreatePath(store.entityPath...)
 }
 
-func (store *BaseStore) GetValue(tx *bbolt.Tx, id []byte, path ...string) []byte {
-	entityBucket := store.GetEntityBucket(tx, id)
-	if entityBucket == nil {
-		return nil
-	}
-	if len(path) == 0 {
-		return id
-	}
-	if len(path) == 1 {
-		return entityBucket.Get([]byte(path[0]))
-	}
-	valueBucket := entityBucket.GetPath(path[:len(path)-1]...)
-	if valueBucket == nil {
-		return nil
-	}
-	return valueBucket.Get([]byte(path[len(path)-1]))
-}
-
-func (store *BaseStore) GetValueCursor(tx *bbolt.Tx, id []byte, path ...string) *bbolt.Cursor {
-	entityBucket := store.GetEntityBucket(tx, id)
-	if entityBucket == nil {
-		return nil
-	}
-	bucket := entityBucket.GetPath(path...)
-	if bucket == nil {
-		return nil
-	}
-	return bucket.Cursor()
-}
-
-func (store *BaseStore) AddUpdateHandler(handler EntityChangeHandler) {
-	if store.parent != nil {
-		store.parent.AddUpdateHandler(handler)
-	}
-	store.updateHandlers.Add(handler)
-}
-
-func (store *BaseStore) AddDeleteHandler(handler EntityChangeHandler) {
-	if store.parent != nil {
-		store.parent.AddDeleteHandler(handler)
-	} else {
-		store.deleteHandlers.Add(handler)
-	}
-}
-
-func (store *BaseStore) GetSingularEntityType() string {
+func (store *BaseStore[E]) GetSingularEntityType() string {
 	return GetSingularEntityType(store.entityType)
 }
 
-func (store *BaseStore) Extended() *BaseStore {
+func (store *BaseStore[E]) Extended() *BaseStore[E] {
 	store.isExtended = true
 	return store
 }
 
-func (store *BaseStore) IsExtended() bool {
+func (store *BaseStore[E]) IsExtended() bool {
 	return store.isExtended
 }
 

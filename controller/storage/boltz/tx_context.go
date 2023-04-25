@@ -17,7 +17,7 @@
 package boltz
 
 import (
-	"github.com/kataras/go-events"
+	"context"
 	"go.etcd.io/bbolt"
 )
 
@@ -27,62 +27,90 @@ type CommitAction interface {
 
 type MutateContext interface {
 	Tx() *bbolt.Tx
-	AddEvent(em events.EventEmmiter, name events.EventName, entity Entity)
+	AddPreCommitAction(func(ctx MutateContext) error)
+	runPreCommitActions() error
+	AddCommitAction(func())
+	setTx(tx *bbolt.Tx) MutateContext
 	IsSystemContext() bool
 	GetSystemContext() MutateContext
+	Context() context.Context
+	UpdateContext(func(ctx context.Context) context.Context) MutateContext
 }
 
-type mutateEvent struct {
-	em     events.EventEmmiter
-	entity Entity
-	name   events.EventName
+func NewMutateContext(context context.Context) MutateContext {
+	ctx := &mutateContext{
+		ctx: context,
+	}
+	return ctx
 }
 
-func (self *mutateEvent) Exec() {
-	self.em.Emit(self.name, self.entity)
-}
-
-func (self *mutateEvent) Matches(i interface{}) bool {
-	return false
-}
-
-func NewMutateContext(tx *bbolt.Tx) MutateContext {
-	context := &mutateContext{tx: tx}
-	tx.OnCommit(context.handleCommit)
-	return context
+func NewTxMutateContext(context context.Context, tx *bbolt.Tx) MutateContext {
+	ctx := &mutateContext{
+		ctx: context,
+	}
+	ctx.setTx(tx)
+	return ctx
 }
 
 type mutateContext struct {
-	tx     *bbolt.Tx
-	events []CommitAction
+	tx               *bbolt.Tx
+	ctx              context.Context
+	preCommitActions []func(MutateContext) error
+	commitActions    []func()
 }
 
-func (context *mutateContext) GetSystemContext() MutateContext {
-	return NewSystemMutateContext(context)
+func (self *mutateContext) GetSystemContext() MutateContext {
+	return NewSystemMutateContext(self)
 }
 
-func (context *mutateContext) IsSystemContext() bool {
+func (self *mutateContext) IsSystemContext() bool {
 	return false
 }
 
-func (context *mutateContext) Tx() *bbolt.Tx {
-	return context.tx
+func (self *mutateContext) Tx() *bbolt.Tx {
+	return self.tx
 }
 
-func (context *mutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
-	context.events = append(context.events, &mutateEvent{
-		em:     em,
-		entity: entity,
-		name:   name,
-	})
+func (self *mutateContext) setTx(tx *bbolt.Tx) MutateContext {
+	self.tx = tx
+	if tx != nil {
+		tx.OnCommit(self.handleCommit)
+	}
+	return self
 }
 
-func (context *mutateContext) handleCommit() {
+func (self *mutateContext) AddCommitAction(f func()) {
+	self.commitActions = append(self.commitActions, f)
+}
+
+func (self *mutateContext) AddPreCommitAction(f func(MutateContext) error) {
+	self.preCommitActions = append(self.preCommitActions, f)
+}
+
+func (self *mutateContext) runPreCommitActions() error {
+	for _, action := range self.preCommitActions {
+		if err := action(self); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *mutateContext) handleCommit() {
 	go func() {
-		for _, event := range context.events {
-			event.Exec()
+		for _, hook := range self.commitActions {
+			hook()
 		}
 	}()
+}
+
+func (self *mutateContext) Context() context.Context {
+	return self.ctx
+}
+
+func (self *mutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
+	self.ctx = f(self.ctx)
+	return self
 }
 
 func NewSystemMutateContext(ctx MutateContext) MutateContext {
@@ -98,6 +126,18 @@ type systemMutateContext struct {
 	wrapped MutateContext
 }
 
+func (self *systemMutateContext) AddPreCommitAction(f func(MutateContext) error) {
+	self.wrapped.AddPreCommitAction(f)
+}
+
+func (self *systemMutateContext) AddCommitAction(f func()) {
+	self.wrapped.AddCommitAction(f)
+}
+
+func (self *systemMutateContext) runPreCommitActions() error {
+	return self.wrapped.runPreCommitActions()
+}
+
 func (self *systemMutateContext) GetSystemContext() MutateContext {
 	return self
 }
@@ -106,10 +146,18 @@ func (self *systemMutateContext) Tx() *bbolt.Tx {
 	return self.wrapped.Tx()
 }
 
-func (self *systemMutateContext) AddEvent(em events.EventEmmiter, name events.EventName, entity Entity) {
-	self.wrapped.AddEvent(em, name, entity)
+func (self *systemMutateContext) setTx(tx *bbolt.Tx) MutateContext {
+	return self.wrapped.setTx(tx)
 }
 
 func (self *systemMutateContext) IsSystemContext() bool {
 	return true
+}
+
+func (self *systemMutateContext) Context() context.Context {
+	return self.wrapped.Context()
+}
+
+func (self *systemMutateContext) UpdateContext(f func(context.Context) context.Context) MutateContext {
+	return self.wrapped.UpdateContext(f)
 }
