@@ -362,10 +362,10 @@ func NewExtEntity(id string, tags map[string]interface{}) *BaseExtEntity {
 
 type BaseExtEntity struct {
 	Id        string                 `json:"id"`
-	CreatedAt time.Time              `json:"created_at"`
-	UpdatedAt time.Time              `json:"updated_at"`
+	CreatedAt time.Time              `json:"createdAt"`
+	UpdatedAt time.Time              `json:"updatedAt"`
 	Tags      map[string]interface{} `json:"tags"`
-	IsSystem  bool                   `json:"is_system"`
+	IsSystem  bool                   `json:"isSystem"`
 	Migrate   bool                   `json:"-"`
 }
 
