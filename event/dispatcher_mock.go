@@ -18,12 +18,23 @@ package event
 
 import (
 	"github.com/openziti/metrics/metrics_pb"
+	"github.com/openziti/storage/boltz"
 	"regexp"
 )
 
 var _ Dispatcher = DispatcherMock{}
 
 type DispatcherMock struct{}
+
+func (d DispatcherMock) AddEntityChangeSource(store boltz.Store) {}
+
+func (d DispatcherMock) AddGlobalEntityChangeMetadata(k string, v any) {}
+
+func (d DispatcherMock) AddEntityChangeEventHandler(handler EntityChangeEventHandler) {}
+
+func (d DispatcherMock) RemoveEntityChangeEventHandler(handler EntityChangeEventHandler) {}
+
+func (d DispatcherMock) AcceptEntityChangeEvent(event *EntityChangeEvent) {}
 
 func (d DispatcherMock) GetFormatterFactory(formatterType string) FormatterFactory {
 	return nil

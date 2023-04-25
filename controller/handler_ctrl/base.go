@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"fmt"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/network"
@@ -28,10 +27,13 @@ type baseHandler struct {
 	network *network.Network
 }
 
-func (self *baseHandler) newChangeContext(ch channel.Channel) *change.Context {
+func (self *baseHandler) newChangeContext(ch channel.Channel, method string) *change.Context {
 	return change.New().
 		SetChangeAuthorId(self.router.Id).
 		SetChangeAuthorName(self.router.Name).
-		SetChangeAuthorType("router").
-		SetSource(fmt.Sprintf("ctrl[%v]", ch.Underlay().GetRemoteAddr().String()))
+		SetChangeAuthorType(change.AuthorTypeRouter).
+		SetSourceType(change.SourceTypeControlChannel).
+		SetSourceMethod(method).
+		SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
+		SetSourceRemote(ch.Underlay().GetRemoteAddr().String())
 }

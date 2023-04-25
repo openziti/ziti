@@ -45,9 +45,15 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 	result := &Dispatcher{
 		closeNotify: closeNotify,
 		eventC:      make(chan event.Event, 25),
+		entityChangeEventsDispatcher: entityChangeEventDispatcher{
+			notifyCh:       make(chan struct{}, 1),
+			globalMetadata: map[string]any{},
+		},
 	}
+	result.entityChangeEventsDispatcher.dispatcher = result
 
 	result.RegisterEventTypeFunctions(event.CircuitEventsNs, result.registerCircuitEventHandler, result.unregisterCircuitEventHandler)
+	result.RegisterEventTypeFunctions(event.EntityChangeEventsNs, result.registerEntityChangeEventHandler, result.unregisterEntityChangeEventHandler)
 	result.RegisterEventTypeFunctions(event.LinkEventsNs, result.registerLinkEventHandler, result.unregisterLinkEventHandler)
 	result.RegisterEventTypeFunctions(event.MetricsEventsNs, result.registerMetricsEventHandler, result.unregisterMetricsEventHandler)
 	result.RegisterEventTypeFunctions(event.RouterEventsNs, result.registerRouterEventHandler, result.unregisterRouterEventHandler)
@@ -72,16 +78,17 @@ func NewDispatcher(closeNotify <-chan struct{}) *Dispatcher {
 var _ event.Dispatcher = (*Dispatcher)(nil)
 
 type Dispatcher struct {
-	circuitEventHandlers    concurrenz.CopyOnWriteSlice[event.CircuitEventHandler]
-	linkEventHandlers       concurrenz.CopyOnWriteSlice[event.LinkEventHandler]
-	metricsEventHandlers    concurrenz.CopyOnWriteSlice[event.MetricsEventHandler]
-	metricsMsgEventHandlers concurrenz.CopyOnWriteSlice[event.MetricsMessageHandler]
-	routerEventHandlers     concurrenz.CopyOnWriteSlice[event.RouterEventHandler]
-	serviceEventHandlers    concurrenz.CopyOnWriteSlice[event.ServiceEventHandler]
-	terminatorEventHandlers concurrenz.CopyOnWriteSlice[event.TerminatorEventHandler]
-	usageEventHandlers      concurrenz.CopyOnWriteSlice[event.UsageEventHandler]
-	usageEventV3Handlers    concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
-	clusterEventHandlers    concurrenz.CopyOnWriteSlice[event.ClusterEventHandler]
+	circuitEventHandlers      concurrenz.CopyOnWriteSlice[event.CircuitEventHandler]
+	entityChangeEventHandlers concurrenz.CopyOnWriteSlice[event.EntityChangeEventHandler]
+	linkEventHandlers         concurrenz.CopyOnWriteSlice[event.LinkEventHandler]
+	metricsEventHandlers      concurrenz.CopyOnWriteSlice[event.MetricsEventHandler]
+	metricsMsgEventHandlers   concurrenz.CopyOnWriteSlice[event.MetricsMessageHandler]
+	routerEventHandlers       concurrenz.CopyOnWriteSlice[event.RouterEventHandler]
+	serviceEventHandlers      concurrenz.CopyOnWriteSlice[event.ServiceEventHandler]
+	terminatorEventHandlers   concurrenz.CopyOnWriteSlice[event.TerminatorEventHandler]
+	usageEventHandlers        concurrenz.CopyOnWriteSlice[event.UsageEventHandler]
+	usageEventV3Handlers      concurrenz.CopyOnWriteSlice[event.UsageEventV3Handler]
+	clusterEventHandlers      concurrenz.CopyOnWriteSlice[event.ClusterEventHandler]
 
 	metricsMappers concurrenz.CopyOnWriteSlice[event.MetricsMapper]
 
@@ -89,8 +96,10 @@ type Dispatcher struct {
 	eventHandlerFactories concurrenz.CopyOnWriteMap[string, event.HandlerFactory]
 	formatterFactories    concurrenz.CopyOnWriteMap[string, event.FormatterFactory]
 
-	closeNotify <-chan struct{}
-	eventC      chan event.Event
+	entityChangeEventsDispatcher entityChangeEventDispatcher
+	entityTypes                  []string
+	closeNotify                  <-chan struct{}
+	eventC                       chan event.Event
 }
 
 func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
@@ -99,6 +108,7 @@ func (self *Dispatcher) InitializeNetworkEvents(n *network.Network) {
 	self.initServiceEvents(n)
 	self.initTerminatorEvents(n)
 	self.initUsageEvents()
+	self.initEntityChangeEvents(n)
 
 	self.AddMetricsMapper(ctrlChannelMetricsMapper{}.mapMetrics)
 	self.AddMetricsMapper((&linkMetricsMapper{network: n}).mapMetrics)
@@ -188,6 +198,7 @@ func (self *Dispatcher) WireEventHandlers(eventHandlerConfigs []*EventHandlerCon
 			return err
 		}
 	}
+	self.entityChangeEventsDispatcher.flushCommittedTxEvents(true)
 	return nil
 }
 

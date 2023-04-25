@@ -57,7 +57,7 @@ func (self *removeTerminatorsHandler) HandleReceive(msg *channel.Message, ch cha
 func (self *removeTerminatorsHandler) handleRemoveTerminators(msg *channel.Message, ch channel.Channel, request *ctrl_pb.RemoveTerminatorsRequest) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	if err := self.network.Terminators.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch)); err == nil {
+	if err := self.network.Terminators.DeleteBatch(request.TerminatorIds, self.newChangeContext(ch, "fabric.remove.terminators.batch")); err == nil {
 		log.
 			WithField("routerId", ch.Id()).
 			WithField("terminatorIds", request.TerminatorIds).

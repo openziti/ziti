@@ -35,8 +35,7 @@ import (
 )
 
 const (
-	bucketName = "raft"
-	fieldIndex = "index"
+	fieldIndex = "raftIndex"
 )
 
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, eventDispatcher event.Dispatcher) *BoltDbFsm {
@@ -85,7 +84,7 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
 	var result uint64
 	err := self.db.View(func(tx *bbolt.Tx) error {
-		if raftBucket := boltz.Path(tx, db.RootBucket, bucketName); raftBucket != nil {
+		if raftBucket := boltz.Path(tx, db.RootBucket, db.MetadataBucket); raftBucket != nil {
 			if val := raftBucket.GetInt64(fieldIndex); val != nil {
 				result = uint64(*val)
 			}
@@ -96,7 +95,7 @@ func (self *BoltDbFsm) loadCurrentIndex() (uint64, error) {
 }
 
 func (self *BoltDbFsm) updateIndexInTx(tx *bbolt.Tx, index uint64) error {
-	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, bucketName)
+	raftBucket := boltz.GetOrCreatePath(tx, db.RootBucket, db.MetadataBucket)
 	raftBucket.SetInt64(fieldIndex, int64(index), nil)
 	return raftBucket.GetError()
 }
@@ -156,7 +155,7 @@ func (self *BoltDbFsm) Apply(log *raft.Log) interface{} {
 			logger.Infof("apply log with type %T", cmd)
 			changeCtx := cmd.GetChangeContext()
 			if changeCtx == nil {
-				changeCtx = change.New().SetSource("untracked")
+				changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
 			}
 			changeCtx.RaftIndex = log.Index
 

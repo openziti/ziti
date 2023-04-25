@@ -32,11 +32,11 @@ const (
 
 type Router struct {
 	boltz.BaseExtEntity
-	Name        string
-	Fingerprint *string
-	Cost        uint16
-	NoTraversal bool
-	Disabled    bool
+	Name        string  `json:"name"`
+	Fingerprint *string `json:"fingerprint"`
+	Cost        uint16  `json:"cost"`
+	NoTraversal bool    `json:"no_traversal"`
+	Disabled    bool    `json:"disabled"`
 }
 
 func (entity *Router) GetEntityType() string {

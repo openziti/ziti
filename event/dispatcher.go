@@ -17,6 +17,7 @@
 package event
 
 import (
+	"github.com/openziti/storage/boltz"
 	"io"
 	"regexp"
 )
@@ -109,7 +110,13 @@ type Dispatcher interface {
 	AddClusterEventHandler(handler ClusterEventHandler)
 	RemoveClusterEventHandler(handler ClusterEventHandler)
 
+	AddEntityChangeEventHandler(handler EntityChangeEventHandler)
+	RemoveEntityChangeEventHandler(handler EntityChangeEventHandler)
+	AddEntityChangeSource(store boltz.Store)
+	AddGlobalEntityChangeMetadata(k string, v any)
+
 	CircuitEventHandler
+	EntityChangeEventHandler
 	LinkEventHandler
 	MetricsEventHandler
 	MetricsMessageHandler

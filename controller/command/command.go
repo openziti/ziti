@@ -78,6 +78,11 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		}
 	}()
 
+	changeCtx := command.GetChangeContext()
+	if changeCtx == nil {
+		changeCtx = change.New().SetSourceType("unattributed").SetChangeAuthorType(change.AuthorTypeUnattributed)
+	}
+	ctx := changeCtx.NewMutateContext()
 	if self.EncodeDecodeCommands {
 		bytes, err := command.Encode()
 		if err != nil {
@@ -87,10 +92,10 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		return cmd.Apply(change.New().NewMutateContext())
+		return cmd.Apply(ctx)
 	}
 
-	return command.Apply(change.New().NewMutateContext())
+	return command.Apply(ctx)
 }
 
 // Decoder instances know how to decode encoded commands
