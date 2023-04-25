@@ -66,7 +66,7 @@ func NewBroker(ae *AppEnv, synchronizer RouterSyncStrategy) *Broker {
 	broker.ae.GetStores().ApiSession.AddEntityEventListenerF(broker.routerSyncStrategy.ApiSessionDeleted, boltz.EntityDeletedAsync)
 	broker.ae.GetStores().ApiSession.GetEventsEmitter().AddListener(persistence.EventFullyAuthenticated, broker.apiSessionFullyAuthenticated)
 	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateCreated, boltz.EntityCreatedAsync)
-	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityCreatedAsync)
+	broker.ae.GetStores().ApiSessionCertificate.AddEntityEventListenerF(broker.apiSessionCertificateDeleted, boltz.EntityDeletedAsync)
 
 	ae.HostController.GetNetwork().AddRouterPresenceHandler(broker)
 
