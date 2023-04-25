@@ -64,10 +64,15 @@ func (self EntityEventType) IsAsync() bool {
 	return self == EntityCreatedAsync || self == EntityUpdatedAsync || self == EntityDeletedAsync
 }
 
+// A Checkable can be checked for consistency. This could be an index, an FK or something which contains
+// multiple Checkables and can delegate to them
 type Checkable interface {
 	CheckIntegrity(ctx MutateContext, fix bool, errorSink func(err error, fixed bool)) error
 }
 
+// storeInternal contains all the store methods which are only used internally. These are generally called
+// from parent to child or vice-versa, and are thus happening through the interface, rather than directly
+// from a store to itself.
 type storeInternal interface {
 	getOrCreateEntitiesBucket(tx *bbolt.Tx) *TypedBucket
 	getOrCreateEntityBucket(tx *bbolt.Tx, id []byte) *TypedBucket
@@ -83,6 +88,7 @@ type storeInternal interface {
 	newEntityChangeFlow() entityChangeFlow
 }
 
+// UntypedEntityChangeState instances are passed to entity event listeners that don't need the concrete entity types
 type UntypedEntityChangeState interface {
 	GetEventId() string
 	GetEntityId() string
@@ -96,6 +102,8 @@ type UntypedEntityChangeState interface {
 	IsParentEvent() bool
 }
 
+// Store contains all the methods for interacting with an entity store that don't require knowedge of the concrete
+// entity type.
 type Store interface {
 	storeInternal
 
@@ -173,26 +181,32 @@ type ConfigurableStore interface {
 	AddRefCountedLinkCollection(local EntitySymbol, remove EntitySymbol) RefCountedLinkCollection
 }
 
+// ChildStoreStrategy instances are used to allow a parent store to properly delegate to a child store where needed
 type ChildStoreStrategy[E Entity] interface {
 	HandleUpdate(ctx MutateContext, entity E, checker FieldChecker) (bool, error)
 	HandleDelete(ctx MutateContext, entity E) error
 	GetStore() Store
 }
 
+// EntityConstraint implementations allow reacting to entity changes, both pre and post commit
 type EntityConstraint[E Entity] interface {
 	ProcessPreCommit(state *EntityChangeState[E]) error
 	ProcessPostCommit(state *EntityChangeState[E])
 }
 
+// UntypedEntityConstraint instances can react to entity changes in cases where you don't care about the entity type
+// or need to react to changes of multiple entity types
 type UntypedEntityConstraint interface {
 	ProcessPreCommit(state UntypedEntityChangeState) error
 	ProcessPostCommit(state UntypedEntityChangeState)
 }
 
+// EntityEventListener instances will be notified after an entity change has been committed
 type EntityEventListener[E Entity] interface {
 	HandleEntityEvent(entity E)
 }
 
+// EntityStore extends Store with the methods that need concrete implementation types
 type EntityStore[E Entity] interface {
 	Store
 
@@ -222,6 +236,7 @@ type EntityStrategy[E Entity] interface {
 	PersistEntity(entity E, ctx *PersistContext)
 }
 
+// A PersistContext wraps all the state needed when persisting an entity to a store
 type PersistContext struct {
 	MutateContext
 	Id           string
@@ -312,12 +327,14 @@ func (ctx *PersistContext) ProceedWithSet(field string) bool {
 	return ctx.Bucket.ProceedWithSet(field, ctx.FieldChecker)
 }
 
+// Entity represents the minimal methods needed for an entity
 type Entity interface {
 	GetId() string
 	SetId(id string)
 	GetEntityType() string
 }
 
+// ExtEntity extends Entity with common additional attributes
 type ExtEntity interface {
 	Entity
 	GetCreatedAt() time.Time
@@ -330,6 +347,7 @@ type ExtEntity interface {
 	SetTags(tags map[string]interface{})
 }
 
+// NamedExtEntity extends ExtEntity with a Name attribute
 type NamedExtEntity interface {
 	ExtEntity
 	GetName() string
@@ -421,18 +439,4 @@ func (entity *BaseExtEntity) UpdateBaseValues(ctx *PersistContext) {
 	now := time.Now()
 	ctx.Bucket.SetTimeP(FieldUpdatedAt, &now, nil)
 	ctx.Bucket.PutMap(FieldTags, entity.Tags, ctx.FieldChecker, false)
-}
-
-type NilEntity struct{}
-
-func (n NilEntity) GetId() string {
-	panic("NilEntity methods should never be called")
-}
-
-func (n NilEntity) SetId(string) {
-	panic("NilEntity methods should never be called")
-}
-
-func (n NilEntity) GetEntityType() string {
-	panic("NilEntity methods should never be called")
 }
