@@ -39,8 +39,8 @@ func NewStackCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args:  cobra.MaximumNArgs(1),
-		Use:   "stack [<optional-target>]",
+		Args:  cobra.ExactArgs(0),
+		Use:   "stack",
 		Short: "Emits a go-routine stack dump from the target application",
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd

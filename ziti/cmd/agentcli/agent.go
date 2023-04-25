@@ -202,15 +202,7 @@ func (self *AgentOptions) RunCopyOut(op byte, params []byte, out io.Writer) erro
 		})
 	}
 
-	if len(self.Args) == 0 {
-		return self.MakeRequest(op, params, self.CopyToWriter(out))
-	}
-
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-	return agent.MakeRequest(addr, op, params, os.Stdout)
+	return self.MakeRequest(op, params, self.CopyToWriter(out))
 }
 
 func NewAgentChannel(conn net.Conn) (channel.Channel, error) {

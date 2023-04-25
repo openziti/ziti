@@ -40,9 +40,9 @@ func NewSetGcCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "setgc target gc-percentage",
+		Use:   "setgc gc-percentage",
 		Short: "Sets the GC percentage in the target application",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -65,12 +65,7 @@ func (self *AgentSetGcAction) Run() error {
 		})
 	}
 
-	var pctArg string
-	if len(self.Args) == 1 {
-		pctArg = self.Args[0]
-	} else {
-		pctArg = self.Args[1]
-	}
+	pctArg := self.Args[0]
 
 	perc, err := strconv.ParseInt(pctArg, 10, strconv.IntSize)
 	if err != nil {
@@ -79,14 +74,5 @@ func (self *AgentSetGcAction) Run() error {
 	buf := make([]byte, binary.MaxVarintLen64)
 	binary.PutVarint(buf, perc)
 
-	if len(self.Args) == 1 {
-		return self.MakeRequest(agent.SetGCPercent, buf, self.CopyToWriter(os.Stdout))
-	}
-
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-
-	return agent.MakeRequest(addr, agent.SetGCPercent, buf, os.Stdout)
+	return self.MakeRequest(agent.SetGCPercent, buf, self.CopyToWriter(os.Stdout))
 }

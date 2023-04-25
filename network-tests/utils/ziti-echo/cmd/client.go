@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"io"
 	"log"
 	"net"
@@ -11,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/spf13/cobra"
 )
 
@@ -34,6 +34,12 @@ func echoClient(cmd *cobra.Command, args []string) {
 	}
 
 	zitiContext := ziti.NewContextWithConfig(cfg)
+	/*
+		zitiContext, err := ziti.NewContextFromFile(identityFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+	*/
 
 	dial := func(_ context.Context, _, addr string) (net.Conn, error) {
 		service := strings.Split(addr, ":")[0]

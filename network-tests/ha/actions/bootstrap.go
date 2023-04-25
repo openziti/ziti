@@ -23,13 +23,17 @@ func NewBootstrapAction() model.ActionBinder {
 func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 
+	workflow.AddAction(component.Stop(".ctrl"))
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
-	workflow.AddAction(component.Stop("#ctrl"))
-	workflow.AddAction(edge.InitController("#ctrl"))
-	workflow.AddAction(component.Start("#ctrl"))
+	workflow.AddAction(host.GroupExec(".ctrl", 5, "rf -rf ./fablab/ctrldata"))
+	workflow.AddAction(component.Start(".ctrl"))
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(edge.RaftJoin(".ctrl"))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(edge.InitRaftController("#ctrl1"))
+	workflow.AddAction(semaphore.Sleep(time.Second))
 
-	workflow.AddAction(edge.Login("#ctrl"))
+	workflow.AddAction(edge.Login("#ctrl1"))
 
 	workflow.AddAction(component.StopInParallel(models.EdgeRouterTag, 25))
 	workflow.AddAction(edge.InitEdgeRouters(models.EdgeRouterTag, 2))
@@ -44,8 +48,6 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "echo-clients", "--edge-router-roles", "@router-west", "--identity-roles", "#client"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "echo", "--semantic", "AnyOf", "--service-roles", "@echo", "--edge-router-roles", "#all"))
-
-	workflow.AddAction(component.Stop(models.ControllerTag))
 
 	return workflow
 }
