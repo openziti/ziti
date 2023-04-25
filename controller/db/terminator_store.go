@@ -46,12 +46,12 @@ type Terminator struct {
 	Router         string      `json:"router"`
 	Binding        string      `json:"binding"`
 	Address        string      `json:"address"`
-	InstanceId     string      `json:"instance_id"`
-	InstanceSecret []byte      `json:"instance_secret"`
+	InstanceId     string      `json:"instanceId"`
+	InstanceSecret []byte      `json:"instanceSecret"`
 	Cost           uint16      `json:"cost"`
 	Precedence     string      `json:"precedence"`
-	PeerData       xt.PeerData `json:"peer_data"`
-	HostId         string      `json:"host_id"`
+	PeerData       xt.PeerData `json:"peerData"`
+	HostId         string      `json:"hostId"`
 }
 
 func (entity *Terminator) GetCost() uint16 {

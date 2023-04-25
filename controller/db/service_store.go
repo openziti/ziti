@@ -32,7 +32,7 @@ const (
 type Service struct {
 	boltz.BaseExtEntity
 	Name               string `json:"name"`
-	TerminatorStrategy string `json:"terminator_strategy"`
+	TerminatorStrategy string `json:"terminatorStrategy"`
 }
 
 func (entity *Service) GetEntityType() string {
