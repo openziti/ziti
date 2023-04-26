@@ -37,7 +37,15 @@ func (self *Dispatcher) AddUsageEventV3Handler(handler event.UsageEventV3Handler
 }
 
 func (self *Dispatcher) RemoveUsageEventV3Handler(handler event.UsageEventV3Handler) {
-	self.usageEventV3Handlers.Delete(handler)
+	self.usageEventV3Handlers.DeleteIf(func(val event.UsageEventV3Handler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.UsageEventV3HandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AcceptUsageEvent(event *event.UsageEvent) {
@@ -81,6 +89,31 @@ func (self *Dispatcher) registerUsageEventHandler(val interface{}, config map[st
 		if !ok {
 			return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/UsageEventV3Handler interface.", reflect.TypeOf(val))
 		}
+
+		if includeListVal, found := config["include"]; found {
+			includes := map[string]struct{}{}
+			if list, ok := includeListVal.([]interface{}); ok {
+				for _, includeVal := range list {
+					if include, ok := includeVal.(string); ok {
+						includes[include] = struct{}{}
+					} else {
+						return errors.Errorf("invalid value type [%T] for usage include list, must be string list", val)
+					}
+				}
+			} else {
+				return errors.Errorf("invalid value type [%T] for usage include list, must be string list", val)
+			}
+
+			if len(includes) == 0 {
+				return errors.Errorf("no values provided in include list for usage events, either drop includes stanza or provide at least one usage type to include")
+			}
+
+			handler = &filteredUsageV3EventHandler{
+				include: includes,
+				wrapped: handler,
+			}
+		}
+
 		self.AddUsageEventV3Handler(handler)
 	} else {
 		return errors.Errorf("unsupported usage version: %v", version)
@@ -187,4 +220,42 @@ func (self *usageEventAdapter) AcceptMetricsMsg(message *metrics_pb.MetricsMessa
 			}
 		}
 	}
+}
+
+type filteredUsageV3EventHandler struct {
+	include map[string]struct{}
+	wrapped event.UsageEventV3Handler
+}
+
+func (self *filteredUsageV3EventHandler) IsWrapping(value event.UsageEventV3Handler) bool {
+	if self.wrapped == value {
+		return true
+	}
+	if w, ok := self.wrapped.(event.UsageEventV3HandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
+}
+
+func (self *filteredUsageV3EventHandler) AcceptUsageEventV3(event *event.UsageEventV3) {
+	usage := map[string]uint64{}
+	for k, v := range event.Usage {
+		if _, found := self.include[k]; found {
+			usage[k] = v
+		}
+	}
+	// nothing passed filter, skip event
+	if len(usage) == 0 {
+		return
+	}
+
+	// nothing got filtered out, pass through unchanged
+	if len(usage) == len(event.Usage) {
+		self.wrapped.AcceptUsageEventV3(event)
+		return
+	}
+
+	newEvent := *event
+	newEvent.Usage = usage
+	self.wrapped.AcceptUsageEventV3(&newEvent)
 }
