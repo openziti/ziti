@@ -25,6 +25,8 @@ func TestSdkAuth(t *testing.T) {
 	testIdCerts := ctx.completeOttEnrollment(testId.Id)
 
 	clientApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeClientApiPath)
+	ctx.Req.NoError(err)
+
 	managementApiUrl, err := url.Parse("https://" + ctx.ApiHost + EdgeManagementApiPath)
 	ctx.Req.NoError(err)
 

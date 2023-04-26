@@ -1,9 +1,10 @@
 package intercept
 
 import (
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
@@ -15,13 +16,15 @@ type testProvider struct {
 func (self *testProvider) PrepForUse(serviceId string) {
 }
 
-func (self *testProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) {
-	return &edge.CurrentIdentity{
-		Name: "foo.bar",
-		AppData: map[string]interface{}{
-			"srcip":      "123.456.789.10:5555",
-			"sourceIp":   "15.14.13.12",
-			"sourcePort": 1999,
+func (self *testProvider) GetCurrentIdentity() (*rest_model.IdentityDetail, error) {
+	return &rest_model.IdentityDetail{
+		Name: util.Ptr("foo.bar"),
+		AppData: &rest_model.Tags{
+			SubTags: map[string]interface{}{
+				"srcip":      "123.456.789.10:5555",
+				"sourceIp":   "15.14.13.12",
+				"sourcePort": 1999,
+			},
 		},
 	}, nil
 }

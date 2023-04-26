@@ -382,7 +382,7 @@ func (self *Service) GetConfigOfType(configType string, target interface{}) (boo
 	}
 	if err := mapstructure.Decode(configMap, target); err != nil {
 		pfxlog.Logger().WithError(err).Debugf("unable to decode service configuration for of type %v defined for service %v", configType, self.Name)
-		return true, errors.Errorf("unable to decode service config structure: %w", err)
+		return true, fmt.Errorf("unable to decode service config structure: %w", err)
 	}
 	return true, nil
 }

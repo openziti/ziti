@@ -408,7 +408,7 @@ func (self *tProxy) tcpPort() IPPortAddr {
 	if self.tcpLn != nil {
 		return (*TCPIPPortAddr)(self.tcpLn.Addr().(*net.TCPAddr))
 	}
-	logrus.Errorf("invalid state: no tcp listener for tproxy[%s]", self.service.Name)
+	logrus.Errorf("invalid state: no tcp listener for tproxy[%s]", *self.service.Name)
 	return nil
 }
 
@@ -417,7 +417,7 @@ func (self *tProxy) udpPort() IPPortAddr {
 		return (*UDPIPPortAddr)(self.udpLn.LocalAddr().(*net.UDPAddr))
 	}
 
-	logrus.Errorf("invalid state: no udp listener for tproxy[%s]", self.service.Name)
+	logrus.Errorf("invalid state: no udp listener for tproxy[%s]", *self.service.Name)
 	return nil
 }
 
@@ -453,7 +453,7 @@ func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
 	case "udp":
 		port = self.udpPort()
 	default:
-		logrus.Errorf("unknown proto[%s] for tproxy[%s]", addr.Proto(), self.service.Name)
+		logrus.Errorf("unknown proto[%s] for tproxy[%s]", addr.Proto(), *self.service.Name)
 		return
 	}
 	if err := self.addInterceptAddr(addr, self.service, port, self.tracker); err != nil {
@@ -570,14 +570,14 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 			err := self.interceptor.ipt.Delete(mangleTable, dstChain, addr.TproxySpec...)
 			if err != nil {
 				errorList = append(errorList, err)
-				log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
+				log.WithError(err).Errorf("failed to remove iptables rule for service %s", *self.service.Name)
 			}
 			if self.interceptor.lanIf != "" {
 				pfxlog.Logger().Infof("Removing rule iptables -t %v -A %v %v", filterTable, dstChain, addr.TproxySpec)
 				err = self.interceptor.ipt.Delete(filterTable, dstChain, addr.AcceptSpec...)
 				if err != nil {
 					errorList = append(errorList, err)
-					log.WithError(err).Errorf("failed to remove iptables rule for service %s", self.service.Name)
+					log.WithError(err).Errorf("failed to remove iptables rule for service %s", *self.service.Name)
 				}
 			}
 		}
@@ -587,7 +587,7 @@ func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 			err := router.RemoveLocalAddress(ipNet, "lo")
 			if err != nil {
 				errorList = append(errorList, err)
-				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, self.service.Name)
+				log.WithError(err).Errorf("failed to remove route %v for service %s", ipNet, *self.service.Name)
 			}
 		}
 	}
