@@ -116,7 +116,7 @@ func Test_TransitRouters(t *testing.T) {
 			Name:        "uMvqq",
 			Fingerprint: &fp,
 		}
-		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter, change.New().SetSource("test"))
+		err := ctx.fabricController.GetNetwork().Routers.Create(fabTxRouter, change.New())
 		ctx.Req.NoError(err, "could not create router at fabric level")
 
 		body := ctx.AdminManagementSession.requireQuery("transit-routers")

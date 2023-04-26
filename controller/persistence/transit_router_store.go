@@ -30,11 +30,11 @@ const (
 
 type TransitRouter struct {
 	db.Router
-	IsVerified            bool
-	Enrollments           []string
-	IsBase                bool
-	UnverifiedCertPem     *string
-	UnverifiedFingerprint *string
+	IsVerified            bool     `json:"isVerified"`
+	Enrollments           []string `json:"enrollments"`
+	IsBase                bool     `json:"-"`
+	UnverifiedCertPem     *string  `json:"unverifiedCertPem"`
+	UnverifiedFingerprint *string  `json:"unverifiedFingerprint"`
 }
 
 func (entity *TransitRouter) GetName() string {

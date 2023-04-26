@@ -38,8 +38,8 @@ func newConfigType(name string) *ConfigType {
 
 type ConfigType struct {
 	boltz.BaseExtEntity
-	Name   string
-	Schema map[string]interface{}
+	Name   string                 `json:"name"`
+	Schema map[string]interface{} `json:"schema"`
 }
 
 func (entity *ConfigType) GetName() string {

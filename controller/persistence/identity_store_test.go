@@ -55,7 +55,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	boltztest.RequireCreate(ctx, config3)
 
-	mutateCtx := change.New().SetSource("test").NewMutateContext()
+	mutateCtx := change.New().NewMutateContext()
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		err := ctx.stores.Identity.AssignServiceConfigs(mutateCtx.Tx(), identity.Id,
 			ServiceConfig{ServiceId: service.Id, ConfigId: config.Id},
@@ -65,7 +65,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	mutateCtx = change.New().NewMutateContext()
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
@@ -88,7 +88,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 	})
 	ctx.NoError(err)
 
-	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	mutateCtx = change.New().NewMutateContext()
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.RemoveServiceConfigs(tx, identity.Id, ServiceConfig{ServiceId: service.Id, ConfigId: config.Id})
@@ -113,7 +113,7 @@ func (ctx *TestContext) testIdentityServiceConfigs(_ *testing.T) {
 
 	boltztest.RequireCreate(ctx, config)
 
-	mutateCtx = change.New().SetSource("test").NewMutateContext()
+	mutateCtx = change.New().NewMutateContext()
 	err = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
 		tx := mutateCtx.Tx()
 		err := ctx.stores.Identity.AssignServiceConfigs(tx, identity.Id,

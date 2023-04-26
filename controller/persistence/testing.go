@@ -134,7 +134,7 @@ func NewTestContext(t *testing.T) *TestContext {
 }
 
 func (ctx *TestContext) newViewTestCtx(tx *bbolt.Tx) boltz.MutateContext {
-	return boltz.NewTxMutateContext(change.New().SetSource("test").GetContext(), tx)
+	return boltz.NewTxMutateContext(change.New().SetChangeAuthorType("test").GetContext(), tx)
 }
 
 func (ctx *TestContext) GetNetwork() *network.Network {
@@ -248,8 +248,7 @@ func (ctx *TestContext) CleanupAll() {
 		ctx.stores.ServiceEdgeRouterPolicy,
 	}
 
-	mutateCtx := change.New().SetSource("test.cleanup").NewMutateContext()
-	_ = ctx.GetDb().Update(mutateCtx, func(mutateCtx boltz.MutateContext) error {
+	_ = ctx.GetDb().Update(change.New().NewMutateContext(), func(mutateCtx boltz.MutateContext) error {
 		for _, store := range stores {
 			if err := store.DeleteWhere(mutateCtx, `true limit none`); err != nil {
 				pfxlog.Logger().WithError(err).Errorf("failure while cleaning up %v", store.GetEntityType())

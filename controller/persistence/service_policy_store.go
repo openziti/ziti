@@ -2,28 +2,38 @@ package persistence
 
 import (
 	"fmt"
-	"github.com/openziti/edge/eid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/ast"
 	"github.com/openziti/storage/boltz"
-	"math/rand"
 	"sort"
 )
 
-type PolicyType int32
+type PolicyType string
 
 func (self PolicyType) String() string {
+	return string(self)
+}
+
+func (self PolicyType) Id() int32 {
 	if self == PolicyTypeDial {
-		return PolicyTypeDialName
+		return 1
 	}
-
 	if self == PolicyTypeBind {
-		return PolicyTypeBindName
+		return 2
 	}
+	return 0
+}
 
-	return PolicyTypeInvalidName
+func GetPolicyTypeForId(policyTypeId int32) PolicyType {
+	policyType := PolicyTypeInvalid
+	if policyTypeId == PolicyTypeDial.Id() {
+		policyType = PolicyTypeDial
+	} else if policyTypeId == PolicyTypeBind.Id() {
+		policyType = PolicyTypeBind
+	}
+	return policyType
 }
 
 const (
@@ -33,33 +43,19 @@ const (
 	PolicyTypeDialName    = "Dial"
 	PolicyTypeBindName    = "Bind"
 
-	PolicyTypeInvalid PolicyType = 0
-	PolicyTypeDial    PolicyType = 1
-	PolicyTypeBind    PolicyType = 2
+	PolicyTypeInvalid PolicyType = PolicyTypeInvalidName
+	PolicyTypeDial    PolicyType = PolicyTypeDialName
+	PolicyTypeBind    PolicyType = PolicyTypeBindName
 )
-
-func newServicePolicy(name string) *ServicePolicy {
-	policyType := PolicyTypeDial
-	/* #nosec */
-	if rand.Int()%2 == 0 {
-		policyType = PolicyTypeBind
-	}
-	return &ServicePolicy{
-		BaseExtEntity: boltz.BaseExtEntity{Id: eid.New()},
-		Name:          name,
-		PolicyType:    policyType,
-		Semantic:      SemanticAllOf,
-	}
-}
 
 type ServicePolicy struct {
 	boltz.BaseExtEntity
-	PolicyType        PolicyType
-	Name              string
-	Semantic          string
-	IdentityRoles     []string
-	ServiceRoles      []string
-	PostureCheckRoles []string
+	PolicyType        PolicyType `json:"policyType"`
+	Name              string     `json:"name"`
+	Semantic          string     `json:"semantic"`
+	IdentityRoles     []string   `json:"identityRoles"`
+	ServiceRoles      []string   `json:"serviceRoles"`
+	PostureCheckRoles []string   `json:"postureCheckRoles"`
 }
 
 func (entity *ServicePolicy) GetName() string {
@@ -72,10 +68,6 @@ func (entity *ServicePolicy) GetSemantic() string {
 
 func (entity *ServicePolicy) GetEntityType() string {
 	return EntityTypeServicePolicies
-}
-
-func (entity *ServicePolicy) GetPolicyTypeName() string {
-	return entity.PolicyType.String()
 }
 
 var _ ServicePolicyStore = (*servicePolicyStoreImpl)(nil)
@@ -145,7 +137,7 @@ func (store *servicePolicyStoreImpl) initializeLinked() {
 func (store *servicePolicyStoreImpl) FillEntity(entity *ServicePolicy, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
 	entity.Name = bucket.GetStringOrError(FieldName)
-	entity.PolicyType = PolicyType(bucket.GetInt32WithDefault(FieldServicePolicyType, int32(PolicyTypeDial)))
+	entity.PolicyType = GetPolicyTypeForId(bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial.Id()))
 	entity.Semantic = bucket.GetStringWithDefault(FieldSemantic, SemanticAllOf)
 	entity.IdentityRoles = bucket.GetStringList(FieldIdentityRoles)
 	entity.ServiceRoles = bucket.GetStringList(FieldServiceRoles)
@@ -161,7 +153,7 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 	} else {
 		// PolicyType needs to be correct in the entity as we use it later
 		// TODO: Add test for this
-		entity.PolicyType = PolicyType(ctx.Bucket.GetInt32WithDefault(FieldServicePolicyType, int32(PolicyTypeDial)))
+		entity.PolicyType = GetPolicyTypeForId(ctx.Bucket.GetInt32WithDefault(FieldServicePolicyType, PolicyTypeDial.Id()))
 	}
 
 	if err := validateRolesAndIds(FieldIdentityRoles, entity.IdentityRoles); err != nil {
@@ -183,7 +175,7 @@ func (store *servicePolicyStoreImpl) PersistEntity(entity *ServicePolicy, ctx *b
 
 	entity.SetBaseValues(ctx)
 	ctx.SetRequiredString(FieldName, entity.Name)
-	ctx.SetInt32(FieldServicePolicyType, int32(entity.PolicyType))
+	ctx.SetInt32(FieldServicePolicyType, entity.PolicyType.Id())
 	ctx.SetRequiredString(FieldSemantic, entity.Semantic)
 	servicePolicyStore := ctx.Store.(*servicePolicyStoreImpl)
 
@@ -313,7 +305,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContex
 		policyFilter: func(policyId []byte) bool {
 			policyType := PolicyTypeInvalid
 			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(mutateCtx.Tx(), policyId)); result != nil {
-				policyType = PolicyType(*result)
+				policyType = GetPolicyTypeForId(*result)
 			}
 			return policyType == PolicyTypeBind
 		},
@@ -336,7 +328,7 @@ func (store *servicePolicyStoreImpl) CheckIntegrity(mutateCtx boltz.MutateContex
 		policyFilter: func(policyId []byte) bool {
 			policyType := PolicyTypeInvalid
 			if result := boltz.FieldToInt32(store.symbolPolicyType.Eval(mutateCtx.Tx(), policyId)); result != nil {
-				policyType = PolicyType(*result)
+				policyType = GetPolicyTypeForId(*result)
 			}
 			return policyType == PolicyTypeDial
 		},

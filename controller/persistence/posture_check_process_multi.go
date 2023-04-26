@@ -30,15 +30,15 @@ const (
 )
 
 type PostureCheckProcessMulti struct {
-	Semantic  string
-	Processes []*ProcessMulti
+	Semantic  string          `json:"semantic"`
+	Processes []*ProcessMulti `json:"processes"`
 }
 
 type ProcessMulti struct {
-	OsType             string
-	Path               string
-	Hashes             []string
-	SignerFingerprints []string
+	OsType             string   `json:"osType"`
+	Path               string   `json:"path"`
+	Hashes             []string `json:"hashes"`
+	SignerFingerprints []string `json:"signerFingerprints"`
 }
 
 func newPostureCheckProcessMulti() PostureCheckSubType {

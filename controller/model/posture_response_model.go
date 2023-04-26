@@ -153,7 +153,7 @@ func (pc *PostureCache) evaluate() {
 
 		//delete sessions that failed pc checks, clear list
 		for _, sessionId := range toDeleteSessionIds {
-			err := pc.env.GetManagers().Session.Delete(sessionId, change.New().SetSource("posture.cache").SetChangeAuthorType("controller"))
+			err := pc.env.GetManagers().Session.Delete(sessionId, change.New().SetSourceType("posture.cache").SetChangeAuthorType(change.AuthorTypeController))
 			if err != nil {
 				log.WithError(err).Errorf("error removing session [%s] due to posture check failure, delete error: %v", sessionId, err)
 			}

@@ -88,8 +88,8 @@ func (advisor *PolicyAdvisor) getServicePermissions(identityId, serviceId string
 			return err
 		}
 		if servicePolicyStore.IsEntityRelated(tx, servicePolicyId, db.EntityTypeServices, serviceId) {
-			if !stringz.Contains(permissions, servicePolicy.GetPolicyTypeName()) {
-				permissions = append(permissions, servicePolicy.GetPolicyTypeName())
+			if !stringz.Contains(permissions, string(servicePolicy.PolicyType)) {
+				permissions = append(permissions, string(servicePolicy.PolicyType))
 			}
 		}
 		return nil

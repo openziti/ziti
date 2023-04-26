@@ -239,7 +239,7 @@ func (self *IdentityManager) InitializeDefaultAdmin(username, password, name str
 		},
 	}
 
-	ctx := change.New().SetSource("cli.init").SetChangeAuthorType("cli")
+	ctx := change.New().SetSourceType("cli.init").SetChangeAuthorType(change.AuthorTypeController)
 	if err = self.Create(defaultAdmin, ctx); err != nil {
 		return err
 	}

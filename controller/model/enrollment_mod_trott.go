@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/apierror"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	"time"
 )
 
@@ -62,6 +63,11 @@ func (module *EnrollModuleRouterOtt) Process(context EnrollmentContext) (*Enroll
 	if txRouter == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
+
+	context.GetChangeContext().
+		SetChangeAuthorType(change.AuthorTypeRouter).
+		SetChangeAuthorId(txRouter.Id).
+		SetChangeAuthorName(txRouter.Name)
 
 	if time.Now().After(*enrollment.ExpiresAt) {
 		return nil, apierror.NewEnrollmentExpired()

@@ -33,7 +33,7 @@ func newPostureCheckMacAddresses() PostureCheckSubType {
 }
 
 type PostureCheckMacAddresses struct {
-	MacAddresses []string
+	MacAddresses []string `json:"macAddresses"`
 }
 
 func (entity *PostureCheckMacAddresses) LoadValues(bucket *boltz.TypedBucket) {

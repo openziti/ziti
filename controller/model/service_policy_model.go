@@ -78,16 +78,9 @@ func (entity *ServicePolicy) toBoltEntityForUpdate(_ *bbolt.Tx, _ Env, checker b
 }
 
 func (entity *ServicePolicy) fillFrom(_ Env, _ *bbolt.Tx, boltServicePolicy *persistence.ServicePolicy) error {
-	policyType := "Invalid"
-	if boltServicePolicy.PolicyType == persistence.PolicyTypeDial {
-		policyType = persistence.PolicyTypeDialName
-	} else if boltServicePolicy.PolicyType == persistence.PolicyTypeBind {
-		policyType = persistence.PolicyTypeBindName
-	}
-
 	entity.FillCommon(boltServicePolicy)
 	entity.Name = boltServicePolicy.Name
-	entity.PolicyType = policyType
+	entity.PolicyType = string(boltServicePolicy.PolicyType)
 	entity.Semantic = boltServicePolicy.Semantic
 	entity.ServiceRoles = boltServicePolicy.ServiceRoles
 	entity.IdentityRoles = boltServicePolicy.IdentityRoles

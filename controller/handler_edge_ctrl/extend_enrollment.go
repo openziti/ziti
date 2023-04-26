@@ -17,7 +17,6 @@
 package handler_edge_ctrl
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
@@ -33,11 +32,13 @@ func newRouterChangeContext(router interface {
 	models.Named
 	GetId() string
 }, ch channel.Channel) *change.Context {
-	return change.New().
+	return change.New().SetSourceType(change.SourceTypeControlChannel).
+		SetSourceMethod("extend.router.enrollment").
+		SetSourceLocal(ch.Underlay().GetLocalAddr().String()).
+		SetSourceRemote(ch.Underlay().GetRemoteAddr().String()).
+		SetChangeAuthorType(change.AuthorTypeRouter).
 		SetChangeAuthorId(router.GetId()).
-		SetChangeAuthorName(router.GetName()).
-		SetChangeAuthorType("router").
-		SetSource(fmt.Sprintf("ctrl[edge/%v]", ch.Underlay().GetRemoteAddr().String()))
+		SetChangeAuthorName(router.GetName())
 }
 
 type extendEnrollmentHandler struct {

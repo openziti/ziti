@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 )
 
@@ -63,6 +64,11 @@ func (module *EnrollModuleOtt) Process(ctx EnrollmentContext) (*EnrollmentResult
 	if identity == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
+
+	ctx.GetChangeContext().
+		SetChangeAuthorType(change.AuthorTypeIdentity).
+		SetChangeAuthorId(identity.Id).
+		SetChangeAuthorName(identity.Name)
 
 	csrPem := ctx.GetDataAsByteArray()
 

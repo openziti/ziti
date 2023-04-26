@@ -186,7 +186,7 @@ func (context *EnrollmentContextHttp) FillFromHttpRequest(request *http.Request,
 	context.Data = enrollData
 	context.Certs = request.TLS.PeerCertificates
 	context.Headers = headers
-	context.ChangeContext = changeCtx
+	context.ChangeContext = changeCtx.SetChangeAuthorType("enrollment")
 
 	return nil
 }

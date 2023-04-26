@@ -42,13 +42,13 @@ var validSessionTypes = []string{SessionTypeDial, SessionTypeBind}
 
 type Session struct {
 	boltz.BaseExtEntity
-	Token           string
-	IdentityId      string
-	ApiSessionId    string
-	ServiceId       string
-	Type            string
-	ApiSession      *ApiSession
-	ServicePolicies []string
+	Token           string      `json:"token"`
+	IdentityId      string      `json:"identityId"`
+	ApiSessionId    string      `json:"apiSessionId"`
+	ServiceId       string      `json:"serviceId"`
+	Type            string      `json:"type"`
+	ApiSession      *ApiSession `json:"-"`
+	ServicePolicies []string    `json:"servicePolicies"`
 }
 
 func (entity *Session) GetEntityType() string {

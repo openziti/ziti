@@ -1,5 +1,4 @@
 //go:build apitests
-// +build apitests
 
 /*
 	Copyright NetFoundry Inc.
@@ -502,6 +501,7 @@ func Test_RouterEnrollment(t *testing.T) {
 						_, _ = extensionBodyContainer.Set(extensionServerCsrPem, "serverCertCsr")
 						_, _ = extensionBodyContainer.Set(extensionClientCsrPem, "certCsr")
 
+						time.Sleep(time.Second) // make sure the new certs will have different times
 						resp, err := ctx.newRequestWithClientCert(cert, privateKey).SetBody(extensionBodyContainer.String()).Post("/enroll/extend/router")
 						ctx.Req.NoError(err)
 
@@ -524,22 +524,24 @@ func Test_RouterEnrollment(t *testing.T) {
 
 						t.Run("the new client cert has its NotAfter date increased", func(t *testing.T) {
 							ctx.testContextChanged(t)
-							extensionClientCerts[0].NotAfter.After(cert.NotAfter)
+							ctx.Req.NotEqual(extensionClientCerts[0].NotAfter, cert.NotAfter)
+							ctx.Req.True(extensionClientCerts[0].NotAfter.After(cert.NotAfter))
 						})
 
 						t.Run("the new client cert has its NotBefore date before now", func(t *testing.T) {
 							ctx.testContextChanged(t)
-							extensionClientCerts[0].NotBefore.Before(time.Now())
+							ctx.Req.True(extensionClientCerts[0].NotBefore.Before(time.Now()))
 						})
 
 						t.Run("the new server cert has its NotAfter date increased", func(t *testing.T) {
 							ctx.testContextChanged(t)
-							extensionServerCert[0].NotAfter.After(serverCerts[0].NotAfter)
+							ctx.Req.NotEqual(extensionServerCert[0].NotAfter, serverCerts[0].NotAfter)
+							ctx.Req.True(extensionServerCert[0].NotAfter.After(serverCerts[0].NotAfter))
 						})
 
 						t.Run("the new server cert has its NotBefore date before now", func(t *testing.T) {
 							ctx.testContextChanged(t)
-							extensionServerCert[0].NotBefore.Before(time.Now())
+							ctx.Req.True(extensionServerCert[0].NotBefore.Before(time.Now()))
 						})
 
 						t.Run("connecting to the control channel with the old client cert fails", func(t *testing.T) {

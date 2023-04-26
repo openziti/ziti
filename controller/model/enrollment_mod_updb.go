@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/edge/crypto"
 	"github.com/openziti/edge/eid"
 	"github.com/openziti/edge/internal/cert"
+	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
 )
@@ -65,6 +66,11 @@ func (module *EnrollModuleUpdb) Process(ctx EnrollmentContext) (*EnrollmentResul
 	if identity == nil {
 		return nil, apierror.NewInvalidEnrollmentToken()
 	}
+
+	ctx.GetChangeContext().
+		SetChangeAuthorType(change.AuthorTypeIdentity).
+		SetChangeAuthorId(identity.Id).
+		SetChangeAuthorName(identity.Name)
 
 	data := ctx.GetDataAsMap()
 

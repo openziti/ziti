@@ -350,7 +350,7 @@ func (self *EdgeServiceManager) GetPolicyPostureChecks(identityId, serviceId str
 			policyName := boltz.FieldToString(policyNameSymbol.Eval(tx, policyIdBytes))
 			policyType := persistence.PolicyTypeDial
 			if fieldType, policyTypeValue := policyTypeSymbol.Eval(tx, policyIdBytes); fieldType == boltz.TypeInt32 {
-				policyType = persistence.PolicyType(*boltz.BytesToInt32(policyTypeValue))
+				policyType = persistence.GetPolicyTypeForId(*boltz.BytesToInt32(policyTypeValue))
 			}
 
 			//required to provide an entry for policies w/ no checks

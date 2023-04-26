@@ -46,14 +46,14 @@ const (
 
 type ApiSession struct {
 	boltz.BaseExtEntity
-	IdentityId      string
-	Token           string
-	IPAddress       string
-	ConfigTypes     []string
-	MfaComplete     bool
-	MfaRequired     bool
-	LastActivityAt  time.Time
-	AuthenticatorId string
+	IdentityId      string    `json:"identityId"`
+	Token           string    `json:"token"`
+	IPAddress       string    `json:"ipAddress"`
+	ConfigTypes     []string  `json:"configTypes"`
+	MfaComplete     bool      `json:"mfaComplete"`
+	MfaRequired     bool      `json:"mfaRequired"`
+	LastActivityAt  time.Time `json:"lastActivityAt"`
+	AuthenticatorId string    `json:"authenticatorId"`
 }
 
 func NewApiSession(identityId string) *ApiSession {
@@ -151,7 +151,7 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 	}
 
 	for _, id := range idCollector.ids {
-		changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
+		changeContext := change.New().SetSourceType("events.emitter").SetChangeAuthorType(change.AuthorTypeController)
 		err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
 			if err := store.stores.session.DeleteById(ctx, id); err != nil {
 				if boltz.IsErrNotFoundErr(err) {
@@ -171,7 +171,7 @@ func (store *apiSessionStoreImpl) onEventualDelete(name string, apiSessionId []b
 		}
 	}
 
-	changeContext := change.New().SetSource("events.emitter").SetChangeAuthorType("controller")
+	changeContext := change.New().SetSourceType("events.emitter").SetChangeAuthorType(change.AuthorTypeController)
 	err = store.stores.DbProvider.GetDb().Update(changeContext.NewMutateContext(), func(ctx boltz.MutateContext) error {
 		if bucket := boltz.Path(ctx.Tx(), indexPath...); bucket != nil {
 			if err := bucket.DeleteBucket(apiSessionId); err != nil {

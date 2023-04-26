@@ -26,7 +26,7 @@ const (
 
 type IdentityType struct {
 	boltz.BaseExtEntity
-	Name string
+	Name string `json:"name"`
 }
 
 func (entity *IdentityType) GetName() string {

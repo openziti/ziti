@@ -49,41 +49,41 @@ const (
 
 type AuthPolicy struct {
 	boltz.BaseExtEntity
-	Name string
+	Name string `json:"name"`
 
-	Primary   AuthPolicyPrimary
-	Secondary AuthPolicySecondary
+	Primary   AuthPolicyPrimary   `json:"primary"`
+	Secondary AuthPolicySecondary `json:"secondary"`
 }
 
 type AuthPolicyPrimary struct {
-	Cert   AuthPolicyCert
-	Updb   AuthPolicyUpdb
-	ExtJwt AuthPolicyExtJwt
+	Cert   AuthPolicyCert   `json:"cert"`
+	Updb   AuthPolicyUpdb   `json:"updb"`
+	ExtJwt AuthPolicyExtJwt `json:"extJwt"`
 }
 
 type AuthPolicySecondary struct {
-	RequireTotp          bool
-	RequiredExtJwtSigner *string
+	RequireTotp          bool    `json:"requireTotp"`
+	RequiredExtJwtSigner *string `json:"requiredExtJwtSigner"`
 }
 
 type AuthPolicyCert struct {
-	Allowed           bool
-	AllowExpiredCerts bool
+	Allowed           bool `json:"allowed"`
+	AllowExpiredCerts bool `json:"allowExpiredCerts"`
 }
 
 type AuthPolicyExtJwt struct {
-	Allowed              bool
-	AllowedExtJwtSigners []string
+	Allowed              bool     `json:"allowed"`
+	AllowedExtJwtSigners []string `json:"allowedExtJwtSigners"`
 }
 
 type AuthPolicyUpdb struct {
-	Allowed                bool
-	MinPasswordLength      int64
-	RequireSpecialChar     bool
-	RequireNumberChar      bool
-	RequireMixedCase       bool
-	MaxAttempts            int64
-	LockoutDurationMinutes int64
+	Allowed                bool  `json:"allowed"`
+	MinPasswordLength      int64 `json:"minPasswordLength"`
+	RequireSpecialChar     bool  `json:"requireSpecialChar"`
+	RequireNumberChar      bool  `json:"requireNumberChar"`
+	RequireMixedCase       bool  `json:"requireMixedCase"`
+	MaxAttempts            int64 `json:"maxAttempts"`
+	LockoutDurationMinutes int64 `json:"lockoutDurationMinutes"`
 }
 
 func (entity *AuthPolicy) GetName() string {

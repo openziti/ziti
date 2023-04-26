@@ -29,10 +29,10 @@ const (
 )
 
 type PostureCheckProcess struct {
-	OperatingSystem string
-	Path            string
-	Hashes          []string
-	Fingerprint     string
+	OperatingSystem string   `json:"operatingSystem"`
+	Path            string   `json:"path"`
+	Hashes          []string `json:"hashes"`
+	Fingerprint     string   `json:"fingerprint"`
 }
 
 func newPostureCheckProcess() PostureCheckSubType {

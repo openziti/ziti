@@ -28,8 +28,8 @@ const (
 
 type EventualEvent struct {
 	boltz.BaseExtEntity
-	Type string
-	Data []byte
+	Type string `json:"type"`
+	Data []byte `json:"data"`
 }
 
 func (entity *EventualEvent) GetEntityType() string {
