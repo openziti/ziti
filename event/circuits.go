@@ -61,21 +61,22 @@ func (self *CircuitPath) String() string {
 }
 
 type CircuitEvent struct {
-	Namespace        string           `json:"namespace"`
-	Version          uint32           `json:"version"`
-	EventType        CircuitEventType `json:"event_type"`
-	CircuitId        string           `json:"circuit_id"`
-	Timestamp        time.Time        `json:"timestamp"`
-	ClientId         string           `json:"client_id"`
-	ServiceId        string           `json:"service_id"`
-	TerminatorId     string           `json:"terminator_id"`
-	InstanceId       string           `json:"instance_id"`
-	CreationTimespan *time.Duration   `json:"creation_timespan,omitempty"`
-	Path             CircuitPath      `json:"path"`
-	LinkCount        int              `json:"link_count"`
-	Cost             *uint32          `json:"path_cost,omitempty"`
-	FailureCause     *string          `json:"failure_cause,omitempty"`
-	Duration         *time.Duration   `json:"duration,omitempty"`
+	Namespace        string            `json:"namespace"`
+	Version          uint32            `json:"version"`
+	EventType        CircuitEventType  `json:"event_type"`
+	CircuitId        string            `json:"circuit_id"`
+	Timestamp        time.Time         `json:"timestamp"`
+	ClientId         string            `json:"client_id"`
+	ServiceId        string            `json:"service_id"`
+	TerminatorId     string            `json:"terminator_id"`
+	InstanceId       string            `json:"instance_id"`
+	CreationTimespan *time.Duration    `json:"creation_timespan,omitempty"`
+	Path             CircuitPath       `json:"path"`
+	LinkCount        int               `json:"link_count"`
+	Cost             *uint32           `json:"path_cost,omitempty"`
+	FailureCause     *string           `json:"failure_cause,omitempty"`
+	Duration         *time.Duration    `json:"duration,omitempty"`
+	Tags             map[string]string `json:"tags"`
 }
 
 func (event *CircuitEvent) String() string {

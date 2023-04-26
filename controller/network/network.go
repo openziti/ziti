@@ -437,7 +437,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.circuitController.nextCircuitId()
 	if err != nil {
-		network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, CircuitFailureInvalidService)
+		network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureInvalidService)
 		return nil, err
 	}
 	ctx.WithFields(map[string]interface{}{
@@ -455,7 +455,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		// 2: Find Service
 		svc, err := network.Services.Read(serviceId)
 		if err != nil {
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, CircuitFailureInvalidService)
+			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, CircuitFailureInvalidService)
 			network.ServiceDialOtherError(serviceId)
 			return nil, err
 		}
@@ -464,7 +464,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		// 3: select terminator
 		strategy, terminator, pathNodes, circuitErr := network.selectPath(srcR, svc, instanceId, ctx)
 		if circuitErr != nil {
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, nil, circuitErr.Cause())
+			network.CircuitFailedEvent(circuitId, params, startTime, nil, nil, circuitErr.Cause())
 			network.ServiceDialOtherError(serviceId)
 			return nil, circuitErr
 		}
@@ -472,7 +472,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		// 4: Create Path
 		path, pathErr := network.CreatePathWithNodes(pathNodes)
 		if pathErr != nil {
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, nil, terminator, pathErr.Cause())
+			network.CircuitFailedEvent(circuitId, params, startTime, nil, terminator, pathErr.Cause())
 			network.ServiceDialOtherError(serviceId)
 			return nil, pathErr
 		}
@@ -499,7 +499,7 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 		}
 		if circuitErr != nil {
 			logger.WithError(circuitErr).Warn("route attempt for circuit failed")
-			network.CircuitFailedEvent(circuitId, clientId.Token, serviceId, instanceId, startTime, path, terminator, circuitErr.Cause())
+			network.CircuitFailedEvent(circuitId, params, startTime, path, terminator, circuitErr.Cause())
 			attempt++
 			ctx.WithField("attemptNumber", attempt+1)
 			logger = logger.WithField("attemptNumber", attempt+1)
