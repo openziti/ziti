@@ -148,7 +148,7 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 		ServiceDetail:  *service,
 	}
 
-	log := logrus.WithField("service", service.Name)
+	log := logrus.WithField("service", *service.Name)
 
 	switch eventType {
 	case ziti.ServiceAdded:
@@ -169,7 +169,7 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 }
 
 func (self *ServiceListener) addService(svc *entities.Service) {
-	log := pfxlog.Logger().WithField("serviceId", *svc.ID).WithField("serviceName", svc.Name)
+	log := pfxlog.Logger().WithField("serviceId", *svc.ID).WithField("serviceName", *svc.Name)
 
 	svc.DialTimeout = 5 * time.Second
 
@@ -190,7 +190,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 
 		if err != nil {
-			logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.InterceptV1, svc.Name)
+			logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.InterceptV1, *svc.Name)
 		}
 
 		if !found {
@@ -202,7 +202,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 			}
 
 			if err != nil {
-				logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+				logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, *svc.Name)
 			}
 		}
 
@@ -214,7 +214,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 
 		// not all interceptors need a config, specifically proxy doesn't need one
-		log.Infof("starting tunnel for newly available service %s", svc.Name)
+		log.Infof("starting tunnel for newly available service %s", *svc.Name)
 		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
 			log.Errorf("failed to intercept service: %v", err)
 		}
@@ -266,10 +266,10 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 	previousService := self.services[*svc.ID]
 	if previousService != nil {
 		if previousService.InterceptV1Config != nil {
-			log.Infof("stopping tunnel for unavailable service: %s", previousService.Name)
+			log.Infof("stopping tunnel for unavailable service: %s", *previousService.Name)
 			err := self.interceptor.StopIntercepting(*previousService.Name, self.addrTracker)
 			if err != nil {
-				log.WithError(err).Errorf("failed to stop intercepting service: %v", previousService.Name)
+				log.WithError(err).Errorf("failed to stop intercepting service: %v", *previousService.Name)
 			}
 		}
 
@@ -280,7 +280,7 @@ func (self *ServiceListener) removeService(svc *entities.Service) {
 }
 
 func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker) {
-	logger := pfxlog.Logger().WithField("service", svc.Name)
+	logger := pfxlog.Logger().WithField("service", *svc.Name)
 
 	currentIdentity, err := self.provider.GetCurrentIdentity()
 	if err != nil {
@@ -303,7 +303,7 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 	for idx, hostContext := range hostContexts {
 		hostControl, err := self.provider.HostService(hostContext)
 		if err != nil {
-			logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
+			logger.WithError(err).WithField("service", *svc.Name).Errorf("error listening for service")
 			return
 		}
 

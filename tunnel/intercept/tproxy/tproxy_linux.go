@@ -182,13 +182,13 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	config := service.InterceptV1Config
 
 	if config == nil {
-		return nil, errors.Errorf("service %v has no intercept information", service.Name)
+		return nil, errors.Errorf("service %v has no intercept information", *service.Name)
 	}
 
 	if stringz.Contains(config.Protocols, "tcp") {
 		tcpLn, err := listenConfig.Listen(context.Background(), "tcp", "127.0.0.1:")
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create TCP listener for service: %v", service.Name)
+			return nil, errors.Wrapf(err, "failed to create TCP listener for service: %v", *service.Name)
 		}
 		logrus.Infof("tproxy listening on tcp:%s", tcpLn.Addr().String())
 		t.tcpLn = tcpLn
@@ -197,7 +197,7 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	if stringz.Contains(config.Protocols, "udp") {
 		packetLn, err := listenConfig.ListenPacket(context.Background(), "udp", "127.0.0.1:")
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to create UDP listener for service: %v", service.Name)
+			return nil, errors.Wrapf(err, "failed to create UDP listener for service: %v", *service.Name)
 		}
 		udpLn, ok := packetLn.(*net.UDPConn)
 		if !ok {
@@ -208,7 +208,7 @@ func (self *interceptor) newTproxy(service *entities.Service, resolver dns.Resol
 	}
 
 	if t.tcpLn == nil && t.udpLn == nil {
-		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", service.Name, config.Protocols)
+		return nil, errors.Errorf("service %v has no supported protocols (tcp, udp). Serivce protocols: %+v", *service.Name, config.Protocols)
 	}
 
 	if t.tcpLn != nil {
@@ -385,7 +385,7 @@ func deleteIptablesChain(ipt *iptables.IPTables, table, srcChain, dstChain strin
 }
 
 func (self *tProxy) Stop(tracker intercept.AddressTracker) {
-	log := pfxlog.Logger().WithField("service", self.service.Name)
+	log := pfxlog.Logger().WithField("service", *self.service.Name)
 	if self.tcpLn != nil {
 		if err := self.tcpLn.Close(); err != nil {
 			log.WithError(err).Error("failed to close TCP listener")
@@ -424,18 +424,18 @@ func (self *tProxy) udpPort() IPPortAddr {
 func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTracker) error {
 	service := self.service
 	if service.InterceptV1Config == nil {
-		return errors.Errorf("no client configuration for service %v", service.Name)
+		return errors.Errorf("no client configuration for service %v", *service.Name)
 	}
 
 	config := service.InterceptV1Config
-	logrus.Debugf("service %v using intercept.v1", service.Name)
+	logrus.Debugf("service %v using intercept.v1", *service.Name)
 	var ports []IPPortAddr
 	for _, p := range config.Protocols {
 		if p == "tcp" {
-			logrus.Debugf("service %v intercepting tcp", service.Name)
+			logrus.Debugf("service %v intercepting tcp", *service.Name)
 			ports = append(ports, self.tcpPort())
 		} else if p == "udp" {
-			logrus.Debugf("service %v intercepting udp", service.Name)
+			logrus.Debugf("service %v intercepting udp", *service.Name)
 			ports = append(ports, self.udpPort())
 		}
 	}
@@ -444,7 +444,7 @@ func (self *tProxy) Intercept(resolver dns.Resolver, tracker intercept.AddressTr
 }
 
 func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
-	logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
+	logrus.Debugf("for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", *self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
 
 	var port IPPortAddr
 	switch addr.Proto() {
@@ -457,7 +457,7 @@ func (self *tProxy) Apply(addr *intercept.InterceptAddress) {
 		return
 	}
 	if err := self.addInterceptAddr(addr, self.service, port, self.tracker); err != nil {
-		logrus.Debugf("failed for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
+		logrus.Debugf("failed for service %v, intercepting proto: %v, cidr: %v, ports: %v:%v", *self.service.Name, addr.Proto(), addr.IpNet(), addr.LowPort(), addr.HighPort())
 
 		// do we undo the previous succesful ones?
 		// only fail at end and return all that failed?
@@ -542,7 +542,7 @@ func (self *tProxy) addInterceptAddr(interceptAddr *intercept.InterceptAddress, 
 func (self *tProxy) StopIntercepting(tracker intercept.AddressTracker) error {
 	var errorList []error
 
-	log := pfxlog.Logger().WithField("service", self.service.Name)
+	log := pfxlog.Logger().WithField("service", *self.service.Name)
 
 	for _, addr := range self.addresses {
 		log := log.WithField("route", addr.IpNet())
