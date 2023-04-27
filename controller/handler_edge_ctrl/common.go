@@ -478,6 +478,13 @@ func (self *circuitParams) GetClientId() *identity.TokenId {
 }
 
 func (self *circuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
+	if t == nil {
+		return map[string]string{
+			"serviceId": self.reqCtx.session.ServiceId,
+			"clientId":  self.reqCtx.session.IdentityId,
+		}
+	}
+
 	hostId := t.GetHostId()
 	return map[string]string{
 		"serviceId": self.reqCtx.session.ServiceId,
