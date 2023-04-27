@@ -11,7 +11,7 @@ require (
 	github.com/fatih/color v1.15.0
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-acme/lego/v4 v4.2.0
-	github.com/go-openapi/runtime v0.25.0
+	github.com/go-openapi/runtime v0.26.0
 	github.com/go-openapi/strfmt v0.21.7
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/protobuf v1.5.2
@@ -21,16 +21,16 @@ require (
 	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.10
-	github.com/openziti/channel/v2 v2.0.58
-	github.com/openziti/edge v0.24.239
-	github.com/openziti/edge-api v0.25.11
-	github.com/openziti/fabric v0.22.89
+	github.com/openziti/channel/v2 v2.0.62
+	github.com/openziti/edge v0.24.251
+	github.com/openziti/edge-api v0.25.17
+	github.com/openziti/fabric v0.23.1
 	github.com/openziti/foundation/v2 v2.0.21
-	github.com/openziti/identity v1.0.45
+	github.com/openziti/identity v1.0.47
 	github.com/openziti/runzmd v1.0.20
-	github.com/openziti/sdk-golang v0.18.76
-	github.com/openziti/storage v0.1.49
-	github.com/openziti/transport/v2 v2.0.72
+	github.com/openziti/sdk-golang v0.20.0
+	github.com/openziti/storage v0.2.0
+	github.com/openziti/transport/v2 v2.0.75
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -66,7 +66,7 @@ require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/c-bata/go-prompt v0.2.6 // indirect
-	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
+	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/coreos/go-iptables v0.6.0 // indirect
 	github.com/creack/pty v1.1.11 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -90,7 +90,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/loads v0.21.2 // indirect
-	github.com/go-openapi/spec v0.20.8 // indirect
+	github.com/go-openapi/spec v0.20.9 // indirect
 	github.com/go-openapi/swag v0.22.3 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
@@ -106,9 +106,10 @@ require (
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hashicorp/raft v1.4.0 // indirect
+	github.com/hashicorp/raft v1.5.0 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -142,6 +143,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
+	github.com/openziti/foundation v0.17.31 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.19 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
@@ -175,7 +177,7 @@ require (
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
-	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
+	golang.org/x/exp v0.0.0-20230425010034-47ecfdc1ba53 // indirect
 	golang.org/x/image v0.7.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
