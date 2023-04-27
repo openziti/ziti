@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/spf13/cobra"
 )
 
@@ -27,16 +28,12 @@ func init() {
 }
 
 func echoClient(cmd *cobra.Command, args []string) {
-	cfg, err := ziti.NewConfigFromFile(identityFile)
+	cfg, err := config.NewFromFile(identityFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	zitiContext, err := ziti.NewContext(cfg)
-
-	if err != nil {
-		log.Fatal(err)
-	}
+	zitiContext := ziti.NewContextWithConfig(cfg)
 
 	dial := func(_ context.Context, _, addr string) (net.Conn, error) {
 		service := strings.Split(addr, ":")[0]
