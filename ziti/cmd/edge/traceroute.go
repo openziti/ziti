@@ -3,10 +3,10 @@ package edge
 import (
 	"fmt"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -60,13 +60,16 @@ func newTraceRouteCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 func (o *traceRouteOptions) Run() error {
 	var ctx ziti.Context
 	if o.configFile != "" {
-		cfg, err := config.NewFromFile(o.configFile)
+		cfg, err := ziti.NewConfigFromFile(o.configFile)
 		if err != nil {
 			return err
 		}
-		ctx = ziti.NewContextWithConfig(cfg)
+		ctx, err = ziti.NewContext(cfg)
+		if err != nil {
+			return err
+		}
 	} else {
-		ctx = ziti.NewContext()
+		return errors.New("invalid configuration file")
 	}
 
 	conn, err := ctx.Dial(o.Args[0])

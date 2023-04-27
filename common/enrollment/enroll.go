@@ -19,6 +19,7 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"io/ioutil"
 	"os"
@@ -27,7 +28,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/term"
 	"github.com/openziti/identity/certtools"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -48,7 +48,7 @@ const outFlag = "out"
 type EnrollOptions struct {
 	common.CommonOptions
 	RemoveJwt  bool
-	KeyAlg     config.KeyAlgVar
+	KeyAlg     ziti.KeyAlgVar
 	JwtPath    string
 	OutputPath string
 	KeyPath    string
