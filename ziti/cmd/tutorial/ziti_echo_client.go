@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"github.com/fatih/color"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"io"
 	"net"
 	"net/http"
@@ -31,12 +30,16 @@ import (
 )
 
 func NewZitiEchoClient(identityJson string) (*zitiEchoClient, error) {
-	config, err := config.NewFromFile(identityJson)
+	config, err := ziti.NewConfigFromFile(identityJson)
 	if err != nil {
 		return nil, err
 	}
 
-	zitiContext := ziti.NewContextWithConfig(config)
+	zitiContext, err := ziti.NewContext(config)
+
+	if err != nil {
+		return nil, err
+	}
 
 	dial := func(_ context.Context, _ string, addr string) (net.Conn, error) {
 		service := strings.Split(addr, ":")[0] // assume host is service

@@ -17,6 +17,7 @@
 package tunnel
 
 import (
+	"github.com/openziti/sdk-golang/ziti/sdkinfo"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/util"
@@ -31,7 +32,6 @@ import (
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/ziti/common/enrollment"
 	"github.com/openziti/ziti/common/version"
 	"github.com/sirupsen/logrus"
@@ -124,7 +124,7 @@ func rootPostRun(cmd *cobra.Command, _ []string) {
 		}
 	}
 
-	ziti.SetApplication("ziti-tunnel", version.GetVersion())
+	sdkinfo.SetApplication("ziti-tunnel", version.GetVersion())
 
 	resolverConfig := cmd.Flag(resolverCfgFlag).Value.String()
 	resolver := dns.NewResolver(resolverConfig)
@@ -167,7 +167,7 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 	log := pfxlog.Logger()
 
 	log.Infof("loading identity: %v", identityJson)
-	zitiCfg, err := config.NewFromFile(identityJson)
+	zitiCfg, err := ziti.NewConfigFromFile(identityJson)
 	if err != nil {
 		log.Fatalf("failed to load ziti configuration from %s: %v", identityJson, err)
 	}
@@ -190,7 +190,11 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 		OnServiceUpdate: serviceListener.HandleServicesChange,
 	}
 
-	rootPrivateContext := ziti.NewContextWithOpts(zitiCfg, options)
+	rootPrivateContext, err := ziti.NewContextWithOpts(zitiCfg, options)
+
+	if err != nil {
+		pfxlog.Logger().WithError(err).Fatal("could not create ziti sdk context")
+	}
 
 	for {
 		if err = rootPrivateContext.Authenticate(); err != nil {
