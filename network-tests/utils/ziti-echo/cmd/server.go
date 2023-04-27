@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"github.com/openziti/sdk-golang/ziti"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"log"
 	"net"
 	"net/http"
@@ -8,11 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 )
 
 var serverCmd = &cobra.Command{
@@ -64,12 +62,16 @@ func (s *zitiEchoServer) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 }
 
 func (s *zitiEchoServer) run() (err error) {
-	config, err := config.NewFromFile(s.identityJson)
+	config, err := ziti.NewConfigFromFile(s.identityJson)
 	if err != nil {
 		return err
 	}
 
-	zitiContext := ziti.NewContextWithConfig(config)
+	zitiContext, err := ziti.NewContext(config)
+	if err != nil {
+		return err
+	}
+
 	if s.listener, err = zitiContext.Listen("echo"); err != nil {
 		return err
 	}
