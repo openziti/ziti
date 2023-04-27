@@ -461,7 +461,7 @@ func Test_MFA(t *testing.T) {
 			t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 				ctx.testContextChanged(t)
 				postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", mfaValidatedIdentityId))
-				mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", mfaValidatedSession.id)
+				mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", *mfaValidatedSession.AuthResponse.ID)
 				postureDataContainer.ExistsP(mfaPath)
 				isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
 				ctx.Req.True(ok, "should be a bool")
@@ -687,8 +687,8 @@ func Test_MFA(t *testing.T) {
 
 					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 						ctx.testContextChanged(t)
-						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", newValidatedSession.identityId))
-						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
+						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", *newValidatedSession.AuthResponse.IdentityID))
+						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", *newValidatedSession.AuthResponse.ID)
 						postureDataContainer.ExistsP(mfaPath)
 						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
 						ctx.Req.True(ok, "should be a bool")
@@ -800,8 +800,8 @@ func Test_MFA(t *testing.T) {
 
 					t.Run("api session should have posture data with MFA passed", func(t *testing.T) {
 						ctx.testContextChanged(t)
-						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", newValidatedSession.identityId))
-						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", newValidatedSession.id)
+						postureDataContainer := ctx.AdminManagementSession.requireQuery(fmt.Sprintf("/identities/%s/posture-data", *newValidatedSession.AuthResponse.IdentityID))
+						mfaPath := fmt.Sprintf("data.apiSessionPostureData.%s.mfa.passedMfa", *newValidatedSession.AuthResponse.ID)
 						postureDataContainer.ExistsP(mfaPath)
 						isMfaPassed, ok := postureDataContainer.Path(mfaPath).Data().(bool)
 						ctx.Req.True(ok, "should be a bool")
@@ -1048,7 +1048,7 @@ func Test_MFA(t *testing.T) {
 
 		t.Run("with an empty code it should fail", func(s *testing.T) {
 			ctx.testContextChanged(t)
-			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("")).Delete("/current-identity/mfa")
+			resp, err := mfa02DeleteSession.newAuthenticatedRequest().Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
 			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
@@ -1056,7 +1056,7 @@ func Test_MFA(t *testing.T) {
 
 		t.Run("with an invalid code it should fail", func(s *testing.T) {
 			ctx.testContextChanged(t)
-			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody("456456465")).Delete("/current-identity/mfa")
+			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetHeader("mfa-validation-code", "44444").Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
 			standardErrorJsonResponseTests(resp, apierror.MfaInvalidTokenCode, http.StatusBadRequest, t)
@@ -1067,7 +1067,7 @@ func Test_MFA(t *testing.T) {
 
 			code := computeMFACode(mfa02DeleteSecret)
 
-			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(code)).Delete("/current-identity/mfa")
+			resp, err := mfa02DeleteSession.newAuthenticatedRequest().SetHeader("mfa-validation-code", code).Delete("/current-identity/mfa")
 
 			ctx.Req.NoError(err)
 			standardJsonResponseTests(resp, http.StatusOK, t)

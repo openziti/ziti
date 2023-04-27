@@ -24,6 +24,7 @@ import (
 	"github.com/netfoundry/secretstream/kx"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/router/xgress_common"
 	"github.com/openziti/edge/tunnel"
@@ -48,6 +49,10 @@ import (
 	"time"
 )
 
+func ToPtr[T any](in T) *T {
+	return &in
+}
+
 func newProvider(factory *Factory, tunneler *tunneler) *fabricProvider {
 	return &fabricProvider{
 		factory:          factory,
@@ -64,7 +69,7 @@ type fabricProvider struct {
 
 	apiSessionLock   sync.Mutex
 	apiSessionTokens map[string]string
-	currentIdentity  *edge.CurrentIdentity
+	currentIdentity  *rest_model.IdentityDetail
 
 	dialSessions cmap.ConcurrentMap[string, string]
 	bindSessions cmap.ConcurrentMap[string, string]
@@ -92,14 +97,16 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 	self.tunneler.stateManager.RemoveConnectedApiSession(currentToken)
 
 	self.apiSessionTokens[ctrlId] = resp.Token
-	self.currentIdentity = &edge.CurrentIdentity{
-		Id:                        resp.IdentityId,
-		Name:                      resp.IdentityName,
-		DefaultHostingPrecedence:  strings.ToLower(resp.DefaultHostingPrecedence.String()),
-		DefaultHostingCost:        uint16(resp.DefaultHostingCost),
-		AppData:                   map[string]interface{}{},
-		ServiceHostingPrecedences: map[string]interface{}{},
-		ServiceHostingCosts:       map[string]interface{}{},
+	self.currentIdentity = &rest_model.IdentityDetail{
+		BaseEntity: rest_model.BaseEntity{
+			ID: &resp.IdentityId,
+		},
+		Name:                      &resp.IdentityName,
+		DefaultHostingPrecedence:  rest_model.TerminatorPrecedence(strings.ToLower(resp.DefaultHostingPrecedence.String())),
+		DefaultHostingCost:        ToPtr(rest_model.TerminatorCost(int64(resp.DefaultHostingCost))),
+		AppData:                   &rest_model.Tags{},
+		ServiceHostingPrecedences: rest_model.TerminatorPrecedenceMap{},
+		ServiceHostingCosts:       rest_model.TerminatorCostMap{},
 	}
 
 	for k, v := range resp.ServicePrecedences {
@@ -107,7 +114,7 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 	}
 
 	for k, v := range resp.ServiceCosts {
-		self.currentIdentity.ServiceHostingCosts[k] = float64(v)
+		self.currentIdentity.ServiceHostingCosts[k] = ToPtr(rest_model.TerminatorCost(v))
 	}
 
 	if resp.AppDataJson != "" {
@@ -123,21 +130,17 @@ func (self *fabricProvider) updateApiSession(ctrlId string, resp *edge_ctrl_pb.C
 }
 
 func (self *fabricProvider) authenticate() error {
-	info := sdkinfo.GetSdkInfo()
+	envInfo, _ := sdkinfo.GetSdkInfo()
 	buildInfo := build.GetBuildInfo()
 	osVersion := "unknown"
 	osRelease := "unknown"
 
-	if val, ok := info["osVersion"]; ok {
-		if valStr, ok := val.(string); ok {
-			osVersion = valStr
-		}
+	if envInfo.OsVersion != "" {
+		osVersion = envInfo.OsVersion
 	}
 
-	if val, ok := info["osRelease"]; ok {
-		if valStr, ok := val.(string); ok {
-			osRelease = valStr
-		}
+	if envInfo.OsRelease != "" {
+		osRelease = envInfo.OsRelease
 	}
 
 	request := &edge_ctrl_pb.CreateApiSessionRequest{
@@ -189,7 +192,7 @@ func (self *fabricProvider) authenticate() error {
 
 func (self *fabricProvider) PrepForUse(string) {}
 
-func (self *fabricProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) {
+func (self *fabricProvider) GetCurrentIdentity() (*rest_model.IdentityDetail, error) {
 	return self.currentIdentity, nil
 }
 

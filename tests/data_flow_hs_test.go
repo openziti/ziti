@@ -1,3 +1,4 @@
+//go:build dataflow
 // +build dataflow
 
 /*
@@ -75,7 +76,7 @@ func Test_HSDataflow(t *testing.T) {
 
 	clientIdentity := ctx.AdminManagementSession.RequireNewIdentityWithOtt(false)
 	clientConfig := ctx.EnrollIdentity(clientIdentity.Id)
-	clientContext := ziti.NewContextWithConfig(clientConfig)
+	clientContext := ziti.NewContext(clientConfig)
 
 	for i := 0; i < 100; i++ {
 		conn := ctx.WrapConn(clientContext.Dial(service.Name))

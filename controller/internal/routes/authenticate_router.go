@@ -31,7 +31,6 @@ import (
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/foundation/v2/errorz"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti/constants"
 	"net"
 	"net/http"
 	"time"
@@ -91,6 +90,8 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 		rc.RespondWithApiError(errorz.NewUnauthorized())
 		return
 	}
+
+	rc.AuthPolicy = authResult.AuthPolicy()
 
 	identity := authResult.Identity()
 	if identity.EnvInfo == nil {
@@ -189,15 +190,18 @@ func (ro *AuthRouter) authHandler(ae *env.AppEnv, rc *response.RequestContext, h
 
 	ae.GetManagers().PostureResponse.SetSdkInfo(identity.Id, sessionId, identity.SdkInfo)
 
-	apiSession := MapToCurrentApiSessionRestModel(ae, filledApiSession, ae.Config.SessionTimeoutDuration())
 	rc.ApiSession = filledApiSession
+
+	env.ProcessAuthQueries(ae, rc)
+
+	apiSession := MapToCurrentApiSessionRestModel(ae, rc, ae.Config.SessionTimeoutDuration())
 
 	//re-calc session headers as they were not set when ApiSession == NIL
 	response.AddSessionHeaders(rc)
 
 	envelope := &rest_model.CurrentAPISessionDetailEnvelope{Data: apiSession, Meta: &rest_model.Meta{}}
 
-	rc.ResponseWriter.Header().Set(constants.ZitiSession, filledApiSession.Token)
+	rc.ResponseWriter.Header().Set(env.ZitiSession, filledApiSession.Token)
 
 	ro.createTimer.UpdateSince(start)
 

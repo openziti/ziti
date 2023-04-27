@@ -144,7 +144,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			t.Run("failed service request exist", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentitySession.identityId + "/failed-service-requests")
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + *enrolledIdentitySession.AuthResponse.IdentityID + "/failed-service-requests")
 				ctx.Req.NoError(err)
 
 				listEnvelop := rest_model.FailedServiceRequestEnvelope{}
@@ -284,7 +284,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 
 				t.Run("removing MFA while the service requires MFA", func(t *testing.T) {
 					ctx.testContextChanged(t)
-					resp, err := newSession.newAuthenticatedRequest().SetBody(newMfaCodeBody(computeMFACode(mfaSecret))).Delete("/current-identity/mfa")
+					resp, err := newSession.newAuthenticatedRequest().SetHeader("mfa-validation-code", computeMFACode(mfaSecret)).Delete("/current-identity/mfa")
 					ctx.Req.NoError(err)
 
 					ctx.Req.Equal(http.StatusOK, resp.StatusCode())
@@ -416,7 +416,7 @@ func Test_PostureChecks_MFA(t *testing.T) {
 			t.Run("failed service request exist", func(t *testing.T) {
 				ctx.testContextChanged(t)
 
-				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + enrolledIdentitySession.identityId + "/failed-service-requests")
+				resp, err := ctx.AdminManagementSession.newAuthenticatedRequest().Get("/identities/" + *enrolledIdentitySession.AuthResponse.IdentityID + "/failed-service-requests")
 				ctx.Req.NoError(err)
 
 				listEnvelop := &rest_model.FailedServiceRequestEnvelope{}

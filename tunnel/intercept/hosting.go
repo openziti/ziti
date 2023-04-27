@@ -18,13 +18,13 @@ package intercept
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/edge/tunnel/router"
 	"github.com/openziti/edge/tunnel/utils"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"net"
 	"strconv"
@@ -37,7 +37,7 @@ type healthChecksProvider interface {
 	GetHttpChecks() []*health.HttpCheckDefinition
 }
 
-func createHostingContexts(service *entities.Service, identity *edge.CurrentIdentity, tracker AddressTracker) []tunnel.HostingContext {
+func createHostingContexts(service *entities.Service, identity *rest_model.IdentityDetail, tracker AddressTracker) []tunnel.HostingContext {
 	var result []tunnel.HostingContext
 	for _, t := range service.HostV2Config.Terminators {
 		context := newDefaultHostingContext(identity, service, t, tracker)
@@ -52,7 +52,7 @@ func createHostingContexts(service *entities.Service, identity *edge.CurrentIden
 	return result
 }
 
-func newDefaultHostingContext(identity *edge.CurrentIdentity, service *entities.Service, config *entities.HostV2Terminator, tracker AddressTracker) *hostingContext {
+func newDefaultHostingContext(identity *rest_model.IdentityDetail, service *entities.Service, config *entities.HostV2Terminator, tracker AddressTracker) *hostingContext {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
 	if config.ForwardProtocol && len(config.AllowedProtocols) < 1 {
@@ -111,7 +111,7 @@ type hostingContext struct {
 }
 
 func (self *hostingContext) ServiceName() string {
-	return self.service.Name
+	return *self.service.Name
 }
 
 func (self *hostingContext) ListenOptions() *ziti.ListenOptions {
@@ -229,11 +229,11 @@ func (self *hostingContext) Dial(options map[string]interface{}) (net.Conn, bool
 	return self.dialAddress(options, protocol, address+":"+port)
 }
 
-func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity, config *entities.HostV2Terminator) (*ziti.ListenOptions, error) {
+func getDefaultOptions(service *entities.Service, identity *rest_model.IdentityDetail, config *entities.HostV2Terminator) (*ziti.ListenOptions, error) {
 	options := ziti.DefaultListenOptions()
 	options.ManualStart = true
-	options.Precedence = ziti.GetPrecedenceForLabel(identity.DefaultHostingPrecedence)
-	options.Cost = identity.DefaultHostingCost
+	options.Precedence = ziti.GetPrecedenceForLabel(string(identity.DefaultHostingPrecedence))
+	options.Cost = uint16(*identity.DefaultHostingCost)
 
 	if config.ListenOptions != nil {
 		if config.ListenOptions.Cost != nil {
@@ -244,21 +244,17 @@ func getDefaultOptions(service *entities.Service, identity *edge.CurrentIdentity
 		}
 	}
 
-	if val, ok := identity.ServiceHostingPrecedences[service.Id]; ok {
-		if strVal, ok := val.(string); ok {
-			options.Precedence = ziti.GetPrecedenceForLabel(strVal)
-		}
+	if val, ok := identity.ServiceHostingPrecedences[*service.ID]; ok {
+		options.Precedence = ziti.GetPrecedenceForLabel(string(val))
 	}
 
-	if val, ok := identity.ServiceHostingCosts[service.Id]; ok {
-		if floatVal, ok := val.(float64); ok {
-			options.Cost = uint16(floatVal)
-		}
+	if val, ok := identity.ServiceHostingCosts[*service.ID]; ok {
+		options.Cost = uint16(*val)
 	}
 
 	if config.ListenOptions != nil {
 		if config.ListenOptions.BindUsingEdgeIdentity {
-			options.Identity = identity.Name
+			options.Identity = *identity.Name
 		} else if config.ListenOptions.Identity != "" {
 			result, err := replaceTemplatized(config.ListenOptions.Identity, identity)
 			if err != nil {

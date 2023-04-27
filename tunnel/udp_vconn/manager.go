@@ -91,7 +91,7 @@ func (manager *manager) CreateWriteQueue(targetAddr *net.UDPAddr, srcAddr net.Ad
 	conn := &udpConn{
 		readC:       make(chan mempool.PooledBuffer, 4),
 		closeNotify: make(chan struct{}),
-		service:     service.Name,
+		service:     *service.Name,
 		srcAddr:     srcAddr,
 		manager:     manager,
 		writeConn:   writeConn,

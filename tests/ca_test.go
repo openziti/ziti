@@ -102,7 +102,7 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
 		sort.Strings(ca.identityRoles)
 		ctx.pathEqualsStringSlice(identity, ca.identityRoles, path("data", "roleAttributes"))
 	})
@@ -139,7 +139,7 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})
 
@@ -178,7 +178,7 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		firstIdentity := ctx.AdminManagementSession.requireQuery("identities/" + firstEnrolledSession.identityId)
+		firstIdentity := ctx.AdminManagementSession.requireQuery("identities/" + *firstEnrolledSession.AuthResponse.IdentityID)
 		ctx.Req.Equal(firstExpectedName, firstIdentity.Path("data.name").Data().(string))
 
 		//second firstIdentity that collides, becomes
@@ -189,7 +189,7 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		secondIdentity := ctx.AdminManagementSession.requireQuery("identities/" + secondEnrolledSession.identityId)
+		secondIdentity := ctx.AdminManagementSession.requireQuery("identities/" + *secondEnrolledSession.AuthResponse.IdentityID)
 		ctx.Req.Equal(secondExpectedName, secondIdentity.Path("data.name").Data().(string))
 	})
 
@@ -225,8 +225,8 @@ func Test_CA(t *testing.T) {
 
 		ctx.Req.NoError(err)
 
-		identity := ctx.AdminManagementSession.requireQuery("identities/" + enrolledSession.identityId)
-		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.cert.Subject.CommonName, requestedName, enrolledSession.identityId)
+		identity := ctx.AdminManagementSession.requireQuery("identities/" + *enrolledSession.AuthResponse.IdentityID)
+		expectedName := fmt.Sprintf("%s - %s - %s - %s - %s", ca.name, ca.id, clientAuthenticator.cert.Subject.CommonName, requestedName, *enrolledSession.AuthResponse.IdentityID)
 
 		ctx.Req.Equal(expectedName, identity.Path("data.name").Data().(string))
 	})

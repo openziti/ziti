@@ -18,6 +18,7 @@ package response
 
 import (
 	"errors"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/fabric/controller/change"
 	"net/http"
@@ -35,7 +36,7 @@ type RequestContext struct {
 	ApiSession        *model.ApiSession
 	Identity          *model.Identity
 	AuthPolicy        *model.AuthPolicy
-	AuthStatus        AuthStatus
+	AuthQueries       rest_model.AuthQueryList
 	ActivePermissions []string
 	ResponseWriter    http.ResponseWriter
 	Request           *http.Request
@@ -44,11 +45,6 @@ type RequestContext struct {
 	entitySubId       string
 	Body              []byte
 	StartTime         time.Time
-}
-
-type AuthStatus struct {
-	SecondaryExtJwtSignerId       string
-	PassedSecondaryExtJwtSignerId bool
 }
 
 func (rc *RequestContext) GetId() string {

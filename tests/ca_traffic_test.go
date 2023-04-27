@@ -15,7 +15,6 @@ import (
 	nfpem "github.com/openziti/foundation/v2/pem"
 	id "github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
-	sdkconfig "github.com/openziti/sdk-golang/ziti/config"
 	"io"
 	"math/big"
 	"net/http"
@@ -29,6 +28,8 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 	ctx.StartServer()
 	ctx.RequireAdminManagementApiLogin()
 	ctx.CreateEnrollAndStartEdgeRouter()
+
+	time.Sleep(2 * time.Second)
 
 	t.Run("setup", func(t *testing.T) {
 		ctx.testContextChanged(t)
@@ -261,7 +262,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 
 			go func() {
 				//connect client 1
-				client1Config := &sdkconfig.Config{
+				client1Config := &ziti.Config{
 					ZtAPI: "https://" + ctx.ApiHost + EdgeClientApiPath,
 					ID: id.Config{
 						Key:            id.StoragePem + ":" + string(clientKeyPem1),
@@ -273,7 +274,9 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					},
 					ConfigTypes: nil,
 				}
-				client1Context := ziti.NewContextWithConfig(client1Config)
+				client1Context, err := ziti.NewContext(client1Config)
+				ctx.Req.NoError(err)
+
 				err = client1Context.Authenticate()
 				ctx.Req.NoError(err)
 
@@ -281,8 +284,6 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					client1Context.Close()
 					close(doneClient1)
 				}()
-
-				time.Sleep(1 * time.Second)
 
 				conn, err := client1Context.Dial(service.Name)
 				ctx.Req.NoError(err)
@@ -297,7 +298,7 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 
 			go func() {
 				//connect client 2
-				client2Config := &sdkconfig.Config{
+				client2Config := &ziti.Config{
 					ZtAPI: "https://" + ctx.ApiHost + EdgeClientApiPath,
 					ID: id.Config{
 						Key:            id.StoragePem + ":" + string(clientKeyPem2),
@@ -310,7 +311,9 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					ConfigTypes: nil,
 				}
 
-				client2Context := ziti.NewContextWithConfig(client2Config)
+				client2Context, err := ziti.NewContext(client2Config)
+				ctx.Req.NoError(err)
+
 				err = client2Context.Authenticate()
 				ctx.Req.NoError(err)
 
@@ -318,8 +321,6 @@ func Test_CA_Auth_Two_Identities_Diff_Certs(t *testing.T) {
 					client2Context.Close()
 					close(doneClient2)
 				}()
-
-				time.Sleep(1 * time.Second)
 
 				conn, err := client2Context.Dial(service.Name)
 				ctx.Req.NoError(err)

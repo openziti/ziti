@@ -19,13 +19,13 @@ package intercept
 import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/dns"
 	"github.com/openziti/edge/tunnel/entities"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	logrus "github.com/sirupsen/logrus"
 	"net"
@@ -139,16 +139,16 @@ func (self *ServiceListener) HandleProviderReady(provider tunnel.FabricProvider)
 	self.provider = provider
 }
 
-func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventType, service *edge.Service) {
+func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventType, service *rest_model.ServiceDetail) {
 	self.Lock()
 	defer self.Unlock()
 
 	tunnelerService := &entities.Service{
 		FabricProvider: self.provider,
-		Service:        *service,
+		ServiceDetail:  *service,
 	}
 
-	log := logrus.WithField("service", service.Name)
+	log := logrus.WithField("service", *service.Name)
 
 	switch eventType {
 	case ziti.ServiceAdded:
@@ -169,11 +169,17 @@ func (self *ServiceListener) HandleServicesChange(eventType ziti.ServiceEventTyp
 }
 
 func (self *ServiceListener) addService(svc *entities.Service) {
-	log := pfxlog.Logger().WithField("serviceId", svc.Id).WithField("serviceName", svc.Name)
+	log := pfxlog.Logger().WithField("serviceId", *svc.ID).WithField("serviceName", *svc.Name)
 
 	svc.DialTimeout = 5 * time.Second
 
-	if stringz.Contains(svc.Permissions, "Dial") {
+	var perms []string
+
+	for _, perm := range svc.Permissions {
+		perms = append(perms, string(perm))
+	}
+
+	if stringz.Contains(perms, "Dial") {
 		interceptV1Config := &entities.InterceptV1Config{}
 		found, err := svc.GetConfigOfType(entities.InterceptV1, interceptV1Config)
 		if found {
@@ -184,7 +190,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 
 		if err != nil {
-			logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.InterceptV1, svc.Name)
+			logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.InterceptV1, *svc.Name)
 		}
 
 		if !found {
@@ -196,7 +202,7 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 			}
 
 			if err != nil {
-				logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, svc.Name)
+				logrus.WithError(err).Errorf("error decoding service config of type %v for service %v", entities.ClientConfigV1, *svc.Name)
 			}
 		}
 
@@ -208,13 +214,13 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 		}
 
 		// not all interceptors need a config, specifically proxy doesn't need one
-		log.Infof("starting tunnel for newly available service %s", svc.Name)
+		log.Infof("starting tunnel for newly available service %s", *svc.Name)
 		if err := self.interceptor.Intercept(svc, self.resolver, self.addrTracker); err != nil {
 			log.Errorf("failed to intercept service: %v", err)
 		}
 	}
 
-	if stringz.Contains(svc.Permissions, "Bind") {
+	if stringz.Contains(perms, "Bind") {
 		configType := entities.HostConfigV2
 		hostV2config := &entities.HostV2Config{}
 		found, err := svc.GetConfigOfType(configType, hostV2config)
@@ -250,31 +256,31 @@ func (self *ServiceListener) addService(svc *entities.Service) {
 	}
 
 	if svc.InterceptV1Config != nil || svc.HostV2Config != nil {
-		self.services[svc.Id] = svc
+		self.services[*svc.ID] = svc
 	}
 }
 
 func (self *ServiceListener) removeService(svc *entities.Service) {
 	log := pfxlog.Logger()
 
-	previousService := self.services[svc.Id]
+	previousService := self.services[*svc.ID]
 	if previousService != nil {
 		if previousService.InterceptV1Config != nil {
-			log.Infof("stopping tunnel for unavailable service: %s", previousService.Name)
-			err := self.interceptor.StopIntercepting(previousService.Name, self.addrTracker)
+			log.Infof("stopping tunnel for unavailable service: %s", *previousService.Name)
+			err := self.interceptor.StopIntercepting(*previousService.Name, self.addrTracker)
 			if err != nil {
-				log.WithError(err).Errorf("failed to stop intercepting service: %v", previousService.Name)
+				log.WithError(err).Errorf("failed to stop intercepting service: %v", *previousService.Name)
 			}
 		}
 
 		previousService.RunCleanupActions()
 
-		delete(self.services, svc.Id)
+		delete(self.services, *svc.ID)
 	}
 }
 
 func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker) {
-	logger := pfxlog.Logger().WithField("service", svc.Name)
+	logger := pfxlog.Logger().WithField("service", *svc.Name)
 
 	currentIdentity, err := self.provider.GetCurrentIdentity()
 	if err != nil {
@@ -290,27 +296,27 @@ func (self *ServiceListener) host(svc *entities.Service, tracker AddressTracker)
 		for _, hostControl := range hostControls {
 			_ = hostControl.Close()
 		}
-		self.healthCheckMgr.UnregisterServiceChecks(svc.Id)
+		self.healthCheckMgr.UnregisterServiceChecks(*svc.ID)
 	}
 	svc.AddCleanupAction(stopHook)
 
 	for idx, hostContext := range hostContexts {
 		hostControl, err := self.provider.HostService(hostContext)
 		if err != nil {
-			logger.WithError(err).WithField("service", svc.Name).Errorf("error listening for service")
+			logger.WithError(err).WithField("service", *svc.Name).Errorf("error listening for service")
 			return
 		}
 
 		context := strconv.Itoa(idx)
 
 		hostContext.SetCloseCallback(func() {
-			self.healthCheckMgr.UnregisterServiceContextChecks(svc.Name, context)
+			self.healthCheckMgr.UnregisterServiceContextChecks(*svc.Name, context)
 		})
 
 		hostControls = append(hostControls, hostControl)
 
 		precedence, cost := hostContext.GetInitialHealthState()
-		serviceState := health.NewServiceStateWithContext(svc.Name, context, precedence, cost, hostControl)
+		serviceState := health.NewServiceStateWithContext(*svc.Name, context, precedence, cost, hostControl)
 
 		if err := self.healthCheckMgr.RegisterServiceChecks(serviceState, hostContext.GetHealthChecks()); err != nil {
 			logger.WithError(err).Error("error setting up health checks")
@@ -369,8 +375,8 @@ func (self *ServiceListener) getTemplatingProvider(template string) (entities.Te
 	}, nil
 }
 
-func replaceTemplatized(input string, currentIdentity *edge.CurrentIdentity) (string, error) {
-	input = strings.ReplaceAll(input, "$tunneler_id.name", currentIdentity.Name)
+func replaceTemplatized(input string, currentIdentity *rest_model.IdentityDetail) (string, error) {
+	input = strings.ReplaceAll(input, "$tunneler_id.name", *currentIdentity.Name)
 	start := "$tunneler_id.appData["
 	for {
 		index := strings.Index(input, start)
@@ -387,7 +393,7 @@ func replaceTemplatized(input string, currentIdentity *edge.CurrentIdentity) (st
 		tagValue := ""
 		logrus.Infof("appData: %v", currentIdentity.AppData)
 		if currentIdentity.AppData != nil {
-			val, found := currentIdentity.AppData[tagName]
+			val, found := currentIdentity.AppData.SubTags[tagName]
 			if found {
 				tagValue = fmt.Sprintf("%v", val)
 			}

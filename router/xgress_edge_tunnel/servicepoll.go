@@ -19,9 +19,9 @@ limitations under the License.
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/tunnel/intercept"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/edge"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"reflect"
@@ -31,7 +31,7 @@ import (
 
 func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
 	result := &servicePoller{
-		services:                cmap.New[*edge.Service](),
+		services:                cmap.New[*rest_model.ServiceDetail](),
 		servicesLastUpdateToken: cmap.New[[]byte](),
 		fabricProvider:          fabricProvider,
 	}
@@ -40,7 +40,7 @@ func newServicePoller(fabricProvider *fabricProvider) *servicePoller {
 }
 
 type servicePoller struct {
-	services                cmap.ConcurrentMap[string, *edge.Service]
+	services                cmap.ConcurrentMap[string, *rest_model.ServiceDetail]
 	serviceListener         *intercept.ServiceListener
 	servicesLastUpdateToken cmap.ConcurrentMap[string, []byte]
 	serviceListenerLock     sync.Mutex
@@ -48,7 +48,7 @@ type servicePoller struct {
 	fabricProvider *fabricProvider
 }
 
-func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdateToken []byte, services []*edge.Service) {
+func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdateToken []byte, services []*rest_model.ServiceDetail) {
 	self.serviceListenerLock.Lock()
 	defer self.serviceListenerLock.Unlock()
 
@@ -61,16 +61,16 @@ func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdat
 
 	self.servicesLastUpdateToken.Set(ch.Id(), lastUpdateToken)
 
-	idMap := make(map[string]*edge.Service)
+	idMap := make(map[string]*rest_model.ServiceDetail)
 	for _, s := range services {
-		idMap[s.Id] = s
+		idMap[*s.ID] = s
 	}
 
 	var toRemove []string
 
 	// process Deletes
-	self.services.IterCb(func(k string, svc *edge.Service) {
-		if _, found := idMap[svc.Id]; !found {
+	self.services.IterCb(func(k string, svc *rest_model.ServiceDetail) {
+		if _, found := idMap[*svc.ID]; !found {
 			toRemove = append(toRemove, k)
 			self.serviceListener.HandleServicesChange(ziti.ServiceRemoved, svc)
 		}
@@ -82,7 +82,7 @@ func (self *servicePoller) handleServiceListUpdate(ch channel.Channel, lastUpdat
 
 	// Adds and Updates
 	for _, s := range services {
-		self.services.Upsert(s.Id, s, func(exist bool, valueInMap *edge.Service, newValue *edge.Service) *edge.Service {
+		self.services.Upsert(*s.ID, s, func(exist bool, valueInMap *rest_model.ServiceDetail, newValue *rest_model.ServiceDetail) *rest_model.ServiceDetail {
 			if !exist {
 				self.serviceListener.HandleServicesChange(ziti.ServiceAdded, s)
 				return s

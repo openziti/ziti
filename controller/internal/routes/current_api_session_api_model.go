@@ -55,9 +55,11 @@ func (factory *CurrentApiSessionLinkFactoryImpl) Links(entity models.Entity) res
 	}
 }
 
-func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSession, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
+func MapToCurrentApiSessionRestModel(ae *env.AppEnv, rc *response.RequestContext, sessionTimeout time.Duration) *rest_model.CurrentAPISessionDetail {
 
-	detail, err := MapApiSessionToRestModel(ae, apiSession)
+	detail, err := MapApiSessionToRestModel(ae, rc.ApiSession)
+
+	MapApiSessionAuthQueriesToRestEntity(ae, rc, detail)
 
 	if err != nil {
 		pfxlog.Logger().Errorf("error could not convert apiSession to rest model: %v", err)
@@ -67,7 +69,7 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 		detail = &rest_model.APISessionDetail{}
 	}
 	expiresAt := strfmt.DateTime(time.Time(detail.LastActivityAt).Add(sessionTimeout))
-	expirationSeconds := int64(apiSession.ExpirationDuration.Seconds())
+	expirationSeconds := int64(rc.ApiSession.ExpirationDuration.Seconds())
 
 	ret := &rest_model.CurrentAPISessionDetail{
 		APISessionDetail:  *detail,
@@ -78,8 +80,22 @@ func MapToCurrentApiSessionRestModel(ae *env.AppEnv, apiSession *model.ApiSessio
 	return ret
 }
 
-func MapApiSessionCertificateToRestEntity(appEnv *env.AppEnv, context *response.RequestContext, i *model.ApiSessionCertificate) (interface{}, error) {
-	return MapApiSessionCertificateToRestModel(i)
+func MapApiSessionAuthQueriesToRestEntity(ae *env.AppEnv, rc *response.RequestContext, detail *rest_model.APISessionDetail) {
+	for _, authQuery := range rc.AuthQueries {
+		detail.AuthQueries = append(detail.AuthQueries, &rest_model.AuthQueryDetail{
+			Format:     authQuery.Format,
+			HTTPMethod: authQuery.HTTPMethod,
+			HTTPURL:    authQuery.HTTPURL,
+			MaxLength:  authQuery.MaxLength,
+			MinLength:  authQuery.MinLength,
+			Provider:   authQuery.Provider,
+			TypeID:     authQuery.TypeID,
+		})
+	}
+}
+
+func MapApiSessionCertificateToRestEntity(appEnv *env.AppEnv, context *response.RequestContext, cert *model.ApiSessionCertificate) (interface{}, error) {
+	return MapApiSessionCertificateToRestModel(cert)
 }
 
 func MapApiSessionCertificateToRestModel(apiSessionCert *model.ApiSessionCertificate) (*rest_model.CurrentAPISessionCertificateDetail, error) {

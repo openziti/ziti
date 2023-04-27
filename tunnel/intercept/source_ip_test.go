@@ -1,9 +1,11 @@
 package intercept
 
 import (
+	"github.com/google/uuid"
+	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/entities"
-	"github.com/openziti/sdk-golang/ziti/edge"
+	"github.com/openziti/foundation/v2/util"
 	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
@@ -15,13 +17,17 @@ type testProvider struct {
 func (self *testProvider) PrepForUse(serviceId string) {
 }
 
-func (self *testProvider) GetCurrentIdentity() (*edge.CurrentIdentity, error) {
-	return &edge.CurrentIdentity{
-		Name: "foo.bar",
-		AppData: map[string]interface{}{
-			"srcip":      "123.456.789.10:5555",
-			"sourceIp":   "15.14.13.12",
-			"sourcePort": 1999,
+func (self *testProvider) GetCurrentIdentity() (*rest_model.IdentityDetail, error) {
+	cost := rest_model.TerminatorCost(0)
+	return &rest_model.IdentityDetail{
+		Name:               util.Ptr("foo.bar"),
+		DefaultHostingCost: &cost,
+		AppData: &rest_model.Tags{
+			SubTags: map[string]interface{}{
+				"srcip":      "123.456.789.10:5555",
+				"sourceIp":   "15.14.13.12",
+				"sourcePort": 1999,
+			},
 		},
 	}, nil
 }
@@ -69,7 +75,14 @@ func Test_SourceIp(t *testing.T) {
 }
 
 func Test_TemplateIdentity(t *testing.T) {
-	svc := &entities.Service{}
+	serviceId := uuid.NewString()
+	svc := &entities.Service{
+		ServiceDetail: rest_model.ServiceDetail{
+			BaseEntity: rest_model.BaseEntity{
+				ID: &serviceId,
+			},
+		},
+	}
 	hostTerminator := &entities.HostV2Terminator{ListenOptions: &entities.HostV2ListenOptions{}}
 	provider := &testProvider{}
 	currentIdentity, err := provider.GetCurrentIdentity()

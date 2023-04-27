@@ -29,6 +29,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/controller/response"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"net/http"
@@ -57,7 +58,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.ClientApi.CurrentIdentityDeleteMfaHandler = clientCurrentIdentity.DeleteMfaHandlerFunc(func(params clientCurrentIdentity.DeleteMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.removeMfa(ae, rc, params.MfaValidation, params.MfaValidationCode)
+			r.removeMfa(ae, rc, params.MfaValidationCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
@@ -104,7 +105,7 @@ func (r *CurrentIdentityRouter) Register(ae *env.AppEnv) {
 
 	ae.ManagementApi.CurrentIdentityDeleteMfaHandler = managementCurrentIdentity.DeleteMfaHandlerFunc(func(params managementCurrentIdentity.DeleteMfaParams, i interface{}) middleware.Responder {
 		return ae.IsAllowed(func(ae *env.AppEnv, rc *response.RequestContext) {
-			r.removeMfa(ae, rc, params.MfaValidation, params.MfaValidationCode)
+			r.removeMfa(ae, rc, params.MfaValidationCode)
 		}, params.HTTPRequest, "", "", permissions.IsAuthenticated())
 	})
 
@@ -220,14 +221,8 @@ func (r *CurrentIdentityRouter) detailMfa(ae *env.AppEnv, rc *response.RequestCo
 	})
 }
 
-func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, mfaValidationBody *rest_model.MfaCode, mfaCodeHeader *string) {
-	code := ""
-
-	if mfaValidationBody != nil && mfaValidationBody.Code != nil {
-		code = *mfaValidationBody.Code
-	} else if mfaCodeHeader != nil {
-		code = *mfaCodeHeader
-	}
+func (r *CurrentIdentityRouter) removeMfa(ae *env.AppEnv, rc *response.RequestContext, requestCode *string) {
+	code := stringz.OrEmpty(requestCode)
 
 	err := ae.Managers.Mfa.DeleteForIdentity(rc.Identity, code, rc.NewChangeContext())
 

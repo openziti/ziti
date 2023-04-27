@@ -23,7 +23,7 @@ import (
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/foundation/v2/errorz"
-	"github.com/openziti/sdk-golang/ziti/config"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
 	"time"
@@ -59,7 +59,7 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
-	enrollmentClaims := config.EnrollmentClaims{
+	enrollmentClaims := ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
 		StandardClaims: jwt.StandardClaims{
 			Audience:  "",

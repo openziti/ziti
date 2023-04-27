@@ -117,7 +117,7 @@ func Test_EnrollmentUpdb(t *testing.T) {
 					updbApiSession, err := updbAuth.AuthenticateClientApi(ctx)
 					ctx.Req.NoError(err)
 					ctx.Req.NotEmpty(updbApiSession)
-					ctx.Req.NotEmpty(updbApiSession.token)
+					ctx.Req.NotEmpty(updbApiSession.AuthResponse.Token)
 
 					t.Run("authenticated updb api session can query current api session", func(t *testing.T) {
 						ctx.testContextChanged(t)

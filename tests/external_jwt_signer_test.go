@@ -20,17 +20,10 @@
 package tests
 
 import (
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"crypto/x509"
-	"crypto/x509/pkix"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/persistence"
 	nfpem "github.com/openziti/foundation/v2/pem"
-	"math/big"
 	"net/http"
 	"testing"
 	"time"
@@ -723,36 +716,4 @@ func Test_ExternalJWTSigner(t *testing.T) {
 			})
 		})
 	})
-}
-
-func newSelfSignedCert(commonName string) (*x509.Certificate, crypto.PrivateKey) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		panic(err)
-	}
-	template := x509.Certificate{
-		SerialNumber: big.NewInt(1),
-		Subject: pkix.Name{
-			CommonName:   commonName,
-			Organization: []string{"API Test Co"},
-		},
-		NotBefore: time.Now(),
-		NotAfter:  time.Now().Add(time.Hour * 24 * 180),
-
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	der, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
-	if err != nil {
-		panic(err)
-	}
-	cert, err := x509.ParseCertificate(der)
-
-	if err != nil {
-		panic(err)
-	}
-
-	return cert, priv
 }

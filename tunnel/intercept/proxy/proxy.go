@@ -106,7 +106,7 @@ func New(ip net.IP, serviceList []string) (intercept.Interceptor, error) {
 func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ intercept.AddressTracker) error {
 	log := pfxlog.Logger().WithField("service", service.Name)
 
-	proxiedService, ok := p.services[service.Name]
+	proxiedService, ok := p.services[*service.Name]
 	if !ok {
 		log.Debugf("service %v was not specified at initialization. not intercepting", service.Name)
 		return nil
@@ -115,7 +115,7 @@ func (p *interceptor) Intercept(service *entities.Service, _ dns.Resolver, _ int
 	proxiedService.TunnelService = service
 
 	// pre-fetch network session todo move this to service poller?
-	service.FabricProvider.PrepForUse(service.Id)
+	service.FabricProvider.PrepForUse(*service.ID)
 
 	go p.runServiceListener(proxiedService)
 	return nil

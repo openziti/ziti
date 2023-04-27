@@ -34,6 +34,7 @@ import (
 	clientOperations "github.com/openziti/edge-api/rest_client_api_server/operations"
 	managementServer "github.com/openziti/edge-api/rest_management_api_server"
 	managementOperations "github.com/openziti/edge-api/rest_management_api_server/operations"
+	"github.com/openziti/edge-api/rest_model"
 	edgeConfig "github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/internal/permissions"
 	"github.com/openziti/edge/controller/model"
@@ -48,10 +49,10 @@ import (
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/foundation/v2/errorz"
+	"github.com/openziti/foundation/v2/stringz"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
-	"github.com/openziti/sdk-golang/ziti/config"
-	"github.com/openziti/sdk-golang/ziti/constants"
+	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -64,12 +65,14 @@ import (
 
 var _ model.Env = &AppEnv{}
 
+const ZitiSession = "zt-session"
+
 type AppEnv struct {
 	BoltStores *persistence.Stores
 	Managers   *model.Managers
 	Config     *edgeConfig.Config
 
-	Versions *config.Versions
+	Versions *ziti.Versions
 
 	ApiServerCsrSigner     cert.Signer
 	ApiClientCsrSigner     cert.Signer
@@ -299,18 +302,9 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 			return err
 		}
 
-		totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
+		ProcessAuthQueries(ae, rc)
 
-		isPartialAuth := false
-		if totpRequired && !rc.ApiSession.MfaComplete {
-			isPartialAuth = true
-		}
-
-		if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {
-			if !processSecondaryJwtSigner(ae, rc) {
-				isPartialAuth = true
-			}
-		}
+		isPartialAuth := len(rc.AuthQueries) > 0
 
 		if isPartialAuth {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.PartiallyAuthenticatePermission)
@@ -322,28 +316,61 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 			rc.ActivePermissions = append(rc.ActivePermissions, permissions.AdminPermission)
 		}
 	}
+
 	return nil
 }
 
-func processSecondaryJwtSigner(ae *AppEnv, rc *response.RequestContext) bool {
+func NewAuthQueryZitiMfa() *rest_model.AuthQueryDetail {
+	provider := rest_model.MfaProvidersZiti
+	return &rest_model.AuthQueryDetail{
+		TypeID:     "MFA",
+		Format:     rest_model.MfaFormatsAlphaNumeric,
+		HTTPMethod: http.MethodPost,
+		HTTPURL:    "./authenticate/mfa",
+		MaxLength:  model.TotpMaxLength,
+		MinLength:  model.TotpMinLength,
+		Provider:   &provider,
+	}
+}
+
+func NewAuthQueryExtJwt(url string) *rest_model.AuthQueryDetail {
+	return &rest_model.AuthQueryDetail{
+		HTTPURL: url,
+		TypeID:  "EXT-JWT",
+	}
+}
+
+// ProcessAuthQueries will inspect a response.RequestContext and set the AuthQueries
+// with the current outstanding authentication queries.
+func ProcessAuthQueries(ae *AppEnv, rc *response.RequestContext) {
+	if rc.ApiSession == nil || rc.AuthPolicy == nil {
+		return
+	}
+
+	totpRequired := rc.ApiSession.MfaRequired || rc.AuthPolicy.Secondary.RequireTotp
+
+	if totpRequired && !rc.ApiSession.MfaComplete {
+		rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryZitiMfa())
+	}
+
 	if rc.AuthPolicy.Secondary.RequiredExtJwtSigner != nil {
-		rc.AuthStatus.SecondaryExtJwtSignerId = *rc.AuthPolicy.Secondary.RequiredExtJwtSigner
 		extJwtAuthVal := ae.GetAuthRegistry().GetByMethod(model.AuthMethodExtJwt)
 		extJwtAuth := extJwtAuthVal.(*model.AuthModuleExtJwt)
 		if extJwtAuth != nil {
 			authResult, err := extJwtAuth.ProcessSecondary(model.NewAuthContextHttp(rc.Request, model.AuthMethodExtJwt, nil, rc.NewChangeContext()))
 
-			if err != nil {
-				return false
+			if err != nil || !authResult.IsSuccessful() {
+				signer, err := ae.Managers.ExternalJwtSigner.Read(*rc.AuthPolicy.Secondary.RequiredExtJwtSigner)
+				authUrl := ""
+				if err == nil {
+					authUrl = stringz.OrEmpty(signer.ExternalAuthUrl)
+				}
+
+				rc.AuthQueries = append(rc.AuthQueries, NewAuthQueryExtJwt(authUrl))
+
 			}
-
-			return authResult.IsSuccessful()
 		}
-
-		return false
 	}
-
-	return true
 }
 
 func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
@@ -365,7 +392,7 @@ func NewAppEnv(c *edgeConfig.Config, host HostController) *AppEnv {
 
 	ae := &AppEnv{
 		Config: c,
-		Versions: &config.Versions{
+		Versions: &ziti.Versions{
 			Api:           "1.0.0",
 			EnrollmentApi: "1.0.0",
 		},
@@ -499,7 +526,7 @@ func getJwtSigningMethod(cert *tls.Certificate) jwt.SigningMethod {
 }
 
 func (ae *AppEnv) GetSessionTokenFromRequest(r *http.Request) string {
-	return r.Header.Get(constants.ZitiSession)
+	return r.Header.Get(ZitiSession)
 }
 
 func (ae *AppEnv) CreateRequestContext(rw http.ResponseWriter, r *http.Request) *response.RequestContext {
