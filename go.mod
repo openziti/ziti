@@ -18,7 +18,6 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
-	github.com/keybase/go-ps v0.0.0-20190827175125-91aafc93ba19
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.10
 	github.com/openziti/channel/v2 v2.0.62
