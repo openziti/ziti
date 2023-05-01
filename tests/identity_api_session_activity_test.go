@@ -75,7 +75,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 	case id := <-result:
 		ctx.Req.True(*id.HasAPISession)
 		ctx.Req.True(*id.HasEdgeRouterConnection)
-	case _ = <-time.After(15 * time.Second):
+	case <-time.After(15 * time.Second):
 		ctx.Fail("timed out")
 	}
 
