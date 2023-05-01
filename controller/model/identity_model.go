@@ -51,7 +51,7 @@ type Identity struct {
 	RoleAttributes            []string
 	EnvInfo                   *EnvInfo
 	SdkInfo                   *SdkInfo
-	HasHeartbeat              bool
+	HasErConnection           bool
 	DefaultHostingPrecedence  ziti.Precedence
 	DefaultHostingCost        uint16
 	ServiceHostingPrecedences map[string]ziti.Precedence
@@ -237,7 +237,7 @@ func (entity *Identity) fillFrom(env Env, _ *bbolt.Tx, boltIdentity *persistence
 	entity.IsDefaultAdmin = boltIdentity.IsDefaultAdmin
 	entity.IsAdmin = boltIdentity.IsAdmin
 	entity.RoleAttributes = boltIdentity.RoleAttributes
-	entity.HasHeartbeat = env.GetManagers().Identity.IsActive(entity.Id)
+	entity.HasErConnection = env.GetManagers().Identity.HasErConnection(entity.Id)
 	entity.DefaultHostingPrecedence = boltIdentity.DefaultHostingPrecedence
 	entity.DefaultHostingCost = boltIdentity.DefaultHostingCost
 	entity.ServiceHostingPrecedences = boltIdentity.ServiceHostingPrecedences

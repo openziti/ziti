@@ -44,13 +44,17 @@ func (h *sessionHeartbeatHandler) HandleReceive(msg *channel.Message, ch channel
 		routerId := ch.Id()
 		if err := proto.Unmarshal(msg.Body, req); err == nil {
 
-			notFoundTokens, err := h.appEnv.GetManagers().ApiSession.MarkActivityByTokens(req.Tokens...)
+			identityIds, notFoundTokens, err := h.appEnv.GetManagers().ApiSession.MarkLastActivityByTokens(req.Tokens...)
 
 			if err != nil {
 				pfxlog.Logger().
 					WithError(err).
 					WithField("routerId", routerId).
 					Errorf("unable to set activity for heartbeat: %v", err)
+			}
+
+			for _, identityId := range identityIds {
+				h.appEnv.GetManagers().Identity.SetHasErConnection(identityId)
 			}
 
 			if len(notFoundTokens) > 0 {

@@ -265,7 +265,7 @@ func (ae *AppEnv) FillRequestContext(rc *response.RequestContext) error {
 
 	if rc.ApiSession != nil {
 		//updates for api session timeouts
-		ae.GetManagers().ApiSession.MarkActivityById(rc.ApiSession.Id)
+		ae.GetManagers().ApiSession.MarkLastActivityById(rc.ApiSession.Id)
 
 		var err error
 		rc.Identity, err = ae.GetManagers().Identity.Read(rc.ApiSession.IdentityId)

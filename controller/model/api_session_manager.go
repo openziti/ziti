@@ -79,7 +79,7 @@ func (self *ApiSessionManager) CreateInCtx(ctx boltz.MutateContext, entity *ApiS
 		}
 	}
 
-	self.MarkActivityById(apiSessionId)
+	self.MarkLastActivityById(apiSessionId)
 
 	return apiSessionId, err
 }
@@ -134,16 +134,23 @@ func (self *ApiSessionManager) DeleteBatch(id []string, ctx *change.Context) err
 	return self.deleteEntityBatch(id, ctx)
 }
 
-func (self *ApiSessionManager) MarkActivityById(apiSessionId string) {
+// MarkLastActivityById marks the "last activity" of an API Session. This will store a cached "LastUpdatedAt" value for
+// an API Session. This data will be used to populate information for API Sessions and will be persisted to the data
+// store at a future time in bulk.
+func (self *ApiSessionManager) MarkLastActivityById(apiSessionId string) {
 	self.HeartbeatCollector.Mark(apiSessionId)
 }
 
-// MarkActivityByTokens returns tokens that were not found if any and/or an error.
-func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string, error) {
+// MarkLastActivityByTokens returns the ids of identities that were affected, tokens that were not found if any or an error.
+// Marking "last activity" will store a cached "LastUpdatedAt" value for an API Session. This data will be used to
+// populate information for API Sessions and will be persisted to the data store at a future time in bulk.
+func (self *ApiSessionManager) MarkLastActivityByTokens(tokens ...string) ([]string, []string, error) {
 	var notFoundTokens []string
-	store := self.Store.(persistence.ApiSessionStore)
+	store := self.env.GetStores().ApiSession
 
 	var apiSessions []*persistence.ApiSession
+	identityIds := map[string]struct{}{}
+
 	err := self.GetDb().View(func(tx *bbolt.Tx) error {
 		for _, token := range tokens {
 			apiSession, err := store.LoadOneByToken(tx, token)
@@ -161,17 +168,22 @@ func (self *ApiSessionManager) MarkActivityByTokens(tokens ...string) ([]string,
 	})
 
 	for _, apiSession := range apiSessions {
-		self.HeartbeatCollector.Mark(apiSession.Id)
-		self.env.GetManagers().Identity.SetActive(apiSession.IdentityId)
+		self.MarkLastActivityById(apiSession.Id)
+		identityIds[apiSession.IdentityId] = struct{}{}
 	}
 
-	return notFoundTokens, err
+	var uniqueIdentityIds []string
+	for identityId := range identityIds {
+		uniqueIdentityIds = append(uniqueIdentityIds, identityId)
+	}
+
+	return uniqueIdentityIds, notFoundTokens, err
 }
 
 func (self *ApiSessionManager) heartbeatFlush(beats []*Heartbeat) {
 	changeCtx := change.New().SetSourceType("heartbeat.flush").SetChangeAuthorType(change.AuthorTypeController)
 	err := self.GetDb().Batch(changeCtx.NewMutateContext(), func(ctx boltz.MutateContext) error {
-		store := self.Store.(persistence.ApiSessionStore)
+		store := self.env.GetStores().ApiSession
 
 		for _, beat := range beats {
 			err := store.Update(ctx, &persistence.ApiSession{

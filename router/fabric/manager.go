@@ -24,6 +24,7 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
+	"github.com/openziti/fabric/router/env"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -62,7 +63,7 @@ type StateManager interface {
 	RemoveConnectedApiSessionWithChannel(token string, underlay channel.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
-	StartHeartbeat(channel channel.Channel, seconds int, closeNotify <-chan struct{})
+	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
 
 	DumpApiSessions(c *bufio.ReadWriter) error
@@ -288,8 +289,8 @@ func (sm *StateManagerImpl) getApiSessionRemovedEventName(token string) events.E
 	return events.EventName(eventName)
 }
 
-func (sm *StateManagerImpl) StartHeartbeat(ctrl channel.Channel, intervalSeconds int, closeNotify <-chan struct{}) {
-	sm.heartbeatOperation = newHeartbeatOperation(ctrl, time.Duration(intervalSeconds)*time.Second, sm)
+func (sm *StateManagerImpl) StartHeartbeat(env env.RouterEnv, intervalSeconds int, closeNotify <-chan struct{}) {
+	sm.heartbeatOperation = newHeartbeatOperation(env, time.Duration(intervalSeconds)*time.Second, sm)
 
 	var err error
 	sm.heartbeatRunner, err = runner.NewRunner(1*time.Second, 24*time.Hour, func(e error, operation runner.Operation) {

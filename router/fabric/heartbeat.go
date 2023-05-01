@@ -17,19 +17,20 @@
 package fabric
 
 import (
-	"google.golang.org/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
+	routerEnv "github.com/openziti/fabric/router/env"
+	"google.golang.org/protobuf/proto"
 	"time"
 )
 
 const maxTokensPerMessage = 10000
 
 type heartbeatOperation struct {
-	ctrl channel.Channel
+	env routerEnv.RouterEnv
 	*runner.BaseOperation
 	tokenProvider TokenProvider
 }
@@ -39,9 +40,9 @@ type TokenProvider interface {
 	flushRecentlyRemoved()
 }
 
-func newHeartbeatOperation(ctrl channel.Channel, frequency time.Duration, tokenProvider TokenProvider) *heartbeatOperation {
+func newHeartbeatOperation(env routerEnv.RouterEnv, frequency time.Duration, tokenProvider TokenProvider) *heartbeatOperation {
 	return &heartbeatOperation{
-		ctrl:          ctrl,
+		env:           env,
 		tokenProvider: tokenProvider,
 		BaseOperation: runner.NewBaseOperation("Heartbeat Operation", frequency)}
 }
@@ -91,11 +92,13 @@ func (operation *heartbeatOperation) beat(tokens []string) {
 		}
 	}
 
-	for _, msg := range msgs {
-		if err := operation.ctrl.Send(msg); err != nil {
-			pfxlog.Logger().WithError(err).Error("could not send heartbeats on control channel")
-		}
+	operation.env.GetNetworkControllers().ForEach(func(ctrlId string, ch channel.Channel) {
+		for _, msg := range msgs {
+			if err := ch.Send(msg); err != nil {
+				pfxlog.Logger().WithError(err).Error("could not send heartbeats on control channel")
+			}
 
-	}
+		}
+	})
 
 }

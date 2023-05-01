@@ -282,7 +282,7 @@ func MapIdentityToRestModel(ae *env.AppEnv, identity *model.Identity) (*rest_mod
 		RoleAttributes:            &roleAttributes,
 		Type:                      ToEntityRef(identityType.Name, identityType, IdentityTypeLinkFactory),
 		TypeID:                    &identityType.Id,
-		HasEdgeRouterConnection:   &identity.HasHeartbeat,
+		HasEdgeRouterConnection:   &identity.HasErConnection,
 		HasAPISession:             &hasApiSession,
 		DefaultHostingPrecedence:  rest_model.TerminatorPrecedence(identity.DefaultHostingPrecedence.String()),
 		DefaultHostingCost:        &cost,

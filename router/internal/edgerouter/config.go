@@ -135,7 +135,7 @@ func (config *Config) LoadConfigFromMap(configMap map[interface{}]interface{}) e
 		config.HeartbeatIntervalSeconds = val.(int)
 	}
 
-	if config.HeartbeatIntervalSeconds > DefaultHeartbeatIntervalSeconds || config.HeartbeatIntervalSeconds <= MinHeartbeatIntervalSeconds {
+	if config.HeartbeatIntervalSeconds > DefaultHeartbeatIntervalSeconds || config.HeartbeatIntervalSeconds < MinHeartbeatIntervalSeconds {
 		pfxlog.Logger().Warnf("Invalid heartbeat interval [%v] (min: %v, max: %v), setting to default [%v]", config.HeartbeatIntervalSeconds, MaxHeartbeatIntervalSeconds, MinHeartbeatIntervalSeconds, DefaultHeartbeatIntervalSeconds)
 		config.HeartbeatIntervalSeconds = DefaultHeartbeatIntervalSeconds
 	}
