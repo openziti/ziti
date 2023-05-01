@@ -84,11 +84,19 @@ build {
 
   provisioner "shell" {
     inline = [
-# Create directories for beats/logstash certs and keys
+      # Setup UFW to allow for blocking of 80/443 ports for test
+      "sudo ufw default allow outgoing",
+      "sudo ufw default allow incoming",
+      "sudo ufw deny out 80/tcp",
+      "sudo ufw deny out 443/tcp",
+      "sudo ufw deny in 80/tcp",
+      "sudo ufw deny in 443/tcp",
+
+      # Create directories for beats/logstash certs and keys as well as ctrl db file
       "sudo mkdir /etc/pki/",
       "sudo mkdir /etc/pki/beats/",
 
-# Set custom files with proper permissions/owners/groups
+      # Set custom files with proper permissions/owners/groups
       "sudo chown root /home/ubuntu/99remote-not-fancy",
       "sudo chown :root /home/ubuntu/99remote-not-fancy",
       "sudo chown root /home/ubuntu/51-network-tuning.conf",
@@ -105,7 +113,7 @@ build {
       "sudo chown :root /home/ubuntu/logstashCA.crt",
       "sudo chmod 0644 /home/ubuntu/logstashCA.crt",
 
-# Move custom files into proper locations
+      # Move custom files into proper locations
       "sudo mv /home/ubuntu/99remote-not-fancy /etc/apt/apt.conf.d/",
       "sudo mv /home/ubuntu/51-network-tuning.conf /etc/sysctl.d/",
       "sudo mv /home/ubuntu/10-ziti-logs.conf /etc/sysctl.d/",
@@ -150,9 +158,12 @@ build {
 
       "sudo apt install -y iperf3 tcpdump sysstat",
       "sudo mv /home/ubuntu/metricbeat.yml /etc/metricbeat/",
-      "sudo mv  /home/ubuntu/aws.yml /etc/metricbeat/modules.d/aws.yml",
-      "sudo metricbeat modules enable aws",
       "sudo apt install -y consul",
+      "sudo systemctl enable metricbeat"
+      "sudo systemctl start metricbeat"
+      "sudo systemctl enable filebeat"
+      "sudo systemctl start filebeat"
+
       "sudo bash -c \"echo 'ubuntu soft nofile 40960' >> /etc/security/limits.conf\"",
       "sudo sed -i 's/ENABLED=\"false\"/ENABLED=\"true\"/g' /etc/default/sysstat",
     ]
