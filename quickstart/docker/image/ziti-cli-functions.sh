@@ -639,7 +639,7 @@ function getZiti {
     echo "ZITI_BIN_DIR/ziti does exist"
     # Get the current version and compare with latest
     local currentVersion
-    currentVersion="$("${ZITI_BIN_DIR}"/ziti -v) "
+    currentVersion="$("${ZITI_BIN_DIR}"/ziti --version) "
     if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
       # Prompt user for new download
       echo -en "There is a newer version of OpenZiti, would you like to download it (Y/n)?"
@@ -741,7 +741,6 @@ function createPki {
 # Creates a controller config file
 function createControllerConfig {
   local controller_name retVal file_path output_file
-  # TODO: allow passing in of env file
   # Allow controller name to be passed in as arg
   controller_name="${1-}"
   # If no controller name provided and env var is not set, prompt user for a controller name
@@ -878,6 +877,12 @@ function _create_router_config {
 # Used to create a router, router config, then enroll the router.
 function addRouter {
   local router_name router_type retVal
+  # Make sure necessary env variables are set
+  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_USER ZITI_PWD
+  retVal=$?
+  if [ $retVal -ne 0 ]; then
+    return 1
+  fi
   # Allow router name and type to be passed in as arg
   router_name="${1-}"
   router_type="${2-}"
@@ -897,15 +902,7 @@ function addRouter {
     router_name="${ZITI_EDGE_ROUTER_NAME}"
   fi
 
-  # Make sure necessary env variables are set
-  _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_USER ZITI_PWD
-  retVal=$?
-  if [ $retVal -ne 0 ]; then
-    return 1
-  fi
-
   # Create router
-  # TODO: Add prompt to user to delete an existing router if it exists
   zitiLogin
   "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${router_name}"
   "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${router_type}"
@@ -917,7 +914,7 @@ function addRouter {
   "${ZITI_BIN_DIR-}/ziti" router enroll "${ZITI_HOME}/${router_name}.yaml" --jwt "${ZITI_HOME}/${router_name}.jwt" &> "${ZITI_HOME}/${router_name}.enrollment.log"
   retVal=$?
   if [[ "${retVal}" != 0 ]]; then
-    echo -e "$(RED "  --- There was an error during router enrollment ---")"
+    echo -e "$(RED "  --- There was an error during router enrollment, check the logs at ${ZITI_HOME}/${router_name}.enrollment.log ---")"
     return 1
   else
     echo -e "$(GREEN "Enrollment successful")"
