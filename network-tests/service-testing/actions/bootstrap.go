@@ -56,7 +56,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 							"port" : 7001,
 							"protocol" : "tcp"
 					}`))
-	workflow.AddAction(semaphore.Sleep(120 * time.Second))
+	workflow.AddAction(semaphore.Sleep(2 * time.Second))
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "iperf-intercept", "intercept.v1", `
 		{
 			"addresses": ["iperf.service"],
