@@ -87,9 +87,7 @@ func (factory *Factory) GetTraceDecoders() []channel.TraceMessageDecoder {
 func (factory *Factory) Run(env env.RouterEnv) error {
 	factory.ctrls = env.GetNetworkControllers()
 
-	env.GetNetworkControllers().ForEach(func(_ string, ch channel.Channel) {
-		factory.stateManager.StartHeartbeat(ch, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
-	})
+	factory.stateManager.StartHeartbeat(env, factory.edgeRouterConfig.HeartbeatIntervalSeconds, env.GetCloseNotify())
 
 	factory.certChecker = NewCertExpirationChecker(factory.routerConfig.Id, factory.edgeRouterConfig, env.GetNetworkControllers(), env.GetCloseNotify())
 

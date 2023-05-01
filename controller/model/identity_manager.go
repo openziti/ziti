@@ -463,12 +463,15 @@ func (self *IdentityManager) PatchInfo(identity *Identity, changeCtx *change.Con
 	return err
 }
 
-func (self *IdentityManager) SetActive(id string) {
-	self.identityStatusMap.SetActive(id)
+// SetHasErConnection will register an identity as having an ER connection. The registration has a TTL depending on
+// how the status map was configured.
+func (self *IdentityManager) SetHasErConnection(identityId string) {
+	self.identityStatusMap.SetHasEdgeRouterConnection(identityId)
 }
 
-func (self *IdentityManager) IsActive(id string) bool {
-	return self.identityStatusMap.IsActive(id)
+// HasErConnection will return true if the supplied identity id has a current an active ER connection registered.
+func (self *IdentityManager) HasErConnection(id string) bool {
+	return self.identityStatusMap.HasEdgeRouterConnection(id)
 }
 
 func (self *IdentityManager) VisitIdentityAuthenticatorFingerprints(tx *bbolt.Tx, identityId string, visitor func(string) bool) (bool, error) {
@@ -760,9 +763,9 @@ func (self *CreateIdentityWithEnrollmentsCmd) GetChangeContext() *change.Context
 }
 
 type identityStatusMap struct {
-	identityIdToStatus cmap.ConcurrentMap[string, *status]
-	initOnce           sync.Once
-	activeDuration     time.Duration
+	identityIdToErConStatus cmap.ConcurrentMap[string, *status]
+	initOnce                sync.Once
+	activeDuration          time.Duration
 }
 
 type status struct {
@@ -771,23 +774,34 @@ type status struct {
 
 func newIdentityStatusMap(activeDuration time.Duration) *identityStatusMap {
 	return &identityStatusMap{
-		identityIdToStatus: cmap.New[*status](),
-		activeDuration:     activeDuration,
+		identityIdToErConStatus: cmap.New[*status](),
+		activeDuration:          activeDuration,
 	}
 }
 
-func (statusMap *identityStatusMap) SetActive(identityId string) {
+func (statusMap *identityStatusMap) SetHasEdgeRouterConnection(identityId string) {
 	statusMap.initOnce.Do(statusMap.start)
 
-	statusMap.identityIdToStatus.Set(identityId, &status{
+	statusMap.identityIdToErConStatus.Set(identityId, &status{
 		expiresAt: time.Now().Add(statusMap.activeDuration),
 	})
 }
 
-func (statusMap *identityStatusMap) IsActive(identityId string) bool {
-	if stat, ok := statusMap.identityIdToStatus.Get(identityId); ok {
-		return stat.expiresAt.After(time.Now())
+func (statusMap *identityStatusMap) HasEdgeRouterConnection(identityId string) bool {
+	if stat, ok := statusMap.identityIdToErConStatus.Get(identityId); ok {
+		now := time.Now()
+		ret := stat.expiresAt.After(now)
+		pfxlog.Logger().
+			WithField("identityId", identityId).
+			WithField("expiresAt", stat.expiresAt).
+			WithField("now", now).
+			Debugf("reporting identity from active ER conn pool: timedout")
+		return ret
 	}
+
+	pfxlog.Logger().
+		WithField("identityId", identityId).
+		Debugf("reporting identity from active ER conn pool: not found")
 	return false
 }
 
@@ -797,14 +811,20 @@ func (statusMap *identityStatusMap) start() {
 		for range ticker.C {
 			var toRemove []string
 			now := time.Now()
-			statusMap.identityIdToStatus.IterCb(func(key string, stat *status) {
+			statusMap.identityIdToErConStatus.IterCb(func(key string, stat *status) {
 				if stat.expiresAt.Before(now) {
+					pfxlog.Logger().
+						WithField("identityId", key).
+						WithField("expiresAt", stat.expiresAt).
+						WithField("now", now).
+						Debugf("removing identity from active ER conn pool: not found")
 					toRemove = append(toRemove, key)
 				}
 			})
 
 			for _, identityId := range toRemove {
-				statusMap.identityIdToStatus.Remove(identityId)
+
+				statusMap.identityIdToErConStatus.Remove(identityId)
 			}
 		}
 	}()

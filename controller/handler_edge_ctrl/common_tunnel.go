@@ -101,7 +101,7 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			if apiSession != nil && apiSession.IdentityId == self.identity.Id {
 				self.apiSession = apiSession
 
-				if _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
+				if _, _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkLastActivityByTokens(self.apiSession.Token); err != nil {
 					logger.WithError(err).Error("unexpected error while marking api session activity")
 				}
 				return false
@@ -136,7 +136,7 @@ func (self *baseTunnelRequestContext) ensureApiSessionLocking(configTypes []stri
 			apiSession, _ := self.handler.getAppEnv().Managers.ApiSession.Read(*cachedApiSessionId)
 			if apiSession != nil && apiSession.IdentityId == self.identity.Id {
 				self.apiSession = apiSession
-				if _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkActivityByTokens(self.apiSession.Token); err != nil {
+				if _, _, err := self.handler.getAppEnv().GetManagers().ApiSession.MarkLastActivityByTokens(self.apiSession.Token); err != nil {
 					logger.WithError(err).Error("unexpected error while marking api session activity")
 				}
 				return true
