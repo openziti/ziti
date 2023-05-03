@@ -174,7 +174,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-canada-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-canada-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-server", "tunneler"}},
@@ -200,7 +200,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-tokyo-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-tokyo-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
@@ -226,7 +226,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-sydney-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-sydney-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
@@ -252,7 +252,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-brazil-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-brazil-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
@@ -278,7 +278,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-frankfurt-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-frankfurt-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
@@ -304,7 +304,7 @@ var m = &model.Model{
 			Hosts: model.Hosts{
 				"router-cape_town-client": {
 					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "c5.large",
+					InstanceType: "t3.micro",
 					Components: model.Components{
 						"router-cape_town-client": {
 							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "iperf-client", "tunneler"}},
