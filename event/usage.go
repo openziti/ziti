@@ -47,3 +47,8 @@ func (event *UsageEventV3) String() string {
 type UsageEventV3Handler interface {
 	AcceptUsageEventV3(event *UsageEventV3)
 }
+
+type UsageEventV3HandlerWrapper interface {
+	UsageEventV3Handler
+	IsWrapping(value UsageEventV3Handler) bool
+}
