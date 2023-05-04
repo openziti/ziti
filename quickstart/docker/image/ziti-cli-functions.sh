@@ -298,7 +298,7 @@ function setupEnvironment {
   if [[ "${ZITI_PKI-}" == "" ]]; then export ZITI_PKI="${ZITI_HOME}/pki"; else echo "ZITI_PKI overridden: ${ZITI_PKI}"; fi
   if [[ "${ZITI_PKI_SIGNER_CERT_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_CERT_NAME="${ZITI_NETWORK}-signing"; else echo "ZITI_PKI_SIGNER_CERT_NAME overridden: ${ZITI_PKI_SIGNER_CERT_NAME}"; fi
   if [[ "${ZITI_PKI_SIGNER_ROOTCA_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_ROOTCA_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-root-ca"; else echo "ZITI_PKI_SIGNER_ROOTCA_NAME overridden: ${ZITI_PKI_SIGNER_ROOTCA_NAME}"; fi
-  if [[ "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_INTERMEDIATE_NAME="${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}-intermediate"; else echo "ZITI_PKI_SIGNER_INTERMEDIATE_NAME overridden: ${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}"; fi
+  if [[ "${ZITI_PKI_SIGNER_INTERMEDIATE_NAME-}" == "" ]]; then export ZITI_PKI_SIGNER_INTERMEDIATE_NAME="${ZITI_PKI_SIGNER_CERT_NAME}-intermediate"; else echo "ZITI_PKI_SIGNER_INTERMEDIATE_NAME overridden: ${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}"; fi
   if [[ "${ZITI_PKI_SIGNER_CERT}" == "" ]]; then export ZITI_PKI_SIGNER_CERT="${ZITI_PKI}/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}/certs/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.cert"; else echo "ZITI_PKI_SIGNER_CERT overridden: ${ZITI_PKI_SIGNER_CERT}"; fi
   if [[ "${ZITI_PKI_SIGNER_KEY}" == "" ]]; then export ZITI_PKI_SIGNER_KEY="${ZITI_PKI}/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}/keys/${ZITI_PKI_SIGNER_INTERMEDIATE_NAME}.key"; else echo "ZITI_PKI_SIGNER_KEY overridden: ${ZITI_PKI_SIGNER_KEY}"; fi
 
@@ -329,7 +329,7 @@ function setupEnvironment {
   if [[ "${ZITI_PKI_EDGE_CA}" == "" ]]; then export ZITI_PKI_EDGE_CA="${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert"; else echo "ZITI_PKI_EDGE_CA overridden: ${ZITI_PKI_EDGE_CA}"; fi
 
   # Router Values
-  if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_EDGE_ROUTER_NAME overridden: ${ZITI_EDGE_ROUTER_NAME}"; fi
+  if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_EDGE_ROUTER_NAME overridden: ${ZITI_EDGE_ROUTER_NAME}"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; else echo "ZITI_EDGE_ROUTER_PORT overridden: ${ZITI_EDGE_ROUTER_PORT}"; fi
 
   # Set up directories
