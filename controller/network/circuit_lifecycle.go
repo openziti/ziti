@@ -66,6 +66,7 @@ func (network *Network) CircuitEvent(eventType event.CircuitEventType, circuit *
 		CreationTimespan: creationTimespan,
 		Cost:             cost,
 		Duration:         duration,
+		Tags:             circuit.Tags,
 	}
 
 	network.fillCircuitPath(circuitEvent, circuit.Path)
@@ -122,7 +123,13 @@ func newCircuitErrWrap(cause CircuitFailureCause, err error) CircuitError {
 	}
 }
 
-func (network *Network) CircuitFailedEvent(circuitId string, clientId string, serviceId string, instanceId string, startTime time.Time, path *Path, t xt.CostedTerminator, cause CircuitFailureCause) {
+func (network *Network) CircuitFailedEvent(
+	circuitId string,
+	params CreateCircuitParams,
+	startTime time.Time,
+	path *Path,
+	t xt.CostedTerminator,
+	cause CircuitFailureCause) {
 	var failureCause *string
 	if strCause := string(cause); strCause != "" {
 		failureCause = &strCause
@@ -139,6 +146,11 @@ func (network *Network) CircuitFailedEvent(circuitId string, clientId string, se
 		terminatorId = t.GetId()
 	}
 
+	instanceId, serviceId := parseInstanceIdAndService(params.GetServiceId())
+
+	// get circuit tags
+	tags := params.GetCircuitTags(t)
+
 	elapsed := time.Since(startTime)
 	circuitEvent := &event.CircuitEvent{
 		Namespace:        event.CircuitEventsNs,
@@ -146,13 +158,14 @@ func (network *Network) CircuitFailedEvent(circuitId string, clientId string, se
 		EventType:        event.CircuitFailed,
 		CircuitId:        circuitId,
 		Timestamp:        time.Now(),
-		ClientId:         clientId,
+		ClientId:         params.GetClientId().Token,
 		ServiceId:        serviceId,
 		TerminatorId:     terminatorId,
 		InstanceId:       instanceId,
 		CreationTimespan: &elapsed,
 		Cost:             cost,
 		FailureCause:     failureCause,
+		Tags:             tags,
 	}
 	network.fillCircuitPath(circuitEvent, path)
 	network.eventDispatcher.AcceptCircuitEvent(circuitEvent)

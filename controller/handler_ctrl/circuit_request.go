@@ -126,9 +126,15 @@ func (self *circuitParams) GetClientId() *identity.TokenId {
 	return self.clientId
 }
 
-func (self *circuitParams) GetCircuitTags(xt.CostedTerminator) map[string]string {
+func (self *circuitParams) GetCircuitTags(t xt.CostedTerminator) map[string]string {
+	if t == nil {
+		return map[string]string{
+			"serviceId": self.serviceId,
+		}
+	}
 	return map[string]string{
 		"serviceId": self.serviceId,
+		"hostId":    t.GetHostId(),
 	}
 }
 
