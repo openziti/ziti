@@ -48,11 +48,9 @@ func (s *zitiEchoServer) run() (err error) {
 	}
 
 	zitiContext, err := ziti.NewContext(config)
-
 	if err != nil {
-		panic(err)
+		return err
 	}
-
 	if s.listener, err = zitiContext.Listen("echo"); err != nil {
 		return err
 	}

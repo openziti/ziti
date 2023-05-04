@@ -73,12 +73,15 @@ func (r *zitiMetricsReporter) run(reportInterval time.Duration) {
 			panic(err)
 		}
 		client, err = ziti.NewContext(sdkConfig)
-
 		if err != nil {
-			panic(err)
+			log.Fatalf("failed to create ziti context: %v", err)
 		}
 	} else {
-		panic("no configuration file provided")
+		var err error
+		client, err = ziti.NewContext(nil)
+		if err != nil {
+			log.Fatalf("failed to create ziti context: %v", err)
+		}
 	}
 	conn, err := client.Dial(r.service)
 

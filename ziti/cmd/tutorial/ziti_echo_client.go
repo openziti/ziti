@@ -36,6 +36,9 @@ func NewZitiEchoClient(identityJson string) (*zitiEchoClient, error) {
 	}
 
 	zitiContext, err := ziti.NewContext(config)
+	if err != nil {
+		return nil, err
+	}
 
 	if err != nil {
 		return nil, err

@@ -94,7 +94,11 @@ func (cmd *listenerCmd) listenEdge() {
 			log.Fatalf("failed to load ziti context from cofnig: %v", err)
 		}
 	} else {
-		log.Fatal("no configuration file provided")
+		var err error
+		context, err = ziti.NewContext(nil)
+		if err != nil {
+			log.Fatalf("failed to create ziti context: %v", err)
+		}
 	}
 
 	service := strings.TrimPrefix(cmd.bindAddress, "edge:")

@@ -6,7 +6,7 @@ import (
 	"github.com/openziti/ziti/ziti/cmd/api"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
+	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -66,10 +66,14 @@ func (o *traceRouteOptions) Run() error {
 		}
 		ctx, err = ziti.NewContext(cfg)
 		if err != nil {
-			return err
+			log.Fatalf("failed to create ziti context: %v", err)
 		}
 	} else {
-		return errors.New("invalid configuration file")
+		var err error
+		ctx, err = ziti.NewContext(nil)
+		if err != nil {
+			log.Fatalf("failed to create ziti context: %v", err)
+		}
 	}
 
 	conn, err := ctx.Dial(o.Args[0])

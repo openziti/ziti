@@ -1,6 +1,6 @@
 module github.com/openziti/ziti
 
-go 1.19
+go 1.20
 
 require (
 	github.com/Jeffail/gabs v1.4.0
@@ -20,22 +20,22 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.10
-	github.com/openziti/channel/v2 v2.0.62
-	github.com/openziti/edge v0.24.251
+	github.com/openziti/channel/v2 v2.0.63
+	github.com/openziti/edge v0.0.0-sdk-updates
 	github.com/openziti/edge-api v0.25.18
 	github.com/openziti/fabric v0.23.1
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.47
 	github.com/openziti/runzmd v1.0.20
-	github.com/openziti/sdk-golang v0.20.2
+	github.com/openziti/sdk-golang v0.0.0-add-secondary-auth
 	github.com/openziti/storage v0.2.0
-	github.com/openziti/transport/v2 v2.0.75
+	github.com/openziti/transport/v2 v2.0.76
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
-	github.com/shirou/gopsutil/v3 v3.23.3
+	github.com/shirou/gopsutil/v3 v3.23.4
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
@@ -111,7 +111,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/josharian/native v1.0.0 // indirect
+	github.com/josharian/native v1.1.0 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kr/pty v1.1.8 // indirect
@@ -125,10 +125,10 @@ require (
 	github.com/mattn/go-isatty v0.0.18 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
-	github.com/mdlayher/netlink v1.7.1 // indirect
-	github.com/mdlayher/socket v0.4.0 // indirect
+	github.com/mdlayher/netlink v1.7.2 // indirect
+	github.com/mdlayher/socket v0.4.1 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
-	github.com/miekg/dns v1.1.53 // indirect
+	github.com/miekg/dns v1.1.54 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -188,3 +188,7 @@ require (
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 )
+
+replace github.com/openziti/sdk-golang => ../sdk-golang
+
+replace github.com/openziti/edge => ../edge

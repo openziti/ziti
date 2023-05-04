@@ -19,6 +19,12 @@ package demo
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/agent"
 	"github.com/openziti/channel/v2"
@@ -28,11 +34,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"io"
-	"net"
-	"net/http"
-	"strings"
-	"time"
 )
 
 const (
