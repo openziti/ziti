@@ -47,7 +47,7 @@ func (self *ClusterPeer) String() string {
 
 type ClusterEvent struct {
 	Namespace string           `json:"namespace"`
-	EventType ClusterEventType `json:"event_type"`
+	EventType ClusterEventType `json:"eventType"`
 	Timestamp time.Time        `json:"timestamp"`
 	Index     uint64           `json:"index,omitempty"`
 	Peers     []*ClusterPeer   `json:"peers,omitempty"`

@@ -35,7 +35,7 @@ type Router struct {
 	Name        string  `json:"name"`
 	Fingerprint *string `json:"fingerprint"`
 	Cost        uint16  `json:"cost"`
-	NoTraversal bool    `json:"no_traversal"`
+	NoTraversal bool    `json:"noTraversal"`
 	Disabled    bool    `json:"disabled"`
 }
 

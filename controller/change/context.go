@@ -74,8 +74,8 @@ type Author struct {
 type Source struct {
 	Type       string `json:"type"`
 	Auth       string `json:"auth,omitempty"`
-	LocalAddr  string `json:"local_addr,omitempty"`
-	RemoteAddr string `json:"remote_addr,omitempty"`
+	LocalAddr  string `json:"localAddr,omitempty"`
+	RemoteAddr string `json:"remoteAddr,omitempty"`
 	Method     string `json:"method,omitempty"`
 }
 

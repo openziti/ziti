@@ -33,14 +33,14 @@ const (
 
 type EntityChangeEvent struct {
 	Namespace          string                `json:"namespace"`
-	EventId            string                `json:"event_id"`
-	EventType          EntityChangeEventType `json:"event_type"`
+	EventId            string                `json:"eventId"`
+	EventType          EntityChangeEventType `json:"eventType"`
 	Timestamp          time.Time             `json:"timestamp"`
 	Metadata           map[string]any        `json:"metadata,omitempty"`
-	EntityType         string                `json:"entity_type,omitempty"`
-	IsParentEvent      *bool                 `json:"is_parent_event,omitempty"`
-	InitialState       any                   `json:"initial_state,omitempty"`
-	FinalState         any                   `json:"final_state,omitempty"`
+	EntityType         string                `json:"entityType,omitempty"`
+	IsParentEvent      *bool                 `json:"isParentEvent,omitempty"`
+	InitialState       any                   `json:"initialState,omitempty"`
+	FinalState         any                   `json:"finalState,omitempty"`
 	PropagateIndicator bool                  `json:"-"`
 	IsRecoveryEvent    bool                  `json:"-"`
 }
