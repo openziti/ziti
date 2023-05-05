@@ -55,7 +55,7 @@ func (self *ServiceListHandler) handleServicesList(ch channel.Channel, list *edg
 			Config:             map[string]map[string]interface{}{},
 		}
 
-		err := json.Unmarshal(entry.Config, &service.Configs)
+		err := json.Unmarshal(entry.Config, &service.Config)
 		if err != nil {
 			logrus.
 				WithError(err).
