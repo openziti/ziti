@@ -21,7 +21,7 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/netfoundry/secretstream/kx"
+	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge-api/rest_model"
