@@ -371,10 +371,6 @@ type Service struct {
 }
 
 func (self *Service) GetConfigOfType(configType string, target interface{}) (bool, error) {
-	if self.Configs == nil {
-		pfxlog.Logger().Debugf("no service configs defined for service %v", self.Name)
-		return false, nil
-	}
 	configMap, found := self.Config[configType]
 	if !found {
 		pfxlog.Logger().Debugf("no service config of type %v defined for service %v", configType, self.Name)
