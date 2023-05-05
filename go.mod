@@ -27,7 +27,6 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/netfoundry/secretstream v0.1.5
 	github.com/openziti/channel/v2 v2.0.63
 	github.com/openziti/edge-api v0.25.18
 	github.com/openziti/fabric v0.23.1
@@ -36,6 +35,7 @@ require (
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.19
 	github.com/openziti/sdk-golang v0.20.5
+	github.com/openziti/secretstream v0.1.6
 	github.com/openziti/storage v0.2.0
 	github.com/openziti/transport/v2 v2.0.76
 	github.com/openziti/x509-claims v1.0.3
@@ -108,7 +108,6 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/openziti/secretstream v0.1.6 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20221212215047-62379fc7944b // indirect
