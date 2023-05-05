@@ -44,7 +44,7 @@ func Test_Identity_HasErConnection(t *testing.T) {
 
 	managementClient := edge_apis.NewManagementApiClient(managementUrl, caPool)
 
-	curSession, err := managementClient.Authenticate(creds)
+	curSession, err := managementClient.Authenticate(creds, nil)
 	ctx.Req.NoError(err)
 	ctx.Req.NotNil(curSession)
 
