@@ -53,14 +53,6 @@ func (conn *udpConn) Accept(buffer mempool.PooledBuffer) {
 	}
 }
 
-func (conn *udpConn) Network() string {
-	return "ziti"
-}
-
-func (conn *udpConn) String() string {
-	return conn.service
-}
-
 func (conn *udpConn) markUsed() {
 	conn.lastUse.Store(time.Now())
 }
@@ -174,11 +166,11 @@ func (conn *udpConn) Close() error {
 }
 
 func (conn *udpConn) LocalAddr() net.Addr {
-	return conn.srcAddr
+	return conn.writeConn.LocalAddr()
 }
 
 func (conn *udpConn) RemoteAddr() net.Addr {
-	return conn
+	return conn.srcAddr
 }
 
 func (conn *udpConn) SetDeadline(time.Time) error {
