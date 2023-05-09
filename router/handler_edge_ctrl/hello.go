@@ -22,6 +22,7 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge/controller/env"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
+	"github.com/openziti/edge/router/fabric"
 	"github.com/openziti/fabric/build"
 	"google.golang.org/protobuf/proto"
 	"strconv"
@@ -34,9 +35,10 @@ type helloHandler struct {
 	hostname           string
 	supportedProtocols []string
 	protocolPorts      []string
+	stateManager       fabric.StateManager
 }
 
-func NewHelloHandler(listeners []*edge_ctrl_pb.Listener) *helloHandler {
+func NewHelloHandler(stateManager fabric.StateManager, listeners []*edge_ctrl_pb.Listener) *helloHandler {
 	//supportedProtocols, protocolPorts, and hostname is for backwards compatability with v0.26.3 and older controllers
 	var supportedProtocols []string
 	var protocolPorts []string
@@ -56,7 +58,8 @@ func NewHelloHandler(listeners []*edge_ctrl_pb.Listener) *helloHandler {
 	}
 
 	return &helloHandler{
-		listeners: listeners,
+		listeners:    listeners,
+		stateManager: stateManager,
 
 		//v0.26.3 and older used to check and ensure all advertise hostnames were the same which can't be done now
 		//with the ability to report multiple advertise protocols on different hostnames
@@ -75,6 +78,17 @@ func (h *helloHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 		serverHello := &edge_ctrl_pb.ServerHello{}
 		if err := proto.Unmarshal(msg.Body, serverHello); err == nil {
 			pfxlog.Logger().Info("received server hello, replying")
+
+			byteData := serverHello.ByteData[edge_ctrl_pb.SignerPublicCertsHeader]
+
+			if byteData != nil {
+				signerCerts := &edge_ctrl_pb.SignerCerts{}
+				if err := proto.Unmarshal(byteData, signerCerts); err == nil {
+					h.stateManager.AddSignerPublicCert(signerCerts.Keys)
+				} else {
+					pfxlog.Logger().WithError(err).Error("could not unmarshal public key signers")
+				}
+			}
 
 			clientHello := &edge_ctrl_pb.ClientHello{
 				Version:   build.GetBuildInfo().Version(),

@@ -21,7 +21,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"github.com/go-openapi/runtime/middleware"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/edge-api/rest_management_api_server/operations/certificate_authority"
 	"github.com/openziti/edge/controller/apierror"
@@ -260,25 +260,16 @@ func (r *CaRouter) generateJwt(ae *env.AppEnv, rc *response.RequestContext) {
 		return
 	}
 
-	var notAfter int64
-
 	method := "ca"
 
 	claims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: method,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: notAfter,
-			Issuer:    fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer: fmt.Sprintf(`https://%s/`, ae.Config.Api.Address),
 		},
 	}
-	mapClaims, err := claims.ToMapClaims()
 
-	if err != nil {
-		rc.RespondWithError(fmt.Errorf("could not convert CA enrollment claims to interface map: %s", err))
-		return
-	}
-
-	jwtStr, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, mapClaims)
+	jwtStr, genErr := ae.GetJwtSigner().Generate(ca.Id, ca.Id, claims)
 
 	if genErr != nil {
 		rc.RespondWithError(errors.New("could not generate claims"))

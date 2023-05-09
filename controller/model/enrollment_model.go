@@ -18,7 +18,7 @@ package model
 
 import (
 	"fmt"
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/models"
@@ -59,25 +59,19 @@ func (entity *Enrollment) FillJwtInfoWithExpiresAt(env Env, subject string, expi
 		entity.Token = uuid.New().String()
 	}
 
-	enrollmentClaims := ziti.EnrollmentClaims{
+	enrollmentClaims := &ziti.EnrollmentClaims{
 		EnrollmentMethod: entity.Method,
-		StandardClaims: jwt.StandardClaims{
-			Audience:  "",
-			ExpiresAt: expiresAt.Unix(),
-			Id:        entity.Token,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  []string{""},
+			ExpiresAt: &jwt.NumericDate{Time: expiresAt},
+			ID:        entity.Token,
 			Issuer:    fmt.Sprintf("https://%s", env.GetConfig().Api.Address),
-			NotBefore: 0,
+			NotBefore: &jwt.NumericDate{Time: time.Now()},
 			Subject:   subject,
 		},
 	}
 
-	mapClaims, err := enrollmentClaims.ToMapClaims()
-
-	if err != nil {
-		return err
-	}
-
-	signedJwt, err := env.GetJwtSigner().Generate(subject, entity.Id, mapClaims)
+	signedJwt, err := env.GetJwtSigner().Generate(subject, entity.Id, enrollmentClaims)
 
 	if err != nil {
 		return err

@@ -20,7 +20,7 @@
 package tests
 
 import (
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge/controller/persistence"

@@ -18,10 +18,14 @@ package fabric
 
 import (
 	"bufio"
+	"crypto/sha1"
+	"crypto/x509"
 	"fmt"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/kataras/go-events"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/edge/controller/oidc_auth"
 	"github.com/openziti/edge/pb/edge_ctrl_pb"
 	"github.com/openziti/edge/runner"
 	"github.com/openziti/fabric/router/env"
@@ -29,6 +33,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -51,7 +56,7 @@ type StateManager interface {
 	AddEdgeSessionRemovedListener(token string, callBack func(token string)) RemoveListener
 
 	//ApiSessions
-	GetApiSession(token string) *edge_ctrl_pb.ApiSession
+	GetApiSession(token string) *ApiSession
 	GetApiSessionWithTimeout(token string, timeout time.Duration) *edge_ctrl_pb.ApiSession
 	AddApiSession(apiSession *edge_ctrl_pb.ApiSession)
 	UpdateApiSession(apiSession *edge_ctrl_pb.ApiSession)
@@ -62,6 +67,8 @@ type StateManager interface {
 	AddConnectedApiSessionWithChannel(token string, removeCB func(), ch channel.Channel)
 	RemoveConnectedApiSessionWithChannel(token string, underlay channel.Channel)
 	AddApiSessionRemovedListener(token string, callBack func(token string)) RemoveListener
+
+	AddSignerPublicCert(keys [][]byte)
 
 	StartHeartbeat(env env.RouterEnv, seconds int, closeNotify <-chan struct{})
 	ValidateSessions(ch channel.Channel, chunkSize uint32, minInterval, maxInterval time.Duration)
@@ -87,6 +94,34 @@ type StateManagerImpl struct {
 	heartbeatOperation *heartbeatOperation
 	currentSync        string
 	syncLock           sync.Mutex
+	signerPublicCerts  cmap.ConcurrentMap[string, *x509.Certificate]
+}
+
+func (sm *StateManagerImpl) AddSignerPublicCert(keys [][]byte) {
+	added := 0
+	ignored := 0
+
+	for _, key := range keys {
+		cert, err := x509.ParseCertificate(key)
+
+		if err != nil {
+			pfxlog.Logger().WithError(err).Error("could not parse signer public key")
+			continue
+		}
+
+		kid := fmt.Sprintf("%x", sha1.Sum(key))
+		sm.signerPublicCerts.Upsert(kid, cert, func(exist bool, valueInMap *x509.Certificate, newValue *x509.Certificate) *x509.Certificate {
+			if exist {
+				ignored = ignored + 1
+			} else {
+				added = added + 1
+			}
+			return valueInMap
+		})
+	}
+
+	pfxlog.Logger().WithField("received", len(keys)).WithField("added", added).WithField("ignored", ignored).Info("received signer public certificates")
+
 }
 
 func (sm *StateManagerImpl) MarkSyncInProgress(trackerId string) {
@@ -116,6 +151,7 @@ func NewStateManager() StateManager {
 		activeApiSessions:       cmap.New[*MapWithMutex](),
 		sessions:                cmap.New[uint32](),
 		recentlyRemovedSessions: cmap.New[time.Time](),
+		signerPublicCerts:       cmap.New[*x509.Certificate](),
 	}
 }
 
@@ -209,9 +245,41 @@ func (sm *StateManagerImpl) GetApiSessionWithTimeout(token string, timeout time.
 	return session
 }
 
-func (sm *StateManagerImpl) GetApiSession(token string) *edge_ctrl_pb.ApiSession {
+type ApiSession struct {
+	*edge_ctrl_pb.ApiSession
+	JwtToken *jwt.Token
+	Claims   *oidc_auth.AccessClaims
+}
+
+func (sm *StateManagerImpl) GetApiSession(token string) *ApiSession {
+	if strings.HasPrefix(token, oidc_auth.JwtTokenPrefix) {
+		accessClaims := &oidc_auth.AccessClaims{}
+		jwtToken, err := jwt.ParseWithClaims(token, accessClaims, sm.keyFunc)
+
+		if err == nil {
+			if accessClaims.Type != oidc_auth.TokenTypeAccess {
+				pfxlog.Logger().Error("provided a token with invalid type '%s'", accessClaims.Type)
+				return nil
+			}
+
+			return &ApiSession{
+				ApiSession: &edge_ctrl_pb.ApiSession{
+					Token:            token,
+					CertFingerprints: accessClaims.CertFingerprints,
+					Id:               accessClaims.JWTID,
+				},
+				JwtToken: jwtToken,
+				Claims:   accessClaims,
+			}
+		}
+
+		//fall through to check if the token is a zt-session
+	}
+
 	if apiSession, ok := sm.apiSessionsByToken.Get(token); ok {
-		return apiSession
+		return &ApiSession{
+			ApiSession: apiSession,
+		}
 	}
 	return nil
 }
@@ -486,4 +554,30 @@ func (sm *StateManagerImpl) ValidateSessions(ch channel.Channel, chunkSize uint3
 		}
 	}
 
+}
+
+func (sm *StateManagerImpl) keyFunc(token *jwt.Token) (interface{}, error) {
+	kid, kidFound := token.Header["kid"]
+
+	if !kidFound {
+		return nil, fmt.Errorf("token has not kid, unable to lookup")
+	}
+
+	key, keyFound := sm.signerPublicCerts.Get(kid)
+
+	if !keyFound {
+		sm.RefreshSigners()
+
+		kid, kidFound = token.Header["kid"]
+
+		if !kidFound {
+			return nil, fmt.Errorf("kids %s not found after refresh", kid)
+		}
+	}
+
+	return key, nil
+}
+
+func (sm *StateManagerImpl) RefreshSigners() {
+	//nothing atm
 }

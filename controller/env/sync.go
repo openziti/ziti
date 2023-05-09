@@ -21,6 +21,7 @@ import (
 	"github.com/openziti/edge/controller/model"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 	"sync"
 )
@@ -59,6 +60,7 @@ type RouterSyncStrategy interface {
 	Stop()
 	RouterConnectionHandler
 	RouterSynchronizerEventHandler
+	PeerAdded(peers []*event.ClusterPeer)
 }
 
 // RouterConnectionHandler is responsible for handling router connect/disconnect for synchronizing state.

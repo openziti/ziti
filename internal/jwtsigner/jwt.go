@@ -17,28 +17,35 @@
 package jwtsigner
 
 import (
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 type Signer interface {
-	Generate(string, string, jwt.MapClaims) (string, error)
+	Generate(string, string, jwt.Claims) (string, error)
 }
 
 type IdentitySigner struct {
 	signingMethod jwt.SigningMethod
 	issuer        string
 	key           interface{}
+	keyId         string
 }
 
-func New(issuer string, sm jwt.SigningMethod, key interface{}) *IdentitySigner {
+func New(issuer string, sm jwt.SigningMethod, key interface{}, keyId string) *IdentitySigner {
 	return &IdentitySigner{
 		signingMethod: sm,
 		issuer:        issuer,
 		key:           key,
+		keyId:         keyId,
 	}
 }
 
-func (j *IdentitySigner) Generate(subj, jti string, claims jwt.MapClaims) (string, error) {
+func (j *IdentitySigner) Generate(subj, jti string, claims jwt.Claims) (string, error) {
 	token := jwt.NewWithClaims(j.signingMethod, claims)
+
+	if j.keyId != "" {
+		token.Header["kid"] = j.keyId
+	}
+
 	return token.SignedString(j.key)
 }

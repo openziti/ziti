@@ -60,6 +60,7 @@ func (factory ClientApiFactory) Validate(config *xweb.InstanceConfig) error {
 				for _, bindPoint := range webListener.BindPoints {
 					if bindPoint.Address == factory.appEnv.Config.Api.Address {
 						factory.appEnv.SetEnrollmentSigningCert(webListener.Identity.ServerCert()[0])
+						factory.appEnv.SetServerIdentity(webListener.Identity.ServerCert()[0])
 						clientApiFound = true
 						break
 					}

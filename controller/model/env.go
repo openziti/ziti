@@ -17,6 +17,9 @@
 package model
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/openziti/edge/controller/config"
 	"github.com/openziti/edge/controller/persistence"
 	"github.com/openziti/edge/internal/cert"
@@ -43,6 +46,8 @@ type Env interface {
 	GetMetricsRegistry() metrics.Registry
 	GetFingerprintGenerator() cert.FingerprintGenerator
 	HandleServiceUpdatedEventForIdentityId(identityId string)
+	GetServerCert() (*tls.Certificate, string, jwt.SigningMethod)
+	JwtSignerKeyFunc(token *jwt.Token) (interface{}, error)
 }
 
 type HostController interface {
@@ -51,6 +56,7 @@ type HostController interface {
 	GetCloseNotifyChannel() <-chan struct{}
 	IsRaftEnabled() bool
 	Identity() identity.Identity
+	GetPeerSigners() []*x509.Certificate
 }
 
 type Schemas interface {

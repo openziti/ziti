@@ -384,13 +384,24 @@ func (self *AuthenticatorManager) ReHashPassword(password string, salt []byte) *
 	}
 }
 
+func (self *AuthenticatorManager) DecodeSalt(salt string) []byte {
+	result, _ := DecodeSalt(salt)
+	return result
+}
+
 func (self *AuthenticatorManager) ListForIdentity(identityId string, query ast.Query) (*models.EntityListResult[*Authenticator], error) {
 	filterString := fmt.Sprintf(`identity = "%s"`, identityId)
 	filter, err := ast.Parse(self.Store, filterString)
 	if err != nil {
 		return nil, err
 	}
-	query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), filter))
+
+	if query != nil {
+		query.SetPredicate(ast.NewAndExprNode(query.GetPredicate(), filter))
+	} else {
+		query = filter
+	}
+
 	return self.BasePreparedList(query)
 }
 

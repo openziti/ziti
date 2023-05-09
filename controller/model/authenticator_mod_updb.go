@@ -29,6 +29,8 @@ import (
 
 var _ AuthProcessor = &AuthModuleUpdb{}
 
+const AuthMethodPassword = "password"
+
 type AuthModuleUpdb struct {
 	env                       Env
 	method                    string
@@ -38,7 +40,7 @@ type AuthModuleUpdb struct {
 func NewAuthModuleUpdb(env Env) *AuthModuleUpdb {
 	return &AuthModuleUpdb{
 		env:                       env,
-		method:                    "password",
+		method:                    AuthMethodPassword,
 		attemptsByAuthenticatorId: cmap.New[int64](),
 	}
 }
@@ -133,7 +135,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 
 	updb := authenticator.ToUpdb()
 
-	salt, err := decodeSalt(updb.Salt)
+	salt, err := DecodeSalt(updb.Salt)
 
 	if err != nil {
 		return nil, apierror.NewInvalidAuth()
@@ -155,7 +157,7 @@ func (module *AuthModuleUpdb) Process(context AuthContext) (AuthResult, error) {
 	}, nil
 }
 
-func decodeSalt(s string) ([]byte, error) {
+func DecodeSalt(s string) ([]byte, error) {
 	salt := make([]byte, 1024)
 	n, err := base64.StdEncoding.Decode(salt, []byte(s))
 
