@@ -132,6 +132,10 @@ type Config struct {
 			Timeout      time.Duration
 			InitialDelay time.Duration
 		}
+		LinkCheck struct {
+			MinLinks int
+			Interval time.Duration
+		}
 	}
 	Plugins []string
 	src     map[interface{}]interface{}
@@ -625,6 +629,8 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.HealthChecks.CtrlPingCheck.Interval = 30 * time.Second
 	cfg.HealthChecks.CtrlPingCheck.Timeout = 15 * time.Second
 	cfg.HealthChecks.CtrlPingCheck.InitialDelay = 15 * time.Second
+	cfg.HealthChecks.LinkCheck.Interval = 5 * time.Second
+	cfg.HealthChecks.LinkCheck.MinLinks = 0
 
 	if value, found := cfgmap["healthChecks"]; found {
 		if healthChecksMap, ok := value.(map[interface{}]interface{}); ok {
@@ -634,7 +640,7 @@ func LoadConfig(path string) (*Config, error) {
 						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
 							cfg.HealthChecks.CtrlPingCheck.Interval = val
 						} else {
-							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.interval value '%v", value)
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.ctrlPingCheck.interval value '%v", value)
 						}
 					}
 
@@ -642,7 +648,7 @@ func LoadConfig(path string) (*Config, error) {
 						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
 							cfg.HealthChecks.CtrlPingCheck.Timeout = val
 						} else {
-							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.timeout value '%v", value)
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.ctrlPingCheck.timeout value '%v", value)
 						}
 					}
 
@@ -650,14 +656,34 @@ func LoadConfig(path string) (*Config, error) {
 						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
 							cfg.HealthChecks.CtrlPingCheck.InitialDelay = val
 						} else {
-							return nil, errors.Wrapf(err, "failed to parse healthChecks.bolt.initialDelay value '%v", value)
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.ctrlPingCheck.initialDelay value '%v", value)
 						}
 					}
 				} else {
-					pfxlog.Logger().Warn("invalid [healthChecks.bolt] stanza")
+					pfxlog.Logger().Warn("invalid [healthChecks.ctrlPingCheck] stanza")
 				}
 			}
-		} else {
+			if value, found := healthChecksMap["linkCheck"]; found {
+				if boltMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := boltMap["interval"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							cfg.HealthChecks.LinkCheck.Interval = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.linkCheck.interval value '%v", value)
+						}
+					}
+					if value, found := boltMap["minLinks"]; found {
+						if val, ok := value.(int); ok {
+							cfg.HealthChecks.LinkCheck.MinLinks = val
+						} else {
+							return nil, errors.Wrapf(err, "invalid value [%v] for healthChecks.linkCheck.minLinks", value)
+						}
+					}
+
+				} else {
+					pfxlog.Logger().Warn("invalid [healthChecks.linkCheck] stanza")
+				}
+			}
 			pfxlog.Logger().Warn("invalid [healthChecks] stanza")
 		}
 	}

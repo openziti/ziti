@@ -111,7 +111,10 @@ func (self *HealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, request *htt
 			}
 
 			if result.TimeOfFirstFailure != nil {
-				check["failingSince"] = fmt.Sprintf("%v", *result.TimeOfFirstFailure)
+				check["failingSince"] = result.TimeOfFirstFailure.UTC().Format(time.RFC3339)
+			}
+			if result.Details != "didn't run yet" {
+				check["details"] = result.Details
 			}
 		}
 	}

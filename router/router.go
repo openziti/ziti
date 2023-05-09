@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/foundation/v2/debugz"
 	"github.com/openziti/foundation/v2/goroutines"
 	"github.com/openziti/xweb/v2"
+	metrics2 "github.com/rcrowley/go-metrics"
 	"io/fs"
 	"math/rand"
 	"os"
@@ -571,10 +572,21 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	}
 
 	err = h.RegisterCheck(ctrlPingCheck,
-		gosundheit.ExecutionPeriod(checkConfig.CtrlPingCheck.InitialDelay),
+		gosundheit.ExecutionPeriod(checkConfig.CtrlPingCheck.Interval),
 		gosundheit.ExecutionTimeout(checkConfig.CtrlPingCheck.Timeout),
 		gosundheit.InitiallyPassing(true),
 		gosundheit.InitialDelay(checkConfig.CtrlPingCheck.InitialDelay),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	err = h.RegisterCheck(&linkHealthCheck{router: self, minLinks: checkConfig.LinkCheck.MinLinks},
+		gosundheit.ExecutionPeriod(checkConfig.LinkCheck.Interval),
+		gosundheit.ExecutionTimeout(5*time.Second),
+		gosundheit.InitiallyPassing(true),
+		gosundheit.InitialDelay(1*time.Second),
 	)
 
 	if err != nil {
@@ -688,4 +700,56 @@ func (self *controllerPinger) PingContext(context.Context) error {
 
 type endpointConfig struct {
 	Endpoints []string `yaml:"Endpoints"`
+}
+
+type linkDetail struct {
+	LinkId       string   `json:"linkId"`
+	DestRouterId string   `json:"destRouterId"`
+	Latency      *float64 `json:"latency,omitempty"`
+}
+
+type linkHealthCheck struct {
+	router   *Router
+	minLinks int
+}
+
+func (self *linkHealthCheck) Name() string {
+	return "link.health"
+}
+
+func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, err error) {
+	var links []*linkDetail
+
+	iter := self.router.xlinkRegistry.Iter()
+	done := false
+
+	for !done {
+		var link xlink.Xlink
+		select {
+		case nextLink, ok := <-iter:
+			if !ok {
+				done = true
+			}
+			link = nextLink
+		case <-ctx.Done():
+			done = true
+		}
+
+		if link != nil {
+			detail := &linkDetail{
+				LinkId:       link.Id(),
+				DestRouterId: link.DestinationId(),
+			}
+			latencyMetric := self.router.metricsRegistry.Histogram("link." + link.Id() + ".latency")
+			if latencyMetric != nil {
+				latency := latencyMetric.(metrics2.Histogram).Mean()
+				detail.Latency = &latency
+			}
+			links = append(links, detail)
+		}
+	}
+	if len(links) < self.minLinks {
+		return links, errors.Errorf("link count %v less than configured minimum of %v", len(links), self.minLinks)
+	}
+	return links, nil
 }
