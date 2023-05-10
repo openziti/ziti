@@ -225,6 +225,8 @@ func (a *AuthModuleExtJwt) pubKeyLookup(token *jwt.Token) (interface{}, error) {
 	signerRecord, ok := a.signers.Get(issuer)
 
 	if !ok {
+		issuers := a.signers.Keys()
+		logger.WithField("knownIssuers", issuers).Error("issuer not found, issuers are bit-for-bit compared, they must match exactly")
 		return nil, apierror.NewInvalidAuth()
 	}
 
