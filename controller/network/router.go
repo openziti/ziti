@@ -69,11 +69,12 @@ func (entity *Router) toBolt() *db.Router {
 	}
 }
 
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string) {
+func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string, groups []string) {
 	entity.Listeners = append(entity.Listeners, linkListener{
 		addr:         addr,
 		linkProtocol: linkProtocol,
 		linkCostTags: linkCostTags,
+		groups:       groups,
 	})
 }
 
@@ -428,6 +429,7 @@ type linkListener struct {
 	addr         string
 	linkProtocol string
 	linkCostTags []string
+	groups       []string
 }
 
 func (self linkListener) AdvertiseAddress() string {
@@ -436,4 +438,8 @@ func (self linkListener) AdvertiseAddress() string {
 
 func (self linkListener) Protocol() string {
 	return self.linkProtocol
+}
+
+func (self linkListener) Groups() []string {
+	return self.groups
 }

@@ -214,6 +214,7 @@ message Listener {
   string address = 1;
   string protocol = 2;
   repeated string costTags = 3;
+  repeated string groups = 4;
 }
 
 message Listeners {

@@ -187,7 +187,7 @@ func newRouterForTest(id string, fingerprint string, advLstnr transport.Address,
 		NoTraversal: noTraversal,
 	}
 	if advLstnr != nil {
-		r.AddLinkListener(advLstnr.String(), advLstnr.Type(), []string{"Cost Tag"})
+		r.AddLinkListener(advLstnr.String(), advLstnr.Type(), []string{"Cost Tag"}, []string{"default"})
 	}
 	return r
 }
