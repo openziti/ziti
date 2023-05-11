@@ -84,7 +84,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				} else {
 					for _, listener := range listeners.Listeners {
 						log.WithField("address", listener.GetAddress()).WithField("protocol", listener.GetProtocol()).WithField("costTags", listener.GetCostTags()).Debug("router listener")
-						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetCostTags())
+						r.AddLinkListener(listener.GetAddress(), listener.GetProtocol(), listener.GetCostTags(), listener.GetGroups())
 					}
 				}
 			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
@@ -94,7 +94,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				if addr, _ := transport.ParseAddress(addr); addr != nil {
 					linkProtocol = addr.Type()
 				}
-				r.AddLinkListener(addr, linkProtocol, nil)
+				r.AddLinkListener(addr, linkProtocol, nil, nil)
 			} else {
 				log.Warn("no advertised listeners")
 			}

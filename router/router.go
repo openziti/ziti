@@ -522,6 +522,7 @@ func (self *Router) connectToController(addr transport.Address, bindHandler chan
 			Address:  listener.GetAdvertisement(),
 			Protocol: listener.GetLinkProtocol(),
 			CostTags: listener.GetLinkCostTags(),
+			Groups:   listener.GetGroups(),
 		})
 	}
 

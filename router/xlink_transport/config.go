@@ -58,13 +58,21 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 
 	if value, found := data["costTags"]; found {
 		if costTags, ok := value.([]interface{}); ok {
-			stringTags := make([]string, len(costTags))
-			for i, tag := range costTags {
-				stringTags[i] = fmt.Sprint(tag)
+			for _, tag := range costTags {
+				config.linkCostTags = append(config.linkCostTags, fmt.Sprint(tag))
 			}
-			config.linkCostTags = stringTags
 		} else {
-			return nil, fmt.Errorf("invalid 'costTags' address in listener config (%s)", reflect.TypeOf(value))
+			return nil, fmt.Errorf("invalid 'costTags' value in listener config (%s)", reflect.TypeOf(value))
+		}
+	}
+
+	if value, found := data["groups"]; found {
+		if groups, ok := value.([]interface{}); ok {
+			for _, group := range groups {
+				config.groups = append(config.groups, fmt.Sprint(group))
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'groups' value in listener config (%s)", reflect.TypeOf(value))
 		}
 	}
 
@@ -90,6 +98,7 @@ type listenerConfig struct {
 	advertise    transport.Address
 	linkProtocol string
 	linkCostTags []string
+	groups       []string
 	options      *channel.Options
 }
 
@@ -118,6 +127,16 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 		}
 	}
 
+	if value, found := data["groups"]; found {
+		if groups, ok := value.([]interface{}); ok {
+			for _, group := range groups {
+				config.groups = append(config.groups, fmt.Sprint(group))
+			}
+		} else {
+			return nil, fmt.Errorf("invalid 'groups' value in listener config (%s)", reflect.TypeOf(value))
+		}
+	}
+
 	if value, found := data["options"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			options, err := channel.LoadOptions(submap)
@@ -136,5 +155,6 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 type dialerConfig struct {
 	split        bool
 	localBinding string
+	groups       []string
 	options      *channel.Options
 }
