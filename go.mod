@@ -73,7 +73,7 @@ require (
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
 	github.com/dlclark/regexp2 v1.9.0 // indirect
-	github.com/docker/distribution v2.8.1+incompatible // indirect
+	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/ef-ds/deque v1.0.4 // indirect
