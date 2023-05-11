@@ -28,7 +28,7 @@ LABEL name="openziti/ziti-cli" \
 USER root
 
 ### install packages
-RUN   INSTALL_PKGS="python38 python38-pip tar bash-completion vim-minimal less" && \
+RUN   INSTALL_PKGS="python38 python38-pip tar bash-completion vim-minimal less shadow-utils" && \
       microdnf -y update --setopt=install_weak_deps=0 --setopt=tsflags=nodocs && \
       microdnf -y install --setopt=install_weak_deps=0 --setopt=tsflags=nodocs ${INSTALL_PKGS}
 
@@ -43,12 +43,17 @@ COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
 RUN mkdir -p -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
+RUN groupadd --gid 1001 ziggy \
+      && adduser --uid 1001 --gid 1001 --system --home /home/ziggy --shell /bin/bash ziggy \
+      && mkdir -p /home/ziggy \
+      && chown -R 1001:1001 /home/ziggy \
+      && chmod -R g+rwX /home/ziggy
 RUN mkdir -p /usr/local/bin
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/ziti
 
 COPY ${DOCKER_BUILD_DIR}/entrypoint.sh /
 RUN chmod +x /entrypoint.sh
-USER nobody
+USER ziggy
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "ziti" ]
