@@ -69,6 +69,7 @@ func (self *ServiceListenerGroup) NewServiceListener() *ServiceListener {
 		healthCheckMgr: self.healthCheckMgr,
 		addrTracker:    self.addrTracker,
 		services:       map[string]*entities.Service{},
+		Mutex:          &self.Mutex,
 	}
 	self.listener = append(self.listener, result)
 	return result
@@ -100,6 +101,7 @@ func NewServiceListener(interceptor Interceptor, resolver dns.Resolver) *Service
 		healthCheckMgr: health.NewManager(),
 		addrTracker:    addrTracker{},
 		services:       map[string]*entities.Service{},
+		Mutex:          &sync.Mutex{},
 	}
 }
 
@@ -110,7 +112,7 @@ type ServiceListener struct {
 	healthCheckMgr health.Manager
 	services       map[string]*entities.Service
 	addrTracker    AddressTracker
-	sync.Mutex
+	*sync.Mutex
 }
 
 func (self *ServiceListener) WaitForShutdown() {
