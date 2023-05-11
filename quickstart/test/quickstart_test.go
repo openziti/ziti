@@ -228,8 +228,8 @@ func TestQuickStartEnvFile(t *testing.T) {
 		"export ZITI_USER=\"admin\"",
 		"export ZITI_PWD=\"admin\"",
 		"export ZITI_PKI=\"/persistent/pki\"",
-		"export ZITI_EDGE_CONTROLLER_ROOTCA_NAME=\"localhost-root-ca\"",
-		"export ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME=\"localhost-intermediate\"",
+		"export ZITI_PKI_CTRL_EDGE_ROOTCA_NAME=\"localhost-root-ca\"",
+		"export ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME=\"localhost-intermediate\"",
 	}
 
 	// Build the image
