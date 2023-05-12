@@ -28,7 +28,7 @@ require (
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.64
-	github.com/openziti/edge-api v0.25.18
+	github.com/openziti/edge-api v0.25.19
 	github.com/openziti/fabric v0.23.11
 	github.com/openziti/foundation/v2 v2.0.22
 	github.com/openziti/identity v1.0.48
