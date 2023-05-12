@@ -18,6 +18,9 @@ ARG TARGETOS
 # e.g. arm64
 ARG TARGETARCH
 
+ARG ZUID=2171
+ARG ZGID=2171
+
 ### Required OpenShift Labels 
 LABEL name="openziti/ziti-cli" \
       maintainer="developers@openziti.org" \
@@ -43,10 +46,10 @@ COPY --from=bitnami-kubectl /opt/bitnami/kubectl/bin/kubectl /usr/local/bin/
 RUN mkdir -p -m0755 /licenses
 COPY ./LICENSE /licenses/apache.txt
 
-RUN groupadd --gid 1001 ziggy \
-      && adduser --uid 1001 --gid 1001 --system --home /home/ziggy --shell /bin/bash ziggy \
+RUN groupadd --gid ${ZGID} ziggy \
+      && adduser --uid ${ZUID} --gid ${ZGID} --system --home /home/ziggy --shell /bin/bash ziggy \
       && mkdir -p /home/ziggy \
-      && chown -R 1001:1001 /home/ziggy \
+      && chown -R ${ZUID}:${ZGID} /home/ziggy \
       && chmod -R g+rwX /home/ziggy
 RUN mkdir -p /usr/local/bin
 COPY ${ARTIFACTS_DIR}/${TARGETARCH}/${TARGETOS}/ziti /usr/local/bin/
