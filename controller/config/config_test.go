@@ -227,7 +227,7 @@ func Test_CalculateCaPems(t *testing.T) {
 		for _, inCert := range inCas {
 			found := false
 			for _, outCert := range outCerts {
-				if bytes.Compare(inCert.Raw, outCert.Raw) == 0 {
+				if bytes.Equal(inCert.Raw, outCert.Raw) {
 					req.Falsef(found, "certificate %s was found multiple times, expected once instance in output", inCert.Subject.String())
 
 					found = true
@@ -262,7 +262,7 @@ func Test_CalculateCaPems(t *testing.T) {
 
 		req.Len(outCerts, 1)
 
-		req.True(bytes.Compare(outCerts[0].Raw, ca1.Raw) == 0, "the in ca did not match the out ca")
+		req.True(bytes.Equal(outCerts[0].Raw, ca1.Raw), "the in ca did not match the out ca")
 	})
 
 	t.Run("2 duplicate CAs in, 1 out", func(t *testing.T) {
@@ -279,7 +279,7 @@ func Test_CalculateCaPems(t *testing.T) {
 
 		req.Len(outCerts, 1)
 
-		req.True(bytes.Compare(outCerts[0].Raw, ca1.Raw) == 0, "the in ca did not match the out ca")
+		req.True(bytes.Equal(outCerts[0].Raw, ca1.Raw), "the in ca did not match the out ca")
 	})
 
 	t.Run("2 sets of 2 duplicate CAs in and 1 unique, 3 unique out", func(t *testing.T) {
@@ -303,7 +303,7 @@ func Test_CalculateCaPems(t *testing.T) {
 		for _, inCert := range inCas {
 			found := false
 			for _, outCert := range outCerts {
-				if bytes.Compare(inCert.Raw, outCert.Raw) == 0 {
+				if bytes.Equal(inCert.Raw, outCert.Raw) {
 					req.Falsef(found, "certificate %s was found multiple times, expected once instance in output", inCert.Subject.String())
 
 					found = true
