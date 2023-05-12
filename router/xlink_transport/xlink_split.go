@@ -79,7 +79,9 @@ func (self *splitImpl) CloseNotified() error {
 }
 
 func (self *splitImpl) Close() error {
-	self.droppedMsgMeter.Dispose()
+	if self.droppedMsgMeter != nil {
+		self.droppedMsgMeter.Dispose()
+	}
 	var err, err2 error
 	if self.payloadCh != nil {
 		err = self.payloadCh.Close()
