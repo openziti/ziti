@@ -375,7 +375,7 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 }
 
 // CalculateCaPems takes the supplied caPems buffer as a set of PEM Certificates separated by new lines. Duplicate
-// certificates are removed and the result is returned as a bytes.Buffer of PEM Certificates separated by new lines.
+// certificates are removed, and the result is returned as a bytes.Buffer of PEM Certificates separated by new lines.
 func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 	caPemMap := map[string][]byte{}
 
@@ -391,9 +391,12 @@ func CalculateCaPems(caPems *bytes.Buffer) *bytes.Buffer {
 			fingerprint := toHex(hash[:])
 			newPem := pem.EncodeToMemory(block)
 			caPemMap[fingerprint] = newPem
-			_, _ = newCaPems.WriteString("\n")
-			_, _ = newCaPems.Write(newPem)
 		}
+	}
+
+	for _, caPem := range caPemMap {
+		_, _ = newCaPems.WriteString("\n")
+		_, _ = newCaPems.Write(caPem)
 	}
 
 	return &newCaPems
