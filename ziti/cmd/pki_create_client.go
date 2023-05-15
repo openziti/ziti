@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -62,12 +63,14 @@ func NewCmdPKICreateClient(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
+const FlagCaClientName = "client-name"
+
 func (o *PKICreateClientOptions) addPKICreateClientFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
 	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "intermediate", "Name of Intermediate CA (within PKI_ROOT) to use to sign the new Client certificate")
 	cmd.Flags().StringVarP(&o.Flags.ClientFile, "client-file", "", "client", "Name of file (under chosen CA) in which to store new Client certificate and private key")
 	cmd.Flags().StringVarP(&o.Flags.KeyFile, "key-file", "", "", "Name of file (under chosen CA) containing private key to use when generating Client certificate")
-	cmd.Flags().StringVarP(&o.Flags.ClientName, "client-name", "", "NetFoundry Inc. Client", "Common Name (CN) to use for new Client certificate")
+	cmd.Flags().StringVarP(&o.Flags.ClientName, FlagCaClientName, "", "NetFoundry Inc. Client", "Common Name (CN) to use for new Client certificate")
 	cmd.Flags().StringSliceVar(&o.Flags.Email, "email", []string{}, "Email addr(s) to add to Subject Alternate Name (SAN) for new Client certificate")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 365, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
@@ -85,6 +88,10 @@ func (o *PKICreateClientOptions) Run() error {
 	o.Flags.PKI = &pki.ZitiPKI{Store: &store.Local{}}
 	local := o.Flags.PKI.Store.(*store.Local)
 	local.Root = pkiroot
+
+	if !o.Cmd.Flags().Changed(FlagCaClientName) {
+		o.Flags.ClientName = o.Flags.ClientName + " " + idgen.New()
+	}
 
 	commonName := o.Flags.ClientName
 

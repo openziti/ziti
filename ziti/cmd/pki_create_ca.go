@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"github.com/openziti/fabric/controller/idgen"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/pki/certificate"
@@ -62,10 +63,12 @@ func NewCmdPKICreateCA(out io.Writer, errOut io.Writer) *cobra.Command {
 	return cmd
 }
 
+const FlagCaName = "ca-name"
+
 func (o *PKICreateCAOptions) addPKICreateCAFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&o.Flags.PKIRoot, "pki-root", "", "", "Directory in which PKI resides")
 	cmd.Flags().StringVarP(&o.Flags.CAFile, "ca-file", "", "", "Dir/File name (within PKI_ROOT) in which to store new CA")
-	cmd.Flags().StringVarP(&o.Flags.CAName, "ca-name", "", "NetFoundry Inc. Certificate Authority", "Name of CA")
+	cmd.Flags().StringVarP(&o.Flags.CAName, FlagCaName, "", "NetFoundry Inc. Certificate Authority", "Name of CA")
 	cmd.Flags().IntVarP(&o.Flags.CAExpire, "expire-limit", "", 3650, "Expiration limit in days")
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
@@ -86,6 +89,11 @@ func (o *PKICreateCAOptions) Run() error {
 	cafile, err := o.ObtainCAFile()
 	if err != nil {
 		return err
+	}
+
+	if !o.Cmd.Flags().Changed(FlagCaName) {
+		//default name, ensure uniqueness by adding a random id
+		o.Flags.CAName = o.Flags.CAName + " " + idgen.New()
 	}
 
 	commonName := o.Flags.CAName
