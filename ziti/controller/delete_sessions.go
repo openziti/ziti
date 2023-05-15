@@ -182,9 +182,7 @@ func deleteSessions(db boltz.Db) {
 	}
 
 	err = db.Update(nil, func(ctx boltz.MutateContext) error {
-
 		root := ctx.Tx().Bucket([]byte("ziti"))
-
 		if root == nil {
 			return errors.New("root 'ziti' bucket not found")
 		}
