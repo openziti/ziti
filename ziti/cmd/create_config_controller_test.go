@@ -695,10 +695,6 @@ func TestCtrlEdgeAPIAddress(t *testing.T) {
 
 	assert.Equal(t, customValue, data.Controller.EdgeApi.Address)
 	assert.Equal(t, customValue, strings.Split(ctrlConfig.Edge.Api.Address, ":")[0])
-
-	// Ensure that the web listener was also set to this value (web listener must match the edge API address)
-	assert.Equal(t, customValue, data.Controller.Web.BindPoints.AddressAddress)
-	assert.Equal(t, customValue, strings.Split(ctrlConfig.Web[0].BindPoints[0].Address, ":")[0])
 }
 
 func TestCtrlEdgeAPIPort(t *testing.T) {

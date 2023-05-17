@@ -20,7 +20,6 @@ import (
 	_ "embed"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/constants"
-	"log"
 	"os"
 )
 
@@ -30,38 +29,26 @@ func SetZitiRouterIdentity(r *RouterTemplateValues, routerName string) {
 	SetZitiRouterIdentityKey(r, routerName)
 	SetZitiRouterIdentityCA(r, routerName)
 
+	// Set the router name
+	r.Name = routerName
+
 	// Edge router IP override
 	edgeRouterIPOverride := os.Getenv(constants.ZitiEdgeRouterIPOverrideVarName)
 	if edgeRouterIPOverride != "" {
 		r.Edge.IPOverride = edgeRouterIPOverride
 	}
 
-	externalDNS := os.Getenv(constants.ExternalDNSVarName)
-	edgeRouterRawName := os.Getenv(constants.ZitiEdgeRouterNameVarName)
-	if externalDNS != "" {
-		r.Edge.Hostname = externalDNS
-		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
-	} else if edgeRouterRawName != "" {
-		r.Edge.Hostname = edgeRouterRawName
-		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
-	} else {
-		r.Edge.Hostname, _ = os.Hostname()
-		r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
-	}
-
+	// Set advertised host
 	advertisedHost := os.Getenv(constants.ZitiEdgeRouterAdvertisedHostVarName)
+	resolvedHostname, _ := os.Hostname()
 	if advertisedHost != "" {
-		if advertisedHost != edgeRouterIPOverride && advertisedHost != r.Edge.AdvertisedHost {
-			log.Panicf("if %s[%s] is supplied, it *MUST* match the %s[%s] or resolved hostname[%s]", constants.ZitiEdgeRouterAdvertisedHostVarName, advertisedHost, constants.ZitiEdgeRouterIPOverrideVarName, edgeRouterIPOverride, r.Edge.Hostname)
-		}
-		r.Edge.AdvertisedHost = advertisedHost //finally override AdvertisedHost if provided
+		r.Edge.AdvertisedHost = advertisedHost
 	} else {
-		if externalDNS != "" || edgeRouterRawName != "" {
-			r.Edge.AdvertisedHost = r.Edge.Hostname
-		} else if edgeRouterIPOverride != "" {
+		// If advertised host is not provided, set to IP override, or default to resolved hostname
+		if edgeRouterIPOverride != "" {
 			r.Edge.AdvertisedHost = edgeRouterIPOverride
 		} else {
-			r.Edge.AdvertisedHost = r.Edge.Hostname //not redundant set AdvertisedHost
+			r.Edge.AdvertisedHost = resolvedHostname
 		}
 	}
 }

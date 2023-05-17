@@ -92,7 +92,7 @@ func GetCtrlListenerPort() (string, error) {
 
 func GetCtrlEdgeApiAddress() (string, error) {
 	// Get the controller's edge advertised hostname to use as the default
-	defaultHostname, err := GetCtrlEdgeAdvertisedAddress()
+	defaultAddress, err := GetCtrlEdgeAdvertisedAddress()
 	if err != nil {
 		err := errors.Wrap(err, "Unable to get "+constants.CtrlEdgeAdvertisedAddressVarName)
 		if err != nil {
@@ -100,7 +100,7 @@ func GetCtrlEdgeApiAddress() (string, error) {
 		}
 	}
 
-	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiAddressVarName, defaultHostname)
+	return getValueOrSetAndGetDefault(constants.CtrlEdgeApiAddressVarName, defaultAddress)
 }
 
 func GetCtrlEdgeApiPort() (string, error) {

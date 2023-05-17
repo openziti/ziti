@@ -3,7 +3,6 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/openziti/ziti/ziti/constants"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"os"
@@ -74,7 +73,6 @@ func unsetZitiEnv() {
 	for i := 0; i < len(envVars); i++ {
 		_ = os.Unsetenv(envVars[i])
 	}
-	_ = os.Unsetenv(constants.ExternalDNSVarName)
 }
 
 // Test that all ZITI_* variables are included in the values for output

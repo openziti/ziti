@@ -331,6 +331,7 @@ function setupEnvironment {
   # Router Values
   if [[ "${ZITI_EDGE_ROUTER_NAME-}" == "" ]]; then export ZITI_EDGE_ROUTER_NAME="${ZITI_NETWORK}-edge-router"; else echo "ZITI_EDGE_ROUTER_NAME overridden: ${ZITI_EDGE_ROUTER_NAME}"; fi
   if [[ "${ZITI_EDGE_ROUTER_PORT-}" == "" ]]; then export ZITI_EDGE_ROUTER_PORT="3022"; else echo "ZITI_EDGE_ROUTER_PORT overridden: ${ZITI_EDGE_ROUTER_PORT}"; fi
+  if [[ "${EXTERNAL_DNS-}" != "" ]]; then export ZITI_EDGE_ROUTER_ADVERTISED_HOST="${EXTERNAL_DNS}"; fi
 
   # Set up directories
   mkdir -p "${ZITI_HOME}"
@@ -372,8 +373,8 @@ function persistEnvironmentValues {
   echo "export PFXLOG_NO_JSON=true" >> "${filepath}"
 
   echo "alias zec='ziti edge'" >> "${filepath}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
+  echo "alias zlogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
   echo "alias psz='ps -ef | grep ziti'" >> "${filepath}"
 
   #when sourcing the emitted file add the bin folder to the path
@@ -923,7 +924,6 @@ function addRouter {
 
 function initializeController {
   local retVal log_file
-  # TODO: Update this to possibly take a controller name as an argument, possibly check pwd for controller file, then default to env var values
   _setup_ziti_home
   # Make sure necessary env variables are set
   _check_env_variable ZITI_HOME ZITI_CTRL_NAME ZITI_USER ZITI_PWD ZITI_PKI_CTRL_CA ZITI_BIN_DIR

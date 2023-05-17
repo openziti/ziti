@@ -14,7 +14,7 @@ import (
 var defaultArgs = []string{"edge", "--routerName", "test-router"}
 var testHostname, _ = os.Hostname()
 
-func TestEdgeRouterAdvertised(t *testing.T) {
+func TestEdgeRouterAdvertisedAddress(t *testing.T) {
 	clearRouterOptionsAndTemplateData()
 	routerAdvHostIp := "192.168.10.10"
 	routerAdvHostDns := "controller01.zitinetwork.example.org"
@@ -22,32 +22,20 @@ func TestEdgeRouterAdvertised(t *testing.T) {
 		"ZITI_CTRL_LISTENER_PORT": "80",
 		"ZITI_EDGE_ROUTER_PORT":   "443",
 	}
+	// Defaults to hostname if nothing is set
 	execCreateConfigCommand(defaultArgs, keys)
 	require.Equal(t, testHostname, data.Router.Edge.AdvertisedHost, nil)
 
-	keys["ZITI_EDGE_ROUTER_NAME"] = routerAdvHostDns
-	execCreateConfigCommand(defaultArgs, keys)
-	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
-
-	keys["ZITI_EDGE_ROUTER_NAME"] = ""
+	// If IP override set, uses that value over hostname
 	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	execCreateConfigCommand(defaultArgs, keys)
 	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
 
-	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = ""
-	keys["EXTERNAL_DNS"] = routerAdvHostDns
-	execCreateConfigCommand(defaultArgs, keys)
-	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
-
-	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostIp
-	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
-	execCreateConfigCommand(defaultArgs, keys)
-	require.Equal(t, routerAdvHostIp, data.Router.Edge.AdvertisedHost, nil)
-
+	// If advertised address set, uses that over IP override or hostname
 	keys["ZITI_EDGE_ROUTER_ADVERTISED_HOST"] = routerAdvHostDns
-	keys["EXTERNAL_DNS"] = routerAdvHostDns
+	keys["ZITI_EDGE_ROUTER_IP_OVERRIDE"] = routerAdvHostIp
 	execCreateConfigCommand(defaultArgs, keys)
-	assert.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
+	require.Equal(t, routerAdvHostDns, data.Router.Edge.AdvertisedHost, nil)
 }
 
 func TestTunnelerEnabledByDefault(t *testing.T) {
@@ -247,8 +235,8 @@ func TestEdgeRouterOutputPathDoesNotExist(t *testing.T) {
 
 func TestExecuteCreateConfigRouterEdgeHasNonBlankTemplateValues(t *testing.T) {
 	routerName := "MyEdgeRouter"
-	expectedNonEmptyStringFields := []string{".Router.Edge.ListenerBindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Hostname", ".Router.Edge.Port"}
-	expectedNonEmptyStringValues := []*string{&data.Router.Edge.ListenerBindPort, &data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Hostname, &data.Router.Edge.Port}
+	expectedNonEmptyStringFields := []string{".Router.Edge.ListenerBindPort", ".ZitiHome", ".Hostname", ".Router.Name", ".Router.IdentityCert", ".Router.IdentityServerCert", ".Router.IdentityKey", ".Router.IdentityCA", ".Router.Edge.Port"}
+	expectedNonEmptyStringValues := []*string{&data.Router.Edge.ListenerBindPort, &data.ZitiHome, &data.Hostname, &data.Router.Name, &data.Router.IdentityCert, &data.Router.IdentityServerCert, &data.Router.IdentityKey, &data.Router.IdentityCA, &data.Router.Edge.Port}
 	expectedNonEmptyIntFields := []string{".Router.Listener.OutQueueSize", ".Router.Wss.ReadBufferSize", ".Router.Wss.WriteBufferSize", ".Router.Forwarder.XgressDialQueueLength", ".Router.Forwarder.XgressDialWorkerCount", ".Router.Forwarder.LinkDialQueueLength", ".Router.Forwarder.LinkDialWorkerCount"}
 	expectedNonEmptyIntValues := []*int{&data.Router.Listener.OutQueueSize, &data.Router.Wss.ReadBufferSize, &data.Router.Wss.WriteBufferSize, &data.Router.Forwarder.XgressDialQueueLength, &data.Router.Forwarder.XgressDialWorkerCount, &data.Router.Forwarder.LinkDialQueueLength, &data.Router.Forwarder.LinkDialWorkerCount}
 	expectedNonEmptyTimeFields := []string{".Router.Listener.ConnectTimeout", "Router.Listener.GetSessionTimeout", ".Router.Wss.WriteTimeout", ".Router.Wss.ReadTimeout", ".Router.Wss.IdleTimeout", ".Router.Wss.PongTimeout", ".Router.Wss.PingInterval", ".Router.Wss.HandshakeTimeout", ".Router.Forwarder.LatencyProbeInterval"}

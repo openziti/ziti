@@ -47,7 +47,7 @@ csr:
   organizationalUnit: Ziti
   sans:
     dns:
-      - {{ .Router.Edge.Hostname }}
+      - {{ .Router.Edge.AdvertisedHost }}
       - localhost
     ip:
       - "127.0.0.1"
@@ -62,7 +62,7 @@ edge:
     organizationalUnit: Ziti
     sans:
       dns:
-        - {{ .Router.Edge.Hostname }}
+        - {{ .Router.Edge.AdvertisedHost }}
         - localhost
       ip:
         - "127.0.0.1"

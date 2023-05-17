@@ -149,7 +149,6 @@ type RouterTemplateValues struct {
 }
 
 type EdgeRouterTemplateValues struct {
-	Hostname         string
 	Port             string
 	IPOverride       string
 	AdvertisedHost   string
