@@ -877,7 +877,7 @@ function _create_router_config {
 
 # Used to create a router, router config, then enroll the router.
 function addRouter {
-  local router_name router_type retVal
+  local router_name router_type retVal router_attr
   # Make sure necessary env variables are set
   _check_env_variable ZITI_HOME ZITI_BIN_DIR ZITI_USER ZITI_PWD
   retVal=$?
@@ -887,6 +887,7 @@ function addRouter {
   # Allow router name and type to be passed in as arg
   router_name="${1-}"
   router_type="${2-}"
+  router_attr="${3-}"
   # If no router name provided and env var is not set, prompt user for a router name
   if [[ "${router_name}" == "" ]] && [[ -z "${ZITI_EDGE_ROUTER_NAME}" ]]; then
     echo -e "$(YELLOW "addRouter requires a router name to be supplied") "
@@ -906,7 +907,7 @@ function addRouter {
   # Create router
   zitiLogin
   "${ZITI_BIN_DIR-}/ziti" edge delete edge-router "${router_name}"
-  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${router_type}"
+  "${ZITI_BIN_DIR-}/ziti" edge create edge-router "${router_name}" -o "${ZITI_HOME}/${router_name}.jwt" -t -a "${router_attr}"
 
   # Create router config
   _create_router_config "${router_name}" "${router_type}"
