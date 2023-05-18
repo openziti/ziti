@@ -29,7 +29,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.64
 	github.com/openziti/edge-api v0.25.19
-	github.com/openziti/fabric v0.23.11
+	github.com/openziti/fabric v0.23.12
 	github.com/openziti/foundation/v2 v2.0.22
 	github.com/openziti/identity v1.0.48
 	github.com/openziti/jwks v1.0.3
@@ -43,7 +43,7 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.2
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
