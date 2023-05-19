@@ -455,8 +455,8 @@ github.com/openziti/channel/v2 v2.0.67 h1:4F9KDxFy3F/WO9owEWwg/hvEDWw3nrvKGQpgpJ
 github.com/openziti/channel/v2 v2.0.67/go.mod h1:IMonyQrPNySo/q6BOqjLuSb52s3oBapqz9+tIeiCu4A=
 github.com/openziti/edge-api v0.25.20 h1:CYGho6petml25LbjOjiTMpOJ65FOySw/x3Q1NfW1HE4=
 github.com/openziti/edge-api v0.25.20/go.mod h1:rmEkj8jAkBTUhhgE/GFXije6bpFbd2P9TzdxTqZlXI8=
-github.com/openziti/fabric v0.23.13 h1:izERBAskPElNF9ET0fzWwJ18Ng3NC/JMd2k8HgUZ9ng=
-github.com/openziti/fabric v0.23.13/go.mod h1:OE75QwF/TCXT/JjABNzJRrtLujbU5Bc8x860gbYrZnI=
+github.com/openziti/fabric v0.23.14 h1:0xuVJgNu5nH2kAFy/De9aeUE+aHiiT2dUUAnQoVJgSU=
+github.com/openziti/fabric v0.23.14/go.mod h1:Whu3c34Fxel1lvjFgHkRvEBEPIGf7d5aJxxRm6Iy9YE=
 github.com/openziti/foundation/v2 v2.0.22 h1:oPjp83CwrVnldkPQiDykhfH5D8EokBk2xK+s7qUvmLk=
 github.com/openziti/foundation/v2 v2.0.22/go.mod h1:4vBINq6Y9aSA6Bu1pOP2mBoepsWBrYWElJvTa4o+ceU=
 github.com/openziti/identity v1.0.50 h1:CIRzOKPMEGnd06+kCR+425/JPezpRS8Fj/4+jLmPEbk=
@@ -469,8 +469,8 @@ github.com/openziti/sdk-golang v0.20.25 h1:Ox/u4VR9DdBjHOfNMSGgWHjeWbMdLhXQwXXPx
 github.com/openziti/sdk-golang v0.20.25/go.mod h1:NvmMXxLA9TM5Fd4cgLIWHPwEY6totJdHNWemzmw9IWU=
 github.com/openziti/secretstream v0.1.7 h1:g2p53n1aCbpoiOWLRwm5fzO4yqRN/dAZevOPuGg/Uo4=
 github.com/openziti/secretstream v0.1.7/go.mod h1:qcF8EmSX5SAT8k2pzsDI4bWugopv9AA+ltgWDrcAAEw=
-github.com/openziti/storage v0.2.2 h1:LZMNUy235thFRk4oMgGv19PvyqSDwJDBzva7FbtrEuM=
-github.com/openziti/storage v0.2.2/go.mod h1:MYIW9yMnq9QExJAz0pVkKEWF4w5uO9b/HbDwJJ+T0OE=
+github.com/openziti/storage v0.2.3 h1:zK04A1EgEYb4ZQ3xPqqUeM4Spzl6iiTKFRAMVL2wb5E=
+github.com/openziti/storage v0.2.3/go.mod h1:zzk6DmTojASni7yV5WBWLraHv35M0+3PprUSKA5gRqk=
 github.com/openziti/transport/v2 v2.0.79 h1:Q9IR0kJiEwZygShOyM1rumefpq+iw5psnqOqoGeQxTI=
 github.com/openziti/transport/v2 v2.0.79/go.mod h1:pCxvX0j7Fonfr2k2Y0Y8qWjaTqyOrmizXK2F+ttV2eY=
 github.com/openziti/x509-claims v1.0.3 h1:HNdQ8Nf1agB3lBs1gahcO6zfkeS4S5xoQ2/PkY4HRX0=
@@ -572,8 +572,9 @@ github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.2/go.mod h1:R6va5+xMeoiuVRoj+gSkQ7d3FALtqAAGI1FQKckRals=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
+github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gtY=
+github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/subosito/gotenv v1.2.0/go.mod h1:N0PQaV/YGNqwC0u51sEeR/aUtSLEXKX9iv69rRypqCw=
 github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125 h1:3SNcvBmEPE1YlB1JpVZouslJpI3GBNoiqW7+wb0Rz7w=
 github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125/go.mod h1:M8agBzgqHIhgj7wEn9/0hJUZcrvt9VY+Ln+S1I5Mha0=
