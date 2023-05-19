@@ -55,7 +55,7 @@ function _setup_ziti_network {
 }
 
 function _set_ziti_bin_dir {
-  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"; fi
+  if [[ "${ZITI_BIN_DIR-}" == "" ]]; then export ZITI_BIN_DIR="${ZITI_HOME}/ziti-bin/ziti-${ZITI_BINARIES_VERSION}"; else echo "ZITI_BIN_DIR overridden: ${ZITI_BIN_DIR}"; fi
 }
 
 function _get_file_overwrite_permission {
@@ -630,14 +630,15 @@ function getZiti {
   # Check if they're already downloaded or maybe the user explicitly pointed ZITI_BIN_DIR to their local bins
   if ! test -f "${ZITI_BIN_DIR}/ziti"; then
     # Make the directory
+    echo -en "No existing binary found, creating the ZITI_BIN_DIR directory ($(BLUE "${ZITI_BIN_DIR}"))"
     mkdir -p "${ZITI_BIN_DIR}"
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
-      echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR}")"
+      echo -e "  * $(RED "ERROR: An error occurred generating the path (${ZITI_BIN_DIR})")"
       return 1
     fi
   else
-    echo "ZITI_BIN_DIR/ziti does exist"
+    echo -en "ziti found in ZITI_BIN_DIR ($(BLUE "${ZITI_BIN_DIR}"))"
     # Get the current version and compare with latest
     local currentVersion
     currentVersion="$("${ZITI_BIN_DIR}"/ziti --version) "
