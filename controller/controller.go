@@ -437,7 +437,7 @@ func (c *Controller) TryInitializeRaftFromBoltDb() error {
 	path := fmt.Sprintf("%v", val)
 	if _, err := os.Stat(path); err != nil {
 		if os.IsNotExist(err) {
-			return errors.Wrapf(err, "source db not found at [%v]", path)
+			return errors.Wrapf(err, "source db not found at [%v], either remove 'db' config setting or fix path ", path)
 		}
 		return errors.Wrapf(err, "invalid db path [%v]", path)
 	}

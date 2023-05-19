@@ -204,6 +204,11 @@ func (self *Controller) HandleTransferLeadership(req *cmd_pb.TransferLeadershipR
 }
 
 func (self *Controller) forwardToLeader(req protobufs.TypedMessage) error {
+	leader := self.GetLeaderAddr()
+	if leader == "" {
+		return errors.New("no leader, unable to forward request")
+	}
+
 	peer, err := self.GetMesh().GetOrConnectPeer(self.GetLeaderAddr(), 5*time.Second)
 	if err != nil {
 		return err

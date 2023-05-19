@@ -575,7 +575,7 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	err = h.RegisterCheck(ctrlPingCheck,
 		gosundheit.ExecutionPeriod(checkConfig.CtrlPingCheck.Interval),
 		gosundheit.ExecutionTimeout(checkConfig.CtrlPingCheck.Timeout),
-		gosundheit.InitiallyPassing(true),
+		gosundheit.InitiallyPassing(false),
 		gosundheit.InitialDelay(checkConfig.CtrlPingCheck.InitialDelay),
 	)
 
