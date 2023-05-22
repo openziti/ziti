@@ -34,7 +34,7 @@ require (
 	github.com/openziti/identity v1.0.51
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.23
-	github.com/openziti/sdk-golang v0.20.32
+	github.com/openziti/sdk-golang v0.20.33
 	github.com/openziti/secretstream v0.1.7
 	github.com/openziti/storage v0.2.4
 	github.com/openziti/transport/v2 v2.0.82
