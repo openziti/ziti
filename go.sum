@@ -451,12 +451,12 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/openziti/channel/v2 v2.0.75 h1:r9zZjiY0oYry/KAgCV5yPRe64jACyTaPMmD25b7LbKg=
-github.com/openziti/channel/v2 v2.0.75/go.mod h1:AG43uiANCWhVwM4BMYPJES9J4KCa3vHg9QPJjHDRqPI=
+github.com/openziti/channel/v2 v2.0.76 h1:/fopm40/Pu1BKXpSggumZ6FexqDEaS0de+UsNCnegbU=
+github.com/openziti/channel/v2 v2.0.76/go.mod h1:AG43uiANCWhVwM4BMYPJES9J4KCa3vHg9QPJjHDRqPI=
 github.com/openziti/edge-api v0.25.21 h1:d049IWQTx/vFAWAuqE7adIUBKbF9YKZavl5N6PD1K2k=
 github.com/openziti/edge-api v0.25.21/go.mod h1:rmEkj8jAkBTUhhgE/GFXije6bpFbd2P9TzdxTqZlXI8=
-github.com/openziti/fabric v0.23.24 h1:PjeeEMndRggUg6GjMs4k1mdT+I3NCFYQPiV0luZGEhk=
-github.com/openziti/fabric v0.23.24/go.mod h1:9TH4x4ifblQvzXx5/5jJt4sFLoOcok4pJlfwIx0bTRs=
+github.com/openziti/fabric v0.23.25 h1:MZfvXlloR30GkbgZf+ptuhEUts1B8SXgFcZrL3YSh4s=
+github.com/openziti/fabric v0.23.25/go.mod h1:0MtkZqIHs3cJPP4DB88xsWUemDm77nN/GvWBBfq7peo=
 github.com/openziti/foundation/v2 v2.0.24 h1:cNJCbh4o9E+7mtSUDo7ZBuMoPjJAilDWgr7X8ntRz/Q=
 github.com/openziti/foundation/v2 v2.0.24/go.mod h1:H0w/ldKyE0ynwpIwt68k2rhMwt874IVxPQcimMuHJ3s=
 github.com/openziti/identity v1.0.53 h1:w28wBcuiT8RlLjfcVgcqz0povQgfibj7zwS6OeLGSpI=

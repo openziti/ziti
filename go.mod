@@ -27,9 +27,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/openziti/channel/v2 v2.0.75
+	github.com/openziti/channel/v2 v2.0.76
 	github.com/openziti/edge-api v0.25.21
-	github.com/openziti/fabric v0.23.24
+	github.com/openziti/fabric v0.23.25
 	github.com/openziti/foundation/v2 v2.0.24
 	github.com/openziti/identity v1.0.53
 	github.com/openziti/jwks v1.0.3
