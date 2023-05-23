@@ -20,27 +20,27 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.10
-	github.com/openziti/channel/v2 v2.0.64
+	github.com/openziti/channel/v2 v2.0.76
 	github.com/openziti/edge v0.24.300
-	github.com/openziti/edge-api v0.25.19
-	github.com/openziti/fabric v0.23.11
-	github.com/openziti/foundation/v2 v2.0.22
-	github.com/openziti/identity v1.0.48
+	github.com/openziti/edge-api v0.25.24
+	github.com/openziti/fabric v0.23.26
+	github.com/openziti/foundation/v2 v2.0.24
+	github.com/openziti/identity v1.0.53
 	github.com/openziti/runzmd v1.0.21
-	github.com/openziti/sdk-golang v0.20.21
-	github.com/openziti/storage v0.2.2
-	github.com/openziti/transport/v2 v2.0.77
+	github.com/openziti/sdk-golang v0.20.46
+	github.com/openziti/storage v0.2.6
+	github.com/openziti/transport/v2 v2.0.86
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.23.4
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.10.0
 	google.golang.org/grpc v1.42.0
@@ -114,6 +114,7 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -141,8 +142,8 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.21 // indirect
-	github.com/openziti/secretstream v0.1.7 // indirect
+	github.com/openziti/metrics v1.2.25 // indirect
+	github.com/openziti/secretstream v0.1.8 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
@@ -186,4 +187,5 @@ require (
 	gopkg.in/ini.v1 v1.66.2 // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
 )
