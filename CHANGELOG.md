@@ -1,16 +1,3 @@
-# Release 0.28.1
-
-## What's New
-
-* Updated `intercept.v1` and `host.v1`,`host.v2` config types to allow hostnames with underscores.
-
-## Component Updates and Bug Fixes
-
-* github.com/openziti/edge: [v0.24.268 -> v0.24.300](https://github.com/openziti/edge/compare/v0.24.268...v0.24.300)
-
-* github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
-  * [Issue #1119](https://github.com/openziti/ziti/issues/1119) - intercept.v1 config should permit underscores in the address
-
 # Release 0.28.0
 
 ## What's New
@@ -27,6 +14,8 @@
   * `-e/--ext-jwt` allows a user to supply a file containing a jwt used with ext-jwt-signers to login
   * `-c/--client-cert` allows a certificate to be supplied to login (used with `-k/--client-key`)
   * `-k/--client-key` allows a key to be supplied to login (used with `-c/--client-cert`)
+* Config type changes
+  * address fields in `intercept.v1`, `host.v1`, and `host.v2` config types now permit hostnames with underscores.
 
 ## Event Changes
 
@@ -197,7 +186,7 @@ Example output:
 * github.com/openziti/channel/v2: [v2.0.58 -> v2.0.64](https://github.com/openziti/channel/compare/v2.0.58...v2.0.64)
     * [Issue #98](https://github.com/openziti/channel/issues/98) - Set default connect timeout to 5 seconds
 
-* github.com/openziti/edge: [v0.24.239 -> v0.24.266](https://github.com/openziti/edge/compare/v0.24.239...v0.24.266)
+* github.com/openziti/edge: [v0.24.239 -> v0.24.300](https://github.com/openziti/edge/compare/v0.24.239...v0.24.300)
     * [Issue #1471](https://github.com/openziti/edge/issues/1471) - UDP intercept connections report incorrect local/remote addresses, making confusing events
     * [Issue #629](https://github.com/openziti/edge/issues/629) - emit entity change events
     * [Issue #1295](https://github.com/openziti/edge/issues/1295) - Ensure DB migrations work properly in a clustered setup (edge)
@@ -226,4 +215,5 @@ Example output:
     * [Issue #1087](https://github.com/openziti/ziti/issues/1087) - re-enable CI in forks
     * [Issue #1013](https://github.com/openziti/ziti/issues/1013) - docker env password is renewed at each `docker-compose up`
     * [Issue #1077](https://github.com/openziti/ziti/issues/1077) - Show auth-policy name on identity list instead of id
+    * [Issue #1119](https://github.com/openziti/ziti/issues/1119) - intercept.v1 config should permit underscores in the address
 
