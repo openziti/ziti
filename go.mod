@@ -34,7 +34,7 @@ require (
 	github.com/openziti/identity v1.0.53
 	github.com/openziti/jwks v1.0.3
 	github.com/openziti/metrics v1.2.25
-	github.com/openziti/sdk-golang v0.20.45
+	github.com/openziti/sdk-golang v0.20.46
 	github.com/openziti/secretstream v0.1.8
 	github.com/openziti/storage v0.2.6
 	github.com/openziti/transport/v2 v2.0.86
@@ -86,6 +86,7 @@ require (
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
+	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
@@ -97,6 +98,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/josharian/native v1.1.0 // indirect
+	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -129,4 +131,5 @@ require (
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
+	nhooyr.io/websocket v1.8.7 // indirect
 )
