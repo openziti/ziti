@@ -25,7 +25,7 @@
       "type": "string"
     },
     "hostname": {
-      "format": "hostname",
+      "format": "idn-hostname",
       "not": {
         "$ref": "#/$defs/ipAddressFormat"
       },

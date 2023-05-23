@@ -245,7 +245,7 @@ var tunnelDefinitions = map[string]interface{}{
 	},
 	"hostname": map[string]interface{}{
 		"type":   "string",
-		"format": "hostname",
+		"format": "idn-hostname",
 		"not":    map[string]interface{}{"$ref": "#/definitions/ipAddressFormat"},
 	},
 	"wildcardDomain": map[string]interface{}{

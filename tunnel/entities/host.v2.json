@@ -67,7 +67,7 @@
       "type": "string"
     },
     "hostname": {
-      "format": "hostname",
+      "format": "idn-hostname",
       "not": {
         "$ref": "#/definitions/ipAddressFormat"
       },
