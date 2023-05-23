@@ -1,3 +1,16 @@
+# Release 0.28.1
+
+## What's New
+
+* Updated `intercept.v1` and `host.v1`,`host.v2` config types to allow hostnames with underscores.
+
+## Component Updates and Bug Fixes
+
+* github.com/openziti/edge: [v0.24.268 -> v0.24.300](https://github.com/openziti/edge/compare/v0.24.268...v0.24.300)
+
+* github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
+  * [Issue #1119](https://github.com/openziti/ziti/issues/1119) - intercept.v1 config should permit underscores in the address
+
 # Release 0.28.0
 
 ## What's New
