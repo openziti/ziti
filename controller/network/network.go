@@ -71,7 +71,7 @@ type Network struct {
 	routerChanged          chan *Router
 	linkController         *linkController
 	linkChanged            chan *Link
-	forwardingFaults       chan *ForwardingFaultReport
+	forwardingFaults       chan struct{}
 	circuitController      *circuitController
 	routeSenderController  *routeSenderController
 	sequence               *sequence.Sequence
@@ -119,7 +119,7 @@ func NewNetwork(config Config) (*Network, error) {
 		routerChanged:         make(chan *Router, 16),
 		linkController:        newLinkController(config.GetOptions()),
 		linkChanged:           make(chan *Link, 16),
-		forwardingFaults:      make(chan *ForwardingFaultReport, 16),
+		forwardingFaults:      make(chan struct{}, 1),
 		circuitController:     newCircuitController(),
 		routeSenderController: newRouteSenderController(),
 		sequence:              sequence.NewSequence(),
@@ -580,7 +580,12 @@ func (network *Network) CreateCircuit(params CreateCircuitParams) (*Circuit, err
 }
 
 func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
-	network.forwardingFaults <- ffr
+	select {
+	case network.forwardingFaults <- struct{}{}:
+	default:
+	}
+
+	go network.handleForwardingFaults(ffr)
 }
 
 func parseInstanceIdAndService(service string) (string, string) {
@@ -829,8 +834,7 @@ func (network *Network) Run() {
 		case l := <-network.linkChanged:
 			go network.handleLinkChanged(l)
 
-		case ffr := <-network.forwardingFaults:
-			go network.handleForwardingFaults(ffr)
+		case <-network.forwardingFaults:
 			network.clean()
 
 		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
@@ -954,14 +958,14 @@ func (network *Network) rerouteLink(l *Link, deadline time.Time) error {
 	return nil
 }
 
-func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) {
+func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) bool {
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 
 	for i := 0; i < retries; i++ {
 		deadline := time.Now().Add(DefaultNetworkOptionsRouteTimeout)
 		err := network.rerouteCircuit(circuit, deadline)
 		if err == nil {
-			return
+			return true
 		}
 
 		log.WithError(err).WithField("attempt", i).Error("error re-routing circuit")
@@ -970,6 +974,7 @@ func (network *Network) rerouteCircuitWithTries(circuit *Circuit, retries int) {
 	if err := network.RemoveCircuit(circuit.Id, true); err != nil {
 		log.WithError(err).Error("failure while removing circuit after failed re-route attempt")
 	}
+	return false
 }
 
 func (network *Network) rerouteCircuit(circuit *Circuit, deadline time.Time) error {
