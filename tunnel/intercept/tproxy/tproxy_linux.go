@@ -39,6 +39,12 @@ import (
 	"os/exec"
 	"strings"
 	"syscall"
+	"time"
+)
+
+const (
+	DefaultUdpIdleTimeout   = 5 * time.Minute
+	DefaultUdpCheckInterval = 30 * time.Second
 )
 
 // https://github.com/torvalds/linux/blob/master/Documentation/networking/tproxy.txt
@@ -70,26 +76,47 @@ var listenConfig = net.ListenConfig{
 	},
 }
 
-func New(lanIf string) (intercept.Interceptor, error) {
-	return NewWithDiverter(lanIf, "")
+type Config struct {
+	LanIf            string
+	Diverter         string
+	UDPIdleTimeout   time.Duration
+	UDPCheckInterval time.Duration
 }
 
-func NewWithDiverter(lanIf, diverter string) (intercept.Interceptor, error) {
+func New(config Config) (intercept.Interceptor, error) {
+	log := pfxlog.Logger()
+
 	self := &interceptor{
-		lanIf:          lanIf,
-		diverter:       diverter,
-		serviceProxies: cmap.New[*tProxy](),
-		ipt:            nil,
+		lanIf:            config.LanIf,
+		diverter:         config.Diverter,
+		udpIdleTimeout:   config.UDPIdleTimeout,
+		udpCheckInterval: config.UDPCheckInterval,
+		serviceProxies:   cmap.New[*tProxy](),
+		ipt:              nil,
 	}
 
-	if diverter != "" {
-		cmd := exec.Command(diverter, "-V")
+	if self.udpIdleTimeout < 5*time.Second {
+		self.udpIdleTimeout = DefaultUdpIdleTimeout
+		log.Infof("udpIdleTimeout is less than 5s, using default value of %s", DefaultUdpIdleTimeout.String())
+	}
+	if self.udpCheckInterval < time.Second {
+		self.udpCheckInterval = DefaultUdpCheckInterval
+		log.Infof("udpCheckInterval is less than 1s, using default value of %s", DefaultUdpCheckInterval.String())
+	}
+
+	log.Infof("tproxy config: lanIf            =  [%s]", self.lanIf)
+	log.Infof("tproxy config: diverter         =  [%s]", self.diverter)
+	log.Infof("tproxy config: udpIdleTimeout   =  [%s]", self.udpIdleTimeout.String())
+	log.Infof("tproxy config: udpCheckInterval =  [%s]", self.udpCheckInterval.String())
+
+	if self.diverter != "" {
+		cmd := exec.Command(self.diverter, "-V")
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			logrus.Errorf("failed to launch external tproxy diverter %s: %v", cmd.String(), out)
 			return nil, err
 		} else {
-			logrus.Infof("using external tproxy diverter %s, version info %s", diverter, out)
+			logrus.Infof("using external tproxy diverter %s, version info %s", self.diverter, out)
 		}
 		return self, nil
 	}
@@ -128,8 +155,11 @@ func (a alwaysRemoveAddressTracker) RemoveAddress(string) bool {
 }
 
 type interceptor struct {
-	lanIf          string
-	diverter       string // external tproxy configuration utility. use internal iptables implementation if not specified.
+	lanIf            string
+	diverter         string // external tproxy configuration utility. use internal iptables implementation if not specified.
+	udpIdleTimeout   time.Duration
+	udpCheckInterval time.Duration
+
 	serviceProxies cmap.ConcurrentMap[string, *tProxy]
 	ipt            *iptables.IPTables
 }
@@ -283,7 +313,8 @@ func (self *tProxy) acceptTCP() {
 }
 
 func (self *tProxy) acceptUDP() {
-	vconnMgr := udp_vconn.NewManager(self.service.GetFabricProvider(), udp_vconn.NewUnlimitedConnectionPolicy(), udp_vconn.NewDefaultExpirationPolicy())
+	expirationPolicy := udp_vconn.NewTimeoutExpirationPolicy(self.interceptor.udpIdleTimeout, self.interceptor.udpCheckInterval)
+	vconnMgr := udp_vconn.NewManager(self.service.GetFabricProvider(), udp_vconn.NewUnlimitedConnectionPolicy(), expirationPolicy)
 	self.generateReadEvents(vconnMgr)
 }
 

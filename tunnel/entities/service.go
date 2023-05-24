@@ -8,6 +8,7 @@ import (
 	"github.com/openziti/edge/health"
 	"github.com/openziti/edge/tunnel"
 	"github.com/openziti/edge/tunnel/utils"
+	"github.com/openziti/foundation/v2/genext"
 	"github.com/openziti/foundation/v2/stringz"
 	"github.com/pkg/errors"
 	"net"
@@ -447,4 +448,8 @@ func (self *Service) GetDialIdentityTemplate() string {
 		return ""
 	}
 	return *self.InterceptV1Config.DialOptions.Identity
+}
+
+func (self *Service) IsEncryptionRequired() bool {
+	return genext.OrDefault(self.EncryptionRequired)
 }

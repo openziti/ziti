@@ -122,12 +122,14 @@ func (self *Factory) CreateDialer(optionsData xgress.OptionsData) (xgress.Dialer
 
 type Options struct {
 	*xgress.Options
-	mode          string
-	svcPollRate   time.Duration
-	resolver      string
-	dnsSvcIpRange string
-	lanIf         string
-	services      []string
+	mode             string
+	svcPollRate      time.Duration
+	resolver         string
+	dnsSvcIpRange    string
+	lanIf            string
+	services         []string
+	udpIdleTimeout   time.Duration
+	udpCheckInterval time.Duration
 }
 
 func (options *Options) load(data xgress.OptionsData) error {
@@ -201,6 +203,30 @@ func (options *Options) load(data xgress.OptionsData) error {
 				options.lanIf = strVal
 			} else {
 				return errors.Errorf(`invalid value '%v' for lanIf, must be a string value`, value)
+			}
+		}
+
+		if value, found := data["udpIdleTimeout"]; found {
+			if strVal, ok := value.(string); ok {
+				dur, err := time.ParseDuration(strVal)
+				if err != nil {
+					return errors.Wrapf(err, "invalid value '%v' for udpIdleTimeout, must be string duration (ex: 1m or 30s)", value)
+				}
+				options.udpIdleTimeout = dur
+			} else {
+				return errors.Errorf("invalid value '%v' for udpIdleTimeout, must be string duration (ex: 1m or 30s)", value)
+			}
+		}
+
+		if value, found := data["udpCheckInterval"]; found {
+			if strVal, ok := value.(string); ok {
+				dur, err := time.ParseDuration(strVal)
+				if err != nil {
+					return errors.Wrapf(err, "invalid value '%v' for udpCheckInterval, must be string duration (ex: 1m or 30s)", value)
+				}
+				options.udpCheckInterval = dur
+			} else {
+				return errors.Errorf("invalid value '%v' for udpCheckInterval, must be string duration (ex: 1m or 30s)", value)
 			}
 		}
 

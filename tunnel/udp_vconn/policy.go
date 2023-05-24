@@ -64,3 +64,23 @@ func (policy defaultExpirationPolicy) IsExpired(now, lastUsed time.Time) bool {
 func (policy defaultExpirationPolicy) PollFrequency() time.Duration {
 	return time.Second * 30
 }
+
+func NewTimeoutExpirationPolicy(timeout time.Duration, checkInterval time.Duration) ConnExpirationPolicy {
+	return &timeoutExpirationPolicy{
+		timeout:       timeout,
+		checkInterval: checkInterval,
+	}
+}
+
+type timeoutExpirationPolicy struct {
+	timeout       time.Duration
+	checkInterval time.Duration
+}
+
+func (policy *timeoutExpirationPolicy) IsExpired(now, lastUsed time.Time) bool {
+	return now.Sub(lastUsed) > policy.timeout
+}
+
+func (policy *timeoutExpirationPolicy) PollFrequency() time.Duration {
+	return policy.checkInterval
+}

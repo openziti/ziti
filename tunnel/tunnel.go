@@ -35,6 +35,7 @@ type Service interface {
 	GetFabricProvider() FabricProvider
 	GetName() string
 	GetDialTimeout() time.Duration
+	IsEncryptionRequired() bool
 }
 
 func DialAndRun(service Service, instanceId string, clientConn net.Conn, appInfo map[string]string, halfClose bool) {

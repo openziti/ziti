@@ -42,7 +42,7 @@ func (self *tunneler) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	circuitId := params.GetCircuitId()
 
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(params.GetLogContext()).
-		WithField("binding", "edge").
+		WithField("binding", "tunnel").
 		WithField("destination", destination)
 
 	terminator, ok := self.terminators.Get(destination)
