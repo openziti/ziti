@@ -27,9 +27,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/mapstructure v1.5.0
-	github.com/openziti/channel/v2 v2.0.76
+	github.com/openziti/channel/v2 v2.0.77
 	github.com/openziti/edge-api v0.25.24
-	github.com/openziti/fabric v0.23.26
+	github.com/openziti/fabric v0.23.27
 	github.com/openziti/foundation/v2 v2.0.24
 	github.com/openziti/identity v1.0.53
 	github.com/openziti/jwks v1.0.3
@@ -37,7 +37,7 @@ require (
 	github.com/openziti/sdk-golang v0.20.46
 	github.com/openziti/secretstream v0.1.8
 	github.com/openziti/storage v0.2.6
-	github.com/openziti/transport/v2 v2.0.86
+	github.com/openziti/transport/v2 v2.0.87
 	github.com/openziti/x509-claims v1.0.3
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
