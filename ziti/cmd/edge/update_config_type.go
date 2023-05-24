@@ -68,7 +68,7 @@ func newUpdateConfigTypeCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 
 // runUpdateConfigType update a new config on the Ziti Edge Controller
 func (self *updateConfigTypeAction) run() error {
-	id, err := mapNameToID("configs", self.Args[0], self.Options)
+	id, err := mapNameToID("config-types", self.Args[0], self.Options)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (self *updateConfigTypeAction) run() error {
 			fmt.Printf("Failing parsing JSON: %+v\n", err)
 			return errors.Errorf("unable to parse data as json: %v", err)
 		}
-		api.SetJSONValue(entityData, dataMap, "data")
+		api.SetJSONValue(entityData, dataMap, "schema")
 		change = true
 	}
 
@@ -116,7 +116,7 @@ func (self *updateConfigTypeAction) run() error {
 		return errors.New("no change specified. must specify at least one attribute to change")
 	}
 
-	_, err = patchEntityOfType(fmt.Sprintf("configs/%v", id), entityData.String(), &self.Options)
+	_, err = patchEntityOfType(fmt.Sprintf("config-types/%v", id), entityData.String(), &self.Options)
 
 	return err
 }

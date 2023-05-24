@@ -216,4 +216,5 @@ Example output:
     * [Issue #1013](https://github.com/openziti/ziti/issues/1013) - docker env password is renewed at each `docker-compose up`
     * [Issue #1077](https://github.com/openziti/ziti/issues/1077) - Show auth-policy name on identity list instead of id
     * [Issue #1119](https://github.com/openziti/ziti/issues/1119) - intercept.v1 config should permit underscores in the address
+    * [Issue #1123](https://github.com/openziti/ziti/issues/1123) - cannot update config types with ziti cli
 
