@@ -91,6 +91,7 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	agentCmd.AddCommand(routerCmd)
 
 	routerCmd.AddCommand(NewRouteCmd(p))
+	routerCmd.AddCommand(NewUnrouteCmd(p))
 	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-api-sessions", AgentAppRouter, debugops.DumpApiSessions, p))
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-routes", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), p))
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-links", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), p))
