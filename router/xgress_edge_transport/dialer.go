@@ -68,7 +68,7 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		return nil, err
 	}
 
-	log.Infof("successful connection to %v from %v (s/%v)", destination, peer.LocalAddr(), circuitId.Token)
+	log.Debugf("successful connection to %v from %v (s/%v)", destination, peer.LocalAddr(), circuitId.Token)
 
 	xgConn := xgress_common.NewXgressConn(peer, true, true)
 	peerData := make(xt.PeerData, 3)
