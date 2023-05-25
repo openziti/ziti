@@ -27,12 +27,15 @@ type receiveHandler struct {
 }
 
 func NewReceiveHandler(forwarder *forwarder.Forwarder) *receiveHandler {
-	return &receiveHandler{forwarder: forwarder}
+	return &receiveHandler{
+		forwarder: forwarder,
+	}
 }
 
 func (xrh *receiveHandler) HandleXgressReceive(payload *xgress.Payload, x *xgress.Xgress) {
 	if err := xrh.forwarder.ForwardPayload(x.Address(), payload); err != nil {
 		pfxlog.ContextLogger(x.Label()).WithFields(payload.GetLoggerFields()).WithError(err).Error("unable to forward payload")
+		xrh.forwarder.ReportForwardingFault(payload.CircuitId, x.CtrlId())
 	}
 }
 

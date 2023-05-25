@@ -88,19 +88,32 @@ func (self *Faulter) run() {
 				}
 
 				circuitIds := strings.Join(workload, " ")
-				fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
 
-				log := pfxlog.Logger().WithField("ctrlId", ctrlId)
-				ch := self.ctrls.GetCtrlChannel(ctrlId)
-				if ch == nil {
-					log.Error("no control channel for controller")
-					continue
-				}
+				if ctrlId != "" {
+					log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+					ch := self.ctrls.GetCtrlChannel(ctrlId)
+					if ch == nil {
+						log.Error("no control channel for controller")
+						continue
+					}
 
-				if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
-					log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
-				} else {
-					log.WithError(err).Error("error sending fault report")
+					fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_ForwardFault, Id: circuitIds}
+					if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
+						log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+					} else {
+						log.WithError(err).Error("error sending fault report")
+					}
+				} else { // send to all controllers
+					fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_UnknownOwnerForwardFault, Id: circuitIds}
+
+					self.ctrls.ForEach(func(ctrlId string, ch channel.Channel) {
+						log := pfxlog.Logger().WithField("ctrlId", ctrlId)
+						if err := protobufs.MarshalTyped(fault).Send(ch); err == nil {
+							log.WithField("circuitCount", len(workload)).Warn("reported forwarding faults")
+						} else {
+							log.WithError(err).Error("error sending fault report")
+						}
+					})
 				}
 			}
 

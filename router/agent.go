@@ -32,6 +32,7 @@ func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 
 		if debugEnabled {
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), self.agentOpUpdateRoute)
+			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUnrouteRequestType), self.agentOpUnroute)
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugForgetLinkRequestType), self.agentOpForgetLink)
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugToggleCtrlChannelRequestType), self.agentOpToggleCtrlChan)
 		}
@@ -188,6 +189,20 @@ func (self *Router) agentOpUpdateRoute(m *channel.Message, ch channel.Channel) {
 
 	logrus.Warnf("route added: %+v", route)
 	handler_common.SendOpResult(m, ch, "update.route", "route added", true)
+}
+
+func (self *Router) agentOpUnroute(m *channel.Message, ch channel.Channel) {
+	logrus.Warn("received debug operation to unroute a circuit")
+
+	unroute := &ctrl_pb.Unroute{}
+	if err := proto.Unmarshal(m.Body, unroute); err != nil {
+		handler_common.SendOpResult(m, ch, "unroute", err.Error(), false)
+		return
+	}
+
+	self.forwarder.Unroute(unroute.CircuitId, unroute.Now)
+	logrus.Warnf("circuit unrouted: %+v", unroute)
+	handler_common.SendOpResult(m, ch, "unroute", fmt.Sprintf("circuit unrouted [%s]", unroute.CircuitId), true)
 }
 
 func (self *Router) HandleAgentOp(conn net.Conn) error {

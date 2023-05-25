@@ -17,33 +17,37 @@
 package network
 
 import (
-	"time"
-
+	"github.com/michaelquigley/pfxlog"
 	"github.com/sirupsen/logrus"
 )
 
 type ForwardingFaultReport struct {
-	R          *Router
-	CircuitIds []string
+	R            *Router
+	CircuitIds   []string
+	UnknownOwner bool
 }
 
 func (network *Network) fault(ffr *ForwardingFaultReport) {
 	logrus.Infof("network fault processing for [%d] circuits", len(ffr.CircuitIds))
 	for _, circuitId := range ffr.CircuitIds {
+		log := pfxlog.Logger().WithField("circuitId", circuitId).WithField("routerId", ffr.R.Id)
 		s, found := network.circuitController.get(circuitId)
 		if found {
-			if err := network.rerouteCircuit(s, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); err == nil {
-				logrus.Infof("rerouted [s/%s] in response to forwarding fault from [r/%s]", circuitId, ffr.R.Id)
+			if success := network.rerouteCircuitWithTries(s, 2); success {
+				log.Info("rerouted circuit in response to forwarding fault from router")
 			} else {
-				logrus.Infof("error rerouting [s/%s] in response to forwarding fault from [r/%s] (should remove circuit?! probably not reachable...)", circuitId, ffr.R.Id)
+				log.Infof("error rerouting circuit in response to forwarding fault from router, circuit removed")
 			}
+		} else if !ffr.UnknownOwner {
+			// If the owner is unknown, we can't unroute because the circuit may be owned by some other controller
+			// UnknownOwner faults come from a link forwarding operation and are generally caused by a missing forward
+			// table entry. In that case there's nothing to unroute anyway.
 
-		} else {
 			// unroute non-existent circuit
 			if err := sendUnroute(ffr.R, circuitId, true); err == nil {
-				logrus.Infof("sent unroute for [s/%s] to [r/%s] in response to forwarding fault", circuitId, ffr.R.Id)
+				log.Info("sent unroute for circuit to router in response to forwarding fault")
 			} else {
-				logrus.Errorf("error sending unroute for [s/%s] to [r/%s] in response to forwarding fault (%v)", circuitId, ffr.R.Id, err)
+				log.WithError(err).Error("error sending unroute for circuit to router in response to forwarding fault")
 			}
 		}
 	}

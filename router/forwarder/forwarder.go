@@ -254,7 +254,7 @@ func (forwarder *Forwarder) ReportForwardingFault(circuitId string, ctrlId strin
 	if forwarder.faulter != nil {
 		forwarder.faulter.report(circuitId, ctrlId)
 	} else {
-		logrus.Errorf("nil faulter, cannot accept forwarding fault report")
+		logrus.Error("nil faulter, cannot accept forwarding fault report")
 	}
 }
 

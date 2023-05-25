@@ -112,7 +112,19 @@ func (h *faultHandler) handleFault(_ *channel.Message, ch channel.Channel, fault
 
 	case ctrl_pb.FaultSubject_ForwardFault:
 		circuitIds := strings.Split(fault.Id, " ")
-		h.network.ReportForwardingFaults(&network.ForwardingFaultReport{R: h.r, CircuitIds: circuitIds})
+		h.network.ReportForwardingFaults(&network.ForwardingFaultReport{
+			R:            h.r,
+			CircuitIds:   circuitIds,
+			UnknownOwner: false,
+		})
+
+	case ctrl_pb.FaultSubject_UnknownOwnerForwardFault:
+		circuitIds := strings.Split(fault.Id, " ")
+		h.network.ReportForwardingFaults(&network.ForwardingFaultReport{
+			R:            h.r,
+			CircuitIds:   circuitIds,
+			UnknownOwner: true,
+		})
 
 	default:
 		log.Errorf("unexpected subject (%s)", fault.Subject.String())

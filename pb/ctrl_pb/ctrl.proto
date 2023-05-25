@@ -141,6 +141,7 @@ enum FaultSubject {
   EgressFault = 1;
   LinkFault = 2;
   ForwardFault = 3;
+  UnknownOwnerForwardFault = 4;
 }
 
 message Fault {
