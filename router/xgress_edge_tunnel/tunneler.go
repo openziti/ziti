@@ -70,14 +70,19 @@ func (self *tunneler) Start(notifyClose <-chan struct{}) error {
 	log := pfxlog.Logger()
 	log.WithField("mode", self.listenOptions.mode).Info("creating interceptor")
 
-	if self.listenOptions.mode == "tproxy" {
-		if self.interceptor, err = tproxy.New(self.listenOptions.lanIf); err != nil {
-			return errors.Wrap(err, "failed to initialize tproxy interceptor")
+	if strings.HasPrefix(self.listenOptions.mode, "tproxy") {
+		tproxyConfig := tproxy.Config{
+			LanIf:            self.listenOptions.lanIf,
+			UDPIdleTimeout:   self.listenOptions.udpIdleTimeout,
+			UDPCheckInterval: self.listenOptions.udpCheckInterval,
 		}
-	} else if strings.HasPrefix(self.listenOptions.mode, "tproxy:") {
-		diverter := strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
-		if self.interceptor, err = tproxy.NewWithDiverter(self.listenOptions.lanIf, diverter); err != nil {
-			return errors.Wrapf(err, "failed to initialize tproxy interceptor with diverter %s", diverter)
+
+		if strings.HasPrefix(self.listenOptions.mode, "tproxy:") {
+			tproxyConfig.Diverter = strings.TrimPrefix(self.listenOptions.mode, "tproxy:")
+		}
+
+		if self.interceptor, err = tproxy.New(tproxyConfig); err != nil {
+			return errors.Wrap(err, "failed to initialize tproxy interceptor")
 		}
 	} else if self.listenOptions.mode == "host" {
 		self.listenOptions.resolver = ""
