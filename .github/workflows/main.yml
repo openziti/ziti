@@ -117,12 +117,10 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
-          mkdir -p dist/bin
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           pushd network-tests && go install ./... && popd
-          pushd network-tests && go build -o ../dist/bin/ ./utils/... && popd 
-          go build -tags=all,tests -o dist/bin/ ./...
+          go install -tags=all,tests ./...
 
       - name: Create Zitilab Bindings
         run: |
@@ -140,19 +138,22 @@ jobs:
           echo "ziti_version: $($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> ~/.fablab/bindings.yml
           cat ~/.fablab/bindings.yml
 
-      - name: Test Ziti Command
-        env:
-          ZITI_ROOT: dist/bin/
+      - name: Create Test Environment
         run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer create
           $(go env GOPATH)/bin/simple-transfer up
+
+      - name: Test Ziti Command
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer run
+          pushd network-tests && go test -v ./tests/... && popd
 
       - name: Test Ziti Command Teardown
         if: always()
-        env:
-          ZITI_ROOT: dist/bin/
         run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer dispose
           $(go env GOPATH)/bin/simple-transfer clean
 

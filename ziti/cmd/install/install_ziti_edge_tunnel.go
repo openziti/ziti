@@ -17,15 +17,16 @@
 package install
 
 import (
+	"github.com/blang/semver"
+	"github.com/openziti/ziti/common/getziti"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	"github.com/openziti/ziti/ziti/cmd/templates"
-	"io"
-
-	"github.com/blang/semver"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/spf13/cobra"
+	"io"
+	"strings"
 )
 
 var (
@@ -77,19 +78,20 @@ func NewCmdInstallZitiEdgeTunnel(out io.Writer, errOut io.Writer) *cobra.Command
 
 // Run implements the command
 func (o *InstallOptions) installZitiEdgeTunnel(targetVersion string) error {
-	newVersion, err := o.getLatestGitHubReleaseVersion(c.ZITI_EDGE_TUNNEL_GITHUB)
-	if err != nil {
-		return err
-	}
+	var newVersion semver.Version
 
 	if targetVersion != "" {
-		newVersion, err = semver.Make(targetVersion)
+		newVersion = semver.MustParse(strings.TrimPrefix(targetVersion, "v"))
+	} else {
+		v, err := getziti.GetLatestGitHubReleaseVersion(c.ZITI_EDGE_TUNNEL_GITHUB, o.Verbose)
+		if err != nil {
+			return err
+		}
+		newVersion = v
 	}
 
 	log.Infoln("Attempting to install '" + c.ZITI_EDGE_TUNNEL + "' version: " + newVersion.String())
-
-	return o.findVersionAndInstallGitHubRelease(c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, false, newVersion.String())
-
+	return o.FindVersionAndInstallGitHubRelease(false, c.ZITI_EDGE_TUNNEL, c.ZITI_EDGE_TUNNEL_GITHUB, newVersion.String())
 }
 
 // Run implements the command
