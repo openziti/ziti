@@ -20,17 +20,17 @@ require (
 	github.com/gorilla/websocket v1.5.0
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/agent v1.0.10
-	github.com/openziti/channel/v2 v2.0.76
-	github.com/openziti/edge v0.24.300
+	github.com/openziti/agent v1.0.13
+	github.com/openziti/channel/v2 v2.0.78
+	github.com/openziti/edge v0.24.304
 	github.com/openziti/edge-api v0.25.24
-	github.com/openziti/fabric v0.23.26
+	github.com/openziti/fabric v0.23.27
 	github.com/openziti/foundation/v2 v2.0.24
-	github.com/openziti/identity v1.0.53
-	github.com/openziti/runzmd v1.0.21
-	github.com/openziti/sdk-golang v0.20.46
+	github.com/openziti/identity v1.0.54
+	github.com/openziti/runzmd v1.0.24
+	github.com/openziti/sdk-golang v0.20.49
 	github.com/openziti/storage v0.2.6
-	github.com/openziti/transport/v2 v2.0.86
+	github.com/openziti/transport/v2 v2.0.88
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -73,7 +73,7 @@ require (
 	github.com/dgryski/dgoogauth v0.0.0-20190221195224-5a805980a5f3 // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663 // indirect
 	github.com/disintegration/imaging v1.6.2 // indirect
-	github.com/dlclark/regexp2 v1.9.0 // indirect
+	github.com/dlclark/regexp2 v1.10.0 // indirect
 	github.com/docker/distribution v2.8.2+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
@@ -114,7 +114,7 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
-	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/kr/pty v1.1.8 // indirect
 	github.com/kyokomi/emoji/v2 v2.2.12 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -123,7 +123,7 @@ require (
 	github.com/magiconair/properties v1.8.5 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.18 // indirect
+	github.com/mattn/go-isatty v0.0.19 // indirect
 	github.com/mattn/go-runewidth v0.0.14 // indirect
 	github.com/mattn/go-tty v0.0.3 // indirect
 	github.com/mdlayher/netlink v1.7.2 // indirect
@@ -169,13 +169,14 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	github.com/yusufpapurcu/wmi v1.2.2 // indirect
+	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.11.6 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
-	go.opentelemetry.io/otel v1.15.1 // indirect
-	go.opentelemetry.io/otel/trace v1.15.1 // indirect
+	go.opentelemetry.io/otel v1.16.0 // indirect
+	go.opentelemetry.io/otel/metric v1.16.0 // indirect
+	go.opentelemetry.io/otel/trace v1.16.0 // indirect
 	golang.org/x/crypto v0.9.0 // indirect
-	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/image v0.7.0 // indirect
 	golang.org/x/mod v0.8.0 // indirect
 	golang.org/x/sync v0.2.0 // indirect

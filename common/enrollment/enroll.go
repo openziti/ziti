@@ -19,6 +19,7 @@ package enrollment
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openziti/identity/engines"
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"io/ioutil"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/term"
-	"github.com/openziti/identity/certtools"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -117,9 +117,9 @@ func NewEnrollCommand(p common.OptionsProvider) *cobra.Command {
 	enrollSubCmd.Flags().VarP(&action.KeyAlg, "keyAlg", "a", "Crypto algorithm to use when generating private key")
 
 	var keyDesc = ""
-	engines := certtools.ListEngines()
-	if len(engines) > 0 {
-		keyDesc = fmt.Sprintf("The key to use with the certificate. Optionally specify the engine to use. supported engines: %v", engines)
+	certEngines := engines.ListEngines()
+	if len(certEngines) > 0 {
+		keyDesc = fmt.Sprintf("The key to use with the certificate. Optionally specify the engine to use. supported engines: %v", certEngines)
 	} else {
 		keyDesc = "The key to use with the certificate."
 	}

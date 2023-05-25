@@ -23,6 +23,7 @@ import (
 	"github.com/openziti/ziti/ziti/util"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -188,6 +189,9 @@ func startIdentity(cmd *cobra.Command, serviceListenerGroup *intercept.ServiceLi
 			serviceListener.HandleProviderReady(tunnel.NewContextProvider(ctx))
 		},
 		OnServiceUpdate: serviceListener.HandleServicesChange,
+		EdgeRouterUrlFilter: func(url string) bool {
+			return strings.HasPrefix(url, "tls:")
+		},
 	}
 
 	rootPrivateContext, err := ziti.NewContextWithOpts(zitiCfg, options)
