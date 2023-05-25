@@ -16,6 +16,7 @@
   * `-k/--client-key` allows a key to be supplied to login (used with `-c/--client-cert`)
 * Config type changes
   * address fields in `intercept.v1`, `host.v1`, and `host.v2` config types now permit hostnames with underscores.
+* Edge Router/Tunneler now supports setting default UDP idle timeout/check interval
 
 ## Event Changes
 
@@ -181,19 +182,40 @@ Example output:
 }
 ```
 
-## Component Updates and Bug Fixes
+## ER/T UDP Settings
 
-* github.com/openziti/channel/v2: [v2.0.58 -> v2.0.64](https://github.com/openziti/channel/compare/v2.0.58...v2.0.64)
+The edge router tunneler now allows configuring a timeout and check interval for tproxy UDP intercepts. By default intercepted UDP 
+connections will be closed after five minutes of no traffic, checking every thirty seconds. The configuration is done in the router 
+config file, in the options for the tunnel module. Note that these configuration options only apply to tproxy intercepts, not to
+proxy or host side UDP connections.
+
+Example configuration:
+
+```yaml
+listeners:
+  - binding: tunnel
+    options:
+      mode: tproxy
+      udpIdleTimeout: 10s
+      udpCheckInterval: 5s
+```
+
+## Component Updates and Bug Fixes
+* github.com/openziti/agent: [v1.0.10 -> v1.0.13](https://github.com/openziti/agent/compare/v1.0.10...v1.0.13)
+* github.com/openziti/channel/v2: [v2.0.58 -> v2.0.78](https://github.com/openziti/channel/compare/v2.0.58...v2.0.78)
     * [Issue #98](https://github.com/openziti/channel/issues/98) - Set default connect timeout to 5 seconds
 
-* github.com/openziti/edge: [v0.24.239 -> v0.24.300](https://github.com/openziti/edge/compare/v0.24.239...v0.24.300)
+* github.com/openziti/edge: [v0.24.239 -> v0.24.309](https://github.com/openziti/edge/compare/v0.24.239...v0.24.309)
+    * [Issue #1503](https://github.com/openziti/edge/issues/1503) - Support configurable UDP idle timeout and check interval for tproxy in edge router tunneler
     * [Issue #1471](https://github.com/openziti/edge/issues/1471) - UDP intercept connections report incorrect local/remote addresses, making confusing events
     * [Issue #629](https://github.com/openziti/edge/issues/629) - emit entity change events
     * [Issue #1295](https://github.com/openziti/edge/issues/1295) - Ensure DB migrations work properly in a clustered setup (edge)
     * [Issue #1418](https://github.com/openziti/edge/issues/1418) - Checks for session edge router availablility are inefficient
 
-* github.com/openziti/edge-api: [v0.25.11 -> v0.25.18](https://github.com/openziti/edge-api/compare/v0.25.11...v0.25.18)
-* github.com/openziti/fabric: [v0.22.87 -> v0.23.11](https://github.com/openziti/fabric/compare/v0.22.87...v0.23.11)
+* github.com/openziti/edge-api: [v0.25.11 -> v0.25.24](https://github.com/openziti/edge-api/compare/v0.25.11...v0.25.24)
+* github.com/openziti/fabric: [v0.22.87 -> v0.23.29](https://github.com/openziti/fabric/compare/v0.22.87...v0.23.29)
+    * [Issue #724](https://github.com/openziti/fabric/issues/724) - Controller should be notified of forwarding faults on links 
+    * [Issue #725](https://github.com/openziti/fabric/issues/725) - If reroute fails, circuit should be torn down
     * [Issue #706](https://github.com/openziti/fabric/issues/706) - Fix panic in link close 
     * [Issue #700](https://github.com/openziti/fabric/issues/700) - Additional Health Checks exposed on Edge Router
     * [Issue #595](https://github.com/openziti/fabric/issues/595) - Add include filtering for V3 usage metrics 
@@ -203,15 +225,19 @@ Example output:
     * [Issue #582](https://github.com/openziti/fabric/issues/582) - Ensure DB migrations work properly in a clustered setup (fabric)
     * [Issue #668](https://github.com/openziti/fabric/issues/668) - Add network.Run watchdog, to warn if processing is delayed
 
-* github.com/openziti/foundation/v2: [v2.0.21 -> v2.0.22](https://github.com/openziti/foundation/compare/v2.0.21...v2.0.22)
-* github.com/openziti/identity: [v1.0.45 -> v1.0.48](https://github.com/openziti/identity/compare/v1.0.45...v1.0.48)
-* github.com/openziti/runzmd: [v1.0.20 -> v1.0.21](https://github.com/openziti/runzmd/compare/v1.0.20...v1.0.21)
-* github.com/openziti/sdk-golang: [v0.18.76 -> v0.20.20](https://github.com/openziti/sdk-golang/compare/v0.18.76...v0.20.20)
-* github.com/openziti/storage: [v0.1.49 -> v0.2.2](https://github.com/openziti/storage/compare/v0.1.49...v0.2.2)
-* github.com/openziti/transport/v2: [v2.0.72 -> v2.0.77](https://github.com/openziti/transport/compare/v2.0.72...v2.0.77)
-* github.com/openziti/metrics: [v1.2.19 -> v1.2.21](https://github.com/openziti/metrics/compare/v1.2.19...v1.2.21)
-* github.com/openziti/secretstream: v0.1.7 (new)
+* github.com/openziti/foundation/v2: [v2.0.21 -> v2.0.24](https://github.com/openziti/foundation/compare/v2.0.21...v2.0.24)
+* github.com/openziti/identity: [v1.0.45 -> v1.0.54](https://github.com/openziti/identity/compare/v1.0.45...v1.0.54)
+* github.com/openziti/runzmd: [v1.0.20 -> v1.0.24](https://github.com/openziti/runzmd/compare/v1.0.20...v1.0.24)
+* github.com/openziti/sdk-golang: [v0.18.76 -> v0.20.51](https://github.com/openziti/sdk-golang/compare/v0.18.76...v0.20.51)
+    * [Issue #407](https://github.com/openziti/sdk-golang/issues/407) - Allowing filtering which edge router urls the sdk uses 
+    * [Issue #394](https://github.com/openziti/sdk-golang/issues/394) - SDK does not recover from API session expiration (during app/computer suspend)
+
+* github.com/openziti/storage: [v0.1.49 -> v0.2.6](https://github.com/openziti/storage/compare/v0.1.49...v0.2.6)
+* github.com/openziti/transport/v2: [v2.0.72 -> v2.0.88](https://github.com/openziti/transport/compare/v2.0.72...v2.0.88)
+* github.com/openziti/metrics: [v1.2.19 -> v1.2.25](https://github.com/openziti/metrics/compare/v1.2.19...v1.2.25)
+* github.com/openziti/secretstream: v0.1.8 (new)
 * github.com/openziti/ziti: [v0.27.9 -> v0.28.0](https://github.com/openziti/ziti/compare/v0.27.9...v0.28.0)
+    * [Issue #1112](https://github.com/openziti/ziti/issues/1112) - `ziti pki create` creates CA's and intermediates w/ the same DN
     * [Issue #1087](https://github.com/openziti/ziti/issues/1087) - re-enable CI in forks
     * [Issue #1013](https://github.com/openziti/ziti/issues/1013) - docker env password is renewed at each `docker-compose up`
     * [Issue #1077](https://github.com/openziti/ziti/issues/1077) - Show auth-policy name on identity list instead of id

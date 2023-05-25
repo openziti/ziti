@@ -22,13 +22,13 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.13
 	github.com/openziti/channel/v2 v2.0.78
-	github.com/openziti/edge v0.24.304
+	github.com/openziti/edge v0.24.309
 	github.com/openziti/edge-api v0.25.24
-	github.com/openziti/fabric v0.23.27
+	github.com/openziti/fabric v0.23.29
 	github.com/openziti/foundation/v2 v2.0.24
 	github.com/openziti/identity v1.0.54
 	github.com/openziti/runzmd v1.0.24
-	github.com/openziti/sdk-golang v0.20.49
+	github.com/openziti/sdk-golang v0.20.51
 	github.com/openziti/storage v0.2.6
 	github.com/openziti/transport/v2 v2.0.88
 	github.com/openziti/xweb/v2 v2.0.2
