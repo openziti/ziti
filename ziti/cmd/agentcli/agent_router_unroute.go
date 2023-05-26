@@ -27,20 +27,20 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type AgentRouteAction struct {
+type AgentUnrouteAction struct {
 	AgentOptions
 }
 
-func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
-	action := &AgentRouteAction{
+func NewUnrouteCmd(p common.OptionsProvider) *cobra.Command {
+	action := &AgentUnrouteAction{
 		AgentOptions: AgentOptions{
 			CommonOptions: p(),
 		},
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.ExactArgs(4),
-		Use:  "route <controller id> <circuit id> <source-address> <destination-address>",
+		Args: cobra.ExactArgs(1),
+		Use:  "unroute <circuit id>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
 			action.Args = args
@@ -53,15 +53,10 @@ func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
 	return cmd
 }
 
-func (self *AgentRouteAction) makeRequest(ch channel.Channel) error {
-	route := &ctrl_pb.Route{
-		CircuitId: self.Args[1],
-		Forwards: []*ctrl_pb.Route_Forward{
-			{
-				SrcAddress: self.Args[2],
-				DstAddress: self.Args[3],
-			},
-		},
+func (self *AgentUnrouteAction) makeRequest(ch channel.Channel) error {
+	route := &ctrl_pb.Unroute{
+		CircuitId: self.Args[0],
+		Now:       true,
 	}
 
 	buf, err := proto.Marshal(route)
@@ -69,8 +64,7 @@ func (self *AgentRouteAction) makeRequest(ch channel.Channel) error {
 		return err
 	}
 
-	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), buf)
-	msg.PutStringHeader(int32(mgmt_pb.Header_ControllerId), self.Args[0])
+	msg := channel.NewMessage(int32(mgmt_pb.ContentType_RouterDebugUnrouteRequestType), buf)
 	reply, err := msg.WithTimeout(self.timeout).SendForReply(ch)
 	if err != nil {
 		return err

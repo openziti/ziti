@@ -107,9 +107,8 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			addr = addr[atIdx+1:]
 		}
 
-		zitiContext, err := ziti.NewContext(zitiConfig)
-
-		if err != nil {
+		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
+		if ctxErr != nil {
 			pfxlog.Logger().WithError(err).Fatal("could not create sdk context from config")
 		}
 
