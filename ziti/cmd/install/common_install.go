@@ -19,6 +19,7 @@ package install
 import (
 	"fmt"
 	"github.com/blang/semver"
+	"github.com/openziti/ziti/common/getziti"
 	c "github.com/openziti/ziti/ziti/constants"
 	"github.com/openziti/ziti/ziti/internal/log"
 	"github.com/openziti/ziti/ziti/util"
@@ -197,15 +198,11 @@ func (o *InstallOptions) getLatestTerraformProviderVersion(branch string, provid
 
 func (o *InstallOptions) getLatestGitHubReleaseVersion(zitiApp string) (semver.Version, error) {
 	var result semver.Version
-	release, err := util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
+	release, err := getziti.GetHighestVersionGitHubReleaseInfo(zitiApp, o.Verbose)
 	if release != nil {
 		result = release.SemVer
 	}
 	return result, err
-}
-
-func (o *InstallOptions) getHighestVersionGitHubReleaseInfo(zitiApp string) (*util.GitHubReleasesData, error) {
-	return util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiApp)
 }
 
 func (o *InstallOptions) getCurrentZitiSnapshotList() ([]string, error) {
@@ -330,70 +327,15 @@ func (o *InstallOptions) installTerraformProvider(branch string, provider string
 	return os.Chmod(fileToChmod, 0755)
 }
 
-func (o *InstallOptions) findVersionAndInstallGitHubRelease(zitiApp string, zitiAppGitHub string, upgrade bool, version string) error {
-	var latestVersion semver.Version
-	var err error
-	if version != "" {
-		if strings.Contains(version, "*") {
-			latestRelease, err := util.GetHighestVersionGitHubReleaseInfo(o.Verbose, zitiAppGitHub)
-			if err != nil {
-				return err
-			}
-			latestVersion = latestRelease.SemVer
-			version = latestVersion.String()
-		} else {
-			latestVersion, err = semver.Make(version)
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	release, err := util.GetLatestGitHubReleaseAsset(o.Staging, zitiAppGitHub)
-	if err != nil {
-		return err
-	}
-	return o.installGitHubRelease(zitiApp, upgrade, release)
-}
-
-func (o *InstallOptions) installGitHubRelease(zitiApp string, upgrade bool, release *util.GitHubReleasesData) error {
+func (o *InstallOptions) FindVersionAndInstallGitHubRelease(upgrade bool, zitiApp string, zitiAppGitHub string, version string) error {
 	binDir, err := util.BinaryLocation()
 	if err != nil {
 		return err
 	}
-	binary := zitiApp
-	fileName := binary
-
 	if !upgrade {
-		f, flag, err := o.shouldInstallBinary(binDir, binary)
-		if err != nil || !flag {
+		if _, download, err := o.shouldInstallBinary(binDir, zitiApp); err != nil || !download {
 			return err
 		}
-		fileName = f
 	}
-
-	fullPath := filepath.Join(binDir, fileName)
-	ext := ".zip"
-	zipFile := fullPath + ext
-
-	releaseUrl, err := release.GetDownloadUrl(zitiApp)
-	if err != nil {
-		return err
-	}
-
-	err = util.DownloadGitHubReleaseAsset(releaseUrl, zipFile)
-	if err != nil {
-		return err
-	}
-
-	err = util.Unzip(zipFile, binDir)
-	if err != nil {
-		return err
-	}
-	err = os.Remove(zipFile)
-	if err != nil {
-		return err
-	}
-	log.Infof("Successfully installed '%s' version '%s'\n", zitiApp, release.SemVer)
-	return os.Chmod(fullPath, 0755)
+	return getziti.FindVersionAndInstallGitHubRelease(zitiApp, zitiAppGitHub, runtime.GOOS, runtime.GOARCH, binDir, version, o.Verbose)
 }

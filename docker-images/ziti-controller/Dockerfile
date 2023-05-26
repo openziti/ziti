@@ -1,6 +1,7 @@
 ARG ZITI_VERSION="latest"
+ARG ZITI_CLI_IMAGE="docker.io/openziti/ziti-cli"
 # this builds docker.io/openziti/ziti-controller
-FROM docker.io/openziti/ziti-cli:${ZITI_VERSION}
+FROM ${ZITI_CLI_IMAGE}:${ZITI_VERSION}
 
 # This build stage grabs artifacts that are copied into the final image.
 # It uses the same base as the final image to maximize docker cache hits.
@@ -15,6 +16,6 @@ LABEL name="openziti/ziti-controller" \
 USER root
 COPY ./entrypoint.sh /
 RUN chmod +x /entrypoint.sh
-USER nobody
+USER ziggy
 ENTRYPOINT [ "/entrypoint.sh" ]
 CMD [ "run" ]

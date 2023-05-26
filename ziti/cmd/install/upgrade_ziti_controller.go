@@ -17,25 +17,8 @@
 package install
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"io"
-
 	"github.com/openziti/ziti/common/version"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/spf13/cobra"
-)
-
-var (
-	upgradeZitiControllerLong = templates.LongDesc(`
-		Upgrades the Ziti Controller app if there is a newer release
-`)
-
-	upgradeZitiControllerExample = templates.Examples(`
-		# Upgrades the Ziti Controller app 
-		ziti upgrade ziti-controller
-	`)
 )
 
 // UpgradeZitiControllerOptions the options for the upgrade ziti-controller command
@@ -43,35 +26,6 @@ type UpgradeZitiControllerOptions struct {
 	InstallOptions
 
 	Version string
-}
-
-// NewCmdUpgradeZitiController defines the command
-func NewCmdUpgradeZitiController(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &UpgradeZitiControllerOptions{
-		InstallOptions: InstallOptions{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
-		},
-	}
-
-	cmd := &cobra.Command{
-		Use:     "ziti-controller",
-		Short:   "Upgrades the Ziti Controller app - if there is a new version available",
-		Aliases: []string{"controller", "ctrl", "zc"},
-		Long:    upgradeZitiControllerLong,
-		Example: upgradeZitiControllerExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
-		},
-	}
-	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to upgrade to")
-	options.AddCommonFlags(cmd)
-	return cmd
 }
 
 // Run implements the command

@@ -2,14 +2,6 @@
 
 set -uo pipefail
 
-# the default ZITI_NETWORK (network name) is the short hostname
-: "${DEFAULT_ZITI_NETWORK:="$(hostname -s)"}"
-
-# shellcheck disable=SC2155
-export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWORK}"
-
-export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
-
 ASCI_WHITE='\033[01;37m'
 ASCI_RESTORE='\033[0m'
 ASCI_RED='\033[00;31m'
@@ -44,8 +36,40 @@ function BLUE {
   echo "${ASCI_BLUE}${1-}${ASCI_RESTORE}"
 }
 
+function checkPrereqs {
+  commands_to_test=(curl jq tar hostname)
+  missing_requirements=""
+  # verify all the commands required in the automation exist before trying to run the full suite
+  for cmd in "${commands_to_test[@]}"
+  do
+      # checking all commands are on the path before continuing...
+      if ! [[ -x "$(command -v "${cmd}")" ]]; then
+          missing_requirements="${missing_requirements}    * ${cmd}
+"
+      fi
+  done
+  # are requirements ? if yes, stop here and help 'em out
+  if ! [[ "" = "${missing_requirements}" ]]; then
+      echo " "
+      echo "You're missing one or more commands that are used in this script."
+      echo "Please ensure the commands listed are on the path and then try again."
+      echo "${missing_requirements}"
+      echo " "
+      return 1
+  fi
+}
+
+checkPrereqs
+
+# the default ZITI_NETWORK (network name) is the short hostname
+: "${DEFAULT_ZITI_NETWORK:="$(hostname -s)"}"
+
+# shellcheck disable=SC2155
+export DEFAULT_ZITI_HOME_LOCATION="${HOME}/.ziti/quickstart/${DEFAULT_ZITI_NETWORK}"
+export ZITI_QUICKSTART_ENVROOT="${HOME}/.ziti/quickstart"
+
 function zitiLogin {
-  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -c "${ZITI_PKI_OS_SPECIFIC}/${ZITI_EDGE_CONTROLLER_ROOTCA_NAME}/certs/${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert"
+  "${ZITI_BIN_DIR-}/ziti" edge login "${ZITI_EDGE_CTRL_ADVERTISED}" -u "${ZITI_USER-}" -p "${ZITI_PWD}" -y
 }
 function cleanZitiController {
   checkEnvVariable ZITI_HOME
@@ -272,31 +296,6 @@ function getZiti {
       echo -e "adding $(RED "${ZITI_BIN_DIR}") to the path"
       export PATH=$PATH:"${ZITI_BIN_DIR}"
     fi
-  fi
-}
-
-function checkPrereqs {
-  commands_to_test=(curl jq)
-  missing_requirements=""
-  # verify all the commands required in the automation exist before trying to run the full suite
-  for cmd in "${commands_to_test[@]}"
-  do
-      # checking all commands are on the path before continuing...
-      if ! [[ -x "$(command -v "${cmd}")" ]]; then
-          missing_requirements="${missing_requirements}    * ${cmd}"
-      fi
-  done
-  # are requirements ? if yes, stop here and help 'em out
-  if ! [[ "" = "${missing_requirements}" ]]; then
-      echo " "
-      echo "You're missing one or more commands that are used in this script."
-      echo "Please ensure the commands listed are on the path and then try again."
-      echo "${missing_requirements}"
-      echo " "
-      echo " "
-      return 1
-  else
-    echo -e "$(GREEN "Prerequisites confirmed")"
   fi
 }
 
@@ -1146,8 +1145,7 @@ function ziti_createEnvFile {
   echo "export PFXLOG_NO_JSON=true" >> "${ENV_FILE}"
 
   echo "alias zec='ziti edge'" >> "${ENV_FILE}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}/certs/\${ZITI_EDGE_CONTROLLER_INTERMEDIATE_NAME}.cert\"'" >> "${ENV_FILE}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_EDGE_CTRL_ADVERTISED}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -y'" >> "${ENV_FILE}"
   echo "alias psz='ps -ef | grep ziti'" >> "${ENV_FILE}"
 
   #when sourcing the emitted file add the bin folder to the path

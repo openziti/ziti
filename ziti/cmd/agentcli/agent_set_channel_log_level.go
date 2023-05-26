@@ -43,9 +43,9 @@ func NewSetChannelLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "set-channel-log-level target channel log-level (panic, fatal, error, warn, info, debug, trace)",
+		Use:   "set-channel-log-level channel log-level (panic, fatal, error, warn, info, debug, trace)",
 		Short: "Sets a channel-specific log level in the target application",
-		Args:  cobra.MinimumNArgs(2),
+		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -68,15 +68,8 @@ func (self *AgentSetChannelLogLevelAction) Run() error {
 		})
 	}
 
-	var channelArg string
-	var levelArg string
-	if len(self.Args) == 2 {
-		channelArg = self.Args[0]
-		levelArg = self.Args[1]
-	} else {
-		channelArg = self.Args[1]
-		levelArg = self.Args[2]
-	}
+	channelArg := self.Args[0]
+	levelArg := self.Args[1]
 
 	var level logrus.Level
 	var found bool
@@ -98,13 +91,5 @@ func (self *AgentSetChannelLogLevelAction) Run() error {
 	buf.Write([]byte(channelArg))
 	buf.WriteByte(byte(level))
 
-	if len(self.Args) == 2 {
-		return self.MakeRequest(agent.SetChannelLogLevel, buf.Bytes(), self.CopyToWriter(os.Stdout))
-	}
-
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-	return agent.MakeRequest(addr, agent.SetChannelLogLevel, buf.Bytes(), os.Stdout)
+	return self.MakeRequest(agent.SetChannelLogLevel, buf.Bytes(), self.CopyToWriter(os.Stdout))
 }

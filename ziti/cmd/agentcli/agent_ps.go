@@ -19,20 +19,21 @@ package agentcli
 import (
 	"bytes"
 	"fmt"
-	"github.com/keybase/go-ps"
-	"github.com/openziti/ziti/ziti/cmd/common"
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"os"
 	"os/user"
 	"path/filepath"
 	"regexp"
-	goversion "rsc.io/goversion/version"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/openziti/ziti/ziti/cmd/common"
+	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
+	"github.com/pkg/errors"
+	"github.com/shirou/gopsutil/v3/process"
+	"github.com/spf13/cobra"
+	goversion "rsc.io/goversion/version"
 )
 
 type AgentPsAction struct {
@@ -149,7 +150,7 @@ type P struct {
 
 // FindAll returns all the Ziti processes currently running on this host.
 func FindAll() []P {
-	pss, err := ps.Processes()
+	pss, err := process.Processes()
 	// fmt.Println("FindAll, err is: %s", err)
 
 	if err != nil {
@@ -172,11 +173,19 @@ func FindAll() []P {
 			if !ok {
 				return
 			}
+			ppid, err := pr.Ppid()
+			if err != nil {
+				return
+			}
+			name, err := pr.Name()
+			if err != nil {
+				return
+			}
 			if isZiti(pr) {
 				found <- P{
-					PID:          pr.Pid(),
-					PPID:         pr.PPid(),
-					Exec:         pr.Executable(),
+					PID:          int(pr.Pid),
+					PPID:         int(ppid),
+					Exec:         name,
 					Path:         path,
 					BuildVersion: version,
 					Agent:        agent,
@@ -199,12 +208,12 @@ func FindAll() []P {
 // in the process' binary and determines if the process
 // if a Go process or not. If the process is a Go process,
 // it reports PID, binary name and full path of the binary.
-func isGo(pr ps.Process) (path, version string, agent, ok bool, err error) {
-	if pr.Pid() == 0 {
+func isGo(pr *process.Process) (path, version string, agent, ok bool, err error) {
+	if pr.Pid == 0 {
 		// ignore system process
 		return
 	}
-	path, err = pr.Path()
+	path, err = pr.Exe()
 	if err != nil {
 		return
 	}
@@ -215,7 +224,7 @@ func isGo(pr ps.Process) (path, version string, agent, ok bool, err error) {
 	}
 	ok = true
 	version = versionInfo.Release
-	pidfile, err := PIDFile(pr.Pid())
+	pidfile, err := PIDFile(int(pr.Pid))
 	if err == nil {
 		_, err := os.Stat(pidfile)
 		agent = err == nil
@@ -256,6 +265,10 @@ func PIDFile(pid int) (string, error) {
 	return fmt.Sprintf("%s/%d", gopsdir, pid), nil
 }
 
-func isZiti(pr ps.Process) (ok bool) {
-	return strings.HasPrefix(pr.Executable(), "ziti")
+func isZiti(pr *process.Process) (ok bool) {
+	name, err := pr.Name()
+	if err != nil {
+		return false
+	}
+	return strings.HasPrefix(name, "ziti")
 }

@@ -41,9 +41,9 @@ func NewSetLogLevelCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "set-log-level target log-level (panic, fatal, error, warn, info, debug, trace)",
+		Use:   "set-log-level log-level (panic, fatal, error, warn, info, debug, trace)",
 		Short: "Sets the global logrus logging level in the target application",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args
@@ -66,12 +66,7 @@ func (self *AgentSetLogLevelAction) Run() error {
 		})
 	}
 
-	var levelArg string
-	if len(self.Args) == 1 {
-		levelArg = self.Args[0]
-	} else {
-		levelArg = self.Args[1]
-	}
+	levelArg := self.Args[0]
 
 	var level logrus.Level
 	var found bool
@@ -87,14 +82,5 @@ func (self *AgentSetLogLevelAction) Run() error {
 	}
 
 	buf := []byte{byte(level)}
-
-	if len(self.Args) == 1 {
-		return self.MakeRequest(agent.SetLogLevel, buf, self.CopyToWriter(os.Stdout))
-	}
-
-	addr, err := agent.ParseGopsAddress(self.Args)
-	if err != nil {
-		return err
-	}
-	return agent.MakeRequest(addr, agent.SetLogLevel, buf, os.Stdout)
+	return self.MakeRequest(agent.SetLogLevel, buf, self.CopyToWriter(os.Stdout))
 }

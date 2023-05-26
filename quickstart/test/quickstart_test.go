@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 	"github.com/openziti/edge-api/rest_util"
 	"github.com/openziti/sdk-golang/ziti"
-	sdk_config "github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/enroll"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -407,7 +406,7 @@ func TestSimpleWebService(t *testing.T) {
 	assert.Equal(t, 200, resp.StatusCode, fmt.Sprintf("Expected successful HTTP status code 200, received %d instead", resp.StatusCode))
 }
 
-func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *sdk_config.Config {
+func enrollIdentity(client *rest_management_api_client.ZitiEdgeManagement, identityID string) *ziti.Config {
 	// Get the identity object
 	params := &identity.DetailIdentityParams{
 		Context: context.Background(),
@@ -447,11 +446,14 @@ func Dial(_ context.Context, _ string, addr string) (net.Conn, error) {
 }
 
 func createZitifiedHttpClient(idFile string) http.Client {
-	cfg, err := sdk_config.NewFromFile(idFile)
+	cfg, err := ziti.NewConfigFromFile(idFile)
 	if err != nil {
 		panic(err)
 	}
-	zitiContext = ziti.NewContextWithConfig(cfg)
+	zitiContext, err = ziti.NewContext(cfg)
+	if err != nil {
+		panic(err)
+	}
 	zitiTransport := http.DefaultTransport.(*http.Transport).Clone() // copy default transport
 	zitiTransport.DialContext = Dial                                 //zitiDialContext.Dial
 	return http.Client{Transport: zitiTransport}

@@ -50,7 +50,7 @@ func run(cmd *cobra.Command, args []string) {
 		_ = cmd.Flag("identity").Value.Set(args[0])
 	}
 
-	tProxyInterceptor, err = tproxy.New("")
+	tProxyInterceptor, err = tproxy.New(tproxy.Config{})
 	if err != nil {
 		log.Infof("tproxy initialization failed: %v", err)
 	} else {

@@ -36,8 +36,8 @@ func NewSimpleAgentCmd(name string, op byte, p common.OptionsProvider, desc stri
 	}
 
 	cmd := &cobra.Command{
-		Args:  cobra.MaximumNArgs(1),
-		Use:   name + " <optional-target> ",
+		Args:  cobra.ExactArgs(0),
+		Use:   name,
 		Short: desc,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd
@@ -59,8 +59,8 @@ func NewSimpleAgentCustomCmd(name string, appId AgentAppId, op byte, p common.Op
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.MaximumNArgs(1),
-		Use:  name + " <optional-target> ",
+		Args: cobra.ExactArgs(0),
+		Use:  name,
 		Run: func(cmd *cobra.Command, args []string) {
 			action.Cmd = cmd
 			action.Args = args

@@ -5,7 +5,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/pkg/errors"
 	"github.com/rcrowley/go-metrics"
 	"google.golang.org/protobuf/proto"
@@ -69,13 +68,17 @@ func (r *zitiMetricsReporter) run(reportInterval time.Duration) {
 
 	var client ziti.Context
 	if r.configFile != "" {
-		sdkConfig, err := config.NewFromFile(r.configFile)
+		sdkConfig, err := ziti.NewConfigFromFile(r.configFile)
 		if err != nil {
 			panic(err)
 		}
-		client = ziti.NewContextWithConfig(sdkConfig)
+		client, err = ziti.NewContext(sdkConfig)
+
+		if err != nil {
+			panic(err)
+		}
 	} else {
-		client = ziti.NewContext()
+		panic("no configuration file provided")
 	}
 	conn, err := client.Dial(r.service)
 

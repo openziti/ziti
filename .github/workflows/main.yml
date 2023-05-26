@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - release-v*
+      - release-next
   pull_request:
   workflow_dispatch:
 
@@ -28,6 +29,8 @@ env:
 jobs:
   mac-os-build:
     name: Build Mac OS binaries
+    # allow fors to opt-out of time-consuming macOS builds
+    if: vars.ZITI_SKIP_MACOS_BUILD != 'true'
     runs-on: macos-11
     steps:
       - name: Git Checkout
@@ -41,7 +44,7 @@ jobs:
           go-version: '1.20.x'
 
       - name: Install Ziti CI
-        uses: netfoundry/ziti-ci@v1
+        uses: openziti/ziti-ci@v1
 
       - name: Build and Test
         run: |
@@ -58,6 +61,8 @@ jobs:
 
   windows-build:
     name: Build Windows binaries
+    # allow fors to opt-out of time-consuming Windows builds
+    if: vars.ZITI_SKIP_WINDOWS_BUILD != 'true'
     runs-on: windows-2019
     steps:
       - name: Git Checkout
@@ -71,7 +76,7 @@ jobs:
           go-version: '1.20.x'
 
       - name: Install Ziti CI
-        uses: netfoundry/ziti-ci@v1
+        uses: openziti/ziti-ci@v1
 
       - name: Build and Test
         shell: bash
@@ -89,6 +94,7 @@ jobs:
 
   fablab-smoketest:
     name: Fablab Smoketest
+    # not applicable to forks
     if: github.repository_owner == 'openziti'
     runs-on: ubuntu-20.04
     steps:
@@ -103,7 +109,7 @@ jobs:
           go-version: '1.20.x'
 
       - name: Install Ziti CI
-        uses: netfoundry/ziti-ci@v1
+        uses: openziti/ziti-ci@v1
 
       - name: Build and Test
         env:
@@ -111,12 +117,10 @@ jobs:
           ziti_ci_gpg_key: ${{ secrets.ZITI_CI_GPG_KEY }}
           ziti_ci_gpg_key_id: ${{ secrets.ZITI_CI_GPG_KEY_ID }}
         run: |
-          mkdir -p dist/bin
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
           pushd network-tests && go install ./... && popd
-          pushd network-tests && go build -o ../dist/bin/ ./utils/... && popd 
-          go build -tags=all,tests -o dist/bin/ ./...
+          go install -tags=all,tests ./...
 
       - name: Create Zitilab Bindings
         run: |
@@ -134,19 +138,22 @@ jobs:
           echo "ziti_version: $($(go env GOPATH)/bin/ziti-ci -q get-current-version)" >> ~/.fablab/bindings.yml
           cat ~/.fablab/bindings.yml
 
-      - name: Test Ziti Command
-        env:
-          ZITI_ROOT: dist/bin/
+      - name: Create Test Environment
         run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer create
           $(go env GOPATH)/bin/simple-transfer up
+
+      - name: Test Ziti Command
+        run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer run
+          pushd network-tests && go test -v ./tests/... && popd
 
       - name: Test Ziti Command Teardown
         if: always()
-        env:
-          ZITI_ROOT: dist/bin/
         run: |
+          echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer dispose
           $(go env GOPATH)/bin/simple-transfer clean
 
@@ -154,6 +161,13 @@ jobs:
 
   publish:
     name: Publish Binaries
+    # - always() allows evaluating further conditional expressions even if
+    #   needed jobs were skipped
+    if: |
+      always()
+      && (needs.mac-os-build.result == 'success' || needs.mac-os-build.result == 'skipped')
+      && (needs.windows-build.result == 'success' || needs.windows-build.result == 'skipped')
+      && (needs.fablab-smoketest.result == 'success' || needs.fablab-smoketest.result == 'skipped')
     runs-on: ubuntu-20.04
     needs: [ mac-os-build, windows-build, fablab-smoketest ]
     outputs:
@@ -175,7 +189,7 @@ jobs:
           python-version: '3.7'
 
       - name: Install Ziti CI
-        uses: netfoundry/ziti-ci@v1
+        uses: openziti/ziti-ci@v1
 
       - name: Build and Test
         env:
@@ -201,19 +215,21 @@ jobs:
           retention-days: 5
 
       - name: Download darwin release artifact
+        if: needs.mac-os-build.result == 'success'
         uses: actions/download-artifact@v3
         with:
           name: darwin-release-${{ github.run_id }}
           path: release/
 
       - name: Download windows release artifact
+        if: needs.windows-build.result == 'success'
         uses: actions/download-artifact@v3
         with:
           name: windows-release-${{ github.run_id }}
           path: release/
 
       - name: Install Jfrog CLI
-        uses: jfrog/setup-jfrog-cli@v2
+        uses: jfrog/setup-jfrog-cli@v3
         with:
           version: 1.51.1
 
@@ -276,9 +292,28 @@ jobs:
     with:
       ziti-version: ${{ needs.publish.outputs.ZITI_VERSION }}
 
-  call-publish-docker-images:
-    if: github.ref == 'refs/heads/main'
-    name: Publish Docker Images
+  call-publish-prerelease-docker-images:
+    # always() re-enables evaluating conditionals in forks even if Windows or
+    # macOS builds were skipped
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.ref == 'refs/heads/release-next'
+    name: Publish Pre-Release Docker Images
+    needs: publish
+    uses: ./.github/workflows/publish-docker-images.yml
+    secrets: inherit
+    with:
+      ziti-version: release-next
+
+  call-publish-release-docker-images:
+    # always() re-enables evaluating conditionals in forks even if Windows or
+    # macOS builds were skipped
+    if: |
+      always()
+      && needs.publish.result == 'success'
+      && github.ref == 'refs/heads/main'
+    name: Publish Release Docker Images
     needs: publish
     uses: ./.github/workflows/publish-docker-images.yml
     secrets: inherit

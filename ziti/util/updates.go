@@ -18,6 +18,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/openziti/ziti/common/getziti"
 	"github.com/openziti/ziti/ziti/constants"
 	"os"
 	"strings"
@@ -29,12 +30,12 @@ import (
 	"github.com/openziti/ziti/common/version"
 )
 
-func LogReleaseVersionCheck(ziti_component string) {
+func LogReleaseVersionCheck(zitiComponent string) {
 	logger := pfxlog.Logger()
 	if strings.ToLower(os.Getenv("ZITI_CHECK_VERSION")) == "true" {
 		logger.Debug("ZITI_CHECK_VERSION is true. starting version check")
 		developmentSemver, _ := semver.Parse("0.0.0")
-		latestGithubRelease, err := GetHighestVersionGitHubReleaseInfo(false, constants.ZITI)
+		latestGithubRelease, err := getziti.GetHighestVersionGitHubReleaseInfo(constants.ZITI, false)
 		if err != nil {
 			logger.Debugf("failed to find latest GitHub version with error: %s", err)
 			return // soft-fail version check if GitHub API is unavailable
@@ -50,7 +51,7 @@ func LogReleaseVersionCheck(ziti_component string) {
 		if currentBuildSemver.EQ(developmentSemver) {
 			logger.Debugf(
 				"this build of %s is unreleased v%s",
-				ziti_component,
+				zitiComponent,
 				developmentSemver,
 			)
 		} else if latestGithubRelease.SemVer.GT(currentBuildSemver) {
@@ -66,20 +67,20 @@ https://github.com/openziti/%s/releases/latest/
 *********************************************************************************
 `,
 				green("v"+latestGithubRelease.SemVer.String()),
-				ziti_component,
+				zitiComponent,
 				yellow("v"+currentBuildSemver.String()),
 				constants.ZITI,
 			)
 			logger.Debugf(
 				"this v%s build of %s is superseded by v%s",
 				currentBuildSemver,
-				ziti_component,
+				zitiComponent,
 				latestGithubRelease,
 			)
 		} else if latestGithubRelease.SemVer.EQ(currentBuildSemver) {
 			logger.Debugf(
 				"this build of %s is the latest release v%s",
-				ziti_component,
+				zitiComponent,
 				currentBuildSemver,
 			)
 		}
