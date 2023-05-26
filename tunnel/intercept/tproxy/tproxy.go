@@ -16,11 +16,11 @@
 
 package tproxy
 
-import (
-	"github.com/openziti/edge/tunnel/intercept"
-	"github.com/pkg/errors"
-)
+import "time"
 
-func New(config Config) (intercept.Interceptor, error) {
-	return nil, errors.New("tproxy not supported on darwin")
+type Config struct {
+	LanIf            string
+	Diverter         string
+	UDPIdleTimeout   time.Duration
+	UDPCheckInterval time.Duration
 }

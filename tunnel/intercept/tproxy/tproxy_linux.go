@@ -76,13 +76,6 @@ var listenConfig = net.ListenConfig{
 	},
 }
 
-type Config struct {
-	LanIf            string
-	Diverter         string
-	UDPIdleTimeout   time.Duration
-	UDPCheckInterval time.Duration
-}
-
 func New(config Config) (intercept.Interceptor, error) {
 	log := pfxlog.Logger()
 
