@@ -61,11 +61,11 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service-edge-router-policy", "serp-all", "--service-roles", "#all", "--edge-router-roles", "#all"))
 
-	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-host", "host.v2", `
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-host", "host.v1", `
 		{
-			"terminators" : [ 
-				{ "address" : "ziti-smoketest-files.s3-us-west-1.amazonaws.com", "port" : 443, "protocol" : "tcp" }
-			]
+			"address" : "ziti-smoketest-files.s3-us-west-1.amazonaws.com", 
+			"port" : 443, 
+			"protocol" : "tcp"
 		}`))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ert-unencrypted", "intercept.v1", `

@@ -31,6 +31,12 @@ var hashes = map[string]string{
 	"20MB":  "8f4e33f3dc3e414ff94e5fb6905cba8c",
 }
 
+var timeouts = map[string]time.Duration{
+	"1KB":   5 * time.Second,
+	"100KB": 5 * time.Second,
+	"20MB":  30 * time.Second,
+}
+
 type httpClient string
 
 const (
@@ -39,12 +45,14 @@ const (
 )
 
 func TestCurlFiles(t *testing.T) {
-	for _, clientType := range []string{"ert"} { // add zet back
-		for _, hostType := range []string{"ert"} { // add zet back
+	for _, clientType := range []string{"ert", "zet"} { // add zet back
+		for _, hostType := range []string{"ert", "zet"} { // add zet back
 			for _, client := range []httpClient{ClientCurl, ClientWget} {
 				for _, encrypted := range []bool{true, false} {
 					for _, size := range []string{"1KB", "100KB", "20MB"} {
-						testFileDownload(t, clientType, client, hostType, encrypted, size, 20*time.Second)
+						if clientType == hostType || encrypted {
+							testFileDownload(t, clientType, client, hostType, encrypted, size)
+						}
 					}
 				}
 			}
@@ -52,7 +60,7 @@ func TestCurlFiles(t *testing.T) {
 	}
 }
 
-func testFileDownload(t *testing.T, hostSelector string, client httpClient, hostType string, encrypted bool, fileSize string, timeout time.Duration) {
+func testFileDownload(t *testing.T, hostSelector string, client httpClient, hostType string, encrypted bool, fileSize string) {
 	encDesk := "encrypted"
 	if !encrypted {
 		encDesk = "unencrypted"
@@ -78,6 +86,7 @@ func testFileDownload(t *testing.T, hostSelector string, client httpClient, host
 			cmd = fmt.Sprintf(`set -o pipefail; wget --no-check-certificate --header "Host: ziti-smoketest-files.s3-us-west-1.amazonaws.com" -O - -t 5 -T 5 %s | md5sum`, url)
 		}
 
+		timeout := timeouts[fileSize]
 		o, err := lib.RemoteExecAllWithTimeout(sshConfigFactory, timeout, cmd)
 		req.NoError(err)
 		req.Equal(hashes[fileSize], o[0:32])
