@@ -1,0 +1,17 @@
+workloads:
+  - name:               chatter
+    concurrency:        4096
+    dialer:
+      txRequests:       2000000
+      txPacing:         30000
+      txMaxJitter:      10000
+      rxTimeout:        240000
+      payloadMinBytes:  64
+      payloadMaxBytes:  256
+    listener:
+      txRequests:       2000000
+      txPacing:         30000
+      txMaxJitter:      10000
+      rxTimeout:        240000
+      payloadMinBytes:  64
+      payloadMaxBytes:  256

@@ -1,0 +1,30 @@
+# This is an example workloads definition for the loop2 tool.
+#
+workloads:
+  - name:               chatter
+    concurrency:        10
+    dialer:
+      txRequests:       100
+      txPacing:         500
+      txMaxJitter:      500
+      rxTimeout:        15000
+      payloadMinBytes:  4096
+      payloadMaxBytes:  8192
+    listener:
+      txRequests:       100
+      txPacing:         500
+      txMaxJitter:      500
+      rxTimeout:        15000
+      payloadMinBytes:  4096
+      payloadMaxBytes:  8192
+
+  - name:               big
+    concurrency:        1
+    dialer:
+      txRequests:       20
+      txPacing:         1000
+      txMaxJitter:      2500
+      payloadMinBytes:  51200000
+      payloadMaxBytes:  102400000
+    listener:
+      rxTimeout:        30000
