@@ -2,9 +2,8 @@
 
 ## What's New
 
-* Event changes
-  * `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
-     error when trying to use `-e` flag
+* `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
+  error when trying to use `-e` flag
   
 # Release 0.28.0
 
