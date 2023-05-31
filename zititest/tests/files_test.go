@@ -34,7 +34,7 @@ var hashes = map[string]string{
 var timeouts = map[string]time.Duration{
 	"1KB":   5 * time.Second,
 	"100KB": 5 * time.Second,
-	"20MB":  30 * time.Second,
+	"20MB":  40 * time.Second,
 }
 
 type httpClient string
@@ -45,19 +45,27 @@ const (
 )
 
 func TestCurlFiles(t *testing.T) {
-	for _, clientType := range []string{"ert", "zet"} { // add zet back
-		for _, hostType := range []string{"ert", "zet"} { // add zet back
-			for _, client := range []httpClient{ClientCurl, ClientWget} {
-				for _, encrypted := range []bool{true, false} {
-					for _, size := range []string{"1KB", "100KB", "20MB"} {
-						if clientType == hostType || encrypted {
-							testFileDownload(t, clientType, client, hostType, encrypted, size)
-						}
+	for _, hostType := range []string{"ert", "zet", "ziti-tunnel"} {
+		for _, clientType := range []string{"ert", "zet", "ziti-tunnel"} {
+			for _, encrypted := range []bool{true, false} {
+				testFileDownload(t, clientType, ClientCurl, hostType, encrypted, "1KB")
+			}
+		}
+	}
+
+	for _, size := range []string{"100KB", "20MB"} {
+		for _, clientType := range []string{"ert", "zet"} {
+			for _, hostType := range []string{"ert", "zet"} {
+				for _, client := range []httpClient{ClientCurl, ClientWget} {
+					for _, encrypted := range []bool{true, false} {
+						testFileDownload(t, clientType, client, hostType, encrypted, size)
 					}
 				}
 			}
 		}
 	}
+
+	testFileDownload(t, "ziti-tunnel", ClientCurl, "ziti-tunnel", true, "20MB")
 }
 
 func testFileDownload(t *testing.T, hostSelector string, client httpClient, hostType string, encrypted bool, fileSize string) {

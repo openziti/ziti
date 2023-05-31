@@ -21,16 +21,16 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.13
-	github.com/openziti/channel/v2 v2.0.78
-	github.com/openziti/edge v0.24.309
+	github.com/openziti/channel/v2 v2.0.79
+	github.com/openziti/edge v0.24.313
 	github.com/openziti/edge-api v0.25.24
 	github.com/openziti/fabric v0.23.29
-	github.com/openziti/foundation/v2 v2.0.24
-	github.com/openziti/identity v1.0.54
+	github.com/openziti/foundation/v2 v2.0.25
+	github.com/openziti/identity v1.0.55
 	github.com/openziti/runzmd v1.0.24
-	github.com/openziti/sdk-golang v0.20.51
-	github.com/openziti/storage v0.2.6
-	github.com/openziti/transport/v2 v2.0.88
+	github.com/openziti/sdk-golang v0.20.54
+	github.com/openziti/storage v0.2.7
+	github.com/openziti/transport/v2 v2.0.89
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
@@ -41,7 +41,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.10.0
 	google.golang.org/grpc v1.42.0
@@ -142,7 +142,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/dilithium v0.3.3 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
-	github.com/openziti/metrics v1.2.25 // indirect
+	github.com/openziti/metrics v1.2.26 // indirect
 	github.com/openziti/secretstream v0.1.8 // indirect
 	github.com/openziti/x509-claims v1.0.3 // indirect
 	github.com/orcaman/concurrent-map/v2 v2.0.1 // indirect

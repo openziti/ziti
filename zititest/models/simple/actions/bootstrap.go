@@ -96,20 +96,49 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 			"protocols": ["tcp"]
 		}`))
 
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ziti-tunnel-unencrypted", "intercept.v1", `
+		{
+			"addresses": ["ziti-files-ziti-tunnel-unencrypted.s3-us-west-1.amazonaws.ziti"],
+			"portRanges" : [ { "low": 443, "high": 443 } ],
+			"protocols": ["tcp"]
+		}`))
+
+	workflow.AddAction(zitilib_actions.Edge("create", "config", "files-intercept-ziti-tunnel", "intercept.v1", `
+		{
+			"addresses": ["ziti-files-ziti-tunnel.s3-us-west-1.amazonaws.ziti"],
+			"portRanges" : [ { "low": 443, "high": 443 } ],
+			"protocols": ["tcp"]
+		}`))
+
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "ert-files-unencrypted", "-c", "files-host,files-intercept-ert-unencrypted", "-e", "OFF", "-a", "ert"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "ert-files", "-c", "files-host,files-intercept-ert", "-a", "ert"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "zet-files-unencrypted", "-c", "files-host,files-intercept-zet-unencrypted", "-e", "OFF", "-a", "zet"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service", "zet-files", "-c", "files-host,files-intercept-zet", "-a", "zet"))
 
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "ziti-tunnel-files-unencrypted", "-c", "files-host,files-intercept-ziti-tunnel-unencrypted", "-e", "OFF", "-a", "ziti-tunnel"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service", "ziti-tunnel-files", "-c", "files-host,files-intercept-ziti-tunnel", "-a", "ziti-tunnel"))
+
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "ert-hosts", "Bind", "--service-roles", "#ert", "--identity-roles", "#ert-host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "zet-hosts", "Bind", "--service-roles", "#zet", "--identity-roles", "#zet-host"))
+	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "ziti-tunnel-hosts", "Bind", "--service-roles", "#ziti-tunnel", "--identity-roles", "#ziti-tunnel-host"))
 	workflow.AddAction(zitilib_actions.Edge("create", "service-policy", "client-tunnelers", "Dial", "--service-roles", "#all", "--identity-roles", "#client"))
 
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "client-routers", "--edge-router-roles", "#client", "--identity-roles", "#client"))
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 
 	workflow.AddAction(component.Stop(models.ControllerTag))
+
+	workflow.AddAction(model.ActionFunc(func(m *model.Model) error {
+		cmds := []string{
+			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
+			"sudo systemctl restart systemd-resolved",
+		}
+
+		return m.ForEachComponent(".ziti-tunnel", 2, func(c *model.Component) error {
+			return host.Exec(c.GetHost(), cmds...).Execute(c.GetModel())
+		})
+	}))
 
 	return workflow
 }

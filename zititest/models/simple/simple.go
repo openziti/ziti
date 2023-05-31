@@ -158,6 +158,21 @@ var Model = &model.Model{
 						},
 					},
 				},
+				"ziti-tunnel-client": {
+					Scope:        model.Scope{Tags: model.Tags{"ziti-tunnel-client"}},
+					InstanceType: "t2.micro",
+					Components: model.Components{
+						"ziti-tunnel-client": {
+							Scope:          model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
+							BinaryName:     "ziti tunnel",
+							PublicIdentity: "ziti-tunnel-client",
+							RunWithSudo:    true,
+						},
+						"consul": {
+							BinaryName: "consul",
+						},
+					},
+				},
 			},
 		},
 		"us-west-2": {
@@ -193,6 +208,20 @@ var Model = &model.Model{
 							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
 							BinaryName:     "ziti-edge-tunnel",
 							PublicIdentity: "ziti-edge-tunnel-host",
+							RunWithSudo:    true,
+						},
+						"consul": {
+							BinaryName: "consul",
+						},
+					},
+				},
+				"ziti-tunnel-host": {
+					InstanceType: "t2.micro",
+					Components: model.Components{
+						"ziti-tunnel-host": {
+							Scope:          model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
+							BinaryName:     "ziti tunnel",
+							PublicIdentity: "ziti-tunnel-host",
 							RunWithSudo:    true,
 						},
 						"consul": {
