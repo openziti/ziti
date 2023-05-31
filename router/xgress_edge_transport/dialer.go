@@ -63,14 +63,14 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 	if timeToDeadline > 0 && timeToDeadline < to {
 		to = timeToDeadline
 	}
-	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, to, nil)
+	conn, err := txDestination.Dial("x/"+circuitId.Token, circuitId, to, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	log.Debugf("successful connection to %v from %v (s/%v)", destination, peer.LocalAddr(), circuitId.Token)
+	log.Debugf("successful connection to %v from %v (s/%v)", destination, conn.LocalAddr(), circuitId.Token)
 
-	xgConn := xgress_common.NewXgressConn(peer, true, true)
+	xgConn := xgress_common.NewXgressConn(conn, true, true)
 	peerData := make(xt.PeerData, 3)
 	if peerKey, ok := circuitId.Data[edge.PublicKeyHeader]; ok {
 		if publicKey, err := xgConn.SetupServerCrypto(peerKey); err != nil {
@@ -80,8 +80,8 @@ func (txd *dialer) Dial(params xgress.DialParams) (xt.PeerData, error) {
 		}
 	}
 
-	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(peer.LocalAddr().String())
-	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(peer.RemoteAddr().String())
+	peerData[uint32(ctrl_msg.TerminatorLocalAddressHeader)] = []byte(conn.LocalAddr().String())
+	peerData[uint32(ctrl_msg.TerminatorRemoteAddressHeader)] = []byte(conn.RemoteAddr().String())
 
 	x := xgress.NewXgress(circuitId.Token, params.GetCtrlId(), params.GetAddress(), xgConn, xgress.Terminator, txd.options, params.GetCircuitTags())
 	params.GetBindHandler().HandleXgressBind(x)

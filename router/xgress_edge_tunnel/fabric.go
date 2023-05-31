@@ -21,7 +21,6 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/secretstream/kx"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/edge-api/rest_model"
@@ -36,6 +35,7 @@ import (
 	"github.com/openziti/sdk-golang/ziti"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/openziti/sdk-golang/ziti/sdkinfo"
+	"github.com/openziti/secretstream/kx"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -205,7 +205,9 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 	log := logrus.WithField("service", service.GetName())
 
 	peerData := make(map[uint32][]byte)
-	peerData[edge.PublicKeyHeader] = keyPair.Public()
+	if service.IsEncryptionRequired() {
+		peerData[edge.PublicKeyHeader] = keyPair.Public()
+	}
 	if len(appData) > 0 {
 		peerData[edge.AppDataHeader] = appData
 	}
@@ -232,7 +234,7 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 
 	response := &edge_ctrl_pb.CreateCircuitForServiceResponse{}
 	if err = xgress_common.GetResultOrFailure(responseMsg, err, response); err != nil {
-		log.Warn("failed to dial fabric")
+		log.WithError(err).Warn("failed to dial fabric")
 		return err
 	}
 
@@ -246,10 +248,15 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 		self.dialSessions.Set(service.GetName(), response.Session.SessionId)
 	}
 
+	peerKey, peerKeyFound := response.PeerData[edge.PublicKeyHeader]
+	if service.IsEncryptionRequired() && !peerKeyFound {
+		return errors.New("service requires encryption, but public key header not returned")
+	}
+
 	xgConn := xgress_common.NewXgressConn(conn, halfClose, false)
 
-	if peerKey, ok := response.PeerData[edge.PublicKeyHeader]; ok {
-		if err := xgConn.SetupClientCrypto(keyPair, peerKey); err != nil {
+	if peerKeyFound {
+		if err = xgConn.SetupClientCrypto(keyPair, peerKey); err != nil {
 			return err
 		}
 	}
@@ -271,17 +278,8 @@ func (self *fabricProvider) TunnelService(service tunnel.Service, terminatorInst
 func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.HostControl, error) {
 	id := uuid.NewString()
 
-	keyPair, err := kx.NewKeyPair()
-	if err != nil {
-		return nil, err
-	}
-
-	hostData := make(map[uint32][]byte)
-	hostData[edge.PublicKeyHeader] = keyPair.Public()
-
 	terminator := &tunnelTerminator{
 		id:            id,
-		hostData:      hostData,
 		provider:      self,
 		context:       hostCtx,
 		notifyCreated: make(chan struct{}, 1),
@@ -289,7 +287,7 @@ func (self *fabricProvider) HostService(hostCtx tunnel.HostingContext) (tunnel.H
 
 	self.tunneler.terminators.Set(terminator.id, terminator)
 
-	err = self.factory.env.GetRateLimiterPool().QueueWithTimeout(func() {
+	err := self.factory.env.GetRateLimiterPool().QueueWithTimeout(func() {
 		self.establishTerminatorWithRetry(terminator)
 	}, math.MaxInt64)
 
@@ -349,7 +347,6 @@ func (self *fabricProvider) establishTerminator(terminator *tunnelTerminator) er
 		ServiceName: terminator.context.ServiceName(),
 		SessionId:   sessionId,
 		Address:     terminator.id,
-		PeerData:    terminator.hostData,
 		Cost:        uint32(terminator.context.ListenOptions().Cost),
 		Precedence:  precedence,
 		InstanceId:  terminator.context.ListenOptions().Identity,
@@ -520,7 +517,6 @@ func (self *fabricProvider) requestServiceList(ctrlCh channel.Channel, lastUpdat
 
 type tunnelTerminator struct {
 	id            string
-	hostData      map[uint32][]byte
 	provider      *fabricProvider
 	context       tunnel.HostingContext
 	created       atomic.Bool
