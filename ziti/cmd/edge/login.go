@@ -17,6 +17,7 @@
 package edge
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/Jeffail/gabs"
 	"github.com/openziti/foundation/v2/term"
@@ -27,14 +28,16 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"io"
+	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
 )
 
-// loginOptions are the flags for login commands
-type loginOptions struct {
+// LoginOptions are the flags for login commands
+type LoginOptions struct {
 	api.Options
 	Username     string
 	Password     string
@@ -43,11 +46,14 @@ type loginOptions struct {
 	ReadOnly     bool
 	Yes          bool
 	IgnoreConfig bool
+	ClientCert   string
+	ClientKey    string
+	ExtJwt       string
 }
 
 // newLoginCmd creates the command
 func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &loginOptions{
+	options := &LoginOptions{
 		Options: api.Options{
 			CommonOptions: common.CommonOptions{Out: out, Err: errOut},
 		},
@@ -73,17 +79,21 @@ func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().StringVarP(&options.Username, "username", "u", "", "username to use for authenticating to the Ziti Edge Controller ")
 	cmd.Flags().StringVarP(&options.Password, "password", "p", "", "password to use for authenticating to the Ziti Edge Controller, if -u is supplied and -p is not, a value will be prompted for")
 	cmd.Flags().StringVarP(&options.Token, "token", "t", "", "if an api token has already been acquired, it can be set in the config with this option. This will set the session to read only by default")
-	cmd.Flags().StringVarP(&options.CaCert, "cert", "c", "", "additional root certificates used by the Ziti Edge Controller")
+	cmd.Flags().StringVarP(&options.CaCert, "ca", "", "", "additional root certificates used by the Ziti Edge Controller")
 	cmd.Flags().BoolVar(&options.ReadOnly, "read-only", false, "marks this login as read-only. Note: this is not a guarantee that nothing can be changed on the server. Care should still be taken!")
 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", false, "If set, responds to prompts with yes. This will result in untrusted certs being accepted or updated.")
 	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
+	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
+	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
+	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
+
 	options.AddCommonFlags(cmd)
 
 	return cmd
 }
 
 // Run implements this command
-func (o *loginOptions) Run() error {
+func (o *LoginOptions) Run() error {
 	config, configFile, err := util.LoadRestClientConfig()
 	if err != nil {
 		return err
@@ -140,7 +150,8 @@ func (o *loginOptions) Run() error {
 		o.Println("NOTE: When using --token the saved identity will be marked as read-only unless --read-only=false is provided")
 	}
 
-	if o.Token == "" {
+	body := "{}"
+	if o.Token == "" && o.ClientCert == "" && o.ExtJwt == "" {
 		for o.Username == "" {
 			if defaultId := config.EdgeIdentities[id]; defaultId != nil && defaultId.Username != "" && !o.IgnoreConfig {
 				o.Username = defaultId.Username
@@ -160,28 +171,28 @@ func (o *loginOptions) Run() error {
 		_, _ = container.SetP(o.Username, "username")
 		_, _ = container.SetP(o.Password, "password")
 
-		body := container.String()
+		body = container.String()
+	}
 
-		jsonParsed, err := util.EdgeControllerLogin(host, o.CaCert, body, o.Out, o.OutputJSONResponse, o.Options.Timeout, o.Options.Verbose)
+	jsonParsed, err := login(o, host, body)
 
-		if err != nil {
-			return err
-		}
+	if err != nil {
+		return err
+	}
 
-		if !jsonParsed.ExistsP("data.token") {
-			return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
-		}
+	if !jsonParsed.ExistsP("data.token") {
+		return fmt.Errorf("no session token returned from login request to %v. Received: %v", host, jsonParsed.String())
+	}
 
-		var ok bool
-		o.Token, ok = jsonParsed.Path("data.token").Data().(string)
+	var ok bool
+	o.Token, ok = jsonParsed.Path("data.token").Data().(string)
 
-		if !ok {
-			return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
-		}
+	if !ok {
+		return fmt.Errorf("session token returned from login request to %v is not in the expected format. Received: %v", host, jsonParsed.String())
+	}
 
-		if !o.OutputJSONResponse {
-			o.Printf("Token: %v\n", o.Token)
-		}
+	if !o.OutputJSONResponse {
+		o.Printf("Token: %v\n", o.Token)
 	}
 
 	loginIdentity := &util.RestClientEdgeIdentity{
@@ -201,7 +212,7 @@ func (o *loginOptions) Run() error {
 	return err
 }
 
-func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
+func (o *LoginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	isServerTrusted, err := util.IsServerTrusted(host)
 	if err != nil {
 		return err
@@ -275,7 +286,7 @@ func (o *loginOptions) ConfigureCerts(host string, ctrlUrl *url.URL) error {
 	return nil
 }
 
-func (o *loginOptions) askYesNo(prompt string) (bool, error) {
+func (o *LoginOptions) askYesNo(prompt string) (bool, error) {
 	filter := &yesNoFilter{}
 	if _, err := o.ask(prompt, filter.Accept); err != nil {
 		return false, err
@@ -283,7 +294,7 @@ func (o *loginOptions) askYesNo(prompt string) (bool, error) {
 	return filter.result, nil
 }
 
-func (o *loginOptions) ask(prompt string, f func(string) bool) (string, error) {
+func (o *LoginOptions) ask(prompt string, f func(string) bool) (string, error) {
 	for {
 		val, err := term.Prompt(prompt)
 		if err != nil {
@@ -313,4 +324,65 @@ func (self *yesNoFilter) Accept(s string) bool {
 	}
 
 	return false
+}
+
+// EdgeControllerLogin will authenticate to the given Edge Controller
+func login(o *LoginOptions, url string, authentication string) (*gabs.Container, error) {
+	client := util.NewClient()
+	cert := o.CaCert
+	out := o.Out
+	logJSON := o.OutputJSONResponse
+	timeout := o.Timeout
+	verbose := o.Verbose
+	method := "password"
+	if cert != "" {
+		client.SetRootCertificate(cert)
+	}
+	authHeader := ""
+	if o.ExtJwt != "" {
+		auth, err := os.ReadFile(o.ExtJwt)
+		if err != nil {
+			return nil, fmt.Errorf("couldn't load jwt file at %s: %v", o.ExtJwt, err)
+		}
+		method = "ext-jwt"
+		authHeader = "Bearer " + strings.TrimSpace(string(auth))
+		client.SetHeader("Authorization", authHeader)
+	} else {
+		if o.ClientCert != "" {
+			clientCert, err := tls.LoadX509KeyPair(o.ClientCert, o.ClientKey)
+			if err != nil {
+				return nil, fmt.Errorf("can't load client certificate: %s with key %s: %v", o.ClientCert, o.ClientKey, err)
+			}
+			client.SetCertificates(clientCert)
+			method = "cert"
+		}
+	}
+
+	resp, err := client.
+		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
+		SetDebug(verbose).
+		R().
+		SetQueryParam("method", method).
+		SetHeader("Content-Type", "application/json").
+		SetBody(authentication).
+		Post(url + "/authenticate")
+
+	if err != nil {
+		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", url, err)
+	}
+
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), util.PrettyPrintResponse(resp))
+	}
+
+	if logJSON {
+		util.OutputJson(out, resp.Body())
+	}
+
+	jsonParsed, err := gabs.ParseJSON(resp.Body())
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
+	}
+
+	return jsonParsed, nil
 }

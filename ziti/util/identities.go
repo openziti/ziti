@@ -7,9 +7,9 @@ import (
 	"fmt"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/openziti/edge-api/rest_management_api_client"
+	"github.com/openziti/edge/controller/env"
 	fabric_rest_client "github.com/openziti/fabric/rest_client"
 	"github.com/openziti/identity"
-	"github.com/openziti/sdk-golang/ziti/constants"
 	"github.com/openziti/ziti/ziti/cmd/common"
 	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
@@ -102,7 +102,7 @@ func (self *RestClientEdgeIdentity) NewTlsClientConfig() (*tls.Config, error) {
 }
 
 func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose bool) (*resty.Client, error) {
-	client := newClient()
+	client := NewClient()
 	if self.CaCert != "" {
 		client.SetRootCertificate(self.CaCert)
 	}
@@ -113,7 +113,7 @@ func (self *RestClientEdgeIdentity) NewClient(timeout time.Duration, verbose boo
 
 func (self *RestClientEdgeIdentity) NewRequest(client *resty.Client) *resty.Request {
 	r := client.R()
-	r.SetHeader(constants.ZitiSession, self.Token)
+	r.SetHeader(env.ZitiSession, self.Token)
 	return r
 }
 
@@ -173,7 +173,7 @@ func (self *RestClientEdgeIdentity) NewFabricManagementClient(clientOpts ClientO
 
 func (self *RestClientEdgeIdentity) NewWsHeader() http.Header {
 	result := http.Header{}
-	result.Set(constants.ZitiSession, self.Token)
+	result.Set(env.ZitiSession, self.Token)
 	return result
 }
 
@@ -198,7 +198,7 @@ func (self *RestClientFabricIdentity) NewClient(timeout time.Duration, verbose b
 	if err != nil {
 		return nil, errors.Wrap(err, "unable to load identity")
 	}
-	client := newClient()
+	client := NewClient()
 	client.SetTLSClientConfig(id.ClientTLSConfig())
 	client.SetTimeout(timeout)
 	client.SetDebug(verbose)

@@ -18,10 +18,9 @@ package loop2
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/identity"
+	"github.com/openziti/identity/dotziti"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/ziti/ziti-fabric-test/subcmd/loop2/pb"
 	"github.com/spf13/cobra"
@@ -85,13 +84,17 @@ func (cmd *listenerCmd) listenEdge() {
 
 	var context ziti.Context
 	if cmd.edgeConfigFile != "" {
-		zitiCfg, err := config.NewFromFile(cmd.edgeConfigFile)
+		zitiCfg, err := ziti.NewConfigFromFile(cmd.edgeConfigFile)
 		if err != nil {
 			log.Fatalf("failed to load ziti configuration from %s: %v", cmd.edgeConfigFile, err)
 		}
-		context = ziti.NewContextWithConfig(zitiCfg)
+
+		context, err = ziti.NewContext(zitiCfg)
+		if err != nil {
+			log.Fatalf("failed to load ziti context from cofnig: %v", err)
+		}
 	} else {
-		context = ziti.NewContext()
+		log.Fatal("no configuration file provided")
 	}
 
 	service := strings.TrimPrefix(cmd.bindAddress, "edge:")

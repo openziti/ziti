@@ -17,24 +17,7 @@
 package install
 
 import (
-	"github.com/openziti/ziti/ziti/cmd/common"
-	"io"
-
-	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
-	"github.com/openziti/ziti/ziti/cmd/templates"
 	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/spf13/cobra"
-)
-
-var (
-	upgradeZitiProxCLong = templates.LongDesc(`
-		Upgrades the Ziti ProxC app if there is a newer release
-`)
-
-	upgradeZitiProxCExample = templates.Examples(`
-		# Upgrades the Ziti ProxC app 
-		ziti upgrade ziti-prox-c
-	`)
 )
 
 // UpgradeZitiProxCOptions the options for the upgrade ziti-prox-c command
@@ -42,35 +25,6 @@ type UpgradeZitiProxCOptions struct {
 	InstallOptions
 
 	Version string
-}
-
-// NewCmdUpgradeZitiProxC defines the command
-func NewCmdUpgradeZitiProxC(out io.Writer, errOut io.Writer) *cobra.Command {
-	options := &UpgradeZitiProxCOptions{
-		InstallOptions: InstallOptions{
-			CommonOptions: common.CommonOptions{
-				Out: out,
-				Err: errOut,
-			},
-		},
-	}
-
-	cmd := &cobra.Command{
-		Use:     "ziti-prox-c",
-		Short:   "Upgrades the Ziti ProxC app - if there is a new version available",
-		Aliases: []string{"proxc"},
-		Long:    upgradeZitiProxCLong,
-		Example: upgradeZitiProxCExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			options.Cmd = cmd
-			options.Args = args
-			err := options.Run()
-			cmdhelper.CheckErr(err)
-		},
-	}
-	cmd.Flags().StringVarP(&options.Version, "version", "v", "", "The specific version to upgrade to")
-	options.AddCommonFlags(cmd)
-	return cmd
 }
 
 // Run implements the command
@@ -88,5 +42,5 @@ func (o *UpgradeZitiProxCOptions) Run() error {
 
 	o.deleteInstalledBinary(c.ZITI_PROX_C)
 
-	return o.findVersionAndInstallGitHubRelease(c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, true, newVersionStr)
+	return o.FindVersionAndInstallGitHubRelease(true, c.ZITI_PROX_C, c.ZITI_SDK_C_GITHUB, newVersionStr)
 }

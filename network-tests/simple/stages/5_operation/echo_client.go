@@ -1,7 +1,9 @@
 package runlevel_5_operation
 
 import (
+	"crypto/rand"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/openziti/fablab/kernel/lib"
@@ -14,10 +16,13 @@ type echoClient struct {
 	message       string
 }
 
-func AssertEcho(componentSpec, message string) model.OperatingStage {
+func AssertEcho(componentSpec string) model.OperatingStage {
+	data := make([]byte, 10000)
+	_, _ = rand.Read(data)
+
 	return &echoClient{
 		componentSpec: componentSpec,
-		message:       message,
+		message:       url.QueryEscape(string(data)),
 	}
 }
 
@@ -36,7 +41,7 @@ func (ec *echoClient) Operate(run model.Run) error {
 			//trim the newline ssh added
 			output = strings.TrimRight(output, "\n")
 			if output != ec.message {
-				return fmt.Errorf("Got message [%s] expected [%s]", output, ec.message)
+				return fmt.Errorf("got message [%s] expected [%s]", output, ec.message)
 			}
 		}
 		return nil

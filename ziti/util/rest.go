@@ -18,7 +18,6 @@ package util
 
 import (
 	"archive/tar"
-	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
@@ -33,7 +32,6 @@ import (
 	"github.com/openziti/ziti/common/version"
 	cmdhelper "github.com/openziti/ziti/ziti/cmd/helpers"
 	c "github.com/openziti/ziti/ziti/constants"
-	"github.com/pkg/errors"
 	"gopkg.in/resty.v1"
 	"io"
 	"net/http"
@@ -42,7 +40,6 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -81,7 +78,7 @@ func DownloadFile(filepath string, url string) (err error) {
 }
 
 // Use a 2-second timeout with a retry count of 5
-func newClient() *resty.Client {
+func NewClient() *resty.Client {
 	return resty.
 		New().
 		SetTimeout(2 * time.Second).
@@ -90,7 +87,7 @@ func newClient() *resty.Client {
 }
 
 func getRequest(verbose bool) *resty.Request {
-	return newClient().
+	return NewClient().
 		SetDebug(verbose).
 		R()
 }
@@ -152,116 +149,6 @@ func GetLatestVersionFromArtifactory(verbose bool, staging bool, branch string, 
 	result := *resp.Result().(*ArtifactoryVersionsData)
 
 	return semver.Make(strings.TrimPrefix(result.Version, "v"))
-}
-
-// Used to parse the '/releases/latest' response from GitHub
-type GitHubReleasesData struct {
-	Version string `json:"tag_name"`
-	SemVer  semver.Version
-	Assets  []struct {
-		BrowserDownloadURL string `json:"browser_download_url"`
-	}
-}
-
-func (self *GitHubReleasesData) GetDownloadUrl(appName string) (string, error) {
-	arches := []string{runtime.GOARCH}
-	if strings.ToLower(runtime.GOARCH) == "amd64" {
-		arches = append(arches, "x86_64")
-	}
-
-	for _, asset := range self.Assets {
-		ok := false
-		for _, arch := range arches {
-			if strings.Contains(strings.ToLower(asset.BrowserDownloadURL), arch) {
-				ok = true
-			}
-		}
-
-		ok = ok && strings.Contains(strings.ToLower(asset.BrowserDownloadURL), runtime.GOOS)
-		if ok {
-			return asset.BrowserDownloadURL, nil
-		}
-	}
-
-	return "", errors.Errorf("no download URL found for os/arch %v/%v for '%v'", runtime.GOOS, runtime.GOARCH, appName)
-}
-
-func GetHighestVersionGitHubReleaseInfo(verbose bool, appName string) (*GitHubReleasesData, error) {
-	resp, err := getRequest(verbose).
-		SetQueryParams(map[string]string{}).
-		SetHeader("Accept", "application/vnd.github.v3+json").
-		SetResult([]*GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appName + "/releases")
-
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to get latest version for '%s'", appName)
-	}
-
-	if resp.StatusCode() == http.StatusNotFound {
-		return nil, errors.Errorf("unable to get latest version for '%s'; Not Found (invalid URL)", appName)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("unable to get latest version for '%s'; return status=%s", appName, resp.Status())
-	}
-
-	result := *resp.Result().(*[]*GitHubReleasesData)
-	return getHighestVersionRelease(appName, result)
-}
-
-func getHighestVersionRelease(appName string, releases []*GitHubReleasesData) (*GitHubReleasesData, error) {
-	for _, release := range releases {
-		v, err := semver.ParseTolerant(release.Version)
-		if err != nil {
-			return nil, errors.Wrapf(err, "unable to parse version %v for '%v'", release.Version, appName)
-		}
-		release.SemVer = v
-	}
-	sort.Slice(releases, func(i, j int) bool {
-		return releases[i].SemVer.GT(releases[j].SemVer) // sort in reverse order
-	})
-	if len(releases) == 0 {
-		return nil, errors.Errorf("no releases found for '%v'", appName)
-	}
-	return releases[0], nil
-}
-
-func GetLatestGitHubReleaseAsset(verbose bool, appName string) (*GitHubReleasesData, error) {
-	resp, err := getRequest(verbose).
-		SetQueryParams(map[string]string{}).
-		SetHeader("Accept", "application/vnd.github.v3+json").
-		SetResult(&GitHubReleasesData{}).
-		Get("https://api.github.com/repos/openziti/" + appName + "/releases/latest")
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to get latest version for '%s'; %s", appName, err)
-	}
-
-	if resp.StatusCode() == http.StatusNotFound {
-		return nil, fmt.Errorf("unable to get latest version for '%s'; Not Found", appName)
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to get latest version for '%s'; %s", appName, resp.Status())
-	}
-
-	result := resp.Result().(*GitHubReleasesData)
-	return result, nil
-}
-
-// DownloadGitHubReleaseAsset will download a file from the given GitHUb release area
-func DownloadGitHubReleaseAsset(fullUrl string, filepath string) (err error) {
-	resp, err := getRequest(false).
-		SetOutput(filepath).
-		Get(fullUrl)
-
-	if err != nil {
-		return fmt.Errorf("unable to download '%s', %s", fullUrl, err)
-	}
-
-	if resp.IsError() {
-		return fmt.Errorf("unable to download file, error HTTP status code [%d] returned for url [%s]", resp.StatusCode(), fullUrl)
-	}
-
-	return nil
 }
 
 // Used to parse the '/api/search/aql' response from Artifactory
@@ -505,108 +392,7 @@ func UnTargz(tarball, target string, onlyFiles []string) error {
 	return nil
 }
 
-func Unzip(src, dest string) error {
-	r, err := zip.OpenReader(src)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := r.Close(); err != nil {
-			panic(err)
-		}
-	}()
-
-	os.MkdirAll(dest, 0755)
-
-	// Closure to address file descriptors issue with all the deferred .Close() methods
-	extractAndWriteFile := func(f *zip.File) error {
-		rc, err := f.Open()
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if err := rc.Close(); err != nil {
-				panic(err)
-			}
-		}()
-
-		path := filepath.Join(dest, f.Name)
-
-		// Check for ZipSlip (Directory traversal)
-		if !strings.HasPrefix(path, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return fmt.Errorf("illegal file path: %s", path)
-		}
-
-		if f.FileInfo().IsDir() {
-			os.MkdirAll(path, f.Mode())
-		} else {
-			os.MkdirAll(filepath.Dir(path), f.Mode())
-			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return err
-			}
-			defer func() {
-				if err := f.Close(); err != nil {
-					panic(err)
-				}
-			}()
-
-			_, err = io.Copy(f, rc)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	}
-
-	for _, f := range r.File {
-		err := extractAndWriteFile(f)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// EdgeControllerLogin will authenticate to the given Edge Controller
-func EdgeControllerLogin(url string, cert string, authentication string, out io.Writer, logJSON bool, timeout int, verbose bool) (*gabs.Container, error) {
-	client := newClient()
-
-	if cert != "" {
-		client.SetRootCertificate(cert)
-	}
-
-	resp, err := client.
-		SetTimeout(time.Duration(time.Duration(timeout)*time.Second)).
-		SetDebug(verbose).
-		R().
-		SetQueryParam("method", "password").
-		SetHeader("Content-Type", "application/json").
-		SetBody(authentication).
-		Post(url + "/authenticate")
-
-	if err != nil {
-		return nil, fmt.Errorf("unable to authenticate to %v. Error: %v", url, err)
-	}
-
-	if resp.StatusCode() != http.StatusOK {
-		return nil, fmt.Errorf("unable to authenticate to %v. Status code: %v, Server returned: %v", url, resp.Status(), prettyPrintResponse(resp))
-	}
-
-	if logJSON {
-		outputJson(out, resp.Body())
-	}
-
-	jsonParsed, err := gabs.ParseJSON(resp.Body())
-	if err != nil {
-		return nil, fmt.Errorf("unable to parse response from %v. Server returned: %v", url, resp.String())
-	}
-
-	return jsonParsed, nil
-}
-
-func prettyPrintResponse(resp *resty.Response) string {
+func PrettyPrintResponse(resp *resty.Response) string {
 	out := resp.String()
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, []byte(out), "", "    "); err == nil {
@@ -615,7 +401,7 @@ func prettyPrintResponse(resp *resty.Response) string {
 	return out
 }
 
-func outputJson(out io.Writer, data []byte) {
+func OutputJson(out io.Writer, data []byte) {
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, data, "", "    "); err == nil {
 		if _, err := fmt.Fprint(out, prettyJSON.String()); err != nil {
@@ -654,11 +440,11 @@ func ControllerDetailEntity(api API, entityType, entityId string, logJSON bool, 
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), prettyPrintResponse(resp))
+			queryUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -715,11 +501,11 @@ func ControllerList(api API, path string, params url.Values, logJSON bool, out i
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error listing %v in Ziti Edge Controller. Status code: %v, Server returned: %v",
-			queryUrl, resp.Status(), prettyPrintResponse(resp))
+			queryUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -850,7 +636,7 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 	url := baseUrl + "/" + entityType
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", "POST", url)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -862,11 +648,11 @@ func ControllerCreate(api API, entityType string, body string, out io.Writer, lo
 
 	if resp.StatusCode() != http.StatusCreated {
 		return nil, fmt.Errorf("error creating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJson {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	jsonParsed, err := gabs.ParseJSON(resp.Body())
@@ -900,7 +686,7 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", "POST", fullUrl)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -916,11 +702,11 @@ func ControllerDelete(api API, entityType string, id string, body string, out io
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error deleting %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityPath, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityPath, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJson {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	return nil
@@ -947,7 +733,7 @@ func ControllerUpdate(api API, entityType string, body string, out io.Writer, me
 
 	if logRequestJson {
 		fmt.Printf("%v to %v\n", method, url)
-		outputJson(out, []byte(body))
+		OutputJson(out, []byte(body))
 		fmt.Println()
 	}
 
@@ -959,11 +745,11 @@ func ControllerUpdate(api API, entityType string, body string, out io.Writer, me
 
 	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
 		return nil, fmt.Errorf("error updating %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logResponseJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	if len(resp.Body()) == 0 {
@@ -1009,11 +795,11 @@ func EdgeControllerVerify(entityType, id, body string, out io.Writer, logJSON bo
 
 	if resp.StatusCode() != http.StatusOK {
 		return fmt.Errorf("error verifying %v instance (%v) in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			entityType, id, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			entityType, id, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	return nil
@@ -1043,11 +829,11 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 
 	if resp.StatusCode() != http.StatusOK {
 		return nil, fmt.Errorf("error performing request [%s] %v instance in Ziti Edge Controller at %v. Status code: %v, Server returned: %v",
-			request.Method, entityType, baseUrl, resp.Status(), prettyPrintResponse(resp))
+			request.Method, entityType, baseUrl, resp.Status(), PrettyPrintResponse(resp))
 	}
 
 	if logJSON {
-		outputJson(out, resp.Body())
+		OutputJson(out, resp.Body())
 	}
 
 	if resp.Body() == nil {
@@ -1068,7 +854,7 @@ func EdgeControllerRequest(entityType string, out io.Writer, logJSON bool, timeo
 // on the version of the Edge Controller the API may be monolith on `/edge/<version>` and `/` or split into
 // `/edge/management/<version>` and `/edge/client/<version>`.
 func EdgeControllerGetManagementApiBasePath(host string, cert string) string {
-	client := newClient()
+	client := NewClient()
 
 	client.SetHostURL(host)
 

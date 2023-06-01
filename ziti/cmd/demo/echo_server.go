@@ -24,7 +24,6 @@ import (
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/identity"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -131,7 +130,7 @@ func (self *echoServer) run(*cobra.Command, []string) {
 	}
 
 	if self.configFile != "" {
-		zitiConfig, err := config.NewFromFile(self.configFile)
+		zitiConfig, err := ziti.NewConfigFromFile(self.configFile)
 		if err != nil {
 			log.WithError(err).Fatalf("ziti: unable to load ziti identity from [%v]", self.configFile)
 		}
@@ -140,7 +139,11 @@ func (self *echoServer) run(*cobra.Command, []string) {
 			log.WithError(err).Fatalf("ziti: unable to create ziti identity from [%v]", self.configFile)
 		}
 
-		zitiContext := ziti.NewContextWithConfig(zitiConfig)
+		zitiContext, err := ziti.NewContext(zitiConfig)
+
+		if err != nil {
+			log.WithError(err).Fatal("unable to get create ziti context from config")
+		}
 
 		zitiIdentity, err := zitiContext.GetCurrentIdentity()
 		if err != nil {
@@ -149,20 +152,20 @@ func (self *echoServer) run(*cobra.Command, []string) {
 
 		listenOptions := ziti.DefaultListenOptions()
 		listenOptions.BindUsingEdgeIdentity = self.bindWithIdentity
-		listenOptions.Cost = zitiIdentity.DefaultHostingCost
-		listenOptions.Precedence = ziti.GetPrecedenceForLabel(zitiIdentity.DefaultHostingPrecedence)
+		listenOptions.Cost = uint16(*zitiIdentity.DefaultHostingCost)
+		listenOptions.Precedence = ziti.GetPrecedenceForLabel(string(zitiIdentity.DefaultHostingPrecedence))
 
 		svc, found := zitiContext.GetService(self.service)
 		if !found {
 			log.WithError(err).Fatalf("ziti: unable to lookup service [%v]", self.service)
 		}
 
-		if cost, found := zitiIdentity.ServiceHostingCosts[svc.Id]; found {
-			listenOptions.Cost = uint16(cost.(float64))
+		if cost, found := zitiIdentity.ServiceHostingCosts[*svc.ID]; found {
+			listenOptions.Cost = uint16(*cost)
 		}
 
-		if precedence, found := zitiIdentity.ServiceHostingPrecedences[svc.Id]; found {
-			listenOptions.Precedence = ziti.GetPrecedenceForLabel(precedence.(string))
+		if precedence, found := zitiIdentity.ServiceHostingPrecedences[*svc.ID]; found {
+			listenOptions.Precedence = ziti.GetPrecedenceForLabel(string(precedence))
 		}
 
 		log.Infof("ziti: hosting %v with addressable=%v, cost=%v, precedence=%v",

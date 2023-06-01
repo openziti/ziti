@@ -39,7 +39,7 @@ func NewRouteCmd(p common.OptionsProvider) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Args: cobra.RangeArgs(3, 4),
+		Args: cobra.ExactArgs(4),
 		Use:  "route <controller id> <circuit id> <source-address> <destination-address>",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			action.Cmd = cmd

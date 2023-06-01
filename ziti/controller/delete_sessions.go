@@ -181,10 +181,8 @@ func deleteSessions(db boltz.Db) {
 		pfxlog.Logger().Errorf("could not read databse stats: %v", err)
 	}
 
-	err = db.Update(func(tx *bbolt.Tx) error {
-
-		root := tx.Bucket([]byte("ziti"))
-
+	err = db.Update(nil, func(ctx boltz.MutateContext) error {
+		root := ctx.Tx().Bucket([]byte("ziti"))
 		if root == nil {
 			return errors.New("root 'ziti' bucket not found")
 		}

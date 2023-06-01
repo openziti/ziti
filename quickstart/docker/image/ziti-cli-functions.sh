@@ -373,8 +373,7 @@ function persistEnvironmentValues {
   echo "export PFXLOG_NO_JSON=true" >> "${filepath}"
 
   echo "alias zec='ziti edge'" >> "${filepath}"
-  echo "alias zlogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
-  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -c \"\${ZITI_PKI}/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}/certs/\${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert\"'" >> "${filepath}"
+  echo "alias zitiLogin='ziti edge login \"\${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}:\${ZITI_CTRL_EDGE_ADVERTISED_PORT}\" -u \"\${ZITI_USER-}\" -p \"\${ZITI_PWD}\" -y'" >> "${filepath}"
   echo "alias psz='ps -ef | grep ziti'" >> "${filepath}"
 
   #when sourcing the emitted file add the bin folder to the path

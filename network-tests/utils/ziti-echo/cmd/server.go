@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/openziti/sdk-golang/ziti/config"
 	"log"
 	"net"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"time"
 
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -70,6 +70,12 @@ func (s *zitiEchoServer) run() (err error) {
 	}
 
 	zitiContext := ziti.NewContextWithConfig(config)
+	/*
+		zitiContext, err := ziti.NewContextFromFile(s.identityJson)
+		if err != nil {
+			return err
+		}
+	*/
 	if s.listener, err = zitiContext.Listen("echo"); err != nil {
 		return err
 	}

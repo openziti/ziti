@@ -20,7 +20,6 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti"
-	"github.com/openziti/sdk-golang/ziti/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -97,7 +96,7 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 	if network == "tcp" || network == "udp" {
 		conn, err = net.Dial(network, addr)
 	} else if network == "ziti" {
-		zitiConfig, cfgErr := config.NewFromFile(self.configFile)
+		zitiConfig, cfgErr := ziti.NewConfigFromFile(self.configFile)
 		if cfgErr != nil {
 			log.WithError(cfgErr).Fatalf("unable to load ziti identity from [%v]", self.configFile)
 		}
@@ -108,7 +107,11 @@ func (self *zcatAction) run(_ *cobra.Command, args []string) {
 			addr = addr[atIdx+1:]
 		}
 
-		zitiContext := ziti.NewContextWithConfig(zitiConfig)
+		zitiContext, ctxErr := ziti.NewContext(zitiConfig)
+		if ctxErr != nil {
+			pfxlog.Logger().WithError(err).Fatal("could not create sdk context from config")
+		}
+
 		dialOptions := &ziti.DialOptions{
 			ConnectTimeout: 5 * time.Second,
 			Identity:       dialIdentifier,

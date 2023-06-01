@@ -1,7 +1,7 @@
 suffix=$(date +"%b-%d-%H%M")
 idname="User${suffix}"
 
-ziti edge login "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -c "${ZITI_PKI}/${ZITI_PKI_CTRL_EDGE_ROOTCA_NAME}/certs/${ZITI_PKI_CTRL_EDGE_INTERMEDIATE_NAME}.cert"
+ziti edge login "${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}" -u "${ZITI_USER}" -p "${ZITI_PWD}" -y
 
 ziti edge delete identity "${idname}"
 ziti edge create identity device "${idname}" -o "${ZITI_HOME}/test_identity".jwt
