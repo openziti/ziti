@@ -703,10 +703,16 @@ type endpointConfig struct {
 	Endpoints []string `yaml:"Endpoints"`
 }
 
+type linkConnDetail struct {
+	LocalAddr  string `json:"localAddr"`
+	RemoteAddr string `json:"remoteAddr"`
+}
+
 type linkDetail struct {
-	LinkId       string   `json:"linkId"`
-	DestRouterId string   `json:"destRouterId"`
-	Latency      *float64 `json:"latency,omitempty"`
+	LinkId       string                    `json:"linkId"`
+	DestRouterId string                    `json:"destRouterId"`
+	Latency      *float64                  `json:"latency,omitempty"`
+	Addresses    map[string]linkConnDetail `json:"addresses"`
 }
 
 type linkHealthCheck struct {
@@ -740,6 +746,13 @@ func (self *linkHealthCheck) Execute(ctx context.Context) (details interface{}, 
 			detail := &linkDetail{
 				LinkId:       link.Id(),
 				DestRouterId: link.DestinationId(),
+				Addresses:    map[string]linkConnDetail{},
+			}
+			for _, addr := range link.GetAddresses() {
+				detail.Addresses[addr.Id] = linkConnDetail{
+					LocalAddr:  addr.LocalAddr,
+					RemoteAddr: addr.RemoteAddr,
+				}
 			}
 			latencyMetric := self.router.metricsRegistry.Histogram("link." + link.Id() + ".latency")
 			if latencyMetric != nil {
