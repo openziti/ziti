@@ -133,8 +133,9 @@ type Config struct {
 			InitialDelay time.Duration
 		}
 		LinkCheck struct {
-			MinLinks int
-			Interval time.Duration
+			MinLinks     int
+			Interval     time.Duration
+			InitialDelay time.Duration
 		}
 	}
 	Plugins []string
@@ -630,6 +631,7 @@ func LoadConfig(path string) (*Config, error) {
 	cfg.HealthChecks.CtrlPingCheck.Timeout = 15 * time.Second
 	cfg.HealthChecks.CtrlPingCheck.InitialDelay = 15 * time.Second
 	cfg.HealthChecks.LinkCheck.Interval = 5 * time.Second
+	cfg.HealthChecks.LinkCheck.InitialDelay = 1 * time.Second
 	cfg.HealthChecks.LinkCheck.MinLinks = 0
 
 	if value, found := cfgmap["healthChecks"]; found {
@@ -664,19 +666,27 @@ func LoadConfig(path string) (*Config, error) {
 				}
 			}
 			if value, found := healthChecksMap["linkCheck"]; found {
-				if boltMap, ok := value.(map[interface{}]interface{}); ok {
-					if value, found := boltMap["interval"]; found {
+				if checkMap, ok := value.(map[interface{}]interface{}); ok {
+					if value, found := checkMap["interval"]; found {
 						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
 							cfg.HealthChecks.LinkCheck.Interval = val
 						} else {
 							return nil, errors.Wrapf(err, "failed to parse healthChecks.linkCheck.interval value '%v", value)
 						}
 					}
-					if value, found := boltMap["minLinks"]; found {
+					if value, found := checkMap["minLinks"]; found {
 						if val, ok := value.(int); ok {
 							cfg.HealthChecks.LinkCheck.MinLinks = val
 						} else {
 							return nil, errors.Wrapf(err, "invalid value [%v] for healthChecks.linkCheck.minLinks", value)
+						}
+					}
+
+					if value, found := checkMap["initialDelay"]; found {
+						if val, err := time.ParseDuration(fmt.Sprintf("%v", value)); err == nil {
+							cfg.HealthChecks.LinkCheck.InitialDelay = val
+						} else {
+							return nil, errors.Wrapf(err, "failed to parse healthChecks.linkCheck.initialDelay value '%v", value)
 						}
 					}
 
