@@ -4,6 +4,10 @@
 
 * `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
   error when trying to use `-e` flag
+
+## Component Updates and Bug Fixes
+* github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
+  * [Issue #1132](https://github.com/openziti/ziti/issues/1132) - Updated `ws` protocol to `wss` as `ws` is no longer supported.
   
 # Release 0.28.0
 
