@@ -101,21 +101,7 @@ type edgeClientConn struct {
 func (self *edgeClientConn) HandleClose(_ channel.Channel) {
 	log := pfxlog.ContextLogger(self.ch.Label())
 	log.Debugf("closing")
-	terminators := self.listener.factory.hostedServices.cleanupServices(self)
-	ctrlCh := self.listener.factory.ctrls.AnyCtrlChannel()
-	for _, terminator := range terminators {
-		if ctrlCh == nil {
-			log.WithField("terminatorId", terminator.terminatorId).Error("unable to notify controller of removed terminator")
-			continue
-		}
-
-		tLog := log.WithField("terminatorId", terminator.terminatorId.Load()).WithField("token", terminator.token)
-		if err := self.removeTerminator(ctrlCh, terminator); err != nil {
-			tLog.Warn("failed to remove terminator for session on channel close")
-		} else {
-			tLog.Info("Successfully removed terminator on channel close")
-		}
-	}
+	self.listener.factory.hostedServices.cleanupServices(self)
 	self.msgMux.Close()
 }
 

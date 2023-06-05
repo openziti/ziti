@@ -41,15 +41,13 @@ func (registry *hostedServiceRegistry) Delete(hostId string) {
 	registry.services.Delete(hostId)
 }
 
-func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) (listeners []*edgeTerminator) {
+func (registry *hostedServiceRegistry) cleanupServices(proxy *edgeClientConn) {
 	registry.services.Range(func(key, value interface{}) bool {
-		listener := value.(*edgeTerminator)
-		if listener.edgeClientConn == proxy {
-			listener.close(false, "") // don't notify, channel is already closed, we can't send messages
+		terminator := value.(*edgeTerminator)
+		if terminator.edgeClientConn == proxy {
+			terminator.close(false, "") // don't notify, channel is already closed, we can't send messages
 			registry.services.Delete(key)
-			listeners = append(listeners, listener)
 		}
 		return true
 	})
-	return
 }

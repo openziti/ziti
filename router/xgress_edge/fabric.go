@@ -77,6 +77,8 @@ func (self *edgeTerminator) close(notify bool, reason string) {
 			logger.Error("no controller available, unable to remove terminator")
 		} else if err := self.edgeClientConn.removeTerminator(ctrlCh, self); err != nil {
 			logger.WithError(err).Error("failed to remove terminator")
+		} else {
+			logger.Info("Successfully removed terminator on channel close")
 		}
 	} else {
 		logger.Warn("edge terminator closing, but no terminator id set, so can't remove on controller")
