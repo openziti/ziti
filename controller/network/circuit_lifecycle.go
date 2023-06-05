@@ -84,6 +84,7 @@ const (
 	CircuitFailurePathMissingLink                  CircuitFailureCause = "PATH_MISSING_LINK"
 	CircuitFailureInvalidStrategy                  CircuitFailureCause = "INVALID_STRATEGY"
 	CircuitFailureStrategyError                    CircuitFailureCause = "STRATEGY_ERR"
+	CircuitFailureRouterResponseTimeout            CircuitFailureCause = "ROUTER_RESPONSE_TIMEOUT"
 	CircuitFailureRouterErrGeneric                 CircuitFailureCause = "ROUTER_ERR_GENERIC"
 	CircuitFailureRouterErrInvalidTerminator       CircuitFailureCause = "ROUTER_ERR_INVALID_TERMINATOR"
 	CircuitFailureRouterErrMisconfiguredTerminator CircuitFailureCause = "ROUTER_ERR_MISCONFIGURED_TERMINATOR"

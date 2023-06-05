@@ -145,7 +145,7 @@ func Test_UnrequestedLinkFromValidRouter(t *testing.T) {
 				Data:     []byte{1, 2, 3, 4},
 			}
 			err = xla.getLink().SendPayload(payload)
-			ctx.Req.NoError(err)
+			ctx.Req.NoErrorf(err, "iteration %v", i)
 		}
 	}
 }
