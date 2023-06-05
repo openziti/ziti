@@ -108,7 +108,7 @@ attendance:
 			cleanups = self.cleanups(path)
 			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 			self.serviceCounters.ServiceDialTimeout(terminator.GetServiceId(), terminator.GetId())
-			return nil, cleanups, newCircuitErrWrap(CircuitFailureRouterErrDialConnRefused, &routeTimeoutError{circuitId: self.circuitId})
+			return nil, cleanups, newCircuitErrWrap(CircuitFailureRouterResponseTimeout, &routeTimeoutError{circuitId: self.circuitId})
 		}
 
 		allPresent := true
