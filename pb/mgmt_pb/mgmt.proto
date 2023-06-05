@@ -33,6 +33,8 @@ enum ContentType {
   RouterDebugDumpForwarderTablesRequestType = 10074;
   RouterDebugDumpLinksRequestType = 10075;
   RouterDebugUnrouteRequestType = 10076;
+  RouterQuiesce = 10077;
+  RouterDequiesce = 10078;
 
   // Raft
   RaftListMembersRequestType = 10080;

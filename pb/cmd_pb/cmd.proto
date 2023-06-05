@@ -121,4 +121,5 @@ message Terminator {
   map<string, TagValue> tags = 11;
   string hostId = 12;
   bool isSystem = 13;
+  uint32 savedPrecedence = 14;
 }

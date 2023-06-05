@@ -34,6 +34,8 @@ enum ContentType {
   UpdateCtrlAddressesType = 1037;
 
   RemoveTerminatorsRequestType = 1038;
+  QuiesceRouterRequestType = 1039;
+  DequiesceRouterRequestType = 1040;
 
   ListenersHeader = 10;
 }

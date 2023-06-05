@@ -27,31 +27,33 @@ import (
 )
 
 const (
-	EntityTypeTerminators         = "terminators"
-	FieldTerminatorService        = "service"
-	FieldTerminatorRouter         = "router"
-	FieldTerminatorBinding        = "binding"
-	FieldTerminatorAddress        = "address"
-	FieldTerminatorInstanceId     = "instanceId"
-	FieldTerminatorInstanceSecret = "instanceSecret"
-	FieldTerminatorCost           = "cost"
-	FieldTerminatorPrecedence     = "precedence"
-	FieldServerPeerData           = "peerData"
-	FieldTerminatorHostId         = "hostId"
+	EntityTypeTerminators          = "terminators"
+	FieldTerminatorService         = "service"
+	FieldTerminatorRouter          = "router"
+	FieldTerminatorBinding         = "binding"
+	FieldTerminatorAddress         = "address"
+	FieldTerminatorInstanceId      = "instanceId"
+	FieldTerminatorInstanceSecret  = "instanceSecret"
+	FieldTerminatorCost            = "cost"
+	FieldTerminatorPrecedence      = "precedence"
+	FieldServerPeerData            = "peerData"
+	FieldTerminatorHostId          = "hostId"
+	FieldTerminatorSavedPrecedence = "savedPrecedence"
 )
 
 type Terminator struct {
 	boltz.BaseExtEntity
-	Service        string      `json:"service"`
-	Router         string      `json:"router"`
-	Binding        string      `json:"binding"`
-	Address        string      `json:"address"`
-	InstanceId     string      `json:"instanceId"`
-	InstanceSecret []byte      `json:"instanceSecret"`
-	Cost           uint16      `json:"cost"`
-	Precedence     string      `json:"precedence"`
-	PeerData       xt.PeerData `json:"peerData"`
-	HostId         string      `json:"hostId"`
+	Service         string      `json:"service"`
+	Router          string      `json:"router"`
+	Binding         string      `json:"binding"`
+	Address         string      `json:"address"`
+	InstanceId      string      `json:"instanceId"`
+	InstanceSecret  []byte      `json:"instanceSecret"`
+	Cost            uint16      `json:"cost"`
+	Precedence      string      `json:"precedence"`
+	PeerData        xt.PeerData `json:"peerData"`
+	HostId          string      `json:"hostId"`
+	SavedPrecedence *string     `json:"savedPrecedence"`
 }
 
 func (entity *Terminator) GetCost() uint16 {
@@ -161,6 +163,8 @@ func (store *terminatorStoreImpl) FillEntity(entity *Terminator, bucket *boltz.T
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldTerminatorCost, 0))
 	entity.Precedence = bucket.GetStringWithDefault(FieldTerminatorPrecedence, xt.Precedences.Default.String())
 	entity.HostId = bucket.GetStringWithDefault(FieldTerminatorHostId, "")
+	entity.SavedPrecedence = bucket.GetString(FieldTerminatorSavedPrecedence)
+
 	data := bucket.GetBucket(FieldServerPeerData)
 	if data != nil {
 		entity.PeerData = make(map[uint32][]byte)
@@ -196,6 +200,7 @@ func (store *terminatorStoreImpl) PersistEntity(entity *Terminator, ctx *boltz.P
 	ctx.SetInt32(FieldTerminatorCost, int32(entity.Cost))
 	ctx.SetRequiredString(FieldTerminatorPrecedence, entity.Precedence)
 	ctx.SetString(FieldTerminatorHostId, entity.HostId)
+	ctx.SetStringP(FieldTerminatorSavedPrecedence, entity.SavedPrecedence)
 
 	if ctx.ProceedWithSet(FieldServerPeerData) {
 		_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))

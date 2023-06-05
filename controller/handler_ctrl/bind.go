@@ -69,6 +69,8 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddTypedReceiveHandler(newMetricsHandler(self.network))
 	binding.AddTypedReceiveHandler(newTraceHandler(traceDispatchWrapper))
 	binding.AddTypedReceiveHandler(newInspectHandler(self.network))
+	binding.AddTypedReceiveHandler(newQuiesceRouterHandler(self.router, self.network))
+	binding.AddTypedReceiveHandler(newDequiesceRouterHandler(self.router, self.network))
 	binding.AddTypedReceiveHandler(newPingHandler())
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController()))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))

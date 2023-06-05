@@ -20,6 +20,7 @@ import (
 	"github.com/openziti/fabric/controller/change"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/fields"
+	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/openziti/foundation/v2/versions"
 	"google.golang.org/protobuf/proto"
@@ -36,6 +37,11 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+)
+
+const (
+	RouterQuiesceFlag   uint32 = 1
+	RouterDequiesceFlag uint32 = 2
 )
 
 type Listener interface {
@@ -236,7 +242,89 @@ func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFi
 }
 
 func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router], ctx boltz.MutateContext) error {
+	if cmd.Flags == RouterQuiesceFlag {
+		return self.ApplyQuiesce(cmd, ctx)
+	} else if cmd.Flags == RouterDequiesceFlag {
+		return self.ApplyDequiesce(cmd, ctx)
+	}
+
 	return self.updateGeneral(ctx, cmd.Entity, cmd.UpdatedFields)
+}
+
+// QuiesceRouter marks all terminators on the router as failed, so that new traffic will avoid this router, if there's
+// any alternative path
+func (self *RouterManager) QuiesceRouter(entity *Router, ctx *change.Context) error {
+	cmd := &command.UpdateEntityCommand[*Router]{
+		Context:       ctx,
+		Updater:       self,
+		Entity:        entity,
+		UpdatedFields: nil,
+		Flags:         RouterQuiesceFlag,
+	}
+
+	return self.Dispatch(cmd)
+}
+
+// DequiesceRouter returns all routers with a saved precedence that are in a failed state back to their saved state
+func (self *RouterManager) DequiesceRouter(entity *Router, ctx *change.Context) error {
+	cmd := &command.UpdateEntityCommand[*Router]{
+		Context:       ctx,
+		Updater:       self,
+		Entity:        entity,
+		UpdatedFields: nil,
+		Flags:         RouterDequiesceFlag,
+	}
+
+	return self.Dispatch(cmd)
+}
+
+func (self *RouterManager) ApplyQuiesce(cmd *command.UpdateEntityCommand[*Router], ctx boltz.MutateContext) error {
+	return self.UpdateTerminators(cmd.Entity, ctx, func(terminator *db.Terminator) error {
+		if terminator.Precedence == xt.Precedences.Failed.String() {
+			return nil
+		}
+
+		currentPrecedence := terminator.Precedence
+		terminator.SavedPrecedence = &currentPrecedence
+		terminator.Precedence = xt.Precedences.Failed.String()
+
+		return self.Terminators.store.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
+			db.FieldTerminatorPrecedence:      struct{}{},
+			db.FieldTerminatorSavedPrecedence: struct{}{},
+		})
+	})
+}
+
+func (self *RouterManager) ApplyDequiesce(cmd *command.UpdateEntityCommand[*Router], ctx boltz.MutateContext) error {
+	return self.UpdateTerminators(cmd.Entity, ctx, func(terminator *db.Terminator) error {
+		if terminator.SavedPrecedence == nil || terminator.Precedence != xt.Precedences.Failed.String() {
+			return nil
+		}
+
+		terminator.Precedence = *terminator.SavedPrecedence
+		terminator.SavedPrecedence = nil
+
+		return self.Terminators.store.Update(ctx.GetSystemContext(), terminator, boltz.MapFieldChecker{
+			db.FieldTerminatorPrecedence:      struct{}{},
+			db.FieldTerminatorSavedPrecedence: struct{}{},
+		})
+	})
+}
+
+func (self *RouterManager) UpdateTerminators(router *Router, ctx boltz.MutateContext, f func(terminator *db.Terminator) error) error {
+	return self.db.Update(ctx, func(ctx boltz.MutateContext) error {
+		terminatorIds := self.store.GetRelatedEntitiesIdList(ctx.Tx(), router.Id, db.EntityTypeTerminators)
+		for _, terminatorId := range terminatorIds {
+			terminator, _, err := self.Terminators.store.FindById(ctx.Tx(), terminatorId)
+			if err != nil {
+				return err
+			}
+			if err = f(terminator); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (self *RouterManager) HandleRouterDelete(id string) {

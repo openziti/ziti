@@ -33,16 +33,17 @@ import (
 
 type Terminator struct {
 	models.BaseEntity
-	Service        string
-	Router         string
-	Binding        string
-	Address        string
-	InstanceId     string
-	InstanceSecret []byte
-	Cost           uint16
-	Precedence     xt.Precedence
-	PeerData       map[uint32][]byte
-	HostId         string
+	Service         string
+	Router          string
+	Binding         string
+	Address         string
+	InstanceId      string
+	InstanceSecret  []byte
+	Cost            uint16
+	Precedence      xt.Precedence
+	PeerData        map[uint32][]byte
+	HostId          string
+	SavedPrecedence xt.Precedence
 }
 
 func (entity *Terminator) GetServiceId() string {
@@ -90,18 +91,26 @@ func (entity *Terminator) toBolt() *db.Terminator {
 	if entity.Precedence != nil {
 		precedence = entity.Precedence.String()
 	}
+
+	var savedPrecedence *string
+	if entity.SavedPrecedence != nil {
+		precedenceStr := entity.SavedPrecedence.String()
+		savedPrecedence = &precedenceStr
+	}
+
 	return &db.Terminator{
-		BaseExtEntity:  *entity.ToBoltBaseExtEntity(),
-		Service:        entity.Service,
-		Router:         entity.Router,
-		Binding:        entity.Binding,
-		Address:        entity.Address,
-		InstanceId:     entity.InstanceId,
-		InstanceSecret: entity.InstanceSecret,
-		Cost:           entity.Cost,
-		Precedence:     precedence,
-		PeerData:       entity.PeerData,
-		HostId:         entity.HostId,
+		BaseExtEntity:   *entity.ToBoltBaseExtEntity(),
+		Service:         entity.Service,
+		Router:          entity.Router,
+		Binding:         entity.Binding,
+		Address:         entity.Address,
+		InstanceId:      entity.InstanceId,
+		InstanceSecret:  entity.InstanceSecret,
+		Cost:            entity.Cost,
+		Precedence:      precedence,
+		PeerData:        entity.PeerData,
+		HostId:          entity.HostId,
+		SavedPrecedence: savedPrecedence,
 	}
 }
 
@@ -261,6 +270,11 @@ func (self *TerminatorManager) populateTerminator(entity *Terminator, _ *bbolt.T
 	entity.Precedence = xt.GetPrecedenceForName(boltTerminator.Precedence)
 	entity.HostId = boltTerminator.HostId
 	entity.FillCommon(boltTerminator)
+
+	if boltTerminator.SavedPrecedence != nil {
+		entity.SavedPrecedence = xt.GetPrecedenceForName(*boltTerminator.SavedPrecedence)
+	}
+
 	return nil
 }
 
@@ -279,20 +293,32 @@ func (self *TerminatorManager) Marshall(entity *Terminator) ([]byte, error) {
 		}
 	}
 
+	var savedPrecedence uint32
+	if entity.SavedPrecedence != nil {
+		if entity.SavedPrecedence.IsFailed() {
+			savedPrecedence = 1
+		} else if entity.SavedPrecedence.IsRequired() {
+			savedPrecedence = 2
+		} else if entity.SavedPrecedence.IsDefault() {
+			savedPrecedence = 3
+		}
+	}
+
 	msg := &cmd_pb.Terminator{
-		Id:             entity.Id,
-		ServiceId:      entity.GetServiceId(),
-		RouterId:       entity.GetRouterId(),
-		Binding:        entity.Binding,
-		Address:        entity.Address,
-		InstanceId:     entity.InstanceId,
-		InstanceSecret: entity.InstanceSecret,
-		Cost:           uint32(entity.Cost),
-		Precedence:     precedence,
-		PeerData:       entity.PeerData,
-		Tags:           tags,
-		HostId:         entity.HostId,
-		IsSystem:       entity.IsSystem,
+		Id:              entity.Id,
+		ServiceId:       entity.GetServiceId(),
+		RouterId:        entity.GetRouterId(),
+		Binding:         entity.Binding,
+		Address:         entity.Address,
+		InstanceId:      entity.InstanceId,
+		InstanceSecret:  entity.InstanceSecret,
+		Cost:            uint32(entity.Cost),
+		Precedence:      precedence,
+		PeerData:        entity.PeerData,
+		Tags:            tags,
+		HostId:          entity.HostId,
+		IsSystem:        entity.IsSystem,
+		SavedPrecedence: savedPrecedence,
 	}
 
 	return proto.Marshal(msg)
@@ -311,22 +337,32 @@ func (self *TerminatorManager) Unmarshall(bytes []byte) (*Terminator, error) {
 		precedence = xt.Precedences.Required
 	}
 
+	var savedPrecedence xt.Precedence
+	if msg.SavedPrecedence == 1 {
+		savedPrecedence = xt.Precedences.Failed
+	} else if msg.SavedPrecedence == 2 {
+		savedPrecedence = xt.Precedences.Required
+	} else if msg.SavedPrecedence == 3 {
+		savedPrecedence = xt.Precedences.Default
+	}
+
 	result := &Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:       msg.Id,
 			Tags:     cmd_pb.DecodeTags(msg.Tags),
 			IsSystem: msg.IsSystem,
 		},
-		Service:        msg.ServiceId,
-		Router:         msg.RouterId,
-		Binding:        msg.Binding,
-		Address:        msg.Address,
-		InstanceId:     msg.InstanceId,
-		InstanceSecret: msg.InstanceSecret,
-		Cost:           uint16(msg.Cost),
-		Precedence:     precedence,
-		PeerData:       msg.PeerData,
-		HostId:         msg.HostId,
+		Service:         msg.ServiceId,
+		Router:          msg.RouterId,
+		Binding:         msg.Binding,
+		Address:         msg.Address,
+		InstanceId:      msg.InstanceId,
+		InstanceSecret:  msg.InstanceSecret,
+		Cost:            uint16(msg.Cost),
+		Precedence:      precedence,
+		PeerData:        msg.PeerData,
+		HostId:          msg.HostId,
+		SavedPrecedence: savedPrecedence,
 	}
 
 	return result, nil

@@ -29,6 +29,8 @@ func (self *Router) RegisterDefaultAgentOps(debugEnabled bool) {
 	self.agentBindHandlers = append(self.agentBindHandlers, channel.BindHandlerF(func(binding channel.Binding) error {
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), self.agentOpDumpForwarderTables)
 		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), self.agentOpsDumpLinks)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterQuiesce), self.agentOpQuiesceRouter)
+		binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDequiesce), self.agentOpDequiesceRouter)
 
 		if debugEnabled {
 			binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RouterDebugUpdateRouteRequestType), self.agentOpUpdateRoute)
@@ -137,6 +139,42 @@ func (self *Router) agentOpToggleCtrlChan(m *channel.Message, ch channel.Channel
 	}
 
 	handler_common.SendOpResult(m, ch, "ctrl.toggle", results.String(), success)
+}
+
+func (self *Router) agentOpQuiesceRouter(m *channel.Message, ch channel.Channel) {
+	ctrlCh := self.ctrls.AnyValidCtrlChannel()
+	if ctrlCh == nil {
+		handler_common.SendOpResult(m, ch, "quiesce", "unable to reach controller", false)
+		return
+	}
+
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_QuiesceRouterRequestType), nil)
+	resp, err := msg.WithTimeout(5 * time.Second).SendForReply(ctrlCh)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "quiesce", fmt.Sprintf("error in controller communications: %v", err.Error()), false)
+		return
+	}
+
+	result := channel.UnmarshalResult(resp)
+	handler_common.SendOpResult(m, ch, "quiesce", result.Message+"\n", result.Success)
+}
+
+func (self *Router) agentOpDequiesceRouter(m *channel.Message, ch channel.Channel) {
+	ctrlCh := self.ctrls.AnyValidCtrlChannel()
+	if ctrlCh == nil {
+		handler_common.SendOpResult(m, ch, "dequiesce", "unable to reach controller", false)
+		return
+	}
+
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_DequiesceRouterRequestType), nil)
+	resp, err := msg.WithTimeout(5 * time.Second).SendForReply(ctrlCh)
+	if err != nil {
+		handler_common.SendOpResult(m, ch, "dequiesce", fmt.Sprintf("error in controller communications: %v", err.Error()), false)
+		return
+	}
+
+	result := channel.UnmarshalResult(resp)
+	handler_common.SendOpResult(m, ch, "dequiesce", result.Message+"\n", result.Success)
 }
 
 func (self *Router) agentOpDumpForwarderTables(m *channel.Message, ch channel.Channel) {
