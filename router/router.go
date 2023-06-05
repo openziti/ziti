@@ -586,8 +586,8 @@ func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	err = h.RegisterCheck(&linkHealthCheck{router: self, minLinks: checkConfig.LinkCheck.MinLinks},
 		gosundheit.ExecutionPeriod(checkConfig.LinkCheck.Interval),
 		gosundheit.ExecutionTimeout(5*time.Second),
-		gosundheit.InitiallyPassing(true),
-		gosundheit.InitialDelay(1*time.Second),
+		gosundheit.InitiallyPassing(checkConfig.LinkCheck.MinLinks == 0),
+		gosundheit.InitialDelay(checkConfig.LinkCheck.InitialDelay),
 	)
 
 	if err != nil {
