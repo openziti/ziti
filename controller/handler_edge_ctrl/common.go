@@ -122,8 +122,12 @@ func (self *baseSessionRequestContext) newChangeContext() *change.Context {
 	if self.session != nil {
 		result.
 			SetChangeAuthorType(change.AuthorTypeIdentity).
-			SetChangeAuthorId(self.session.IdentityId).
-			SetChangeAuthorName(self.apiSession.Identity.Name)
+			SetChangeAuthorId(self.session.IdentityId)
+		if self.apiSession != nil && self.apiSession.Identity != nil {
+			result.SetChangeAuthorName(self.apiSession.Identity.Name)
+		} else if authorIdentity, _ := self.handler.getAppEnv().Managers.Identity.Read(self.session.IdentityId); authorIdentity != nil {
+			result.SetChangeAuthorName(authorIdentity.Name)
+		}
 	} else if self.sourceRouter != nil {
 		result.
 			SetChangeAuthorType(change.AuthorTypeRouter).
