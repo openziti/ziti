@@ -53,6 +53,7 @@ services:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
       - ZITI_EDGE_ROUTER_NAME=${ZITI_EDGE_ROUTER_NAME:-ziti-edge-router}
       - ZITI_EDGE_ROUTER_ROLES=public
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=${ZITI_EDGE_ROUTER_ADVERTISED_HOST:-ziti-edge-router}
     ports:
       - ${ZITI_EDGE_ROUTER_PORT:-3022}:${ZITI_EDGE_ROUTER_PORT:-3022}
     networks:
@@ -72,6 +73,7 @@ services:
       - ZITI_EDGE_ROUTER_NAME=ziti-edge-router-wss
       - ZITI_EDGE_ROUTER_PORT=3023
       - ZITI_EDGE_ROUTER_ROLES=public
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-edge-router-wss
     ports:
       - 3023:3023
     networks:
@@ -89,6 +91,7 @@ services:
     environment:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
       - ZITI_EDGE_ROUTER_NAME=ziti-fabric-router-br
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-fabric-router-br
     #ports:
     #  - 3024:3024
     networks:
@@ -106,6 +109,7 @@ services:
     environment:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
       - ZITI_EDGE_ROUTER_NAME=ziti-private-red
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-private-red
     #ports:
     #  - 3025:3025
     networks:
@@ -122,6 +126,7 @@ services:
     environment:
       - ZITI_CTRL_EDGE_ADVERTISED_ADDRESS="${ZITI_CTRL_EDGE_ADVERTISED_ADDRESS}"
       - ZITI_EDGE_ROUTER_NAME=ziti-private-blue
+      - ZITI_EDGE_ROUTER_ADVERTISED_HOST=ziti-private-blue
     #ports:
     #  - 3026:3026
     networks:
