@@ -1,0 +1,5 @@
+default:
+  endpoint:   tls:{{ publicIp "component.ctrl" }}:10000
+  cert:       /home/ubuntu/fablab/pki/intermediate/certs/dotziti-client.cert
+  key:        /home/ubuntu/fablab/pki/intermediate/keys/dotziti.key
+  caCert:     /home/ubuntu/fablab/pki/intermediate/certs/dotziti-server.chain.pem

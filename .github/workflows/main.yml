@@ -119,7 +119,7 @@ jobs:
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
           $(go env GOPATH)/bin/ziti-ci generate-build-info common/version/info_generated.go version
-          pushd network-tests && go install ./... && popd
+          pushd zititest && go install ./... && popd
           go install -tags=all,tests ./...
 
       - name: Create Zitilab Bindings
@@ -148,7 +148,7 @@ jobs:
         run: |
           echo "ZITI_ROOT=$(go env GOPATH)/bin" >> "$GITHUB_ENV"
           $(go env GOPATH)/bin/simple-transfer run
-          pushd network-tests && go test -v ./tests/... && popd
+          pushd zititest && go test -v ./tests/... && popd
 
       - name: Test Ziti Command Teardown
         if: always()

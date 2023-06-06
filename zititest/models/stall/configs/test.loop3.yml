@@ -1,0 +1,45 @@
+workloads:
+  - name: chatter
+    # 100 * 20 = 2000 msgs/sec
+    # 2000 * 1k = 2MB/s
+    # 2MB/s * 3 hosts = 6 MB/s each directino
+
+    # 100 * 2 = 200 msgs/sec
+    # 200 * 10k = 2MB/s
+    # 2MB/s * 3 hosts = 6 MB/s each directino
+
+    concurrency: 5
+
+    # 5 client
+    # 50 msgs/sec * 10k = 0.5MB/s
+    # 0.5MB/s * 5 clients = 2.5 MB/s
+    # 52 * 2.5 = 130 MB/s
+    # 128 MB/s = 1 Gb/s
+
+    dialer:
+      txRequests: 10000000
+      txPacing: 0
+      txMaxJitter: 0
+      txPauseEvery: 0m
+      txPauseFor: 30s
+      rxTimeout: 240000
+      payloadMinBytes: 60000
+      payloadMaxBytes: 60000
+      latencyFrequency: 20
+
+    listener:
+      txRequests: 0
+      txPacing: 0
+      txMaxJitter: 0
+      rxPacing: 0ms
+      rxPauseEvery: 0s
+      rxPauseFor: 10s
+      rxTimeout: 240000
+      payloadMinBytes: 10240
+      payloadMaxBytes: 10240
+      latencyFrequency: 20
+
+metrics:
+  service: metrics
+  interval: 15s
+  clientId: {{.Component.PublicIdentity}}

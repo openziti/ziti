@@ -1,0 +1,24 @@
+v: 3
+
+db:                     /home/{{ .Model.MustVariable "credentials.ssh.username" }}/ctrl.db
+
+identity:
+  cert:                 /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-client.cert
+  server_cert:          /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.cert
+  key:                  /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/{{ .Component.PublicIdentity }}.key
+  ca:                   /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.chain.pem
+
+# Disable smart routing for zitilib/characterization transit-less configuration
+#
+network:
+  cycleSeconds:         120
+  smart:
+    rerouteFraction:    0
+    rerouteCap:         0
+# #
+
+ctrl:
+  listener:             tls:0.0.0.0:6262
+
+mgmt:
+  listener:             tls:0.0.0.0:10000
