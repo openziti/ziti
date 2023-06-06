@@ -14,8 +14,8 @@ func ControllerAvailable(componentSpec string, timeout time.Duration) model.Acti
 	}
 }
 
-func (self *edgeAvailable) Execute(m *model.Model) error {
-	for _, c := range m.SelectComponents(self.componentSpec) {
+func (self *edgeAvailable) Execute(run model.Run) error {
+	for _, c := range run.GetModel().SelectComponents(self.componentSpec) {
 		if err := netz.WaitForPortActive(c.Host.PublicIp+":1280", self.timeout); err != nil {
 			return errors.Wrap(err, "controller didn't start in time")
 		}

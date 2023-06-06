@@ -12,13 +12,13 @@ type installConsul struct {
 	hostSpec string
 }
 
-func InstallConsul(hostSpec string) model.InfrastructureStage {
+func InstallConsul(hostSpec string) model.Stage {
 	return &installConsul{
 		hostSpec: hostSpec,
 	}
 }
 
-func (imb *installConsul) Express(run model.Run) error {
+func (imb *installConsul) Execute(run model.Run) error {
 	return run.GetModel().ForEachHost(imb.hostSpec, 25, func(host *model.Host) error {
 		ssh := lib.NewSshConfigFactory(host)
 

@@ -18,8 +18,8 @@ type raftJoin struct {
 	componentSpec string
 }
 
-func (self *raftJoin) Execute(m *model.Model) error {
-	ctrls := m.SelectComponents(self.componentSpec)
+func (self *raftJoin) Execute(run model.Run) error {
+	ctrls := run.GetModel().SelectComponents(self.componentSpec)
 	if len(ctrls) < 1 {
 		return errors.Errorf("no controllers found with spec '%v'", self.componentSpec)
 	}
@@ -27,7 +27,7 @@ func (self *raftJoin) Execute(m *model.Model) error {
 	sshConfigFactory := lib.NewSshConfigFactory(primary.GetHost())
 	for _, c := range ctrls[1:] {
 		tmpl := "/home/%s/fablab/bin/ziti agent cluster add %v --id %v"
-		if err := host.Exec(primary.GetHost(), fmt.Sprintf(tmpl, sshConfigFactory.User(), "tls:"+c.Host.PublicIp+":6262", c.PublicIdentity)).Execute(m); err != nil {
+		if err := host.Exec(primary.GetHost(), fmt.Sprintf(tmpl, sshConfigFactory.User(), "tls:"+c.Host.PublicIp+":6262", c.Id)).Execute(run); err != nil {
 			return err
 		}
 	}

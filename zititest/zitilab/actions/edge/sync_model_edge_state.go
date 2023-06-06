@@ -14,13 +14,13 @@ func SyncModelEdgeState(componentSpec string) model.Action {
 	}
 }
 
-func (action *syncModelEdgeStateAction) Execute(m *model.Model) error {
-	routerComponents := m.SelectComponents(action.componentSpec)
+func (action *syncModelEdgeStateAction) Execute(run model.Run) error {
+	routerComponents := run.GetModel().SelectComponents(action.componentSpec)
 	if len(routerComponents) == 0 {
 		return errors.Errorf("no router components found for selector '%v'", action.componentSpec)
 	}
 
-	output, err := zitilib_actions.EdgeExecWithOutput(m, "list", "edge-routers", "--output-json", "true limit none")
+	output, err := zitilib_actions.EdgeExecWithOutput(run.GetModel(), "list", "edge-routers", "--output-json", "true limit none")
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func (action *syncModelEdgeStateAction) Execute(m *model.Model) error {
 		routerName := router.S("name").Data().(string)
 
 		for _, c := range routerComponents {
-			if c.PublicIdentity == routerName {
+			if c.Id == routerName {
 				routerId = strings.ReplaceAll(routerId, ".", ":")
 				c.Tags = append(c.Tags, "edgeId:"+routerId)
 			}

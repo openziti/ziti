@@ -7,6 +7,7 @@ import (
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/storage/boltz"
+	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"strings"
@@ -112,11 +113,9 @@ func (self *ZitiDbBuilder) Build(m *model.Model) error {
 				region.Hosts["router_"+id] = host
 
 				component := &model.Component{
-					Scope:      model.Scope{Tags: model.Tags{}},
-					ConfigSrc:  "router.yml",
-					ConfigName: fmt.Sprintf("router-%v.yml", er.Id),
-					BinaryName: "ziti router",
-					Host:       host,
+					Scope: model.Scope{Tags: model.Tags{}},
+					Type:  &zitilab.RouterType{},
+					Host:  host,
 				}
 
 				host.Components[er.Id] = component

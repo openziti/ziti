@@ -50,7 +50,9 @@ type Request struct {
 	IsClientCertificate bool
 	PrivateKeySize      int
 	Template            *x509.Certificate
+	AllowOverwrite      bool
 }
+
 type CSRRequest struct {
 	Name                string
 	IsClientCertificate bool
@@ -146,7 +148,7 @@ func (e *ZitiPKI) Sign(signer *certificate.Bundle, req *Request) error {
 		return fmt.Errorf("failed creating and signing certificate: %v", err)
 	}
 
-	if err := e.Store.Add(signer.Name, req.Name, req.Template.IsCA, x509.MarshalPKCS1PrivateKey(privateKey), rawCert); err != nil {
+	if err := e.Store.Add(signer.Name, req.Name, req.Template.IsCA, x509.MarshalPKCS1PrivateKey(privateKey), rawCert, req.AllowOverwrite); err != nil {
 		return fmt.Errorf("failed saving generated bundle: %v", err)
 	}
 	return nil

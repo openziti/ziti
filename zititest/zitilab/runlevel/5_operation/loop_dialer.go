@@ -24,7 +24,7 @@ import (
 	"strings"
 )
 
-func Loop3Dialer(host *model.Host, scenario, endpoint string, joiner chan struct{}, extraArgs ...string) model.OperatingStage {
+func Loop3Dialer(host *model.Host, scenario, endpoint string, joiner chan struct{}, extraArgs ...string) model.Stage {
 	return &loopDialer{
 		host:      host,
 		scenario:  scenario,
@@ -35,7 +35,7 @@ func Loop3Dialer(host *model.Host, scenario, endpoint string, joiner chan struct
 	}
 }
 
-func LoopDialer(host *model.Host, scenario, endpoint string, joiner chan struct{}, extraArgs ...string) model.OperatingStage {
+func LoopDialer(host *model.Host, scenario, endpoint string, joiner chan struct{}, extraArgs ...string) model.Stage {
 	return &loopDialer{
 		host:      host,
 		scenario:  scenario,
@@ -46,7 +46,7 @@ func LoopDialer(host *model.Host, scenario, endpoint string, joiner chan struct{
 	}
 }
 
-func (self *loopDialer) Operate(run model.Run) error {
+func (self *loopDialer) Execute(run model.Run) error {
 	ssh := lib.NewSshConfigFactory(self.host)
 	if err := lib.RemoteKill(ssh, fmt.Sprintf("ziti-fabric-test %v dialer", self.subcmd)); err != nil {
 		return fmt.Errorf("error killing %v listeners (%w)", self.subcmd, err)

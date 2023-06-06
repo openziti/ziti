@@ -68,11 +68,8 @@ var smartrouting = &model.Model{
 				"ctrl": {
 					Components: model.Components{
 						"ctrl": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
-							BinaryName:     "ziti-controller",
-							ConfigSrc:      "ctrl.yml",
-							ConfigName:     "ctrl.yml",
-							PublicIdentity: "ctrl",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
@@ -80,11 +77,10 @@ var smartrouting = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"iperf_server"}},
 					Components: model.Components{
 						"001": {
-							Scope:          model.Scope{Tags: model.Tags{"initiator", "router"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "ingress_router.yml",
-							ConfigName:     "001.yml",
-							PublicIdentity: "001",
+							Scope: model.Scope{Tags: model.Tags{"initiator", "router"}},
+							Type: &zitilab.RouterType{
+								ConfigSource: "ingress_router.yml.tmpl",
+							},
 						},
 					},
 				},
@@ -110,10 +106,9 @@ var smartrouting = &model.Model{
 					Scope: model.Scope{Tags: model.Tags{"router"}},
 					Components: model.Components{
 						"002": {
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "transit_router.yml",
-							ConfigName:     "002.yml",
-							PublicIdentity: "002",
+							Type: &zitilab.RouterType{
+								ConfigSource: "transit_router.yml.tmpl",
+							},
 						},
 					},
 				},
@@ -126,11 +121,10 @@ var smartrouting = &model.Model{
 				"004": {
 					Components: model.Components{
 						"004": {
-							Scope:          model.Scope{Tags: model.Tags{"router"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "transit_router.yml",
-							ConfigName:     "004.yml",
-							PublicIdentity: "004",
+							Scope: model.Scope{Tags: model.Tags{"router"}},
+							Type: &zitilab.RouterType{
+								ConfigSource: "transit_router.yml.tmpl",
+							},
 						},
 					},
 				},
@@ -143,11 +137,10 @@ var smartrouting = &model.Model{
 				"003": {
 					Components: model.Components{
 						"003": {
-							Scope:          model.Scope{Tags: model.Tags{"router", "terminator"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "egress_router.yml",
-							ConfigName:     "003.yml",
-							PublicIdentity: "003",
+							Scope: model.Scope{Tags: model.Tags{"router", "terminator"}},
+							Type: &zitilab.RouterType{
+								ConfigSource: "egress_router.yml.tmpl",
+							},
 						},
 					},
 				},

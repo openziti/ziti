@@ -120,8 +120,8 @@ func readPEM(path string) ([]byte, error) {
 }
 
 // Add adds the given bundle to the local filesystem.
-func (l *Local) Add(caName, name string, isCa bool, key, cert []byte) error {
-	if l.Exists(caName, name) {
+func (l *Local) Add(caName, name string, isCa bool, key, cert []byte, allowOverwrite bool) error {
+	if !allowOverwrite && l.Exists(caName, name) {
 		return fmt.Errorf("a bundle already exists for the name %v within CA %v", name, caName)
 	}
 	if err := l.writeBundle(caName, name, isCa, key, cert); err != nil {

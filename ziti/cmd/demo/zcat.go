@@ -20,6 +20,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/openziti/sdk-golang/ziti"
+	"github.com/openziti/sdk-golang/ziti/edge"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"io"
@@ -137,5 +138,10 @@ func (self *zcatAction) copy(writer io.Writer, reader io.Reader) {
 	pfxlog.Logger().Debugf("Copied %v bytes", bytesCopied)
 	if err != nil {
 		pfxlog.Logger().WithError(err).Error("error while copying bytes")
+	}
+	if zconn, ok := writer.(edge.Conn); ok {
+		if err = zconn.CloseWrite(); err != nil {
+			pfxlog.Logger().WithError(err).Error("error closing write side of ziti connection")
+		}
 	}
 }

@@ -17,6 +17,9 @@
 package actions
 
 import (
+	"github.com/openziti/ziti/zititest/zitilab"
+	"time"
+
 	"github.com/openziti/fablab/kernel/lib/actions"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/actions/host"
@@ -24,7 +27,6 @@ import (
 	zitilib_actions "github.com/openziti/ziti/zititest/zitilab/actions"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"github.com/openziti/ziti/zititest/zitilab/models"
-	"time"
 )
 
 type bootstrapAction struct{}
@@ -39,7 +41,7 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 
 	workflow.AddAction(host.GroupExec("*", 25, "rm -f logs/*"))
 	workflow.AddAction(component.Stop("#ctrl"))
-	workflow.AddAction(edge.InitController("#ctrl"))
+	workflow.AddAction(component.Exec("#ctrl", (*zitilab.ControllerType).InitStandalone))
 	workflow.AddAction(component.Start("#ctrl"))
 	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
 
@@ -126,17 +128,6 @@ func (a *bootstrapAction) bind(m *model.Model) model.Action {
 	workflow.AddAction(zitilib_actions.Edge("create", "edge-router-policy", "host-routers", "--edge-router-roles", "#host", "--identity-roles", "#host"))
 
 	workflow.AddAction(component.Stop(models.ControllerTag))
-
-	workflow.AddAction(model.ActionFunc(func(m *model.Model) error {
-		cmds := []string{
-			"sudo sed -i 's/#DNS=/DNS=127.0.0.1/g' /etc/systemd/resolved.conf",
-			"sudo systemctl restart systemd-resolved",
-		}
-
-		return m.ForEachComponent(".ziti-tunnel", 2, func(c *model.Component) error {
-			return host.Exec(c.GetHost(), cmds...).Execute(c.GetModel())
-		})
-	}))
 
 	return workflow
 }

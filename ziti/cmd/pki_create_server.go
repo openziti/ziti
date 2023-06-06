@@ -77,6 +77,7 @@ func (o *PKICreateServerOptions) addPKICreateServerFlags(cmd *cobra.Command) {
 	cmd.Flags().IntVarP(&o.Flags.CAMaxpath, "max-path-len", "", -1, "Intermediate maximum path length")
 	cmd.Flags().IntVarP(&o.Flags.CAPrivateKeySize, "private-key-size", "", 4096, "Size of the private key")
 	cmd.Flags().StringVar(&o.Flags.SpiffeID, "spiffe-id", "", "Optionally provide the path portion of a SPIFFE id. The trust domain will be taken from the signing certificate.")
+	cmd.Flags().BoolVar(&o.Flags.AllowOverwrite, "allow-overwrite", false, "Allow overwrite existing certs")
 }
 
 // Run implements this command
@@ -156,6 +157,7 @@ func (o *PKICreateServerOptions) Run() error {
 		Template:            template,
 		IsClientCertificate: false,
 		PrivateKeySize:      o.Flags.CAPrivateKeySize,
+		AllowOverwrite:      o.Flags.AllowOverwrite,
 	}
 
 	if err := o.Flags.PKI.Sign(signer, req); err != nil {

@@ -15,14 +15,14 @@ type installMetricbeat struct {
 	version  string
 }
 
-func InstallMetricbeat(hostSpec, version string) model.InfrastructureStage {
+func InstallMetricbeat(hostSpec, version string) model.Stage {
 	return &installMetricbeat{
 		hostSpec: hostSpec,
 		version:  version,
 	}
 }
 
-func (imb *installMetricbeat) Express(run model.Run) error {
+func (imb *installMetricbeat) Execute(run model.Run) error {
 	return run.GetModel().ForEachHost(imb.hostSpec, 25, func(host *model.Host) error {
 		ssh := lib.NewSshConfigFactory(host)
 

@@ -31,13 +31,13 @@ func Logs() model.Action {
 	return &logs{}
 }
 
-func (self *logs) Execute(m *model.Model) error {
-	if !m.IsBound() {
+func (self *logs) Execute(run model.Run) error {
+	if !run.GetModel().IsBound() {
 		return fmt.Errorf("model not bound")
 	}
 
 	snapshot := fmt.Sprintf("%d", info.NowInMilliseconds())
-	for rn, r := range m.Regions {
+	for rn, r := range run.GetModel().Regions {
 		for hn, h := range r.Hosts {
 			ssh := lib.NewSshConfigFactory(h)
 			if err := self.forHost(snapshot, rn, hn, ssh); err != nil {

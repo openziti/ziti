@@ -11,7 +11,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
-	"github.com/openziti/fablab/kernel/lib/runlevel/1_configuration/config"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -20,7 +19,6 @@ import (
 	"github.com/openziti/fablab/resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	zitilib_runlevel_1_configuration "github.com/openziti/ziti/zititest/zitilab/runlevel/1_configuration"
 	"os"
 	"time"
 )
@@ -83,11 +81,8 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"ctrl": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
-							BinaryName:     "ziti-controller",
-							ConfigSrc:      "ctrl.yml",
-							ConfigName:     "ctrl.yml",
-							PublicIdentity: "ctrl",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
@@ -95,11 +90,8 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"metrics-router": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "no-traversal"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "metrics-router.yml",
-							PublicIdentity: "metrics-router",
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "no-traversal"}},
+							Type:  &zitilab.RouterType{},
 						},
 					},
 				},
@@ -114,17 +106,13 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-west-{{ .Host.ScaleIndex }}": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-west-{{ .Host.ScaleIndex }}.yml",
-							PublicIdentity: "router-west-{{ .Host.ScaleIndex }}",
-							RunWithSudo:    true,
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "terminator"}},
+							Type:  &zitilab.RouterType{},
 						},
 						"loop-listener-{{ .Host.ScaleIndex }}": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							BinaryName:     "ziti-fabric-test",
-							PublicIdentity: "loop-listener-{{ .Host.ScaleIndex }}",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
+							// BinaryName:     "ziti-fabric-test",
+							//PublicIdentity: "loop-listener-{{ .Host.ScaleIndex }}",
 						},
 					},
 				},
@@ -139,19 +127,15 @@ var m = &model.Model{
 					InstanceType: "c5.large",
 					Components: model.Components{
 						"router-ap-{{ .Host.ScaleIndex }}": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "tunneler", "initiator"}},
-							BinaryName:     "ziti-router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-ap-{{ .Host.ScaleIndex }}.yml",
-							PublicIdentity: "router-ap-{{ .Host.ScaleIndex }}",
-							RunWithSudo:    true,
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "initiator"}},
+							Type:  &zitilab.RouterType{},
 						},
 						"loop-client-{{ .Host.ScaleIndex }}": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
-							BinaryName:     "ziti-fabric-test",
-							ConfigSrc:      "test.loop3.yml",
-							ConfigName:     "test.loop3.yml",
-							PublicIdentity: "loop-client-{{ .Host.ScaleIndex }}",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							//BinaryName:     "ziti-fabric-test",
+							//ConfigSrc:      "test.loop3.yml",
+							//ConfigName:     "test.loop3.yml",
+							//PublicIdentity: "loop-client-{{ .Host.ScaleIndex }}",
 						},
 					},
 				},
@@ -172,27 +156,19 @@ var m = &model.Model{
 		"login": model.Bind(edge.Login("#ctrl")),
 	},
 
-	Infrastructure: model.InfrastructureStages{
+	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		semaphore_0.Restart(90 * time.Second),
 	},
 
-	Configuration: model.ConfigurationStages{
-		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric("stall.test"),
-		),
-		config.Component(),
-		zitilab.DefaultZitiBinaries(),
-	},
-
-	Distribution: model.DistributionStages{
+	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
 		rsync.RsyncStaged(),
 	},
 
-	Disposal: model.DisposalStages{
+	Disposal: model.Stages{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},

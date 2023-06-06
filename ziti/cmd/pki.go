@@ -60,6 +60,7 @@ type PKIFlags struct {
 	Email                 []string
 	PKI                   *pki.ZitiPKI
 	SpiffeID              string
+	AllowOverwrite        bool
 }
 
 var (

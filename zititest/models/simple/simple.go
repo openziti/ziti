@@ -25,8 +25,6 @@ import (
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
 	semaphore0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/semaphore"
 	terraform_0 "github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/terraform"
-	"github.com/openziti/fablab/kernel/lib/runlevel/1_configuration/config"
-	"github.com/openziti/fablab/kernel/lib/runlevel/2_kitting/devkit"
 	distribution "github.com/openziti/fablab/kernel/lib/runlevel/3_distribution"
 	"github.com/openziti/fablab/kernel/lib/runlevel/3_distribution/rsync"
 	aws_ssh_key2 "github.com/openziti/fablab/kernel/lib/runlevel/6_disposal/aws_ssh_key"
@@ -34,12 +32,9 @@ import (
 	"github.com/openziti/fablab/kernel/model"
 	"github.com/openziti/fablab/resources"
 	actions2 "github.com/openziti/ziti/zititest/models/simple/actions"
-	"github.com/openziti/ziti/zititest/models/simple/stages/5_operation"
 	"github.com/openziti/ziti/zititest/models/test_resources"
 	"github.com/openziti/ziti/zititest/zitilab"
 	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
-	zitilib_runlevel_1_configuration "github.com/openziti/ziti/zititest/zitilab/runlevel/1_configuration"
-	"github.com/openziti/ziti/zititest/zitilab/stageziti"
 	"github.com/sirupsen/logrus"
 	"os"
 	"time"
@@ -84,9 +79,13 @@ var Model = &model.Model{
 		model.FactoryFunc(func(m *model.Model) error {
 			pfxlog.Logger().Infof("environment [%s]", m.MustStringVariable("environment"))
 			m.AddActivationActions("stop", "bootstrap", "start")
-			m.AddOperatingStage(runlevel_5_operation.AssertEcho("#echo-client"))
-
 			return nil
+		}),
+		model.FactoryFunc(func(m *model.Model) error {
+			return m.ForEachHost("*", 1, func(host *model.Host) error {
+				host.InstanceType = "t2.micro"
+				return nil
+			})
 		}),
 	},
 
@@ -101,84 +100,51 @@ var Model = &model.Model{
 			Site:   "us-east-1a",
 			Hosts: model.Hosts{
 				"ctrl": {
-					InstanceType: "t2.micro",
 					Components: model.Components{
 						"ctrl": {
-							Scope:          model.Scope{Tags: model.Tags{"ctrl"}},
-							BinaryName:     "ziti controller",
-							ConfigSrc:      "ctrl.yml",
-							ConfigName:     "ctrl.yml",
-							PublicIdentity: "ctrl",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ctrl"}},
+							Type:  &zitilab.ControllerType{},
 						},
 					},
 				},
 				"router-east-1": {
-					Scope:        model.Scope{Tags: model.Tags{"ert-client"}},
-					InstanceType: "t2.micro",
+					Scope: model.Scope{Tags: model.Tags{"ert-client"}},
 					Components: model.Components{
 						"router-east-1": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
-							BinaryName:     "ziti router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-east-1.yml",
-							PublicIdentity: "router-east-1",
-							RunWithSudo:    true,
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "terminator", "tunneler", "client"}},
+							Type:  &zitilab.RouterType{},
 						},
-						"echo-client": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
-							BinaryName:     "echo-client",
-							PublicIdentity: "echo-client",
-						},
-						"consul": {
-							BinaryName: "consul",
+						"zcat": {
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							Type:  &zitilab.ZCatType{},
 						},
 					},
 				},
 				"router-east-2": {
-					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-east-2": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
-							BinaryName:     "ziti router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-east-2.yml",
-							PublicIdentity: "router-east-2",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "initiator"}},
+							Type:  &zitilab.RouterType{},
 						},
 					},
 				},
 				"ziti-edge-tunnel-client": {
-					Scope:        model.Scope{Tags: model.Tags{"zet-client"}},
-					InstanceType: "t2.micro",
+					Scope: model.Scope{Tags: model.Tags{"zet-client"}},
 					Components: model.Components{
 						"ziti-edge-tunnel-client": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "client"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "ziti-edge-tunnel-client",
-							RunWithSudo:    true,
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "client"}},
+							Type: &zitilab.ZitiEdgeTunnelType{
+								Version: "v0.21.4",
+							},
 						},
 					},
 				},
 				"ziti-tunnel-client": {
-					Scope:        model.Scope{Tags: model.Tags{"ziti-tunnel-client"}},
-					InstanceType: "t2.micro",
+					Scope: model.Scope{Tags: model.Tags{"ziti-tunnel-client"}},
 					Components: model.Components{
 						"ziti-tunnel-client": {
-							Scope:          model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
-							BinaryName:     "ziti tunnel",
-							PublicIdentity: "ziti-tunnel-client",
-							RunWithSudo:    true,
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "client"}},
+							Type:  &zitilab.ZitiTunnelType{},
 						},
 					},
 				},
@@ -189,52 +155,34 @@ var Model = &model.Model{
 			Site:   "us-west-2b",
 			Hosts: model.Hosts{
 				"router-west": {
-					Scope:        model.Scope{Tags: model.Tags{}},
-					InstanceType: "t2.micro",
 					Components: model.Components{
 						"router-west": {
-							Scope:          model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
-							BinaryName:     "ziti router",
-							ConfigSrc:      "router.yml",
-							ConfigName:     "router-west.yml",
-							PublicIdentity: "router-west",
-							RunWithSudo:    true,
+							Scope: model.Scope{Tags: model.Tags{"edge-router", "tunneler", "host", "ert-host"}},
+							Type:  &zitilab.RouterType{},
 						},
 						"echo-server": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "service"}},
-							BinaryName:     "echo-server",
-							PublicIdentity: "echo-server",
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "service"}},
+							Type:  &zitilab.EchoServerType{},
 						},
 					},
 				},
 				"ziti-edge-tunnel-host": {
-					InstanceType: "t2.micro",
 					Components: model.Components{
 						"ziti-edge-tunnel-host": {
-							Scope:          model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
-							BinaryName:     "ziti-edge-tunnel",
-							PublicIdentity: "ziti-edge-tunnel-host",
-							RunWithSudo:    true,
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"sdk-app", "host", "zet-host"}},
+							Type: &zitilab.ZitiEdgeTunnelType{
+								Version: "v0.21.4",
+							},
 						},
 					},
 				},
 				"ziti-tunnel-host": {
-					InstanceType: "t2.micro",
 					Components: model.Components{
 						"ziti-tunnel-host": {
-							Scope:          model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
-							BinaryName:     "ziti tunnel",
-							PublicIdentity: "ziti-tunnel-host",
-							RunWithSudo:    true,
-						},
-						"consul": {
-							BinaryName: "consul",
+							Scope: model.Scope{Tags: model.Tags{"ziti-tunnel", "sdk-app", "host", "ziti-tunnel-host"}},
+							Type: &zitilab.ZitiTunnelType{
+								Mode: zitilab.ZitiTunnelModeHost,
+							},
 						},
 					},
 				},
@@ -259,22 +207,13 @@ var Model = &model.Model{
 		"login": model.Bind(edge.Login("#ctrl")),
 	},
 
-	Infrastructure: model.InfrastructureStages{
+	Infrastructure: model.Stages{
 		aws_ssh_key.Express(),
 		terraform_0.Express(),
 		semaphore0.Ready(time.Minute),
 	},
 
-	Configuration: model.ConfigurationStages{
-		zitilib_runlevel_1_configuration.IfPkiNeedsRefresh(
-			zitilib_runlevel_1_configuration.Fabric("simple-transfer.test", "#ctrl"),
-		),
-		config.Component(),
-		devkit.DevKitF(zitilab.ZitiRoot, []string{"ziti", "ziti-echo"}),
-		stageziti.FetchZitiEdgeTunnel("v0.21.4"),
-	},
-
-	Distribution: model.DistributionStages{
+	Distribution: model.Stages{
 		distribution.DistributeSshKey("*"),
 		distribution.Locations("*", "logs"),
 		distribution.DistributeDataWithReplaceCallbacks(
@@ -341,7 +280,7 @@ var Model = &model.Model{
 		rsync.RsyncStaged(),
 	},
 
-	Disposal: model.DisposalStages{
+	Disposal: model.Stages{
 		terraform.Dispose(),
 		aws_ssh_key2.Dispose(),
 	},
