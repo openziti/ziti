@@ -452,15 +452,15 @@ function stopController {
   local pid retVal
   pid=${1-}
   if [[ "${pid}" == "" ]]; then
-    _check_env_variable ZITI_CTRL_LISTENER_PORT
+    _check_env_variable ZITI_CTRL_EDGE_ADVERTISED_PORT
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
-      echo "You will need to source the ziti env file first so that the controller process can be found"
+      echo "You will need to source the ziti env file first or set ZITI_CTRL_EDGE_ADVERTISED_PORT so that the controller process can be found"
       return 1
     fi
 
     # Get the pid listening on the controller port
-    pid=$(lsof -ti:"${ZITI_CTRL_LISTENER_PORT}")
+    pid=$(lsof -ti:"${ZITI_CTRL_EDGE_ADVERTISED_PORT}")
   fi
 
   if [[ -n ${pid:-} ]]; then
