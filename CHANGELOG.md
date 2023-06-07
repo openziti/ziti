@@ -8,6 +8,8 @@
 ## Component Updates and Bug Fixes
 * github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
   * [Issue #1132](https://github.com/openziti/ziti/issues/1132) - Updated `ws` protocol to `wss` as `ws` is no longer supported.
+  * [Issue #732](https://github.com/openziti/fabric/issues/732) - 
+  Added new `buffersize` config option to amqp handler. Connection handling now happens in the background with exponential retries.
   
 # Release 0.28.0
 

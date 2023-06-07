@@ -21,23 +21,23 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.4.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/agent v1.0.13
-	github.com/openziti/channel/v2 v2.0.79
+	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge v0.24.313
 	github.com/openziti/edge-api v0.25.24
-	github.com/openziti/fabric v0.23.29
+	github.com/openziti/fabric v0.23.35
 	github.com/openziti/foundation/v2 v2.0.25
-	github.com/openziti/identity v1.0.55
+	github.com/openziti/identity v1.0.56
 	github.com/openziti/runzmd v1.0.24
 	github.com/openziti/sdk-golang v0.20.54
 	github.com/openziti/storage v0.2.7
-	github.com/openziti/transport/v2 v2.0.89
+	github.com/openziti/transport/v2 v2.0.90
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/openziti/ziti-db-explorer v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/russross/blackfriday v1.5.2
 	github.com/shirou/gopsutil/v3 v3.23.4
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.10.0
