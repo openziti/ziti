@@ -8,18 +8,18 @@ require (
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/michaelquigley/pfxlog v0.6.10
-	github.com/openziti/channel/v2 v2.0.79
+	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge v0.24.313
 	github.com/openziti/fablab v0.4.52
-	github.com/openziti/fabric v0.23.29
+	github.com/openziti/fabric v0.23.35
 	github.com/openziti/foundation/v2 v2.0.25
-	github.com/openziti/identity v1.0.55
+	github.com/openziti/identity v1.0.56
 	github.com/openziti/sdk-golang v0.20.54
 	github.com/openziti/storage v0.2.7
-	github.com/openziti/transport/v2 v2.0.89
+	github.com/openziti/transport/v2 v2.0.90
 	github.com/openziti/ziti v0.28.0
 	github.com/pkg/errors v0.9.1
-	github.com/sirupsen/logrus v1.9.2
+	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.4
 	go.etcd.io/bbolt v1.3.7

@@ -88,6 +88,7 @@ ctrl:
 #      autoDelete: false  //default:false
 #      exclusive: false   //default:false
 #      noWait: false      //default:false
+#      bufferSize: 50     //default:50
 
 # xctrl_example
 #
