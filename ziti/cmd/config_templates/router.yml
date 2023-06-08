@@ -28,7 +28,7 @@ link:
 {{ if .Router.IsFabric }}#{{ end }}listeners:
 # bindings of edge and tunnel requires an "edge" section below
 {{ if .Router.IsFabric }}#{{ end }}  - binding: edge
-{{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}ws{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
+{{ if .Router.IsFabric }}#{{ end }}    address: {{ if .Router.IsWss }}wss{{ else }}tls{{end}}:0.0.0.0:{{ .Router.Edge.Port }}
 {{ if .Router.IsFabric }}#{{ end }}    options:
 {{ if .Router.IsFabric }}#{{ end }}      advertise: {{ .Router.Edge.AdvertisedHost }}:{{ if .Router.IsWss }}3023{{ else }}{{ .Router.Edge.Port }}{{ end }}
 {{ if .Router.IsFabric }}#{{ end }}      connectTimeoutMs: {{ .Router.Listener.ConnectTimeout.Milliseconds }}

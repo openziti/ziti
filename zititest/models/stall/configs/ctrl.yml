@@ -1,12 +1,12 @@
 v: 3
 
-network:
-  # Sets router minimum cost. Defaults to 10
-  minRouterCost: 10
+db: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/ctrl.db
 
-  # Sets how often a new control channel connection can take over for a router with an existing control channel connection
-  # Defaults to 1 minute
-  routerConnectChurnLimit: 1m
+identity:
+  cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-client.cert
+  server_cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.cert
+  key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/{{ .Component.PublicIdentity }}.key
+  ca: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/{{ .Component.PublicIdentity }}-server.chain.pem
 
 #trace:
 #  path:                 ctrl.trace
@@ -17,17 +17,9 @@ profile:
 #  memory:
 #    path: ctrl.memprof
 
-db: ${ZITI_DATA}/db/ctrl.db
-
-identity:
-  cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-client.cert.pem
-  server_cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ctrl-server.cert.pem
-  key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/ctrl.key.pem
-  ca: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/ca-chain.cert.pem
-
 # the endpoint that routers will connect to the controller over.
 ctrl:
-  listener: tls:127.0.0.1:6262
+  listener: tls:0.0.0.0:6262
   options:
     # (optional) settings
     # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
@@ -47,48 +39,53 @@ ctrl:
     # connections. The value of newListener must be resolvable both via DNS and validate via certificates
     #newListener: tls:localhost:6262
 
+# the endpoint that management tools connect to the controller over.
+mgmt:
+  listener: tls:0.0.0.0:10000
+    #options:
+    # (optional) settings
+    # set the maximum number of connect requests that are buffered and waiting to be acknowledged (1 to 5000, default 1000)
+  #maxQueuedConnects:      50
+  # the maximum number of connects that have  begun hello synchronization (1 to 1000, default 16)
+  #maxOutstandingConnects: 100
+  # the number of milliseconds to wait before a hello synchronization fails and closes the connection (30ms to 60000ms, default: 1000ms)
+  #connectTimeoutMs:       3000
+
+  #metrics:
+  #file:
+  #path: /tmp/ziti-controller-metrics.log
+  #maxsizemb: 100:wq
+  # Supported formats: json, plain
+  # Defaults to json
+  #format: plain
+  #influxdb:
+  #url:                http://localhost:8086
+  #database:           ziti
+
 #events:
 #  jsonLogger:
 #    subscriptions:
-#      - type: entityChange
-#        include:
-#          - services
-#          - identities
-#      - type: fabric.circuits
-#      - type: fabric.links
 #      - type: fabric.routers
 #      - type: fabric.terminators
 #      - type: metrics
 #        sourceFilter: .*
-#        metricFilter: .*
+#        metricFilter: .*egress.*m1_rate*
+#      - type: fabric.circuits
+#        include:
+#          - created
 #      - type: edge.sessions
+#        include:
+#          - created
 #      - type: edge.apiSessions
 #      - type: fabric.usage
-#        version: 3
-#        include:
-#          - ingress.rx
-#          - egress.rx
 #      - type: services
+#      - type: fabric.usage
 #      - type: edge.entityCounts
 #        interval: 5s
 #    handler:
 #      type: file
 #      format: json
 #      path: /tmp/ziti-events.log
-#  usageLogger:
-#    subscriptions:
-#      - type: fabric.usage
-#        interval: 5s
-#    handler:
-#      type: amqp
-#      format: json
-#      url: "amqp://localhost:5672" 
-#      queue: ziti
-#      durable: true      //default:true
-#      autoDelete: false  //default:false
-#      exclusive: false   //default:false
-#      noWait: false      //default:false
-#      bufferSize: 50     //default:50
 
 # xctrl_example
 #
@@ -121,7 +118,7 @@ edge:
     # address - required
     # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
     # defined in a bind point's address field for the `edge-client` API in the web section.
-    address: 127.0.0.1:1280
+    address: {{.Host.PublicIp}}:1280
   # enrollment - required
   # A section containing settings pertaining to enrollment.
   enrollment:
@@ -130,8 +127,9 @@ edge:
     # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
     # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
     signingCert:
-      cert: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/certs/intermediate.cert.pem
-      key: ${ZITI_SOURCE}/ziti/etc/ca/intermediate/private/intermediate.key.decrypted.pem
+      cert: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/certs/intermediate.cert
+      key: /home/{{ .Model.MustVariable "credentials.ssh.username" }}/fablab/pki/intermediate/keys/intermediate.key
+
     # edgeIdentity - optional
     # A section for identity enrollment specific settings
     edgeIdentity:
@@ -163,18 +161,18 @@ web:
     bindPoints:
       #interface - required
       # A host:port string on which network interface to listen on. 0.0.0.0 will listen on all interfaces
-      - interface: 127.0.0.1:1280
+      - interface: 0.0.0.0:1280
 
         # address - required
         # The public address that external incoming requests will be able to resolve. Used in request processing and
         # response content that requires full host:port/path addresses.
-        address: 127.0.0.1:1280
+        address: {{.Host.PublicIp}}:1280
 
         # newAddress - optional
         # A host:port string which will be sent out as an HTTP header "ziti-new-address" if specified. If the header
         # is present, clients should update location configuration to immediately use the new address for future
         # connections. The value of newAddress must be resolvable both via DNS and validate via certificates
-        newAddress: localhost:1280
+        #newAddress: localhost:1280
     # identity - optional
     # Allows the webListener to have a specific identity instead of defaulting to the root `identity` section.
     #    identity:
@@ -232,4 +230,3 @@ web:
         options: { }
       - binding: edge-client
         options: { }
-
