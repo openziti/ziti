@@ -1,148 +1,121 @@
 {
-  "$defs": {
-    "address": {
-      "oneOf": [
-        {
-          "$ref": "#/$defs/ipAddress"
+    "$id": "http://edge.openziti.org/schemas/intercept.v1.config.json",
+    "additionalProperties": false,
+    "definitions": {
+        "dialAddress": {
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
         },
-        {
-          "$ref": "#/$defs/hostname"
+        "inhabitedSet": {
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
         },
-        {
-          "$ref": "#/$defs/cidr"
+        "listenAddress": {
+            "description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
+        },
+        "portNumber": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+        },
+        "portRange": {
+            "additionalProperties": false,
+            "properties": {
+                "high": {
+                    "$ref": "#/definitions/portNumber"
+                },
+                "low": {
+                    "$ref": "#/definitions/portNumber"
+                }
+            },
+            "required": [
+                "low",
+                "high"
+            ],
+            "type": "object"
+        },
+        "protocolName": {
+            "enum": [
+                "tcp",
+                "udp"
+            ],
+            "type": "string"
+        },
+        "timeoutSeconds": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
         }
-      ]
     },
-    "cidr": {
-      "oneOf": [
-        {
-          "pattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$"
+    "properties": {
+        "addresses": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/listenAddress"
+                    }
+                }
+            ]
         },
-        {
-          "pattern": "^s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:)))(%.+)?s*(\\/(12[0-8]|1[0-1][0-9]|[1-9][0-9]|[0-9]))$"
-        }
-      ],
-      "type": "string"
-    },
-    "hostname": {
-      "format": "idn-hostname",
-      "not": {
-        "$ref": "#/$defs/ipAddressFormat"
-      },
-      "type": "string"
-    },
-    "inhabitedSet": {
-      "minItems": 1,
-      "type": "array",
-      "uniqueItems": true
-    },
-    "ipAddress": {
-      "$ref": "#/$defs/ipAddressFormat",
-      "type": "string"
-    },
-    "ipAddressFormat": {
-      "oneOf": [
-        {
-          "format": "ipv4"
+        "dialOptions": {
+            "additionalProperties": false,
+            "properties": {
+                "connectTimeoutSeconds": {
+                    "$ref": "#/definitions/timeoutSeconds",
+                    "description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified."
+                },
+                "identity": {
+                    "description": "Dial a terminator with the specified identity. '$dst_protocol', '$dst_ip', '$dst_port are resolved to the corresponding value of the destination address.",
+                    "type": "string"
+                }
+            },
+            "type": "object"
         },
-        {
-          "format": "ipv6"
-        }
-      ]
-    },
-    "portNumber": {
-      "maximum": 65535,
-      "minimum": 0,
-      "type": "integer"
-    },
-    "portRange": {
-      "additionalProperties": false,
-      "properties": {
-        "high": {
-          "$ref": "#/$defs/portNumber"
+        "portRanges": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/portRange"
+                    }
+                }
+            ]
         },
-        "low": {
-          "$ref": "#/$defs/portNumber"
-        }
-      },
-      "type": "object"
-    },
-    "protocolName": {
-      "enum": [
-        "tcp",
-        "udp",
-        "sctp"
-      ],
-      "type": "string"
-    },
-    "timeoutSeconds": {
-      "maximum": 2147483647,
-      "minimum": 0,
-      "type": "integer"
-    }
-  },
-  "$id": "http://edge.openziti.org/schemas/intercept.v1.config.json",
-  "additionalProperties": false,
-  "properties": {
-    "addresses": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/inhabitedSet"
+        "protocols": {
+            "allOf": [
+                {
+                    "$ref": "#/definitions/inhabitedSet"
+                },
+                {
+                    "items": {
+                        "$ref": "#/definitions/protocolName"
+                    }
+                }
+            ]
         },
-        {
-          "items": {
-            "$ref": "#/$defs/address"
-          }
+        "sourceIp": {
+            "description": "The source IP (and optional :port) to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity. '$src_ip' and '$src_port' resolve to the source IP / port of the originating client. '$dst_port' resolves to the port that the client is trying to connect.",
+            "type": "string"
         }
-      ]
     },
-    "dialOptions": {
-      "additionalProperties": false,
-      "properties": {
-        "connectTimeoutSeconds": {
-          "$ref": "#/$defs/timeoutSeconds",
-          "description": "defaults to 5 seconds if no dialOptions are defined. defaults to 15 if dialOptions are defined but connectTimeoutSeconds is not specified."
-        },
-        "identity": {
-          "description": "Dial a terminator with the specified identity. '$intercepted_protocol', '$intercepted_ip', '$intercepted_port are resolved to the corresponding value of the intercepted address.",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "portRanges": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/inhabitedSet"
-        },
-        {
-          "items": {
-            "$ref": "#/$defs/portRange"
-          }
-        }
-      ]
-    },
-    "protocols": {
-      "allOf": [
-        {
-          "$ref": "#/$defs/inhabitedSet"
-        },
-        {
-          "items": {
-            "$ref": "#/$defs/protocolName"
-          }
-        }
-      ]
-    },
-    "sourceIp": {
-      "description": "The source IP to spoof when the connection is egressed from the hosting tunneler. '$tunneler_id.name' resolves to the name of the client tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the client tunneler's identity.",
-      "type": "string"
-    }
-  },
-  "required": [
-    "protocols",
-    "addresses",
-    "portRanges"
-  ],
-  "type": "object"
+    "required": [
+        "protocols",
+        "addresses",
+        "portRanges"
+    ],
+    "type": "object"
 }

@@ -233,49 +233,16 @@ var healthCheckSchema = map[string]interface{}{
 
 var hostV1Definitions = combine(healthCheckSchema["definitions"].(map[string]interface{}), tunnelDefinitions)
 var tunnelDefinitions = map[string]interface{}{
-	"ipAddressFormat": map[string]interface{}{
-		"oneOf": []interface{}{
-			map[string]interface{}{"format": "ipv4"},
-			map[string]interface{}{"format": "ipv6"},
-		},
-	},
-	"ipAddress": map[string]interface{}{
-		"type": "string",
-		"$ref": "#/definitions/ipAddressFormat",
-	},
-	"hostname": map[string]interface{}{
+	"dialAddress": map[string]interface{}{
 		"type":   "string",
 		"format": "idn-hostname",
-		"not":    map[string]interface{}{"$ref": "#/definitions/ipAddressFormat"},
-	},
-	"wildcardDomain": map[string]interface{}{
-		"type":    "string",
-		"pattern": "^\\*\\.(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$",
-	},
-	"cidr": map[string]interface{}{
-		"type": "string",
-		"oneOf": []interface{}{
-			// JSON ipv4/ipv6 "format"s should work for cidrs also (see
-			// https://json-schema.org/understanding-json-schema/reference/string.html),
-			// but https://www.jsonschemavalidator.net disagreed, so using `pattern` instead.
-			// Patterns taken from https://blog.markhatton.co.uk/2011/03/15/regular-expressions-for-ip-addresses-cidr-ranges-and-hostnames/
-			map[string]interface{}{"pattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$"},
-			map[string]interface{}{"pattern": "^s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:)))(%.+)?s*(\\/(12[0-8]|1[0-1][0-9]|[1-9][0-9]|[0-9]))$"},
-		},
-	},
-	"dialAddress": map[string]interface{}{
-		"oneOf": []interface{}{
-			map[string]interface{}{"$ref": "#/definitions/ipAddress"},
-			map[string]interface{}{"$ref": "#/definitions/hostname"},
-		},
+		"not":    map[string]interface{}{"pattern": "^$"},
 	},
 	"listenAddress": map[string]interface{}{
-		"oneOf": []interface{}{
-			map[string]interface{}{"$ref": "#/definitions/ipAddress"},
-			map[string]interface{}{"$ref": "#/definitions/hostname"},
-			map[string]interface{}{"$ref": "#/definitions/wildcardDomain"},
-			map[string]interface{}{"$ref": "#/definitions/cidr"},
-		},
+		"type":        "string",
+		"format":      "idn-hostname",
+		"not":         map[string]interface{}{"pattern": "^$"},
+		"description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
 	},
 	"inhabitedSet": map[string]interface{}{
 		"type":        "array",

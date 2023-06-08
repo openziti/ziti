@@ -1,422 +1,401 @@
 {
-  "$id": "http://ziti-edge.netfoundry.io/schemas/host.v2.schema.json",
-  "definitions": {
-    "action": {
-      "additionalProperties": false,
-      "properties": {
+    "$id": "http://ziti-edge.netfoundry.io/schemas/host.v2.schema.json",
+    "additionalProperties": false,
+    "definitions": {
         "action": {
-          "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
-          "type": "string"
+            "additionalProperties": false,
+            "properties": {
+                "action": {
+                    "pattern": "(mark (un)?healthy|increase cost [0-9]+|decrease cost [0-9]+|send event)",
+                    "type": "string"
+                },
+                "consecutiveEvents": {
+                    "maximum": 65535,
+                    "minimum": 0,
+                    "type": "integer"
+                },
+                "duration": {
+                    "$ref": "#/definitions/duration"
+                },
+                "trigger": {
+                    "enum": [
+                        "fail",
+                        "pass",
+                        "change"
+                    ],
+                    "type": "string"
+                }
+            },
+            "required": [
+                "trigger",
+                "action"
+            ],
+            "type": "object"
         },
-        "consecutiveEvents": {
-          "maximum": 65535,
-          "minimum": 0,
-          "type": "integer"
+        "actionList": {
+            "items": {
+                "$ref": "#/definitions/action"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+        },
+        "dialAddress": {
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
         },
         "duration": {
-          "$ref": "#/definitions/duration"
+            "pattern": "[0-9]+(h|m|s|ms)",
+            "type": "string"
         },
-        "trigger": {
-          "enum": [
-            "fail",
-            "pass",
-            "change"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "trigger",
-        "action"
-      ],
-      "type": "object"
-    },
-    "actionList": {
-      "items": {
-        "$ref": "#/definitions/action"
-      },
-      "maxItems": 20,
-      "minItems": 1,
-      "type": "array"
-    },
-    "dialAddress": {
-      "oneOf": [
-        {
-          "$ref": "#/definitions/ipAddress"
+        "httpCheck": {
+            "additionalProperties": false,
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "body": {
+                    "type": "string"
+                },
+                "expectInBody": {
+                    "type": "string"
+                },
+                "expectStatus": {
+                    "maximum": 599,
+                    "minimum": 100,
+                    "type": "integer"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "method": {
+                    "$ref": "#/definitions/method"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "interval",
+                "timeout",
+                "url"
+            ],
+            "type": "object"
         },
-        {
-          "$ref": "#/definitions/hostname"
-        }
-      ]
-    },
-    "listenAddress": {
-      "oneOf": [
-        {
-          "$ref": "#/definitions/ipAddress"
+        "httpCheckList": {
+            "items": {
+                "$ref": "#/definitions/httpCheck"
+            },
+            "type": "array"
         },
-        {
-          "$ref": "#/definitions/hostname"
+        "inhabitedSet": {
+            "minItems": 1,
+            "type": "array",
+            "uniqueItems": true
         },
-        {
-          "$ref": "#/definitions/cidr"
-        }
-      ]
-    },
-    "duration": {
-      "pattern": "[0-9]+(h|m|s|ms)",
-      "type": "string"
-    },
-    "hostname": {
-      "format": "idn-hostname",
-      "not": {
-        "$ref": "#/definitions/ipAddressFormat"
-      },
-      "type": "string"
-    },
-    "httpCheck": {
-      "additionalProperties": false,
-      "properties": {
-        "actions": {
-          "$ref": "#/definitions/actionList"
-        },
-        "body": {
-          "type": "string"
-        },
-        "expectInBody": {
-          "type": "string"
-        },
-        "expectStatus": {
-          "maximum": 599,
-          "minimum": 100,
-          "type": "integer"
-        },
-        "interval": {
-          "$ref": "#/definitions/duration"
+        "listenAddress": {
+            "description": "idn-hostname allows ipv4 and ipv6 addresses, as well as hostnames that might happen to contain '*' and/or '/'. so idn-hostname allows every supported intercept address, although ip addresses, wildcards and cidrs are only being validated as hostnames by this format. client applications will need to look for _valid_ ips, cidrs, and wildcards when parsing intercept addresses and treat them accordingly. anything else should be interpreted as a dns label. this means e.g. that '1.2.3.4/56' should be treated as a dns label, since it is not a valid cidr",
+            "format": "idn-hostname",
+            "not": {
+                "pattern": "^$"
+            },
+            "type": "string"
         },
         "method": {
-          "$ref": "#/definitions/method"
+            "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH"
+            ],
+            "type": "string"
         },
-        "timeout": {
-          "$ref": "#/definitions/duration"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "interval",
-        "timeout",
-        "url"
-      ],
-      "type": "object"
-    },
-    "httpCheckList": {
-      "items": {
-        "$ref": "#/definitions/httpCheck"
-      },
-      "type": "array"
-    },
-    "ipAddress": {
-      "$ref": "#/definitions/ipAddressFormat",
-      "type": "string"
-    },
-    "ipAddressFormat": {
-      "oneOf": [
-        {
-          "format": "ipv4"
-        },
-        {
-          "format": "ipv6"
-        }
-      ]
-    },
-    "cidr": {
-      "type": "string",
-      "oneOf": [
-        {
-          "pattern": "^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\\/(3[0-2]|[1-2][0-9]|[0-9]))$"
-        },
-        {
-          "pattern": "^s*((([0-9A-Fa-f]{1,4}:){7}([0-9A-Fa-f]{1,4}|:))|(([0-9A-Fa-f]{1,4}:){6}(:[0-9A-Fa-f]{1,4}|((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){5}(((:[0-9A-Fa-f]{1,4}){1,2})|:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3})|:))|(([0-9A-Fa-f]{1,4}:){4}(((:[0-9A-Fa-f]{1,4}){1,3})|((:[0-9A-Fa-f]{1,4})?:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){3}(((:[0-9A-Fa-f]{1,4}){1,4})|((:[0-9A-Fa-f]{1,4}){0,2}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){2}(((:[0-9A-Fa-f]{1,4}){1,5})|((:[0-9A-Fa-f]{1,4}){0,3}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(([0-9A-Fa-f]{1,4}:){1}(((:[0-9A-Fa-f]{1,4}){1,6})|((:[0-9A-Fa-f]{1,4}){0,4}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:))|(:(((:[0-9A-Fa-f]{1,4}){1,7})|((:[0-9A-Fa-f]{1,4}){0,5}:((25[0-5]|2[0-4]d|1dd|[1-9]?d)(.(25[0-5]|2[0-4]d|1dd|[1-9]?d)){3}))|:)))(%.+)?s*(\\/(12[0-8]|1[0-1][0-9]|[1-9][0-9]|[0-9]))$"
-        }
-      ]
-    },
-    "portNumber": {
-      "type": "integer",
-      "minimum": 0,
-      "maximum": 65535
-    },
-    "portRange": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "low": {
-          "$ref": "#/definitions/portNumber"
-        },
-        "high": {
-          "$ref": "#/definitions/portNumber"
-        }
-      },
-      "required": [
-        "low",
-        "high"
-      ]
-    },
-    "protocolName": {
-      "type": "string",
-      "enum": [
-        "tcp",
-        "udp"
-      ]
-    },
-    "method": {
-      "enum": [
-        "GET",
-        "POST",
-        "PUT",
-        "PATCH"
-      ],
-      "type": "string"
-    },
-    "portCheck": {
-      "additionalProperties": false,
-      "properties": {
-        "actions": {
-          "$ref": "#/definitions/actionList"
-        },
-        "address": {
-          "type": "string"
-        },
-        "interval": {
-          "$ref": "#/definitions/duration"
-        },
-        "timeout": {
-          "$ref": "#/definitions/duration"
-        }
-      },
-      "required": [
-        "interval",
-        "timeout",
-        "address"
-      ],
-      "type": "object"
-    },
-    "portCheckList": {
-      "items": {
-        "$ref": "#/definitions/portCheck"
-      },
-      "type": "array"
-    },
-    "inhabitedSet": {
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true
-    },
-    "terminator": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "if": {
+        "portCheck": {
+            "additionalProperties": false,
             "properties": {
-              "forwardProtocol": {
-                "const": true
-              }
+                "actions": {
+                    "$ref": "#/definitions/actionList"
+                },
+                "address": {
+                    "type": "string"
+                },
+                "interval": {
+                    "$ref": "#/definitions/duration"
+                },
+                "timeout": {
+                    "$ref": "#/definitions/duration"
+                }
             },
             "required": [
-              "forwardProtocol"
-            ]
-          },
-          "then": {
-            "required": [
-              "allowedProtocols"
-            ]
-          },
-          "else": {
-            "required": [
-              "protocol"
-            ]
-          }
+                "interval",
+                "timeout",
+                "address"
+            ],
+            "type": "object"
         },
-        {
-          "if": {
+        "portCheckList": {
+            "items": {
+                "$ref": "#/definitions/portCheck"
+            },
+            "type": "array"
+        },
+        "portNumber": {
+            "maximum": 65535,
+            "minimum": 0,
+            "type": "integer"
+        },
+        "portRange": {
+            "additionalProperties": false,
             "properties": {
-              "forwardAddress": {
-                "const": true
-              }
+                "high": {
+                    "$ref": "#/definitions/portNumber"
+                },
+                "low": {
+                    "$ref": "#/definitions/portNumber"
+                }
             },
             "required": [
-              "forwardAddress"
-            ]
-          },
-          "then": {
-            "required": [
-              "allowedAddresses"
-            ]
-          },
-          "else": {
-            "required": [
-              "address"
-            ]
-          }
+                "low",
+                "high"
+            ],
+            "type": "object"
         },
-        {
-          "if": {
+        "protocolName": {
+            "enum": [
+                "tcp",
+                "udp"
+            ],
+            "type": "string"
+        },
+        "terminator": {
+            "additionalProperties": false,
+            "allOf": [
+                {
+                    "else": {
+                        "required": [
+                            "protocol"
+                        ]
+                    },
+                    "if": {
+                        "properties": {
+                            "forwardProtocol": {
+                                "const": true
+                            }
+                        },
+                        "required": [
+                            "forwardProtocol"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "allowedProtocols"
+                        ]
+                    }
+                },
+                {
+                    "else": {
+                        "required": [
+                            "address"
+                        ]
+                    },
+                    "if": {
+                        "properties": {
+                            "forwardAddress": {
+                                "const": true
+                            }
+                        },
+                        "required": [
+                            "forwardAddress"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "allowedAddresses"
+                        ]
+                    }
+                },
+                {
+                    "else": {
+                        "required": [
+                            "port"
+                        ]
+                    },
+                    "if": {
+                        "properties": {
+                            "forwardPort": {
+                                "const": true
+                            }
+                        },
+                        "required": [
+                            "forwardPort"
+                        ]
+                    },
+                    "then": {
+                        "required": [
+                            "allowedPortRanges"
+                        ]
+                    }
+                }
+            ],
             "properties": {
-              "forwardPort": {
-                "const": true
-              }
+                "address": {
+                    "$ref": "#/definitions/dialAddress",
+                    "description": "Dial the specified ip address or hostname when a ziti client connects to the service."
+                },
+                "allowedAddresses": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/inhabitedSet"
+                        },
+                        {
+                            "items": {
+                                "$ref": "#/definitions/listenAddress"
+                            }
+                        }
+                    ],
+                    "description": "Only allow addresses from this set to be dialed"
+                },
+                "allowedPortRanges": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/inhabitedSet"
+                        },
+                        {
+                            "items": {
+                                "$ref": "#/definitions/portRange"
+                            }
+                        }
+                    ],
+                    "description": "Only allow ports from this set to be dialed"
+                },
+                "allowedProtocols": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/inhabitedSet"
+                        },
+                        {
+                            "items": {
+                                "$ref": "#/definitions/protocolName"
+                            }
+                        }
+                    ],
+                    "description": "Only allow protocols from this set to be dialed"
+                },
+                "allowedSourceAddresses": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/inhabitedSet"
+                        },
+                        {
+                            "items": {
+                                "$ref": "#/definitions/listenAddress"
+                            }
+                        }
+                    ],
+                    "description": "hosting tunnelers establish local routes for the specified source addresses so binding will succeed"
+                },
+                "forwardAddress": {
+                    "description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'forwardAddress' are mutually exclusive.",
+                    "enum": [
+                        true
+                    ],
+                    "type": "boolean"
+                },
+                "forwardPort": {
+                    "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'forwardPort' are mutually exclusive.",
+                    "enum": [
+                        true
+                    ],
+                    "type": "boolean"
+                },
+                "forwardProtocol": {
+                    "description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'forwardProtocol' are mutually exclusive.",
+                    "enum": [
+                        true
+                    ],
+                    "type": "boolean"
+                },
+                "httpChecks": {
+                    "$ref": "#/definitions/httpCheckList"
+                },
+                "listenOptions": {
+                    "additionalProperties": false,
+                    "properties": {
+                        "bindUsingEdgeIdentity": {
+                            "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
+                            "type": "boolean"
+                        },
+                        "connectTimeoutSeconds": {
+                            "$ref": "#/definitions/timeoutSeconds",
+                            "description": "defaults to 5"
+                        },
+                        "cost": {
+                            "description": "defaults to 0",
+                            "maximum": 65535,
+                            "minimum": 0,
+                            "type": "integer"
+                        },
+                        "identity": {
+                            "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
+                            "type": "string"
+                        },
+                        "maxConnections": {
+                            "description": "defaults to 3",
+                            "minimum": 1,
+                            "type": "integer"
+                        },
+                        "precedence": {
+                            "description": "defaults to 'default'",
+                            "enum": [
+                                "default",
+                                "required",
+                                "failed"
+                            ],
+                            "type": "string"
+                        }
+                    },
+                    "type": "object"
+                },
+                "port": {
+                    "$ref": "#/definitions/portNumber",
+                    "description": "Dial the specified port when a ziti client connects to the service."
+                },
+                "portChecks": {
+                    "$ref": "#/definitions/portCheckList"
+                },
+                "protocol": {
+                    "$ref": "#/definitions/protocolName",
+                    "description": "Dial the specified protocol when a ziti client connects to the service."
+                }
             },
-            "required": [
-              "forwardPort"
-            ]
-          },
-          "then": {
-            "required": [
-              "allowedPortRanges"
-            ]
-          },
-          "else": {
-            "required": [
-              "port"
-            ]
-          }
+            "type": "object"
+        },
+        "terminatorList": {
+            "items": {
+                "$ref": "#/definitions/terminator"
+            },
+            "minItems": 1,
+            "type": "array"
+        },
+        "timeoutSeconds": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer"
         }
-      ],
-      "properties": {
-        "address": {
-          "$ref": "#/definitions/dialAddress",
-          "description": "Dial the specified ip address or hostname when a ziti client connects to the service."
-        },
-        "forwardAddress": {
-          "description": "Dial the same ip address that was intercepted at the client tunneler. 'address' and 'forwardAddress' are mutually exclusive.",
-          "type": "boolean"
-        },
-        "allowedAddresses": {
-          "description": "Only allow addresses from this set to be dialed",
-          "allOf": [
-            {
-              "$ref": "#/definitions/inhabitedSet"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/listenAddress"
-              }
-            }
-          ]
-        },
-        "forwardPort": {
-          "description": "Dial the same port that was intercepted at the client tunneler. 'port' and 'forwardPort' are mutually exclusive.",
-          "type": "boolean"
-        },
-        "allowedPortRanges": {
-          "description": "Only allow ports from this set to be dialed",
-          "allOf": [
-            {
-              "$ref": "#/definitions/inhabitedSet"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/portRange"
-              }
-            }
-          ]
-        },
-        "forwardProtocol": {
-          "description": "Dial the same protocol that was intercepted at the client tunneler. 'protocol' and 'forwardProtocol' are mutually exclusive.",
-          "type": "boolean"
-        },
-        "allowedProtocols": {
-          "description": "Only allow protocols from this set to be dialed",
-          "allOf": [
-            {
-              "$ref": "#/definitions/inhabitedSet"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/protocolName"
-              }
-            }
-          ]
-        },
-        "allowedSourceAddresses": {
-          "allOf": [
-            {
-              "$ref": "#/definitions/inhabitedSet"
-            },
-            {
-              "items": {
-                "$ref": "#/definitions/listenAddress"
-              }
-            }
-          ],
-          "description": "hosting tunnelers establish local routes for the specified source addresses so binding will succeed"
-        },
-        "httpChecks": {
-          "$ref": "#/definitions/httpCheckList"
-        },
-        "listenOptions": {
-          "additionalProperties": false,
-          "properties": {
-            "bindUsingEdgeIdentity": {
-              "description": "Associate the hosting terminator with the name of the hosting tunneler's identity. Setting this to 'true' is equivalent to setting 'identiy=$tunneler_id.name'",
-              "type": "boolean"
-            },
-            "connectTimeout": {
-              "$ref": "#/definitions/duration"
-            },
-            "cost": {
-              "description": "defaults to 0",
-              "maximum": 65535,
-              "minimum": 0,
-              "type": "integer"
-            },
-            "identity": {
-              "description": "Associate the hosting terminator with the specified identity. '$tunneler_id.name' resolves to the name of the hosting tunneler's identity. '$tunneler_id.tag[tagName]' resolves to the value of the 'tagName' tag on the hosting tunneler's identity.",
-              "type": "string"
-            },
-            "maxConnections": {
-              "description": "defaults to 3",
-              "minimum": 1,
-              "type": "integer"
-            },
-            "precedence": {
-              "description": "defaults to 'default'",
-              "enum": [
-                "default",
-                "required",
-                "failed"
-              ],
-              "type": "string"
-            }
-          },
-          "type": "object"
-        },
-        "port": {
-          "description": "Dial the specified port when a ziti client connects to the service.",
-          "$ref": "#/definitions/portNumber"
-        },
-        "portChecks": {
-          "$ref": "#/definitions/portCheckList"
-        },
-        "protocol": {
-          "description": "Dial the specified protocol when a ziti client connects to the service.",
-          "$ref": "#/definitions/protocolName"
-        }
-      },
-      "type": "object"
     },
-    "terminatorList": {
-      "items": {
-        "$ref": "#/definitions/terminator"
-      },
-      "minItems": 1,
-      "type": "array"
-    }
-  },
-  "properties": {
-    "terminators": {
-      "$ref": "#/definitions/terminatorList"
-    }
-  },
-  "type": "object"
+    "properties": {
+        "terminators": {
+            "$ref": "#/definitions/terminatorList"
+        }
+    },
+    "required": [
+        "terminators"
+    ],
+    "type": "object"
 }
