@@ -62,7 +62,7 @@ function _get_file_overwrite_permission {
   local file_path="${1-}"
 
   if [[ -f "${file_path}" ]]; then
-    echo -en "This will overwrite the existing file, continue (y/N)? "
+    echo -en "This will overwrite the existing file, continue? (y/N) "
     read -r
     if [[ "${REPLY}" == [^Yy]* ]]; then
       echo -e "$(RED "  --- Cancelling overwrite ---")"
@@ -287,7 +287,7 @@ function setupEnvironment {
     if [[ -z "${pwd_reply}" || ${pwd_reply} =~ [yY] ]]; then
       echo "INFO: using ZITI_PWD=${ZITI_PWD}"
     else
-      echo -en "Type the preferred admin password and press <enter>"
+      echo -en "Type the preferred admin password and press <enter> "
       read -r ZITI_PWD
     fi
   else
@@ -403,7 +403,7 @@ function removeZitiEnvironment {
   if [[ "${ZITI_VERSION_OVERRIDE-}" != "" ]] && [[ "${ZITI_VERSION_OVERRIDE-}" != "${ZITI_BINARIES_VERSION-}" ]]; then
     # Don't allow overriding the version if ziti quickstart was already run, the DB may not be compatible
     echo -e "$(RED "  --- Overriding the ziti version is not supported if the version differs from one already installed. ---")"
-    echo -en "Would you like to continue by using the latest version. (y/N)?"
+    echo -en "Would you like to continue by using the latest version? (y/N) "
     read -r
     echo " "
     if [[ "${REPLY}" == [Yy]* ]]; then
@@ -413,7 +413,7 @@ function removeZitiEnvironment {
     fi
   elif [[ "${ZITI_VERSION_OVERRIDE-}" != "" ]]; then
     echo -e "$(RED "  --- You have set the ZITI_VERSION_OVERRIDE value to ${ZITI_VERSION_OVERRIDE}. ---")"
-    echo -en "Would you like to use this version again, choosing no will pull the latest version. (y/N)?"
+    echo -en "Would you like to use this version again, choosing no will pull the latest version? (y/N) "
     read -r
     echo " "
     if [[ "${REPLY}" == [Yy]* ]]; then
@@ -597,7 +597,7 @@ function getZiti {
       echo "INFO: using the default path ${default_path}"
       ZITI_BIN_DIR="${default_path}"
     else
-      echo -en "Enter the preferred path and press <enter> (the path will be created if necessary)"
+      echo -en "Enter the preferred path and press <enter> (the path will be created if necessary) "
       read -r ZITI_BIN_DIR
     fi
   fi
@@ -629,7 +629,7 @@ function getZiti {
   # Check if they're already downloaded or maybe the user explicitly pointed ZITI_BIN_DIR to their local bins
   if ! test -f "${ZITI_BIN_DIR}/ziti"; then
     # Make the directory
-    echo -en "No existing binary found, creating the ZITI_BIN_DIR directory ($(BLUE "${ZITI_BIN_DIR}"))"
+    echo -e "No existing binary found, creating the ZITI_BIN_DIR directory ($(BLUE "${ZITI_BIN_DIR}"))"
     mkdir -p "${ZITI_BIN_DIR}"
     retVal=$?
     if [[ "${retVal}" != 0 ]]; then
@@ -637,13 +637,13 @@ function getZiti {
       return 1
     fi
   else
-    echo -en "ziti found in ZITI_BIN_DIR ($(BLUE "${ZITI_BIN_DIR}"))"
+    echo -e "ziti found in ZITI_BIN_DIR ($(BLUE "${ZITI_BIN_DIR}"))"
     # Get the current version and compare with latest
     local currentVersion
     currentVersion="$("${ZITI_BIN_DIR}"/ziti --version) "
     if [[ "${ZITI_BINARIES_VERSION}" != "${currentVersion}" ]]; then
       # Prompt user for new download
-      echo -en "There is a newer version of OpenZiti, would you like to download it (Y/n)?"
+      echo -en "There is a newer version of OpenZiti, would you like to download it? (Y/n) "
       read -r reply
       if [[ -z "${reply}" || "${reply}" == [Yy]* ]]; then
         # Update the ZITI_BIN_DIR path to point to the latest version
@@ -821,7 +821,7 @@ function _create_router_config {
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createEdgeRouterConfig requires a router name to be supplied") "
     default_router_name="${ZITI_EDGE_ROUTER_NAME}"
-    echo -en "Enter router name (${default_router_name}):"
+    echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
     # Accept the default if no name provided
@@ -948,7 +948,7 @@ function expressInstall {
   # Check if expressInstall has been run before
   if [[ "" != "${ZITIx_EXPRESS_COMPLETE-}" ]]; then
     echo -e "$(RED "  --- It looks like you've run an express install in this shell already. ---")"
-    echo -en "Would you like to clear existing Ziti variables and continue (y/N)? "
+    echo -en "Would you like to clear existing Ziti variables and continue? (y/N) "
     read -r
     echo " "
     if [[ "${REPLY}" == [Yy]* ]]; then
@@ -1053,7 +1053,7 @@ function createControllerSystemdFile {
   # If no controller name provided and env var is not set, prompt user for a controller name
   if [[ "${controller_name}" == "" ]] && [[ -z "${ZITI_CTRL_NAME}" ]]; then
         echo -e "$(YELLOW "createControllerSystemdFile requires a controller name to be supplied") "
-        echo -en "Enter controller name:"
+        echo -en "Enter controller name: "
         read -r controller_name
 
         # Quit if no name is provided
@@ -1110,7 +1110,7 @@ function createRouterSystemdFile {
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createRouterSystemdFile requires a router name to be supplied") "
     default_router_name="${ZITI_EDGE_ROUTER_NAME}"
-    echo -en "Enter router name (${default_router_name}):"
+    echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
     # Accept the default if no name provided
@@ -1238,7 +1238,7 @@ function createRouterLaunchdFile {
     # If router name is not passed as arg, prompt user for input
     echo -e "$(YELLOW "createRouterLaunchdFile requires a router name to be supplied") "
     default_router_name="${ZITI_EDGE_ROUTER_NAME}"
-    echo -en "Enter router name (${default_router_name}):"
+    echo -en "Enter router name (${default_router_name}): "
     read -r router_name
 
     # Accept the default if no name provided
@@ -1400,7 +1400,7 @@ function _portCheck {
     return 0
   fi
 
-  echo -e "Checking ${2-}'s port (${envVarValue}) $(GREEN "Open")"
+  echo -en "Checking ${2-}'s port (${envVarValue})"
   portCheckResult=$(lsof -w -i :"${envVarValue}" 2>&1)
   if [[ "${portCheckResult}" != "" ]]; then
       echo -e "$(RED " ")"
@@ -1411,11 +1411,13 @@ function _portCheck {
       echo -e "$(RED "export ${envVar}=1234")"
       echo -e "$(RED " ")"
       return 1
+  else
+    echo -e "$(GREEN "Open")"
   fi
   return 0
 }
 
-# A function for upgrading an existing (<=0.27.5) network to a later (>0.27.5) network
+# A function for upgrading an existing (<=0.28.0) network to a later (>0.28.0) network
 # The binary, which relies on environment variables were extensively altered and will not work on an existing network
 # without migrating it first
 function performMigration {
