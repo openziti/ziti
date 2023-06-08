@@ -9,12 +9,12 @@ require (
 	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/openziti/channel/v2 v2.0.80
-	github.com/openziti/edge v0.24.313
+	github.com/openziti/edge v0.24.326
 	github.com/openziti/fablab v0.4.52
 	github.com/openziti/fabric v0.23.35
 	github.com/openziti/foundation/v2 v2.0.25
 	github.com/openziti/identity v1.0.56
-	github.com/openziti/sdk-golang v0.20.54
+	github.com/openziti/sdk-golang v0.20.58
 	github.com/openziti/storage v0.2.7
 	github.com/openziti/transport/v2 v2.0.90
 	github.com/openziti/ziti v0.28.0
@@ -86,7 +86,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.2 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/raft v1.5.0 // indirect
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0 // indirect
@@ -126,7 +126,7 @@ require (
 	github.com/oliveagle/jsonpath v0.0.0-20180606110733-2e52cf6e6852 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/openziti/agent v1.0.13 // indirect
-	github.com/openziti/edge-api v0.25.24 // indirect
+	github.com/openziti/edge-api v0.25.25 // indirect
 	github.com/openziti/jwks v1.0.3 // indirect
 	github.com/openziti/metrics v1.2.26 // indirect
 	github.com/openziti/runzmd v1.0.24 // indirect
@@ -146,7 +146,7 @@ require (
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rodaine/table v1.0.1 // indirect
 	github.com/russross/blackfriday v1.5.2 // indirect
-	github.com/shirou/gopsutil/v3 v3.23.4 // indirect
+	github.com/shirou/gopsutil/v3 v3.23.5 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
