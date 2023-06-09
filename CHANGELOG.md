@@ -14,8 +14,8 @@
 * github.com/openziti/edge: [v0.24.309 -> v0.24.326](https://github.com/openziti/edge/compare/v0.24.309...v0.24.326)
   * [Issue #1517](https://github.com/openziti/edge/issues/1517) - allow wildcard domains in intercept.v1 addresses
 
-### AMPQ Event Writer Changes
-A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold durring AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
+### AMQP Event Writer Changes
+A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold during AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
 
 Example configuration:
 ```
