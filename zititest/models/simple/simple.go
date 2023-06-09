@@ -19,6 +19,7 @@ package simple
 import (
 	"embed"
 	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fablab/kernel/lib/actions/component"
 	"github.com/openziti/fablab/kernel/lib/binding"
 	"github.com/openziti/fablab/kernel/lib/runlevel/0_infrastructure/aws_ssh_key"
@@ -55,11 +56,18 @@ func getConfigData(filePath string) []byte {
 	return data
 }
 
+func getUniqueId() string {
+	if runId := os.Getenv("GITHUB_RUN_ID"); runId != "" {
+		return "-" + runId + "." + os.Getenv("GITHUB_RUN_ATTEMPT")
+	}
+	return "-" + os.Getenv("USER")
+}
+
 var Model = &model.Model{
 	Id: "simple-transfer",
 	Scope: model.Scope{
 		Defaults: model.Variables{
-			"environment": "simple-transfer-smoketest",
+			"environment": "simple-transfer-smoketest" + getUniqueId(),
 			"credentials": model.Variables{
 				"ssh": model.Variables{
 					"username": "ubuntu",
@@ -74,6 +82,7 @@ var Model = &model.Model{
 
 	Factories: []model.Factory{
 		model.FactoryFunc(func(m *model.Model) error {
+			pfxlog.Logger().Infof("environment [%s]", m.MustStringVariable("environment"))
 			m.AddActivationActions("stop", "bootstrap", "start")
 			m.AddOperatingStage(runlevel_5_operation.AssertEcho("#echo-client"))
 

@@ -44,6 +44,13 @@ healthChecks:
     timeout: 15s
     # How long to wait before pinging the controller. Defaults to 15 seconds
     initialDelay: 15s
+  linkCheck:
+    # Number of links required for the health check to be passing. Defaults to 0
+    minLinks: 1
+    # How often to check the link count, defaults to 5s
+    interval: 5s
+    # How long to wait before running the first check. Defaults to 1s
+    initialDelay: 5s
   
 metrics:
   reportInterval: 15s
