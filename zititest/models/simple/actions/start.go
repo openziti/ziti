@@ -19,6 +19,7 @@ package actions
 import (
 	"fmt"
 	"github.com/openziti/fablab/kernel/lib"
+	"github.com/openziti/ziti/zititest/zitilab/actions/edge"
 	"time"
 
 	"github.com/openziti/fablab/kernel/lib/actions"
@@ -41,7 +42,7 @@ func NewStartAction(metricbeat MetricbeatConfig, consul ConsulConfig) model.Acti
 func (a *startAction) bind(m *model.Model) model.Action {
 	workflow := actions.Workflow()
 	workflow.AddAction(component.Start("#ctrl"))
-	workflow.AddAction(semaphore.Sleep(2 * time.Second))
+	workflow.AddAction(edge.ControllerAvailable("#ctrl", 30*time.Second))
 	workflow.AddAction(component.StartInParallel(models.EdgeRouterTag, 25))
 
 	workflow.AddAction(semaphore.Sleep(2 * time.Second))
