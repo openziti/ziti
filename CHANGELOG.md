@@ -48,6 +48,29 @@ Finally, link checks now include the addresses associated with the links:
     }
 ```
 
+## Event Changes
+
+### AMQP Event Writer Changes
+A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold during AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
+
+Example configuration:
+```
+events:
+  jsonLogger:
+    subscriptions:
+      - type: fabric.circuits
+    handler:
+      type: amqp
+      format: json
+      url: "amqp://localhost:5672" 
+      queue: ziti
+      durable: true      //default:true
+      autoDelete: false  //default:false
+      exclusive: false   //default:false
+      noWait: false      //default:false
+      bufferSize: 50     //default:50
+```
+ 
 ## Component Updates and Bug Fixes
 
 * github.com/openziti/agent: [v1.0.13 -> v1.0.14](https://github.com/openziti/agent/compare/v1.0.13...v1.0.14)
@@ -78,28 +101,7 @@ Finally, link checks now include the addresses associated with the links:
 * github.com/openziti/metrics: [v1.2.25 -> v1.2.26](https://github.com/openziti/metrics/compare/v1.2.25...v1.2.26)
 * github.com/openziti/ziti: [v0.28.0 -> v0.28.1](https://github.com/openziti/ziti/compare/v0.28.0...v0.28.1)
   * [Issue #1132](https://github.com/openziti/ziti/issues/1132) - Updated `ws` protocol to `wss` as `ws` is no longer supported.
-
-### AMQP Event Writer Changes
-A new field is available to the AMQP Event Writer. `bufferSize` denotes how many messages ziti will hold during AMQP connection outages. Any messages exceeding this limit will be logged and dropped.
-
-Example configuration:
-```
-events:
-  jsonLogger:
-    subscriptions:
-      - type: fabric.circuits
-    handler:
-      type: amqp
-      format: json
-      url: "amqp://localhost:5672" 
-      queue: ziti
-      durable: true      //default:true
-      autoDelete: false  //default:false
-      exclusive: false   //default:false
-      noWait: false      //default:false
-      bufferSize: 50     //default:50
-```
-  
+ 
 # Release 0.28.0
 
 ## What's New
@@ -122,7 +124,7 @@ events:
 
 ## Event Changes
 
-### AMPQ Event Writer
+### AMQP Event Writer
 Previously events could only be emitted to a file. They can now also be emitted to an AMQP endpoint. 
 
 Example configuration:
