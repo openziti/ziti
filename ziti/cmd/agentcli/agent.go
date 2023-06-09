@@ -95,11 +95,17 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd.AddCommand(NewSimpleAgentCustomCmd("dump-api-sessions", AgentAppRouter, debugops.DumpApiSessions, p))
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-routes", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpForwarderTablesRequestType), p))
 	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dump-links", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDebugDumpLinksRequestType), p))
-	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("quiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterQuiesce), p))
-	routerCmd.AddCommand(NewSimpleChAgentCustomCmd("dequiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDequiesce), p))
 	routerCmd.AddCommand(NewForgetLinkAgentCmd(p))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "disconnect", false))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "reconnect", true))
+
+	quiesceCmd := NewSimpleChAgentCustomCmd("quiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterQuiesce), p)
+	quiesceCmd.Hidden = true
+	routerCmd.AddCommand(quiesceCmd)
+
+	dequiesceCmd := NewSimpleChAgentCustomCmd("dequiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDequiesce), p)
+	dequiesceCmd.Hidden = true
+	routerCmd.AddCommand(dequiesceCmd)
 
 	return agentCmd
 }

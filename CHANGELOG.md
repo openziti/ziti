@@ -4,24 +4,6 @@
 
 * `ziti` CLI now trims jwt files specified for login preventing a confusing invalid header field value for "Authorization"
   error when trying to use `-e` flag
-* Support quiesce/dequiesce of routers for auto-scaling and/or round-robin upgrades
-
-## Quiesce/Dequiesce Routers
-
-The ziti CLI supports two new operations:
-
-* `ziti agent router quiesce`
-* `ziti agent router dequiesce`
-
-When told to quiesce, the targeted router will reach out to the controller and request that its terminators be marked as 
-failed. All terminators that aren't already in a failed state will be marked as failed, and the their previous 
-precedence will be saved. 
-
-New circuits will then prefer terminators on other routers, where they are available. This will allow for graceful
-turn down of autoscaled routers or for round-robinning routers while upgrading.
-
-If a server has been quiesced and is now ready to be returned to service, it can be dequiesced. This will find 
-terminators with a saved precedence in a failed state and return them to their original state.
 
 ## Router Health Check Changes
 
