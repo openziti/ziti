@@ -99,6 +99,14 @@ func NewAgentCmd(p common.OptionsProvider) *cobra.Command {
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "disconnect", false))
 	routerCmd.AddCommand(NewToggleCtrlChannelAgentCmd(p, "reconnect", true))
 
+	quiesceCmd := NewSimpleChAgentCustomCmd("quiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterQuiesce), p)
+	quiesceCmd.Hidden = true
+	routerCmd.AddCommand(quiesceCmd)
+
+	dequiesceCmd := NewSimpleChAgentCustomCmd("dequiesce", AgentAppRouter, int32(mgmt_pb.ContentType_RouterDequiesce), p)
+	dequiesceCmd.Hidden = true
+	routerCmd.AddCommand(dequiesceCmd)
+
 	return agentCmd
 }
 
@@ -119,7 +127,7 @@ func (self *AgentOptions) AddAgentOptions(cmd *cobra.Command) {
 	cmd.Flags().StringVarP(&self.processName, "process-name", "n", "", "Process name of host application to talk to")
 	cmd.Flags().StringVarP(&self.appId, "app-id", "i", "", "Id of host application to talk to (like controller or router id)")
 	cmd.Flags().StringVarP(&self.appType, "app-type", "t", "", "Type of host application to talk to (like controller or router)")
-	cmd.Flags().StringVarP(&self.appType, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
+	cmd.Flags().StringVarP(&self.appAlias, "app-alias", "a", "", "Alias of host application to talk to (specified in host application)")
 	cmd.Flags().StringVar(&self.tcpAddr, "tcp-addr", "", "Type of host application to talk to (like controller or router)")
 	cmd.Flags().DurationVar(&self.timeout, "timeout", 5*time.Second, "Operation timeout")
 }
@@ -154,7 +162,7 @@ func (self *AgentOptions) GetProcess() (*agent.Process, error) {
 	}
 
 	if len(result) == 0 {
-		return nil, errors.New("no processes found matching filter, use 'ziti agent ps' to list candidates")
+		return nil, errors.New("no processes found matching filter, use 'ziti agent list' to list candidates")
 	}
 
 	if len(result) > 1 {

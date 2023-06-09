@@ -85,7 +85,7 @@ func newLoginCmd(out io.Writer, errOut io.Writer) *cobra.Command {
 	cmd.Flags().BoolVar(&options.IgnoreConfig, "ignore-config", false, "If set, does not use value from the config file for hostname or username. Values must be entered or will be prompted for.")
 	cmd.Flags().StringVarP(&options.ClientCert, "client-cert", "c", "", "A certificate used to authenticate")
 	cmd.Flags().StringVarP(&options.ClientKey, "client-key", "k", "", "The key to use with certificate authentication")
-	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A JWT from an external provider used to authenticate")
+	cmd.Flags().StringVarP(&options.ExtJwt, "ext-jwt", "e", "", "A file containing a JWT from an external provider to be used for authentication")
 
 	options.AddCommonFlags(cmd)
 
@@ -345,7 +345,7 @@ func login(o *LoginOptions, url string, authentication string) (*gabs.Container,
 			return nil, fmt.Errorf("couldn't load jwt file at %s: %v", o.ExtJwt, err)
 		}
 		method = "ext-jwt"
-		authHeader = "Bearer " + string(auth)
+		authHeader = "Bearer " + strings.TrimSpace(string(auth))
 		client.SetHeader("Authorization", authHeader)
 	} else {
 		if o.ClientCert != "" {
