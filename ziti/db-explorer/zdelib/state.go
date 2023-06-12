@@ -17,6 +17,7 @@ import (
 	"errors"
 	"github.com/openziti/storage/boltz"
 	"go.etcd.io/bbolt"
+	"log"
 	"strings"
 )
 
@@ -34,6 +35,9 @@ func NewState(path string) (*State, error) {
 	db, err := Open(path)
 
 	if err != nil {
+		if err == bbolt.ErrTimeout {
+			log.Print("Could not acquire db lock. Ensure the ziti controller is stopped.");
+		}
 		return nil, err
 	}
 

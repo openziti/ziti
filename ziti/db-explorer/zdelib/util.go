@@ -56,7 +56,7 @@ func Open(path string) (*bbolt.DB, error) {
 	}
 
 	return bbolt.Open(path, 0666, &bbolt.Options{
-		Timeout:  10 * time.Second,
+		Timeout:  2 * time.Second,
 		ReadOnly: true,
 	})
 }
