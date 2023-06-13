@@ -30,11 +30,11 @@ require (
 	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge-api v0.25.27
 	github.com/openziti/fabric v0.23.37
-	github.com/openziti/foundation/v2 v2.0.25
+	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.56
 	github.com/openziti/jwks v1.0.3
-	github.com/openziti/metrics v1.2.26
-	github.com/openziti/sdk-golang v0.20.61
+	github.com/openziti/metrics v1.2.27
+	github.com/openziti/sdk-golang v0.20.62
 	github.com/openziti/secretstream v0.1.8
 	github.com/openziti/storage v0.2.7
 	github.com/openziti/transport/v2 v2.0.90
@@ -130,7 +130,7 @@ require (
 	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/mod v0.7.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
-	golang.org/x/term v0.8.0 // indirect
+	golang.org/x/term v0.9.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )
