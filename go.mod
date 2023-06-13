@@ -28,7 +28,7 @@ require (
 	github.com/miekg/dns v1.1.54
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.81
-	github.com/openziti/edge-api v0.25.27
+	github.com/openziti/edge-api v0.25.28
 	github.com/openziti/fabric v0.23.37
 	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.57
@@ -122,7 +122,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	go.mongodb.org/mongo-driver v1.11.6 // indirect
+	go.mongodb.org/mongo-driver v1.11.7 // indirect
 	go.mozilla.org/pkcs7 v0.0.0-20210826202110-33d05740a352 // indirect
 	go.opentelemetry.io/otel v1.16.0 // indirect
 	go.opentelemetry.io/otel/metric v1.16.0 // indirect
