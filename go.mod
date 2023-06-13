@@ -29,7 +29,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/openziti/channel/v2 v2.0.80
 	github.com/openziti/edge-api v0.25.25
-	github.com/openziti/fabric v0.23.36
+	github.com/openziti/fabric v0.23.37
 	github.com/openziti/foundation/v2 v2.0.25
 	github.com/openziti/identity v1.0.56
 	github.com/openziti/jwks v1.0.3
@@ -82,7 +82,7 @@ require (
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
 	github.com/go-openapi/jsonreference v0.20.2 // indirect
 	github.com/go-openapi/spec v0.20.9 // indirect
-	github.com/go-openapi/swag v0.22.3 // indirect
+	github.com/go-openapi/swag v0.22.4 // indirect
 	github.com/go-openapi/validate v0.22.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
