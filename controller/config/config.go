@@ -25,6 +25,7 @@ import (
 	"github.com/openziti/identity"
 	"github.com/pkg/errors"
 	"net"
+	"net/url"
 	"os"
 	"reflect"
 	"strconv"
@@ -51,6 +52,8 @@ const (
 	DefaultHttpReadTimeout       = 5000 * time.Millisecond
 	DefaultHttpReadHeaderTimeout = 5000 * time.Millisecond
 	DefaultHttpWriteTimeout      = 100000 * time.Millisecond
+
+	DefaultTotpDomain = "openziti.io"
 )
 
 type Enrollment struct {
@@ -63,6 +66,10 @@ type Enrollment struct {
 
 type EnrollmentOption struct {
 	Duration time.Duration
+}
+
+type Totp struct {
+	Hostname string
 }
 
 type Api struct {
@@ -83,6 +90,7 @@ type Config struct {
 
 	caPems     *bytes.Buffer
 	caPemsOnce sync.Once
+	Totp       Totp
 }
 
 type HttpTimeouts struct {
@@ -131,6 +139,47 @@ func (c *Config) AddCaPems(caPems []byte) {
 
 func (c *Config) RefreshCaPems() {
 	c.caPems = CalculateCaPems(c.caPems)
+}
+
+func (c *Config) loadTotpSection(edgeConfigMap map[any]any) error {
+	c.Totp = Totp{}
+	c.Totp.Hostname = DefaultTotpDomain
+
+	if value, found := edgeConfigMap["totp"]; found {
+		if value == nil {
+			return nil
+		}
+
+		totpMap := value.(map[interface{}]interface{})
+
+		if totpMap != nil {
+			if hostnameVal, found := totpMap["hostname"]; found {
+
+				if hostnameVal == nil {
+					return nil
+				}
+
+				if hostname, ok := hostnameVal.(string); ok {
+					testUrl := "https://" + hostname
+					parsedUrl, err := url.Parse(testUrl)
+
+					if err != nil {
+						return fmt.Errorf("could not parse URL: %w", err)
+					}
+
+					if parsedUrl.Hostname() != hostname {
+						return fmt.Errorf("invalid hostname in [edge.totp.hostname]: %s", hostname)
+					}
+
+					c.Totp.Hostname = hostname
+				} else {
+					return fmt.Errorf("[edge.totp.hostname] must be a string")
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func (c *Config) loadApiSection(edgeConfigMap map[interface{}]interface{}) error {
@@ -364,6 +413,10 @@ func LoadFromMap(configMap map[interface{}]interface{}) (*Config, error) {
 	var err error
 
 	if err = edgeConfig.loadApiSection(edgeConfigMap); err != nil {
+		return nil, err
+	}
+
+	if err = edgeConfig.loadTotpSection(edgeConfigMap); err != nil {
 		return nil, err
 	}
 
